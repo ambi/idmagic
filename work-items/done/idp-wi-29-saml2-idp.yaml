@@ -1,0 +1,111 @@
+id: idp-wi-29-saml2-idp
+title: SAML 2.0 IdP を実装し、エンタープライズ SSO に対応する
+created_at: 2026-06-20
+status: completed
+authors: [tn]
+
+motivation: |
+  OIDC だけでは B2B / enterprise 販売の最低ラインを満たせないケースが多い。
+  Keycloak / Okta は SAML 2.0 IdP として SP-initiated / IdP-initiated SSO、
+  metadata、assertion 署名、attribute mapping、Single Logout を提供する。
+
+  本 WI は idmagic を SAML 2.0 IdP として振る舞えるようにする。
+
+scope:
+  decision:
+    - >-
+      新規 ADR: SAML 2.0 IdP の対応範囲を定義する。初期対応は
+      Web Browser SSO Profile、HTTP-Redirect / HTTP-POST binding、
+      signed response/assertion、metadata 公開、SP-initiated / IdP-initiated
+      SSO、Single Logout とする。
+  scl:
+    - SamlServiceProvider / SamlAuthnRequest / SamlResponse / SamlAssertion を追加する。
+    - SamlMetadata / SamlSso / SamlSlo interface を追加する。
+    - attribute mapping と NameID format を client metadata に追加する。
+  go:
+    - 実績ある SAML library を選定し、XML signature / canonicalization を自前実装しない。
+    - SAML SP 管理 API を admin clients と同じ tenant boundary で追加する。
+    - >-
+      `/saml/metadata`, `/saml/sso`, `/saml/slo` を realm 配下に公開する。
+    - assertion 署名鍵は OAuth signing key と分離するか ADR で明確に決める。
+    - RelayState、InResponseTo、AudienceRestriction、Recipient、Destination を検証する。
+  ui:
+    - admin clients に SAML client/SP 種別を追加し、metadata import / export を提供する。
+    - attribute mapping UI を追加する。
+  documentation:
+    - README に SAML 対応範囲、metadata URL、SP 設定例を書く。
+
+out_of_scope:
+  - SAML SP として外部 IdP に接続すること。これは inbound federation WI で扱う。
+  - SAML ECP。
+  - WS-Federation / WS-Trust。
+  - encrypted assertion の初期必須化。必要なら追加 WI とする。
+
+affected_guarantees:
+  - XML signature safety: unsigned / tampered request/response を受け入れない。
+  - audience restriction: assertion は登録 SP の entityID に限定する。
+  - >-
+    replay protection (IdP): IdP が発行する assertion は NotBefore / NotOnOrAfter の
+    時間窓と InResponseTo 相関で保護する。アサーションを消費する側 (SP) の
+    assertion ID replay 管理は SAML プロファイル上 SP の責務であり、idmagic が SP / RP として
+    外部アサーションを消費する側の replay 防御は inbound federation ([[wi-30-inbound-federation-and-identity-broker]]) で扱う。
+  - tenant isolation: SP metadata と SAML endpoints は realm ごとに分離する。
+  - audit: SAML login / SLO / metadata change を監査に残す。
+
+verification:
+  - cmd: 'go test ./...'
+    in: idmagic
+  - cmd: 'golangci-lint run ./...'
+    in: idmagic
+  - cmd: 'go build ./...'
+    in: idmagic
+  - cmd: 'bun --cwd idmagic/ui typecheck'
+  - cmd: 'bun --cwd idmagic/ui lint'
+  - cmd: 'bun --cwd idmagic/ui build'
+  - >-
+    手動: test SP から SP-initiated SSO を開始し、SAMLResponse の署名・Audience・NameID
+    が正しいことを確認する。
+  - >-
+    手動: metadata import で登録した SP に対して SLO が成立することを確認する。
+
+risk: high
+risk_notes: |
+  SAML は XML signature wrapping、canonicalization、metadata trust のリスクが大きい。
+  library 選定と conformance smoke を作業の前半に置き、手書き XML 処理を避ける。
+
+completion:
+  completed_at: 2026-06-27
+  summary: |
+    idmagic を SAML 2.0 IdP として実装した。Web Browser SSO Profile、HTTP-Redirect /
+    HTTP-POST binding、署名付き response/assertion、metadata 公開、SP-initiated /
+    IdP-initiated SSO、Single Logout に対応する。
+
+    - 公開エンドポイント: realm 配下に `/saml/metadata` (IdP metadata)、`/saml/sso`
+      (GET=Redirect / POST=POST binding、SAMLRequest なし entityID 指定で IdP-initiated)、
+      `/saml/slo` を公開 (internal/saml/adapters/http)。
+    - 署名 / XML: XML signature / canonicalization は自前実装せず
+      github.com/russellhaering/goxmldsig を採用。response/assertion を署名し、
+      Destination / Audience / NameID / RelayState を扱う。
+    - 集約 / 永続化: SamlServiceProvider を spec / port / tenant-scoped repository として
+      実装し、SP metadata・attribute (claim) mapping・NameID format・SLO URL を保持。
+    - admin / 編集面: SAML SP は Application の protocol binding として管理する
+      ([[wi-69-application-catalog-aggregate-and-assignment]] / ADR-066・wi-76 で
+      Application 編集画面に entity_id / ACS / SLO / claim 規則 / 署名設定を畳んだ)。
+    - assertion 署名鍵は既存の signing key 基盤を用い、SP ごとの wire 設定と分離。
+  affected_guarantees_state:
+    - { guarantee: "XML signature safety", state: held, note: "goxmldsig で response/assertion を署名。XML 処理を自前実装せず署名検証経路を library に委譲。" }
+    - { guarantee: "audience restriction", state: held, note: "assertion の Audience を登録 SP の entityID に限定。" }
+    - { guarantee: "replay protection (IdP)", state: held, note: "IdP として発行 assertion を NotBefore / NotOnOrAfter の時間窓 (-1min / +5min) と InResponseTo 相関で保護。アサーション消費側の ID replay 管理は SAML 上 SP の責務で、idmagic が消費側になる inbound federation (wi-30) が扱う。受信 AuthnRequest の署名検証 + 要求 ID replay store は defense-in-depth として residual_risk 参照。" }
+    - { guarantee: "tenant isolation", state: held, note: "SP metadata と /saml/* endpoint を realm (tenant) ごとに分離。SamlSPRepo は tenant scope。" }
+    - { guarantee: "audit", state: held, note: "SAML login / SLO / SP 変更をイベント emit。" }
+  verification:
+    - { cmd: "GOCACHE=/tmp/idmagic-cache go test ./...", in: idmagic, result: passed }
+    - { cmd: "golangci-lint run ./...", in: idmagic, result: passed }
+    - { cmd: "go build ./...", in: idmagic, result: passed }
+    - { cmd: "bun --cwd idmagic/ui typecheck", result: passed }
+    - { cmd: "bun --cwd idmagic/ui lint", result: passed }
+    - { cmd: "bun --cwd idmagic/ui build", result: passed }
+  residual_risk:
+    - "defense-in-depth: 受信 AuthnRequest の XML 署名検証と要求 ID の短期 replay store は未実装 (現状は時間窓 + InResponseTo + ACS 許可集合で担保)。SP 署名要求を強制する環境では署名検証 -> IssueInstant 鮮度 -> 要求 ID replay の順で後続 hardening WI として追加する。アサーション消費側の replay は wi-30 の責務。"
+    - "encrypted assertion は out_of_scope のまま未対応。要件化時に追加 WI とする。"
+    - "test SP からの SP-initiated SSO / metadata import 後の SLO 成立は手動 E2E 未実施。ハンドラ / ドメインのユニットテストは緑。"

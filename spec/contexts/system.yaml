@@ -1,0 +1,432 @@
+# idmagic System — SCL
+# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+
+system: idmagic
+spec_version: "2.0"
+context: System
+standards:
+  WCAG22:
+    title: Web Content Accessibility Guidelines 2.2
+    version: W3C Recommendation
+    url: https://www.w3.org/TR/WCAG22/
+    roles:
+      - UserInterface
+    scope: ブラウザ認証UIのLevel AAアクセシビリティ。
+    requirements:
+      - id: WCAG22-KEYBOARD
+        section: 2.1.1
+        strength: MUST
+        adoption: required
+        statement: すべての認証操作をキーボードだけで完了可能にする。
+      - id: WCAG22-FOCUS
+        section: "2.4.7, 2.4.11"
+        strength: MUST
+        adoption: required
+        statement: フォーカスを視認可能にし重要な要素が完全に隠れないようにする。
+      - id: WCAG22-LABELS-ERRORS
+        section: "3.3.1, 3.3.2"
+        strength: MUST
+        adoption: required
+        statement: 入力にラベルを付け、エラーをテキストで識別して修正方法を示す。
+      - id: WCAG22-STATUS
+        section: 4.1.3
+        strength: MUST
+        adoption: required
+        statement: 認証結果や送信エラーをフォーカス移動なしに支援技術へ通知する。
+  GDPR:
+    title: General Data Protection Regulation
+    version: Regulation (EU) 2016/679
+    url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    roles:
+      - DataController
+    scope: 同意、監査、保存期間、削除後の個人データ処理。
+    requirements:
+      - id: GDPR-CONSENT-WITHDRAWAL
+        section: Article 7(3)
+        strength: MUST
+        adoption: required
+        statement: ResourceOwnerが同意を撤回でき、撤回後の新規発行へ利用しない。
+        relates_to:
+          models:
+            - Consent
+          states:
+            - ConsentLifecycle
+      - id: GDPR-ERASURE
+        section: Article 17
+        strength: MUST
+        adoption: required
+        statement: 削除要求後は法的保存義務を除くPIIを定義済み期間内に消去する。
+        relates_to:
+          objectives:
+            - PiiPurgeAfterDeletion
+      - id: GDPR-PROCESSING-RECORDS
+        section: Article 30
+        strength: MUST
+        adoption: required
+        statement: セキュリティ・認可イベントの監査記録を定義済み期間保持する。
+        relates_to:
+          objectives:
+            - AuditLogRetention
+objectives:
+  CancellationConsistency:
+    kind: security
+    description: "HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。"
+    policy: http_operation_context
+    target: HTTPMutationOperation
+    value:
+      read_only_context: request
+      mutation_context: without_cancel_with_timeout
+      completion_modes:
+        - rollback
+        - complete
+        - detached_completion
+      inconsistent_completion_rate: "0"
+  ClientAbortLogClassification:
+    kind: security
+    description: "client abort 由来の context.Canceled は server error として記録・集計せず、server timeout / upstream timeout と別 label で観測する。"
+    policy: http_cancel_classification
+    target: HTTPErrorHandling
+    value:
+      metric: http_request_aborts_total
+      labels:
+        - client_aborted
+        - server_timeout
+        - upstream_timeout
+      client_aborted_counts_as_server_error: false
+user_experience:
+  accessibility:
+    standard: WCAG22
+    level: AA
+  locales:
+    - ja
+    - en
+  screens:
+    AdminDashboard:
+      route: /admin
+      purpose: 管理者にテナントのユーザー数・登録アプリケーション数・付与済み同意数・直近24時間の監査イベント数と最近のイベントを集約表示する。
+      interfaces:
+        - ListAdminUsers
+        - ListAdminOAuth2Clients
+        - ListAdminConsents
+        - ListAdminAuditEvents
+      states:
+        - ready
+        - loading
+        - empty
+        - access_denied
+        - service_error
+  transitions:
+    - from: AdminDashboard
+      to: AdminUsers
+      trigger: user_management_selected
+    - from: AdminDashboard
+      to: AdminApplications
+      trigger: application_management_selected
+  requirements:
+    - id: UX-CSRF
+      category: security
+      adoption: required
+      statement: 状態変更を伴うブラウザAPIはSameSite cookieとリクエストトークンを照合してCSRFを拒否する。
+      screens:
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - ForgotPassword
+        - ResetPassword
+        - ChangePassword
+        - AccountProfile
+        - AccountEmails
+        - AccountEmailVerify
+        - AccountSecurity
+        - AccountActivity
+        - AccountApplications
+        - AdminUsers
+        - AdminGroups
+        - AdminAgents
+        - AdminApplications
+        - AdminAuthorizationDetailTypes
+        - AdminConsents
+        - AdminKeys
+        - AdminTenants
+        - AdminTenantAttributes
+        - AdminSettings
+        - AdminEntraFederation
+      interfaces:
+        - SubmitBrowserLogin
+        - SubmitBrowserTotp
+        - SubmitBrowserConsent
+        - SubmitBrowserDevice
+        - RequestPasswordReset
+        - ResetPasswordWithToken
+        - ChangePassword
+        - UpdateUserProfile
+        - RequestEmailChange
+        - ConfirmEmailChange
+        - ConfirmTotpEnrollment
+        - RemoveTotpFactor
+        - RevokeMySession
+        - RevokeMyOtherSessions
+        - RevokeMyConsent
+        - CreateAdminUser
+        - UpdateAdminUser
+        - DisableAdminUser
+        - EnableAdminUser
+        - DeleteAdminUser
+        - CreateGroup
+        - UpdateGroup
+        - DeleteGroup
+        - AddGroupMember
+        - RemoveGroupMember
+        - RegisterAgent
+        - UpdateAgent
+        - DisableAgent
+        - EnableAgent
+        - KillAgent
+        - DeleteAgent
+        - CreateAdminApplication
+        - UpdateAdminApplication
+        - DeleteAdminApplication
+        - RevokeAdminConsent
+        - RotateTenantSigningKey
+        - DisableTenantKey
+        - CreateTenant
+        - UpdateTenant
+        - DisableTenant
+        - EnableTenant
+        - UpdateTenantUserAttributeSchema
+        - UpdateAdminSettings
+        - CreateAdminOAuth2Client
+        - UpdateAdminOAuth2Client
+        - DeleteAdminOAuth2Client
+      standards:
+        - RFC9700
+        - FAPI2SecurityProfile
+    - id: UX-NO-STORE
+      category: privacy
+      adoption: required
+      statement: 認証トランザクション、CSRF token、user_code、管理対象データ、自己アカウントデータを含むブラウザAPI応答は保存キャッシュを禁止する。
+      screens:
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - AccountHome
+        - AccountProfile
+        - AccountSecurity
+        - AccountActivity
+        - AccountApplications
+        - AccountData
+        - AdminUsers
+        - AdminGroups
+        - AdminAgents
+        - AdminApplications
+        - AdminConsents
+        - AdminAuditEvents
+        - AdminKeys
+        - AdminTenants
+        - AdminSettings
+      interfaces:
+        - GetBrowserTransaction
+        - GetBrowserDeviceContext
+        - GetAccountSummary
+        - GetUserProfile
+        - GetAccountSecurity
+        - ListMySessions
+        - ListMyConsents
+        - ExportAccountData
+        - ListAdminUsers
+        - ListGroups
+        - ListAgents
+        - ListAdminApplications
+        - ListAdminConsents
+        - ListAdminAuditEvents
+        - ListAdminKeys
+        - ListTenants
+        - ListAdminOAuth2Clients
+        - GetAdminOAuth2Client
+        - CreateAdminOAuth2Client
+        - UpdateAdminOAuth2Client
+    - id: UX-NO-CREDENTIAL-ECHO
+      category: privacy
+      adoption: required
+      statement: password、token、内部request idを画面、URL、エラーメッセージへ表示しない。
+      screens:
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - Status
+        - Callback
+    - id: UX-ADMIN-TENANT-SCOPE
+      category: security
+      adoption: required
+      statement: 管理画面は現在のrealm prefixを維持し、所属テナント内のリソース(User、Group、Agent、Application/Client、Consent、AuditEvent、Key、設定、属性スキーマ)だけを表示・変更する。
+      screens:
+        - AdminDashboard
+        - AdminUsers
+        - AdminGroups
+        - AdminAgents
+        - AdminRoles
+        - AdminApplications
+        - AdminAuthorizationDetailTypes
+        - AdminConsents
+        - AdminAuditEvents
+        - AdminKeys
+        - AdminTenantAttributes
+        - AdminSettings
+        - AdminEntraFederation
+      interfaces:
+        - ListAdminUsers
+        - ListGroups
+        - ListAgents
+        - ListAdminApplications
+        - ListAuthorizationDetailTypes
+        - ListAdminConsents
+        - ListAdminAuditEvents
+        - ListAdminKeys
+        - GetTenantUserAttributeSchema
+        - GetAdminSettings
+        - ListAdminOAuth2Clients
+        - GetAdminOAuth2Client
+        - CreateAdminOAuth2Client
+        - UpdateAdminOAuth2Client
+        - DeleteAdminOAuth2Client
+    - id: UX-ACCOUNT-SELF-SCOPE
+      category: security
+      adoption: required
+      statement: マイアカウント画面は呼び出しユーザー自身のリソースだけを表示・変更し、他者のプロフィール、セッション、同意、データへはアクセスできない。
+      screens:
+        - AccountHome
+        - AccountProfile
+        - AccountEmails
+        - AccountSecurity
+        - AccountActivity
+        - AccountApplications
+        - AccountData
+      interfaces:
+        - GetAccountSummary
+        - GetUserProfile
+        - UpdateUserProfile
+        - RequestEmailChange
+        - ConfirmEmailChange
+        - GetAccountSecurity
+        - ListMySessions
+        - RevokeMySession
+        - RevokeMyOtherSessions
+        - ListMyConsents
+        - RevokeMyConsent
+        - ExportAccountData
+    - id: UX-KEYBOARD
+      category: accessibility
+      adoption: required
+      statement: すべての入力、表示切替、許可、拒否、再試行をキーボードだけで操作可能にする。
+      screens:
+        - Home
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - Status
+        - Callback
+        - ForgotPassword
+        - ResetPassword
+        - AccountHome
+        - AccountApps
+        - AccountProfile
+        - AccountEmails
+        - AccountEmailVerify
+        - AccountSecurity
+        - ChangePassword
+        - AccountActivity
+        - AccountApplications
+        - AccountData
+        - AdminDashboard
+        - AdminUsers
+        - AdminGroups
+        - AdminAgents
+        - AdminRoles
+        - AdminApplications
+        - AdminAuthorizationDetailTypes
+        - AdminConsents
+        - AdminAuditEvents
+        - AdminKeys
+        - AdminTenants
+        - AdminTenantAttributes
+        - AdminSettings
+        - AdminEntraFederation
+      standards:
+        - WCAG22
+    - id: UX-FOCUS
+      category: accessibility
+      adoption: required
+      statement: フォーカス位置を常に視認可能にし、画面遷移後は主見出しまたは最初の入力へ論理的に到達可能にする。
+      screens:
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - Status
+        - Callback
+      standards:
+        - WCAG22
+    - id: UX-LABELS-ERRORS
+      category: accessibility
+      adoption: required
+      statement: 入力には永続的なラベルを関連付け、エラーを色だけに依存せず対象と修正方法が分かる文章で示す。
+      screens:
+        - Login
+        - Totp
+        - Device
+      standards:
+        - WCAG22
+    - id: UX-STATUS-ANNOUNCEMENT
+      category: accessibility
+      adoption: required
+      statement: 非同期送信の失敗と認証結果を支援技術へ通知し、送信中は重複操作を防ぐ。
+      screens:
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - Status
+        - Callback
+        - ForgotPassword
+        - ResetPassword
+        - ChangePassword
+        - AccountProfile
+        - AccountEmails
+        - AccountEmailVerify
+        - AccountSecurity
+        - AccountActivity
+        - AccountApplications
+        - AccountData
+        - AdminUsers
+        - AdminGroups
+        - AdminAgents
+        - AdminApplications
+        - AdminAuthorizationDetailTypes
+        - AdminConsents
+        - AdminKeys
+        - AdminTenants
+        - AdminTenantAttributes
+        - AdminSettings
+        - AdminEntraFederation
+      standards:
+        - WCAG22
+    - id: UX-LOCALE
+      category: localization
+      adoption: required
+      statement: UI文言はjaとenを提供し、未対応localeは既定localeへフォールバックする。
+      screens:
+        - Home
+        - Login
+        - Totp
+        - Consent
+        - Device
+        - Status
+        - Callback
+      interfaces:
+        - GetOpenidConfiguration
+      standards:
+        - OpenIDConnectDiscovery

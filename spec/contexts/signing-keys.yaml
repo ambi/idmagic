@@ -1,0 +1,487 @@
+# idmagic SigningKeys — SCL
+# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+
+system: idmagic
+spec_version: "2.0"
+context: SigningKeys
+glossary:
+  SigningKeys:
+    definition: tenant-scoped signing key material のライフサイクルと公開を扱う境界。OAuth2/OIDC は JWK/JWKS、SAML/WS-* は X.509 証明書を使う。
+    aliases:
+      - KeyMaterial
+      - signing keys
+  Retire:
+    definition: SigningKey を Verifying から Retired に移す。
+    aliases:
+      - retire
+  Archive:
+    definition: SigningKey を Retired から Archived に移す。
+    aliases:
+      - archive
+  Verifying:
+    definition: 署名はしないが、過去発行トークンの検証のため JWKS に残っている状態。
+    aliases:
+      - verifying
+  Retired:
+    definition: JWKS から除去された状態。新規検証には使われない。
+    aliases:
+      - retired
+  Archived:
+    definition: 監査用に長期保管されている終端状態。鍵マテリアルは封印。
+    aliases:
+      - archived
+  KeyProvider:
+    definition: 鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に持ちアプリが署名する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault API に委ねる本番用。
+    aliases:
+      - key provider
+      - 鍵プロバイダ
+  VaultTransit:
+    definition: HashiCorp Vault の Transit secrets engine を使う KeyProvider。秘密鍵マテリアルは Vault 外に出ず、署名要求ごとに Vault へ委譲する。
+    aliases:
+      - Vault Transit
+  FailClosed:
+    definition: KeyProvider が不達のとき、新規 token 発行を停止する挙動。既発行 token 検証用の JWKS は取得可能な範囲で返す。
+    aliases:
+      - fail-closed
+      - フェイルクローズ
+models:
+  SignatureAlgorithm:
+    kind: enum
+    description: JWT 署名アルゴリズム。FAPI 2.0 が許容する asymmetric な強度の高いものに限定（HS256 等の対称鍵は除外）。
+    values:
+      - PS256
+      - ES256
+  SigningKeyState:
+    kind: enum
+    description: SigningKeyLifecycle 状態機械の取りうる状態列挙。Active が現行署名鍵、Verifying は JWKS に残るが署名はしない、Retired は JWKS から除去済、Archived は監査保管。
+    values:
+      - Active
+      - Verifying
+      - Retired
+      - Archived
+  KeyProvider:
+    kind: enum
+    description: 鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault へ委譲する本番用。
+    values:
+      - Local
+      - Postgres
+      - VaultTransit
+  KeyUsage:
+    kind: enum
+    description: 鍵の用途。現状は OAuth2/OIDC の JWT 署名 (Signing) のみ。JWE 暗号鍵や SAML/WS-* の X.509 は将来の用途として枠だけ残す。
+    values:
+      - Signing
+  SigningKey:
+    kind: entity
+    description: トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。
+    identity: kid
+    fields:
+      tenant_id:
+        type: String
+        default: default
+        description: 鍵が属するテナント ID。テナント A の JWKS にテナント B の kid は出ない。
+      kid:
+        type: String
+        constraints:
+          - non_empty
+      alg:
+        type: SignatureAlgorithm
+      provider:
+        type: KeyProvider
+        description: 鍵マテリアルの保管場所と署名の実行主体。
+      usage:
+        type: KeyUsage
+        description: 鍵の用途。現状 Signing のみ。
+      public_jwk:
+        type: JWK
+      state:
+        type: SigningKeyState
+      created_at:
+        type: Timestamp
+      activated_at:
+        type: Timestamp
+        optional: true
+        description: 一度 Active となった時刻。
+      retired_at:
+        type: Timestamp
+        optional: true
+        description: Retired 状態に遷移した時刻。
+      archived_at:
+        type: Timestamp
+        optional: true
+  JWK:
+    kind: value_object
+    description: JSON Web Key (RFC 7517)。kid で識別される 1 件の公開鍵情報。
+    fields:
+      kty:
+        type: String
+      use:
+        type: String
+        optional: true
+      kid:
+        type: String
+      alg:
+        type: String
+        optional: true
+      extra:
+        type: JSON
+        optional: true
+  JWKS:
+    kind: value_object
+    description: JWK Set (RFC 7517 §5)。/jwks エンドポイントが返す公開鍵集合。クライアントがトークン署名を検証する際に取得する。
+    fields:
+      keys:
+        type: "JWK[]"
+  AdminKeyResponse:
+    kind: value_object
+    description: "管理者向けに公開する署名鍵のメタデータ。秘密鍵は当然返さず、JWKS と\n同じ公開鍵 JWK のみを含める。鍵の状態 (active / verifying) と作成時刻で\nローテーション可否を判断できる粒度を提供する。\n"
+    fields:
+      kid:
+        type: String
+        description: JWK Key ID。JWKS で配布されるものと同一。
+      alg:
+        type: SignatureAlgorithm
+        description: 署名アルゴリズム (現状 PS256 のみ)。
+      provider:
+        type: KeyProvider
+        description: 鍵マテリアルの保管場所と署名の実行主体。
+      active:
+        type: Boolean
+        description: true のとき新規 ID Token / Access Token の署名鍵。false は verifying 用途で JWKS 残留。
+      created_at:
+        type: Timestamp
+        description: 鍵生成時刻 (SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。
+      public_jwk:
+        type: JSON
+        description: 公開鍵 JWK。JWKS と同じ表現。
+  AdminKeyListResponse:
+    kind: value_object
+    description: 全署名鍵の一覧。active が複数同時に存在することは無い (rotateInternal で旧鍵は非 active 化)。
+    fields:
+      keys:
+        type: "AdminKeyResponse[]"
+  AdminRotateKeyResponse:
+    kind: value_object
+    description: 鍵ローテーションの結果。新しい active 鍵と直前の active 鍵 (verifying へ降りた) の kid を返す。
+    fields:
+      next:
+        type: AdminKeyResponse
+        description: 新しい active 署名鍵。
+      previous:
+        type: AdminKeyResponse
+        optional: true
+        description: 直前まで active だった鍵 (初回ローテーション時は無し)。
+  TenantSigningKey:
+    kind: value_object
+    description: "テナント 1 件分の署名鍵ヘルス。system_admin がテナント横断で鍵の\n健全性 (provider / active kid / 鍵数 / provider 到達性) を一覧するために返す。\n秘密鍵は含めない。\n"
+    fields:
+      tenant_id:
+        type: String
+        description: 対象テナント ID。
+      provider:
+        type: KeyProvider
+        description: このテナントが使う KeyProvider。
+      usage:
+        type: KeyUsage
+        description: 鍵の用途。現状 Signing。
+      active_kid:
+        type: String
+        optional: true
+        description: 現在 active な署名鍵の kid。鍵がまだ無いテナントでは無し。
+      active_state:
+        type: SigningKeyState
+        optional: true
+        description: active 鍵の状態。
+      jwks_key_count:
+        type: Integer
+        description: JWKS に載る鍵数 (active + verifying)。
+      provider_healthy:
+        type: Boolean
+        description: KeyProvider が到達可能か。false のとき FailClosed で新規発行を止める。
+  SigningKeyRotated:
+    kind: event
+    description: JWKS の署名鍵が回転した（90 日ごと、または緊急回転）。
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+        description: 回転した署名鍵が属するテナント ID。
+      newKid:
+        type: String
+      previousKid:
+        type: String
+        optional: true
+states:
+  SigningKeyLifecycle:
+    description: 署名鍵のライフサイクル（SigningKeyMinJwksOverlap）。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。
+    target: SigningKey
+    initial: Active
+    terminal:
+      - Archived
+    transitions:
+      - from: Active
+        event: Rotate
+        to: Verifying
+      - from: Verifying
+        event: Retire
+        to: Retired
+      - from: Retired
+        event: Archive
+        to: Archived
+interfaces:
+  GetJwks:
+    description: JWKS (RFC 7517)
+    steps:
+      - JWKS を取得する
+    output:
+      jwks:
+        type: JWKS
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: /jwks
+  ListAdminKeys:
+    description: "管理者が自テナントの JWKS に乗っている署名鍵 (active + verifying) の\nメタデータを取得する。KeyStore は tenant-aware で、返るのは actor のテナントの\n鍵のみ。Read 専用。\n"
+    output:
+      response:
+        type: AdminKeyListResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/keys
+  GetAdminKey:
+    description: 管理者が kid を指定して 1 件取得する。存在しない kid は 404。
+    input:
+      kid:
+        type: String
+    output:
+      key:
+        type: AdminKeyResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/keys/{kid}"
+  RotateTenantSigningKey:
+    description: "actor のテナントに新しい署名鍵を生成し active を切り替える。旧 active 鍵は\nJWKS に verifying として残存し、SigningKeyMinJwksOverlap 期間後に Retire される\n(Retire 処理は別の運用ジョブ)。テナント単位のため回転の影響範囲は当該テナントに\n閉じる。emits SigningKeyRotated (tenantId 付き)。\n"
+    output:
+      response:
+        type: AdminRotateKeyResponse
+    errors:
+      - AccessDeniedError
+    emits:
+      - SigningKeyRotated
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/keys/rotate
+        successful_status_codes:
+          - "200"
+  DisableTenantKey:
+    description: "緊急時に自テナントの署名鍵 1 件を kid 指定で無効化 (Retire) する。\n漏洩疑いの鍵を JWKS から即時に外すための操作。active 鍵を無効化した場合は\n直近の verifying 鍵へフォールバックできないため、続けて回転が要る。\nemits SigningKeyRotated は行わず、鍵の状態のみ Retired にする。\n"
+    input:
+      kid:
+        type: String
+    output:
+      key:
+        type: AdminKeyResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/keys/{kid}/disable"
+        successful_status_codes:
+          - "200"
+  ListTenantJwks:
+    description: "テナント指定の JWKS (RFC 7517)。当該テナントの active + verifying\n(retired-not-expired) 鍵のみを返す。テナント A の JWKS にテナント B の kid は\n出ない。RP はこの URL で自テナント発行トークンの署名を検証する。\n"
+    input:
+      tenant_id:
+        type: String
+    output:
+      jwks:
+        type: JWKS
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: "/realms/{tenant_id}/jwks"
+  ListTenantKeyHealth:
+    description: "system_admin がテナント横断で署名鍵ヘルス (provider / active kid /\n鍵数 / provider 到達性) を一覧する。秘密鍵は返さない。fail-closed 判定や\n回転漏れの検知に使う。\n"
+    output:
+      tenants:
+        type: "TenantSigningKey[]"
+    errors:
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/keys/health
+invariants:
+  SigningKeyMaxAge:
+    description: 有効な署名鍵はテナントごとに 90 日を超えない間隔で回転する。
+    target: SigningKey
+    eventually: event == SigningKeyRotated
+    within: 90d
+    assuming: state == Active
+  TenantJwksIsolation:
+    description: "テナント指定 JWKS に載る鍵はすべて当該テナントに属する。\n反例: テナント A の JWKS にテナント B の kid が混じる = tenant isolation 違反。\n"
+    target: SigningKey
+    always: key in tenant_jwks(t) implies key.tenant_id == t
+  KeyProviderFailClosed:
+    description: "KeyProvider が到達不能なテナントでは新規署名 (token 発行) をしない。\n反例: provider 障害中に古い鍵で署名を続ける = fail-closed 違反。\n"
+    target: SigningKey
+    always: signed_with(key) implies key.tenant_id.provider_healthy == true
+permissions:
+  AdminKeysRead:
+    description: "管理者による自テナント JWKS 鍵一覧の読み出し。admin / system_admin どちらでも\n自テナントの鍵を参照できる。秘密鍵を返さないため漏洩リスクは低い。\n"
+    actor: User
+    resource: AdminKeyResponse
+    allow_when:
+      and:
+        - (admin in actor.roles) or (system_admin in actor.roles)
+        - actor.disabled_at == null
+        - context.authenticated == true
+  TenantKeysRotate:
+    description: "自テナントの署名鍵のローテーション。生成された新鍵が active になり、旧鍵は\nverifying に降りる。per-tenant 鍵のため影響範囲は当該テナントに閉じ、他テナントの\nトークン発行は止まらない。admin / system_admin が自テナントに対して実行できる。\n"
+    actor: User
+    resource: SigningKey
+    allow_when:
+      and:
+        - (admin in actor.roles) or (system_admin in actor.roles)
+        - actor.disabled_at == null
+        - context.authenticated == true
+  TenantKeysDisable:
+    description: "自テナントの署名鍵 1 件を緊急無効化 (Retire) する。漏洩疑いの鍵を JWKS から\n即時に外す破壊的操作のため、TenantKeysRotate と同じ権限に限定する。\n"
+    actor: User
+    resource: SigningKey
+    allow_when:
+      and:
+        - (admin in actor.roles) or (system_admin in actor.roles)
+        - actor.disabled_at == null
+        - context.authenticated == true
+  SystemKeyHealthRead:
+    description: "テナント横断の署名鍵ヘルス一覧の読み出し。全テナントの鍵状態を跨いで見るため\nsystem_admin のみに限定する。秘密鍵は返さない。\n"
+    actor: User
+    resource: TenantSigningKey
+    allow_when:
+      and:
+        - system_admin in actor.roles
+        - actor.disabled_at == null
+        - context.authenticated == true
+objectives:
+  JwksLatency:
+    kind: slo
+    description: /jwks の p99 レイテンシ目標。クライアントの署名検証準備のため極めて低レイテンシ（20ms）を要求し、CDN キャッシュも前提とする。
+    metric: latency_p99
+    interface: GetJwks
+    target: "<20ms"
+    window: 30d
+  JwksErrorRate:
+    kind: slo
+    description: /jwks の 5xx 比率上限。全てのクライアントの署名検証経路に影響するため一桁厳しい 0.01% を要求。
+    metric: error_rate
+    interface: GetJwks
+    target: "<0.0001"
+    window: 30d
+  SigningKeyMaxAge:
+    kind: security
+    policy: max_age
+    target: SigningKey
+    value: 90d
+  SigningKeyMinJwksOverlap:
+    kind: security
+    policy: min_jwks_overlap
+    value: 7d
+  SigningKeyArchiveRetention:
+    kind: retention
+    target: SigningKey
+    policy: archive
+    retention: 7y
+    description: 旧鍵で署名された監査トークンを検証するため。
+scenarios:
+  署名鍵を回転しても旧 kid は JWKS に残る:
+    goal: 署名鍵を回転しつつ旧 kid での署名検証を継続できる。
+    primary_actor: Administrator
+    scope: SigningKeys
+    level: user_goal
+    preconditions:
+      - "現在の署名鍵は kid \"kid-old\" を持つ"
+    success_guarantees:
+      - 回転後も旧 kid と新 kid の両方が JWKS で公開される。
+    main_success:
+      - "kid \"kid-old\" を \"kid-new\" に回転する"
+      - JWKS を取得する
+      - "応答に kid \"kid-old\" と \"kid-new\" の両方が含まれる"
+    extensions:
+      - at: 1
+        condition: 管理者が管理画面から回転する
+        steps:
+          - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の署名鍵一覧を開く"
+          - "管理者 \"operator\" が現在の署名鍵を回転する"
+          - JWKS に旧 kid と新 kid の両方が含まれる
+  テナントごとに別の署名鍵で発行する:
+    goal: 各テナントが独立した署名鍵を持ち、他テナントの JWKS に自鍵が混じらない。
+    primary_actor: Administrator
+    scope: SigningKeys
+    level: user_goal
+    preconditions:
+      - "テナント \"tenant-a\" とテナント \"tenant-b\" が存在する"
+    success_guarantees:
+      - 各テナントの JWKS には自テナントの kid だけが載る。
+    main_success:
+      - "テナント \"tenant-a\" で token を発行する"
+      - "テナント \"tenant-b\" で token を発行する"
+      - "テナント \"tenant-a\" の JWKS を取得する"
+      - "応答にはテナント \"tenant-a\" の kid だけが含まれ、テナント \"tenant-b\" の kid は含まれない"
+  KeyProvider 障害時は新規発行を拒否する:
+    goal: KeyProvider が到達不能なテナントでは新規トークン発行を fail-closed で止める。
+    primary_actor: Client
+    scope: SigningKeys
+    level: subfunction
+    preconditions:
+      - "テナント \"tenant-a\" の KeyProvider が到達不能である"
+    success_guarantees:
+      - fail-closed により古い鍵での署名は行われない。
+    main_success:
+      - "テナント \"tenant-a\" で token 発行を要求する"
+      - 新規署名ができないため発行はサービスエラーで拒否される
+      - "テナント \"tenant-a\" の JWKS は取得可能な範囲でミラーから返る"
+user_experience:
+  screens:
+    AdminKeys:
+      route: /admin/keys
+      purpose: 管理者が自テナントの署名鍵を一覧・参照し、provider / active kid / rotation 状態を確認して回転・緊急無効化する。回転後も旧 kid は JWKS で保持される。
+      interfaces:
+        - ListAdminKeys
+        - GetAdminKey
+        - RotateTenantSigningKey
+        - DisableTenantKey
+      states:
+        - ready
+        - loading
+        - submitting
+        - empty
+        - access_denied
+        - service_error
+    SystemKeyHealth:
+      route: /system/keys
+      purpose: システムコンソール (system_admin 専用のテナント横断領域) で署名鍵ヘルス (provider / active kid / 鍵数 / provider 到達性) を一覧し、fail-closed や回転漏れを検知する。テナント管理コンソール (/admin) とは別シェルに隔離する。
+      interfaces:
+        - ListTenantKeyHealth
+      states:
+        - ready
+        - loading
+        - empty
+        - access_denied
+        - service_error

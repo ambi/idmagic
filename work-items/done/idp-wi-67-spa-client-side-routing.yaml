@@ -1,0 +1,127 @@
+id: idp-wi-67-spa-client-side-routing
+title: 管理コンソール / アカウントポータルの画面遷移を client-side routing 化して全リロードを無くす
+created_at: 2026-06-27
+status: completed
+authors: [tn]
+
+motivation: |
+  管理コンソール (`/admin/*`) とアカウントポータル (`/account/*`) のサイドバー / パンくず
+  リンクは素の `<a href>` で、クリックごとに SPA 全体がフルリロードされる。ブート時の
+  `loadPageData()` が現在の URL を見てそのページのデータを取り直す設計のため、遷移ごとに
+  バンドル再評価とページデータの再取得 (例: ダッシュボードは毎回 4 本の API を並列取得)
+  が走り、体感的な遅延になっている。
+
+  この遅延は OIDC RP 化 ([[wi-66-portals-as-oidc-rp]]) より前から存在する全リロード方式が
+  主因で、OIDC とは独立の課題である。本 WI は admin / account の画面遷移を client-side
+  routing (SPA ナビゲーション) 化し、フルリロードとページデータ全取得を無くして遷移を
+  即時化する。
+
+  現状の SPA dispatcher は「ブート時に 1 つの PageData を解決し、`data.kind` に一致する
+  route だけを描画する」静的構造 ([[wi-22]] の SPA スモーク参照)。本 WI はこれを、URL 変化に
+  応じて per-route loader がデータを取得する動的ルーティングへ作り変える。`api/pageData` の
+  巨大な分岐を route 単位の loader に分解し、@tanstack/react-router の本来のルーティングを使う。
+
+scope:
+  decision:
+    - >-
+      ルーティング方式の決定: ブート時単発 PageData から、route 単位 loader + SPA
+      ナビゲーションへ移行する方針と、サーバ駆動の `kind` 解決をどう廃止/縮小するかを
+      確定する (必要なら ADR)。
+  go:
+    - >-
+      サーバ側の HTML 配信が `kind` を前提にしている箇所があれば、SPA が任意の admin /
+      account パスを直接開けるよう調整する (deep link / リロード耐性)。API 契約は不変。
+  ui:
+    - >-
+      サイドバー / パンくず / メニューのリンクを SPA ナビゲーション (router.navigate /
+      Link) に置き換え、フルリロードを廃止する。
+    - >-
+      `api/pageData.ts` の単発分岐を route 単位の loader に分解し、遷移時はその route の
+      データだけを取得する。共有コンテキスト (`/api/auth/account` など) はキャッシュ/共有して
+      重複取得を避ける。
+    - >-
+      OIDC RP のトークン取得 (ensureLoggedIn) を、ブートだけでなく SPA ナビゲーション時にも
+      route guard として機能させる ([[wi-66-portals-as-oidc-rp]] と整合)。
+    - 直接リロード・ブラウザ戻る/進む・deep link が壊れないことを担保する。
+  documentation:
+    - ui/ARCHITECTURE.md の SPA dispatcher 記述を新ルーティングモデルに更新する。
+
+out_of_scope:
+  - 認証ロジック自体の変更 ([[wi-66-portals-as-oidc-rp]] が所有)。本 WI は遷移方式に閉じる。
+  - auth-flow 画面 (login / consent / totp / device / callback) のルーティング刷新。まず admin / account に閉じる。
+  - サーバ側レンダリング (SSR) の導入。
+
+affected_guarantees:
+  - navigation latency: admin / account の画面遷移はフルリロードせず、対象 route のデータのみ取得する。
+  - deep link / reload: 任意の admin / account パスの直接オープン・リロード・履歴操作が壊れない。
+  - auth guard: 未ログインでの admin / account アクセスは引き続き OIDC ログインへ誘導する。
+  - >-
+    API 契約不変: `/api/{admin,account}/*` の契約は変更しない。
+
+verification:
+  - cmd: 'bun --cwd idmagic/ui typecheck'
+  - cmd: 'bun --cwd idmagic/ui build'
+  - cmd: 'bun --cwd idmagic/ui run lint'
+  - >-
+    手動: サイドバー遷移がフルリロードせず即時であること、deep link / リロード /
+    戻る進むが壊れないこと。
+
+risk: medium
+risk_notes: |
+  ルーティングモデルの作り替えは admin / account 全ページの描画経路に触れるため回帰面が
+  広い。route 単位 loader への分解は段階的に行い、各 route で deep link とリロード耐性を
+  確認する。OIDC トークン guard を SPA ナビゲーション経路にも通すこと。
+
+completion:
+  completed_at: 2026-06-27
+
+  summary: |
+    SPA を TanStack Router の loader ベースの client-side routing に作り替えた。各パスは
+    共有 loader (resolvePageData) で「その route のデータだけ」を取得し、PageView が
+    解決済み PageData の kind に応じてページを描画する。サイドバー / パンくず / アカウント
+    メニュー / ロゴのナビゲーションを `<Link>` に置き換え、画面遷移でドキュメントを再読込
+    しない。OIDC ログイン guard (ensureLoggedIn) は loader 内で動くため、初期ロードと
+    in-app 遷移の両方に適用される。pageData は window.location 依存を排し、遷移先 location
+    (pathname / searchStr) を受け取る resolvePageData に分離した。markPage は Suspense 境界の
+    内側で呼び、lazy chunk のロード完了 (ページ DOM 実在) と meta 表明を一致させた。
+
+  semantic_diff:
+    before: "サイドバー等は <a href> でクリックごとに SPA 全体をフルリロードし、loadPageData が全ページデータを取り直す"
+    after: "TanStack Router の loader/Link による client-side 遷移。対象 route のデータのみ取得し、ドキュメントは再読込しない"
+
+  traceability:
+    specification:
+      - idmagic/decisions/ADR-061-first-party-portals-as-oidc-rp.md  # OIDC guard を loader で適用
+    implementation:
+      - idmagic/ui/src/router.tsx  # loader + PageView + 共有ルート生成
+      - idmagic/ui/src/main.tsx  # RouterProvider のみ
+      - idmagic/ui/src/api/pageData.ts  # resolvePageData(location)
+      - idmagic/ui/src/components/AdminShell.tsx  # サイドバー/パンくず/ロゴを Link 化
+      - idmagic/ui/src/components/AccountShell.tsx  # ナビ/ロゴ/管理リンクを Link 化
+      - idmagic/ui/tests/e2e/authorize-golden-path.spec.ts  # client-side 遷移の E2E
+
+  affected_guarantees_state:
+    - "navigation latency: サイドバー遷移は対象 route のデータのみ取得し、ドキュメントを再読込しない (E2E: marker 保持 + location.pathname 更新)"
+    - "no blank flash: ページコンポーネントを route loader 内で await 解決し (React.lazy/Suspense を遷移経路から排除)、loader 解決まで前ページを表示したままにするため初回クリックでも空白が出ない。先読みは初回 loader の高速化用"
+    - "deep link / reload: 任意パスの直接オープンも router loader が解決 (golden-path E2E は full-nav 経路を継続検証)"
+    - "auth guard: 未ログイン admin/account は loader 内 ensureLoggedIn で OIDC ログインへ誘導"
+    - "API 契約不変: /api/{admin,account}/* は変更なし"
+
+  verification:
+    - cmd: "bun --cwd idmagic/ui run lint"
+      result: ok
+    - cmd: "bun --cwd idmagic/ui typecheck"
+      result: ok
+    - cmd: "bun --cwd idmagic/ui build"
+      result: ok
+    - cmd: "bun --cwd idmagic/ui run test:e2e"
+      result: "2 pass (golden path + admin sidebar client-side navigation)"
+
+  residual_risk:
+    - >-
+      ページ内コンテンツのリンク (一覧テーブルの行 → 詳細など) は未変換で、引き続き
+      フルリロード遷移になる。primary navigation (shell) は client-side 化済み。後続で
+      個別変換する。
+    - >-
+      auth-flow 画面 (login / consent / totp / device / callback) は OAuth リダイレクトの
+      性質上フルページ遷移のまま (本 WI の out_of_scope)。

@@ -1,0 +1,3 @@
+[submodule ".ra-scl/regenerative-architecture"]
+	path = .ra-scl/regenerative-architecture
+	url = https://github.com/ambi/regenerative-architecture.git

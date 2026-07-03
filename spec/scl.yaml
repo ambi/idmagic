@@ -1,0 +1,208 @@
+# idmagic — SCL context map
+# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+
+system: idmagic
+spec_version: "2.0"
+context_map:
+  System:
+    description: 外部標準、共有語彙、横断ユーザー体験、context 横断シナリオを所有する。
+    path: contexts/system.yaml
+    publishes:
+      []
+  Tenancy:
+    description: テナント (Realm) 集約、ライフサイクル、HTTP リクエストからのテナント解決、テナント管理 API を所有する。テナントは idmagic のあらゆる集約に共通する境界文脈。
+    path: contexts/tenancy.yaml
+    publishes:
+      - TenantRef
+      - ResolveTenant
+  IdentityManagement:
+    description: 人間 User、Group、非人間 Agent という identity principal と、そのプロフィール、ロール、ライフサイクル、管理 API、自己管理 API を所有する。資格情報検証、MFA、ログインセッションは Authentication に分離する。
+    path: contexts/identity-management.yaml
+    publishes:
+      - UserRef
+      - GroupRef
+      - AgentRef
+      - EffectiveRoles
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: identity principal と管理 API はテナント境界内に閉じる。
+  Authentication:
+    description: エンドユーザ (Subject) の資格情報検証、MFA、ログインセッション、パスワード変更・リセット、step-up、認証イベントを所有する。User / Group / Agent の identity ライフサイクルは IdentityManagement が所有する。
+    path: contexts/authentication.yaml
+    publishes:
+      - AuthenticationContext
+      - LoginSessionRef
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: LoginSession と認証イベントはテナント境界内に閉じる。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - AgentRef
+        reason: 認証は User の状態、required actions、MFA 登録状態、Agent 所有者などの identity 情報を参照する。
+  OAuth2:
+    description: "OAuth 2.0 / OIDC プロトコルファミリーの全責務を所有する。Client metadata\nとその Dynamic Registration、認可判断 (Authorize / Consent /\nAuthorization Code / PAR / Device Authorization / RP-Initiated Logout)、\nトークン発行とライフサイクル (AccessToken / RefreshToken / ID Token /\nIntrospect / Revoke / UserInfo / proof-of-possession)、Discovery /\nAuthorization Server Metadata / 健全性報告 / 監査保管\nを本 bounded context に集約する。\n"
+    path: contexts/oauth2.yaml
+    publishes:
+      - Authorize
+      - Token
+      - UserInfo
+      - OAuth2ClientRef
+      - AccessTokenClaims
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: クライアント・コード・トークン・鍵・監査はテナント境界内に閉じる。
+      Authentication:
+        via: published_language
+        uses:
+          - AuthenticationContext
+        reason: Authorize は AuthenticationContext を Authentication から解決する。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - AgentRef
+        reason: UserInfo / ID Token claim と Agent client_credentials は identity principal 情報を参照する。
+      SigningKeys:
+        via: published_language
+        uses:
+          - SigningKeyRef
+          - JWKS
+        reason: ID Token / access token / JWK Set の署名鍵ライフサイクルと公開は SigningKeys が所有する。
+      Application:
+        via: published_language
+        uses:
+          - ApplicationAssignmentRef
+        reason: authorize は client が属する Application への割当を fail-closed で確認する。
+  Application:
+    description: "運用者が「接続する業務アプリケーション」として扱う上位概念を所有する。OIDC client /\nSAML SP / WS-Fed RP は Application の protocol binding であり、表示名、アイコン、\nライフサイクル、割当はここに集約する。割当はポータル可視性と\nフェデレーション利用可否を fail-closed で制御する。protocol binding の wire 挙動は\n各 protocol context が所有し、Application は binding を opaque key で参照する。\n"
+    path: contexts/application.yaml
+    publishes:
+      - ApplicationRef
+      - ApplicationAssignmentRef
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: Application・binding・割当は realm 境界内に閉じる。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - GroupRef
+        reason: 割当の subject は User / Group の identity principal である。
+  ClaimMapping:
+    description: "identity principal の属性を外部 relying party / service provider / client へ出すための\nrelease policy と protocol-neutral な claim projection を所有する。属性解決と出力許可を\n共通化し、OIDC JSON claims、SAML AttributeStatement、WS-Fed claim URI への wire 変換は\n各 protocol context が所有する。\n"
+    path: contexts/claim-mapping.yaml
+    publishes:
+      - ClaimMappingPolicyRef
+      - IssuedClaim
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: claim release policy は realm 境界内に閉じる。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+        reason: claim の source は User 等 identity principal の属性である。
+  SigningKeys:
+    description: "tenant-scoped signing key material のライフサイクル、ローテーション、公開重複期間、監査を\nprotocol 横断で所有する。OAuth2/OIDC は JWK/JWKS と JWT signer、SAML / WS-* は X.509\n証明書と XML signer adapter を使うが、鍵用途・ローテーション・tenant isolation の規範は\nここに集約する。\n"
+    path: contexts/signing-keys.yaml
+    publishes:
+      - SigningKeyRef
+      - JWKS
+      - SignatureAlgorithm
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: 署名鍵と証明書は tenant / realm 境界内に閉じる。
+  WsFederation:
+    description: WS-Federation passive と WS-Trust active STS の trust、federationmetadata.xml、MEX、RST/RSTR、WS-Fed relying party binding を所有する。SAML assertion / claim release / signing key lifecycle の共有 capability には依存するが、SAML 2.0 SP binding は Saml context が所有する。
+    path: contexts/ws-federation.yaml
+    publishes:
+      - WsFederationSignIn
+      - WsTrustIssue
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: WS-Fed RP trust と endpoint は realm 境界内に閉じる。
+      Authentication:
+        via: published_language
+        uses:
+          - AuthenticationContext
+        reason: WS-Fed passive は AuthenticationContext を参照し、WS-Trust usernamemixed は資格情報検証を再利用する。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+        reason: WS-Fed / WS-Trust token の subject は User 属性から解決する。
+      ClaimMapping:
+        via: published_language
+        uses:
+          - ClaimMappingPolicyRef
+        reason: WS-Fed / WS-Trust の assertion claim は ClaimMapping policy で組み立てる。
+      Application:
+        via: published_language
+        uses:
+          - ApplicationAssignmentRef
+        reason: WS-Fed sign-in は RP が属する Application への割当を fail-closed で確認する。
+      SigningKeys:
+        via: published_language
+        uses:
+          - SigningKeyRef
+        reason: SAML assertion 署名証明書と metadata への証明書広告は SigningKeys の鍵境界に従う。
+  Saml:
+    description: "SAML 2.0 IdP の service provider binding、IdP metadata、AuthnRequest / Response、\nAssertionConsumerService / Single Logout を所有する protocol context。Web Browser SSO Profile に\n基づき SP-initiated / IdP-initiated SSO を提供する。WS-Fed / WS-Trust とは claim release と\nXML signing capability だけを共有する。\n"
+    path: contexts/saml.yaml
+    publishes:
+      - SamlSingleSignOn
+      - PublishSamlMetadata
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: SAML SP trust と metadata は realm 境界内に閉じる。
+      Authentication:
+        via: published_language
+        uses:
+          - AuthenticationContext
+        reason: SAML SSO は AuthenticationContext を参照する。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+        reason: SAML assertion の subject は User 属性から解決する。
+      ClaimMapping:
+        via: published_language
+        uses:
+          - ClaimMappingPolicyRef
+        reason: SAML AttributeStatement / NameID は ClaimMapping policy を利用する。
+      Application:
+        via: published_language
+        uses:
+          - ApplicationAssignmentRef
+        reason: SAML SSO は SP が属する Application への割当を fail-closed で確認する。
+      SigningKeys:
+        via: published_language
+        uses:
+          - SigningKeyRef
+        reason: SAML assertion / metadata 署名は SigningKeys の鍵境界に従う。

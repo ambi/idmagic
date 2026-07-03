@@ -1,0 +1,21 @@
+# Go
+/idmagic
+/idmagic-relay
+*.exe
+*.test
+*.out
+coverage.out
+
+# Node / UI
+ui/node_modules/
+ui/dist/
+node_modules/
+
+# Env / secrets
+.env
+.env.local
+*.pem
+
+# OS / editor
+.DS_Store
+*.swp

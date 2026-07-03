@@ -1,0 +1,166 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    # Go 標準同梱 — 最低限の正しさ
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # セキュリティ系 (IdP 用途で特に重視)
+    - gosec
+    - errorlint
+    - bodyclose
+    - bidichk
+    - forcetypeassert
+    - noctx
+
+    # 品質・バグ予防
+    - canonicalheader
+    - contextcheck
+    - durationcheck
+    - errchkjson
+    - exptostd
+    - fatcontext
+    - gocheckcompilerdirectives
+    - gocritic
+    - makezero
+    - modernize
+    - revive
+    - misspell
+    - nilnesserr
+    - unconvert
+    - unparam
+    - unqueryvet
+    - wastedassign
+    - nolintlint
+    - nilerr
+    - nilnil
+    - rowserrcheck
+    - sqlclosecheck
+    - thelper
+
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - paramTypeCombine   # opinionated
+        - hugeParam          # 構造体 by-value がデフォの本リポジトリでは noisy
+        - rangeValCopy       # 同上
+        - unnamedResult      # 多値戻り (string, string, error) は慣習的に許容
+        - commentedOutCode   # セクション見出しコメントを誤検知
+    gosec:
+      excludes:
+        - G104  # errcheck と重複
+        - G404  # math/rand 警告 — 該当箇所は crypto/rand を使っている。誤検知防止
+      severity: medium
+      confidence: medium
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+          disabled: true  # 全パッケージに doc コメント強制は重い
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+          disabled: true  # 既存 interface 適合のため許容
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    errcheck:
+      check-type-assertions: false  # forcetypeassert で別管理
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+        - (*github.com/labstack/echo/v5.Response).Write
+
+  exclusions:
+    presets:
+      - common-false-positives
+      - legacy
+    rules:
+      # テストでは security / errcheck / forcetypeassert を緩める
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+          - forcetypeassert
+          - noctx
+          - bodyclose
+      # cmd/ の main.go は log.Fatal を許容
+      - path: cmd/
+        linters:
+          - errcheck
+      # support.ResolveAuthentication intentionally represents "unauthenticated"
+      # as (nil, nil); callers distinguish it from authentication errors.
+      - path: internal/shared/adapters/http/support/auth\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
+      # Authentication resolvers use nil result + nil error for
+      # "not authenticated / not applicable" by port contract.
+      - path: internal/authentication/usecases/(demo_header_resolver|session_manager)\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
+      # DPoP is optional for non-DPoP-bound calls; no header means no result.
+      - path: internal/shared/adapters/crypto/dpop_verifier\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
+      # Key lookup ports use nil result + nil error for "not found".
+      - path: internal/shared/adapters/crypto/key_store\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
+      # Test repositories mirror production Find* not-found contracts.
+      - path: internal/oauth2/adapters/http/userinfo_handler_test\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
+      # Persistence repository Find* methods use nil result + nil error for
+      # "not found" to match existing port contracts.
+      - path: internal/shared/adapters/persistence/
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
+      # HIBP Range API requires a SHA-1 fingerprint for k-anonymity lookup.
+      # This is not password storage/verification; stored password hashes use Argon2id.
+      - path: internal/shared/adapters/policy/hibp_breached_password_checker\.go
+        text: "G505: Blocklisted import crypto/sha1"
+        linters:
+          - gosec
+      - path: internal/shared/adapters/policy/hibp_breached_password_checker\.go
+        text: "G401: Use of weak cryptographic primitive"
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      module-path: ra-idp-go
+      extra-rules: true
+    goimports:
+      local-prefixes:
+        - ra-idp-go
