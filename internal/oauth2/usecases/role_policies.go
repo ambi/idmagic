@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"idmagic/internal/shared/spec"
 )
@@ -114,13 +115,12 @@ func permissionAppliesToRole(condition any, role string) bool {
 	for _, requirement := range flattenConditions(condition) {
 		switch role {
 		case "admin":
-			if requirement == "admin in actor.roles" ||
-				requirement == "(admin in actor.roles) or (system_admin in actor.roles)" {
+			clean := strings.ReplaceAll(requirement, "system_admin in actor.roles", "")
+			if strings.Contains(clean, "admin in actor.roles") {
 				return true
 			}
 		case "system_admin":
-			if requirement == "system_admin in actor.roles" ||
-				requirement == "(admin in actor.roles) or (system_admin in actor.roles)" {
+			if strings.Contains(requirement, "system_admin in actor.roles") {
 				return true
 			}
 		}

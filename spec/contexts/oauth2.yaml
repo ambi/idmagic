@@ -3705,50 +3705,30 @@ invariants:
   AuthCodeStateSafety:
     description: 任意のイベント列を AuthorizationCodeFlow に逐次適用しても、状態は宣言された値の部分集合に留まる。
     target: AuthorizationRequest
-    always:
-      in:
-        - state
-        - AuthorizationCodeState.values
+    always: "state in AuthorizationCodeState.values"
   DeviceCodeStateSafety:
     description: 任意のイベント列を DeviceCodeFlow に逐次適用しても、状態は宣言された値の部分集合に留まる。
     target: DeviceAuthorization
-    always:
-      in:
-        - state
-        - DeviceCodeState.values
+    always: "state in DeviceCodeState.values"
   RefreshFamilyTransitiveRevoke:
     description: "RevokeFamily(f) 後、family_id == f のすべての RefreshToken の state が Revoked になる。\n反例: ファミリー失効の取りこぼし。RFC 9700 §4.14 違反。\n"
     target: RefreshTokenRecord
     assuming: event == RevokeFamily
-    eventually:
-      forall:
-        in: RefreshTokenRecords
-        satisfies: x.family_id != event.family_id or x.state == Revoked
+    eventually: "RefreshTokenRecords.all(x, x.family_id != event.family_id || x.state == Revoked)"
     within: 1s
   RefreshRotationParentInvariants:
     description: "親 p を rotate(p, child) した直後の不変条件。\n反例: absolute TTL が延長され、攻撃者が refresh chain を無限延長可能になる。\n"
     target: RefreshTokenRecord
     assuming: event == RotateRefreshToken
-    always:
-      and:
-        - next.parent.state == Rotated
-        - next.child.parent_id == prev.parent.id
-        - next.child.family_id == prev.parent.family_id
-        - next.child.absolute_expires_at == prev.parent.absolute_expires_at
+    always: "next.parent.state == Rotated && next.child.parent_id == prev.parent.id && next.child.family_id == prev.parent.family_id && next.child.absolute_expires_at == prev.parent.absolute_expires_at"
   DpopJtiUniquenessWithinWindow:
     description: "window 秒以内に同一 jti を含む DPoP proof は受理されない。\n反例: DPoP リプレイ攻撃の成功。RFC 9449 違反。\n"
     assuming: event == AcceptDpopProof
-    never:
-      exists:
-        in: SeenJtis
-        satisfies: x.jti == event.jti and (event.at - x.seen_at) <= window
+    never: "SeenJtis.exists(x, x.jti == event.jti && (event.at - x.seen_at) <= window)"
   TokenHashOneWay:
     description: "RefreshTokenRecord にはハッシュのみが保存され、平文が残らない。\n反例: トークン平文漏洩、horizontal escalation の可能性。\n"
     target: RefreshTokenRecord
-    always:
-      and:
-        - exists: hash
-        - not_exists: plaintext
+    always: "has(hash) && !has(plaintext)"
   AuthorizationCodeSingleUse:
     description: 発行された AuthorizationCode は最大1回だけ Redeemed に到達する。再使用は InvalidGrant。
     target: AuthorizationCodeRecord
@@ -3766,21 +3746,12 @@ invariants:
   AuthorizationCodeEventuallyResolves:
     description: 発行された AuthorizationCode は必ず Redeemed または Expired に到達する。
     target: AuthorizationCodeRecord
-    eventually:
-      in:
-        - state
-        - - Redeemed
-          - Expired
+    eventually: "state in [Redeemed, Expired]"
     within: 60s
   DeviceCodeEventuallyResolves:
     description: 発行された DeviceCode は必ず Exchanged / Denied / Expired のいずれかに到達する。
     target: DeviceAuthorization
-    eventually:
-      in:
-        - state
-        - - Exchanged
-          - Denied
-          - Expired
+    eventually: "state in [Exchanged, Denied, Expired]"
     within: 15m
   RefreshTokenAbsoluteTtl:
     description: RefreshToken の絶対 TTL は通常 TTL 以上（ローテーション越境不可）。
@@ -3789,10 +3760,7 @@ invariants:
   RedirectUriExactMatch:
     description: 認可リクエストの redirect_uri は登録 URI のいずれかと完全文字列一致しなければならない（RFC 9700 §4.1.3）。
     assuming: event == ValidateAuthorizeRequest
-    always:
-      exists:
-        in: client.redirect_uris
-        satisfies: x == request.redirect_uri
+    always: "client.redirect_uris.exists(x, x == request.redirect_uri)"
   PkceMandatory:
     description: 認可コードフローのすべての要求に対して code_challenge を必須とする（例外なし）。
     assuming: event == ValidateAuthorizeRequest
@@ -3800,10 +3768,7 @@ invariants:
   AccessTokenIssuedOnlyAfterConsent:
     description: Authorization Code Grant の AccessToken は、対応する Subject × Client × Scope の Consent が Granted の場合のみ発行される。
     assuming: event == AccessTokenIssued and event.grant_type == AuthorizationCode
-    always:
-      exists:
-        in: Consents
-        satisfies: "x.subject == event.subject\nand x.client_id == event.client_id\nand x.state == Granted\nand forall: { in: event.scope, satisfies: \"x in x.scopes\" }\n"
+    always: "Consents.exists(c, c.subject == event.subject && c.client_id == event.client_id && c.state == Granted && event.scope.all(s, s in c.scopes))"
   AllAccessTokensCarryAudience:
     description: 発行されたすべての AccessToken は非空の audience を持つ（RFC 8707 / RFC 9068）。
     target: AccessToken
@@ -3811,55 +3776,33 @@ invariants:
   ClientAuthFailureUniformity:
     description: クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。
     assuming: event == ClientAuthenticationFailed
-    always:
-      and:
-        - error == InvalidClient
-        - len(error_description) == len(error_description_constant)
+    always: "error == InvalidClient && size(error_description) == size(error_description_constant)"
 permissions:
   TokenGrantAuthorizationCode:
     description: 認可コード交換による access_token / id_token / refresh_token 発行
     actor: Client
     resource: AuthorizationCodeRecord
-    allow_when:
-      and:
-        - AuthorizationCode in actor.grant_types
-        - sha256(context.code_verifier) == resource.code_challenge
-        - context.redirect_uri == resource.redirect_uri
-        - resource.state == Issued
-        - now() < resource.expires_at
+    allow_when: "AuthorizationCode in actor.grant_types && sha256(context.code_verifier) == resource.code_challenge && context.redirect_uri == resource.redirect_uri && resource.state == Issued && now() < resource.expires_at"
   TokenGrantRefresh:
     description: リフレッシュトークンによる再発行
     actor: Client
     resource: RefreshTokenRecord
-    allow_when:
-      and:
-        - RefreshToken in actor.grant_types
-        - resource.state == Active
-        - now() < resource.absolute_expires_at
-        - "sender_constraint_satisfied(resource, context)"
+    allow_when: "RefreshToken in actor.grant_types && resource.state == Active && now() < resource.absolute_expires_at && sender_constraint_satisfied(resource, context)"
   TokenGrantClientCredentials:
     description: クライアント自己認可フロー
     actor: Client
     resource: AccessTokenClaims
-    allow_when:
-      and:
-        - actor.client_type == Confidential
-        - ClientCredentials in actor.grant_types
+    allow_when: "actor.client_type == Confidential && ClientCredentials in actor.grant_types"
   TokenGrantDeviceCode:
     description: デバイスコードフロー
     actor: Client
     resource: DeviceAuthorization
-    allow_when:
-      and:
-        - resource.state == Approved
-        - now() < resource.expires_at
+    allow_when: "resource.state == Approved && now() < resource.expires_at"
   TokenGrantTokenExchange:
     description: トークン交換 (RFC 8693) による委任トークン発行
     actor: Client
     resource: AccessTokenClaims
-    allow_when:
-      and:
-        - TokenExchange in actor.grant_types
+    allow_when: "TokenExchange in actor.grant_types"
   TokenIntrospect:
     description: /introspect の呼び出し
     actor: Client
@@ -3874,60 +3817,32 @@ permissions:
     description: /userinfo の呼び出し
     actor: Client
     resource: User
-    allow_when:
-      and:
-        - openid in context.token_scopes
-        - context.token_active == true
+    allow_when: "openid in context.token_scopes && context.token_active == true"
   AuthorizeInitiate:
     description: /authorize でフローを開始する
     actor: Client
     resource: AuthorizationRequest
-    allow_when:
-      and:
-        - actor.registered == true
-        - context.redirect_uri in actor.redirect_uris
-        - "subset(context.requested_scopes, actor.scopes)"
-        - (actor.require_pkce == false) or (context.code_challenge != null)
-        - (actor.require_pushed_authorization_requests == false) or (context.par_used == true)
+    allow_when: "actor.registered == true && context.redirect_uri in actor.redirect_uris && subset(context.requested_scopes, actor.scopes) && (actor.require_pkce == false || context.code_challenge != null) && (actor.require_pushed_authorization_requests == false || context.par_used == true)"
   AdminAuthorizationDetailTypesManage:
     description: 細粒度な認可詳細 (authorization_details) の種類定義を、検証ルールと同意画面の表示文とあわせて登録・更新・削除します。
     actor: User
     resource: AuthorizationDetailType
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminOAuth2ClientsManage:
     description: 所属テナント内の client 一覧・作成・更新・削除。
     actor: User
     resource: OAuth2Client
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminConsentsManage:
     description: 所属テナント内の Consent 一覧・取得・撤回。同意の付与と scope 拡張は ResourceOwner に限定する。
     actor: User
     resource: Consent
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminAuditEventsRead:
     description: "管理者による所属テナントの監査イベント読み出し。admin は所属テナントに閉じ、\nsystem_admin は default tenant 経路から全テナント横断的に参照できる。\n書き込みエンドポイントは存在しないため Read のみ。\n"
     actor: User
     resource: AdminAuditEventResponse
-    allow_when:
-      and:
-        - (admin in actor.roles) or (system_admin in actor.roles)
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true"
 objectives:
   AuthorizeLatency:
     kind: slo

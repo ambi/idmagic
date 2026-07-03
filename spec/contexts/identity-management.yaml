@@ -1878,89 +1878,47 @@ permissions:
     description: 管理ユーザー情報の一覧・取得。
     actor: User
     resource: User
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
   AdminUserCreate:
     description: 管理者によるユーザー作成。
     actor: User
     resource: User
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
   AdminUserUpdate:
     description: 管理者によるプロフィール・roles・有効状態の更新。
     actor: User
     resource: User
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
   AdminUserDelete:
     description: "管理者によるユーザーの soft-delete (削除予約)。status を PendingDeletion\nに遷移させる。actor.sub == resource.sub かつ admin / system_admin role を持つ\n場合は use case 側で reject する (自爆防止)。\n"
     actor: User
     resource: User
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminUserRestore:
     description: "管理者による PendingDeletion ユーザーの復元。status を Active に戻す。\nactor.sub == resource.sub かつ admin / system_admin role を持つ場合は use case\n側で reject する (自爆防止)。\n"
     actor: User
     resource: User
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminUserPurge:
     description: "管理者によるユーザーの完全削除 (purge)。ADR-036 の anonymize cascade で\ntombstone 化する。actor.sub == resource.sub かつ admin / system_admin role を\n持つ場合は use case 側で reject する (自爆防止)。\n"
     actor: User
     resource: User
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminGroupsRead:
     description: グループ情報の一覧・取得。
     actor: User
     resource: Group
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminGroupsWrite:
     description: グループの作成・更新・削除とメンバーシップ操作。
     actor: User
     resource: Group
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminAgentsManage:
     description: Agent の一覧・登録・更新・無効化・再稼働・緊急停止・削除と資格情報束縛操作。
     actor: User
     resource: Agent
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
   管理者はエージェントを登録し client 資格情報をバインドできる:
     goal: 管理者が非人間エージェントを登録し、資格情報のバインドとライフサイクル操作を行う。

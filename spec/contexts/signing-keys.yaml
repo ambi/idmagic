@@ -347,38 +347,22 @@ permissions:
     description: "管理者による自テナント JWKS 鍵一覧の読み出し。admin / system_admin どちらでも\n自テナントの鍵を参照できる。秘密鍵を返さないため漏洩リスクは低い。\n"
     actor: User
     resource: AdminKeyResponse
-    allow_when:
-      and:
-        - (admin in actor.roles) or (system_admin in actor.roles)
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true"
   TenantKeysRotate:
     description: "自テナントの署名鍵のローテーション。生成された新鍵が active になり、旧鍵は\nverifying に降りる。per-tenant 鍵のため影響範囲は当該テナントに閉じ、他テナントの\nトークン発行は止まらない。admin / system_admin が自テナントに対して実行できる。\n"
     actor: User
     resource: SigningKey
-    allow_when:
-      and:
-        - (admin in actor.roles) or (system_admin in actor.roles)
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true"
   TenantKeysDisable:
     description: "自テナントの署名鍵 1 件を緊急無効化 (Retire) する。漏洩疑いの鍵を JWKS から\n即時に外す破壊的操作のため、TenantKeysRotate と同じ権限に限定する。\n"
     actor: User
     resource: SigningKey
-    allow_when:
-      and:
-        - (admin in actor.roles) or (system_admin in actor.roles)
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true"
   SystemKeyHealthRead:
     description: "テナント横断の署名鍵ヘルス一覧の読み出し。全テナントの鍵状態を跨いで見るため\nsystem_admin のみに限定する。秘密鍵は返さない。\n"
     actor: User
     resource: TenantSigningKey
-    allow_when:
-      and:
-        - system_admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "system_admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
 objectives:
   JwksLatency:
     kind: slo

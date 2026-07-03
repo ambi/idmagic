@@ -531,32 +531,17 @@ permissions:
     description: テナントの作成・更新・無効化・再有効化・一覧取得。system_admin ロールに限定する。
     actor: User
     resource: Tenant
-    allow_when:
-      and:
-        - system_admin in actor.roles
-        - "actor.tenant_id == \"default\""
-        - actor.disabled_at == null
-        - context.authenticated == true
+    allow_when: "system_admin in actor.roles && actor.tenant_id == \"default\" && actor.disabled_at == null && context.authenticated == true"
   AdminSettingsRead:
     description: "所属テナントの管理設定 (表示名 / パスワードポリシー上書き) を閲覧する。\ntenant 内 admin と system_admin のどちらでも許可する。\n対象は actor.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。\n"
     actor: User
     resource: Tenant
-    allow_when:
-      and:
-        - (admin in actor.roles) or (system_admin in actor.roles)
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminSettingsUpdate:
     description: "所属テナントの管理設定を更新する。tenant 内 admin に解放し、設定対象は\nactor.tenant_id に固定する。password_policy_override は global\nPasswordPolicy より弱い場合 use case 側で reject する。\n"
     actor: User
     resource: Tenant
-    allow_when:
-      and:
-        - (admin in actor.roles) or (system_admin in actor.roles)
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
   管理者は監査ログを期間で絞り込み参照・エクスポートできる:
     goal: 管理者が所属テナントの監査イベントを絞り込み、参照・エクスポートする。

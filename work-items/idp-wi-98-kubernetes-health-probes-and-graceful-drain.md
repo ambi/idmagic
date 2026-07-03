@@ -1,0 +1,45 @@
+---
+id: idp-wi-98-kubernetes-health-probes-and-graceful-drain
+title: "依存ヘルスを検査する liveness/readiness/startup probe と SIGTERM 時の接続ドレインを整備する"
+created_at: 2026-07-04
+authors: ["tn"]
+status: pending
+risk: medium
+---
+# Motivation
+現状 `/health` は bootstrap が決めた実行時構成ラベル（persistence / event_sink /
+observability / authzen）をそのまま JSON で返すだけで、PostgreSQL・Valkey・
+署名鍵ストアなど依存の実際の到達性を検査しない。この単一エンドポイントを
+Kubernetes の liveness と readiness の両方に流用すると、依存障害時に
+「トラフィックは受けられないが再起動もすべきでない」状態を表現できず、
+DB 瞬断で Pod が再起動ループに陥る、あるいは配線が切れた Pod にトラフィックが
+流れ続ける、のどちらかになる。
+
+Kubernetes 自身は kube-apiserver で `livez` / `readyz` / `healthz` を分離し、
+readyz は個別チェックの合成、livez は自己回復不能な状態だけを表す設計を
+採っている。idmagic も本番 IdP として、(1) 生存性、(2) トラフィック受入可否、
+(3) 起動完了、を別々の信号として公開し、SIGTERM 受信後は readiness を先に
+落としてロードバランサが経路を外すまで接続を受け続ける graceful drain を
+実装すべきである。WI-11 の Kubernetes manifest はこの probe 分離を前提とする。
+
+# Scope
+- **decision**: 新規 ADR: probe の責務分離（livez は自己回復不能状態のみ、readyz は依存到達性の 合成、startup は初期化完了）、各 probe が fail にすべき条件、SIGTERM 後の readiness gate と drain 猶予の既定値を定義する。
+- **scl**: System context に HealthProbe / ReadinessCheck / GracefulDrain の objective を追加する。, 依存到達性チェックが返す状態語彙（healthy / degraded / unavailable）を定義する。
+- **go**: `/livez` `/readyz` `/startupz`（または `/healthz` 互換）を分離実装する。 既存 `/health` は構成ラベル用途として後方互換で残すか readyz に統合するかを ADR で決める。, readyz は Repo/Store の Ping 相当を短いタイムアウトで並列実行し、依存名ごとに 個別の到達性を返す。verbose クエリ（`?verbose`）で各チェック結果を列挙する。, SIGTERM 受信で readiness を即座に unready に落とし、drain 猶予（既定 5s 程度）だけ 待ってから echo をシャットダウンする。preStop hook との協調を README に記す。, liveness は依存障害では fail させず、プロセス内部のデッドロック等だけで fail させる。
+- **documentation**: README と WI-11 の manifest 前提に、probe path・閾値・preStop・terminationGracePeriod を書く。
+
+# Out of Scope
+- 依存ごとのサーキットブレーカや自動フェイルオーバー。
+- probe 結果に基づく自動スケーリングポリシー。
+- WI-11 が扱う Deployment / PDB / manifest 本体の作成。
+
+# Verification
+- [object Object]
+- [object Object]
+- 手動: PostgreSQL を停止した状態で readyz が unavailable、livez が healthy を 返し続けることを確認する。
+- 手動: SIGTERM 送信後に readyz が即 unready になり、drain 猶予の間は処理中 リクエストが完了することを確認する。
+
+# Risk Notes
+readyz の依存チェックが重い/タイムアウトが長いと、kubelet の probe timeout で
+逆に不安定化する。チェックは短いタイムアウトで並列化し、probe 自体が依存負荷を
+増やさないよう軽量な Ping に留める。

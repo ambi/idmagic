@@ -1672,10 +1672,7 @@ password_policy_override が objectives.PasswordPolicy の標準値より弱い�
     <header><h3>AdminTenantsManage</h3></header>
     <p class="desc">テナントの作成・更新・無効化・再有効化・一覧取得。system_admin ロールに限定する。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Tenant</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">system_admin in actor.roles</code></li><li><code class="expr">actor.tenant_id == &quot;default&quot;</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">system_admin in actor.roles &amp;&amp; actor.tenant_id == &quot;default&quot; &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-tenancy-perm-adminsettingsread">
     <header><h3>AdminSettingsRead</h3></header>
@@ -1684,10 +1681,7 @@ tenant 内 admin と system_admin のどちらでも許可する。
 対象は actor.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Tenant</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">(admin in actor.roles) or (system_admin in actor.roles)</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">((admin in actor.roles) || (system_admin in actor.roles)) &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-tenancy-perm-adminsettingsupdate">
     <header><h3>AdminSettingsUpdate</h3></header>
@@ -1696,10 +1690,7 @@ actor.tenant_id に固定する。password_policy_override は global
 PasswordPolicy より弱い場合 use case 側で reject する。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Tenant</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">(admin in actor.roles) or (system_admin in actor.roles)</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">((admin in actor.roles) || (system_admin in actor.roles)) &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article></div>
   </section>
 <section id="context-tenancy-user_experience">
@@ -5604,28 +5595,19 @@ device) / userinfo / introspect は Active でない限り成功してはなら�
     <header><h3>AdminUserRead</h3></header>
     <p class="desc">管理ユーザー情報の一覧・取得。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-adminusercreate">
     <header><h3>AdminUserCreate</h3></header>
     <p class="desc">管理者によるユーザー作成。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-adminuserupdate">
     <header><h3>AdminUserUpdate</h3></header>
     <p class="desc">管理者によるプロフィール・roles・有効状態の更新。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-adminuserdelete">
     <header><h3>AdminUserDelete</h3></header>
@@ -5634,10 +5616,7 @@ device) / userinfo / introspect は Active でない限り成功してはなら�
 場合は use case 側で reject する (自爆防止)。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-adminuserrestore">
     <header><h3>AdminUserRestore</h3></header>
@@ -5646,10 +5625,7 @@ actor.sub == resource.sub かつ admin / system_admin role を持つ場合は us
 側で reject する (自爆防止)。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-adminuserpurge">
     <header><h3>AdminUserPurge</h3></header>
@@ -5658,37 +5634,25 @@ tombstone 化する。actor.sub == resource.sub かつ admin / system_admin role
 持つ場合は use case 側で reject する (自爆防止)。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-admingroupsread">
     <header><h3>AdminGroupsRead</h3></header>
     <p class="desc">グループ情報の一覧・取得。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Group</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-admingroupswrite">
     <header><h3>AdminGroupsWrite</h3></header>
     <p class="desc">グループの作成・更新・削除とメンバーシップ操作。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Group</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-identitymanagement-perm-adminagentsmanage">
     <header><h3>AdminAgentsManage</h3></header>
     <p class="desc">Agent の一覧・登録・更新・無効化・再稼働・緊急停止・削除と資格情報束縛操作。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Agent</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article></div>
   </section>
 <section id="context-identitymanagement-objectives">
@@ -8084,12 +8048,7 @@ BreachedPasswordChecker を通過した new_password で User.password_hash を
 一致してはならない。反例: 直前のパスワードを再設定でき、漏洩済みクレデンシャルでログイン可能なまま。</p>
 
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == ChangePassword</code></div>
-<div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><div class="expr-quant">
-      <span class="expr-quant-sym">∃ x ∈</span>
-      <code class="expr">PasswordHistoryEntries(sub=event.sub, depth=PasswordPolicy.value.history_depth)</code>
-      <span class="expr-quant-sym">:</span>
-      <code class="expr">PasswordHasher.verify(event.new_password, x.encoded) == true</code>
-    </div></div>
+<div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">PasswordHistoryEntries(sub=event.sub, depth=PasswordPolicy.value.history_depth).exists(x, PasswordHasher.verify(event.new_password, x.encoded) == true)</code></div>
   </article></div>
   </section>
 <section id="context-authentication-scenarios">
@@ -15599,19 +15558,13 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
     <header><h3>AuthCodeStateSafety</h3></header>
     <p class="desc">任意のイベント列を AuthorizationCodeFlow に逐次適用しても、状態は宣言された値の部分集合に留まる。</p>
     <dl class="kv"><dt>target</dt><dd><code>AuthorizationRequest</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-op">
-    <div class="expr-op-label">IN</div>
-    <ul class="expr-list"><li><code class="expr">state</code></li><li><code class="expr">AuthorizationCodeState.values</code></li></ul>
-  </div></div>
+    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">state in AuthorizationCodeState.values</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-devicecodestatesafety">
     <header><h3>DeviceCodeStateSafety</h3></header>
     <p class="desc">任意のイベント列を DeviceCodeFlow に逐次適用しても、状態は宣言された値の部分集合に留まる。</p>
     <dl class="kv"><dt>target</dt><dd><code>DeviceAuthorization</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-op">
-    <div class="expr-op-label">IN</div>
-    <ul class="expr-list"><li><code class="expr">state</code></li><li><code class="expr">DeviceCodeState.values</code></li></ul>
-  </div></div>
+    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">state in DeviceCodeState.values</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-refreshfamilytransitiverevoke">
     <header><h3>RefreshFamilyTransitiveRevoke</h3></header>
@@ -15619,12 +15572,7 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
 反例: ファミリー失効の取りこぼし。RFC 9700 §4.14 違反。</p>
     <dl class="kv"><dt>target</dt><dd><code>RefreshTokenRecord</code></dd></dl>
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == RevokeFamily</code></div>
-<div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness) <span class="within">within <code>1s</code></span></div><div class="expr-quant">
-      <span class="expr-quant-sym">∀ x ∈</span>
-      <code class="expr">RefreshTokenRecords</code>
-      <span class="expr-quant-sym">:</span>
-      <code class="expr">x.family_id != event.family_id or x.state == Revoked</code>
-    </div></div>
+<div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness) <span class="within">within <code>1s</code></span></div><code class="expr">RefreshTokenRecords.all(x, x.family_id != event.family_id || x.state == Revoked)</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-refreshrotationparentinvariants">
     <header><h3>RefreshRotationParentInvariants</h3></header>
@@ -15632,10 +15580,7 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
 反例: absolute TTL が延長され、攻撃者が refresh chain を無限延長可能になる。</p>
     <dl class="kv"><dt>target</dt><dd><code>RefreshTokenRecord</code></dd></dl>
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == RotateRefreshToken</code></div>
-<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">next.parent.state == Rotated</code></li><li><code class="expr">next.child.parent_id == prev.parent.id</code></li><li><code class="expr">next.child.family_id == prev.parent.family_id</code></li><li><code class="expr">next.child.absolute_expires_at == prev.parent.absolute_expires_at</code></li></ul>
-  </div></div>
+<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">next.parent.state == Rotated &amp;&amp; next.child.parent_id == prev.parent.id &amp;&amp; next.child.family_id == prev.parent.family_id &amp;&amp; next.child.absolute_expires_at == prev.parent.absolute_expires_at</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-dpopjtiuniquenesswithinwindow">
     <header><h3>DpopJtiUniquenessWithinWindow</h3></header>
@@ -15643,22 +15588,14 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
 反例: DPoP リプレイ攻撃の成功。RFC 9449 違反。</p>
 
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == AcceptDpopProof</code></div>
-<div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><div class="expr-quant">
-      <span class="expr-quant-sym">∃ x ∈</span>
-      <code class="expr">SeenJtis</code>
-      <span class="expr-quant-sym">:</span>
-      <code class="expr">x.jti == event.jti and (event.at - x.seen_at) &lt;= window</code>
-    </div></div>
+<div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">SeenJtis.exists(x, x.jti == event.jti &amp;&amp; (event.at - x.seen_at) &lt;= window)</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-tokenhashoneway">
     <header><h3>TokenHashOneWay</h3></header>
     <p class="desc">RefreshTokenRecord にはハッシュのみが保存され、平文が残らない。
 反例: トークン平文漏洩、horizontal escalation の可能性。</p>
     <dl class="kv"><dt>target</dt><dd><code>RefreshTokenRecord</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">EXISTS(hash)</code></li><li><code class="expr">NOT EXISTS(plaintext)</code></li></ul>
-  </div></div>
+    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">has(hash) &amp;&amp; !has(plaintext)</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-authorizationcodesingleuse">
     <header><h3>AuthorizationCodeSingleUse</h3></header>
@@ -15684,19 +15621,13 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
     <header><h3>AuthorizationCodeEventuallyResolves</h3></header>
     <p class="desc">発行された AuthorizationCode は必ず Redeemed または Expired に到達する。</p>
     <dl class="kv"><dt>target</dt><dd><code>AuthorizationCodeRecord</code></dd></dl>
-    <div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness) <span class="within">within <code>60s</code></span></div><div class="expr-op">
-    <div class="expr-op-label">IN</div>
-    <ul class="expr-list"><li><code class="expr">state</code></li><li><ul class="expr-list"><li><code class="expr">Redeemed</code></li><li><code class="expr">Expired</code></li></ul></li></ul>
-  </div></div>
+    <div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness) <span class="within">within <code>60s</code></span></div><code class="expr">state in [Redeemed, Expired]</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-devicecodeeventuallyresolves">
     <header><h3>DeviceCodeEventuallyResolves</h3></header>
     <p class="desc">発行された DeviceCode は必ず Exchanged / Denied / Expired のいずれかに到達する。</p>
     <dl class="kv"><dt>target</dt><dd><code>DeviceAuthorization</code></dd></dl>
-    <div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness) <span class="within">within <code>15m</code></span></div><div class="expr-op">
-    <div class="expr-op-label">IN</div>
-    <ul class="expr-list"><li><code class="expr">state</code></li><li><ul class="expr-list"><li><code class="expr">Exchanged</code></li><li><code class="expr">Denied</code></li><li><code class="expr">Expired</code></li></ul></li></ul>
-  </div></div>
+    <div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness) <span class="within">within <code>15m</code></span></div><code class="expr">state in [Exchanged, Denied, Expired]</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-refreshtokenabsolutettl">
     <header><h3>RefreshTokenAbsoluteTtl</h3></header>
@@ -15709,12 +15640,7 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
     <p class="desc">認可リクエストの redirect_uri は登録 URI のいずれかと完全文字列一致しなければならない（RFC 9700 §4.1.3）。</p>
 
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == ValidateAuthorizeRequest</code></div>
-<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-quant">
-      <span class="expr-quant-sym">∃ x ∈</span>
-      <code class="expr">client.redirect_uris</code>
-      <span class="expr-quant-sym">:</span>
-      <code class="expr">x == request.redirect_uri</code>
-    </div></div>
+<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">client.redirect_uris.exists(x, x == request.redirect_uri)</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-pkcemandatory">
     <header><h3>PkceMandatory</h3></header>
@@ -15728,16 +15654,7 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
     <p class="desc">Authorization Code Grant の AccessToken は、対応する Subject × Client × Scope の Consent が Granted の場合のみ発行される。</p>
 
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == AccessTokenIssued and event.grant_type == AuthorizationCode</code></div>
-<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-quant">
-      <span class="expr-quant-sym">∃ x ∈</span>
-      <code class="expr">Consents</code>
-      <span class="expr-quant-sym">:</span>
-      <code class="expr">x.subject == event.subject
-and x.client_id == event.client_id
-and x.state == Granted
-and forall: { in: event.scope, satisfies: &quot;x in x.scopes&quot; }
-</code>
-    </div></div>
+<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">Consents.exists(c, c.subject == event.subject &amp;&amp; c.client_id == event.client_id &amp;&amp; c.state == Granted &amp;&amp; event.scope.all(s, s in c.scopes))</code></div>
   </article>
 <article class="card" id="context-oauth2-inv-allaccesstokenscarryaudience">
     <header><h3>AllAccessTokensCarryAudience</h3></header>
@@ -15750,10 +15667,7 @@ and forall: { in: event.scope, satisfies: &quot;x in x.scopes&quot; }
     <p class="desc">クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。</p>
 
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">event == ClientAuthenticationFailed</code></div>
-<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">error == InvalidClient</code></li><li><code class="expr">len(error_description) == len(error_description_constant)</code></li></ul>
-  </div></div>
+<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">error == InvalidClient &amp;&amp; size(error_description) == size(error_description_constant)</code></div>
   </article></div>
   </section>
 <section id="context-oauth2-scenarios">
@@ -16148,46 +16062,31 @@ and forall: { in: event.scope, satisfies: &quot;x in x.scopes&quot; }
     <header><h3>TokenGrantAuthorizationCode</h3></header>
     <p class="desc">認可コード交換による access_token / id_token / refresh_token 発行</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AuthorizationCodeRecord</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">AuthorizationCode in actor.grant_types</code></li><li><code class="expr">sha256(context.code_verifier) == resource.code_challenge</code></li><li><code class="expr">context.redirect_uri == resource.redirect_uri</code></li><li><code class="expr">resource.state == Issued</code></li><li><code class="expr">now() &lt; resource.expires_at</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">AuthorizationCode in actor.grant_types &amp;&amp; sha256(context.code_verifier) == resource.code_challenge &amp;&amp; context.redirect_uri == resource.redirect_uri &amp;&amp; resource.state == Issued &amp;&amp; now() &lt; resource.expires_at</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-tokengrantrefresh">
     <header><h3>TokenGrantRefresh</h3></header>
     <p class="desc">リフレッシュトークンによる再発行</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">RefreshTokenRecord</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">RefreshToken in actor.grant_types</code></li><li><code class="expr">resource.state == Active</code></li><li><code class="expr">now() &lt; resource.absolute_expires_at</code></li><li><code class="expr">sender_constraint_satisfied(resource, context)</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">RefreshToken in actor.grant_types &amp;&amp; resource.state == Active &amp;&amp; now() &lt; resource.absolute_expires_at &amp;&amp; sender_constraint_satisfied(resource, context)</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-tokengrantclientcredentials">
     <header><h3>TokenGrantClientCredentials</h3></header>
     <p class="desc">クライアント自己認可フロー</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AccessTokenClaims</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">actor.client_type == Confidential</code></li><li><code class="expr">ClientCredentials in actor.grant_types</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">actor.client_type == Confidential &amp;&amp; ClientCredentials in actor.grant_types</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-tokengrantdevicecode">
     <header><h3>TokenGrantDeviceCode</h3></header>
     <p class="desc">デバイスコードフロー</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">DeviceAuthorization</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">resource.state == Approved</code></li><li><code class="expr">now() &lt; resource.expires_at</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">resource.state == Approved &amp;&amp; now() &lt; resource.expires_at</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-tokengranttokenexchange">
     <header><h3>TokenGrantTokenExchange</h3></header>
     <p class="desc">トークン交換 (RFC 8693) による委任トークン発行</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AccessTokenClaims</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">TokenExchange in actor.grant_types</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">TokenExchange in actor.grant_types</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-tokenintrospect">
     <header><h3>TokenIntrospect</h3></header>
@@ -16205,46 +16104,31 @@ and forall: { in: event.scope, satisfies: &quot;x in x.scopes&quot; }
     <header><h3>UserInfoRead</h3></header>
     <p class="desc">/userinfo の呼び出し</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">User</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">openid in context.token_scopes</code></li><li><code class="expr">context.token_active == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">openid in context.token_scopes &amp;&amp; context.token_active == true</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-authorizeinitiate">
     <header><h3>AuthorizeInitiate</h3></header>
     <p class="desc">/authorize でフローを開始する</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">Client</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AuthorizationRequest</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">actor.registered == true</code></li><li><code class="expr">context.redirect_uri in actor.redirect_uris</code></li><li><code class="expr">subset(context.requested_scopes, actor.scopes)</code></li><li><code class="expr">(actor.require_pkce == false) or (context.code_challenge != null)</code></li><li><code class="expr">(actor.require_pushed_authorization_requests == false) or (context.par_used == true)</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">actor.registered == true &amp;&amp; context.redirect_uri in actor.redirect_uris &amp;&amp; subset(context.requested_scopes, actor.scopes) &amp;&amp; (actor.require_pkce == false || context.code_challenge != null) &amp;&amp; (actor.require_pushed_authorization_requests == false || context.par_used == true)</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-adminauthorizationdetailtypesmanage">
     <header><h3>AdminAuthorizationDetailTypesManage</h3></header>
     <p class="desc">細粒度な認可詳細 (authorization_details) の種類定義を、検証ルールと同意画面の表示文とあわせて登録・更新・削除します。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AuthorizationDetailType</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-adminoauth2clientsmanage">
     <header><h3>AdminOAuth2ClientsManage</h3></header>
     <p class="desc">所属テナント内の client 一覧・作成・更新・削除。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">OAuth2Client</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-adminconsentsmanage">
     <header><h3>AdminConsentsManage</h3></header>
     <p class="desc">所属テナント内の Consent 一覧・取得・撤回。同意の付与と scope 拡張は ResourceOwner に限定する。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Consent</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-oauth2-perm-adminauditeventsread">
     <header><h3>AdminAuditEventsRead</h3></header>
@@ -16253,10 +16137,7 @@ system_admin は default tenant 経路から全テナント横断的に参照で
 書き込みエンドポイントは存在しないため Read のみ。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AdminAuditEventResponse</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">(admin in actor.roles) or (system_admin in actor.roles)</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">((admin in actor.roles) || (system_admin in actor.roles)) &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article></div>
   </section>
 <section id="context-oauth2-objectives">
@@ -19044,37 +18925,25 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
     <header><h3>AdminApplicationsManage</h3></header>
     <p class="desc">所属テナント内の Application 一覧・取得・作成・更新・削除・binding 接続/解除・アイコンアップロード/削除。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">Application</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-application-perm-adminapplicationassignmentsmanage">
     <header><h3>AdminApplicationAssignmentsManage</h3></header>
     <p class="desc">Application へのユーザー / グループ割当の参照・追加・削除。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">ApplicationAssignment</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-application-perm-adminapplicationcategoriesmanage">
     <header><h3>AdminApplicationCategoriesManage</h3></header>
     <p class="desc">所属テナント内の ApplicationCategory の参照・作成・更新・削除と Application への付与。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">ApplicationCategory</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
 <article class="card" id="context-application-perm-myapplicationsread">
     <header><h3>MyApplicationsRead</h3></header>
     <p class="desc">利用者が自分に割当済みの Application 一覧を参照する。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">ApplicationAssignment</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article></div>
   </section>
 <section id="context-application-user_experience">
@@ -20125,10 +19994,7 @@ emits SigningKeyRotated は行わず、鍵の状態のみ Retired にする。
 自テナントの鍵を参照できる。秘密鍵を返さないため漏洩リスクは低い。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AdminKeyResponse</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">(admin in actor.roles) or (system_admin in actor.roles)</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">((admin in actor.roles) || (system_admin in actor.roles)) &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-signingkeys-perm-tenantkeysrotate">
     <header><h3>TenantKeysRotate</h3></header>
@@ -20137,10 +20003,7 @@ verifying に降りる。per-tenant 鍵のため影響範囲は当該テナン�
 トークン発行は止まらない。admin / system_admin が自テナントに対して実行できる。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">SigningKey</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">(admin in actor.roles) or (system_admin in actor.roles)</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">((admin in actor.roles) || (system_admin in actor.roles)) &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-signingkeys-perm-tenantkeysdisable">
     <header><h3>TenantKeysDisable</h3></header>
@@ -20148,10 +20011,7 @@ verifying に降りる。per-tenant 鍵のため影響範囲は当該テナン�
 即時に外す破壊的操作のため、TenantKeysRotate と同じ権限に限定する。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">SigningKey</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">(admin in actor.roles) or (system_admin in actor.roles)</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">((admin in actor.roles) || (system_admin in actor.roles)) &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article>
 <article class="card" id="context-signingkeys-perm-systemkeyhealthread">
     <header><h3>SystemKeyHealthRead</h3></header>
@@ -20159,10 +20019,7 @@ verifying に降りる。per-tenant 鍵のため影響範囲は当該テナン�
 system_admin のみに限定する。秘密鍵は返さない。
 </p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">TenantSigningKey</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">system_admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">system_admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true</code></div>
   </article></div>
   </section>
 <section id="context-signingkeys-objectives">
@@ -22021,10 +21878,7 @@ ActiveLogOnUri / MetadataExchangeUri を提示する。個別アプリの設定�
     <header><h3>AdminFederationTrustsManage</h3></header>
     <p class="desc">所属テナント内の SAML SP / WS-Federation RP trust の一覧・登録・削除。</p>
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">FederationTrust</code></dd></dl>
-    <div class="clause"><div class="clause-label ok">allow when</div><div class="expr-op">
-    <div class="expr-op-label">AND</div>
-    <ul class="expr-list"><li><code class="expr">admin in actor.roles</code></li><li><code class="expr">actor.disabled_at == null</code></li><li><code class="expr">context.authenticated == true</code></li><li><code class="expr">actor.tenant_id == resource.tenant_id</code></li></ul>
-  </div></div>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article></div>
   </section>
       </div></div></main>

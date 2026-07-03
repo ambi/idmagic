@@ -1,0 +1,48 @@
+---
+id: idp-wi-72-application-integration-template-catalog
+title: "アプリ統合テンプレートカタログ (gallery) からアプリケーションを作成する"
+created_at: 2026-06-27
+authors: ["tn"]
+status: pending
+risk: medium
+---
+# Motivation
+Okta Integration Network も Entra ID のアプリギャラリーも、よく使われる SaaS の
+「事前定義テンプレート」を多数持つ。管理者はゼロからプロトコル設定を組むのではなく、
+テンプレートを選ぶだけで、推奨 protocol binding 種別、既定の claim mapping、アイコン、
+必須メタデータ (ACS URL の入力欄、entityID の形など) が用意された状態でアプリを作成できる。
+これが SSO 導入の摩擦を大きく下げている。
+
+[[wi-69-application-catalog-aggregate-and-assignment]] で Application を手で作れるようになるが、
+毎回 binding と claim を一から設定するのは煩雑で誤りやすい。本 WI は Application に
+テンプレートカタログを追加し、テンプレートから Application を instantiate できるようにする。
+デモ IdP として「既知アプリを数クリックで接続する」現代 IdP の体験を示す。
+
+# Scope
+- **decision**: 新規 ADR-068: テンプレートの所有と供給形態を確定する。テンプレートは Application が所有する read-only カタログ (リポジトリ同梱の宣言データ) とし、 テナント横断の共有定義と、テナント独自テンプレート登録を許すかを決める。テンプレートが 規定する内容 (推奨 binding type、既定 claim release、icon、必須入力フィールドの schema、 ベンダー metadata) と、instantiate 時に Application へコピーする範囲を決める。
+- **scl**: Application に ApplicationTemplate / TemplateProtocolDefault / TemplateClaimDefault / TemplateInputField を追加する。, interface: ListApplicationTemplates / GetApplicationTemplate / CreateApplicationFromTemplate (テンプレ + 入力値から Application + binding を生成)。, [object Object], [object Object]
+- **go**: 同梱テンプレートデータのロードと検証 (tenant 非依存の read-only セット)。, instantiate ロジック: テンプレートの既定値 + 管理者入力を検証し、Application と protocol binding と既定 claim release を生成する (wi-69 の aggregate を再利用)。
+- **http**: /admin/application-templates の一覧/詳細と、テンプレートからの作成エンドポイント。
+- **ui**: [object Object]
+- **documentation**: README にテンプレート定義の追加方法と同梱例を書く。
+
+# Out of Scope
+- 外部レジストリ (OIN / Entra gallery) からのオンライン取り込み。初期は同梱テンプレートのみ。
+- テンプレートごとの SCIM provisioning 既定値 ([[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]] 実装後に拡張)。
+- SAML SP テンプレート本体 ([[wi-29-saml2-idp]] 実装後に binding 種別を追加)。
+- Application 本体・割当 ([[wi-69-application-catalog-aggregate-and-assignment]])。
+
+# Verification
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- 手動: テンプレートを選び必須入力を埋めて Application を作成し、生成された OIDC binding と 既定 claim release が正しく、そのまま SSO できることを確認する。
+
+# Risk Notes
+wire behavior は変えず、既存 Application aggregate の上に作成体験を足す機能。主なリスクは
+テンプレートの既定値が誤った binding / claim を生むことなので、instantiate は手動作成と
+同じ検証経路を必ず通す。テンプレートデータは read-only に保ち、テナント書き込みと分離する。

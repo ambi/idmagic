@@ -1068,10 +1068,7 @@ invariants:
   PasswordHistoryNoReuse:
     description: "change-password 受領時、新パスワードは同一 sub の直近 history_depth 件のハッシュと\n一致してはならない。反例: 直前のパスワードを再設定でき、漏洩済みクレデンシャルでログイン可能なまま。\n"
     assuming: event == ChangePassword
-    never:
-      exists:
-        in: "PasswordHistoryEntries(sub=event.sub, depth=PasswordPolicy.value.history_depth)"
-        satisfies: "PasswordHasher.verify(event.new_password, x.encoded) == true"
+    never: "PasswordHistoryEntries(sub=event.sub, depth=PasswordPolicy.value.history_depth).exists(x, PasswordHasher.verify(event.new_password, x.encoded) == true)"
 objectives:
   PasswordPolicy:
     kind: security

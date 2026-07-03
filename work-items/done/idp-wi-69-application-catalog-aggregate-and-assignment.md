@@ -1,0 +1,109 @@
+---
+id: idp-wi-69-application-catalog-aggregate-and-assignment
+title: "Application を上位 aggregate として実装し、protocol binding・割当・プロビジョニングを束ねる"
+created_at: 2026-06-27
+authors: ["tn"]
+status: completed
+risk: high
+---
+# Motivation
+Okta / Entra ID では、SSO のためのフェデレーションプロトコルが OIDC でも SAML でも
+WS-* でも、relying party はすべて「アプリケーション」という単一概念で束ねられている。
+運用者から見ても利用者から見ても、フェデレーションプロトコルの違いは内部実装であり、
+どちらも「ログインしたい業務アプリケーション」でしかない。表示名・所有者・割当・状態・
+アイコン・共通監査・共通ポリシーはプロトコルをまたいで共有される設定である。
+
+idmagic は [[wi-68-protocol-context-and-application-catalog-realignment]] で
+`Application` bounded context を SCL / ADR-064 上に語彙予約したが、本体 aggregate は
+未実装で、管理 UI は依然プロトコル別 (`/admin/clients` = OAuth2/OIDC client、
+`/admin/wsfed` = WS-Fed RP) に分かれている。利用者ポータルにアプリケーション一覧も無い。
+本 WI はこの予約済み境界の本体を実装し、OIDC client / SAML SP / WS-Fed RP を
+Application の protocol binding として束ね、加えて以下の運用者・利用者価値を実現する。
+
+  - SSO 対応プロトコルを問わない単一の Application 一覧と CRUD。
+  - SSO しない単なる Web リンク (weblink) アプリケーションも同じカタログで扱える。
+  - Application へのユーザー / グループ割当。割当はポータル可視性と
+    フェデレーションプロトコル利用可否の両方を fail-closed で制御する
+    (未割当ユーザーは一覧に出ず、プロトコルでログインしようとしても拒否される)。
+  - 割当には可視性を持たせ、「割当済みだがポータルには出さない (hidden)」を選べる。
+    hidden 割当はプロトコル利用は許可するが一覧には表示せず、直リンクからのみ起動できる。
+  - Application にアイコンを設定でき、利用者ポータルの一覧で視認性を高める。
+  - Application を起点とした SCIM provisioning (inbound / outbound) の binding 表現
+    (実プロトコル本体は [[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]])。
+
+これは「protocol を意識させず、アプリ単位で接続・割当・運用する」という現代 IdP の
+製品言語をデモ実装で示すものであり、RA の traceability (上位概念とプロトコル binding の
+境界一致) を体現する。
+
+# Scope
+- **decision**: 新規 ADR-066: Application 本体の aggregate 設計を確定する。Application と ProtocolBinding (oidc / saml / wsfed) の関係 (federated app は 0..N binding を所有し、 weblink app は binding を持たない外部リンク)、既存 OAuth2Client / WsFedRelyingParty / 将来 SAML SP を binding として参照するか吸収するかの所有方針、Assignment による 可視性とプロトコル利用可否の fail-closed セマンティクス、icon の保存形態、SCIM binding の 所有境界を決める。ADR-064 の決定 6/7 を本体実装として具体化する。
+- **scl**: Application に owns_models を与える: Application / ApplicationStatus / ApplicationKind (federated / weblink) / ProtocolBinding / ProtocolBindingType (oidc / saml / wsfed) / ApplicationAssignment / AssignmentSubject (user / group) / AssignmentVisibility (visible / hidden) / ApplicationIcon。, owns_events: ApplicationCreated / ApplicationUpdated / ApplicationDeleted / ApplicationEnabled / ApplicationDisabled / ProtocolBindingAttached / ProtocolBindingDetached / ApplicationAssigned / ApplicationUnassigned。, owns_interfaces: admin の Application CRUD・一覧、binding 接続/解除、割当 (user/group) CRUD、icon 設定。利用者向け ListMyApplications (割当済みアプリのみ)。, owns_invariants: AssignmentGatesProtocol (未割当の subject にはどの protocol binding でも フェデレーションを開始/完了させない、fail-closed)、AssignmentGatesPortalVisibility (ListMyApplications は visible 割当のみ返す。hidden 割当は一覧から除外するが プロトコル利用は引き続き許可する)。, owns_permissions: AdminApplicationsManage / AdminApplicationAssignmentsManage / MyApplicationsRead。, 既存 OAuth2 の AdminClient 系 interface と WsFederation の WsFedRelyingParty を ProtocolBinding として Application に従属させる依存関係を SCL に反映する。
+- **go**: Application 集約と Postgres / memory adapter (applications / protocol_bindings / application_assignments テーブル、tenant scope、binding から既存 client / RP への外部キー)。, フェデレーション開始経路 (`/authorize`, WS-Fed sign-in, 将来 SAML SSO) で、解決された subject が当該 Application に割当済みか fail-closed で確認し、未割当なら拒否する。, icon のアップロード/保存 (tenant-scoped object) と配信。
+- **http**: /admin/applications の CRUD・binding・割当・icon エンドポイント。, /api/account/applications で割当済みアプリ一覧 (icon / 起動 URL) を返す。
+- **ui**: admin: 「アプリケーション」を上位ナビに復帰し (ADR-064 決定 7)、配下に OIDC / SAML / WS-Fed binding と weblink を表示。割当 (user/group)、icon、状態を管理する。, [object Object]
+- **documentation**: README に Application = protocol binding + 割当 + provisioning という関係図を追記する。
+
+# Out of Scope
+- SAML 2.0 SP binding 本体の実装 ([[wi-29-saml2-idp]]、本 WI は binding 種別の予約のみ)。
+- SCIM provisioning は inbound / outbound とも [[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]] が所有する。当初は本 WI が Application 起点の ProvisioningBinding / ProvisioningDirection 表現だけ予約する想定だったが、wi-45 が provisioning の割当を ProvisioningConnector / ProvisioningAssignment という独自モデルで 設計するため、Application↔connector の関係は実体 (outbound) を作る wi-45 時点で確定する。 したがって本 WI では provisioning binding 表現も持たず、SCIM は wi-31 / wi-45 に委ねる。
+- Entra ID 相当のライセンスプロビジョニング (将来 WI。SCIM binding 拡張として後続で扱う)。
+- 既存 OAuth2 client / WS-Fed RP の wire behavior 変更 (上位 aggregate を被せるのみ)。
+- 割当条件の動的化 (属性ベース/ルールベース割当)。初期は user / group の直接割当のみ。
+
+# Verification
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- 手動: Application を作成 → OIDC binding を接続 → user を割当 → 利用者ポータルに icon 付きで 表示され SSO できることを確認する。割当を外すと一覧から消え、`/authorize` が fail-closed で 拒否されることを確認する。
+- 手動: weblink アプリ (binding 無し) を作成し、割当済み利用者のポータルに外部リンクとして 表示されることを確認する。
+- 手動: hidden 割当にしたアプリが利用者ポータル一覧に出ない一方、直リンク (SSO 起動) は 成功することを確認する。
+
+# Risk Notes
+Application は OIDC client / WS-Fed RP / 将来 SAML SP を束ねる上位 aggregate で、
+既存プロトコル実装に被せる構造変更になる。最大のリスクは割当ゲートの fail-closed を
+すべてのフェデレーション開始経路 (authorize / WS-Fed sign-in / 将来 SAML SSO) に
+漏れなく適用すること。1 経路でも割当チェックが抜けると「未割当でもログインできる」
+セキュリティ欠陥になる。binding は既存 client / RP を参照する形にし、wire behavior は
+変えない。ADR-066 で aggregate と割当セマンティクスを先に固定してから実装する。
+
+# Completion
+- **Completed At**: 2026-06-28
+- **Summary**:
+  OAuth2 client / WS-Fed RP / SAML SP / service client を単一の Application aggregate に
+  束ね、protocol を意識させない一覧・CRUD・割当・利用者ポータルを実装した。ADR-066 を起票。
+
+  - 集約: spec に Application / ApplicationKind (federated / weblink / service) /
+    ApplicationStatus / ProtocolBinding (oidc / saml / wsfed) / ApplicationAssignment /
+    AssignmentSubject (user / group) / AssignmentVisibility (visible / hidden) と
+    ライフサイクルイベント (Created/Updated/Deleted, BindingAttached/Detached,
+    Assigned/Unassigned) を定義。domain に weblink=launch_url 必須・binding 不可、
+    federated=binding 検証の不変条件を実装。
+  - 永続化: Postgres / memory adapter (applications / protocol_bindings /
+    application_assignments、tenant scope、binding は既存 client / RP / SP を opaque key で参照)。
+  - fail-closed 割当ゲート: ApplicationAccessAllowed を /authorize と WS-Fed sign-in に
+    適用し (invariant AssignmentGatesProtocol)、未割当 subject はフェデレーションを
+    完了できない。ListMyApplications は visible 割当のみ返す (AssignmentGatesPortalVisibility)。
+  - HTTP / UI: /admin/applications の CRUD・binding・割当・icon と
+    /api/account/applications を実装。admin ナビを「アプリケーション」に一本化し、
+    利用者ポータルに icon 付きアプリ一覧 (SSO 起動 / 外部リンク) を追加。
+  - SCIM provisioning binding (ProvisioningBinding / ProvisioningDirection) は実装しない。
+    out_of_scope のとおり inbound / outbound とも [[wi-31-scim2-provisioning]] /
+    [[wi-45-outbound-scim-provisioning]] が所有し、Application↔connector の関係は
+    ProvisioningConnector / ProvisioningAssignment を設計する wi-45 時点で確定する。
+  - 後続価値は別 WI に分割: ポータル並び替え (wi-70)、サインオンポリシー (wi-71)、
+    テンプレートカタログ (wi-72)、クレーム上書き (wi-73)、icon 画像アップロード (wi-74)、
+    advanced 設定の畳み込みと低レベル画面撤去 (wi-76, ADR-066, 完了済)。
+- **Verification Results**:
+  - [object Object]
+  - [object Object]
+  - [object Object]
+  - [object Object]
+  - [object Object]
+  - [object Object]
+  - [object Object]
+  - [object Object]

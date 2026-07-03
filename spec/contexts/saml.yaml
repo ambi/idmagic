@@ -444,12 +444,7 @@ permissions:
     description: 所属テナント内の SAML SP / WS-Federation RP trust の一覧・登録・削除。
     actor: User
     resource: FederationTrust
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
   SAML SP initiated SSO succeeds:
     description: SamlSingleSignOn で、登録済み entityID、許可 ACS、現在 realm の Destination、割当済み subject なら SAMLResponse を ACS へ POST し RelayState を同値で返す。

@@ -1103,40 +1103,22 @@ permissions:
     description: 所属テナント内の Application 一覧・取得・作成・更新・削除・binding 接続/解除・アイコンアップロード/削除。
     actor: User
     resource: Application
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminApplicationAssignmentsManage:
     description: Application へのユーザー / グループ割当の参照・追加・削除。
     actor: User
     resource: ApplicationAssignment
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminApplicationCategoriesManage:
     description: 所属テナント内の ApplicationCategory の参照・作成・更新・削除と Application への付与。
     actor: User
     resource: ApplicationCategory
-    allow_when:
-      and:
-        - admin in actor.roles
-        - actor.disabled_at == null
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   MyApplicationsRead:
     description: 利用者が自分に割当済みの Application 一覧を参照する。
     actor: User
     resource: ApplicationAssignment
-    allow_when:
-      and:
-        - context.authenticated == true
-        - actor.tenant_id == resource.tenant_id
+    allow_when: "context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
   管理者は所属テナントの client を作成・更新・削除できる:
     goal: 管理者が所属テナントの client を作成・更新・削除する。
