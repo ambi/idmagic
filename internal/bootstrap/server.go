@@ -18,6 +18,7 @@ import (
 	"idmagic/internal/shared/adapters/observability"
 	"idmagic/internal/shared/adapters/persistence/memory"
 	"idmagic/internal/shared/spec"
+	"idmagic/internal/shared/version"
 	tenantusecases "idmagic/internal/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -106,7 +107,7 @@ func Run() error {
 	e := echo.New()
 	var otelProvider *observability.Provider
 	if runtime.Observability == "otel" {
-		otelProvider, err = observability.New(ctx, envDefault("OTEL_SERVICE_NAME", "idmagic"), "0.3.0")
+		otelProvider, err = observability.New(ctx, envDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
 		if err != nil {
 			return fmt.Errorf("initialize OpenTelemetry: %w", err)
 		}
@@ -164,7 +165,8 @@ func Run() error {
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
 
-	log.Printf("idmagic listening on %s (issuer=%s)", addr, issuer)
+	buildInfo := version.Get()
+	log.Printf("idmagic %s (commit=%s, date=%s) listening on %s (issuer=%s)", buildInfo.Version, buildInfo.GitCommit, buildInfo.BuildDate, addr, issuer)
 	startConfig := echo.StartConfig{Address: addr}
 	if err := startConfig.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Printf("server: %v", err)

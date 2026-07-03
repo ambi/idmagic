@@ -9,6 +9,10 @@ set shell := ["zsh", "-cu"]
 ra_cmd := env_var_or_default("RA_CMD", "bun run .ra/regenerative-architecture/tools/ra/src/main.ts")
 go_cache := env_var_or_default("GOCACHE", "/tmp/idmagic-go-cache")
 golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
+git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
+build_date := `date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown"`
+version := env_var_or_default("VERSION", "0.0.0-dev")
+ldflags := "-X idmagic/internal/shared/version.Version=" + version + " -X idmagic/internal/shared/version.GitCommit=" + git_commit + " -X idmagic/internal/shared/version.BuildDate=" + build_date
 
 # Show this command map.
 default:
@@ -51,7 +55,7 @@ test-go-race:
 
 # Build all Go packages.
 build-go:
-    GOCACHE={{go_cache}} go build ./...
+    GOCACHE={{go_cache}} go build -ldflags '{{ldflags}}' ./...
 
 # Verify UI with format check, lint, typecheck, and build.
 verify-ui: format-check-ui lint-ui typecheck-ui build-ui

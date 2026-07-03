@@ -93,6 +93,21 @@ objectives:
         - server_timeout
         - upstream_timeout
       client_aborted_counts_as_server_error: false
+  BuildInfo:
+    kind: security
+    description: "稼働中のバイナリの一意性を確定するため、ビルド時のメタデータ（version、git_commit、build_date、go_version）を埋め込み、露出する。"
+    policy: version_reporting
+    target: SystemBuildVersion
+    value:
+      fields:
+        - version
+        - git_commit
+        - build_date
+        - go_version
+      exposure:
+        - logs
+        - version_endpoint
+        - otel_resource
 user_experience:
   accessibility:
     standard: WCAG22

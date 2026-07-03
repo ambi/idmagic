@@ -872,3 +872,36 @@ func mustJSON(t *testing.T, value any) string {
 	}
 	return string(body)
 }
+
+func TestVersion(t *testing.T) {
+	ts := newServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/version")
+	if err != nil {
+		t.Fatalf("GET /version: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", res.StatusCode)
+	}
+
+	var info map[string]string
+	if err := json.NewDecoder(res.Body).Decode(&info); err != nil {
+		t.Fatalf("decode JSON: %v", err)
+	}
+
+	if _, ok := info["version"]; !ok {
+		t.Error("expected 'version' field in response")
+	}
+	if _, ok := info["git_commit"]; !ok {
+		t.Error("expected 'git_commit' field in response")
+	}
+	if _, ok := info["build_date"]; !ok {
+		t.Error("expected 'build_date' field in response")
+	}
+	if _, ok := info["go_version"]; !ok {
+		t.Error("expected 'go_version' field in response")
+	}
+}

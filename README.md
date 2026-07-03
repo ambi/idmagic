@@ -208,3 +208,46 @@ See [deploy/schema/README.md](deploy/schema/README.md) for the full workflow.
 
 When a change affects behavior, update SCL first, regenerate derived artifacts,
 and keep README focused on the stable project overview.
+
+## Build and Versioning
+
+IdMagic supports injecting build version metadata at build time using Go `-ldflags`.
+
+### Local Build via Just
+
+You can inject a specific version when building locally by setting the `VERSION` environment variable:
+
+```bash
+VERSION=1.0.0 just build-go
+```
+
+If `VERSION` is not specified, it defaults to `0.0.0-dev`. The build process automatically extracts the current Git commit hash and build date, injecting them into the binary.
+
+If the binary is built without `just` (e.g., direct `go build`), version metadata falls back to using Go's `runtime/debug.BuildInfo` (if VCS info is present in the build environment).
+
+### Docker Build
+
+You can pass the version metadata as build arguments:
+
+```bash
+docker build \
+  --build-arg VERSION=1.0.0 \
+  --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+  --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+  -t idmagic:1.0.0 -f deploy/docker/Dockerfile .
+```
+
+### Checking Active Version
+
+The running version can be verified via:
+1. **Startup Logs**: The server prints its version details on launch:
+   `idmagic 1.0.0 (commit=..., date=...) listening on :8080`
+2. **Version Endpoint**: The unauthenticated `/version` HTTP endpoint returns version details:
+   ```json
+   {
+     "version": "1.0.0",
+     "git_commit": "...",
+     "build_date": "...",
+     "go_version": "go1.26"
+   }
+   ```
