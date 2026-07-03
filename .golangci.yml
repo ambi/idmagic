@@ -159,8 +159,8 @@ formatters:
     - goimports
   settings:
     gofumpt:
-      module-path: ra-idp-go
+      module-path: idmagic
       extra-rules: true
     goimports:
       local-prefixes:
-        - ra-idp-go
+        - idmagic
