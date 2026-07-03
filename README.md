@@ -115,21 +115,22 @@ bun run test:e2e
 Local defaults use in-memory persistence and console email output. Production
 adapters are selected with environment variables:
 
-| Variable | Purpose |
-| --- | --- |
-| `PERSISTENCE=memory|postgres` | storage backend |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `VALKEY_URL` | Valkey connection string for volatile state |
-| `EVENT_SINK=console|outbox` | domain event destination |
-| `KAFKA_BROKERS` | outbox relay broker list |
-| `OBSERVABILITY=noop|otel` | OpenTelemetry tracing/metrics |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP collector endpoint |
-| `AUTHZEN=local|remote` / `AUTHZEN_URL` | authorization policy mode |
-| `EMAIL_SENDER=console|smtp` | password reset and notification delivery |
-| `KEY_PROVIDER=local|vault` | signing key provider |
-| `VAULT_ADDR`, `VAULT_TOKEN` | Vault Transit configuration |
-| `BREACHED_PASSWORD_CHECKER=noop|hibp` | breached password checker |
-| `SKIP_DEMO_SEED=true` | disable demo seed data |
+| Variable | Values | Purpose |
+| --- | --- | --- |
+| `PERSISTENCE` | `memory`, `postgres` | storage backend |
+| `DATABASE_URL` | connection string | PostgreSQL database connection |
+| `VALKEY_URL` | connection string | Valkey connection for volatile state |
+| `EVENT_SINK` | `console`, `outbox` | domain event destination |
+| `KAFKA_BROKERS` | broker list | outbox relay broker list |
+| `OBSERVABILITY` | `noop`, `otel` | OpenTelemetry tracing/metrics |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | endpoint URL | OTLP/HTTP collector endpoint |
+| `AUTHZEN` | `local`, `remote` | authorization policy mode |
+| `AUTHZEN_URL` | remote policy service URL | remote authorization policy endpoint |
+| `EMAIL_SENDER` | `console`, `smtp` | password reset and notification delivery |
+| `KEY_PROVIDER` | `local`, `vault` | signing key provider |
+| `VAULT_ADDR`, `VAULT_TOKEN` | Vault configuration | Vault Transit configuration |
+| `BREACHED_PASSWORD_CHECKER` | `noop`, `hibp` | breached password checker |
+| `SKIP_DEMO_SEED` | `true` | disable demo seed data |
 
 For SMTP testing, Mailpit works well:
 
