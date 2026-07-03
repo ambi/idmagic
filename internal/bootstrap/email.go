@@ -1,13 +1,14 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	authnports "idmagic/internal/authentication/ports"
 	"idmagic/internal/shared/adapters/notification"
+	"idmagic/internal/shared/logging"
 )
 
 // resolveEmailSender は EMAIL_SENDER / SMTP_* 環境変数から EmailSender adapter を組み立てる。
@@ -19,15 +20,16 @@ func resolveEmailSender(getenv func(string) string) (authnports.EmailSender, err
 	}
 	switch kind {
 	case "console":
-		log.Printf("email sender: console (dev / demo)")
+		logging.Info(context.Background(), "email sender configured", "kind", "console")
 		return notification.ConsoleEmailSender{}, nil
 	case "smtp":
 		cfg, err := buildSMTPConfig(getenv)
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("email sender: smtp host=%s port=%d tls=%s from=%s",
-			cfg.Host, cfg.Port, cfg.TLSMode, cfg.From)
+		// from はサービス自身の送信元 (運用設定) であり data subject の PII ではない。
+		logging.Info(context.Background(), "email sender configured",
+			"kind", "smtp", "host", cfg.Host, "port", cfg.Port, "tls", cfg.TLSMode, "from", cfg.From)
 		return notification.NewSMTPEmailSender(cfg), nil
 	default:
 		return nil, fmt.Errorf("unsupported EMAIL_SENDER=%q (want console or smtp)", kind)

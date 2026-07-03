@@ -264,7 +264,7 @@ XML signing capability だけを共有する。
       <div class="eyebrow">Bounded Context · contexts/system.yaml</div>
       <h1>System</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-system-standards">
     <h2>Standards <span class="count">2</span></h2>
@@ -358,10 +358,10 @@ XML signing capability だけを共有する。
       </article></div>
   </section>
 <section id="context-system-objectives">
-    <h2>Objectives <span class="count">3</span></h2>
+    <h2>Objectives <span class="count">4</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">security <span class="count">3</span></h3>
+      <h3 class="grp-title">security <span class="count">4</span></h3>
       <div class="cards"><article class="card" id="context-system-obj-cancellationconsistency">
     <header><h3>CancellationConsistency</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。</p>
@@ -375,7 +375,12 @@ XML signing capability だけを共有する。
 <article class="card" id="context-system-obj-buildinfo">
     <header><h3>BuildInfo</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">稼働中のバイナリの一意性を確定するため、ビルド時のメタデータ（version、git_commit、build_date、go_version）を埋め込み、露出する。</p>
-    <dl class="kv"><dt>policy</dt><dd><span class="text">version_reporting</span></dd><dt>target</dt><dd><span class="text">SystemBuildVersion</span></dd><dt>value</dt><dd><dl class="kv"><dt>fields</dt><dd><span class="chip">version</span> <span class="chip">git_commit</span> <span class="chip">build_date</span> <span class="chip">go_version</span></dd><dt>exposure</dt><dd><span class="chip">logs</span> <span class="chip">version_endpoint</span> <span class="chip">otel_resource</span></dd></dl></dd></dl>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">version_reporting</span></dd><dt>target</dt><dd><span class="text">SystemBuildVersion</span></dd><dt>value</dt><dd><dl class="kv"><dt>fields</dt><dd><span class="chip">version</span> <span class="chip">git_commit</span> <span class="chip">build_date</span> <span class="chip">go_version</span></dd><dt>exposure</dt><dd><span class="chip">logs</span> <span class="chip">otel_resource</span></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-structuredapplicationlog">
+    <header><h3>StructuredApplicationLog</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">アプリケーションログ (debug/info/warn/error) は監査ログと分離し、stdout に構造化 JSON Lines として出力する。各行は必須フィールドを持ち、OTel span context 有効時は trace_id / span_id で trace と相関する。x-pii フィールド (email 等) はアプリケーションログに平文出力しない。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">application_logging</span></dd><dt>target</dt><dd><span class="text">ApplicationLogRecord</span></dd><dt>value</dt><dd><dl class="kv"><dt>sink</dt><dd><span class="text">stdout</span></dd><dt>format</dt><dd><span class="text">json_lines</span></dd><dt>levels</dt><dd><span class="chip">debug</span> <span class="chip">info</span> <span class="chip">warn</span> <span class="chip">error</span></dd><dt>required_fields</dt><dd><span class="chip">timestamp</span> <span class="chip">level</span> <span class="chip">service</span> <span class="chip">message</span></dd><dt>correlation_fields</dt><dd><span class="chip">trace_id</span> <span class="chip">span_id</span></dd><dt>pii_in_application_log</dt><dd><code>false</code></dd></dl></dd></dl>
   </article></div>
     </div>
   </section>

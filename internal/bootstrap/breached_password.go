@@ -1,12 +1,13 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	authnports "idmagic/internal/authentication/ports"
 	"idmagic/internal/shared/adapters/policy"
+	"idmagic/internal/shared/logging"
 )
 
 // breachedPasswordCheckerVersion は HIBP の User-Agent に乗せる版番号 (HIBP の etiquette)。
@@ -22,10 +23,10 @@ func resolveBreachedPasswordChecker(getenv func(string) string) (authnports.Brea
 	}
 	switch kind {
 	case "noop":
-		log.Printf("breached password checker: noop")
+		logging.Info(context.Background(), "breached password checker configured", "kind", "noop")
 		return policy.NoopBreachedPasswordChecker{}, nil
 	case "hibp":
-		log.Printf("breached password checker: hibp")
+		logging.Info(context.Background(), "breached password checker configured", "kind", "hibp")
 		return policy.NewHibpBreachedPasswordChecker(breachedPasswordCheckerVersion), nil
 	default:
 		return nil, fmt.Errorf("unsupported BREACHED_PASSWORD_CHECKER=%q (want noop or hibp)", kind)

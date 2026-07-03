@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +16,7 @@ import (
 	httpsupport "idmagic/internal/shared/adapters/http/support"
 	"idmagic/internal/shared/adapters/observability"
 	"idmagic/internal/shared/adapters/persistence/memory"
+	"idmagic/internal/shared/logging"
 	"idmagic/internal/shared/spec"
 	"idmagic/internal/shared/version"
 	tenantusecases "idmagic/internal/tenancy/usecases"
@@ -29,6 +29,15 @@ func Run() error {
 	runtime := loadRuntimeConfig()
 	issuer := envDefault("ISSUER", "http://localhost:8080")
 	addr := envDefault("ADDR", ":8080")
+
+	// アプリケーションログは stdout に構造化 JSON Lines で出力する (ADR-018)。
+	// 監査ログ (DomainEvent) は EventSink 経由の別経路。
+	buildInfo := version.Get()
+	serviceName := envDefault("OTEL_SERVICE_NAME", "idmagic")
+	logLevel := logging.ParseLevel(os.Getenv("LOG_LEVEL"))
+	slogLogger := logging.NewSlog(os.Stdout, logLevel, serviceName, buildInfo.Version)
+	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
+	logger := logging.Default()
 
 	deps, err := assemble(context.Background())
 	if err != nil {
@@ -105,6 +114,8 @@ func Run() error {
 	jwkResolver := crypto.NewJWKResolver()
 
 	e := echo.New()
+	// Echo フレームワークのログも同じ構造化ハンドラ (ADR-018 の field 規約) に載せる。
+	e.Logger = slogLogger
 	var otelProvider *observability.Provider
 	if runtime.Observability == "otel" {
 		otelProvider, err = observability.New(ctx, envDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
@@ -117,7 +128,7 @@ func Run() error {
 		eventCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		if err := deps.EventSink.Emit(eventCtx, event); err != nil {
-			log.Printf("event sink: %v", err)
+			logger.Error(eventCtx, "event sink emit failed", "error", err)
 		}
 		if deps.AuditEventRepo != nil {
 			if rec, err := newAuditEventRecord(event); err == nil {
@@ -165,17 +176,18 @@ func Run() error {
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
 
-	buildInfo := version.Get()
-	log.Printf("idmagic %s (commit=%s, date=%s) listening on %s (issuer=%s)", buildInfo.Version, buildInfo.GitCommit, buildInfo.BuildDate, addr, issuer)
+	logger.Info(ctx, "server listening",
+		"commit", buildInfo.GitCommit, "build_date", buildInfo.BuildDate,
+		"addr", addr, "issuer", issuer)
 	startConfig := echo.StartConfig{Address: addr}
 	if err := startConfig.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Printf("server: %v", err)
+		logger.Error(ctx, "server stopped with error", "error", err)
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if otelProvider != nil {
 		if err := otelProvider.Shutdown(shutdownCtx); err != nil {
-			log.Printf("shutdown OpenTelemetry: %v", err)
+			logger.Error(shutdownCtx, "shutdown OpenTelemetry failed", "error", err)
 		}
 	}
 	return nil

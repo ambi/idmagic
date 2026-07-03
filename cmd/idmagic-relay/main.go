@@ -1,13 +1,16 @@
 package main
 
 import (
-	"log"
+	"context"
+	"os"
 
 	"idmagic/internal/relay"
+	"idmagic/internal/shared/logging"
 )
 
 func main() {
 	if err := relay.Run(); err != nil {
-		log.Fatal(err)
+		logging.Error(context.Background(), "idmagic relay exited with error", "error", err)
+		os.Exit(1)
 	}
 }

@@ -6,10 +6,10 @@ package bootstrap
 
 import (
 	"context"
-	"log"
 	"time"
 
 	authusecases "idmagic/internal/authentication/usecases"
+	"idmagic/internal/shared/logging"
 )
 
 // startRetentionSweep は保持期間 sweep の goroutine を起動する。
@@ -26,11 +26,12 @@ func startRetentionSweep(ctx context.Context, deps *Dependencies, interval time.
 	sweep := func() {
 		res, err := authusecases.RunRetentionSweep(ctx, audit, buckets, policy, time.Now().UTC())
 		if err != nil {
-			log.Printf("retention sweep: %v", err)
+			logging.Error(ctx, "retention sweep failed", "error", err)
 			return
 		}
 		if res.AuditEvents > 0 || res.Buckets > 0 {
-			log.Printf("retention sweep: deleted %d audit events, %d buckets", res.AuditEvents, res.Buckets)
+			logging.Info(ctx, "retention sweep completed",
+				"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets)
 		}
 	}
 	go func() {

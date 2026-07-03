@@ -8,12 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"idmagic/internal/shared/logging"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -178,7 +179,7 @@ func parseHibpRange(body string) map[string]struct{} {
 func (c *HibpBreachedPasswordChecker) recordFailure(ctx context.Context, err error) {
 	reason := classifyHibpFailure(err)
 	// privacy: plaintext / SHA-1 suffix は出さない。reason と err (status / 接続情報のみ) に留める。
-	log.Printf("breached password checker: hibp lookup failed (reason=%s): %v", reason, err)
+	logging.Warn(ctx, "breached password checker: hibp lookup failed", "reason", reason, "error", err)
 	if c.failures != nil {
 		c.failures.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", reason)))
 	}

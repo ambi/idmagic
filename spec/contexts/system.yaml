@@ -107,6 +107,28 @@ objectives:
       exposure:
         - logs
         - otel_resource
+  StructuredApplicationLog:
+    kind: security
+    description: "アプリケーションログ (debug/info/warn/error) は監査ログと分離し、stdout に構造化 JSON Lines として出力する。各行は必須フィールドを持ち、OTel span context 有効時は trace_id / span_id で trace と相関する。x-pii フィールド (email 等) はアプリケーションログに平文出力しない。"
+    policy: application_logging
+    target: ApplicationLogRecord
+    value:
+      sink: stdout
+      format: json_lines
+      levels:
+        - debug
+        - info
+        - warn
+        - error
+      required_fields:
+        - timestamp
+        - level
+        - service
+        - message
+      correlation_fields:
+        - trace_id
+        - span_id
+      pii_in_application_log: false
 user_experience:
   accessibility:
     standard: WCAG22

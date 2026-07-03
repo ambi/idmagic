@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"mime"
 	"net"
 	"net/mail"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	authnports "idmagic/internal/authentication/ports"
+	"idmagic/internal/shared/logging"
 )
 
 // SMTPTLSMode は SMTP 接続時の TLS 戦略を表す (ADR-035 §2)。
@@ -58,7 +58,11 @@ func NewSMTPEmailSender(cfg SMTPEmailSenderConfig) *SMTPEmailSender {
 
 func (s *SMTPEmailSender) SendEmail(ctx context.Context, message authnports.EmailMessage) bool {
 	if err := s.send(ctx, message, time.Now().UTC()); err != nil {
-		log.Printf("smtp send failed: to=%s subject=%q err=%v", message.To, message.Subject, err)
+		// 宛先アドレスは PII なのでマスクする (ADR-018 §4)。
+		logging.Error(ctx, "smtp send failed",
+			"to", logging.MaskEmail(message.To),
+			"subject", message.Subject,
+			"error", err)
 		return false
 	}
 	return true

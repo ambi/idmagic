@@ -3,11 +3,12 @@
 package eventsink
 
 import (
+	"context"
 	"io"
-	"log"
 	"os"
 	"sync"
 
+	"idmagic/internal/shared/logging"
 	"idmagic/internal/shared/spec"
 )
 
@@ -20,12 +21,12 @@ func NewConsole() *Console {
 	return &Console{out: os.Stdout}
 }
 
-func (c *Console) Emit(e spec.DomainEvent) {
+func (c *Console) Emit(ctx context.Context, e spec.DomainEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	b, err := spec.MarshalDomainEvent(e)
 	if err != nil {
-		log.Printf("event encode: %v", err)
+		logging.Error(ctx, "event encode failed", "error", err)
 		return
 	}
 	_, _ = c.out.Write(append(b, '\n'))

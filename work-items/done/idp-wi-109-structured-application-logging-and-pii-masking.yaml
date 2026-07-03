@@ -2,7 +2,7 @@ id: idp-wi-109-structured-application-logging-and-pii-masking
 title: 構造化アプリケーションログ (Logger ポート) を導入し ADR-018 のアプリログ半分を実装する
 created_at: 2026-07-04
 authors: [tn]
-status: pending
+status: completed
 motivation: |
   ADR-018 は監査ログとアプリケーションログを分離し、アプリログは
   「level / service / trace_id / span_id / message を持つ構造化 JSON Lines を
@@ -51,3 +51,46 @@ risk_notes: |
   変更は横断的だが、置換対象の log.Printf は 17 箇所と限定的で、いずれも副作用のない
   出力処理である。Logger ポートを noop/console に切り替え可能にし、既存の起動・デモ体験を
   壊さないことを回帰の主眼とする。slog は Go 標準ライブラリであり新規依存を増やさない。
+completion:
+  completed_at: 2026-07-04
+  summary: |
+    ADR-018 のアプリログ半分を実装した。internal/shared/logging に Logger ポートと
+    log/slog ベースの JSON Lines アダプタを新設し、必須フィールド (timestamp/level/
+    service/message)、LOG_LEVEL によるレベル制御、service/version の固定 attribute、
+    OTel span context 由来の trace_id/span_id 注入、slog 既定キーの ADR-018 命名への
+    リネーム (time→timestamp, msg→message) を実装した。cmd / bootstrap / relay および
+    notification / eventsink / policy の標準 log 呼び出しをすべて Logger 経由へ置換し、
+    Echo フレームワークのログ (e.Logger) も同じハンドラに載せて field 規約を統一した。
+    email 送信経路 (console / smtp) の宛先アドレス出力を MaskEmail (***@domain) で
+    マスクし、ADR-018 §4 の PII 漏洩を是正した。SCL は system.yaml objectives に
+    StructuredApplicationLog を追加して決定を明文化し、派生 HTML を再生成した。
+  verification:
+    - "just verify"
+    - "go test ./internal/shared/logging"
+    - "手動: LOG_LEVEL=info でサーバ起動時、email sender / breached checker / server listening / Echo 起動ログが 1 行 1 JSON (timestamp/level/service/message) で出力されることを確認した。"
+    - "手動: email 送信経路のログで宛先アドレスがローカルパート伏字 (***@domain) となり平文の PII が出ないことをコードと単体テストで確認した。"
+  affected_guarantees_state:
+    - guarantee: "observability: すべてのアプリケーションログが level を持つ構造化 JSON Lines として出力され、OTel span context 有効時は trace_id / span_id で trace と相関可能であること。"
+      state: upheld
+      note: "New/NewSlog が JSON Handler + trace_id/span_id 注入を提供し、単体テストで検証済み。"
+    - guarantee: "privacy: x-pii=true フィールド (email 等) がアプリケーションログに平文で出力されないこと (ADR-018 §4 / GDPR 整合)。"
+      state: upheld
+      note: "console / smtp email sender の宛先を MaskEmail でマスクし、TestMaskEmail で検証済み。"
+  evidence:
+    - id: unit-logging
+      kind: test
+      procedure: "logging パッケージの単体テスト (構造化フィールド・レベルフィルタ・trace 相関・MaskEmail・ParseLevel)"
+      command: "go test ./internal/shared/logging"
+      result: passed
+      summary: "ok idmagic/internal/shared/logging。全ケース成功。"
+    - id: verify-all
+      kind: test
+      procedure: "全体検証 (yaml-check + lint-go + test-go-race + verify-ui)"
+      command: "just verify"
+      result: passed
+      summary: "exit 0。golangci-lint 0 issues、Go race テストと UI ビルドが成功。"
+    - id: manual-startup-log
+      kind: runtime_observation
+      procedure: "LOG_LEVEL=info ADDR=:18098 go run ./cmd/idmagic の stdout を確認"
+      result: passed
+      summary: "全ログ行が timestamp/level/service/message を持つ JSON Lines として出力された。"

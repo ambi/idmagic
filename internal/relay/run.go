@@ -3,13 +3,13 @@ package relay
 import (
 	"context"
 	"fmt"
-	"log"
 	"os/signal"
 	"strings"
 	"syscall"
 
 	"idmagic/internal/shared/adapters/eventsink"
 	"idmagic/internal/shared/adapters/persistence/postgres"
+	"idmagic/internal/shared/logging"
 )
 
 // Run は outbox → Kafka リレーを起動する。SIGINT/SIGTERM で graceful shutdown。
@@ -32,7 +32,7 @@ func Run() error {
 	defer relay.Close()
 	relay.PollInterval = cfg.PollInterval
 	relay.BatchSize = cfg.BatchSize
-	log.Printf("idmagic relay started; brokers=%s", strings.Join(cfg.Brokers, ","))
+	logging.Info(ctx, "idmagic relay started", "brokers", strings.Join(cfg.Brokers, ","))
 	if err := relay.Run(ctx); err != nil && ctx.Err() == nil {
 		return fmt.Errorf("relay: %w", err)
 	}
