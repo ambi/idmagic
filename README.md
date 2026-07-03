@@ -31,7 +31,7 @@ This application acts as an OAuth 2.0 / OpenID Connect authorization server and 
 ### Authentication, Accounts, and Administration
 
 - **Browser Authentication API (`/api/auth/*`)**: Session Cookie + CSRF protection.
-- **Admin Console & Account Portal**: Authenticated via the IdP's own OIDC RP (`authorization_code` + PKCE, first-party public clients `ra-admin-console` / `ra-account-portal`). Endpoints under `/api/{admin,account}/*` act as resource servers validating RFC 9068 Access Tokens (ADR-061, wi-66). A session-based emergency login endpoint (`POST /api/auth/login`) is retained as a fallback in case of configuration failure.
+- **Admin Console & Account Portal**: Authenticated via the IdP's own OIDC RP (`authorization_code` + PKCE, first-party public clients `idmagic-admin-console` / `idmagic-account-portal`). Endpoints under `/api/{admin,account}/*` act as resource servers validating RFC 9068 Access Tokens (ADR-061, wi-66). A session-based emergency login endpoint (`POST /api/auth/login`) is retained as a fallback in case of configuration failure.
 - **Password Reset via Email**: Single-use, 30-minute TTL tokens (ADR-030).
 - **Role-Based Access Control**: Admin user management API (`/api/admin/users`), user disabling (ADR-031), and a 3-step deletion process (soft-delete -> 30-day restoration window -> hard-delete/anonymization cascade, ADR-036 / ADR-072).
 - **Groups**: Group aggregation, membership management, and CRUD API/UI (`/admin/groups`) constrained within tenants. Effective roles are evaluated as `user.roles ∪ ⋃ group.roles` (ADR-038).

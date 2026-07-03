@@ -1832,8 +1832,8 @@ models:
           - address
           - custom_attribute
           - offline_access
-          - ra.admin
-          - ra.account
+          - idmagic.admin
+          - idmagic.account
       response_types_supported:
         type: "ResponseType[]"
       response_modes_supported:

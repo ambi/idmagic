@@ -85,9 +85,9 @@ func (d Deps) resolveAuthnContext(c *echo.Context) (*authdomain.AuthenticationCo
 func requiredPortalScope(path string) string {
 	switch {
 	case strings.Contains(path, "/api/admin/"):
-		return "ra.admin"
+		return "idmagic.admin"
 	case strings.Contains(path, "/api/account/"):
-		return "ra.account"
+		return "idmagic.account"
 	default:
 		return ""
 	}

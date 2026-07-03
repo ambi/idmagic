@@ -64,7 +64,7 @@ func getWithBearer(e *echo.Echo, token string) *httptest.ResponseRecorder {
 }
 
 func activeToken(sub string) *oauthports.IntrospectionResult {
-	return tokenWithScope(sub, "openid ra.admin")
+	return tokenWithScope(sub, "openid idmagic.admin")
 }
 
 func tokenWithScope(sub, scope string) *oauthports.IntrospectionResult {
@@ -102,21 +102,21 @@ func TestBearerInactiveTokenIsUnauthorized(t *testing.T) {
 
 func TestBearerWithoutPortalScopeIsUnauthorized(t *testing.T) {
 	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
-	// admin ロールはあるが token に ra.admin scope が無い → fail-closed (ADR-061)。
+	// admin ロールはあるが token に idmagic.admin scope が無い → fail-closed (ADR-061)。
 	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
 		"good": tokenWithScope("user_alice", "openid profile"),
 	}})
 	rec := getWithBearer(e, "good")
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("admin API without ra.admin scope must be 401: status=%d body=%s", rec.Code, rec.Body.String())
+		t.Fatalf("admin API without idmagic.admin scope must be 401: status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
 func TestBearerAccountScopeRejectedOnAdminAPI(t *testing.T) {
 	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
-	// account portal の token (ra.account) で admin API を叩く cross-portal 利用を拒否。
+	// account portal の token (idmagic.account) で admin API を叩く cross-portal 利用を拒否。
 	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
-		"good": tokenWithScope("user_alice", "openid profile ra.account"),
+		"good": tokenWithScope("user_alice", "openid profile idmagic.account"),
 	}})
 	rec := getWithBearer(e, "good")
 	if rec.Code != http.StatusUnauthorized {

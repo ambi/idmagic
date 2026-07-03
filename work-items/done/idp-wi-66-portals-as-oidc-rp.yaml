@@ -42,8 +42,8 @@ scope:
       `ui/ARCHITECTURE.md` の no-token-in-JS 方針の更新もここで明記する。
   scl:
     - >-
-      ファーストパーティ portal を表す OIDC クライアントと scope (`ra.admin` /
-      `ra.account`) を SCL に追記する。両 client は public + PKCE 必須 + first-party
+      ファーストパーティ portal を表す OIDC クライアントと scope (`idmagic.admin` /
+      `idmagic.account`) を SCL に追記する。両 client は public + PKCE 必須 + first-party
       (consent skip) とする。Bearer で保護される admin / account interface の前提
       (caller が access token を提示する) を反映する。
   go:
@@ -53,9 +53,9 @@ scope:
       検証し、active かつ要求 scope を含むなら `AuthenticationContext` を組み立てる。
       セッション cookie 経路は緊急ログインのため当面併存させる (dual-mode)。
     - >-
-      first-party SPA クライアント `ra-admin-console` / `ra-account-portal` を seed する
+      first-party SPA クライアント `idmagic-admin-console` / `idmagic-account-portal` を seed する
       (public, authorization_code + PKCE, redirect_uri = `/callback`,
-      scope = `openid profile ra.admin` / `openid profile ra.account`)。
+      scope = `openid profile idmagic.admin` / `openid profile idmagic.account`)。
     - >-
       first-party クライアントは consent をスキップする (Client に first_party フラグ、
       または seed 済み granted consent)。fail-open しないよう scope は固定。
@@ -63,7 +63,7 @@ scope:
     - >-
       `/api/admin/*` と `/api/account/*` の認可を Bearer 必須に切り替える (緊急セッション
       経路は残す)。401 応答は `WWW-Authenticate: Bearer` を返す。
-    - discovery の `scopes_supported` に `ra.admin` / `ra.account` を広告する。
+    - discovery の `scopes_supported` に `idmagic.admin` / `idmagic.account` を広告する。
   ui:
     - >-
       SPA に最小の OIDC RP クライアント (PKCE verifier/challenge/state/nonce 生成、
@@ -88,7 +88,7 @@ stages:
       追加的・後方互換な増分で、単体テスト可能。
   - id: scopes-and-consent
     summary: >-
-      `ra.admin` / `ra.account` scope の導入、first-party consent skip、discovery 広告。
+      `idmagic.admin` / `idmagic.account` scope の導入、first-party consent skip、discovery 広告。
   - id: spa-rp-login
     summary: >-
       SPA の OIDC RP クライアント実装、loadPageData / callback の差し替え、
@@ -150,13 +150,13 @@ completion:
     OIDC RP (authorization_code + PKCE、pure SPA) として認証する構成へ移行した。
     `/api/{admin,account}/*` は RFC 9068 アクセストークンを検証する resource server と
     なり、Bearer の `sub` を既存のロール / actor 境界 (ADR-031 / 038 / 042) に通す。
-    ファーストパーティ public クライアント `ra-admin-console` / `ra-account-portal` を
+    ファーストパーティ public クライアント `idmagic-admin-console` / `idmagic-account-portal` を
     seed し、`first_party` フラグで consent をスキップする。SPA には最小の OIDC RP
     クライアント (`api/oidc`) を実装し、`/authorize` リダイレクト・`/callback` での
     code→token 交換・refresh による silent renew・RP-initiated logout を行う。OIDC 設定
     破壊時のロックアウトを避けるため、first-party セッションログインを緊急経路として残し
     `ResolveAuthentication` を Bearer/セッション dual-mode とした。resource server は
-    portal scope (`ra.admin` / `ra.account`) を要求し、cross-portal 利用を fail-closed で
+    portal scope (`idmagic.admin` / `idmagic.account`) を要求し、cross-portal 利用を fail-closed で
     拒否する。
 
   semantic_diff:
@@ -165,13 +165,13 @@ completion:
 
   traceability:
     specification:
-      - idmagic/spec/scl.yaml  # OAuth2Client.first_party, DiscoveryDocument.scopes_supported (ra.admin / ra.account)
+      - idmagic/spec/scl.yaml  # OAuth2Client.first_party, DiscoveryDocument.scopes_supported (idmagic.admin / idmagic.account)
       - idmagic/decisions/ADR-061-first-party-portals-as-oidc-rp.md
     implementation:
       - idmagic/internal/platform/http/core/auth.go  # Bearer 解決 + portal scope 境界
       - idmagic/internal/spec/schemas.go  # Client.FirstParty
       - idmagic/internal/oauth2/adapters/http/authorize_handler.go  # first-party consent skip
-      - idmagic/internal/bootstrap/seed.go  # ra-admin-console / ra-account-portal
+      - idmagic/internal/bootstrap/seed.go  # idmagic-admin-console / idmagic-account-portal
       - idmagic/internal/platform/persistence/postgres/clients.go
       - idmagic/infra/migrations/0016_clients_first_party.sql
       - idmagic/ui/src/api/oidc.ts  # SPA OIDC RP クライアント
@@ -197,9 +197,9 @@ completion:
     - cmd: "bun --cwd idmagic/ui run lint && bun --cwd idmagic/ui typecheck && bun --cwd idmagic/ui build"
       result: ok
     - >-
-      手動 (ローカル実機): ra-admin-console で authorize(consent skip)→login→token
-      (scope ra.admin offline_access, refresh_token あり)→/api/admin/users 200、Bearer 無し
-      401。refresh_token grant で silent renew→再取得 token で 200。ra.account token は
+      手動 (ローカル実機): idmagic-admin-console で authorize(consent skip)→login→token
+      (scope idmagic.admin offline_access, refresh_token あり)→/api/admin/users 200、Bearer 無し
+      401。refresh_token grant で silent renew→再取得 token で 200。idmagic.account token は
       /api/admin/* 401・/api/account/profile 200 (cross-portal 拒否)。
 
   residual_risk:

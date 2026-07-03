@@ -67,7 +67,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  spec.AuthMethodNone,
-		Scope:                    "openid profile ra.admin",
+		Scope:                    "openid profile idmagic.admin",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
 		FapiProfile:              spec.FapiNone,
 		FirstParty:               true,
@@ -191,7 +191,7 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	e := newAuthorizeTestServer(t, authn, nil)
 	q := authorizeQuery(url.Values{})
 	q.Set("client_id", authFirstPartyClientID)
-	q.Set("scope", "openid profile ra.admin")
+	q.Set("scope", "openid profile idmagic.admin")
 	rec := runAuthorize(t, e, q)
 	// 認可コード発行は redirect_uri へ 302 (Found)。/consent への 303 ではない。
 	if rec.Code != http.StatusFound {

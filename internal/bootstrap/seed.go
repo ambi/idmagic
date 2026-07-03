@@ -117,8 +117,8 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 		name     string
 		scope    string
 	}{
-		{"ra-admin-console", "RA Admin Console", "openid profile ra.admin offline_access"},
-		{"ra-account-portal", "RA Account Portal", "openid profile ra.account offline_access"},
+		{"idmagic-admin-console", "IdMagic Admin Console", "openid profile idmagic.admin offline_access"},
+		{"idmagic-account-portal", "IdMagic Account Portal", "openid profile idmagic.account offline_access"},
 	}
 	for _, p := range portals {
 		name := p.name
@@ -162,8 +162,8 @@ func seedDemoApplications(
 		launchURL string
 		binding   spec.ProtocolBinding
 	}{
-		{"00000000-0000-4000-8000-000000000101", "RA Admin Console", "/realms/default/admin", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "ra-admin-console"}},
-		{"00000000-0000-4000-8000-000000000102", "RA Account Portal", "/realms/default/account", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "ra-account-portal"}},
+		{"00000000-0000-4000-8000-000000000101", "IdMagic Admin Console", "/realms/default/admin", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "idmagic-admin-console"}},
+		{"00000000-0000-4000-8000-000000000102", "IdMagic Account Portal", "/realms/default/account", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "idmagic-account-portal"}},
 		{"00000000-0000-4000-8000-000000000103", "Demo Client", "", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "demo-client"}},
 		{"00000000-0000-4000-8000-000000000104", "Demo WS-Federation RP", "https://rp.example/wsfed", spec.ProtocolBinding{Type: spec.ProtocolBindingWsFed, Wtrealm: "urn:idmagic:demo-rp"}},
 	}

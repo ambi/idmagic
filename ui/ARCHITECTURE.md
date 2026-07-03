@@ -48,8 +48,8 @@ transaction APIs.
 
 The admin console (`/admin/*`) and account portal (`/account/*`) authenticate as OIDC relying
 parties of the IdP itself, using `authorization_code` + PKCE against the IdP's own `/authorize`
-and `/token` (ADR-061). They are registered as first-party public clients (`ra-admin-console`,
-`ra-account-portal`) whose consent screen is skipped because the resource owner is the IdP user.
+and `/token` (ADR-061). They are registered as first-party public clients (`idmagic-admin-console`,
+`idmagic-account-portal`) whose consent screen is skipped because the resource owner is the IdP user.
 
 Because they are pure SPA RPs, the access token is held in the browser (`sessionStorage`) and sent
 as `Authorization: Bearer` to `/api/{admin,account}/*`, which validate it as RFC 9068 resource

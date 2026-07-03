@@ -25,8 +25,8 @@ IdP 自身のファーストパーティ・ブラウザセッション (HttpOnly
 
 ## 決定
 
-1. **両 portal を自分自身の IdP の OIDC RP にする**。`ra-admin-console` /
-   `ra-account-portal` を public + authorization_code + PKCE 必須 + first-party
+1. **両 portal を自分自身の IdP の OIDC RP にする**。`idmagic-admin-console` /
+   `idmagic-account-portal` を public + authorization_code + PKCE 必須 + first-party
    (consent skip) クライアントとして登録し、`/authorize`→`/callback`→`/token` で
    access token (RFC 9068 JWT, [[ADR-012]]) を取得する。
 
@@ -41,7 +41,7 @@ IdP 自身のファーストパーティ・ブラウザセッション (HttpOnly
 
 4. **リソースサーバ認可は既存境界を再利用する**。Bearer の `sub` を解決し、
    admin は `RequireAdmin` (ADR-031 / ADR-038)、account は self 境界 (ADR-042) を
-   そのまま適用する。トークンは要求 scope (`ra.admin` / `ra.account`) と audience /
+   そのまま適用する。トークンは要求 scope (`idmagic.admin` / `idmagic.account`) と audience /
    realm の一致を満たすこと。いずれも満たさなければ fail-closed。
 
 5. **ブートストラップ・ロックアウトを緩和する**。OIDC 経路が壊れても管理者が復旧できる
@@ -61,7 +61,7 @@ IdP 自身のファーストパーティ・ブラウザセッション (HttpOnly
   Bearer` を返す。セッション経路は緊急用として縮退する。
 - 循環依存により IdP 設定の破壊が管理面の可用性に影響する。緊急セッションログインを
   必ず残し、README に復旧手順を書く。
-- discovery の `scopes_supported` に `ra.admin` / `ra.account` を広告する。
+- discovery の `scopes_supported` に `idmagic.admin` / `idmagic.account` を広告する。
 
 ## 参照
 
