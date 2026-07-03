@@ -11,8 +11,14 @@ type PortalConfig = { clientId: string; scope: string }
 // offline_access を含めることで、access token 失効時に /authorize の全画面往復ではなく
 // バックグラウンドの refresh_token grant で更新できる (silent renew, wi-66 Stage 4)。
 const PORTALS: Record<PortalAudience, PortalConfig> = {
-  admin: { clientId: 'idmagic-admin-console', scope: 'openid profile idmagic.admin offline_access' },
-  account: { clientId: 'idmagic-account-portal', scope: 'openid profile idmagic.account offline_access' },
+  admin: {
+    clientId: 'idmagic-admin-console',
+    scope: 'openid profile idmagic.admin offline_access',
+  },
+  account: {
+    clientId: 'idmagic-account-portal',
+    scope: 'openid profile idmagic.account offline_access',
+  },
 }
 
 type StoredSession = { accessToken: string; refreshToken?: string; expiresAt: number }
