@@ -106,7 +106,6 @@ objectives:
         - go_version
       exposure:
         - logs
-        - version_endpoint
         - otel_resource
 user_experience:
   accessibility:

@@ -242,12 +242,3 @@ docker build \
 The running version can be verified via:
 1. **Startup Logs**: The server prints its version details on launch:
    `idmagic 1.0.0 (commit=..., date=...) listening on :8080`
-2. **Version Endpoint**: The unauthenticated `/version` HTTP endpoint returns version details:
-   ```json
-   {
-     "version": "1.0.0",
-     "git_commit": "...",
-     "build_date": "...",
-     "go_version": "go1.26"
-   }
-   ```

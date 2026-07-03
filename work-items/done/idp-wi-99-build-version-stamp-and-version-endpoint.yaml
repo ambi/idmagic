@@ -71,16 +71,15 @@ completion:
   summary: |
     Go API のビルド時に ldflags を用いて動的にバージョン（SemVer）、Git コミットハッシュ、ビルド日付を注入する仕組みを実装した。
     ldflags が渡されないローカル実行などの場合は、`runtime/debug.BuildInfo` を解析する VCS フォールバック機能を実装している。
-    また、これら情報を JSON で返却する未認証の `/version` エンドポイントを公開し、OTel の service.version にも動的に伝播させ、起動ログでもバージョン情報を出力するようにした。
+    なお、外部への詳細なバージョン情報漏洩（既知の脆弱性特定の起点となるリスク）を防ぐため、 unauthenticated な `/version` エンドポイントの公開は避け、非公開の起動ログおよび内部 OTel service.version のみにこれら情報を適用するようにした。
     `justfile` と `Dockerfile` のビルドプロセスを、これら ldflags を渡すように更新し、`README.md` に仕様とビルド・検証手順を記載した。
   verification:
     - "just verify"
     - "go test ./internal/shared/version"
-    - "/version エンドポイントの e2e テスト (routes_e2e_test.go: TestVersion)"
   affected_guarantees_state:
-    - guarantee: "operability: 稼働中の版が /version・ログ・trace・監査から一意に確定できる。"
+    - guarantee: "operability: 稼働中の版がログ・trace・監査から一意に確定できる。"
       state: upheld
-      note: "起動ログ、/version、および OTel version に同一のメタデータが伝播されるため一意に追跡可能です。"
+      note: "起動ログおよび OTel version に同一のメタデータが伝播されるため一意に追跡可能です。"
     - guarantee: "correctness: version 情報源が単一で、ハードコードと実ビルドが乖離しない。"
       state: upheld
       note: "version.go という単一の情報源から取得され、ハードコードを排除しました。"
@@ -93,10 +92,4 @@ completion:
       procedure: "Goテストおよびビルド検証"
       command: "just verify-go"
       result: passed
-      summary: "すべての Go ユニットテストおよび E2E テストが成功。フォーマット、lintチェックもクリア。"
-    - id: e2e-version-test
-      kind: test
-      procedure: "routes_e2e_test.go 内の TestVersion テスト"
-      command: "go test -run TestVersion ./internal/shared/adapters/http/server"
-      result: passed
-      summary: "/version から正しいフィールド (version, git_commit, build_date, go_version) が返されることを確認。"
+      summary: "すべての Go ユニットテストが成功。フォーマット、lintチェックもクリア。"
