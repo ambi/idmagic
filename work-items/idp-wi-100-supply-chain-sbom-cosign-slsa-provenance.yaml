@@ -1,0 +1,63 @@
+id: idp-wi-100-supply-chain-sbom-cosign-slsa-provenance
+title: ADR-020 を実装し SBOM 同梱・cosign keyless 署名・SLSA provenance をリリース成果物に付与する
+created_at: 2026-07-04
+authors: [tn]
+status: pending
+
+motivation: |
+  ADR-020 はサプライチェーン保護として SLSA Level 3・Sigstore(cosign) 署名・
+  CycloneDX SBOM 同梱・再現性検証を「採用」と決定しているが、現行 CI
+  (idmagic-ci.yaml) が実装しているのは Trivy スキャン・CodeQL・frozen-lockfile・
+  no-push のイメージビルドまでで、SBOM 生成、cosign 署名、SLSA provenance、
+  Rekor 透明性ログ、semgrep OAuth ルールは未実装。OAuth2/OIDC IdP は他システムが
+  認証を委ねる pivot 攻撃の起点であり、成果物が改ざん不能で内容を即答できる体制は
+  本番前提である。ADR は在るが実装が無い状態を WI として着地させる。
+
+  Kubernetes リリースや Sigstore が示すとおり、keyless 署名（GitHub OIDC）+ SBOM
+  attestation + 検証可能な provenance を「リリースと atomic に」生成することが要点で、
+  リリース後生成では攻撃時に稼働版と SBOM が乖離する（ADR-020 が却下した案）。
+
+scope:
+  ci_release:
+    - >-
+      リリース時にコンテナイメージへ Syft で CycloneDX SBOM を生成し、
+      `cosign attest` で attestation として署名する。
+    - >-
+      `cosign sign`（GitHub OIDC keyless）でイメージ署名し、Rekor に記録する。
+      検証手順（`cosign verify` / `cosign verify-attestation`）を文書化する。
+    - >-
+      SLSA provenance generator でビルド provenance を生成し non-falsifiable に保つ。
+      到達可能な SLSA レベルを明記する（GitHub-hosted runner 前提）。
+    - >-
+      semgrep で OAuth 2.0 Security BCP 由来の禁止パターン ruleset を CI に追加する
+      （ADR-020 の依存スキャン節）。
+    - WI-99 の version stamp と、署名対象イメージ tag・SBOM を対応付ける。
+  documentation:
+    - README に成果物検証手順（cosign verify、SBOM 取得、provenance 確認）を書く。
+    - Kubernetes 側で未署名イメージを拒否する admission（Policy Controller 等）の前提を記す。
+
+out_of_scope:
+  - Kubernetes admission controller 本体のデプロイ・運用（前提として記述のみ）。
+  - SLSA L4（two-person review）— ADR-020 が out of scope とする。
+  - アプリケーションコード・HTTP API の変更。
+  - UI バンドルの本番堅牢化（別途 WI-104 系の範囲）。
+
+affected_guarantees:
+  - supply chain: リリース成果物が改ざん不能な署名と provenance を持ち、内容を SBOM から即答できる。
+  - reproducibility: frozen-lockfile と SBOM の checksum でビルド再現性を検証できる。
+  - correctness: SBOM / 署名 / provenance がリリースと atomic に生成され、稼働版と乖離しない。
+
+verification:
+  - >-
+    CI: リリースワークフローで SBOM・署名・provenance が生成され、`cosign verify` と
+    `cosign verify-attestation` が成功する.
+  - "CI: semgrep OAuth ruleset がパイプラインで実行される。"
+  - "手動: 生成されたイメージに対し外部から cosign verify が透明性ログ込みで通ることを確認する。"
+  - cmd: 'go build ./...'
+    in: idmagic
+
+risk: medium
+risk_notes: |
+  keyless 署名は GitHub OIDC 権限（id-token: write）とワークフロー分離に依存する。
+  権限過多や pull_request からの署名を避け、署名・attest は push/tag トリガに限定する。
+  SLSA generator の版差でワークフロー構文が変わりやすいので固定版で導入する。

@@ -2,8 +2,8 @@
 
 ## Claude Code
 
-Use the RA/SCL skills from `.claude/skills` before changing behavior. In this
-repository, `.claude/skills` points at the GitHub-backed RA/SCL core submodule
-under `.ra-scl/regenerative-architecture/.claude/skills`. Keep this file short;
-task workflows belong in skills and detailed RA/SCL definitions belong in
-section-addressable reference documents.
+Use the RA/SCL skills available in the agent environment before changing
+behavior. Keep this file short; task workflows belong in skills and detailed
+RA/SCL definitions belong in section-addressable reference documents. The `ra`
+CLI discovers the standard `spec/`, `decisions/`, and `work-items/` layout
+without a repository-local registry file.

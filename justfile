@@ -6,9 +6,7 @@
 
 set shell := ["zsh", "-cu"]
 
-ra_scl_core := env_var_or_default("RA_SCL_CORE", ".ra-scl/regenerative-architecture")
-ra_scl_tools := ra_scl_core + "/tools"
-app_from_tools := "../../.."
+ra_cmd := env_var_or_default("RA_CMD", "bun run .ra/regenerative-architecture/tools/ra/src/main.ts")
 go_cache := env_var_or_default("GOCACHE", "/tmp/idmagic-go-cache")
 golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
 
@@ -16,18 +14,18 @@ golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golang
 default:
     @just --list
 
-# Install RA/SCL tool dependencies and local dependencies.
-setup: setup-ra-scl install-ui
+# Install local dependencies and setup RA submodule.
+setup: setup-ra install-ui
 
-# Install or update the GitHub-backed RA/SCL core submodule.
-setup-ra-scl:
-    git submodule update --init --recursive .ra-scl/regenerative-architecture
-    cd {{ra_scl_tools}} && bun install --frozen-lockfile
+# Setup RA submodule, install tools dependencies, and link agent skills.
+setup-ra:
+    git submodule update --init --recursive
+    cd .ra/regenerative-architecture/tools && bun install
+    mkdir -p .claude
+    ln -sfn ../.ra/regenerative-architecture/.claude/skills .claude/skills
+    mkdir -p .agents
+    ln -sfn ../.ra/regenerative-architecture/.claude/skills .agents/skills
 
-# Move the RA/SCL core submodule to the latest GitHub default branch.
-update-ra-scl:
-    git submodule update --init --remote --merge .ra-scl/regenerative-architecture
-    cd {{ra_scl_tools}} && bun install --frozen-lockfile
 
 # Install UI dependencies.
 install-ui:
@@ -87,22 +85,19 @@ yaml-check: yaml-check-scl yaml-check-work-items check-ids
 
 # Validate SCL YAML files.
 yaml-check-scl:
-    cd {{ra_scl_tools}} && bun run yaml-check -- --schema=scl {{app_from_tools}}/spec/scl.yaml '{{app_from_tools}}/spec/contexts/*.yaml'
+    {{ra_cmd}} yaml-check --scl
 
 # Validate Work Item YAML files.
 yaml-check-work-items:
-    cd {{ra_scl_tools}} && bun run yaml-check -- --schema=work-item '{{app_from_tools}}/work-items/*.yaml' '{{app_from_tools}}/work-items/done/*.yaml'
+    {{ra_cmd}} yaml-check --work-items
 
 # Detect duplicate / mismatched change-record ids.
 check-ids:
-    cd {{ra_scl_tools}} && bun run yaml-check/src/check-ids.ts --work-items {{app_from_tools}}/work-items --decisions {{app_from_tools}}/decisions
+    {{ra_cmd}} yaml-check --ids
 
 # Regenerate SCL-derived artifacts.
 scl-render:
-    cd {{ra_scl_tools}} && bun run scl-to-html -- --scl {{app_from_tools}}/spec/scl.yaml --title IdMagic --out {{app_from_tools}}/spec/idmagic.html
-    cd {{ra_scl_tools}} && bun run scl-to-html -- --scl {{app_from_tools}}/spec/scl.yaml --decisions {{app_from_tools}}/decisions --work-items {{app_from_tools}}/work-items --title IdMagic --out {{app_from_tools}}/spec/idmagic.full.html
-    cd {{ra_scl_tools}} && bun run scl-to-jsonschema -- --scl {{app_from_tools}}/spec/scl.yaml --out {{app_from_tools}}/spec/idmagic.models.schema.json
-    cd {{ra_scl_tools}} && bun run scl-to-openapi -- --scl {{app_from_tools}}/spec/scl.yaml --out {{app_from_tools}}/spec/idmagic.openapi.json
+    {{ra_cmd}} render
 
 # Start the Go API for local UI development.
 dev-api:
