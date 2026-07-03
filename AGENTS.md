@@ -1,4 +1,4 @@
-# AGENTS.md
+# AGENTS.md / CLAUDE.md
 
 ## Interaction Language
 
