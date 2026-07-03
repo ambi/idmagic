@@ -19,3 +19,6 @@ node_modules/
 # OS / editor
 .DS_Store
 *.swp
+
+# SCL rendered artifacts
+spec/idmagic.full.html
