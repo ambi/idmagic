@@ -40,11 +40,6 @@ func (h *Handler) authenticate(c *echo.Context) (string, error) {
 		return "", errors.New("tenant mismatch")
 	}
 
-	cfg, err := h.deps.Usecases.GetConfig(c.Request().Context(), reqTenantID)
-	if err != nil || !cfg.Enabled {
-		return "", errors.New("SCIM is disabled for this tenant")
-	}
-
 	return reqTenantID, nil
 }
 
@@ -389,18 +384,7 @@ func (h *Handler) handleDeleteGroup(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// Admin API for SCIM configuration and tokens
-
-type scimConfigResponse struct {
-	TenantID  string    `json:"tenant_id"`
-	Enabled   bool      `json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type scimConfigUpdateRequest struct {
-	Enabled bool `json:"enabled"`
-}
+// Admin API for SCIM access tokens
 
 type scimTokenResponse struct {
 	ID          string     `json:"id"`
@@ -412,49 +396,6 @@ type scimTokenResponse struct {
 type scimTokenCreateRequest struct {
 	Description string `json:"description"`
 	ExpiryDays  int    `json:"expiry_days"`
-}
-
-func (h *Handler) handleGetAdminConfig(c *echo.Context) error {
-	if _, err := h.deps.RequireAdmin(c); err != nil {
-		return h.deps.WriteAdminAccessError(c, err)
-	}
-
-	tenantID := support.RequestTenantID(c)
-	cfg, err := h.deps.Usecases.GetConfig(c.Request().Context(), tenantID)
-	if err != nil {
-		return err
-	}
-
-	return support.NoStoreJSON(c, http.StatusOK, scimConfigResponse{
-		TenantID:  cfg.TenantID,
-		Enabled:   cfg.Enabled,
-		CreatedAt: cfg.CreatedAt,
-		UpdatedAt: cfg.UpdatedAt,
-	})
-}
-
-func (h *Handler) handleUpdateAdminConfig(c *echo.Context) error {
-	if _, err := h.deps.RequireAdmin(c); err != nil {
-		return h.deps.WriteAdminAccessError(c, err)
-	}
-
-	tenantID := support.RequestTenantID(c)
-	var body scimConfigUpdateRequest
-	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return err
-	}
-
-	cfg, err := h.deps.Usecases.UpdateConfig(c.Request().Context(), tenantID, body.Enabled)
-	if err != nil {
-		return err
-	}
-
-	return support.NoStoreJSON(c, http.StatusOK, scimConfigResponse{
-		TenantID:  cfg.TenantID,
-		Enabled:   cfg.Enabled,
-		CreatedAt: cfg.CreatedAt,
-		UpdatedAt: cfg.UpdatedAt,
-	})
 }
 
 func (h *Handler) handleListAdminTokens(c *echo.Context) error {

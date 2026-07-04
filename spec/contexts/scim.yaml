@@ -2,6 +2,13 @@ system: idmagic
 spec_version: "2.0"
 context: Scim
 
+glossary:
+  ScimToken:
+    definition: SCIM 2.0 API アクセス用のアクセストークン。SCIM クライアントは Authorization ヘッダに Bearer スキームで提示する。現状はテナント管理者が発行・失効を管理する長寿命トークンだが、認証方式は SCIM 2.0 仕様では規定されておらず、将来 OAuth 2.0 で発行したアクセストークンを受け入れる余地も残す。
+    aliases:
+      - SCIM アクセストークン
+      - access token
+
 models:
   ScimUserRef:
     kind: entity
@@ -25,24 +32,9 @@ models:
         type: String
       group_id:
         type: String
-  ScimConfig:
-    kind: entity
-    description: テナントごとの SCIM 2.0 Inbound Provisioning 有効化設定。
-    identity: tenant_id
-    fields:
-      tenant_id:
-        type: String
-      enabled:
-        type: Boolean
-      created_at:
-        type: Timestamp
-        description: 設定行を初めて作成した時刻。
-      updated_at:
-        type: Timestamp
-        description: 作成時と設定更新時に保存する tenant-scoped configuration の更新時刻。
   ScimToken:
     kind: entity
-    description: SCIM 2.0 API へのアクセス用 Bearer Token。
+    description: SCIM 2.0 API アクセス用のアクセストークン。Bearer スキームで提示する。有効なアクセストークンが1本もなければ SCIM API は事実上利用できず、これがテナントごとの有効・無効の唯一の判断軸となる。
     identity: id
     fields:
       tenant_id:
@@ -237,34 +229,8 @@ interfaces:
       - kind: http
         method: DELETE
         path: "/scim/v2/Groups/{id}"
-  GetScimConfig:
-    description: テナントの SCIM 同期設定を取得する。
-    input:
-      tenant_id:
-        type: String
-    output:
-      config:
-        type: "Map<String,JSON>"
-    bindings:
-      - kind: http
-        method: GET
-        path: /api/admin/scim/config
-  UpdateScimConfig:
-    description: テナントの SCIM 同期設定を更新する。
-    input:
-      tenant_id:
-        type: String
-      enabled:
-        type: Boolean
-    output:
-      config:
-        type: "Map<String,JSON>"
-    bindings:
-      - kind: http
-        method: PUT
-        path: /api/admin/scim/config
   ListScimTokens:
-    description: テナントの SCIM トークン一覧を取得する。
+    description: テナントの SCIM アクセストークン一覧を取得する。
     input:
       tenant_id:
         type: String
@@ -276,7 +242,7 @@ interfaces:
         method: GET
         path: /api/admin/scim/tokens
   CreateScimToken:
-    description: テナントの SCIM トークンを新規発行する。
+    description: テナントの SCIM アクセストークンを新規発行する。
     input:
       tenant_id:
         type: String
@@ -292,7 +258,7 @@ interfaces:
         method: POST
         path: /api/admin/scim/tokens
   RevokeScimToken:
-    description: テナントの SCIM トークンを無効化する。
+    description: テナントの SCIM アクセストークンを無効化する。
     input:
       tenant_id:
         type: String
@@ -309,9 +275,9 @@ permissions:
     resource: User
     allow_when: "true"
   ManageScimSettings:
-    description: SCIM 連携設定やトークンを管理する権限。
+    description: SCIM アクセストークンを管理する権限。
     actor: User
-    resource: ScimConfig
+    resource: ScimToken
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
   外部IDPからのSCIMユーザー同期ライフサイクル:
@@ -320,7 +286,7 @@ scenarios:
     scope: Scim
     level: user_goal
     preconditions:
-      - "SCIM Bearer Token が有効化されている"
+      - "有効な SCIM アクセストークンが発行されている"
     main_success:
       - "SCIMクライアントが CreateScimUser を呼び出す"
       - "内部 User が作成され status が Active になる"
@@ -334,7 +300,7 @@ scenarios:
     scope: Scim
     level: user_goal
     preconditions:
-      - "SCIM Bearer Token が有効化されている"
+      - "有効な SCIM アクセストークンが発行されている"
     main_success:
       - "SCIMクライアントが CreateScimGroup を呼び出す"
       - "グループが作成される"

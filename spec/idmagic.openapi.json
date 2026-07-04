@@ -8472,91 +8472,10 @@
         }
       }
     },
-    "/api/admin/scim/config": {
-      "get": {
-        "operationId": "GetScimConfig",
-        "summary": "テナントの SCIM 同期設定を取得する。",
-        "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "config": {}
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "config"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "UpdateScimConfig",
-        "summary": "テナントの SCIM 同期設定を更新する。",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "enabled": {
-                    "type": "boolean"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "enabled"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "config": {}
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "config"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/admin/scim/tokens": {
       "get": {
         "operationId": "ListScimTokens",
-        "summary": "テナントの SCIM トークン一覧を取得する。",
+        "summary": "テナントの SCIM アクセストークン一覧を取得する。",
         "parameters": [
           {
             "name": "tenant_id",
@@ -8592,7 +8511,7 @@
       },
       "post": {
         "operationId": "CreateScimToken",
-        "summary": "テナントの SCIM トークンを新規発行する。",
+        "summary": "テナントの SCIM アクセストークンを新規発行する。",
         "requestBody": {
           "required": true,
           "content": {
@@ -8644,7 +8563,7 @@
     "/api/admin/scim/tokens/{id}": {
       "delete": {
         "operationId": "RevokeScimToken",
-        "summary": "テナントの SCIM トークンを無効化する。",
+        "summary": "テナントの SCIM アクセストークンを無効化する。",
         "parameters": [
           {
             "name": "id",
@@ -15920,35 +15839,6 @@
         ],
         "description": "SAML SSO 要求を拒否した (未登録 entityID・許可外 ACS URL・未割当 subject・解析失敗など)。"
       },
-      "ScimConfig": {
-        "type": "object",
-        "properties": {
-          "tenant_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "設定行を初めて作成した時刻。"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "作成時と設定更新時に保存する tenant-scoped configuration の更新時刻。"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "tenant_id",
-          "enabled",
-          "created_at",
-          "updated_at"
-        ],
-        "description": "テナントごとの SCIM 2.0 Inbound Provisioning 有効化設定。"
-      },
       "ScimGroupRef": {
         "type": "object",
         "properties": {
@@ -16002,7 +15892,7 @@
           "description",
           "created_at"
         ],
-        "description": "SCIM 2.0 API へのアクセス用 Bearer Token。"
+        "description": "SCIM 2.0 API アクセス用のアクセストークン。Bearer スキームで提示する。有効なアクセストークンが1本もなければ SCIM API は事実上利用できず、これがテナントごとの有効・無効の唯一の判断軸となる。"
       },
       "ScimUserRef": {
         "type": "object",

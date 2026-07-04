@@ -40,10 +40,10 @@ func TestScimInboundProvisioning(t *testing.T) {
 	e := echo.New()
 	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
 
-	// 1. テナント設定で SCIM が無効なときはエラーになること
+	// 1. 未登録のアクセストークンでは 401 になること
 	{
 		req := httptest.NewRequest(http.MethodGet, "/scim/v2/ServiceProviderConfig", http.NoBody)
-		req.Header.Set("Authorization", "Bearer valid-token")
+		req.Header.Set("Authorization", "Bearer unregistered-token")
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
@@ -51,15 +51,9 @@ func TestScimInboundProvisioning(t *testing.T) {
 		}
 	}
 
-	// 2. SCIM 有効化とトークン生成
+	// 2. アクセストークン生成
 	var tokenStr string
 	{
-		// 有効化
-		_, err := usecasesInst.UpdateConfig(ctx, "default", true)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		// トークン生成
 		tokStr, _, err := usecasesInst.GenerateToken(ctx, "default", "Okta Integration", 30)
 		if err != nil {
@@ -221,7 +215,6 @@ func TestScimGroupSync(t *testing.T) {
 	e := echo.New()
 	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
 
-	_, _ = usecasesInst.UpdateConfig(ctx, "default", true)
 	tokenStr, _, _ := usecasesInst.GenerateToken(ctx, "default", "Integration", 30)
 
 	// 1. テストユーザー作成

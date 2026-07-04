@@ -3,14 +3,12 @@ package memory
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/ambi/idmagic/internal/scim/ports"
 )
 
 type ScimRepository struct {
 	mu        sync.RWMutex
-	configs   map[string]*ports.ScimConfig
 	tokens    map[string]*ports.ScimToken
 	userRefs  map[string]map[string]*ports.ScimUserRef  // tenantID -> scimID -> Ref
 	groupRefs map[string]map[string]*ports.ScimGroupRef // tenantID -> scimID -> Ref
@@ -18,42 +16,10 @@ type ScimRepository struct {
 
 func NewScimRepository() *ScimRepository {
 	return &ScimRepository{
-		configs:   make(map[string]*ports.ScimConfig),
 		tokens:    make(map[string]*ports.ScimToken),
 		userRefs:  make(map[string]map[string]*ports.ScimUserRef),
 		groupRefs: make(map[string]map[string]*ports.ScimGroupRef),
 	}
-}
-
-func (r *ScimRepository) GetConfig(_ context.Context, tenantID string) (*ports.ScimConfig, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	cfg := r.configs[tenantID]
-	if cfg == nil {
-		return &ports.ScimConfig{
-			TenantID: tenantID,
-			Enabled:  false,
-		}, nil
-	}
-	cloned := *cfg
-	return &cloned, nil
-}
-
-func (r *ScimRepository) SaveConfig(_ context.Context, config *ports.ScimConfig) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	cloned := *config
-	if existing := r.configs[config.TenantID]; existing != nil && cloned.CreatedAt.IsZero() {
-		cloned.CreatedAt = existing.CreatedAt
-	}
-	if cloned.CreatedAt.IsZero() {
-		cloned.CreatedAt = time.Now().UTC()
-	}
-	if cloned.UpdatedAt.IsZero() {
-		cloned.UpdatedAt = time.Now().UTC()
-	}
-	r.configs[config.TenantID] = &cloned
-	return nil
 }
 
 func (r *ScimRepository) SaveToken(_ context.Context, token *ports.ScimToken) error {

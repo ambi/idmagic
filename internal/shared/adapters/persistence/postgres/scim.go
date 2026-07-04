@@ -11,32 +11,6 @@ import (
 
 type ScimRepository struct{ Pool DB }
 
-func (r *ScimRepository) GetConfig(ctx context.Context, tenantID string) (*ports.ScimConfig, error) {
-	var cfg ports.ScimConfig
-	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, enabled, last_sync_at, error_count, created_at, updated_at FROM scim_configs WHERE tenant_id=$1", tenantID).
-		Scan(&cfg.TenantID, &cfg.Enabled, &cfg.LastSyncAt, &cfg.ErrorCount, &cfg.CreatedAt, &cfg.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return &ports.ScimConfig{TenantID: tenantID, Enabled: false}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &cfg, nil
-}
-
-func (r *ScimRepository) SaveConfig(ctx context.Context, config *ports.ScimConfig) error {
-	_, err := r.Pool.Exec(ctx, `
-		INSERT INTO scim_configs (tenant_id, enabled, last_sync_at, error_count, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (tenant_id) DO UPDATE SET
-			enabled=EXCLUDED.enabled,
-			last_sync_at=EXCLUDED.last_sync_at,
-			error_count=EXCLUDED.error_count,
-			updated_at=EXCLUDED.updated_at
-	`, config.TenantID, config.Enabled, config.LastSyncAt, config.ErrorCount, config.CreatedAt, config.UpdatedAt)
-	return err
-}
-
 func (r *ScimRepository) SaveToken(ctx context.Context, token *ports.ScimToken) error {
 	_, err := r.Pool.Exec(ctx, `
 		INSERT INTO scim_tokens (id, tenant_id, token_hash, description, created_at, expires_at)

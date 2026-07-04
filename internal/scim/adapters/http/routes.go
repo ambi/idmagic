@@ -34,9 +34,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.PATCH("/scim/v2/Groups/:id", h.handlePatchGroup)
 	g.DELETE("/scim/v2/Groups/:id", h.handleDeleteGroup)
 
-	// Admin API for SCIM management
-	g.GET("/api/admin/scim/config", h.handleGetAdminConfig)
-	g.PUT("/api/admin/scim/config", h.handleUpdateAdminConfig)
+	// Admin API for SCIM access tokens
 	g.GET("/api/admin/scim/tokens", h.handleListAdminTokens)
 	g.POST("/api/admin/scim/tokens", h.handleCreateAdminToken)
 	g.DELETE("/api/admin/scim/tokens/:id", h.handleRevokeAdminToken)

@@ -63,7 +63,7 @@ var rolePermissionInterfaces = map[string][]string{
 		"CreateScimGroup", "GetScimGroup", "PatchScimGroup", "UpdateScimGroup", "DeleteScimGroup",
 	},
 	"ManageScimSettings": {
-		"GetScimConfig", "UpdateScimConfig", "ListScimTokens", "CreateScimToken", "RevokeScimToken",
+		"ListScimTokens", "CreateScimToken", "RevokeScimToken",
 	},
 }
 

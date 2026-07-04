@@ -9,7 +9,6 @@ import type {
   AdminGroupMember,
   AdminKey,
   AdminSettings,
-  ScimConfig,
   ScimToken,
   TenantKeyHealth,
   AdminTenant,
@@ -868,14 +867,6 @@ export async function setApplicationCategories(
     `/api/admin/applications/${encodeURIComponent(id)}/categories`,
     adminRequest(csrfToken, 'PUT', { category_ids: categoryIDs }),
   )
-}
-
-export async function getScimConfig(): Promise<ScimConfig> {
-  return request<ScimConfig>('/api/admin/scim/config')
-}
-
-export async function updateScimConfig(csrfToken: string, enabled: boolean): Promise<ScimConfig> {
-  return request('/api/admin/scim/config', adminRequest(csrfToken, 'PUT', { enabled }))
 }
 
 export async function listScimTokens(): Promise<ScimToken[]> {

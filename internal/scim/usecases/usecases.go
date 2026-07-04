@@ -103,35 +103,6 @@ func (u *Usecases) RevokeToken(ctx context.Context, tenantID, id string) error {
 	return u.ScimRepo.DeleteToken(ctx, tenantID, id)
 }
 
-// Config Management
-func (u *Usecases) GetConfig(ctx context.Context, tenantID string) (*ports.ScimConfig, error) {
-	cfg, err := u.ScimRepo.GetConfig(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if cfg == nil {
-		// default disabled
-		return &ports.ScimConfig{TenantID: tenantID, Enabled: false}, nil
-	}
-	return cfg, nil
-}
-
-func (u *Usecases) UpdateConfig(ctx context.Context, tenantID string, enabled bool) (*ports.ScimConfig, error) {
-	now := time.Now().UTC()
-	cfg := &ports.ScimConfig{TenantID: tenantID, Enabled: enabled, CreatedAt: now, UpdatedAt: now}
-	existing, err := u.ScimRepo.GetConfig(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil && !existing.CreatedAt.IsZero() {
-		cfg.CreatedAt = existing.CreatedAt
-	}
-	if err := u.ScimRepo.SaveConfig(ctx, cfg); err != nil {
-		return nil, err
-	}
-	return cfg, nil
-}
-
 // SCIM API Handlers mapping to IdP Core
 
 func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {

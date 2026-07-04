@@ -5,15 +5,6 @@ import (
 	"time"
 )
 
-type ScimConfig struct {
-	TenantID   string
-	Enabled    bool
-	LastSyncAt *time.Time
-	ErrorCount int
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
-
 type ScimToken struct {
 	ID          string
 	TenantID    string
@@ -36,9 +27,6 @@ type ScimGroupRef struct {
 }
 
 type ScimRepository interface {
-	GetConfig(ctx context.Context, tenantID string) (*ScimConfig, error)
-	SaveConfig(ctx context.Context, config *ScimConfig) error
-
 	SaveToken(ctx context.Context, token *ScimToken) error
 	FindToken(ctx context.Context, tokenHash string) (*ScimToken, error)
 	ListTokens(ctx context.Context, tenantID string) ([]*ScimToken, error)

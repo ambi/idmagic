@@ -532,10 +532,3 @@ export type ScimToken = {
   created_at: string
   expires_at?: string
 }
-
-export type ScimConfig = {
-  tenant_id: string
-  enabled: boolean
-  created_at: string
-  updated_at: string
-}
