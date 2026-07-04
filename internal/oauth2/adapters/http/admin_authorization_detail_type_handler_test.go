@@ -29,10 +29,13 @@ func newAdminAuthzTypeHandler() *echo.Echo {
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", UserRepo: users, AuthzDetailTypeRepo: types,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test",
+
+			Emit: func(spec.DomainEvent) {},
+		}, UserRepo: users, AuthzDetailTypeRepo: types,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
-		Emit:          func(spec.DomainEvent) {},
 	})
 	return e
 }

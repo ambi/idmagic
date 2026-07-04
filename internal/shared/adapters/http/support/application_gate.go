@@ -28,13 +28,13 @@ type ApplicationAccessDecision struct {
 // ApplicationAccessAllowed は binding 経由のフェデレーション開始を許可してよいかを返す。
 // Application が見つからない (catalog 外) なら true。見つかった場合は active かつ
 // subject が割当済みのときのみ true。判定不能・未割当・disabled は false (fail-closed)。
-func (d Deps) ApplicationAccessAllowed(
+func (g *ApplicationGate) ApplicationAccessAllowed(
 	ctx context.Context,
 	tenantID string,
 	bindingType spec.ProtocolBindingType,
 	bindingKey, sub string,
 ) (bool, error) {
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, nil, "")
+	decision, err := g.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, nil, "")
 	if err != nil {
 		return false, err
 	}
@@ -43,8 +43,8 @@ func (d Deps) ApplicationAccessAllowed(
 
 // ClientIP は信頼済み転送ホップ数を考慮して X-Forwarded-For からクライアント IP を解決する。
 // TRUSTED_FORWARDED_HOPS が 0 (直結/未設定) の場合は空を返し、CIDR 条件は fail-closed になる。
-func (d Deps) ClientIP(r *http.Request) string {
-	if r == nil || d.TrustedForwardedHops <= 0 {
+func (g *ApplicationGate) ClientIP(r *http.Request) string {
+	if r == nil || g.GateTrustedForwardedHops <= 0 {
 		return ""
 	}
 	parts := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
@@ -54,14 +54,14 @@ func (d Deps) ClientIP(r *http.Request) string {
 			ips = append(ips, ip)
 		}
 	}
-	index := len(ips) - 1 - d.TrustedForwardedHops
+	index := len(ips) - 1 - g.GateTrustedForwardedHops
 	if index < 0 || index >= len(ips) {
 		return ""
 	}
 	return ips[index]
 }
 
-func (d Deps) EvaluateApplicationAccess(
+func (g *ApplicationGate) EvaluateApplicationAccess(
 	ctx context.Context,
 	tenantID string,
 	bindingType spec.ProtocolBindingType,
@@ -69,10 +69,10 @@ func (d Deps) EvaluateApplicationAccess(
 	authn *authdomain.AuthenticationContext,
 	clientIP string,
 ) (ApplicationAccessDecision, error) {
-	if d.ApplicationRepo == nil {
+	if g.ApplicationRepo == nil {
 		return ApplicationAccessDecision{Allowed: true}, nil
 	}
-	app, err := d.ApplicationRepo.FindByBinding(ctx, tenantID, bindingType, bindingKey)
+	app, err := g.ApplicationRepo.FindByBinding(ctx, tenantID, bindingType, bindingKey)
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
@@ -82,20 +82,20 @@ func (d Deps) EvaluateApplicationAccess(
 	if app.Status != spec.ApplicationActive {
 		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "application is disabled"}, nil
 	}
-	if d.ApplicationAssignmentRepo == nil {
+	if g.ApplicationAssignmentRepo == nil {
 		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "application assignments are unavailable"}, nil
 	}
 	subjects := []appports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: sub}}
-	if d.GroupRepo != nil {
-		groups, err := d.GroupRepo.ListGroupsByUser(ctx, tenantID, sub)
+	if g.GroupRepo != nil {
+		groups, err := g.GroupRepo.ListGroupsByUser(ctx, tenantID, sub)
 		if err != nil {
 			return ApplicationAccessDecision{}, err
 		}
-		for _, g := range groups {
-			subjects = append(subjects, appports.SubjectRef{Type: spec.AssignmentSubjectGroup, ID: g.ID})
+		for _, grp := range groups {
+			subjects = append(subjects, appports.SubjectRef{Type: spec.AssignmentSubjectGroup, ID: grp.ID})
 		}
 	}
-	assignments, err := d.ApplicationAssignmentRepo.ListBySubjects(ctx, tenantID, subjects)
+	assignments, err := g.ApplicationAssignmentRepo.ListBySubjects(ctx, tenantID, subjects)
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
@@ -109,17 +109,17 @@ func (d Deps) EvaluateApplicationAccess(
 	if !assigned {
 		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "subject not assigned to application"}, nil
 	}
-	if d.ApplicationSignInPolicyRepo == nil {
+	if g.ApplicationSignInPolicyRepo == nil {
 		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ApplicationID}, nil
 	}
-	policy, err := d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
+	policy, err := g.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
 	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル, ADR-081)。
 	var defaultPolicy *spec.TenantDefaultSignInPolicy
-	if d.DefaultSignInPolicyRepo != nil {
-		defaultPolicy, err = d.DefaultSignInPolicyRepo.Get(ctx, tenantID)
+	if g.DefaultSignInPolicyRepo != nil {
+		defaultPolicy, err = g.DefaultSignInPolicyRepo.Get(ctx, tenantID)
 		if err != nil {
 			return ApplicationAccessDecision{}, err
 		}

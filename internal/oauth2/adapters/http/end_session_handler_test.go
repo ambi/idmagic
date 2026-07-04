@@ -40,9 +40,8 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 		CreatedAt:                time.Now().UTC(),
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:     "http://test",
-		ClientRepo: clientRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 	})
 	return e
 }

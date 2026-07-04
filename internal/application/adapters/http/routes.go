@@ -6,19 +6,37 @@
 package http
 
 import (
+	appports "github.com/ambi/idmagic/internal/application/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	samlports "github.com/ambi/idmagic/internal/saml/ports"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。
+// Deps は Application HTTP ハンドラが必要とする依存。
 type Deps struct {
-	*support.Deps
+	support.Deps
+	*support.Authenticator
+
+	ApplicationRepo             appports.ApplicationRepository
+	ApplicationIconStore        appports.ApplicationIconStore
+	ApplicationAssignmentRepo   appports.AssignmentRepository
+	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
+	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
+	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+	GroupRepo                   idmports.GroupRepository
+	UserRepo                    idmports.UserRepository
+	ClientRepo                  oauthports.OAuth2ClientRepository
+	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
+	SamlSPRepo                  samlports.SamlServiceProviderRepository
 }
 
 // RegisterRoutes は Application カタログの admin / account エンドポイントを登録する。
-func RegisterRoutes(g *echo.Group, cd *support.Deps) {
-	d := Deps{cd}
+func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/applications", d.handleListApplications)
 	g.POST("/api/admin/applications", d.handleCreateApplication)
 	g.GET("/api/admin/applications/:application_id", d.handleGetApplication)

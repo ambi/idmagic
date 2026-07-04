@@ -104,14 +104,16 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice"})
 
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:           "https://idp.example",
-		SCL:              spec.MustLoadSCL(),
-		SamlSPRepo:       spRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+
+			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
+		}, SamlSPRepo: spRepo,
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: authn},
-		Emit:             func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 	})
 	return e, captured
 }
@@ -276,10 +278,11 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice"})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:           "https://idp.example",
-		SCL:              spec.MustLoadSCL(),
-		SamlSPRepo:       spRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+		}, SamlSPRepo: spRepo,
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()}},
@@ -303,14 +306,16 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 		},
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:           "https://idp.example",
-		SCL:              spec.MustLoadSCL(),
-		SamlSPRepo:       spRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+
+			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
+		}, SamlSPRepo: spRepo,
 		UserRepo:         memory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
-		Emit:             func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 	})
 
 	rec := get(e, "/saml/slo?entityID="+url.QueryEscape("https://sp.example.com")+"&RelayState=s1")
@@ -340,14 +345,16 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 		},
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:           "https://idp.example",
-		SCL:              spec.MustLoadSCL(),
-		SamlSPRepo:       spRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+
+			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
+		}, SamlSPRepo: spRepo,
 		UserRepo:         memory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
-		Emit:             func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 	})
 	xml := `<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +
 		`xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_logout-1" Version="2.0" ` +
@@ -412,10 +419,11 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		Roles:             []string{"admin"},
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:        "https://idp.example",
-		SCL:           spec.MustLoadSCL(),
-		SamlSPRepo:    memory.NewSamlServiceProviderRepository(),
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+		}, SamlSPRepo: memory.NewSamlServiceProviderRepository(),
 		UserRepo:      userRepo,
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})

@@ -56,13 +56,13 @@ func clientAuthServer(method spec.TokenEndpointAuthMethod) *echo.Echo {
 		FapiProfile:              spec.FapiNone,
 		CreatedAt:                time.Now(),
 	})
-	deps := support.Deps{Issuer: "https://idp.example", ClientRepo: repo}
+	deps := Deps{Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo}
 	e := echo.New()
 	e.POST("/test", func(c *echo.Context) error {
 		if err := c.Request().ParseForm(); err != nil {
 			return err
 		}
-		client, err := (Deps{&deps}).authenticateTokenClient(c)
+		client, err := deps.authenticateTokenClient(c)
 		if err != nil {
 			return writeOAuthError(c, err)
 		}
@@ -216,8 +216,8 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		FapiProfile:              spec.FapiNone,
 		CreatedAt:                time.Now(),
 	})
-	deps := support.Deps{
-		Issuer: "https://idp.example", ClientRepo: repo,
+	deps := Deps{
+		Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo,
 		ClientAssertionReplayStore: memory.NewClientAssertionReplayStore(),
 	}
 	e := echo.New()
@@ -225,7 +225,7 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		if err := c.Request().ParseForm(); err != nil {
 			return err
 		}
-		client, err := (Deps{&deps}).authenticateTokenClient(c)
+		client, err := deps.authenticateTokenClient(c)
 		if err != nil {
 			return writeOAuthError(c, err)
 		}

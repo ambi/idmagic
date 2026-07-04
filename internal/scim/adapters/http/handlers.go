@@ -1,4 +1,4 @@
-package scim
+package http
 
 import (
 	"errors"
@@ -8,18 +8,18 @@ import (
 
 	"github.com/labstack/echo/v5"
 
+	"github.com/ambi/idmagic/internal/scim/domain"
+	"github.com/ambi/idmagic/internal/scim/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 )
 
 type Handler struct {
-	Usecases *Usecases
-	support  support.Deps
+	deps Deps
 }
 
-func NewHandler(usecases *Usecases, sd support.Deps) *Handler {
+func NewHandler(d Deps) *Handler {
 	return &Handler{
-		Usecases: usecases,
-		support:  sd,
+		deps: d,
 	}
 }
 
@@ -30,7 +30,7 @@ func (h *Handler) authenticate(c *echo.Context) (string, error) {
 	}
 	tokenStr := authHeader[7:]
 
-	resolvedTenantID, err := h.Usecases.AuthenticateToken(c.Request().Context(), tokenStr)
+	resolvedTenantID, err := h.deps.Usecases.AuthenticateToken(c.Request().Context(), tokenStr)
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +40,7 @@ func (h *Handler) authenticate(c *echo.Context) (string, error) {
 		return "", errors.New("tenant mismatch")
 	}
 
-	cfg, err := h.Usecases.GetConfig(c.Request().Context(), reqTenantID)
+	cfg, err := h.deps.Usecases.GetConfig(c.Request().Context(), reqTenantID)
 	if err != nil || !cfg.Enabled {
 		return "", errors.New("SCIM is disabled for this tenant")
 	}
@@ -50,7 +50,7 @@ func (h *Handler) authenticate(c *echo.Context) (string, error) {
 
 func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType string) error {
 	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(status, NewScimError(strconv.Itoa(status), detail, scimType))
+	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), detail, scimType))
 }
 
 func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
@@ -58,13 +58,13 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
-	config := ServiceProviderConfig{
+	config := domain.ServiceProviderConfig{
 		Schemas: []string{"urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"},
 		Patch: struct {
 			Supported bool `json:"supported"`
 		}{Supported: true},
-		Bulk: BulkConfig{Supported: false},
-		Filter: FilterConfig{
+		Bulk: domain.BulkConfig{Supported: false},
+		Filter: domain.FilterConfig{
 			Supported:  true,
 			MaxResults: 100,
 		},
@@ -88,7 +88,7 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
-	types := []ResourceType{
+	types := []domain.ResourceType{
 		{
 			Schemas:     []string{"urn:ietf:params:scim:schemas:core:2.0:ResourceType"},
 			ID:          "User",
@@ -117,13 +117,13 @@ func (h *Handler) handleGetSchemas(c *echo.Context) error {
 	}
 
 	// 最小限の schemas
-	schemas := []Schema{
+	schemas := []domain.Schema{
 		{
 			Schemas:     []string{"urn:ietf:params:scim:schemas:core:2.0:Schema"},
 			ID:          "urn:ietf:params:scim:schemas:core:2.0:User",
 			Name:        "User",
 			Description: "User core schema",
-			Attributes:  []SchemaAttribute{},
+			Attributes:  []domain.SchemaAttribute{},
 		},
 	}
 
@@ -143,7 +143,7 @@ func (h *Handler) handleCreateUser(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
 	}
 
-	res, err := h.Usecases.CreateUser(c.Request().Context(), tenantID, body)
+	res, err := h.deps.Usecases.CreateUser(c.Request().Context(), tenantID, body)
 	if err != nil {
 		return h.writeScimError(c, http.StatusConflict, err.Error(), "uniqueness")
 	}
@@ -159,9 +159,9 @@ func (h *Handler) handleGetUser(c *echo.Context) error {
 	}
 
 	id := c.Param("id")
-	res, err := h.Usecases.GetUser(c.Request().Context(), tenantID, id)
+	res, err := h.deps.Usecases.GetUser(c.Request().Context(), tenantID, id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
 		}
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
@@ -183,9 +183,9 @@ func (h *Handler) handleUpdateUser(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
 	}
 
-	res, err := h.Usecases.UpdateUser(c.Request().Context(), tenantID, id, body)
+	res, err := h.deps.Usecases.UpdateUser(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
 		}
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
@@ -207,9 +207,9 @@ func (h *Handler) handlePatchUser(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
 	}
 
-	res, err := h.Usecases.PatchUser(c.Request().Context(), tenantID, id, body)
+	res, err := h.deps.Usecases.PatchUser(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
 		}
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
@@ -226,7 +226,7 @@ func (h *Handler) handleDeleteUser(c *echo.Context) error {
 	}
 
 	id := c.Param("id")
-	if err := h.Usecases.DeleteUser(c.Request().Context(), tenantID, id); err != nil {
+	if err := h.deps.Usecases.DeleteUser(c.Request().Context(), tenantID, id); err != nil {
 		return h.writeScimError(c, http.StatusNotFound, err.Error(), "")
 	}
 
@@ -240,13 +240,13 @@ func (h *Handler) handleListUsers(c *echo.Context) error {
 	}
 
 	filter := c.QueryParam("filter")
-	users, err := h.Usecases.ListUsers(c.Request().Context(), tenantID, filter)
+	users, err := h.deps.Usecases.ListUsers(c.Request().Context(), tenantID, filter)
 	if err != nil {
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
 	}
 
 	// SCIM ListResponse
-	list := ListResponse{
+	list := domain.ListResponse{
 		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
 		TotalResults: len(users),
 		StartIndex:   1,
@@ -273,7 +273,7 @@ func (h *Handler) handleCreateGroup(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
 	}
 
-	res, err := h.Usecases.CreateGroup(c.Request().Context(), tenantID, body)
+	res, err := h.deps.Usecases.CreateGroup(c.Request().Context(), tenantID, body)
 	if err != nil {
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
 	}
@@ -289,9 +289,9 @@ func (h *Handler) handleGetGroup(c *echo.Context) error {
 	}
 
 	id := c.Param("id")
-	res, err := h.Usecases.GetGroup(c.Request().Context(), tenantID, id)
+	res, err := h.deps.Usecases.GetGroup(c.Request().Context(), tenantID, id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
 		}
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
@@ -307,12 +307,12 @@ func (h *Handler) handleListGroups(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
-	groups, err := h.Usecases.ListGroups(c.Request().Context(), tenantID)
+	groups, err := h.deps.Usecases.ListGroups(c.Request().Context(), tenantID)
 	if err != nil {
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
 	}
 
-	list := ListResponse{
+	list := domain.ListResponse{
 		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
 		TotalResults: len(groups),
 		StartIndex:   1,
@@ -339,9 +339,9 @@ func (h *Handler) handleUpdateGroup(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
 	}
 
-	res, err := h.Usecases.UpdateGroup(c.Request().Context(), tenantID, id, body)
+	res, err := h.deps.Usecases.UpdateGroup(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
 		}
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
@@ -363,9 +363,9 @@ func (h *Handler) handlePatchGroup(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
 	}
 
-	res, err := h.Usecases.PatchGroup(c.Request().Context(), tenantID, id, body)
+	res, err := h.deps.Usecases.PatchGroup(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
 		}
 		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
@@ -382,7 +382,7 @@ func (h *Handler) handleDeleteGroup(c *echo.Context) error {
 	}
 
 	id := c.Param("id")
-	if err := h.Usecases.DeleteGroup(c.Request().Context(), tenantID, id); err != nil {
+	if err := h.deps.Usecases.DeleteGroup(c.Request().Context(), tenantID, id); err != nil {
 		return h.writeScimError(c, http.StatusNotFound, err.Error(), "")
 	}
 
@@ -415,12 +415,12 @@ type scimTokenCreateRequest struct {
 }
 
 func (h *Handler) handleGetAdminConfig(c *echo.Context) error {
-	if _, err := h.support.RequireAdmin(c); err != nil {
-		return h.support.WriteAdminAccessError(c, err)
+	if _, err := h.deps.RequireAdmin(c); err != nil {
+		return h.deps.WriteAdminAccessError(c, err)
 	}
 
 	tenantID := support.RequestTenantID(c)
-	cfg, err := h.Usecases.GetConfig(c.Request().Context(), tenantID)
+	cfg, err := h.deps.Usecases.GetConfig(c.Request().Context(), tenantID)
 	if err != nil {
 		return err
 	}
@@ -434,8 +434,8 @@ func (h *Handler) handleGetAdminConfig(c *echo.Context) error {
 }
 
 func (h *Handler) handleUpdateAdminConfig(c *echo.Context) error {
-	if _, err := h.support.RequireAdmin(c); err != nil {
-		return h.support.WriteAdminAccessError(c, err)
+	if _, err := h.deps.RequireAdmin(c); err != nil {
+		return h.deps.WriteAdminAccessError(c, err)
 	}
 
 	tenantID := support.RequestTenantID(c)
@@ -444,7 +444,7 @@ func (h *Handler) handleUpdateAdminConfig(c *echo.Context) error {
 		return err
 	}
 
-	cfg, err := h.Usecases.UpdateConfig(c.Request().Context(), tenantID, body.Enabled)
+	cfg, err := h.deps.Usecases.UpdateConfig(c.Request().Context(), tenantID, body.Enabled)
 	if err != nil {
 		return err
 	}
@@ -458,12 +458,12 @@ func (h *Handler) handleUpdateAdminConfig(c *echo.Context) error {
 }
 
 func (h *Handler) handleListAdminTokens(c *echo.Context) error {
-	if _, err := h.support.RequireAdmin(c); err != nil {
-		return h.support.WriteAdminAccessError(c, err)
+	if _, err := h.deps.RequireAdmin(c); err != nil {
+		return h.deps.WriteAdminAccessError(c, err)
 	}
 
 	tenantID := support.RequestTenantID(c)
-	tokens, err := h.Usecases.ListTokens(c.Request().Context(), tenantID)
+	tokens, err := h.deps.Usecases.ListTokens(c.Request().Context(), tenantID)
 	if err != nil {
 		return err
 	}
@@ -482,8 +482,8 @@ func (h *Handler) handleListAdminTokens(c *echo.Context) error {
 }
 
 func (h *Handler) handleCreateAdminToken(c *echo.Context) error {
-	if _, err := h.support.RequireAdmin(c); err != nil {
-		return h.support.WriteAdminAccessError(c, err)
+	if _, err := h.deps.RequireAdmin(c); err != nil {
+		return h.deps.WriteAdminAccessError(c, err)
 	}
 
 	tenantID := support.RequestTenantID(c)
@@ -492,7 +492,7 @@ func (h *Handler) handleCreateAdminToken(c *echo.Context) error {
 		return err
 	}
 
-	tokenStr, tok, err := h.Usecases.GenerateToken(c.Request().Context(), tenantID, body.Description, body.ExpiryDays)
+	tokenStr, tok, err := h.deps.Usecases.GenerateToken(c.Request().Context(), tenantID, body.Description, body.ExpiryDays)
 	if err != nil {
 		return err
 	}
@@ -509,13 +509,13 @@ func (h *Handler) handleCreateAdminToken(c *echo.Context) error {
 }
 
 func (h *Handler) handleRevokeAdminToken(c *echo.Context) error {
-	if _, err := h.support.RequireAdmin(c); err != nil {
-		return h.support.WriteAdminAccessError(c, err)
+	if _, err := h.deps.RequireAdmin(c); err != nil {
+		return h.deps.WriteAdminAccessError(c, err)
 	}
 
 	tenantID := support.RequestTenantID(c)
 	id := c.Param("id")
-	if err := h.Usecases.RevokeToken(c.Request().Context(), tenantID, id); err != nil {
+	if err := h.deps.Usecases.RevokeToken(c.Request().Context(), tenantID, id); err != nil {
 		return err
 	}
 

@@ -6,19 +6,27 @@
 package http
 
 import (
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	samlports "github.com/ambi/idmagic/internal/saml/ports"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。
+// Deps は SAML HTTP ハンドラが必要とする依存。
 type Deps struct {
-	*support.Deps
+	support.Deps
+	*support.Authenticator
+	*support.ApplicationGate
+
+	SamlSPRepo       samlports.SamlServiceProviderRepository
+	FederationSigner *samltoken.Signer
+	UserRepo         idmports.UserRepository
 }
 
 // RegisterRoutes は SAML 2.0 IdP のエンドポイントを登録する。
-func RegisterRoutes(g *echo.Group, cd *support.Deps) {
-	d := Deps{cd}
+func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/saml/metadata", d.handleSamlMetadata)
 	g.GET("/saml/sso", d.handleSamlSSORedirect)
 	g.POST("/saml/sso", d.handleSamlSSOPost)

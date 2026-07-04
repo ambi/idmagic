@@ -91,15 +91,17 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 	shuttingDown := &atomic.Bool{}
 	e := echo.New()
 
-	httpadapter.Register(e, support.Deps{
-		Issuer:     "http://test",
-		ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://test",
+
+			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
+		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
-		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 	})
 	return httptest.NewServer(e), userRepo
 }
@@ -163,15 +165,17 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:     "http://test",
-		ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://test",
+
+			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
+		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
-		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 	})
 	return httptest.NewServer(e)
 }
@@ -926,9 +930,14 @@ func TestHealthProbes(t *testing.T) {
 	shuttingDown := &atomic.Bool{}
 
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:            "http://test",
-		ClientRepo:        clientRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://test",
+
+			StartupComplete: startupComplete,
+			ShuttingDown:    shuttingDown,
+			HealthInfo:      support.HealthInfo{Persistence: "memory"},
+		}, ClientRepo: clientRepo,
 		UserRepo:          userRepo,
 		KeyStore:          keyStore,
 		TokenIssuer:       tokenIssuer,
@@ -936,9 +945,6 @@ func TestHealthProbes(t *testing.T) {
 		PasswordHasher:    hasher,
 		SessionManager:    sessionManager,
 		AuthnResolver:     sessionManager,
-		StartupComplete:   startupComplete,
-		ShuttingDown:      shuttingDown,
-		HealthInfo:        support.HealthInfo{Persistence: "memory"},
 	})
 	srv := httptest.NewServer(e)
 	defer srv.Close()

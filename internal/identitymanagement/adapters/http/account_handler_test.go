@@ -39,10 +39,14 @@ func newAccountServer(t *testing.T, user *spec.User) *echo.Echo {
 		}
 	}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", SCL: spec.MustLoadSCL(), UserRepo: userRepo,
-		TenantRepo: tenantRepo, AttrSchemaRepo: memory.NewTenantUserAttributeSchemaRepository(),
-		AuthnResolver: resolver, Emit: func(spec.DomainEvent) {},
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+			TenantRepo: tenantRepo,
+			Emit:       func(spec.DomainEvent) {},
+		}, UserRepo: userRepo,
+		AttrSchemaRepo: memory.NewTenantUserAttributeSchemaRepository(),
+		AuthnResolver:  resolver,
 	})
 	return e
 }

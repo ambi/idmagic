@@ -6,21 +6,38 @@
 package http
 
 import (
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。ハンドラを本コンテキストのメソッドとして
-// 保持するためのキャリアで、固有のフィールドは持たない。
+// Deps は authentication HTTP ハンドラが必要とする依存。
 type Deps struct {
-	*support.Deps
+	support.Deps
+	*support.Authenticator
+
+	AuditEventRepo          oauthports.AuditEventRepository
+	UserRepo                idmports.UserRepository
+	PasswordHasher          authnports.PasswordHasher
+	PasswordHistoryRepo     authnports.PasswordHistoryRepository
+	ConsentRepo             oauthports.ConsentRepository
+	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository
+	MfaFactorRepo           authnports.MfaFactorRepository
+	AuthEventBucketStore    authnports.AuthEventBucketStore
+	TenantRepo              tenantports.TenantRepository
+	PasswordResetTokenStore authnports.PasswordResetTokenStore
+	EmailSender             authnports.EmailSender
+	BreachedPasswordChecker authnports.BreachedPasswordChecker
 }
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの
 // エンドポイントを登録する。パス・メソッド・middleware は分割前と一致する。
-func RegisterRoutes(g *echo.Group, cd *support.Deps) {
-	d := Deps{cd}
+func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/auth/account", d.handleAccountContext)
 	g.GET("/api/account/consents", d.handleListAccountConsents)
 	g.POST("/api/account/consents/:client_id/revoke", d.handleRevokeAccountConsent)
@@ -40,4 +57,8 @@ func RegisterRoutes(g *echo.Group, cd *support.Deps) {
 	g.POST("/api/auth/reset_password", d.handleResetPasswordAPI)
 	g.GET("/api/admin/users/:sub/signin_activity", d.handleGetUserSignInActivity)
 	g.GET("/api/admin/authentication_event_buckets", d.handleListAuthEventBuckets)
+}
+
+func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
+	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }

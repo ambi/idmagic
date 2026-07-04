@@ -1,4 +1,4 @@
-package scim_test
+package http_test
 
 import (
 	"bytes"
@@ -10,8 +10,9 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"github.com/ambi/idmagic/internal/scim"
+	scimhttp "github.com/ambi/idmagic/internal/scim/adapters/http"
 	"github.com/ambi/idmagic/internal/scim/ports"
+	"github.com/ambi/idmagic/internal/scim/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/internal/shared/spec"
@@ -23,16 +24,21 @@ func TestScimInboundProvisioning(t *testing.T) {
 	groupRepo := memory.NewGroupRepository()
 	scimRepo := memory.NewScimRepository()
 
-	usecases := scim.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
 
-	sd := support.Deps{
+	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
+	authenticator := &support.Authenticator{
 		UserRepo:  userRepo,
 		GroupRepo: groupRepo,
-		ScimRepo:  scimRepo,
+	}
+	scimDeps := scimhttp.Deps{
+		Deps:          sd,
+		Authenticator: authenticator,
+		Usecases:      usecasesInst,
 	}
 
 	e := echo.New()
-	scim.RegisterRoutes(e.Group(""), &sd, usecases)
+	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
 
 	// 1. テナント設定で SCIM が無効なときはエラーになること
 	{
@@ -49,13 +55,13 @@ func TestScimInboundProvisioning(t *testing.T) {
 	var tokenStr string
 	{
 		// 有効化
-		_, err := usecases.UpdateConfig(ctx, "default", true)
+		_, err := usecasesInst.UpdateConfig(ctx, "default", true)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// トークン生成
-		tokStr, _, err := usecases.GenerateToken(ctx, "default", "Okta Integration", 30)
+		tokStr, _, err := usecasesInst.GenerateToken(ctx, "default", "Okta Integration", 30)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -199,19 +205,24 @@ func TestScimGroupSync(t *testing.T) {
 	groupRepo := memory.NewGroupRepository()
 	scimRepo := memory.NewScimRepository()
 
-	usecases := scim.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
 
-	sd := support.Deps{
+	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
+	authenticator := &support.Authenticator{
 		UserRepo:  userRepo,
 		GroupRepo: groupRepo,
-		ScimRepo:  scimRepo,
+	}
+	scimDeps := scimhttp.Deps{
+		Deps:          sd,
+		Authenticator: authenticator,
+		Usecases:      usecasesInst,
 	}
 
 	e := echo.New()
-	scim.RegisterRoutes(e.Group(""), &sd, usecases)
+	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
 
-	_, _ = usecases.UpdateConfig(ctx, "default", true)
-	tokenStr, _, _ := usecases.GenerateToken(ctx, "default", "Integration", 30)
+	_, _ = usecasesInst.UpdateConfig(ctx, "default", true)
+	tokenStr, _, _ := usecasesInst.GenerateToken(ctx, "default", "Integration", 30)
 
 	// 1. テストユーザー作成
 	user1Sub := "user_1"

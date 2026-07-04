@@ -83,9 +83,8 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		_ = consentRepo.Save(context.Background(), spec.DefaultTenantID, consent)
 	}
 	e := echo.New()
-	deps := support.Deps{
-		Issuer:       "http://test",
-		ClientRepo:   clientRepo,
+	deps := httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		UserRepo:     userRepo,
 		ConsentRepo:  consentRepo,
 		RequestStore: memory.NewAuthorizationRequestStore(),
@@ -165,7 +164,7 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 	}
 	// 既存 Consent。prompt=consent が無ければ即 issueCode に進む。
 	consent := &spec.Consent{
-		UserID:   "user_alice", ClientID: authClientID,
+		UserID: "user_alice", ClientID: authClientID,
 		Scopes:    []string{"openid", "profile"},
 		State:     spec.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),

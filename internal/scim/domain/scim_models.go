@@ -1,4 +1,4 @@
-package scim
+package domain
 
 type ScimErrorResponse struct {
 	Schemas  []string `json:"schemas"`

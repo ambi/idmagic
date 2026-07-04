@@ -42,10 +42,13 @@ func newBearerAdminServer(t *testing.T, actor *spec.User, introspector oauthport
 		userRepo.Seed(actor)
 	}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", SCL: spec.MustLoadSCL(), UserRepo: userRepo,
-		TokenIntrospector: introspector, TenantRepo: newSingleTenantRepo(),
-		Emit: func(spec.DomainEvent) {},
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+			TenantRepo: newSingleTenantRepo(),
+			Emit:       func(spec.DomainEvent) {},
+		}, UserRepo: userRepo,
+		TokenIntrospector: introspector,
 	})
 	return e
 }

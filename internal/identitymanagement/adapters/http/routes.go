@@ -5,19 +5,39 @@
 package http
 
 import (
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
+	scimports "github.com/ambi/idmagic/internal/scim/ports"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。ハンドラを本 bounded context の
-// メソッドとして保持するためのキャリアで、固有のフィールドは持たない。
+// Deps は identity management HTTP ハンドラが必要とする依存。
 type Deps struct {
-	*support.Deps
+	support.Deps
+	*support.Authenticator
+
+	UserRepo              idmports.UserRepository
+	GroupRepo             idmports.GroupRepository
+	AgentRepo             idmports.AgentRepository
+	ClientRepo            oauthports.OAuth2ClientRepository
+	ScimRepo              scimports.ScimRepository
+	AttrSchemaRepo        tenantports.TenantUserAttributeSchemaRepository
+	ConsentRepo           oauthports.ConsentRepository
+	RefreshStore          oauthports.RefreshTokenStore
+	DeviceCodeStore       oauthports.DeviceCodeStore
+	MfaFactorRepo         authnports.MfaFactorRepository
+	PasswordHasher        authnports.PasswordHasher
+	PasswordHistoryRepo   authnports.PasswordHistoryRepository
+	EmailChangeTokenStore authnports.EmailChangeTokenStore
+	EmailSender           authnports.EmailSender
 }
 
-func RegisterRoutes(g *echo.Group, cd *support.Deps) {
-	d := Deps{cd}
+func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/account/summary", d.handleGetAccountSummary)
 	g.GET("/api/account/profile", d.handleGetAccountProfile)
 	g.PATCH("/api/account/profile", d.handleUpdateAccountProfile)
@@ -53,4 +73,8 @@ func RegisterRoutes(g *echo.Group, cd *support.Deps) {
 	g.DELETE("/api/admin/agents/:agent_id", d.handleDeleteAgent)
 	g.POST("/api/admin/agents/:agent_id/credentials", d.handleBindAgentCredential)
 	g.DELETE("/api/admin/agents/:agent_id/credentials/:client_id", d.handleUnbindAgentCredential)
+}
+
+func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
+	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }

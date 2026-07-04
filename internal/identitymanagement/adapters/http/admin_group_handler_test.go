@@ -30,8 +30,8 @@ func newAdminGroupHandler(t *testing.T) (*echo.Echo, *memory.GroupRepository) {
 		Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", UserRepo: userRepo, GroupRepo: groupRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: userRepo, GroupRepo: groupRepo,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})
 	return e, groupRepo

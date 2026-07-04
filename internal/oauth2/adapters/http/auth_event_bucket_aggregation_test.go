@@ -15,7 +15,6 @@ import (
 	"time"
 
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
-	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/internal/shared/spec"
 
@@ -52,14 +51,14 @@ func countEventType(events []spec.DomainEvent, typ string) int {
 
 // driveRecordLoginFailure は echo route 経由で recordLoginFailure を回数分呼び、
 // 最後の aggregated 値を返す (account key だけ渡し IP は空にして 1 key に固定する)。
-func driveRecordLoginFailure(t *testing.T, d support.Deps, username string, times int) (bool, []spec.DomainEvent) {
+func driveRecordLoginFailure(t *testing.T, d Deps, username string, times int) (bool, []spec.DomainEvent) {
 	t.Helper()
 	var emitted []spec.DomainEvent
 	d.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 	e := echo.New()
 	lastAggregated := false
 	e.POST("/x", func(c *echo.Context) error {
-		agg, err := (Deps{&d}).recordLoginFailure(c, username, "")
+		agg, err := d.recordLoginFailure(c, username, "")
 		lastAggregated = agg
 		return err
 	})
@@ -75,7 +74,7 @@ func driveRecordLoginFailure(t *testing.T, d support.Deps, username string, time
 }
 
 func TestRecordLoginFailureAggregatesWhenLocked(t *testing.T) {
-	d := support.Deps{
+	d := Deps{
 		LoginAttemptThrottle: fakeLockedThrottle{},
 		AuthEventBucketStore: memory.NewAuthEventBucketStore(),
 	}
@@ -97,7 +96,7 @@ func TestRecordLoginFailureAggregatesWhenLocked(t *testing.T) {
 }
 
 func TestRecordLoginFailureWithoutBucketStoreDoesNotAggregate(t *testing.T) {
-	d := support.Deps{LoginAttemptThrottle: fakeLockedThrottle{}}
+	d := Deps{LoginAttemptThrottle: fakeLockedThrottle{}}
 	aggregated, emitted := driveRecordLoginFailure(t, d, "alice", 2)
 	if aggregated {
 		t.Fatalf("expected aggregated=false without bucket store")

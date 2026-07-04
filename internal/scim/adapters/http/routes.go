@@ -1,13 +1,19 @@
-package scim
+package http
 
 import (
-	"github.com/labstack/echo/v5"
-
+	"github.com/ambi/idmagic/internal/scim/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/labstack/echo/v5"
 )
 
-func RegisterRoutes(g *echo.Group, sd *support.Deps, u *Usecases) {
-	h := NewHandler(u, *sd)
+type Deps struct {
+	support.Deps
+	*support.Authenticator
+	Usecases *usecases.Usecases
+}
+
+func RegisterRoutes(g *echo.Group, d Deps) {
+	h := NewHandler(d)
 
 	// SCIM 2.0 Endpoints
 	g.GET("/scim/v2/ServiceProviderConfig", h.handleGetServiceProviderConfig)

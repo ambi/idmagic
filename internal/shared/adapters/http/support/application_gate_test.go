@@ -26,7 +26,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	d := support.Deps{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, GroupRepo: memory.NewGroupRepository()}
+	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, GroupRepo: memory.NewGroupRepository()}
 
 	// catalog 外の client は gating 対象外。
 	if allowed, err := d.ApplicationAccessAllowed(ctx, "default", spec.ProtocolBindingOIDC, "other", "alice"); err != nil || !allowed {
@@ -85,7 +85,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := support.Deps{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
+	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
 
 	decision, err := d.EvaluateApplicationAccess(ctx, "default", spec.ProtocolBindingOIDC, "c1", "alice", &authdomain.AuthenticationContext{
 		UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
@@ -128,7 +128,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := support.Deps{
+	d := &support.ApplicationGate{
 		ApplicationRepo: apps, ApplicationAssignmentRepo: assignments,
 		ApplicationSignInPolicyRepo: policies, DefaultSignInPolicyRepo: defaults,
 	}

@@ -5,19 +5,33 @@
 package http
 
 import (
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
+	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。
+// Deps は WS-Federation HTTP ハンドラが必要とする依存。
 type Deps struct {
-	*support.Deps
+	support.Deps
+	*support.Authenticator
+	*support.ApplicationGate
+
+	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
+	UserRepo                   idmports.UserRepository
+	FederationSigner           *samltoken.Signer
+	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
+	LoginAttemptThrottle       authnports.LoginAttemptThrottle
+	PasswordHasher             authnports.PasswordHasher
+	SentinelPasswordHash       string
 }
 
 // RegisterRoutes は WS-Federation passive のエンドポイントを登録する。
-func RegisterRoutes(g *echo.Group, cd *support.Deps) {
-	d := Deps{cd}
+func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/wsfed", d.handleWsFed)
 	g.GET("/federationmetadata/2007-06/federationmetadata.xml", d.handleFederationMetadata)
 	g.GET("/trust/mex", d.handleTrustMEX)

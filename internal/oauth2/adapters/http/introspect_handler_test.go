@@ -40,9 +40,8 @@ func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.
 		FapiProfile: spec.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 	e := echo.New()
-	deps := support.Deps{
-		Issuer:            "http://test",
-		ClientRepo:        clientRepo,
+	deps := httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		TokenIntrospector: intro,
 		RefreshStore:      memory.NewRefreshTokenStore(),
 	}

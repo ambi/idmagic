@@ -142,12 +142,15 @@ func newAdminConsentHandler() (*echo.Echo, *memory.ConsentRepository, *[]spec.Do
 	})
 	events := []spec.DomainEvent{}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", UserRepo: users, ConsentRepo: consents,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test",
+
+			Emit: func(event spec.DomainEvent) {
+				events = append(events, event)
+			},
+		}, UserRepo: users, ConsentRepo: consents,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
-		Emit: func(event spec.DomainEvent) {
-			events = append(events, event)
-		},
 	})
 	return e, consents, &events
 }

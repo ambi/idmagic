@@ -47,9 +47,8 @@ func newTokenExchangeServer(t *testing.T) string {
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:       "http://test",
-		ClientRepo:   clientRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		UserRepo:     memory.NewUserRepository(),
 		ConsentRepo:  memory.NewConsentRepository(),
 		RefreshStore: memory.NewRefreshTokenStore(),

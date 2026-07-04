@@ -288,8 +288,8 @@ func newAdminUserHandler(
 		repo.Seed(user)
 	}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", UserRepo: repo, PasswordHasher: hasher,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
 	})
 	return e, repo

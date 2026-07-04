@@ -95,17 +95,19 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:                     "https://idp.example",
-		SCL:                        spec.MustLoadSCL(),
-		WsFedRPRepo:                rpRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+
+			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
+		}, WsFedRPRepo: rpRepo,
 		UserRepo:                   userRepo,
 		PasswordHasher:             hasher,
 		SentinelPasswordHash:       sentinel,
 		ClientAssertionReplayStore: memory.NewClientAssertionReplayStore(),
 		FederationSigner:           devSigner(t),
 		AuthnResolver:              stubResolver{ctx: authn},
-		Emit:                       func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 	})
 	return e, captured
 }
@@ -439,10 +441,11 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		},
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:        "https://idp.example",
-		SCL:           spec.MustLoadSCL(),
-		WsFedRPRepo:   memory.NewWsFedRelyingPartyRepository(),
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "https://idp.example",
+			SCL:    spec.MustLoadSCL(),
+		}, WsFedRPRepo: memory.NewWsFedRelyingPartyRepository(),
 		UserRepo:      userRepo,
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})

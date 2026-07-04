@@ -31,8 +31,12 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", UserRepo: users, GroupRepo: memory.NewGroupRepository(),
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test",
+
+			Emit: func(spec.DomainEvent) {},
+		}, UserRepo: users, GroupRepo: memory.NewGroupRepository(),
 		ApplicationRepo:           memory.NewApplicationRepository(),
 		ApplicationIconStore:      memory.NewApplicationIconStore(),
 		ApplicationAssignmentRepo: memory.NewApplicationAssignmentRepository(),
@@ -41,7 +45,6 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		DefaultSignInPolicyRepo:   memory.NewDefaultSignInPolicyRepository(),
 		SamlSPRepo:                memory.NewSamlServiceProviderRepository(),
 		AuthnResolver:             authusecases.DemoHeaderResolver{},
-		Emit:                      func(spec.DomainEvent) {},
 	})
 	return e
 }

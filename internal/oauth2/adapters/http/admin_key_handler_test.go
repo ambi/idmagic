@@ -45,11 +45,14 @@ func newKeyAdminServer(t *testing.T, actor *spec.User) (*echo.Echo, *crypto.InMe
 	events := make([]spec.DomainEvent, 0)
 	emit := func(e spec.DomainEvent) { events = append(events, e) }
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", SCL: spec.MustLoadSCL(), UserRepo: userRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+
+			TenantRepo: newSingleTenantRepo(),
+			Emit:       emit,
+		}, UserRepo: userRepo,
 		KeyStore: keyStore, AuthnResolver: resolver,
-		TenantRepo: newSingleTenantRepo(),
-		Emit:       emit,
 	})
 	return e, keyStore, &events
 }

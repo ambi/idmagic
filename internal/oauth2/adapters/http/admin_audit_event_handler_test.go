@@ -42,10 +42,13 @@ func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.Au
 		}
 	}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://test", UserRepo: userRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://test",
+
+			TenantRepo: newSingleTenantRepo(),
+		}, UserRepo: userRepo,
 		AuditEventRepo: auditStore, AuthnResolver: resolver,
-		TenantRepo: newSingleTenantRepo(),
 	})
 	return e
 }

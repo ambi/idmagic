@@ -47,9 +47,8 @@ func newPARTestServer(t *testing.T) *echo.Echo {
 		CreatedAt:               time.Now().UTC(),
 	})
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:       "http://test",
-		ClientRepo:   clientRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		PARStore:     memory.NewPARStore(),
 		RequestStore: memory.NewAuthorizationRequestStore(),
 		CodeStore:    memory.NewAuthorizationCodeStore(),
@@ -153,9 +152,8 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic, Scope: "openid",
 		CreatedAt: time.Now().UTC(),
 	})
-	httpadapter.Register(e, support.Deps{
-		Issuer:       "http://test",
-		ClientRepo:   clientRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		PARStore:     store,
 		RequestStore: memory.NewAuthorizationRequestStore(),
 		CodeStore:    memory.NewAuthorizationCodeStore(),
@@ -181,9 +179,8 @@ func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing
 	})
 	store := &ctxCheckingPARStore{PARStore: memory.NewPARStore()}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:       "http://test",
-		ClientRepo:   clientRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		PARStore:     store,
 		RequestStore: memory.NewAuthorizationRequestStore(),
 		CodeStore:    memory.NewAuthorizationCodeStore(),

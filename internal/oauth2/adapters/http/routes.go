@@ -7,21 +7,54 @@
 package http
 
 import (
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。ハンドラを本コンテキストのメソッドとして
-// 保持するためのキャリアで、固有のフィールドは持たない。
+// Deps は OAuth2 HTTP ハンドラが必要とする依存。
 type Deps struct {
-	*support.Deps
+	support.Deps
+	*support.Authenticator
+	*support.ApplicationGate
+
+	AuditEventRepo             oauthports.AuditEventRepository
+	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
+	ClientRepo                 oauthports.OAuth2ClientRepository
+	ConsentRepo                oauthports.ConsentRepository
+	KeyStore                   oauthports.KeyStore
+	TenantRepo                 tenantports.TenantRepository
+	PARStore                   oauthports.PARStore
+	RequestStore               oauthports.AuthorizationRequestStore
+	UserRepo                   idmports.UserRepository
+	PasswordHasher             authnports.PasswordHasher
+	LoginAttemptThrottle       authnports.LoginAttemptThrottle
+	MfaFactorRepo              authnports.MfaFactorRepository
+	CodeStore                  oauthports.AuthorizationCodeStore
+	JWKResolver                *crypto.JWKResolver
+	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
+	DeviceCodeStore            oauthports.DeviceCodeStore
+	DpopReplayStore            oauthports.DpopReplayStore
+	RefreshStore               oauthports.RefreshTokenStore
+	TokenIssuer                oauthports.TokenIssuer
+	AgentRepo                  idmports.AgentRepository
+	TokenIntrospector          oauthports.TokenIntrospector
+	AccessTokenDenylist        oauthports.AccessTokenDenylist
+	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
+	AuthEventBucketStore       authnports.AuthEventBucketStore
+	Authorizer                 oauthports.Authorizer
+	SentinelPasswordHash       string
 }
 
 // RegisterRoutes はテナント解決済みグループに oauth2 コンテキストのエンドポイントを
 // 登録する。パス・メソッド・middleware は分割前と一致する。
-func RegisterRoutes(g *echo.Group, cd *support.Deps) {
-	d := Deps{cd}
+func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/authorize", d.handleAuthorize)
 	g.GET("/end_session", d.handleEndSession)
 	g.POST("/end_session", d.handleEndSession)
@@ -64,4 +97,8 @@ func RegisterRoutes(g *echo.Group, cd *support.Deps) {
 	g.POST("/api/admin/keys/rotate", d.handleRotateTenantKey)
 	g.POST("/api/admin/keys/:kid/disable", d.handleDisableTenantKey)
 	g.GET("/api/admin/policy/roles", d.handleListAdminRolePolicies)
+}
+
+func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
+	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }

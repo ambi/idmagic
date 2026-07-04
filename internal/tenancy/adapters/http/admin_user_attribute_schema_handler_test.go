@@ -46,10 +46,14 @@ func newUserAttributeSchemaServer(
 	events := make([]spec.DomainEvent, 0)
 	emit := func(e spec.DomainEvent) { events = append(events, e) }
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", SCL: spec.MustLoadSCL(), UserRepo: userRepo,
-		TenantRepo: tenantRepo, AttrSchemaRepo: schemaRepo,
-		AuthnResolver: resolver, Emit: emit,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+			TenantRepo: tenantRepo,
+			Emit:       emit,
+		}, UserRepo: userRepo,
+		AttrSchemaRepo: schemaRepo,
+		AuthnResolver:  resolver,
 	})
 	return e, schemaRepo, &events
 }

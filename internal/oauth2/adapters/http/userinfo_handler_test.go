@@ -103,9 +103,8 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	}}
 
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:            "http://test",
-		UserRepo:          userRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, UserRepo: userRepo,
 		TokenIntrospector: intro,
 		DpopReplayStore:   memory.NewDpopReplayStore(),
 	})
@@ -174,10 +173,11 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 	tenantRepo := newSingleTenantRepo()
 
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer:            "http://test",
-		TenantRepo:        tenantRepo,
-		UserRepo:          userRepo,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer:     "http://test",
+			TenantRepo: tenantRepo,
+		}, UserRepo: userRepo,
 		TokenIntrospector: intro,
 		DpopReplayStore:   memory.NewDpopReplayStore(),
 	})
@@ -250,9 +250,8 @@ func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDeny
 		TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
-	deps := support.Deps{
-		Issuer:            "http://test",
-		UserRepo:          userRepo,
+	deps := httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://test"}, UserRepo: userRepo,
 		TokenIntrospector: intro,
 		DpopReplayStore:   memory.NewDpopReplayStore(),
 	}

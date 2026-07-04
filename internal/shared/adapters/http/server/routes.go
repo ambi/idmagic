@@ -1,44 +1,112 @@
 // Package server: Echo v5 を用いた HTTP アダプタの router。
-//
-// 依存集約 (support.Deps) とテナント解決 middleware は support パッケージが持ち、
-// 各エンドポイントのハンドラは責務ごとに *_handler.go へ分割している。
-// このファイルではルーティング登録 (Register) のみを定義する。
 package server
 
 import (
 	apphttp "github.com/ambi/idmagic/internal/application/adapters/http"
+	appports "github.com/ambi/idmagic/internal/application/ports"
 	authhttp "github.com/ambi/idmagic/internal/authentication/adapters/http"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	idmhttp "github.com/ambi/idmagic/internal/identitymanagement/adapters/http"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
 	oauth2http "github.com/ambi/idmagic/internal/oauth2/adapters/http"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
 	samlhttp "github.com/ambi/idmagic/internal/saml/adapters/http"
-	"github.com/ambi/idmagic/internal/scim"
+	samlports "github.com/ambi/idmagic/internal/saml/ports"
+	scimhttp "github.com/ambi/idmagic/internal/scim/adapters/http"
+	scimports "github.com/ambi/idmagic/internal/scim/ports"
+	scimusecases "github.com/ambi/idmagic/internal/scim/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/spec"
 	tenancyhttp "github.com/ambi/idmagic/internal/tenancy/adapters/http"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 	wsfederationhttp "github.com/ambi/idmagic/internal/wsfederation/adapters/http"
+	samltoken "github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
+	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は support.Deps を埋め込む薄いラッパ。ハンドラを所有コンテキストの
-// メソッドとして保持するためのキャリアで、固有のフィールドは持たない。
+// Deps は HTTP アダプタ全体の起動に必要な全依存関係。
 type Deps struct {
-	*support.Deps
+	support.Deps
+
+	ScimRepo                    scimports.ScimRepository
+	AttrSchemaRepo              tenantports.TenantUserAttributeSchemaRepository
+	ClientRepo                  oauthports.OAuth2ClientRepository
+	UserRepo                    idmports.UserRepository
+	ConsentRepo                 oauthports.ConsentRepository
+	AuthzDetailTypeRepo         oauthports.AuthorizationDetailTypeRepository
+	RequestStore                oauthports.AuthorizationRequestStore
+	CodeStore                   oauthports.AuthorizationCodeStore
+	PARStore                    oauthports.PARStore
+	RefreshStore                oauthports.RefreshTokenStore
+	DeviceCodeStore             oauthports.DeviceCodeStore
+	DpopReplayStore             oauthports.DpopReplayStore
+	ClientAssertionReplayStore  oauthports.ClientAssertionReplayStore
+	AccessTokenDenylist         oauthports.AccessTokenDenylist
+	KeyStore                    oauthports.KeyStore
+	TokenIssuer                 oauthports.TokenIssuer
+	TokenIntrospector           oauthports.TokenIntrospector
+	AuditEventRepo              oauthports.AuditEventRepository
+	AuthEventBucketStore        authnports.AuthEventBucketStore
+	Authorizer                  oauthports.Authorizer
+	JWKResolver                 *crypto.JWKResolver
+	PasswordHasher              authnports.PasswordHasher
+	GroupRepo                   idmports.GroupRepository
+	AgentRepo                   idmports.AgentRepository
+	MfaFactorRepo               authnports.MfaFactorRepository
+	PasswordHistoryRepo         authnports.PasswordHistoryRepository
+	PasswordResetTokenStore     authnports.PasswordResetTokenStore
+	EmailChangeTokenStore       authnports.EmailChangeTokenStore
+	EmailSender                 authnports.EmailSender
+	BreachedPasswordChecker     authnports.BreachedPasswordChecker
+	LoginAttemptThrottle        authnports.LoginAttemptThrottle
+	SentinelPasswordHash        string
+	SessionManager              *authusecases.SessionManager
+	AuthnResolver               authdomain.AuthenticationContextResolver
+	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
+	SamlSPRepo                  samlports.SamlServiceProviderRepository
+	FederationSigner            *samltoken.Signer
+	ApplicationRepo             appports.ApplicationRepository
+	ApplicationIconStore        appports.ApplicationIconStore
+	ApplicationAssignmentRepo   appports.AssignmentRepository
+	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
+	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
+	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
 }
 
-func Register(e *echo.Echo, cd support.Deps) {
-	d := Deps{&cd}
+func Register(e *echo.Echo, d Deps) {
 	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
-	// テナント CRUD は system_admin 専用のテナント横断操作 (各 handler が
-	// requireSystemAdmin でゲート)。`/api/admin/tenants` として、control-plane
-	// グループ (/realms/default 配下、ADR-032 の cookie path 整合) と bare group の
-	// 両方に登録する。システムコンソール (/system, bare base path, Bearer 認証) は
-	// bare の `/api/admin/tenants` を叩く。どちらも default tenant を解決し同じ
-	// handler に入る。
+
+	authenticator := &support.Authenticator{
+		UserRepo:          d.UserRepo,
+		GroupRepo:         d.GroupRepo,
+		SessionManager:    d.SessionManager,
+		TokenIntrospector: d.TokenIntrospector,
+		AuthnResolver:     d.AuthnResolver,
+	}
+
 	controlPlane := e.Group("/realms/"+spec.DefaultTenantID, d.ResolveControlPlaneTenant)
-	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, d.Deps)
-	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), d.Deps)
+	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, tenancyhttp.Deps{
+		Deps:           d.Deps,
+		Authenticator:  authenticator,
+		TenantRepo:     d.TenantRepo,
+		AttrSchemaRepo: d.AttrSchemaRepo,
+		UserRepo:       d.UserRepo,
+	})
+	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), tenancyhttp.Deps{
+		Deps:           d.Deps,
+		Authenticator:  authenticator,
+		TenantRepo:     d.TenantRepo,
+		AttrSchemaRepo: d.AttrSchemaRepo,
+		UserRepo:       d.UserRepo,
+	})
+
 	e.GET("/health", d.handleHealth)
 	e.GET("/livez", d.handleLivez)
 	e.GET("/readyz", d.handleReadyz)
@@ -46,14 +114,142 @@ func Register(e *echo.Echo, cd support.Deps) {
 }
 
 func registerTenantRoutes(g *echo.Group, d Deps) {
-	oauth2http.RegisterRoutes(g, d.Deps)
-	authhttp.RegisterRoutes(g, d.Deps)
-	idmhttp.RegisterRoutes(g, d.Deps)
-	tenancyhttp.RegisterRoutes(g, d.Deps)
-	wsfederationhttp.RegisterRoutes(g, d.Deps)
-	samlhttp.RegisterRoutes(g, d.Deps)
-	apphttp.RegisterRoutes(g, d.Deps)
+	authenticator := &support.Authenticator{
+		UserRepo:          d.UserRepo,
+		GroupRepo:         d.GroupRepo,
+		SessionManager:    d.SessionManager,
+		TokenIntrospector: d.TokenIntrospector,
+		AuthnResolver:     d.AuthnResolver,
+	}
 
-	scimUsecases := scim.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
-	scim.RegisterRoutes(g, d.Deps, scimUsecases)
+	appGate := &support.ApplicationGate{
+		ApplicationRepo:             d.ApplicationRepo,
+		ApplicationAssignmentRepo:   d.ApplicationAssignmentRepo,
+		GroupRepo:                   d.GroupRepo,
+		ApplicationSignInPolicyRepo: d.ApplicationSignInPolicyRepo,
+		DefaultSignInPolicyRepo:     d.DefaultSignInPolicyRepo,
+		GateTrustedForwardedHops:    d.TrustedForwardedHops,
+	}
+
+	oauth2http.RegisterRoutes(g, oauth2http.Deps{
+		Deps:                       d.Deps,
+		Authenticator:              authenticator,
+		ApplicationGate:            appGate,
+		AuditEventRepo:             d.AuditEventRepo,
+		AuthzDetailTypeRepo:        d.AuthzDetailTypeRepo,
+		ClientRepo:                 d.ClientRepo,
+		ConsentRepo:                d.ConsentRepo,
+		KeyStore:                   d.KeyStore,
+		TenantRepo:                 d.TenantRepo,
+		PARStore:                   d.PARStore,
+		RequestStore:               d.RequestStore,
+		UserRepo:                   d.UserRepo,
+		PasswordHasher:             d.PasswordHasher,
+		LoginAttemptThrottle:       d.LoginAttemptThrottle,
+		MfaFactorRepo:              d.MfaFactorRepo,
+		CodeStore:                  d.CodeStore,
+		JWKResolver:                d.JWKResolver,
+		ClientAssertionReplayStore: d.ClientAssertionReplayStore,
+		DeviceCodeStore:            d.DeviceCodeStore,
+		DpopReplayStore:            d.DpopReplayStore,
+		RefreshStore:               d.RefreshStore,
+		TokenIssuer:                d.TokenIssuer,
+		AgentRepo:                  d.AgentRepo,
+		TokenIntrospector:          d.TokenIntrospector,
+		AccessTokenDenylist:        d.AccessTokenDenylist,
+		AttrSchemaRepo:             d.AttrSchemaRepo,
+		AuthEventBucketStore:       d.AuthEventBucketStore,
+		Authorizer:                 d.Authorizer,
+		SentinelPasswordHash:       d.SentinelPasswordHash,
+	})
+
+	authhttp.RegisterRoutes(g, authhttp.Deps{
+		Deps:                    d.Deps,
+		Authenticator:           authenticator,
+		AuditEventRepo:          d.AuditEventRepo,
+		UserRepo:                d.UserRepo,
+		PasswordHasher:          d.PasswordHasher,
+		PasswordHistoryRepo:     d.PasswordHistoryRepo,
+		ConsentRepo:             d.ConsentRepo,
+		AttrSchemaRepo:          d.AttrSchemaRepo,
+		MfaFactorRepo:           d.MfaFactorRepo,
+		AuthEventBucketStore:    d.AuthEventBucketStore,
+		TenantRepo:              d.TenantRepo,
+		PasswordResetTokenStore: d.PasswordResetTokenStore,
+		EmailSender:             d.EmailSender,
+		BreachedPasswordChecker: d.BreachedPasswordChecker,
+	})
+
+	idmhttp.RegisterRoutes(g, idmhttp.Deps{
+		Deps:                  d.Deps,
+		Authenticator:         authenticator,
+		UserRepo:              d.UserRepo,
+		GroupRepo:             d.GroupRepo,
+		AgentRepo:             d.AgentRepo,
+		ClientRepo:            d.ClientRepo,
+		ScimRepo:              d.ScimRepo,
+		AttrSchemaRepo:        d.AttrSchemaRepo,
+		ConsentRepo:           d.ConsentRepo,
+		RefreshStore:          d.RefreshStore,
+		DeviceCodeStore:       d.DeviceCodeStore,
+		MfaFactorRepo:         d.MfaFactorRepo,
+		PasswordHasher:        d.PasswordHasher,
+		PasswordHistoryRepo:   d.PasswordHistoryRepo,
+		EmailChangeTokenStore: d.EmailChangeTokenStore,
+		EmailSender:           d.EmailSender,
+	})
+
+	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
+		Deps:           d.Deps,
+		Authenticator:  authenticator,
+		TenantRepo:     d.TenantRepo,
+		AttrSchemaRepo: d.AttrSchemaRepo,
+		UserRepo:       d.UserRepo,
+	})
+
+	wsfederationhttp.RegisterRoutes(g, wsfederationhttp.Deps{
+		Deps:                       d.Deps,
+		Authenticator:              authenticator,
+		ApplicationGate:            appGate,
+		WsFedRPRepo:                d.WsFedRPRepo,
+		UserRepo:                   d.UserRepo,
+		FederationSigner:           d.FederationSigner,
+		ClientAssertionReplayStore: d.ClientAssertionReplayStore,
+		LoginAttemptThrottle:       d.LoginAttemptThrottle,
+		PasswordHasher:             d.PasswordHasher,
+		SentinelPasswordHash:       d.SentinelPasswordHash,
+	})
+
+	samlhttp.RegisterRoutes(g, samlhttp.Deps{
+		Deps:             d.Deps,
+		Authenticator:    authenticator,
+		ApplicationGate:  appGate,
+		SamlSPRepo:       d.SamlSPRepo,
+		FederationSigner: d.FederationSigner,
+		UserRepo:         d.UserRepo,
+	})
+
+	apphttp.RegisterRoutes(g, apphttp.Deps{
+		Deps:                        d.Deps,
+		Authenticator:               authenticator,
+		ApplicationRepo:             d.ApplicationRepo,
+		ApplicationIconStore:        d.ApplicationIconStore,
+		ApplicationAssignmentRepo:   d.ApplicationAssignmentRepo,
+		ApplicationOrderingRepo:     d.ApplicationOrderingRepo,
+		ApplicationCategoryRepo:     d.ApplicationCategoryRepo,
+		ApplicationSignInPolicyRepo: d.ApplicationSignInPolicyRepo,
+		DefaultSignInPolicyRepo:     d.DefaultSignInPolicyRepo,
+		GroupRepo:                   d.GroupRepo,
+		UserRepo:                    d.UserRepo,
+		ClientRepo:                  d.ClientRepo,
+		WsFedRPRepo:                 d.WsFedRPRepo,
+		SamlSPRepo:                  d.SamlSPRepo,
+	})
+
+	scimUsecasesInst := scimusecases.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
+	scimhttp.RegisterRoutes(g, scimhttp.Deps{
+		Deps:          d.Deps,
+		Authenticator: authenticator,
+		Usecases:      scimUsecasesInst,
+	})
 }

@@ -1,4 +1,4 @@
-package scim
+package usecases
 
 import (
 	"context"

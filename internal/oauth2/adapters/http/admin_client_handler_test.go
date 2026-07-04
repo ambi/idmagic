@@ -151,12 +151,15 @@ func newAdminOAuth2ClientHandler(
 	})
 	events := []spec.DomainEvent{}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", ClientRepo: clients, UserRepo: users,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test",
+
+			Emit: func(event spec.DomainEvent) {
+				events = append(events, event)
+			},
+		}, ClientRepo: clients, UserRepo: users,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
-		Emit: func(event spec.DomainEvent) {
-			events = append(events, event)
-		},
 	})
 	return e, clients, &events
 }

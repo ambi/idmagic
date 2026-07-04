@@ -39,8 +39,8 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := echo.New()
-	httpadapter.Register(e, support.Deps{
-		Issuer: "http://idp.test", UserRepo: repo, RequestStore: requestStore,
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, RequestStore: requestStore,
 		PasswordHasher: hasher,
 	})
 	csrf, csrfCookie := passwordResetCSRF(t, e)
