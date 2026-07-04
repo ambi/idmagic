@@ -20,6 +20,26 @@ OWASP ASVS もこれらを要求する。idmagic も UI が別プロセスでも
 同一オリジンに統合される構成（ARCHITECTURE.md）なので、認証系レスポンスに
 一元的にヘッダを適用し、CSP は nonce ベースで UI ビルドと整合させるべきである。
 
+# Responsibility (App vs Edge Proxy)
+「セキュリティヘッダを前段プロキシで付与する」選択肢もあるが、ヘッダごとに担当が分かれ、
+特に CSP はアプリ専有が原理的必然となる。必要な知識を誰が持つかで切り分ける。
+
+- **CSP (nonce ベース) → 実質アプリ専有**: per-request nonce をレスポンスヘッダと HTML 内の
+  `<script nonce=…>` の両方に一致させて注入する必要があり、ページをレンダリングするアプリ
+  (＋UI ビルド) にしかできない。プロキシで一致させるには HTML 書き換えが要り非現実的。
+  よって「前段に委譲」が原理的に選べない決定打。
+- **frame-ancestors / X-Frame-Options → アプリ寄り**: 「login/consent/portal は `'none'`」という
+  per-route の機微判断はアプリの知識。プロキシで一律付与すると埋め込みが要る画面と競合する。
+- **HSTS → エッジ委譲を許容**: TLS を終端する層が所有すべきヘッダ。アプリが出すなら
+  「TLS 終端が前段にある」前提が要る。HSTS だけは前段委譲を明示的に許してよい
+  (本 WI は「TLS 終端前提を明示、開発 http では抑制」を維持)。
+- **X-Content-Type-Options / Referrer-Policy → どちらでも可 (安価)**: 多層で出して困らない。
+- **OSS 前提の補強**: idmagic は不特定運用者が動かす配布物で、プロキシ無し / 低機能プロキシ
+  背後でも consent 画面はクリックジャッキング保護されねばならない。secure-by-default は
+  アプリ単体で成立させる。
+- **結論**: CSP と frame-ancestors はアプリ所有必須 (プロキシ委譲不可)、HSTS はエッジ委譲を
+  許容、粗いヘッダは多層。この分担を新規 ADR に明文化する。
+
 # Scope
 - **decision**: 新規 ADR: 適用するヘッダ集合と各値、CSP の方式（nonce か hash か）、 IdP 画面は frame-ancestors 'none'（クリックジャッキング防止）とする方針、 OAuth/OIDC のリダイレクト・POST バインディング（SAML ACS 等）と矛盾しない範囲を定義する。
 - **scl**: System context に SecurityResponseHeaders / FrameAncestorsPolicy の objective を追加する。
