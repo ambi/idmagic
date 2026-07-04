@@ -111,7 +111,7 @@ func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	if err := groupRepo.Save(ctx, group); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := groupRepo.AddMember(ctx, &spec.GroupMember{GroupID: group.ID, UserSub: "alice", AddedAt: time.Now().UTC()}); err != nil {
+	if _, err := groupRepo.AddMember(ctx, &spec.GroupMember{GroupID: group.ID, UserSub: "alice", CreatedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodGet, "/api/admin/groups", http.NoBody)

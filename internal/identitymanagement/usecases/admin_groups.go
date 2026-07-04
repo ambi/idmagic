@@ -234,7 +234,7 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorSub, groupID, user
 	}
 	now = normalizedNow(now)
 	added, err := deps.GroupRepo.AddMember(ctx, &spec.GroupMember{
-		GroupID: groupID, UserSub: userSub, AddedAt: now,
+		GroupID: groupID, UserSub: userSub, CreatedAt: now,
 	})
 	if err != nil {
 		return err

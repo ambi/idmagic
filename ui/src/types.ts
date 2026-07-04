@@ -325,7 +325,7 @@ export type AdminGroup = {
 export type AdminGroupMember = {
   user_sub: string
   preferred_username: string
-  added_at: string
+  created_at: string
 }
 
 export type AdminUserGroups = {

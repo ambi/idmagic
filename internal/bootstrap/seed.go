@@ -238,7 +238,7 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 		}
 	}
 	if _, err := groups.AddMember(ctx, &spec.GroupMember{
-		GroupID: "group_engineering", UserSub: "user_alice", AddedAt: now,
+		GroupID: "group_engineering", UserSub: "user_alice", CreatedAt: now,
 	}); err != nil {
 		return err
 	}

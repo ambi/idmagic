@@ -148,9 +148,9 @@ var groupSchema = z.Struct(z.Shape{
 })
 
 var groupMemberSchema = z.Struct(z.Shape{
-	"GroupID": z.String().Min(1).Required(),
-	"UserSub": z.String().Min(1).Required(),
-	"AddedAt": z.Time().Required(),
+	"GroupID":   z.String().Min(1).Required(),
+	"UserSub":   z.String().Min(1).Required(),
+	"CreatedAt": z.Time().Required(),
 })
 
 var agentSchema = z.Struct(z.Shape{

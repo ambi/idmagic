@@ -28,9 +28,9 @@ func (g Group) Validate() error {
 
 // GroupMember は User と Group の所属関係。group_id × user_sub で一意。
 type GroupMember struct {
-	GroupID string    `json:"group_id"`
-	UserSub string    `json:"user_sub"`
-	AddedAt time.Time `json:"added_at"`
+	GroupID   string    `json:"group_id"`
+	UserSub   string    `json:"user_sub"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (m GroupMember) Validate() error {

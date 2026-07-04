@@ -14009,7 +14009,7 @@
           "user_sub": {
             "type": "string"
           },
-          "added_at": {
+          "created_at": {
             "type": "string",
             "format": "date-time"
           }
@@ -14018,7 +14018,7 @@
         "required": [
           "group_id",
           "user_sub",
-          "added_at"
+          "created_at"
         ],
         "description": "User と Group の所属関係。group_id × user_sub で一意。"
       },
@@ -14093,7 +14093,7 @@
           "preferred_username": {
             "type": "string"
           },
-          "added_at": {
+          "created_at": {
             "type": "string",
             "format": "date-time"
           }
@@ -14102,7 +14102,7 @@
         "required": [
           "user_sub",
           "preferred_username",
-          "added_at"
+          "created_at"
         ],
         "description": "グループ所属メンバー表現。"
       },

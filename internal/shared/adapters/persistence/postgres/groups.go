@@ -73,7 +73,7 @@ func (r *GroupRepository) Delete(ctx context.Context, tenantID, id string) error
 
 func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*spec.GroupMember, error) {
 	rows, err := r.Pool.Query(ctx, `
-SELECT gm.group_id,gm.user_sub,gm.added_at
+SELECT gm.group_id,gm.user_sub,gm.created_at
 FROM group_members gm JOIN groups g ON g.id=gm.group_id
 WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_sub`, tenantID, groupID)
 	if err != nil {
@@ -83,7 +83,7 @@ WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_sub`, tenantID, groupID
 	out := []*spec.GroupMember{}
 	for rows.Next() {
 		var m spec.GroupMember
-		if err := rows.Scan(&m.GroupID, &m.UserSub, &m.AddedAt); err != nil {
+		if err := rows.Scan(&m.GroupID, &m.UserSub, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, &m)
@@ -121,9 +121,9 @@ WHERE g.tenant_id=$1 AND gm.group_id=$2`, tenantID, groupID).Scan(&count)
 
 func (r *GroupRepository) AddMember(ctx context.Context, member *spec.GroupMember) (bool, error) {
 	tag, err := r.Pool.Exec(ctx, `
-INSERT INTO group_members (group_id,user_sub,added_at) VALUES ($1,$2,$3)
+INSERT INTO group_members (group_id,user_sub,created_at) VALUES ($1,$2,$3)
 ON CONFLICT (group_id,user_sub) DO NOTHING`,
-		member.GroupID, member.UserSub, member.AddedAt)
+		member.GroupID, member.UserSub, member.CreatedAt)
 	if err != nil {
 		return false, err
 	}

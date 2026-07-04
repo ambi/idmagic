@@ -513,9 +513,9 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
 						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
-							GroupID: id,
-							UserSub: userRef.UserSub,
-							AddedAt: time.Now(),
+							GroupID:   id,
+							UserSub:   userRef.UserSub,
+							CreatedAt: time.Now(),
 						}); err != nil {
 							return nil, err
 						}
@@ -616,9 +616,9 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
 						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
-							GroupID: group.ID,
-							UserSub: userRef.UserSub,
-							AddedAt: time.Now(),
+							GroupID:   group.ID,
+							UserSub:   userRef.UserSub,
+							CreatedAt: time.Now(),
 						}); err != nil {
 							return nil, err
 						}
@@ -700,9 +700,9 @@ func (u *Usecases) patchAddMembers(ctx context.Context, tenantID, groupID string
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
 						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
-							GroupID: groupID,
-							UserSub: userRef.UserSub,
-							AddedAt: time.Now(),
+							GroupID:   groupID,
+							UserSub:   userRef.UserSub,
+							CreatedAt: time.Now(),
 						}); err != nil {
 							return err
 						}

@@ -3,7 +3,7 @@
 -- - Tables whose rows can be updated after creation have updated_at.
 -- - Insert-only/delete-only rows do not have updated_at.
 -- - Domain timestamps such as issued_at, granted_at, occurred_at, expires_at,
---   revoked_at, added_at, first_seen, and last_seen keep their domain meaning;
+--   revoked_at, first_seen, and last_seen keep their domain meaning;
 --   they do not replace created_at.
 
 CREATE TABLE tenants (
@@ -207,7 +207,6 @@ CREATE TABLE group_members (
     group_id TEXT NOT NULL,
     user_sub TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (group_id, user_sub),
     CONSTRAINT group_members_group_id_fkey
         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,

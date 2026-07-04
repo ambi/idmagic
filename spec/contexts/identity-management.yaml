@@ -569,7 +569,7 @@ models:
         type: String
       user_sub:
         type: String
-      added_at:
+      created_at:
         type: Timestamp
   GroupCreateRequest:
     kind: value_object
@@ -650,7 +650,7 @@ models:
         type: String
         annotations:
           pii: true
-      added_at:
+      created_at:
         type: Timestamp
   GroupAddMemberRequest:
     kind: value_object

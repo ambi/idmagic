@@ -41,7 +41,7 @@ type groupSummaryResponse struct {
 type groupMemberResponse struct {
 	UserSub           string    `json:"user_sub"`
 	PreferredUsername string    `json:"preferred_username"`
-	AddedAt           time.Time `json:"added_at"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type userGroupsResponse struct {
@@ -215,7 +215,7 @@ func (d Deps) toGroupMemberResponses(ctx context.Context, members []*spec.GroupM
 		if user, err := d.UserRepo.FindBySub(ctx, member.UserSub); err == nil && user != nil {
 			username = user.PreferredUsername
 		}
-		out[i] = groupMemberResponse{UserSub: member.UserSub, PreferredUsername: username, AddedAt: member.AddedAt}
+		out[i] = groupMemberResponse{UserSub: member.UserSub, PreferredUsername: username, CreatedAt: member.CreatedAt}
 	}
 	return out
 }
