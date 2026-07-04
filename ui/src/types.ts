@@ -117,18 +117,18 @@ export type ApplicationAssignment = {
   created_at: string
 }
 
+export type RequiredAuthnStrength = 'Password' | 'Mfa'
+
 export type RequiredAuthnLevel = {
-  acr?: string
-  factor?: string
+  strength: RequiredAuthnStrength
 }
 
 export type AccessCondition = {
-  network?: string
-  device?: string
+  network_allow_cidrs?: string[]
   reauth_max_age_seconds?: number
 }
 
-export type SignOnRule = {
+export type SignInRule = {
   rule_id: string
   name: string
   enabled: boolean
@@ -136,10 +136,10 @@ export type SignOnRule = {
   condition: AccessCondition
 }
 
-export type AppSignOnPolicy = {
+export type AppSignInPolicy = {
   tenant_id: string
   application_id: string
-  rules: SignOnRule[]
+  rules: SignInRule[]
   updated_at: string
 }
 
@@ -188,7 +188,7 @@ export type AdminApplicationDetail = {
   oidc?: ApplicationOidcConfig | null
   wsfed?: ApplicationWsFedConfig | null
   saml?: ApplicationSamlConfig | null
-  sign_on_policy?: AppSignOnPolicy | null
+  sign_in_policy?: AppSignInPolicy | null
 }
 
 export type AuthorizationDetailFieldRule = {

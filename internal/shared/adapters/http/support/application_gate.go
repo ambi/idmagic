@@ -8,6 +8,8 @@ package support
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"time"
 
 	appports "github.com/ambi/idmagic/internal/application/ports"
@@ -32,11 +34,31 @@ func (d Deps) ApplicationAccessAllowed(
 	bindingType spec.ProtocolBindingType,
 	bindingKey, sub string,
 ) (bool, error) {
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, nil)
+	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, nil, "")
 	if err != nil {
 		return false, err
 	}
 	return decision.Allowed, nil
+}
+
+// ClientIP は信頼済み転送ホップ数を考慮して X-Forwarded-For からクライアント IP を解決する。
+// TRUSTED_FORWARDED_HOPS が 0 (直結/未設定) の場合は空を返し、CIDR 条件は fail-closed になる。
+func (d Deps) ClientIP(r *http.Request) string {
+	if r == nil || d.TrustedForwardedHops <= 0 {
+		return ""
+	}
+	parts := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	ips := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if ip := strings.TrimSpace(part); ip != "" {
+			ips = append(ips, ip)
+		}
+	}
+	index := len(ips) - 1 - d.TrustedForwardedHops
+	if index < 0 || index >= len(ips) {
+		return ""
+	}
+	return ips[index]
 }
 
 func (d Deps) EvaluateApplicationAccess(
@@ -45,6 +67,7 @@ func (d Deps) EvaluateApplicationAccess(
 	bindingType spec.ProtocolBindingType,
 	bindingKey, sub string,
 	authn *authdomain.AuthenticationContext,
+	clientIP string,
 ) (ApplicationAccessDecision, error) {
 	if d.ApplicationRepo == nil {
 		return ApplicationAccessDecision{Allowed: true}, nil
@@ -86,14 +109,14 @@ func (d Deps) EvaluateApplicationAccess(
 	if !assigned {
 		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "subject not assigned to application"}, nil
 	}
-	if d.ApplicationSignOnPolicyRepo == nil {
+	if d.ApplicationSignInPolicyRepo == nil {
 		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ApplicationID}, nil
 	}
-	policy, err := d.ApplicationSignOnPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
+	policy, err := d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
-	evaluation := appusecases.EvaluateSignOnPolicy(policy, authn, time.Now().UTC())
+	evaluation := appusecases.EvaluateSignInPolicy(policy, authn, clientIP, time.Now().UTC())
 	switch evaluation.Decision {
 	case appusecases.PolicyAllow:
 		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ApplicationID}, nil

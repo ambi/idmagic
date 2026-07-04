@@ -126,14 +126,14 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 	}
 
 	// 割当ゲート: SP が Application binding に属する場合、未割当 subject には発行しない (fail-closed)。
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingSAML, sp.EntityID, authn.Sub, authn)
+	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingSAML, sp.EntityID, authn.Sub, authn, d.ClientIP(c.Request()))
 	if err != nil {
 		return err
 	}
 	if !decision.Allowed {
 		reason := decision.Reason
 		if decision.StepUpRequired {
-			reason = "step-up required by application sign-on policy"
+			reason = "step-up required by application sign-in policy"
 			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.Sub})
 		} else if reason == "" {
 			reason = "subject not assigned to application"
@@ -142,7 +142,7 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.Sub, Reason: reason})
 		}
 		d.emit(&spec.SamlSignInRejected{At: now, TenantID: tenantID, EntityID: sp.EntityID, Reason: reason})
-		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインオンポリシーを満たしていません")
+		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインインポリシーを満たしていません")
 	}
 
 	result, err := feddomain.IssueClaims(sp.ClaimPolicy, feddomain.ResolveUserAttributes(*user))

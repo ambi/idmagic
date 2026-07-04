@@ -17,8 +17,8 @@ import type {
   AdminUserGroups,
   ApplicationAssignment,
   ApplicationStatus,
-  AppSignOnPolicy,
-  SignOnRule,
+  AppSignInPolicy,
+  SignInRule,
   ProtocolBinding,
   ProtocolBindingType,
   AuthorizationDetailType,
@@ -777,22 +777,22 @@ export async function unassignApplication(
   )
 }
 
-export async function getAppSignOnPolicy(id: string): Promise<AppSignOnPolicy> {
+export async function getAppSignInPolicy(id: string): Promise<AppSignInPolicy> {
   return (
-    await request<{ policy: AppSignOnPolicy }>(
-      `/api/admin/applications/${encodeURIComponent(id)}/sign-on-policy`,
+    await request<{ policy: AppSignInPolicy }>(
+      `/api/admin/applications/${encodeURIComponent(id)}/sign-in-policy`,
     )
   ).policy
 }
 
-export async function updateAppSignOnPolicy(
+export async function updateAppSignInPolicy(
   csrfToken: string,
   id: string,
-  rules: SignOnRule[],
-): Promise<AppSignOnPolicy> {
+  rules: SignInRule[],
+): Promise<AppSignInPolicy> {
   return (
-    await request<{ policy: AppSignOnPolicy }>(
-      `/api/admin/applications/${encodeURIComponent(id)}/sign-on-policy`,
+    await request<{ policy: AppSignInPolicy }>(
+      `/api/admin/applications/${encodeURIComponent(id)}/sign-in-policy`,
       adminRequest(csrfToken, 'PUT', { rules }),
     )
   ).policy

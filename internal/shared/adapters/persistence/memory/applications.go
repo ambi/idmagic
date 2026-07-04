@@ -30,7 +30,7 @@ func cloneApplication(app *spec.Application) *spec.Application {
 	return &cloned
 }
 
-func cloneSignOnPolicy(policy *spec.AppSignOnPolicy) *spec.AppSignOnPolicy {
+func cloneSignInPolicy(policy *spec.AppSignInPolicy) *spec.AppSignInPolicy {
 	cloned := *policy
 	cloned.Rules = slices.Clone(policy.Rules)
 	return &cloned
@@ -170,36 +170,36 @@ func (r *ApplicationRepository) RemoveCategory(_ context.Context, tenantID, cate
 }
 
 // =====================================================================
-// SignOnPolicyRepository (wi-71, ADR-079)
+// SignInPolicyRepository (wi-71, ADR-079)
 // =====================================================================
 
-type SignOnPolicyRepository struct {
+type SignInPolicyRepository struct {
 	mu       sync.RWMutex
-	policies map[string]*spec.AppSignOnPolicy // key: tenantKey(tenant_id, application_id)
+	policies map[string]*spec.AppSignInPolicy // key: tenantKey(tenant_id, application_id)
 }
 
-func NewSignOnPolicyRepository() *SignOnPolicyRepository {
-	return &SignOnPolicyRepository{policies: map[string]*spec.AppSignOnPolicy{}}
+func NewSignInPolicyRepository() *SignInPolicyRepository {
+	return &SignInPolicyRepository{policies: map[string]*spec.AppSignInPolicy{}}
 }
 
-func (r *SignOnPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*spec.AppSignOnPolicy, error) {
+func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*spec.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	policy := r.policies[tenantKey(tenantID, applicationID)]
 	if policy == nil {
 		return nil, nil
 	}
-	return cloneSignOnPolicy(policy), nil
+	return cloneSignInPolicy(policy), nil
 }
 
-func (r *SignOnPolicyRepository) Save(_ context.Context, policy *spec.AppSignOnPolicy) error {
+func (r *SignInPolicyRepository) Save(_ context.Context, policy *spec.AppSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.policies[tenantKey(policy.TenantID, policy.ApplicationID)] = cloneSignOnPolicy(policy)
+	r.policies[tenantKey(policy.TenantID, policy.ApplicationID)] = cloneSignInPolicy(policy)
 	return nil
 }
 
-func (r *SignOnPolicyRepository) Delete(_ context.Context, tenantID, applicationID string) error {
+func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, applicationID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.policies, tenantKey(tenantID, applicationID))

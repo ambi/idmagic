@@ -54,7 +54,7 @@ type Dependencies struct {
 	ApplicationAssignmentRepo   appports.AssignmentRepository
 	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
 	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
-	ApplicationSignOnPolicyRepo appports.SignOnPolicyRepository
+	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
 	Close                       func()
 	DbPing                      func(context.Context) error
 	ValkeyPing                  func(context.Context) error

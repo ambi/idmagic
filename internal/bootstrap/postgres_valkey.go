@@ -121,7 +121,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		ApplicationAssignmentRepo:   &postgres.ApplicationAssignmentRepository{Pool: resilientDB},
 		ApplicationOrderingRepo:     &postgres.ApplicationOrderingRepository{Pool: resilientDB},
 		ApplicationCategoryRepo:     &postgres.ApplicationCategoryRepository{Pool: resilientDB},
-		ApplicationSignOnPolicyRepo: &postgres.SignOnPolicyRepository{Pool: resilientDB},
+		ApplicationSignInPolicyRepo: &postgres.SignInPolicyRepository{Pool: resilientDB},
 		Close: func() {
 			_ = valkeyClient.Close()
 			pool.Close()

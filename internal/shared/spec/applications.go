@@ -96,21 +96,38 @@ func (v AssignmentVisibility) Valid() bool {
 	return false
 }
 
-// RequiredAuthnLevel は Application sign-on policy が要求する認証強度。
+// RequiredAuthnStrength はサインインポリシーが要求する認証強度。制約された選択肢を
+// 内部の acr / amr へ写像する。Password は追加要求なし、Mfa は第二要素必須。
+type RequiredAuthnStrength string
+
+const (
+	RequiredAuthnPassword RequiredAuthnStrength = "Password"
+	RequiredAuthnMfa      RequiredAuthnStrength = "Mfa"
+)
+
+func (s RequiredAuthnStrength) Valid() bool {
+	switch s {
+	case RequiredAuthnPassword, RequiredAuthnMfa:
+		return true
+	}
+	return false
+}
+
+// RequiredAuthnLevel は Application sign-in policy が要求する認証強度 (制約された選択肢)。
 type RequiredAuthnLevel struct {
-	ACR    string `json:"acr,omitempty"`
-	Factor string `json:"factor,omitempty"`
+	Strength RequiredAuthnStrength `json:"strength"`
 }
 
-// AccessCondition は Application sign-on policy の静的条件。
+// AccessCondition は Application sign-in policy の静的条件。初期実装で実際に評価できる
+// 構造化条件のみを持つ。旧 network / device の自由入力は廃止した。
 type AccessCondition struct {
-	Network             string `json:"network,omitempty"`
-	Device              string `json:"device,omitempty"`
-	ReauthMaxAgeSeconds *int   `json:"reauth_max_age_seconds,omitempty"`
+	// NetworkAllowCIDRs は許可するクライアント IP の CIDR 一覧。空なら制限なし。
+	NetworkAllowCIDRs   []string `json:"network_allow_cidrs,omitempty"`
+	ReauthMaxAgeSeconds *int     `json:"reauth_max_age_seconds,omitempty"`
 }
 
-// SignOnRule は Application sign-on policy の 1 ルール。
-type SignOnRule struct {
+// SignInRule は Application sign-in policy の 1 ルール。
+type SignInRule struct {
 	RuleID        string             `json:"rule_id"`
 	Name          string             `json:"name"`
 	Enabled       bool               `json:"enabled"`
@@ -118,11 +135,11 @@ type SignOnRule struct {
 	Condition     AccessCondition    `json:"condition"`
 }
 
-// AppSignOnPolicy は Application ごとの federation 開始条件。
-type AppSignOnPolicy struct {
+// AppSignInPolicy は Application ごとの federation 開始条件。
+type AppSignInPolicy struct {
 	TenantID      string       `json:"tenant_id"`
 	ApplicationID string       `json:"application_id"`
-	Rules         []SignOnRule `json:"rules"`
+	Rules         []SignInRule `json:"rules"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
@@ -288,16 +305,16 @@ type ApplicationUnassigned struct {
 func (e *ApplicationUnassigned) EventType() string     { return "ApplicationUnassigned" }
 func (e *ApplicationUnassigned) OccurredAt() time.Time { return e.At }
 
-// AppSignOnPolicyUpdated は Application の sign-on policy を更新した event。
-type AppSignOnPolicyUpdated struct {
+// AppSignInPolicyUpdated は Application の sign-in policy を更新した event。
+type AppSignInPolicyUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
 	ActorSub      string    `json:"actorSub"`
 	ApplicationID string    `json:"applicationId"`
 }
 
-func (e *AppSignOnPolicyUpdated) EventType() string     { return "AppSignOnPolicyUpdated" }
-func (e *AppSignOnPolicyUpdated) OccurredAt() time.Time { return e.At }
+func (e *AppSignInPolicyUpdated) EventType() string     { return "AppSignInPolicyUpdated" }
+func (e *AppSignInPolicyUpdated) OccurredAt() time.Time { return e.At }
 
 // AppAccessDeniedByPolicy は policy により federation を拒否した event。
 type AppAccessDeniedByPolicy struct {

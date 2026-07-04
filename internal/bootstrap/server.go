@@ -186,7 +186,7 @@ func Run() error {
 		ApplicationAssignmentRepo:   deps.ApplicationAssignmentRepo,
 		ApplicationOrderingRepo:     deps.ApplicationOrderingRepo,
 		ApplicationCategoryRepo:     deps.ApplicationCategoryRepo,
-		ApplicationSignOnPolicyRepo: deps.ApplicationSignOnPolicyRepo,
+		ApplicationSignInPolicyRepo: deps.ApplicationSignInPolicyRepo,
 		Emit:                        emit,
 		DbPing:                      deps.DbPing,
 		ValkeyPing:                  deps.ValkeyPing,

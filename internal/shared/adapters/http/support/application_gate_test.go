@@ -59,11 +59,11 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	}
 }
 
-func TestApplicationAccessEvaluatesSignOnPolicy(t *testing.T) {
+func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	ctx := context.Background()
 	apps := memory.NewApplicationRepository()
 	assignments := memory.NewApplicationAssignmentRepository()
-	policies := memory.NewSignOnPolicyRepository()
+	policies := memory.NewSignInPolicyRepository()
 	now := time.Now().UTC()
 	app := &spec.Application{
 		TenantID: "default", ApplicationID: "app-1", Name: "App", Kind: spec.ApplicationFederated, Status: spec.ApplicationActive,
@@ -79,17 +79,17 @@ func TestApplicationAccessEvaluatesSignOnPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := policies.Save(ctx, &spec.AppSignOnPolicy{
+	if err := policies.Save(ctx, &spec.AppSignInPolicy{
 		TenantID: "default", ApplicationID: "app-1", UpdatedAt: now,
-		Rules: []spec.SignOnRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: spec.RequiredAuthnLevel{ACR: authusecases.ACRMFA}}},
+		Rules: []spec.SignInRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa}}},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := support.Deps{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignOnPolicyRepo: policies}
+	d := support.Deps{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
 
 	decision, err := d.EvaluateApplicationAccess(ctx, "default", spec.ProtocolBindingOIDC, "c1", "alice", &authdomain.AuthenticationContext{
 		Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

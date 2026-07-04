@@ -59,8 +59,8 @@ type assignmentResponse struct {
 	CreatedAt   time.Time                  `json:"created_at"`
 }
 
-type signOnPolicyRequest struct {
-	Rules []spec.SignOnRule `json:"rules"`
+type signInPolicyRequest struct {
+	Rules []spec.SignInRule `json:"rules"`
 }
 
 func (d Deps) handleListApplications(c *echo.Context) error {
@@ -90,12 +90,12 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 		return d.writeApplicationError(c, appusecases.ErrApplicationNotFound)
 	}
 	oidc, wsfed, saml := d.resolveProtocolConfig(c, app)
-	policy, err := appusecases.GetSignOnPolicy(c.Request().Context(), d.signOnPolicyDeps(), app.ApplicationID)
+	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), app.ApplicationID)
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"application": toApplicationResponse(app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_on_policy": policy,
+		"application": toApplicationResponse(app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_in_policy": policy,
 	})
 }
 
@@ -307,18 +307,18 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleGetSignOnPolicy(c *echo.Context) error {
+func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	policy, err := appusecases.GetSignOnPolicy(c.Request().Context(), d.signOnPolicyDeps(), c.Param("application_id"))
+	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), c.Param("application_id"))
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy})
 }
 
-func (d Deps) handleUpdateSignOnPolicy(c *echo.Context) error {
+func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -326,11 +326,11 @@ func (d Deps) handleUpdateSignOnPolicy(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var req signOnPolicyRequest
+	var req signInPolicyRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	policy, err := appusecases.UpdateSignOnPolicy(c.Request().Context(), d.signOnPolicyDeps(), appusecases.UpdateSignOnPolicyInput{
+	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
 		ActorSub: actor.Sub, ApplicationID: c.Param("application_id"), Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -342,7 +342,7 @@ func (d Deps) handleUpdateSignOnPolicy(c *echo.Context) error {
 func (d Deps) applicationDeps() appusecases.ApplicationDeps {
 	return appusecases.ApplicationDeps{
 		Repo: d.ApplicationRepo, IconStore: d.ApplicationIconStore,
-		AssignmentRepo: d.ApplicationAssignmentRepo, PolicyRepo: d.ApplicationSignOnPolicyRepo, Emit: d.Emit,
+		AssignmentRepo: d.ApplicationAssignmentRepo, PolicyRepo: d.ApplicationSignInPolicyRepo, Emit: d.Emit,
 	}
 }
 
@@ -353,9 +353,9 @@ func (d Deps) assignmentDeps() appusecases.AssignmentDeps {
 	}
 }
 
-func (d Deps) signOnPolicyDeps() appusecases.SignOnPolicyDeps {
-	return appusecases.SignOnPolicyDeps{
-		AppRepo: d.ApplicationRepo, PolicyRepo: d.ApplicationSignOnPolicyRepo, Emit: d.Emit,
+func (d Deps) signInPolicyDeps() appusecases.SignInPolicyDeps {
+	return appusecases.SignInPolicyDeps{
+		AppRepo: d.ApplicationRepo, PolicyRepo: d.ApplicationSignInPolicyRepo, Emit: d.Emit,
 	}
 }
 
@@ -368,8 +368,8 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 		errors.Is(err, appusecases.ErrApplicationIconFormat) {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_icon", err.Error())
 	}
-	if errors.Is(err, appusecases.ErrInvalidSignOnPolicy) {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_sign_on_policy", err.Error())
+	if errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
 	}
 	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 }

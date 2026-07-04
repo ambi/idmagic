@@ -315,7 +315,7 @@ CREATE TABLE application_icons (
         REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
 );
 
-CREATE TABLE application_sign_on_policies (
+CREATE TABLE application_sign_in_policies (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     application_id UUID NOT NULL,
     rules JSONB NOT NULL DEFAULT '[]'::jsonb,

@@ -133,17 +133,17 @@ func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, ca
 	return err
 }
 
-// SignOnPolicyRepository は Application sign-on policy を PostgreSQL に永続化する (ADR-079)。
-type SignOnPolicyRepository struct{ Pool DB }
+// SignInPolicyRepository は Application sign-in policy を PostgreSQL に永続化する (ADR-079)。
+type SignInPolicyRepository struct{ Pool DB }
 
-func (r *SignOnPolicyRepository) Get(ctx context.Context, tenantID, applicationID string) (*spec.AppSignOnPolicy, error) {
+func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationID string) (*spec.AppSignInPolicy, error) {
 	var (
-		policy spec.AppSignOnPolicy
+		policy spec.AppSignInPolicy
 		rules  []byte
 	)
 	err := r.Pool.QueryRow(ctx, `
 SELECT tenant_id,application_id,rules,updated_at
-  FROM application_sign_on_policies
+  FROM application_sign_in_policies
  WHERE tenant_id=$1 AND application_id=$2`, tenantID, applicationID).
 		Scan(&policy.TenantID, &policy.ApplicationID, &rules, &policy.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -152,7 +152,7 @@ SELECT tenant_id,application_id,rules,updated_at
 	if err != nil {
 		return nil, err
 	}
-	policy.Rules = []spec.SignOnRule{}
+	policy.Rules = []spec.SignInRule{}
 	if len(rules) > 0 {
 		if err := json.Unmarshal(rules, &policy.Rules); err != nil {
 			return nil, err
@@ -161,26 +161,26 @@ SELECT tenant_id,application_id,rules,updated_at
 	return &policy, nil
 }
 
-func (r *SignOnPolicyRepository) Save(ctx context.Context, policy *spec.AppSignOnPolicy) error {
+func (r *SignInPolicyRepository) Save(ctx context.Context, policy *spec.AppSignInPolicy) error {
 	rules := policy.Rules
 	if rules == nil {
-		rules = []spec.SignOnRule{}
+		rules = []spec.SignInRule{}
 	}
 	encoded, err := json.Marshal(rules)
 	if err != nil {
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `
-INSERT INTO application_sign_on_policies (tenant_id,application_id,rules,updated_at)
+INSERT INTO application_sign_in_policies (tenant_id,application_id,rules,updated_at)
 VALUES ($1,$2,$3,$4)
 ON CONFLICT (tenant_id,application_id) DO UPDATE SET rules=EXCLUDED.rules,updated_at=EXCLUDED.updated_at`,
 		policy.TenantID, policy.ApplicationID, encoded, policy.UpdatedAt)
 	return err
 }
 
-func (r *SignOnPolicyRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
+func (r *SignInPolicyRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
 	_, err := r.Pool.Exec(ctx,
-		"DELETE FROM application_sign_on_policies WHERE tenant_id=$1 AND application_id=$2", tenantID, applicationID)
+		"DELETE FROM application_sign_in_policies WHERE tenant_id=$1 AND application_id=$2", tenantID, applicationID)
 	return err
 }
 

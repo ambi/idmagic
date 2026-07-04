@@ -31,7 +31,7 @@ type ApplicationDeps struct {
 	Repo           ports.ApplicationRepository
 	IconStore      ports.ApplicationIconStore
 	AssignmentRepo ports.AssignmentRepository
-	PolicyRepo     ports.SignOnPolicyRepository
+	PolicyRepo     ports.SignInPolicyRepository
 	Emit           func(spec.DomainEvent)
 }
 

@@ -691,7 +691,7 @@ func (d Deps) issueCodeURL(
 	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない (ADR-061)。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
 		decision, err := d.EvaluateApplicationAccess(
-			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, authn.Sub, authn,
+			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, authn.Sub, authn, d.ClientIP(c.Request()),
 		)
 		if err != nil {
 			return "", err
@@ -711,7 +711,7 @@ func (d Deps) issueCodeURL(
 				d.setSessionCookie(c, pending.SessionID)    //nolint:contextcheck // Cookie path is derived from the Echo request.
 				return support.TenantRoute(c, "/totp"), nil //nolint:contextcheck // Redirect URL is derived from the Echo request.
 			}
-			return authorizationErrorURL(req, iss, "access_denied", "アプリケーションのサインオンポリシーを満たせません"), nil
+			return authorizationErrorURL(req, iss, "access_denied", "アプリケーションのサインインポリシーを満たせません"), nil
 		}
 		if !decision.Allowed {
 			reason := decision.Reason
