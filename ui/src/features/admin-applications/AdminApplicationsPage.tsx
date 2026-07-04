@@ -547,11 +547,64 @@ function ApplicationSummaryCard({
         </Alert>
       ) : null}
       <dl className="grid gap-4 p-5">
+        <ReadOnlyField label="種別">{kindLabel(app)}</ReadOnlyField>
+
+        <ReadOnlyField label="状態">
+          <StatusBadge status={app.status} />
+        </ReadOnlyField>
+
+        <ReadOnlyField label="カテゴリ">
+          {app.category_names && app.category_names.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {app.category_names.map((name) => (
+                <span key={name} className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                  {name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-slate-400">未設定（カテゴリなし）</span>
+          )}
+        </ReadOnlyField>
+
+        <ReadOnlyField label="接続設定 (Binding)">
+          {app.binding_summaries && app.binding_summaries.length > 0 ? (
+            <div className="flex flex-col gap-1 font-mono text-xs text-slate-700">
+              {app.binding_summaries.map((summary, idx) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: static list
+                <span key={idx}>{summary}</span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-slate-400">未設定</span>
+          )}
+        </ReadOnlyField>
+
+        <ReadOnlyField label="割当状況">
+          {app.assigned_subject_count > 0 ? (
+            <span className="text-slate-700">
+              {app.assigned_subject_count} 件のユーザー/グループ
+            </span>
+          ) : (
+            <span className="text-slate-400">未設定（割当なし）</span>
+          )}
+        </ReadOnlyField>
+
+        <ReadOnlyField label="ログインポリシー">
+          {app.sign_in_policy_summary ? (
+            <span className="text-slate-700">{app.sign_in_policy_summary}</span>
+          ) : (
+            <span className="text-slate-400">未設定</span>
+          )}
+        </ReadOnlyField>
+
         {app.kind === 'service' ? (
-          <p className="text-xs text-slate-500">
-            client_credentials グラントで動く M2M
-            クライアントです。詳細はアプリケーションを開いて確認できます。
-          </p>
+          <ReadOnlyField label="説明">
+            <p className="text-xs text-slate-500">
+              client_credentials グラントで動く M2M
+              クライアントです。詳細はアプリケーションを開いて確認できます。
+            </p>
+          </ReadOnlyField>
         ) : (
           <ReadOnlyField label="起動 URL">
             {app.launch_url ? (
@@ -569,6 +622,17 @@ function ApplicationSummaryCard({
             )}
           </ReadOnlyField>
         )}
+
+        <ReadOnlyField label="登録日時 / 更新日時">
+          <div className="text-xs text-slate-500">
+            <div>
+              登録: {app.created_at ? new Date(app.created_at).toLocaleString('ja-JP') : '不明'}
+            </div>
+            <div className="mt-0.5">
+              更新: {app.updated_at ? new Date(app.updated_at).toLocaleString('ja-JP') : '不明'}
+            </div>
+          </div>
+        </ReadOnlyField>
       </dl>
     </Card>
   )
@@ -669,8 +733,31 @@ export function AdminApplicationDetailPage({
           </div>
 
           <div className="grid gap-6 p-5">
-            {app.kind !== 'service' ? (
-              <dl className="grid gap-4">
+            {/* 基本情報セクション */}
+            <section className="grid gap-4 sm:grid-cols-2">
+              <ReadOnlyField label="種別">
+                <span>{kindLabel(app)}</span>
+              </ReadOnlyField>
+              <ReadOnlyField label="状態">
+                <StatusBadge status={app.status} />
+              </ReadOnlyField>
+              <ReadOnlyField label="カテゴリ">
+                {app.category_names && app.category_names.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {app.category_names.map((name) => (
+                      <span
+                        key={name}
+                        className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-slate-400">未設定（カテゴリなし）</span>
+                )}
+              </ReadOnlyField>
+              {app.kind !== 'service' ? (
                 <ReadOnlyField label="起動 URL">
                   {app.launch_url ? (
                     <a
@@ -686,8 +773,21 @@ export function AdminApplicationDetailPage({
                     <span className="text-slate-400">未設定</span>
                   )}
                 </ReadOnlyField>
-              </dl>
-            ) : null}
+              ) : null}
+            </section>
+
+            <section className="grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 text-xs text-slate-500">
+              <ReadOnlyField label="登録日時">
+                <span>
+                  {app.created_at ? new Date(app.created_at).toLocaleString('ja-JP') : '不明'}
+                </span>
+              </ReadOnlyField>
+              <ReadOnlyField label="最終更新日時">
+                <span>
+                  {app.updated_at ? new Date(app.updated_at).toLocaleString('ja-JP') : '不明'}
+                </span>
+              </ReadOnlyField>
+            </section>
 
             {detail.oidc ? (
               <section className="grid gap-3 border-t border-slate-100 pt-5 first:border-t-0 first:pt-0">
@@ -853,6 +953,38 @@ export function AdminApplicationDetailPage({
                 </ReadOnlyField>
               </section>
             ) : null}
+
+            {/* ログインポリシーセクション */}
+            <section className="grid gap-3 border-t border-slate-100 pt-5">
+              <div className="flex items-center gap-2">
+                <IconKey size={16} className="text-slate-400" aria-hidden="true" />
+                <SectionTitle>ログインポリシー</SectionTitle>
+              </div>
+              <ReadOnlyField label="適用状況">
+                <span className="text-slate-700 font-semibold">{app.sign_in_policy_summary}</span>
+              </ReadOnlyField>
+              {detail.sign_in_policy && detail.sign_in_policy.effective_rules.length > 0 ? (
+                <ReadOnlyField label="適用ルール">
+                  <ul className="mt-1 flex flex-col gap-1.5">
+                    {detail.sign_in_policy.effective_rules.map((rule) => (
+                      <li
+                        key={rule.rule_id}
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700"
+                      >
+                        <div className="font-sans font-semibold mb-1">
+                          {rule.name || `ルール ${rule.rule_id}`}
+                        </div>
+                        {summarizeSignInRule(rule)}
+                      </li>
+                    ))}
+                  </ul>
+                </ReadOnlyField>
+              ) : (
+                <ReadOnlyField label="適用ルール">
+                  <span className="text-xs text-slate-400">適用ルールなし (常に許可)</span>
+                </ReadOnlyField>
+              )}
+            </section>
 
             {app.kind !== 'service' ? (
               <section className="grid gap-3 border-t border-slate-100 pt-5">

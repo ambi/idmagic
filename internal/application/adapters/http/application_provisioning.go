@@ -125,7 +125,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": toApplicationResponse(app)})
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
 
 	case "oidc":
 		if len(req.RedirectURIs) == 0 {
@@ -157,7 +157,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, err)
 		}
 		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-			"application": toApplicationResponse(app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
+			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
 		})
 
 	case "service":
@@ -181,7 +181,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, err)
 		}
 		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-			"application": toApplicationResponse(app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
+			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
 		})
 
 	case "wsfed":
@@ -206,7 +206,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": toApplicationResponse(app)})
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
 
 	case "saml":
 		if strings.TrimSpace(req.EntityID) == "" || len(req.ACSURLs) == 0 {
@@ -239,7 +239,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": toApplicationResponse(app)})
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
 
 	default:
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "種別は oidc / wsfed / saml / weblink のいずれかです")

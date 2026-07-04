@@ -65,6 +65,8 @@ type AssignmentRepository interface {
 	ListByApplication(ctx context.Context, tenantID, applicationID string) ([]*spec.ApplicationAssignment, error)
 	// ListBySubjects は指定 subject 群に一致する割当を返す (ポータル一覧・割当ゲート用)。
 	ListBySubjects(ctx context.Context, tenantID string, subjects []SubjectRef) ([]*spec.ApplicationAssignment, error)
+	// ListByTenant はテナント内のすべての Application 割当を返す。
+	ListByTenant(ctx context.Context, tenantID string) ([]*spec.ApplicationAssignment, error)
 	// Save は割当を upsert する。
 	Save(ctx context.Context, assignment *spec.ApplicationAssignment) error
 	// Delete は 1 件の割当を削除する (冪等)。
@@ -77,6 +79,8 @@ type AssignmentRepository interface {
 type SignInPolicyRepository interface {
 	// Get は application_id に一致する policy を返す。未設定なら (nil, nil)。
 	Get(ctx context.Context, tenantID, applicationID string) (*spec.AppSignInPolicy, error)
+	// ListByTenant はテナント内のすべての Application sign-in policy を返す。
+	ListByTenant(ctx context.Context, tenantID string) ([]*spec.AppSignInPolicy, error)
 	// Save は policy を upsert する。
 	Save(ctx context.Context, policy *spec.AppSignInPolicy) error
 	// Delete は application_id に一致する policy を削除する (冪等)。

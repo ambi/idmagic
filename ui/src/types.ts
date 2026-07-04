@@ -98,6 +98,10 @@ export type AdminApplication = {
   launch_url?: string
   bindings: ProtocolBinding[]
   category_ids: string[]
+  category_names: string[]
+  binding_summaries: string[]
+  assigned_subject_count: number
+  sign_in_policy_summary: string
   created_at: string
   updated_at: string
 }

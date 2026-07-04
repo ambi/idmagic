@@ -126,7 +126,7 @@ func (d Deps) handleSetApplicationCategories(c *echo.Context) error {
 	if err != nil {
 		return d.writeCategoryError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toApplicationResponse(app))
+	return support.NoStoreJSON(c, http.StatusOK, d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app))
 }
 
 func (d Deps) categoryDeps() appusecases.CategoryDeps {

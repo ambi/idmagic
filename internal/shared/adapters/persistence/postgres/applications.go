@@ -161,6 +161,38 @@ SELECT tenant_id,application_id,rules,created_at,updated_at
 	return &policy, nil
 }
 
+func (r *SignInPolicyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*spec.AppSignInPolicy, error) {
+	rows, err := r.Pool.Query(ctx, `
+SELECT tenant_id,application_id,rules,created_at,updated_at
+  FROM application_sign_in_policies
+ WHERE tenant_id=$1`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*spec.AppSignInPolicy
+	for rows.Next() {
+		var (
+			policy spec.AppSignInPolicy
+			rules  []byte
+		)
+		if err := rows.Scan(&policy.TenantID, &policy.ApplicationID, &rules, &policy.CreatedAt, &policy.UpdatedAt); err != nil {
+			return nil, err
+		}
+		policy.Rules = []spec.SignInRule{}
+		if len(rules) > 0 {
+			if err := json.Unmarshal(rules, &policy.Rules); err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, &policy)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (r *SignInPolicyRepository) Save(ctx context.Context, policy *spec.AppSignInPolicy) error {
 	rules := policy.Rules
 	if rules == nil {
@@ -293,6 +325,16 @@ func collectAssignments(rows pgx.Rows) ([]*spec.ApplicationAssignment, error) {
 		out = append(out, a)
 	}
 	return out, rows.Err()
+}
+
+func (r *ApplicationAssignmentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*spec.ApplicationAssignment, error) {
+	rows, err := r.Pool.Query(ctx,
+		assignmentSelect+" WHERE tenant_id=$1",
+		tenantID)
+	if err != nil {
+		return nil, err
+	}
+	return collectAssignments(rows)
 }
 
 func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context, tenantID, applicationID string) ([]*spec.ApplicationAssignment, error) {

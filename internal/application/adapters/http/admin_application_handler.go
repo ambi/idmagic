@@ -2,7 +2,9 @@
 package http
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -21,17 +23,21 @@ type protocolBindingResponse struct {
 }
 
 type applicationResponse struct {
-	ApplicationID string                    `json:"application_id"`
-	Name          string                    `json:"name"`
-	Kind          spec.ApplicationKind      `json:"kind"`
-	Status        spec.ApplicationStatus    `json:"status"`
-	IconURL       string                    `json:"icon_url,omitempty"`
-	IconObjectKey string                    `json:"icon_object_key,omitempty"`
-	LaunchURL     string                    `json:"launch_url,omitempty"`
-	Bindings      []protocolBindingResponse `json:"bindings"`
-	CategoryIDs   []string                  `json:"category_ids"`
-	CreatedAt     time.Time                 `json:"created_at"`
-	UpdatedAt     time.Time                 `json:"updated_at"`
+	ApplicationID        string                    `json:"application_id"`
+	Name                 string                    `json:"name"`
+	Kind                 spec.ApplicationKind      `json:"kind"`
+	Status               spec.ApplicationStatus    `json:"status"`
+	IconURL              string                    `json:"icon_url,omitempty"`
+	IconObjectKey        string                    `json:"icon_object_key,omitempty"`
+	LaunchURL            string                    `json:"launch_url,omitempty"`
+	Bindings             []protocolBindingResponse `json:"bindings"`
+	CategoryIDs          []string                  `json:"category_ids"`
+	CategoryNames        []string                  `json:"category_names"`
+	BindingSummaries     []string                  `json:"binding_summaries"`
+	AssignedSubjectCount int                       `json:"assigned_subject_count"`
+	SignInPolicySummary  string                    `json:"sign_in_policy_summary"`
+	CreatedAt            time.Time                 `json:"created_at"`
+	UpdatedAt            time.Time                 `json:"updated_at"`
 }
 
 type applicationUpdateRequest struct {
@@ -72,13 +78,136 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	apps, err := d.ApplicationRepo.ListByTenant(c.Request().Context(), support.RequestTenantID(c))
+	tenantID := support.RequestTenantID(c)
+	ctx := c.Request().Context()
+	apps, err := d.ApplicationRepo.ListByTenant(ctx, tenantID)
 	if err != nil {
 		return err
 	}
+
+	// Bulkロード：カテゴリ
+	categoryMap := make(map[string]string)
+	if d.ApplicationCategoryRepo != nil {
+		categories, err := d.ApplicationCategoryRepo.ListByTenant(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, cat := range categories {
+			categoryMap[cat.CategoryID] = cat.Name
+		}
+	}
+
+	// Bulkロード：割当
+	assignmentCountMap := make(map[string]int)
+	if d.ApplicationAssignmentRepo != nil {
+		assignments, err := d.ApplicationAssignmentRepo.ListByTenant(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, a := range assignments {
+			assignmentCountMap[a.ApplicationID]++
+		}
+	}
+
+	// Bulkロード：個別ログインポリシー
+	policyMap := make(map[string]*spec.AppSignInPolicy)
+	if d.ApplicationSignInPolicyRepo != nil {
+		policies, err := d.ApplicationSignInPolicyRepo.ListByTenant(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, p := range policies {
+			policyMap[p.ApplicationID] = p
+		}
+	}
+
+	// Bulkロード：デフォルトログインポリシー
+	defaultRuleCount := 0
+	if d.DefaultSignInPolicyRepo != nil {
+		defaultPolicy, err := d.DefaultSignInPolicyRepo.Get(ctx, tenantID)
+		if err == nil && defaultPolicy != nil {
+			defaultRuleCount = len(defaultPolicy.Rules)
+		}
+	}
+
 	out := make([]applicationResponse, len(apps))
 	for i, app := range apps {
-		out[i] = toApplicationResponse(app)
+		// カテゴリ名の解決
+		categoryNames := make([]string, 0)
+		for _, catID := range app.CategoryIDs {
+			if name, ok := categoryMap[catID]; ok {
+				categoryNames = append(categoryNames, name)
+			}
+		}
+
+		// 割当数
+		assignedCount := assignmentCountMap[app.ApplicationID]
+
+		// ポリシー概要
+		var policySummary string
+		if p, ok := policyMap[app.ApplicationID]; ok && len(p.Rules) > 0 {
+			policySummary = fmt.Sprintf("個別ポリシー (%dルール)", len(p.Rules))
+		} else {
+			policySummary = fmt.Sprintf("テナントデフォルト (%dルール)", defaultRuleCount)
+		}
+
+		// binding要約
+		var summaries []string
+		for _, b := range app.Bindings {
+			switch b.Type {
+			case spec.ProtocolBindingOIDC:
+				if b.ClientID != "" {
+					summaries = append(summaries, "OIDC (Client ID: "+b.ClientID+")")
+				} else {
+					summaries = append(summaries, "OIDC")
+				}
+			case spec.ProtocolBindingWsFed:
+				if b.Wtrealm != "" {
+					summaries = append(summaries, "WS-Fed (Realm: "+b.Wtrealm+")")
+				} else {
+					summaries = append(summaries, "WS-Fed")
+				}
+			case spec.ProtocolBindingSAML:
+				if b.EntityID != "" {
+					summaries = append(summaries, "SAML (Entity ID: "+b.EntityID+")")
+				} else {
+					summaries = append(summaries, "SAML")
+				}
+			}
+		}
+		if len(summaries) == 0 && app.Kind == spec.ApplicationWeblink {
+			summaries = append(summaries, "Web Link")
+		}
+		if summaries == nil {
+			summaries = []string{}
+		}
+
+		bindings := make([]protocolBindingResponse, len(app.Bindings))
+		for j, b := range app.Bindings {
+			bindings[j] = protocolBindingResponse{Type: b.Type, ClientID: b.ClientID, Wtrealm: b.Wtrealm}
+		}
+		categoryIDs := app.CategoryIDs
+		if categoryIDs == nil {
+			categoryIDs = []string{}
+		}
+
+		out[i] = applicationResponse{
+			ApplicationID:        app.ApplicationID,
+			Name:                 app.Name,
+			Kind:                 app.Kind,
+			Status:               app.Status,
+			IconURL:              app.IconURL,
+			IconObjectKey:        app.IconObjectKey,
+			LaunchURL:            app.LaunchURL,
+			Bindings:             bindings,
+			CategoryIDs:          categoryIDs,
+			CategoryNames:        categoryNames,
+			BindingSummaries:     summaries,
+			AssignedSubjectCount: assignedCount,
+			SignInPolicySummary:  policySummary,
+			CreatedAt:            app.CreatedAt,
+			UpdatedAt:            app.UpdatedAt,
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"applications": out})
 }
@@ -87,7 +216,8 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"))
+	tenantID := support.RequestTenantID(c)
+	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), tenantID, c.Param("application_id"))
 	if err != nil {
 		return err
 	}
@@ -104,7 +234,7 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 		return d.writeApplicationError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"application": toApplicationResponse(app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_in_policy": signInView,
+		"application": d.buildApplicationResponse(c.Request().Context(), tenantID, app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_in_policy": signInView,
 	})
 }
 
@@ -127,7 +257,7 @@ func (d Deps) handleUpdateApplication(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toApplicationResponse(app))
+	return support.NoStoreJSON(c, http.StatusOK, d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app))
 }
 
 func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
@@ -165,7 +295,7 @@ func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"application": toApplicationResponse(app)})
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"application": d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app)})
 }
 
 func (d Deps) handleDeleteApplicationIcon(c *echo.Context) error {
@@ -182,7 +312,7 @@ func (d Deps) handleDeleteApplicationIcon(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"application": toApplicationResponse(app)})
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"application": d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app)})
 }
 
 func (d Deps) handleGetApplicationIcon(c *echo.Context) error {
@@ -240,7 +370,7 @@ func (d Deps) handleAttachBinding(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusCreated, toApplicationResponse(app))
+	return support.NoStoreJSON(c, http.StatusCreated, d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app))
 }
 
 func (d Deps) handleDetachBinding(c *echo.Context) error {
@@ -444,7 +574,78 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 }
 
-func toApplicationResponse(app *spec.Application) applicationResponse {
+func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *spec.Application) applicationResponse {
+	var categoryNames []string
+	if d.ApplicationCategoryRepo != nil && len(app.CategoryIDs) > 0 {
+		for _, catID := range app.CategoryIDs {
+			cat, err := d.ApplicationCategoryRepo.FindByID(ctx, tenantID, catID)
+			if err == nil && cat != nil {
+				categoryNames = append(categoryNames, cat.Name)
+			}
+		}
+	}
+	if categoryNames == nil {
+		categoryNames = []string{}
+	}
+
+	assignedCount := 0
+	if d.ApplicationAssignmentRepo != nil {
+		assignments, err := d.ApplicationAssignmentRepo.ListByApplication(ctx, tenantID, app.ApplicationID)
+		if err == nil {
+			assignedCount = len(assignments)
+		}
+	}
+
+	defaultRuleCount := 0
+	if d.DefaultSignInPolicyRepo != nil {
+		defaultPolicy, err := d.DefaultSignInPolicyRepo.Get(ctx, tenantID)
+		if err == nil && defaultPolicy != nil {
+			defaultRuleCount = len(defaultPolicy.Rules)
+		}
+	}
+
+	var policySummary string
+	var p *spec.AppSignInPolicy
+	var err error
+	if d.ApplicationSignInPolicyRepo != nil {
+		p, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
+	}
+	if err == nil && p != nil && len(p.Rules) > 0 {
+		policySummary = fmt.Sprintf("個別ポリシー (%dルール)", len(p.Rules))
+	} else {
+		policySummary = fmt.Sprintf("テナントデフォルト (%dルール)", defaultRuleCount)
+	}
+
+	var summaries []string
+	for _, b := range app.Bindings {
+		switch b.Type {
+		case spec.ProtocolBindingOIDC:
+			if b.ClientID != "" {
+				summaries = append(summaries, "OIDC (Client ID: "+b.ClientID+")")
+			} else {
+				summaries = append(summaries, "OIDC")
+			}
+		case spec.ProtocolBindingWsFed:
+			if b.Wtrealm != "" {
+				summaries = append(summaries, "WS-Fed (Realm: "+b.Wtrealm+")")
+			} else {
+				summaries = append(summaries, "WS-Fed")
+			}
+		case spec.ProtocolBindingSAML:
+			if b.EntityID != "" {
+				summaries = append(summaries, "SAML (Entity ID: "+b.EntityID+")")
+			} else {
+				summaries = append(summaries, "SAML")
+			}
+		}
+	}
+	if len(summaries) == 0 && app.Kind == spec.ApplicationWeblink {
+		summaries = append(summaries, "Web Link")
+	}
+	if summaries == nil {
+		summaries = []string{}
+	}
+
 	bindings := make([]protocolBindingResponse, len(app.Bindings))
 	for i, b := range app.Bindings {
 		bindings[i] = protocolBindingResponse{Type: b.Type, ClientID: b.ClientID, Wtrealm: b.Wtrealm}
@@ -454,9 +655,21 @@ func toApplicationResponse(app *spec.Application) applicationResponse {
 		categoryIDs = []string{}
 	}
 	return applicationResponse{
-		ApplicationID: app.ApplicationID, Name: app.Name, Kind: app.Kind, Status: app.Status,
-		IconURL: app.IconURL, IconObjectKey: app.IconObjectKey, LaunchURL: app.LaunchURL, Bindings: bindings, CategoryIDs: categoryIDs,
-		CreatedAt: app.CreatedAt, UpdatedAt: app.UpdatedAt,
+		ApplicationID:        app.ApplicationID,
+		Name:                 app.Name,
+		Kind:                 app.Kind,
+		Status:               app.Status,
+		IconURL:              app.IconURL,
+		IconObjectKey:        app.IconObjectKey,
+		LaunchURL:            app.LaunchURL,
+		Bindings:             bindings,
+		CategoryIDs:          categoryIDs,
+		CategoryNames:        categoryNames,
+		BindingSummaries:     summaries,
+		AssignedSubjectCount: assignedCount,
+		SignInPolicySummary:  policySummary,
+		CreatedAt:            app.CreatedAt,
+		UpdatedAt:            app.UpdatedAt,
 	}
 }
 

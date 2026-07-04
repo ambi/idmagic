@@ -197,6 +197,18 @@ func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID 
 	return cloneSignInPolicy(policy), nil
 }
 
+func (r *SignInPolicyRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.AppSignInPolicy, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*spec.AppSignInPolicy, 0)
+	for _, policy := range r.policies {
+		if policy.TenantID == tenantID {
+			out = append(out, cloneSignInPolicy(policy))
+		}
+	}
+	return out, nil
+}
+
 func (r *SignInPolicyRepository) Save(_ context.Context, policy *spec.AppSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -289,6 +301,19 @@ func (r *ApplicationAssignmentRepository) ListByApplication(_ context.Context, t
 		}
 		return strings.Compare(a.SubjectID, b.SubjectID)
 	})
+	return out, nil
+}
+
+func (r *ApplicationAssignmentRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.ApplicationAssignment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*spec.ApplicationAssignment, 0)
+	for _, assignment := range r.assignments {
+		if assignment.TenantID == tenantID {
+			cloned := *assignment
+			out = append(out, &cloned)
+		}
+	}
 	return out, nil
 }
 

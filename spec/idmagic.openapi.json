@@ -9384,6 +9384,24 @@
               "format": "uuid"
             }
           },
+          "category_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "binding_summaries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assigned_subject_count": {
+            "type": "integer"
+          },
+          "sign_in_policy_summary": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -9401,6 +9419,10 @@
           "status",
           "bindings",
           "category_ids",
+          "category_names",
+          "binding_summaries",
+          "assigned_subject_count",
+          "sign_in_policy_summary",
           "created_at",
           "updated_at"
         ],

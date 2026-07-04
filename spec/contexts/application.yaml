@@ -268,6 +268,14 @@ models:
         type: "ProtocolBinding[]"
       category_ids:
         type: "UUID[]"
+      category_names:
+        type: "String[]"
+      binding_summaries:
+        type: "String[]"
+      assigned_subject_count:
+        type: Integer
+      sign_in_policy_summary:
+        type: String
       created_at:
         type: Timestamp
       updated_at:
