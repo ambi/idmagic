@@ -3,7 +3,7 @@ id: repo-wi-2-remove-change-record-context-prefixes
 title: "Work Item と ADR のコンテキストプレフィクスを廃止する"
 created_at: 2026-07-04
 authors: [tn]
-status: pending
+status: completed
 risk: medium
 ---
 
@@ -35,3 +35,14 @@ risk: medium
 # Risk Notes
 既存 ID を一括変更すると、過去の work item、ADR、コミットメッセージ、ドキュメント内参照が壊れる可能性がある。
 履歴互換を優先して既存 ID を据え置く場合は、新旧形式が併存する移行期間が発生するため、検証ツールと起票手順が両形式を正しく扱う必要がある。
+
+# Completion
+- **Completed At**: 2026-07-04
+- **Summary**:
+  Work Item と ADR の新規命名規則をプレフィクスなしの単一ディレクトリ名前空間へ変更した。既存の `idp-` / `repo-` 付き ID とファイル名は履歴互換のため維持し、新規作成手順だけを `wi-<番号>-...` / `ADR-<番号>-...` に切り替えた。ADR の ID チェックは legacy prefix を無視した `adr-<番号>` の衝突検出に更新した。
+- **Verification Results**:
+  - `just check-ids` - passed
+  - `just yaml-check-work-items` - passed
+  - `bun test ./.ra/regenerative-architecture/tools/yaml-check/src/record-ids.test.ts` - passed
+  - `just yaml-check` - passed
+  - `bun test ./.ra/regenerative-architecture/tools/yaml-check/src` - passed
