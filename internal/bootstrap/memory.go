@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"context"
+
 	authnports "idmagic/internal/authentication/ports"
 	oauthports "idmagic/internal/oauth2/ports"
 	"idmagic/internal/shared/adapters/crypto"
@@ -50,5 +52,7 @@ func assembleMemory() (*Dependencies, error) {
 		ApplicationOrderingRepo:   memory.NewApplicationOrderingRepository(),
 		ApplicationCategoryRepo:   memory.NewApplicationCategoryRepository(),
 		Close:                     func() {},
+		DbPing:                    func(c context.Context) error { return nil },
+		ValkeyPing:                func(c context.Context) error { return nil },
 	}, nil
 }

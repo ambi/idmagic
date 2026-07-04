@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -30,6 +31,9 @@ func Run() error {
 	runtime := loadRuntimeConfig()
 	issuer := envDefault("ISSUER", "http://localhost:8080")
 	addr := envDefault("ADDR", ":8080")
+
+	shuttingDown := &atomic.Bool{}
+	startupComplete := &atomic.Bool{}
 
 	// アプリケーションログは stdout に構造化 JSON Lines で出力する (ADR-018)。
 	// 監査ログ (DomainEvent) は EventSink 経由の別経路。
@@ -182,6 +186,10 @@ func Run() error {
 		ApplicationOrderingRepo:   deps.ApplicationOrderingRepo,
 		ApplicationCategoryRepo:   deps.ApplicationCategoryRepo,
 		Emit:                      emit,
+		DbPing:                    deps.DbPing,
+		ValkeyPing:                deps.ValkeyPing,
+		ShuttingDown:              shuttingDown,
+		StartupComplete:           startupComplete,
 		HealthInfo: httpsupport.HealthInfo{
 			Persistence:   runtime.Persistence,
 			EventSink:     runtime.EventSink,
@@ -192,12 +200,20 @@ func Run() error {
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
 
+	// 起動準備がすべて完了したので、startupComplete を true に設定する
+	startupComplete.Store(true)
+
 	logger.Info(ctx, "server listening",
 		"commit", buildInfo.GitCommit, "build_date", buildInfo.BuildDate,
 		"addr", addr, "issuer", issuer,
 		"read_header_timeout", hardening.ReadHeaderTimeout, "read_timeout", hardening.ReadTimeout,
 		"write_timeout", hardening.WriteTimeout, "idle_timeout", hardening.IdleTimeout,
 		"max_body_bytes", hardening.MaxBodyBytes)
+
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+
+	serverErrChan := make(chan error, 1)
 	startConfig := echo.StartConfig{
 		Address: addr,
 		// HTTPServerHardening objective: 基盤 http.Server にタイムアウトを設定する。
@@ -206,9 +222,44 @@ func Run() error {
 			return nil
 		},
 	}
-	if err := startConfig.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error(ctx, "server stopped with error", "error", err)
+	go func() {
+		if err := startConfig.Start(serverCtx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrChan <- err
+		} else {
+			serverErrChan <- nil
+		}
+	}()
+
+	// シグナルを明示的に待ち受ける
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	var runErr error
+	select {
+	case sig := <-sigChan:
+		logger.Info(context.Background(), "received signal, starting graceful drain", "signal", sig.String())
+		// 1. readiness probe を unready に落とす
+		shuttingDown.Store(true)
+
+		// 2. ドレイン猶予待機
+		drainGracePeriod := 5 * time.Second
+		if val := os.Getenv("DRAIN_GRACE_PERIOD_SECONDS"); val != "" {
+			if parsed, err := time.ParseDuration(val + "s"); err == nil {
+				drainGracePeriod = parsed
+			}
+		}
+		logger.Info(context.Background(), "waiting for connection drain", "duration", drainGracePeriod.String())
+		time.Sleep(drainGracePeriod)
+
+		// 3. サーバシャットダウン
+		logger.Info(context.Background(), "stopping server")
+		serverCancel()
+		runErr = <-serverErrChan
+
+	case err := <-serverErrChan:
+		runErr = err
 	}
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if otelProvider != nil {
@@ -216,5 +267,5 @@ func Run() error {
 			logger.Error(shutdownCtx, "shutdown OpenTelemetry failed", "error", err)
 		}
 	}
-	return nil
+	return runErr
 }

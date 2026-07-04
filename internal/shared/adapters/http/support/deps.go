@@ -8,6 +8,8 @@
 package support
 
 import (
+	"context"
+	"sync/atomic"
 	"time"
 
 	appports "idmagic/internal/application/ports"
@@ -77,6 +79,10 @@ type Deps struct {
 	AbortMetrics               HTTPAbortMetrics
 	Emit                       func(spec.DomainEvent)
 	HealthInfo                 HealthInfo
+	DbPing                     func(context.Context) error
+	ValkeyPing                 func(context.Context) error
+	ShuttingDown               *atomic.Bool
+	StartupComplete            *atomic.Bool
 }
 
 // HealthInfo は bootstrap が決定した実行時構成のラベル。

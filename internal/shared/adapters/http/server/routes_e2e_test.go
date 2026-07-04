@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -85,7 +86,11 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())
+	startupComplete := &atomic.Bool{}
+	startupComplete.Store(true)
+	shuttingDown := &atomic.Bool{}
 	e := echo.New()
+
 	httpadapter.Register(e, support.Deps{
 		Issuer:     "http://test",
 		ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
@@ -94,6 +99,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
+		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 	})
 	return httptest.NewServer(e), userRepo
 }
@@ -153,6 +159,9 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())
+	startupComplete := &atomic.Bool{}
+	startupComplete.Store(true)
+	shuttingDown := &atomic.Bool{}
 	e := echo.New()
 	httpadapter.Register(e, support.Deps{
 		Issuer:     "http://test",
@@ -162,6 +171,7 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
+		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 	})
 	return httptest.NewServer(e)
 }
@@ -871,4 +881,113 @@ func mustJSON(t *testing.T, value any) string {
 		t.Fatalf("marshal: %v", err)
 	}
 	return string(body)
+}
+
+func TestHealthProbes(t *testing.T) {
+	clientRepo := memory.NewClientRepository()
+	userRepo := memory.NewUserRepository()
+	keyStore, _ := crypto.NewInMemoryKeyStore()
+	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
+	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())
+	hasher := crypto.NewArgon2idPasswordHasher()
+
+	startupComplete := &atomic.Bool{}
+	shuttingDown := &atomic.Bool{}
+
+	e := echo.New()
+	httpadapter.Register(e, support.Deps{
+		Issuer:            "http://test",
+		ClientRepo:        clientRepo,
+		UserRepo:          userRepo,
+		KeyStore:          keyStore,
+		TokenIssuer:       tokenIssuer,
+		TokenIntrospector: tokenIssuer,
+		PasswordHasher:    hasher,
+		SessionManager:    sessionManager,
+		AuthnResolver:     sessionManager,
+		StartupComplete:   startupComplete,
+		ShuttingDown:      shuttingDown,
+		HealthInfo:        support.HealthInfo{Persistence: "memory"},
+	})
+	srv := httptest.NewServer(e)
+	defer srv.Close()
+
+	client := &http.Client{}
+
+	// 1. 起動前状態のテスト
+	// startupz: 503
+	resp, err := client.Get(srv.URL + "/startupz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 for /startupz before startup complete, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// readyz: 503 (starting)
+	resp, err = client.Get(srv.URL + "/readyz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 for /readyz before startup complete, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// livez: 200 (liveness is always OK if process is running)
+	resp, err = client.Get(srv.URL + "/livez")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for /livez, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// 2. 起動完了後のテスト
+	startupComplete.Store(true)
+
+	// startupz: 200
+	resp, err = client.Get(srv.URL + "/startupz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for /startupz, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// readyz: 200
+	resp, err = client.Get(srv.URL + "/readyz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for /readyz, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// 3. シャットダウン中のテスト
+	shuttingDown.Store(true)
+
+	// readyz: 503 (unavailable)
+	resp, err = client.Get(srv.URL + "/readyz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 for /readyz during shutdown, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// livez: 200
+	resp, err = client.Get(srv.URL + "/livez")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for /livez during shutdown, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
 }

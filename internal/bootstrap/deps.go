@@ -53,6 +53,8 @@ type Dependencies struct {
 	ApplicationOrderingRepo   appports.ApplicationOrderingRepository
 	ApplicationCategoryRepo   appports.ApplicationCategoryRepository
 	Close                     func()
+	DbPing                    func(context.Context) error
+	ValkeyPing                func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

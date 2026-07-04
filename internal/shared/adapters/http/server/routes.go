@@ -39,6 +39,9 @@ func Register(e *echo.Echo, cd support.Deps) {
 	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, d.Deps)
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), d.Deps)
 	e.GET("/health", d.handleHealth)
+	e.GET("/livez", d.handleLivez)
+	e.GET("/readyz", d.handleReadyz)
+	e.GET("/startupz", d.handleStartupz)
 }
 
 func registerTenantRoutes(g *echo.Group, d Deps) {

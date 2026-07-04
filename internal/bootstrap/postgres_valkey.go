@@ -83,5 +83,11 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			_ = valkeyClient.Close()
 			pool.Close()
 		},
+		DbPing: func(c context.Context) error {
+			return pool.Ping(c)
+		},
+		ValkeyPing: func(c context.Context) error {
+			return valkeyClient.Ping(c).Err()
+		},
 	}, nil
 }
