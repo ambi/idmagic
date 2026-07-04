@@ -41,8 +41,8 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 - 双方向リアルタイム同期。
 
 # Verification
-- `go test -race ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
+- `just test-go-race`
+- `just lint-go`
 - 手動: あるテナントを export → 空テナントへ import し、client/application/割当/claim policy が 再現されることを確認する。再 import しても差分ゼロ（冪等）であることを確認する。
 - 手動: export に秘密鍵・パスワードハッシュ・client secret 平文が含まれないことを確認する。
 

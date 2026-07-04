@@ -42,10 +42,10 @@ k8s SA token / クラウド federation token) を検証し、
 - Transaction Tokens による内部サービス間伝播 (将来 WI、Txn-Tokens draft)。
 
 # Verification
-- `go test ./...` (in: idmagic)
+- `just test-go`
   - reason: 外部 JWT 検証、未登録 issuer / 改竄 attestation の拒否、subject mapping、短命 TTL の境界。
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
+- `just lint-go`
+- `just build-go`
 - 手動: mock workload issuer の token を提示 → idmagic token に交換 → 未登録 issuer は拒否されることを確認する。
 
 # Risk Notes

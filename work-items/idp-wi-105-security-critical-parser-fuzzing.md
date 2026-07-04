@@ -39,8 +39,8 @@ Go プロジェクト自身が stdlib のパーサをファジングしている
 - プロトコル準拠テスト（WI-33 が扱う conformance CI）。
 
 # Verification
-- `go test -race ./...` (in: idmagic)
-- cmd: 'go test -run=Fuzz -fuzz=Fuzz -fuzztime=30s ./internal/saml/...' in: idmagic
+- `just test-go-race`
+- `just test-go-fuzz ./internal/saml/... 30s`
 - 手動: 既知の悪性入力（XXE ペイロード、alg=none JWT、部分一致 redirect_uri）で fuzz target が期待どおり拒否/非パニックであることを確認する。
 
 # Risk Notes

@@ -48,12 +48,12 @@ opt-out 設定を追加する。
 - 位置情報 (GeoIP) に基づく詳細なリスクスコアリング。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: 新デバイス相当でサインイン → 通知メールが届く。パスワード / TOTP を 変更 → 対応する通知が届く。opt-out した種別は届かないことを確認する。
 - 手動: email sender を失敗させても認証 / 変更操作自体は成功することを確認する。
 

@@ -43,12 +43,12 @@ scope で絞って仲介する Token Vault を導入する。
 - 暗号鍵管理の新設 (既存 KMS / KeyStore を流用)。
 
 # Verification
-- `go test ./...` (in: idmagic)
+- `just test-go`
   - reason: token の暗号化保管・refresh・失効、仲介時の scope / 委譲絞り込み、解除後の取得拒否の境界。
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui build`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just build-ui`
 - 手動: ユーザーが外部 provider を連携 → エージェントが vault から token 取得 → 連携解除後は取得が拒否されることを確認する。
 
 # Risk Notes

@@ -41,12 +41,12 @@ step、bot 判定の拡張ポイントを持つべきである。
 - device fingerprinting の永続追跡。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: `/token` に同一 client_id/IP で閾値超過リクエストを投げ、429 と Retry-After が返ることを確認する。
 - 手動: login で閾値超過後に CAPTCHA が表示され、成功後に通常 flow へ戻ることを確認する。
 

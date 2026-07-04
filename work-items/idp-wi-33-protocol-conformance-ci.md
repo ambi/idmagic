@@ -35,10 +35,10 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 - SAML conformance。SAML WI の後続で扱う。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `docker compose -f infra/docker/docker-compose.dev.yaml up --build` (in: idmagic)
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just dev-compose`
   - reason: conformance smoke の対象環境を起動できることを確認する。
 - `conformance smoke command TBD`
   - reason: 選定した harness で最小 suite が pass することを確認する。

@@ -39,8 +39,8 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 - 既存の環境変数キー名の一斉改名（互換維持を優先）。
 
 # Verification
-- `go test -race ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
+- `just test-go-race`
+- `just lint-go`
 - 手動: 必須値欠落・不正 URL・矛盾する組み合わせで起動させ、明確なエラーで停止し 部分起動しないことを確認する。
 - 手動: 生成された設定リファレンスが実 Config 型と一致することを確認する。
 

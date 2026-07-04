@@ -48,12 +48,12 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 - step-up での email factor 利用 (初期は first-factor login に限定)。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: テナント設定で有効化 → email でログイン開始 → 届いた code / link で サインイン成立。期限切れ / 使用済み challenge が拒否されることを確認する。
 
 # Risk Notes

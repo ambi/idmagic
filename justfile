@@ -53,6 +53,10 @@ test-go:
 test-go-race:
     GOCACHE={{go_cache}} go test -race ./...
 
+# Run Go fuzz targets for a package.
+test-go-fuzz package fuzztime="30s":
+    GOCACHE={{go_cache}} go test -run=Fuzz -fuzz=Fuzz -fuzztime={{fuzztime}} {{package}}
+
 # Build all Go packages.
 build-go:
     GOCACHE={{go_cache}} go build -ldflags '{{ldflags}}' ./...

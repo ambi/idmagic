@@ -41,12 +41,12 @@ risk: high
 - outbound provisioning (SCIM は [[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]])。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動 (テスト用 LDAP): provider を設定 → 接続テスト成功 → LDAP ユーザで bind ログイン → 属性が JIT import される。LDAP 停止時にログインが fail-closed になることを確認する。
 
 # Risk Notes

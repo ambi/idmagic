@@ -50,13 +50,13 @@ idmagic は現状 OIDC の id_token / access_token 発行に閉じており、wa
 - トラストフレームワーク / trust list (発行者の信頼連鎖) の構築。
 
 # Verification
-- `go test ./...` (in: idmagic)
+- `just test-go`
   - reason: SD-JWT VC の署名・選択的開示・holder binding 検証、pre-authorized code フロー、status list 失効の反映、vp_token 検証の成否境界 (失効後は拒否)。
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: credential offer を発行 → mock wallet で取得 → OID4VP で提示 → verify が 成功する。admin で失効 → 同じ提示の verify が拒否される流れを確認する。
 
 # Risk Notes

@@ -49,12 +49,12 @@ self-service registration を標準機能として持つ:
 - progressive profiling / 多段の追加属性収集。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: テナント設定で登録を有効化 → RegisterPage で email/password 登録 → 確認メールのリンクで検証 → login 成立。設定を無効化すると登録導線が塞がる ことを確認する。
 - 手動: 既存 email で登録しても「存在する」ことが応答から判別できないことを 確認する。
 

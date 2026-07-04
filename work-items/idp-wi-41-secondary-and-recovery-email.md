@@ -44,9 +44,9 @@ risk: medium
 - 連絡先を使った step-up / 通知 ([[wi-43-account-portal-step-up-auth]] / 通知 WI)。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-ui`
 - 手動: recovery email を設定 → 確認メールのリンクで検証完了 → 再ロードで "確認済み" 表示。secondary email を追加 → 検証 → primary に昇格できる。
 
 # Risk Notes

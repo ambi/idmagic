@@ -42,12 +42,12 @@ TOTP / WebAuthn を失った場合の backup recovery codes を SCL と実装に
 - passwordless-only tenant policy。初期は password + WebAuthn MFA / step-up とする。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: account portal で passkey 登録 → logout → password + passkey で login / step-up が成立することを確認する。
 - 手動: recovery code を 1 つ使うと再利用できず、使用済み数が増えることを確認する。
 

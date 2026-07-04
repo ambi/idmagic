@@ -44,13 +44,13 @@ Okta Integration Network も Entra ID のアプリギャラリーも、よく使
 - Application 本体・割当 ([[wi-69-application-catalog-aggregate-and-assignment]])。
 
 # Verification
-- `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
-- `bun run yaml-check:work-items` (in: tools)
-- `bun run yaml-check:scl` (in: tools)
+- `just test-go`
+- `just lint-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
+- `just yaml-check-work-items`
+- `just yaml-check-scl`
 - 手動: テンプレートを選び必須入力を埋めて Application を作成し、生成された OIDC binding と 既定 claim release が正しく、そのまま SSO できることを確認する。
 
 # Risk Notes

@@ -42,12 +42,12 @@ risk: high
 - cross-tenant delegation。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: 特定グループのみ管理できる副管理者を割当 → そのグループは操作でき、 scope 外のユーザ / グループ / アプリの管理操作が拒否されることを確認する。
 
 # Risk Notes

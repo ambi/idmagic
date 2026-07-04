@@ -39,12 +39,12 @@ risk: medium
 - 巨大ファイルの非同期 / ストリーミング処理、スケジュール実行。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: CSV をアップロード → dry-run で行エラーがプレビューされる (副作用なし) → 適用で有効行のみ取り込まれ、無効行はエラーとして残ることを確認する。
 
 # Risk Notes

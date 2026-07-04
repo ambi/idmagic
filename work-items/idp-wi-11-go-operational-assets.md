@@ -33,7 +33,7 @@ OpenTelemetry 出力、HTTP 契約から再構築する。
 - Prometheus rules を promtool check rules で検証する。
 - Grafana dashboard JSON を構文検証する。
 - Docker Compose 上で k6 smoke を実行し、閾値を満たす。
-- go test -race ./... を idmagic で実行し、既存挙動に回帰がない。
+- `just test-go-race` を実行し、既存挙動に回帰がない。
 
 # Risk Notes
 旧 TypeScript 実装の設定を名前だけ変えて移植すると、存在しない metric や

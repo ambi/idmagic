@@ -41,10 +41,10 @@ discovery / DCR を整備し、エージェントと MCP クライアントが i
 - MCP transport (stdio / HTTP streaming) の実装。
 
 # Verification
-- `go test ./...` (in: idmagic)
+- `just test-go`
   - reason: RFC 9728 メタデータ整合、resource indicator による audience 限定、別 resource 拒否、PKCE 強制の境界。
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
+- `just lint-go`
+- `just build-go`
 - 手動: MCP クライアントが PRM を発見 → DCR → resource 指定で token 取得 → 別 resource では拒否されることを確認する。
 
 # Risk Notes

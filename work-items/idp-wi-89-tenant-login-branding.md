@@ -47,12 +47,12 @@ branding を追加する。任意 CSS / HTML 差し込みは injection 面が大
 - i18n / 多言語ブランディング文言。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: admin でロゴ / 製品名 / 配色 / サポートリンクを設定 → login / account portal に反映されることを確認する。悪意ある値 (script / 非 https リンク) が拒否 / 無害化されることを確認する。
 
 # Risk Notes

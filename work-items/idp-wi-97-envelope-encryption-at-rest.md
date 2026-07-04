@@ -49,12 +49,12 @@ fail-closed な復号を実現する。署名鍵そのものの鍵管理は
 - フルの BYOK / customer-managed key の管理 UI (将来拡張)。
 
 # Verification
-- `go test ./...` (in: idmagic)
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui lint`
-- `bun --cwd idmagic/ui build`
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
 - 手動: TOTP を登録 → DB 上の secret が鍵 ID 付き ciphertext で保存され、平文で ないことを確認する。
 - 手動: DEK を rotation しても既存秘密が復号でき、KMS を停止すると該当秘密の 利用が fail-closed になることを確認する。
 

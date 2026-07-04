@@ -42,12 +42,12 @@ rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]]) を持つが、エ
 - SIEM への外部エクスポート (まず内部監査・検索)。
 
 # Verification
-- `go test ./...` (in: idmagic)
+- `just test-go`
   - reason: レート / 予算 / 回数 / 有効期限の上限強制、超過時挙動、actor チェーン監査の相関、tenant scope の境界。
-- `golangci-lint run ./...` (in: idmagic)
-- `go build ./...` (in: idmagic)
-- `bun --cwd idmagic/ui typecheck`
-- `bun --cwd idmagic/ui build`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just build-ui`
 - 手動: エージェントにレート / 予算上限を設定 → 上限内は許可・超過は拒否 → 委譲チェーン込みで監査に残ることを確認する。
 
 # Risk Notes
