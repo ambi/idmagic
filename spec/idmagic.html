@@ -264,7 +264,7 @@ XML signing capability だけを共有する。
       <div class="eyebrow">Bounded Context · contexts/system.yaml</div>
       <h1>System</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">9</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">14</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-system-standards">
     <h2>Standards <span class="count">2</span></h2>
@@ -358,11 +358,21 @@ XML signing capability だけを共有する。
       </article></div>
   </section>
 <section id="context-system-objectives">
-    <h2>Objectives <span class="count">9</span></h2>
+    <h2>Objectives <span class="count">14</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">security <span class="count">9</span></h3>
-      <div class="cards"><article class="card" id="context-system-obj-cancellationconsistency">
+      <h3 class="grp-title">security <span class="count">14</span></h3>
+      <div class="cards"><article class="card" id="context-system-obj-databaseresilience">
+    <header><h3>DatabaseResilience</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">PostgreSQL への接続に対して、プール調整(MaxConns, MinConns, MaxConnIdleTime, MaxConnLifetime)を構成可能とし、接続瞬断時のリトライポリシー、タイムアウト、およびサーキットブレイカーによる障害隔離を提供する。サーキットがオープンした際、リクエストは即座に503エラーで遮断されるが、JWKS などの静的・キャッシュ可能なエンドポイントはメモリキャッシュを利用して縮退運転(グレイスフル劣化)を継続する。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">database_resilience</span></dd><dt>target</dt><dd><span class="text">DatabaseClient</span></dd><dt>value</dt><dd><dl class="kv"><dt>max_conns</dt><dd><code>50</code></dd><dt>min_conns</dt><dd><code>2</code></dd><dt>max_conn_idle_time_seconds</dt><dd><code>1800</code></dd><dt>max_conn_lifetime_seconds</dt><dd><code>3600</code></dd><dt>timeout_seconds</dt><dd><code>5</code></dd><dt>circuit_breaker</dt><dd><dl class="kv"><dt>failure_threshold</dt><dd><code>0.5</code></dd><dt>cooldown_seconds</dt><dd><code>30</code></dd></dl></dd><dt>retry</dt><dd><dl class="kv"><dt>max_attempts</dt><dd><code>3</code></dd><dt>backoff_factor</dt><dd><code>2</code></dd></dl></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-valkeyresilience">
+    <header><h3>ValkeyResilience</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">Valkey への接続および操作に対してタイムアウトを設定し、障害発生時にサーキットブレイカーによる隔離を行う。Valkey 障害によるハングを防止し、即座の 503 エラーによるフェイルファストまたはメモリへの縮退フォールバックを行う。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">valkey_resilience</span></dd><dt>target</dt><dd><span class="text">ValkeyClient</span></dd><dt>value</dt><dd><dl class="kv"><dt>timeout_seconds</dt><dd><code>2</code></dd><dt>circuit_breaker</dt><dd><dl class="kv"><dt>failure_threshold</dt><dd><code>0.5</code></dd><dt>cooldown_seconds</dt><dd><code>15</code></dd></dl></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-cancellationconsistency">
     <header><h3>CancellationConsistency</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。</p>
     <dl class="kv"><dt>policy</dt><dd><span class="text">http_operation_context</span></dd><dt>target</dt><dd><span class="text">HTTPMutationOperation</span></dd><dt>value</dt><dd><dl class="kv"><dt>read_only_context</dt><dd><span class="text">request</span></dd><dt>mutation_context</dt><dd><span class="text">without_cancel_with_timeout</span></dd><dt>completion_modes</dt><dd><span class="chip">rollback</span> <span class="chip">complete</span> <span class="chip">detached_completion</span></dd><dt>inconsistent_completion_rate</dt><dd><span class="text">0</span></dd></dl></dd></dl>
@@ -406,6 +416,21 @@ XML signing capability だけを共有する。
     <header><h3>SharedEphemeralStateHA</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">複数レプリカで水平スケールする本番構成 (PERSISTENCE=postgres_valkey) では、ephemeral / short-lived な状態を全てレプリカ間で共有するストア (Valkey) に載せ、per-replica のプロセスメモリに残さない。共有対象は authorization request / authorization code / PAR / device code / login session / DPoP・client-assertion replay / access-token denylist / login throttle。login throttle をプロセスメモリに残すと閾値がレプリカ数倍に緩むため (LoginThrottlePolicy 参照)、これも共有ストアに載せる。refresh token / audit event / auth-event bucket は Postgres が durable な共有ストアとして所有する。memory adapter は共有ストアを持たず単一レプリカ / テスト専用であり、複数レプリカ運用では Valkey (postgres_valkey ランタイム) が必須である。共有ストア到達不能時の縮退方針は状態ごとに定め、login throttle は fail_closed とする。</p>
     <dl class="kv"><dt>policy</dt><dd><span class="text">shared_ephemeral_state_ha</span></dd><dt>target</dt><dd><span class="text">RuntimeTopology</span></dd><dt>value</dt><dd><dl class="kv"><dt>multi_replica_requires_shared_store</dt><dd><code>true</code></dd><dt>shared_store</dt><dd><span class="text">valkey</span></dd><dt>shared_in_valkey</dt><dd><span class="chip">authorization_request</span> <span class="chip">authorization_code</span> <span class="chip">par</span> <span class="chip">device_code</span> <span class="chip">login_session</span> <span class="chip">dpop_replay</span> <span class="chip">client_assertion_replay</span> <span class="chip">access_token_denylist</span> <span class="chip">login_throttle</span></dd><dt>durable_in_postgres</dt><dd><span class="chip">refresh_token</span> <span class="chip">audit_event</span> <span class="chip">auth_event_bucket</span></dd><dt>memory_adapter_scope</dt><dd><span class="text">single_replica_or_test</span></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-healthprobe">
+    <header><h3>HealthProbe</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">liveness (生存), readiness (トラフィック受入可否), startup (起動完了) のプローブを個別のエンドポイント /livez, /readyz, /startupz に分離する。既存 /health は起動構成ラベル返却用に維持する。liveness は自己回復不能な致命的デッドロック等のみで fail させ、一時的な依存障害では fail させない。startup は初期化完了時に healthy となる。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">health_probe_separation</span></dd><dt>target</dt><dd><span class="text">HTTPBoundaryServer</span></dd><dt>value</dt><dd><dl class="kv"><dt>liveness_path</dt><dd><span class="text">/livez</span></dd><dt>readiness_path</dt><dd><span class="text">/readyz</span></dd><dt>startup_path</dt><dd><span class="text">/startupz</span></dd><dt>legacy_path</dt><dd><span class="text">/health</span></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-readinesscheck">
+    <header><h3>ReadinessCheck</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">readiness プローブは PostgreSQL や Valkey などの必須依存に対する疎通（Ping）を短いタイムアウト（既定 1s）で並列実行する。?verbose クエリで各依存の健康状態（healthy, degraded, unavailable）を詳細に列挙する。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">dependency_health_check</span></dd><dt>target</dt><dd><span class="text">HTTPBoundaryServer</span></dd><dt>value</dt><dd><dl class="kv"><dt>check_timeout_seconds</dt><dd><code>1</code></dd><dt>dependencies</dt><dd><span class="chip">postgres</span> <span class="chip">valkey</span></dd><dt>status_vocabulary</dt><dd><span class="chip">healthy</span> <span class="chip">degraded</span> <span class="chip">unavailable</span></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-gracefuldrain">
+    <header><h3>GracefulDrain</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">SIGTERM または SIGINT 受信時、readiness プローブを即座に unavailable に落とし、ロードバランサが経路から外すためのドレイン猶予期間（既定 5秒、環境変数 DRAIN_GRACE_PERIOD_SECONDS で可変）だけ待機してから HTTP サーバをシャットダウンする。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">connection_graceful_drain</span></dd><dt>target</dt><dd><span class="text">HTTPBoundaryServer</span></dd><dt>value</dt><dd><dl class="kv"><dt>default_drain_grace_period_seconds</dt><dd><code>5</code></dd><dt>env_drain_grace_period</dt><dd><span class="text">DRAIN_GRACE_PERIOD_SECONDS</span></dd></dl></dd></dl>
   </article></div>
     </div>
   </section>

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/oauth2/ports"
 	"idmagic/internal/shared/adapters/crypto"
@@ -17,9 +16,9 @@ import (
 
 // KeyStore (OAuth2: 署名鍵)。tenant scope は ctx (tenancy.TenantID) から解決する。
 // 秘密鍵マテリアルを app DB に置く dev/test 用の provider。本番は VaultTransit を使う。
-type KeyStore struct{ Pool *pgxpool.Pool }
+type KeyStore struct{ Pool DB }
 
-func NewKeyStore(ctx context.Context, pool *pgxpool.Pool) (*KeyStore, error) {
+func NewKeyStore(ctx context.Context, pool DB) (*KeyStore, error) {
 	store := &KeyStore{Pool: pool}
 	// default テナントの active 鍵が無ければ 1 本作る (後方互換)。
 	var exists bool

@@ -39,3 +39,15 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 	}
 	return parsed
 }
+
+func envFloat(key string, fallback float64) float64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return parsed
+}

@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	authnports "idmagic/internal/authentication/ports"
 )
 
 // PasswordResetTokenStore (Authentication)
-type PasswordResetTokenStore struct{ Pool *pgxpool.Pool }
+type PasswordResetTokenStore struct{ Pool DB }
 
 func (s *PasswordResetTokenStore) Save(
 	ctx context.Context,

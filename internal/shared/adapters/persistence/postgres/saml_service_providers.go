@@ -6,14 +6,13 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // SamlServiceProviderRepository は SAML 2.0 SP trust を PostgreSQL に永続化する。
 // URI 識別子と claim policy は tenant scope の行と JSONB に閉じる。
-type SamlServiceProviderRepository struct{ Pool *pgxpool.Pool }
+type SamlServiceProviderRepository struct{ Pool DB }
 
 const samlServiceProviderSelect = `SELECT tenant_id,entity_id,display_name,acs_urls,slo_url,audience,
 claim_policy,sign_assertion,sign_response,want_authn_requests_signed,authn_request_signing_certificate_pem,

@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	authnports "idmagic/internal/authentication/ports"
 )
 
 // EmailChangeTokenStore (Authentication)
-type EmailChangeTokenStore struct{ Pool *pgxpool.Pool }
+type EmailChangeTokenStore struct{ Pool DB }
 
 func (s *EmailChangeTokenStore) Save(
 	ctx context.Context,

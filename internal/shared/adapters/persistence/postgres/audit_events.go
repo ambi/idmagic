@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/oauth2/ports"
 )
@@ -23,7 +22,7 @@ const (
 	auditMaxListLimit     = 1000
 )
 
-type AuditEventRepository struct{ Pool *pgxpool.Pool }
+type AuditEventRepository struct{ Pool DB }
 
 const auditEventSelect = `SELECT id,tenant_id,type,occurred_at,payload FROM audit_events`
 

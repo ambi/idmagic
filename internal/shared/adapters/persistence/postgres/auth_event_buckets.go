@@ -10,8 +10,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	authnports "idmagic/internal/authentication/ports"
 )
 
@@ -20,7 +18,7 @@ const (
 	authEventBucketMaxListLimit     = 1000
 )
 
-type AuthEventBucketStore struct{ Pool *pgxpool.Pool }
+type AuthEventBucketStore struct{ Pool DB }
 
 func (s *AuthEventBucketStore) Record(
 	ctx context.Context,

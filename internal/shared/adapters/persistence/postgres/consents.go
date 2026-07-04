@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // ConsentRepository (OAuth2)
-type ConsentRepository struct{ Pool *pgxpool.Pool }
+type ConsentRepository struct{ Pool DB }
 
 func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*spec.Consent, error) {
 	var c spec.Consent

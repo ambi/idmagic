@@ -6,13 +6,12 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // UserRepository (IdentityManagement)
-type UserRepository struct{ Pool *pgxpool.Pool }
+type UserRepository struct{ Pool DB }
 
 // notDeleted は削除済みユーザを除外する述語。削除状態は lifecycle.status に統合
 // した (ADR-039)。status 未設定 (NULL) は active 扱いなので残す。

@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"idmagic/internal/shared/adapters/eventsink"
 	"idmagic/internal/shared/adapters/persistence/postgres"
@@ -20,7 +21,17 @@ func Run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	pool, err := postgres.Open(ctx, cfg.DatabaseURL)
+
+	dbCfg := postgres.DBConfig{
+		MaxConns:        10,
+		MinConns:        1,
+		MaxConnIdleTime: 30 * time.Second,
+		MaxConnLifetime: 1 * time.Hour,
+		ConnectTimeout:  5 * time.Second,
+		QueryTimeout:    5 * time.Second,
+	}
+
+	pool, err := postgres.Open(ctx, cfg.DatabaseURL, dbCfg)
 	if err != nil {
 		return fmt.Errorf("open postgres: %w", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
@@ -13,7 +12,7 @@ import (
 // GroupRepository は ADR-038 の Group 集約とメンバーシップを PostgreSQL に永続化する。
 // すべての参照はテナント境界に閉じる。group_members は groups への ON DELETE CASCADE
 // FK を持つため、DeleteGroup の cascade は DB 側でも保証される。
-type GroupRepository struct{ Pool *pgxpool.Pool }
+type GroupRepository struct{ Pool DB }
 
 const groupSelect = `SELECT id,tenant_id,name,description,roles,created_at,updated_at FROM groups`
 

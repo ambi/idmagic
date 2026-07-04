@@ -5,13 +5,12 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // MfaFactorRepository (Authentication)
-type MfaFactorRepository struct{ Pool *pgxpool.Pool }
+type MfaFactorRepository struct{ Pool DB }
 
 func (r *MfaFactorRepository) ListBySub(ctx context.Context, sub string) ([]*spec.MfaFactor, error) {
 	rows, err := r.Pool.Query(ctx, mfaFactorSelect+" WHERE sub=$1 ORDER BY created_at", sub)

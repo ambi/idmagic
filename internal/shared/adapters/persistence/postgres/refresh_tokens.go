@@ -7,13 +7,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // RefreshTokenStore (OAuth2)
-type RefreshTokenStore struct{ Pool *pgxpool.Pool }
+type RefreshTokenStore struct{ Pool DB }
 
 func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*spec.RefreshTokenRecord, error) {
 	return scanRefresh(s.Pool.QueryRow(ctx, refreshSelect+" WHERE hash=$1", hash))

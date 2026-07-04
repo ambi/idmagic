@@ -6,13 +6,12 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // OAuth2ClientRepository (OAuth2)
-type OAuth2ClientRepository struct{ Pool *pgxpool.Pool }
+type OAuth2ClientRepository struct{ Pool DB }
 
 func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, id string) (*spec.OAuth2Client, error) {
 	row := r.Pool.QueryRow(ctx, clientSelect+" WHERE tenant_id=$1 AND client_id=$2", tenantID, id)

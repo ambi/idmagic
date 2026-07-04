@@ -68,6 +68,33 @@ standards:
           objectives:
             - AuditLogRetention
 objectives:
+  DatabaseResilience:
+    kind: security
+    description: "PostgreSQL への接続に対して、プール調整(MaxConns, MinConns, MaxConnIdleTime, MaxConnLifetime)を構成可能とし、接続瞬断時のリトライポリシー、タイムアウト、およびサーキットブレイカーによる障害隔離を提供する。サーキットがオープンした際、リクエストは即座に503エラーで遮断されるが、JWKS などの静的・キャッシュ可能なエンドポイントはメモリキャッシュを利用して縮退運転(グレイスフル劣化)を継続する。"
+    policy: database_resilience
+    target: DatabaseClient
+    value:
+      max_conns: 50
+      min_conns: 2
+      max_conn_idle_time_seconds: 1800
+      max_conn_lifetime_seconds: 3600
+      timeout_seconds: 5
+      circuit_breaker:
+        failure_threshold: 0.5
+        cooldown_seconds: 30
+      retry:
+        max_attempts: 3
+        backoff_factor: 2.0
+  ValkeyResilience:
+    kind: security
+    description: "Valkey への接続および操作に対してタイムアウトを設定し、障害発生時にサーキットブレイカーによる隔離を行う。Valkey 障害によるハングを防止し、即座の 503 エラーによるフェイルファストまたはメモリへの縮退フォールバックを行う。"
+    policy: valkey_resilience
+    target: ValkeyClient
+    value:
+      timeout_seconds: 2
+      circuit_breaker:
+        failure_threshold: 0.5
+        cooldown_seconds: 15
   CancellationConsistency:
     kind: security
     description: "HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。"

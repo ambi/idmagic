@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
@@ -13,7 +12,7 @@ import (
 // AgentRepository は ADR-048 の Agent 集約と OAuth2Client 束縛を PostgreSQL に永続化
 // する。すべての参照はテナント境界に閉じる。agent_credential_bindings は agents への
 // ON DELETE CASCADE FK を持つため、DeleteAgent の cascade は DB 側でも保証される。
-type AgentRepository struct{ Pool *pgxpool.Pool }
+type AgentRepository struct{ Pool DB }
 
 const agentSelect = `SELECT id,tenant_id,name,description,kind,owner_sub,status,roles,
 created_at,updated_at,disabled_at,killed_at FROM agents`

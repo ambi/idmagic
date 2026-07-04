@@ -8,12 +8,11 @@ import (
 	"idmagic/internal/shared/spec"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom 属性定義を保持する
 // (ADR-040 / wi-19)。定義一覧は attributes JSONB 列に格納する。
-type TenantUserAttributeSchemaRepository struct{ Pool *pgxpool.Pool }
+type TenantUserAttributeSchemaRepository struct{ Pool DB }
 
 func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 	ctx context.Context, tenantID string,

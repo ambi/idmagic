@@ -4,13 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	authnports "idmagic/internal/authentication/ports"
 )
 
 // PasswordHistoryRepository (Authentication)
-type PasswordHistoryRepository struct{ Pool *pgxpool.Pool }
+type PasswordHistoryRepository struct{ Pool DB }
 
 func (r *PasswordHistoryRepository) Recent(
 	ctx context.Context,

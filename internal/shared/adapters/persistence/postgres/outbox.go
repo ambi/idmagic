@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"idmagic/internal/shared/spec"
 )
 
@@ -36,7 +34,7 @@ var eventTopics = map[string]string{
 }
 
 // OutboxEventSink はドメインイベントを outbox テーブルへ書き出す EventSink 実装。
-type OutboxEventSink struct{ Pool *pgxpool.Pool }
+type OutboxEventSink struct{ Pool DB }
 
 func (s *OutboxEventSink) Emit(ctx context.Context, event spec.DomainEvent) error {
 	topic := eventTopics[event.EventType()]

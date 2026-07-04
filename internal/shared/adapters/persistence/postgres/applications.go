@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	appports "idmagic/internal/application/ports"
 	"idmagic/internal/shared/spec"
@@ -14,7 +13,7 @@ import (
 
 // ApplicationRepository は ApplicationCatalog の Application aggregate を PostgreSQL に
 // 永続化する (wi-69)。protocol binding は JSONB に格納し、参照はテナント境界に閉じる。
-type ApplicationRepository struct{ Pool *pgxpool.Pool }
+type ApplicationRepository struct{ Pool DB }
 
 const applicationSelect = `SELECT tenant_id,application_id,name,kind,status,icon_url,icon_object_key,launch_url,bindings,category_ids,created_at,updated_at FROM applications`
 
@@ -135,7 +134,7 @@ func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, ca
 }
 
 // ApplicationIconStore は Application icon blob を PostgreSQL に保存する (wi-74, ADR-073)。
-type ApplicationIconStore struct{ Pool *pgxpool.Pool }
+type ApplicationIconStore struct{ Pool DB }
 
 func (s *ApplicationIconStore) Save(ctx context.Context, icon *spec.ApplicationIcon) error {
 	_, err := s.Pool.Exec(ctx, `
@@ -171,7 +170,7 @@ func (s *ApplicationIconStore) DeleteByApplication(ctx context.Context, tenantID
 }
 
 // ApplicationAssignmentRepository は Application 割当を PostgreSQL に永続化する (wi-69)。
-type ApplicationAssignmentRepository struct{ Pool *pgxpool.Pool }
+type ApplicationAssignmentRepository struct{ Pool DB }
 
 const assignmentSelect = `SELECT tenant_id,application_id,subject_type,subject_id,visibility,created_at FROM application_assignments`
 
@@ -257,7 +256,7 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Contex
 
 // ApplicationOrderingRepository は利用者ごとのポータル手動並び順を PostgreSQL に永続化する
 // (wi-70, ADR-069)。application_ids は順序を保つ text[] で格納し、tenant 境界に閉じる。
-type ApplicationOrderingRepository struct{ Pool *pgxpool.Pool }
+type ApplicationOrderingRepository struct{ Pool DB }
 
 func (r *ApplicationOrderingRepository) Get(ctx context.Context, tenantID, userSub string) (*spec.ApplicationOrdering, error) {
 	var o spec.ApplicationOrdering
@@ -290,7 +289,7 @@ ON CONFLICT (tenant_id,user_sub) DO UPDATE SET
 
 // ApplicationCategoryRepository は ApplicationCategory を PostgreSQL に永続化する (wi-70, ADR-069)。
 // すべてテナント境界に閉じる。
-type ApplicationCategoryRepository struct{ Pool *pgxpool.Pool }
+type ApplicationCategoryRepository struct{ Pool DB }
 
 const categorySelect = `SELECT tenant_id,category_id,name,position,created_at,updated_at FROM application_categories`
 

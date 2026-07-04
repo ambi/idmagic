@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
@@ -14,7 +13,7 @@ import (
 // AuthorizationDetailTypeRepository は RFC 9396 authorization_details の type 定義
 // (ADR-050) を PostgreSQL に永続化する。schema は JSONB として保持する。すべての
 // 参照はテナント境界に閉じる。
-type AuthorizationDetailTypeRepository struct{ Pool *pgxpool.Pool }
+type AuthorizationDetailTypeRepository struct{ Pool DB }
 
 const authorizationDetailTypeSelect = `SELECT tenant_id,type,description,schema,display_template,
 state,created_at,updated_at FROM authorization_detail_types`

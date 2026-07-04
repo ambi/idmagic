@@ -5,13 +5,12 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // TenantRepository (Tenancy)
-type TenantRepository struct{ Pool *pgxpool.Pool }
+type TenantRepository struct{ Pool DB }
 
 func (r *TenantRepository) FindByID(ctx context.Context, id string) (*spec.Tenant, error) {
 	return scanTenant(r.Pool.QueryRow(ctx, tenantSelect+" WHERE id=$1", id))

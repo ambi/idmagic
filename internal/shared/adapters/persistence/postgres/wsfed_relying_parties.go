@@ -6,14 +6,13 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"idmagic/internal/shared/spec"
 )
 
 // WsFedRelyingPartyRepository は WS-Federation RP trust を PostgreSQL に永続化する。
 // wtrealm は URI として扱い、tenant scope の主キーに含める。
-type WsFedRelyingPartyRepository struct{ Pool *pgxpool.Pool }
+type WsFedRelyingPartyRepository struct{ Pool DB }
 
 const wsFedRelyingPartySelect = `SELECT tenant_id,wtrealm,display_name,reply_urls,audience,token_type,
 claim_policy,entra_profile,created_at,updated_at FROM wsfed_relying_parties`
