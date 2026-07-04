@@ -51,7 +51,6 @@ func hasJWKs(jwks map[string]any) bool {
 // ===============================================================
 
 type Consent struct {
-	TenantID             string                `json:"tenant_id"`
 	UserID               string                `json:"user_id"`
 	ClientID             string                `json:"client_id"`
 	Scopes               []string              `json:"scopes"`

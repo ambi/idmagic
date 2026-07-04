@@ -86,16 +86,26 @@ func (r *AgentRepository) ListBindings(_ context.Context, tenantID, agentID stri
 func (r *AgentRepository) AddBinding(_ context.Context, binding *spec.AgentCredentialBinding) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	var tenantID string
+	for _, a := range r.agents {
+		if a.ID == binding.AgentID {
+			tenantID = a.TenantID
+			break
+		}
+	}
+	if tenantID == "" {
+		return false, nil
+	}
 	for key, bindings := range r.bindings {
 		agent := r.agents[key]
-		if agent == nil || agent.TenantID != binding.TenantID {
+		if agent == nil || agent.TenantID != tenantID {
 			continue
 		}
 		if slices.ContainsFunc(bindings, func(b *spec.AgentCredentialBinding) bool { return b.ClientID == binding.ClientID }) {
 			return false, nil
 		}
 	}
-	key := tenantKey(binding.TenantID, binding.AgentID)
+	key := tenantKey(tenantID, binding.AgentID)
 	for _, existing := range r.bindings[key] {
 		if existing.ClientID == binding.ClientID {
 			return false, nil

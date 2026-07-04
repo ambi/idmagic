@@ -574,8 +574,8 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	scopes := strings.Fields(req.Scope)
 	if d.ConsentRepo != nil {
 		now := time.Now().UTC()
-		if err := d.ConsentRepo.Save(ctx, &spec.Consent{
-			TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID,
+		if err := d.ConsentRepo.Save(ctx, support.RequestTenantID(c), &spec.Consent{
+			UserID: authn.UserID, ClientID: req.ClientID,
 			Scopes: scopes, State: spec.ConsentGranted,
 			GrantedAt: now, ExpiresAt: now.Add(365 * 24 * time.Hour),
 			AuthorizationDetails: req.AuthorizationDetails,

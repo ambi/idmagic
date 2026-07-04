@@ -43,7 +43,6 @@ func (a Agent) IsActive() bool {
 type AgentCredentialBinding struct {
 	AgentID   string    `json:"agent_id"`
 	ClientID  string    `json:"client_id"`
-	TenantID  string    `json:"tenant_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

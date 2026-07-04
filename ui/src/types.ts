@@ -274,7 +274,6 @@ export type WsFedRelyingParty = {
 }
 
 export type AdminConsent = {
-  tenant_id: string
   sub: string
   client_id: string
   scopes: string[]

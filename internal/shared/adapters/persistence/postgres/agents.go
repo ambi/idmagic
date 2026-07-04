@@ -78,7 +78,7 @@ func (r *AgentRepository) Delete(ctx context.Context, tenantID, id string) error
 
 func (r *AgentRepository) ListBindings(ctx context.Context, tenantID, agentID string) ([]*spec.AgentCredentialBinding, error) {
 	rows, err := r.Pool.Query(ctx, `
-SELECT b.agent_id,b.client_id,b.tenant_id,b.created_at
+SELECT b.agent_id,b.client_id,b.created_at
 FROM agent_credential_bindings b JOIN agents a ON a.id=b.agent_id
 WHERE a.tenant_id=$1 AND b.agent_id=$2 ORDER BY b.client_id`, tenantID, agentID)
 	if err != nil {
@@ -88,7 +88,7 @@ WHERE a.tenant_id=$1 AND b.agent_id=$2 ORDER BY b.client_id`, tenantID, agentID)
 	out := []*spec.AgentCredentialBinding{}
 	for rows.Next() {
 		var b spec.AgentCredentialBinding
-		if err := rows.Scan(&b.AgentID, &b.ClientID, &b.TenantID, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.AgentID, &b.ClientID, &b.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, &b)
@@ -98,10 +98,10 @@ WHERE a.tenant_id=$1 AND b.agent_id=$2 ORDER BY b.client_id`, tenantID, agentID)
 
 func (r *AgentRepository) AddBinding(ctx context.Context, binding *spec.AgentCredentialBinding) (bool, error) {
 	tag, err := r.Pool.Exec(ctx, `
-INSERT INTO agent_credential_bindings (agent_id,client_id,tenant_id,created_at)
-VALUES ($1,$2,$3,$4)
+INSERT INTO agent_credential_bindings (agent_id,client_id,created_at)
+VALUES ($1,$2,$3)
 ON CONFLICT DO NOTHING`,
-		binding.AgentID, binding.ClientID, binding.TenantID, binding.CreatedAt)
+		binding.AgentID, binding.ClientID, binding.CreatedAt)
 	if err != nil {
 		return false, err
 	}

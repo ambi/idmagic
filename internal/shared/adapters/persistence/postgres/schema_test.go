@@ -14,13 +14,13 @@ func TestPostgresSchemaReferentialIntegrityConstraints(t *testing.T) {
 	schema := string(sql)
 	required := []string{
 		"CONSTRAINT users_tenant_id_unique UNIQUE (tenant_id, id)",
-		"CONSTRAINT consents_tenant_user_fkey\n        FOREIGN KEY (tenant_id, user_id)\n        REFERENCES users(tenant_id, id) ON DELETE RESTRICT",
-		"CONSTRAINT refresh_tokens_tenant_user_fkey\n        FOREIGN KEY (tenant_id, user_id)\n        REFERENCES users(tenant_id, id) ON DELETE RESTRICT",
+		"CONSTRAINT consents_user_fkey\n        FOREIGN KEY (user_id)\n        REFERENCES users(id) ON DELETE RESTRICT",
+		"CONSTRAINT refresh_tokens_user_fkey\n        FOREIGN KEY (user_id)\n        REFERENCES users(id) ON DELETE RESTRICT",
 		"CONSTRAINT signing_keys_tenant_id_fkey\n        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
-		"CONSTRAINT agents_tenant_owner_fkey\n        FOREIGN KEY (tenant_id, owner_user_id)\n        REFERENCES users(tenant_id, id) ON DELETE RESTRICT",
-		"CONSTRAINT agent_credential_bindings_tenant_client_fkey\n        FOREIGN KEY (tenant_id, client_id)\n        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT",
+		"CONSTRAINT agents_owner_fkey\n        FOREIGN KEY (owner_user_id)\n        REFERENCES users(id) ON DELETE RESTRICT",
+		"CONSTRAINT agent_credential_bindings_client_fkey\n        FOREIGN KEY (client_id)\n        REFERENCES clients(client_id) ON DELETE RESTRICT",
 		"FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
-		"FOREIGN KEY (tenant_id, user_id)\n        REFERENCES users (tenant_id, id) ON DELETE CASCADE",
+		"FOREIGN KEY (user_id)\n        REFERENCES users(id) ON DELETE CASCADE",
 	}
 	for _, want := range required {
 		if !strings.Contains(schema, want) {

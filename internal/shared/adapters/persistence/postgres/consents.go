@@ -17,9 +17,9 @@ type ConsentRepository struct{ Pool DB }
 func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*spec.Consent, error) {
 	var c spec.Consent
 	var scopes []byte
-	err := r.Pool.QueryRow(ctx, `SELECT tenant_id,sub,client_id,scopes,granted_at,expires_at,revoked_at
-FROM consents WHERE tenant_id=$1 AND sub=$2 AND client_id=$3`, tenantID, sub, clientID).
-		Scan(&c.TenantID, &c.UserID, &c.ClientID, &scopes, &c.GrantedAt, &c.ExpiresAt, &c.RevokedAt)
+	err := r.Pool.QueryRow(ctx, `SELECT sub,client_id,scopes,granted_at,expires_at,revoked_at
+FROM consents WHERE sub=$1 AND client_id=$2`, sub, clientID).
+		Scan(&c.UserID, &c.ClientID, &scopes, &c.GrantedAt, &c.ExpiresAt, &c.RevokedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -41,8 +41,9 @@ FROM consents WHERE tenant_id=$1 AND sub=$2 AND client_id=$3`, tenantID, sub, cl
 }
 
 func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*spec.Consent, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT tenant_id,sub,client_id,scopes,granted_at,expires_at,revoked_at
-FROM consents WHERE tenant_id=$1 ORDER BY sub,client_id`, tenantID)
+	rows, err := r.Pool.Query(ctx, `SELECT c.sub,c.client_id,c.scopes,c.granted_at,c.expires_at,c.revoked_at
+FROM consents c JOIN users u ON c.sub=u.id
+WHERE u.tenant_id=$1 ORDER BY c.sub,c.client_id`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ FROM consents WHERE tenant_id=$1 ORDER BY sub,client_id`, tenantID)
 		var consent spec.Consent
 		var scopes []byte
 		if err := rows.Scan(
-			&consent.TenantID, &consent.UserID, &consent.ClientID, &scopes,
+			&consent.UserID, &consent.ClientID, &scopes,
 			&consent.GrantedAt, &consent.ExpiresAt, &consent.RevokedAt,
 		); err != nil {
 			return nil, err
@@ -74,22 +75,22 @@ FROM consents WHERE tenant_id=$1 ORDER BY sub,client_id`, tenantID)
 	return consents, rows.Err()
 }
 
-func (r *ConsentRepository) Save(ctx context.Context, c *spec.Consent) error {
+func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *spec.Consent) error {
 	scopes, err := json.Marshal(c.Scopes)
 	if err != nil {
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `INSERT INTO consents
-(tenant_id,sub,client_id,scopes,granted_at,expires_at,revoked_at) VALUES ($1,$2,$3,$4,$5,$6,$7)
-ON CONFLICT (tenant_id,sub,client_id) DO UPDATE SET scopes=EXCLUDED.scopes,
+(sub,client_id,scopes,granted_at,expires_at,revoked_at) VALUES ($1,$2,$3,$4,$5,$6)
+ON CONFLICT (sub,client_id) DO UPDATE SET scopes=EXCLUDED.scopes,
 granted_at=EXCLUDED.granted_at,expires_at=EXCLUDED.expires_at,revoked_at=EXCLUDED.revoked_at,updated_at=now()`,
-		c.TenantID, c.UserID, c.ClientID, string(scopes), c.GrantedAt, c.ExpiresAt, c.RevokedAt)
+		c.UserID, c.ClientID, string(scopes), c.GrantedAt, c.ExpiresAt, c.RevokedAt)
 	return err
 }
 
 func (r *ConsentRepository) Revoke(ctx context.Context, tenantID, sub, clientID string) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE consents SET revoked_at=now(),updated_at=now()
-WHERE tenant_id=$1 AND sub=$2 AND client_id=$3 AND revoked_at IS NULL`, tenantID, sub, clientID)
+WHERE sub=$1 AND client_id=$2 AND revoked_at IS NULL`, sub, clientID)
 	return err
 }
 

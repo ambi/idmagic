@@ -164,8 +164,6 @@ export function AdminConsentsPage({
               <dd className="font-mono text-xs">{selected.sub}</dd>
               <dt className="text-slate-500">アプリケーション</dt>
               <dd className="font-mono text-xs">{selected.client_id}</dd>
-              <dt className="text-slate-500">テナント</dt>
-              <dd className="font-mono text-xs">{selected.tenant_id}</dd>
               <dt className="text-slate-500">スコープ</dt>
               <dd className="flex flex-wrap gap-1">
                 {selected.scopes.length === 0 ? (

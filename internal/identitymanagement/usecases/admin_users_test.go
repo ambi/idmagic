@@ -118,8 +118,8 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Seed cascade artifacts.
-	_ = consentRepo.Save(ctx, &spec.Consent{
-		TenantID: spec.DefaultTenantID, UserID: user.ID, ClientID: "client-a",
+	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &spec.Consent{
+		UserID: user.ID, ClientID: "client-a",
 		Scopes: []string{"openid"}, State: spec.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
@@ -267,8 +267,8 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
-	_ = consentRepo.Save(ctx, &spec.Consent{
-		TenantID: spec.DefaultTenantID, UserID: "alice-1", ClientID: "client-a",
+	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &spec.Consent{
+		UserID: "alice-1", ClientID: "client-a",
 		Scopes: []string{"openid"}, State: spec.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})

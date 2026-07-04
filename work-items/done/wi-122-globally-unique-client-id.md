@@ -3,7 +3,7 @@ id: wi-122-globally-unique-client-id
 title: "client_id のグローバルユニーク強制とスキーマ・コードの単純化"
 created_at: 2026-07-05
 authors: [tn]
-status: pending
+status: completed
 risk: high
 risk_notes: |
   クライアントの主キー（PK）および外部キー（FK）関係を広範囲に破壊・変更するため、SQL スキーマだけでなく、OAuth2 関連のドメインロジック、メモリリポジトリ、API リクエスト検証、テストデータ構造に大きな変更が入ります。
@@ -33,3 +33,11 @@ risk_notes: |
 - `just yaml-check`
 - `just scl-render`
 - `go test ./internal/...`
+
+# Completion
+- SCL (`spec/contexts/oauth2.yaml` / `spec/contexts/identity-management.yaml`) を修正し、`OAuth2Client` 等から `tenant_id` キー情報を排除。
+- Postgres スキーマ (`postgres.sql`) で主キー・複合外部キー制約を削除・簡略化（`clients`, `consents`, `refresh_tokens`, `agents`, `agent_credential_bindings`, `application_orderings`, `scim_user_refs`, `scim_group_refs`）。
+- Go の struct (`OAuth2Client`, `Consent`, `AgentCredentialBinding`) およびバリデーションを簡素化。
+- Postgres およびメモリの各リポジトリ実装、API ハンドラーの修正・調整。
+- UI の `types.ts` および同意詳細画面の `tenant_id` 非依存化の調整。
+- `go test ./internal/...` およびフロントエンド `bun run build` による検証をパス。

@@ -20,19 +20,29 @@ import (
 func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	e, consents, events := newAdminConsentHandler()
 	now := time.Now().UTC()
-	for _, consent := range []*spec.Consent{
+	data := []struct {
+		tenantID string
+		consent  spec.Consent
+	}{
 		{
-			TenantID: spec.DefaultTenantID, UserID: "alice", ClientID: "portal",
-			Scopes: []string{"openid", "profile"}, State: spec.ConsentGranted,
-			GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
+			tenantID: spec.DefaultTenantID,
+			consent: spec.Consent{
+				UserID: "alice", ClientID: "portal",
+				Scopes: []string{"openid", "profile"}, State: spec.ConsentGranted,
+				GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
+			},
 		},
 		{
-			TenantID: "acme", UserID: "alice", ClientID: "portal",
-			Scopes: []string{"openid"}, State: spec.ConsentGranted,
-			GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
+			tenantID: "acme",
+			consent: spec.Consent{
+				UserID: "alice", ClientID: "portal",
+				Scopes: []string{"openid"}, State: spec.ConsentGranted,
+				GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
+			},
 		},
-	} {
-		if err := consents.Save(context.Background(), consent); err != nil {
+	}
+	for _, item := range data {
+		if err := consents.Save(context.Background(), item.tenantID, &item.consent); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -50,7 +60,7 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	if err := json.Unmarshal(listResponse.Body.Bytes(), &list); err != nil {
 		t.Fatal(err)
 	}
-	if len(list.Consents) != 1 || list.Consents[0].TenantID != spec.DefaultTenantID {
+	if len(list.Consents) != 1 || list.Consents[0].UserID != "alice" {
 		t.Fatalf("cross-tenant consent leaked: %+v", list.Consents)
 	}
 
@@ -90,8 +100,8 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 	e, consents, _ := newAdminConsentHandler()
 	now := time.Now().UTC()
-	if err := consents.Save(context.Background(), &spec.Consent{
-		TenantID: "acme", UserID: "alice", ClientID: "portal", Scopes: []string{"openid"},
+	if err := consents.Save(context.Background(), "acme", &spec.Consent{
+		UserID: "alice", ClientID: "portal", Scopes: []string{"openid"},
 		State: spec.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -115,7 +125,7 @@ func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 }
 
 type adminConsentBody struct {
-	TenantID string `json:"tenant_id"`
+	UserID string `json:"user_id"`
 }
 
 func newAdminConsentHandler() (*echo.Echo, *memory.ConsentRepository, *[]spec.DomainEvent) {

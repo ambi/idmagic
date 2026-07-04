@@ -939,13 +939,13 @@
         }
       }
     },
-    "/api/admin/users/{sub}": {
+    "/api/admin/users/{user_id}": {
       "get": {
         "operationId": "GetAdminUser",
-        "summary": "管理者が sub を指定してユーザーを取得する。",
+        "summary": "管理者が id を指定してユーザーを取得する。",
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -953,7 +953,7 @@
             }
           },
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "schema": {
@@ -1010,7 +1010,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sub": {
+                  "user_id": {
                     "type": "string"
                   },
                   "request": {
@@ -1019,7 +1019,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "sub",
+                  "user_id",
                   "request"
                 ]
               }
@@ -1028,7 +1028,7 @@
         },
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1085,7 +1085,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sub": {
+                  "user_id": {
                     "type": "string"
                   },
                   "purge": {
@@ -1099,7 +1099,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "sub"
+                  "user_id"
                 ]
               }
             }
@@ -1107,7 +1107,7 @@
         },
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1139,7 +1139,7 @@
         }
       }
     },
-    "/api/admin/users/{sub}/disable": {
+    "/api/admin/users/{user_id}/disable": {
       "post": {
         "operationId": "DisableAdminUser",
         "summary": "管理者がユーザーを無効化し、新規ログインと既存セッション利用を拒否する。",
@@ -1150,13 +1150,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sub": {
+                  "user_id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "sub"
+                  "user_id"
                 ]
               }
             }
@@ -1164,7 +1164,7 @@
         },
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1196,7 +1196,7 @@
         }
       }
     },
-    "/api/admin/users/{sub}/enable": {
+    "/api/admin/users/{user_id}/enable": {
       "post": {
         "operationId": "EnableAdminUser",
         "summary": "管理者が無効化済みユーザーを再有効化する。",
@@ -1207,13 +1207,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sub": {
+                  "user_id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "sub"
+                  "user_id"
                 ]
               }
             }
@@ -1221,7 +1221,7 @@
         },
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1253,7 +1253,7 @@
         }
       }
     },
-    "/api/admin/users/{sub}/restore": {
+    "/api/admin/users/{user_id}/restore": {
       "post": {
         "operationId": "RestoreAdminUser",
         "summary": "管理者が PendingDeletion のユーザーを Restore する。status を Active",
@@ -1264,13 +1264,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sub": {
+                  "user_id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "sub"
+                  "user_id"
                 ]
               }
             }
@@ -1278,7 +1278,7 @@
         },
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1326,7 +1326,7 @@
         }
       }
     },
-    "/api/admin/users/{sub}/required_actions": {
+    "/api/admin/users/{user_id}/required_actions": {
       "post": {
         "operationId": "SetUserRequiredAction",
         "summary": "管理者が対象ユーザーに次回ログイン時の強制アクション (RequiredAction) を",
@@ -1337,7 +1337,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sub": {
+                  "user_id": {
                     "type": "string"
                   },
                   "request": {
@@ -1346,7 +1346,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "sub",
+                  "user_id",
                   "request"
                 ]
               }
@@ -1355,7 +1355,7 @@
         },
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1403,13 +1403,13 @@
         }
       }
     },
-    "/api/admin/users/{sub}/required_actions/{action}": {
+    "/api/admin/users/{user_id}/required_actions/{action}": {
       "delete": {
         "operationId": "ClearUserRequiredAction",
         "summary": "管理者が対象ユーザーの強制アクションを解除する。冪等で、未付与なら",
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1425,7 +1425,7 @@
             }
           },
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "schema": {
@@ -1763,7 +1763,7 @@
         }
       }
     },
-    "/api/admin/groups/{group_id}/members/{user_sub}": {
+    "/api/admin/groups/{group_id}/members/{user_id}": {
       "post": {
         "operationId": "AddGroupMember",
         "summary": "管理者が User をグループに所属させる。同一テナントの User のみ許可し、既所属なら no-op (冪等)。",
@@ -1777,14 +1777,14 @@
                   "group_id": {
                     "type": "string"
                   },
-                  "user_sub": {
+                  "user_id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
                   "group_id",
-                  "user_sub"
+                  "user_id"
                 ]
               }
             }
@@ -1800,7 +1800,7 @@
             }
           },
           {
-            "name": "user_sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1844,7 +1844,7 @@
             }
           },
           {
-            "name": "user_sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1860,7 +1860,7 @@
             }
           },
           {
-            "name": "user_sub",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "schema": {
@@ -1892,13 +1892,13 @@
         }
       }
     },
-    "/api/admin/users/{sub}/groups": {
+    "/api/admin/users/{user_id}/groups": {
       "get": {
         "operationId": "ListUserGroups",
         "summary": "管理者が指定 User の所属グループと有効ロール内訳 (明示 / グループ由来 / union) を取得する。",
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1906,7 +1906,7 @@
             }
           },
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "schema": {
@@ -1996,7 +1996,7 @@
       },
       "post": {
         "operationId": "RegisterAgent",
-        "summary": "管理者が所属テナントに Agent を登録する。name はテナント内で一意、owner_sub 省略時は actor を所有者とする。",
+        "summary": "管理者が所属テナントに Agent を登録する。name はテナント内で一意、owner_user_id 省略時は actor を所有者とする。",
         "requestBody": {
           "required": true,
           "content": {
@@ -2119,7 +2119,7 @@
       },
       "patch": {
         "operationId": "UpdateAgent",
-        "summary": "管理者が Agent の name / description / kind / owner_sub / roles を更新する。owner_sub の変更は所有権移転。",
+        "summary": "管理者が Agent の name / description / kind / owner_user_id / roles を更新する。owner_user_id の変更は所有権移転。",
         "requestBody": {
           "required": true,
           "content": {
@@ -2724,7 +2724,7 @@
     "/api/account/security": {
       "get": {
         "operationId": "GetAccountSecurity",
-        "summary": "認証済みユーザーが自身のセキュリティ概要を取得する (self-service)。対象は actor.sub に",
+        "summary": "認証済みユーザーが自身のセキュリティ概要を取得する (self-service)。対象は actor.id に",
         "responses": {
           "200": {
             "description": "Success",
@@ -2941,13 +2941,13 @@
         }
       }
     },
-    "/api/admin/users/{sub}/signin_activity": {
+    "/api/admin/users/{user_id}/signin_activity": {
       "get": {
         "operationId": "ListUserSignInActivity",
         "summary": "admin が対象ユーザーのサインイン履歴を取得する。tenant 境界内に限定し、",
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -4756,13 +4756,13 @@
         }
       }
     },
-    "/admin/consents/{sub}/{client_id}": {
+    "/admin/consents/{user_id}/{client_id}": {
       "get": {
         "operationId": "GetAdminConsent",
         "summary": "管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。",
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -4778,7 +4778,7 @@
             }
           },
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "schema": {
@@ -4838,7 +4838,7 @@
         "summary": "管理者が所属テナントの Consent を論理撤回する。管理者による Consent の作成・scope 拡張は許可しない。",
         "parameters": [
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -4854,7 +4854,7 @@
             }
           },
           {
-            "name": "sub",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "schema": {
@@ -8799,7 +8799,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "scopes": {
@@ -8819,7 +8819,7 @@
           "tenantId",
           "jti",
           "clientId",
-          "sub",
+          "userId",
           "scopes",
           "senderConstraint"
         ],
@@ -8964,7 +8964,7 @@
       "AccountProfileResponse": {
         "type": "object",
         "properties": {
-          "sub": {
+          "id": {
             "type": "string"
           },
           "preferred_username": {
@@ -9001,7 +9001,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "id",
           "preferred_username",
           "email_verified",
           "mfa_enrolled",
@@ -9109,7 +9109,7 @@
       "AccountSummary": {
         "type": "object",
         "properties": {
-          "sub": {
+          "id": {
             "type": "string"
           },
           "preferred_username": {
@@ -9147,7 +9147,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "id",
           "preferred_username",
           "email_verified",
           "mfa_enrolled",
@@ -9495,10 +9495,7 @@
       "AdminConsentResponse": {
         "type": "object",
         "properties": {
-          "tenant_id": {
-            "type": "string"
-          },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "client_id": {
@@ -9528,8 +9525,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "tenant_id",
-          "sub",
+          "user_id",
           "client_id",
           "scopes",
           "state",
@@ -9680,7 +9676,7 @@
             "type": "string",
             "description": "クライアントが属するテナント ID。actor と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "clientId": {
@@ -9691,7 +9687,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "clientId"
         ],
         "description": "管理者が所属テナントに OAuth client を作成した。秘密情報は含めない。"
@@ -9707,7 +9703,7 @@
             "type": "string",
             "description": "クライアントが属するテナント ID。actor と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "clientId": {
@@ -9718,7 +9714,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "clientId"
         ],
         "description": "管理者が所属テナントから OAuth client を削除した。"
@@ -9871,7 +9867,7 @@
             "type": "string",
             "description": "クライアントが属するテナント ID。actor と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "clientId": {
@@ -9888,7 +9884,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "clientId",
           "changedFields"
         ],
@@ -10006,7 +10002,7 @@
       "AdminUserResponse": {
         "type": "object",
         "properties": {
-          "sub": {
+          "id": {
             "type": "string"
           },
           "tenant_id": {
@@ -10067,7 +10063,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "id",
           "tenant_id",
           "preferred_username",
           "email_verified",
@@ -10103,7 +10099,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。sub と password_hash は変更しない。"
+        "description": "管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。id と password_hash は変更しない。"
       },
       "Agent": {
         "type": "object",
@@ -10134,10 +10130,10 @@
             "$ref": "#/components/schemas/AgentKind",
             "default": "Supervised"
           },
-          "owner_sub": {
+          "owner_user_id": {
             "type": "string",
             "minLength": 1,
-            "description": "所有者 User の sub。必須。同一 tenant_id の User でなければならない。"
+            "description": "所有者 User の id。必須。同一 tenant_id の User でなければならない。"
           },
           "status": {
             "$ref": "#/components/schemas/AgentStatus",
@@ -10174,7 +10170,7 @@
           "tenant_id",
           "name",
           "kind",
-          "owner_sub",
+          "owner_user_id",
           "status",
           "roles",
           "created_at"
@@ -10204,10 +10200,6 @@
           "client_id": {
             "type": "string"
           },
-          "tenant_id": {
-            "type": "string",
-            "default": "default"
-          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -10217,10 +10209,9 @@
         "required": [
           "agent_id",
           "client_id",
-          "tenant_id",
           "created_at"
         ],
-        "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。永続化層は agent_id と client_id の tenant_id 一致を fail-closed に保証する。"
+        "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。"
       },
       "AgentCredentialBound": {
         "type": "object",
@@ -10233,7 +10224,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10247,7 +10238,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId",
           "clientId"
         ],
@@ -10264,7 +10255,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10278,7 +10269,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId",
           "clientId"
         ],
@@ -10295,7 +10286,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10306,7 +10297,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId"
         ],
         "description": "管理者が Agent を削除した。束縛は cascade で解除される。"
@@ -10322,7 +10313,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10333,7 +10324,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId"
         ],
         "description": "管理者が Agent を可逆に運用停止した。"
@@ -10349,7 +10340,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10360,7 +10351,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId"
         ],
         "description": "管理者が運用停止中の Agent を再稼働した。"
@@ -10376,7 +10367,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10387,7 +10378,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId"
         ],
         "description": "管理者が Agent を緊急停止した (一方向終端)。以後復帰不能。"
@@ -10427,16 +10418,16 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
             "type": "string"
           },
-          "previousOwnerSub": {
+          "previousOwnerUserId": {
             "type": "string"
           },
-          "newOwnerSub": {
+          "newOwnerUserId": {
             "type": "string"
           }
         },
@@ -10444,12 +10435,12 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId",
-          "previousOwnerSub",
-          "newOwnerSub"
+          "previousOwnerUserId",
+          "newOwnerUserId"
         ],
-        "description": "管理者が Agent の所有者 (owner_sub) を移転した。"
+        "description": "管理者が Agent の所有者 (owner_user_id) を移転した。"
       },
       "AgentRegisterRequest": {
         "type": "object",
@@ -10466,9 +10457,9 @@
           "kind": {
             "$ref": "#/components/schemas/AgentKind"
           },
-          "owner_sub": {
+          "owner_user_id": {
             "type": "string",
-            "description": "省略時は actor の sub を所有者とする。"
+            "description": "省略時は actor の id を所有者とする。"
           },
           "roles": {
             "type": "array",
@@ -10481,7 +10472,7 @@
         "required": [
           "name"
         ],
-        "description": "管理者が Agent を登録する JSON リクエスト。owner_sub 省略時は actor を所有者とする。"
+        "description": "管理者が Agent を登録する JSON リクエスト。owner_user_id 省略時は actor を所有者とする。"
       },
       "AgentRegistered": {
         "type": "object",
@@ -10494,7 +10485,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10505,7 +10496,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId"
         ],
         "description": "管理者が Agent を登録した。"
@@ -10537,7 +10528,7 @@
           "kind": {
             "$ref": "#/components/schemas/AgentKind"
           },
-          "owner_sub": {
+          "owner_user_id": {
             "type": "string"
           },
           "status": {
@@ -10579,7 +10570,7 @@
           "tenant_id",
           "name",
           "kind",
-          "owner_sub",
+          "owner_user_id",
           "status",
           "roles",
           "client_ids",
@@ -10602,7 +10593,7 @@
           "kind": {
             "$ref": "#/components/schemas/AgentKind"
           },
-          "owner_sub": {
+          "owner_user_id": {
             "type": "string",
             "description": "変更は所有権移転 (AgentOwnerChanged)。"
           },
@@ -10614,7 +10605,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "管理者が Agent の name / description / kind / owner_sub / roles を更新する JSON リクエスト。省略フィールドは現状維持。owner_sub の変更は所有権移転。"
+        "description": "管理者が Agent の name / description / kind / owner_user_id / roles を更新する JSON リクエスト。省略フィールドは現状維持。owner_user_id の変更は所有権移転。"
       },
       "AgentUpdated": {
         "type": "object",
@@ -10627,7 +10618,7 @@
             "type": "string",
             "description": "Agent が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "agentId": {
@@ -10644,7 +10635,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "agentId",
           "changedFields"
         ],
@@ -10776,7 +10767,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -10787,7 +10778,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId"
         ],
         "description": "Application の sign-in policy を更新した。"
@@ -10908,7 +10899,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -10925,7 +10916,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId",
           "subjectType",
           "subjectId"
@@ -10972,7 +10963,7 @@
           "visibility",
           "created_at"
         ],
-        "description": "Application へのユーザー / グループ割当。割当はポータル可視性とフェデレーション利用可否を fail-closed で制御する。hidden は一覧に出さないがプロトコル利用は許可する。subject_id は subject_type に応じて同一テナントの User.sub または Group.id を指す。"
+        "description": "Application へのユーザー / グループ割当。割当はポータル可視性とフェデレーション利用可否を fail-closed で制御する。hidden は一覧に出さないがプロトコル利用は許可する。subject_id は subject_type に応じて同一テナントの User.id または Group.id を指す。"
       },
       "ApplicationAssignmentListResponse": {
         "type": "object",
@@ -11106,7 +11097,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "categoryId": {
@@ -11117,7 +11108,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "categoryId"
         ],
         "description": "ApplicationCategory を作成した。"
@@ -11132,7 +11123,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "categoryId": {
@@ -11143,7 +11134,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "categoryId"
         ],
         "description": "ApplicationCategory を削除した。付与済みの Application からも除かれる。"
@@ -11158,7 +11149,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "categoryId": {
@@ -11169,7 +11160,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "categoryId"
         ],
         "description": "ApplicationCategory を更新した。"
@@ -11184,7 +11175,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -11195,7 +11186,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId"
         ],
         "description": "Application を作成した。"
@@ -11210,7 +11201,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -11221,7 +11212,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId"
         ],
         "description": "Application を削除した。"
@@ -11236,7 +11227,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -11250,7 +11241,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId",
           "action"
         ],
@@ -11376,7 +11367,7 @@
           "tenant_id": {
             "type": "string"
           },
-          "user_sub": {
+          "user_id": {
             "type": "string"
           },
           "application_ids": {
@@ -11398,12 +11389,12 @@
         "additionalProperties": false,
         "required": [
           "tenant_id",
-          "user_sub",
+          "user_id",
           "application_ids",
           "created_at",
           "updated_at"
         ],
-        "description": "利用者ポータルでの手動並び順 (ADR-069)。tenant_id + user_sub をキーに、Application の\n表示順を application_id の順序列として持つ。user_sub は同一テナントの既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、同一テナントかつ本人に割当済み visible な Application のみに制限する。\n"
+        "description": "利用者ポータルでの手動並び順 (ADR-069)。tenant_id + user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は同一テナントの既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、同一テナントかつ本人に割当済み visible な Application のみに制限する。\n"
       },
       "ApplicationProvisionType": {
         "type": "string",
@@ -11433,7 +11424,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -11450,7 +11441,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId",
           "subjectType",
           "subjectId"
@@ -11467,7 +11458,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -11484,7 +11475,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId",
           "changedFields"
         ],
@@ -11656,7 +11647,7 @@
             "type": "string",
             "description": "イベントカテゴリ絞り込み。authentication / success / fail / aggregated / user / group / client / consent / token / tenant / key。"
           },
-          "sub": {
+          "user_id": {
             "type": "string",
             "description": "対象ユーザー sub の完全一致フィルタ。"
           },
@@ -11681,7 +11672,7 @@
       "AuthenticationContext": {
         "type": "object",
         "properties": {
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "auth_time": {
@@ -11702,7 +11693,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "user_id",
           "auth_time",
           "amr"
         ],
@@ -11894,7 +11885,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "step": {
@@ -11909,7 +11900,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "step"
         ],
         "description": "多段認証フローの 1 ステップ (password / totp / webauthn 等) が成功した。acr 確定の入力。"
@@ -11956,7 +11947,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "scopes": {
@@ -11974,7 +11965,7 @@
           "occurredAt",
           "tenantId",
           "clientId",
-          "sub",
+          "userId",
           "scopes"
         ],
         "description": "/authorize 完了時に AuthorizationCode を発行した。/token への交換まで 60 秒以内に行う必要がある。"
@@ -11997,7 +11988,7 @@
           "client_id": {
             "type": "string"
           },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "scopes": {
@@ -12067,7 +12058,7 @@
           "tenant_id",
           "authorization_request_id",
           "client_id",
-          "sub",
+          "user_id",
           "scopes",
           "redirect_uri",
           "code_challenge",
@@ -12102,7 +12093,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -12111,7 +12102,7 @@
           "occurredAt",
           "tenantId",
           "clientId",
-          "sub"
+          "userId"
         ],
         "description": "AuthorizationCode が /token で正しく交換された。同一コードの再使用はファミリー失効を引き起こす。"
       },
@@ -12378,7 +12369,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "clientId": {
@@ -12395,7 +12386,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "clientId",
           "detailTypes"
         ],
@@ -12441,7 +12432,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string",
             "description": "要求時点で確定していれば principal の sub。"
           },
@@ -12535,7 +12526,7 @@
           "par_request_uri": {
             "type": "string"
           },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "auth_time": {
@@ -12648,7 +12639,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "remainingCount": {
@@ -12659,7 +12650,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub"
+          "userId"
         ],
         "description": "バックアップ/リカバリコードを 1 つ消費した (TOTP / WebAuthn 喪失時の復旧)。"
       },
@@ -12988,12 +12979,7 @@
       "Consent": {
         "type": "object",
         "properties": {
-          "tenant_id": {
-            "type": "string",
-            "default": "default",
-            "description": "所属テナント ID。"
-          },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "client_id": {
@@ -13041,8 +13027,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "tenant_id",
-          "sub",
+          "user_id",
           "client_id",
           "scopes",
           "state",
@@ -13051,7 +13036,7 @@
           "granted_at",
           "expires_at"
         ],
-        "description": "GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。sub と client_id は同一 tenant_id 内の既存 User と OAuth2Client を指す。"
+        "description": "GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。user_id と client_id は既存 User と OAuth2Client を指す。"
       },
       "ConsentGranted": {
         "type": "object",
@@ -13064,7 +13049,7 @@
             "type": "string",
             "description": "同意が起きたテナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "clientId": {
@@ -13081,7 +13066,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "clientId",
           "scopes"
         ],
@@ -13098,11 +13083,11 @@
             "type": "string",
             "description": "同意が属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string",
             "description": "管理 API からの撤回時の Administrator sub。ResourceOwner 自身の撤回では省略可。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "clientId": {
@@ -13113,7 +13098,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "clientId"
         ],
         "description": "ResourceOwner または所属テナントの Administrator が既存の同意を撤回した (GDPR Art.7(3) 同意撤回権)。以後の発行はブロックされる。"
@@ -13154,7 +13139,7 @@
           "state": {
             "$ref": "#/components/schemas/DeviceCodeState"
           },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "auth_time": {
@@ -13209,7 +13194,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -13218,7 +13203,7 @@
           "occurredAt",
           "tenantId",
           "clientId",
-          "sub"
+          "userId"
         ],
         "description": "RFC 8628 §3.3 — ユーザーが承認した。"
       },
@@ -13236,7 +13221,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -13571,7 +13556,7 @@
             "type": "string",
             "description": "対象 user の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "newEmailHash": {
@@ -13583,7 +13568,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "newEmailHash"
         ],
         "description": "end-user が primary email の変更を起票し、新アドレスへ確認リンクを送った\n(self-service)。実際の email 反映は ConfirmEmailChange まで起きない。\nnewEmailHash は SHA-256 で、平文を audit log に流さない。\n"
@@ -13599,7 +13584,7 @@
             "type": "string",
             "description": "対象 user の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -13607,7 +13592,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub"
+          "userId"
         ],
         "description": "新アドレスへ送ったワンタイムリンクの確認が完了し、primary email を確定した\n(self-service)。email_verified=true に更新し、verify_email の\nrequired action があれば自動解除する。\n"
       },
@@ -13759,7 +13744,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "provider": {
@@ -13774,7 +13759,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "provider"
         ],
         "description": "外部 IdP 経由の federated login が成功した。"
@@ -13789,7 +13774,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "provider": {
@@ -13800,7 +13785,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "provider"
         ],
         "description": "ローカル user に外部 IdP の identity を紐付けた (account linking)。"
@@ -13815,7 +13800,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "provider": {
@@ -13826,7 +13811,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "provider"
         ],
         "description": "ローカル user から外部 IdP の identity を解除した。"
@@ -13941,7 +13926,7 @@
             "type": "string",
             "description": "グループが属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "groupId": {
@@ -13952,7 +13937,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "groupId"
         ],
         "description": "管理者がグループを作成した。"
@@ -13968,7 +13953,7 @@
             "type": "string",
             "description": "グループが属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "groupId": {
@@ -13979,7 +13964,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "groupId"
         ],
         "description": "管理者がグループを削除した。所属 membership は cascade で解除され、各々 GroupMemberRemoved を伴う。"
@@ -14006,7 +13991,7 @@
           "group_id": {
             "type": "string"
           },
-          "user_sub": {
+          "user_id": {
             "type": "string"
           },
           "created_at": {
@@ -14017,10 +14002,10 @@
         "additionalProperties": false,
         "required": [
           "group_id",
-          "user_sub",
+          "user_id",
           "created_at"
         ],
-        "description": "User と Group の所属関係。group_id × user_sub で一意。"
+        "description": "User と Group の所属関係。group_id × user_id で一意。"
       },
       "GroupMemberAdded": {
         "type": "object",
@@ -14033,13 +14018,13 @@
             "type": "string",
             "description": "グループが属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "groupId": {
             "type": "string"
           },
-          "userSub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -14047,9 +14032,9 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "groupId",
-          "userSub"
+          "userId"
         ],
         "description": "管理者が User をグループに所属させた。既に所属済みの場合は emit されない (冪等)。"
       },
@@ -14064,13 +14049,13 @@
             "type": "string",
             "description": "グループが属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "groupId": {
             "type": "string"
           },
-          "userSub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -14078,16 +14063,16 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "groupId",
-          "userSub"
+          "userId"
         ],
         "description": "管理者が User をグループから外した、またはグループ削除に伴い解除された。所属していない場合は emit されない (冪等)。"
       },
       "GroupMemberResponse": {
         "type": "object",
         "properties": {
-          "user_sub": {
+          "user_id": {
             "type": "string"
           },
           "preferred_username": {
@@ -14100,7 +14085,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "user_sub",
+          "user_id",
           "preferred_username",
           "created_at"
         ],
@@ -14183,7 +14168,7 @@
             "type": "string",
             "description": "グループが属するテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "groupId": {
@@ -14200,7 +14185,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "groupId",
           "changedFields"
         ],
@@ -14460,7 +14445,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "auth_time": {
@@ -14490,7 +14475,7 @@
         "additionalProperties": false,
         "required": [
           "id",
-          "sub",
+          "user_id",
           "auth_time",
           "amr",
           "acr",
@@ -14542,7 +14527,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "factorType": {
@@ -14570,7 +14555,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "factorType": {
@@ -14584,7 +14569,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "factorType"
         ],
         "description": "MFA チャレンジ (TOTP / WebAuthn 等) を提示した。"
@@ -14599,7 +14584,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "factorType": {
@@ -14613,7 +14598,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "factorType"
         ],
         "description": "MFA チャレンジに成功した。"
@@ -14621,7 +14606,7 @@
       "MfaFactor": {
         "type": "object",
         "properties": {
-          "sub": {
+          "user_id": {
             "type": "string",
             "description": "所有者ユーザの sub。"
           },
@@ -14647,7 +14632,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "user_id",
           "type",
           "created_at"
         ],
@@ -14664,7 +14649,7 @@
             "type": "string",
             "description": "対象 user の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "factorType": {
@@ -14675,7 +14660,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "factorType"
         ],
         "description": "本人が self-service で MFA factor (現状 TOTP) を登録した。secret は audit に\n流さず種別だけを残す。User.mfa_enrolled を true にする。\n"
@@ -14705,7 +14690,7 @@
             "type": "string",
             "description": "対象 user の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "factorType": {
@@ -14716,7 +14701,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "factorType"
         ],
         "description": "本人が self-service で MFA factor を解除した。解除は有効な TOTP コードによる\n所持証明を伴う。User.mfa_enrolled を false に戻す。\n"
@@ -14835,7 +14820,7 @@
           "tenant_id": {
             "type": "string",
             "default": "default",
-            "description": "所属テナント ID。客は (tenant_id, client_id) で一意。"
+            "description": "所属テナント ID。"
           },
           "client_id": {
             "type": "string",
@@ -15077,7 +15062,7 @@
             "type": "string",
             "description": "対象 user の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -15085,7 +15070,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub"
+          "userId"
         ],
         "description": "ResourceOwner が /api/auth/change_password で自身のパスワードを変更した。change-password 監査と通知の起点。"
       },
@@ -15159,7 +15144,7 @@
       "PasswordResetTokenRecord": {
         "type": "object",
         "properties": {
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "token_hash": {
@@ -15180,7 +15165,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "user_id",
           "token_hash",
           "created_at",
           "expires_at"
@@ -15237,7 +15222,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -15251,7 +15236,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId",
           "bindingType"
         ],
@@ -15267,7 +15252,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "applicationId": {
@@ -15281,7 +15266,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
+          "actorUserId",
           "applicationId",
           "bindingType"
         ],
@@ -15338,7 +15323,7 @@
           "clientId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           }
         },
@@ -15349,7 +15334,7 @@
           "tokenId",
           "familyId",
           "clientId",
-          "sub"
+          "userId"
         ],
         "description": "RefreshToken を発行した。familyId は元の認可コード由来のファミリーを識別し、ローテーションで継承される。"
       },
@@ -15381,7 +15366,7 @@
           "client_id": {
             "type": "string"
           },
-          "sub": {
+          "user_id": {
             "type": "string"
           },
           "scopes": {
@@ -15425,7 +15410,7 @@
           "hash",
           "family_id",
           "client_id",
-          "sub",
+          "user_id",
           "scopes",
           "state",
           "created_at",
@@ -15871,7 +15856,7 @@
             "type": "string",
             "description": "発行先 SP の entityID。"
           },
-          "sub": {
+          "userId": {
             "type": "string",
             "description": "subject (NameID 由来の user)。"
           }
@@ -15881,7 +15866,7 @@
           "occurredAt",
           "tenantId",
           "entityId",
-          "sub"
+          "userId"
         ],
         "description": "SAML SSO で署名済み SAMLResponse を SP へ発行した。"
       },
@@ -16006,7 +15991,7 @@
           "scim_id": {
             "type": "string"
           },
-          "user_sub": {
+          "user_id": {
             "type": "string"
           }
         },
@@ -16014,7 +15999,7 @@
         "required": [
           "tenant_id",
           "scim_id",
-          "user_sub"
+          "user_id"
         ],
         "description": "SCIM 2.0 の ID と IdP 内部の User (sub) を紐付けるマッピング。"
       },
@@ -16101,13 +16086,13 @@
             "type": "string",
             "description": "対象 user の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "sessionId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string",
             "description": "失効を実行した主体の sub (self は本人)。"
           },
@@ -16119,12 +16104,12 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "sessionId",
-          "actorSub",
+          "actorUserId",
           "reason"
         ],
-        "description": "LoginSession が終了した。本人 / admin の明示的な失効では actorSub が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
+        "description": "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
       },
       "SessionImpersonationEnded": {
         "type": "object",
@@ -16136,10 +16121,10 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           },
           "sessionId": {
@@ -16150,8 +16135,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub",
+          "actorUserId",
+          "targetUserId",
           "sessionId"
         ],
         "description": "impersonation セッションを終了した。retention 短縮の対象外。"
@@ -16166,11 +16151,11 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string",
             "description": "impersonate した admin の sub"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string",
             "description": "対象 user の sub"
           },
@@ -16182,8 +16167,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub",
+          "actorUserId",
+          "targetUserId",
           "sessionId"
         ],
         "description": "admin が user として操作するセッションを開始した (impersonation)。本人通知を前提とする\n監査事象で、retention 短縮の対象外。\n"
@@ -16198,7 +16183,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "sessionId": {
@@ -16209,7 +16194,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "sessionId"
         ],
         "description": "LoginSession の有効期限を延伸した (アクティブ継続)。"
@@ -16224,7 +16209,7 @@
           "tenantId": {
             "type": "string"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "sessionId": {
@@ -16250,7 +16235,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "sessionId"
         ],
         "description": "LoginSession を開始した。session 一覧・調査の起点。"
@@ -16430,7 +16415,7 @@
             "type": "string",
             "description": "本人の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "sessionId": {
@@ -16445,7 +16430,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "sessionId",
           "method"
         ],
@@ -16470,7 +16455,7 @@
             "type": "string",
             "description": "本人の所属テナント ID。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "sessionId": {
@@ -16481,7 +16466,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub",
+          "userId",
           "sessionId"
         ],
         "description": "本人が高 sensitivity 操作のための step-up 再認証を開始した。\n利用可能な factor の提示要求であり、まだ再認証は成立していない。\n"
@@ -16623,7 +16608,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "tenantId": {
@@ -16633,7 +16618,7 @@
         "additionalProperties": false,
         "required": [
           "occurredAt",
-          "actorSub",
+          "actorUserId",
           "tenantId"
         ],
         "description": "system_admin が新規テナントを作成した。"
@@ -16708,7 +16693,7 @@
           "tenantId": {
             "type": "string"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           }
         },
@@ -16716,7 +16701,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub"
+          "actorUserId"
         ],
         "description": "テナントデフォルト sign-in policy を更新した (クリアを含む)。"
       },
@@ -16727,7 +16712,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "tenantId": {
@@ -16737,7 +16722,7 @@
         "additionalProperties": false,
         "required": [
           "occurredAt",
-          "actorSub",
+          "actorUserId",
           "tenantId"
         ],
         "description": "system_admin がテナントを無効化した。当該テナントのすべてのプロトコルルートは invalid_request で拒否される。"
@@ -16749,7 +16734,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "tenantId": {
@@ -16759,7 +16744,7 @@
         "additionalProperties": false,
         "required": [
           "occurredAt",
-          "actorSub",
+          "actorUserId",
           "tenantId"
         ],
         "description": "system_admin が無効化済みテナントを再有効化した。"
@@ -16890,7 +16875,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "tenantId": {
@@ -16906,7 +16891,7 @@
         "additionalProperties": false,
         "required": [
           "occurredAt",
-          "actorSub",
+          "actorUserId",
           "tenantId",
           "changedFields"
         ],
@@ -17008,7 +16993,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
           "tenantId": {
@@ -17024,7 +17009,7 @@
         "additionalProperties": false,
         "required": [
           "occurredAt",
-          "actorSub",
+          "actorUserId",
           "tenantId",
           "attributeKeys"
         ],
@@ -17052,7 +17037,7 @@
             "type": "string",
             "description": "トークン交換が拒否されたテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string",
             "description": "拒否時に判明している現在アクター。不明な場合は空。"
           },
@@ -17080,11 +17065,11 @@
             "type": "string",
             "description": "トークン交換が起きたテナント ID。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string",
             "description": "発行トークンの現在アクター (act.sub)。"
           },
-          "subjectSub": {
+          "subjectUserId": {
             "type": "string",
             "description": "発行トークンの subject (sub)。subject_token の sub を維持する。"
           },
@@ -17101,8 +17086,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "subjectSub",
+          "actorUserId",
+          "subjectUserId",
           "audience",
           "delegationDepth"
         ],
@@ -17278,10 +17263,10 @@
       "User": {
         "type": "object",
         "properties": {
-          "sub": {
+          "id": {
             "type": "string",
             "minLength": 1,
-            "description": "global 一意の subject。tenant 跨ぎでも衝突しない。"
+            "description": "User の canonical な domain 識別子。global 一意で tenant 跨ぎでも衝突しない。\nprotocol 境界ではこの id を写像して表現する: OIDC `sub` claim / SAML NameID /\nWS-Fed subject / SCIM リソース参照。protocol vocabulary (`sub` 等) を storage identity\nとして露出させない。pairwise subject など写像を差し替える場合も id 自体は不変。\n"
           },
           "tenant_id": {
             "type": "string",
@@ -17343,7 +17328,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "sub",
+          "id",
           "tenant_id",
           "preferred_username",
           "password_hash",
@@ -17427,7 +17412,7 @@
             "type": "string",
             "description": "認証が起きたテナント ID。監査ビューのテナント絞り込みに使う。"
           },
-          "sub": {
+          "userId": {
             "type": "string"
           },
           "amr": {
@@ -17476,7 +17461,7 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "sub"
+          "userId"
         ],
         "description": "ResourceOwner の認証が成功した。amr は実際に経由した認証手段の一覧 (OIDC Core §2)。"
       },
@@ -17491,10 +17476,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           }
         },
@@ -17502,8 +17487,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者がユーザーを作成した。初期パスワードと password_hash は監査イベントに含めない。"
       },
@@ -17518,10 +17503,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           },
           "reason": {
@@ -17532,8 +17517,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者または 猶予期間経過後の自動 purge がユーザーを Purge した。PII は anonymize 済みで、関連 aggregate は cascade 削除されている。reason は admin が任意に残せる自由記述 (自動 purge では auto_purge)。"
       },
@@ -17548,10 +17533,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           }
         },
@@ -17559,8 +17544,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者がユーザーを無効化した。対象ユーザーの新規ログインと既存セッション利用を拒否する。"
       },
@@ -17575,10 +17560,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           }
         },
@@ -17586,8 +17571,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者が無効化済みユーザーを再有効化した。"
       },
@@ -17689,11 +17674,11 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string",
             "description": "解除を行った主体。自動解除時は対象本人。"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           }
         },
@@ -17701,10 +17686,10 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
-        "description": "強制アクションが解除された。admin の明示解除のほか、本人がパスワードを変更した結果 update_password が自動解除される場合も発火し、その際 actorSub は対象本人の sub になる。"
+        "description": "強制アクションが解除された。admin の明示解除のほか、本人がパスワードを変更した結果 update_password が自動解除される場合も発火し、その際 actor の id は対象本人の id になる。"
       },
       "UserRequiredActionSet": {
         "type": "object",
@@ -17717,10 +17702,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           }
         },
@@ -17728,8 +17713,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者が次回ログイン時の強制アクション (RequiredAction) を付与した。action は enum 値で、監査に平文で残しても安全。"
       },
@@ -17744,10 +17729,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           }
         },
@@ -17755,8 +17740,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者が PendingDeletion のユーザーを Restore した。status は Active に戻り、PII / credential は温存されたままでログインが再開する。"
       },
@@ -17808,10 +17793,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           },
           "reason": {
@@ -17822,8 +17807,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub"
+          "actorUserId",
+          "targetUserId"
         ],
         "description": "管理者がユーザーを SoftDelete した。status は PendingDeletion に遷移し、PII / Consent / RefreshToken / Session は温存される。reason は admin が任意に残せる自由記述。"
       },
@@ -17851,10 +17836,10 @@
             "type": "string",
             "description": "操作対象テナント ID。actor / target と一致する。"
           },
-          "actorSub": {
+          "actorUserId": {
             "type": "string"
           },
-          "targetSub": {
+          "targetUserId": {
             "type": "string"
           },
           "changedFields": {
@@ -17868,8 +17853,8 @@
         "required": [
           "occurredAt",
           "tenantId",
-          "actorSub",
-          "targetSub",
+          "actorUserId",
+          "targetUserId",
           "changedFields"
         ],
         "description": "管理者がユーザーのプロフィールまたは roles を更新した。"
@@ -17950,7 +17935,7 @@
             "type": "string",
             "description": "発行先 RP の wtrealm。"
           },
-          "sub": {
+          "userId": {
             "type": "string",
             "description": "subject (NameID 由来の user)。"
           }
@@ -17960,7 +17945,7 @@
           "occurredAt",
           "tenantId",
           "wtrealm",
-          "sub"
+          "userId"
         ],
         "description": "WS-Federation passive sign-in で署名済み assertion を RP へ発行した。"
       },
@@ -18140,7 +18125,7 @@
             "type": "string",
             "description": "発行先 RP / audience。"
           },
-          "sub": {
+          "userId": {
             "type": "string",
             "description": "subject user。"
           }
@@ -18150,7 +18135,7 @@
           "occurredAt",
           "tenantId",
           "appliesTo",
-          "sub"
+          "userId"
         ],
         "description": "WS-Trust active STS で署名済み assertion を発行した。"
       },

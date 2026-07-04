@@ -730,7 +730,7 @@ models:
         description: 一方向終端 (kill) 時刻。
   AgentCredentialBinding:
     kind: entity
-    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。永続化層は agent_id と client_id の tenant_id 一致を fail-closed に保証する。
+    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。
     identity:
       - agent_id
       - client_id
@@ -739,9 +739,6 @@ models:
         type: String
       client_id:
         type: String
-      tenant_id:
-        type: String
-        default: default
       created_at:
         type: Timestamp
   AgentRegisterRequest:

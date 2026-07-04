@@ -1227,13 +1227,12 @@ models:
     kind: entity
     description: RFC 7591 + FAPI 2.0 拡張のクライアント。
     identity:
-      - tenant_id
       - client_id
     fields:
       tenant_id:
         type: String
         default: default
-        description: "所属テナント ID。客は (tenant_id, client_id) で一意。"
+        description: "所属テナント ID。"
       client_id:
         type: String
         constraints:
@@ -1299,16 +1298,11 @@ models:
         description: 作成時は created_at と同じ値を持ち、以後 client metadata の管理操作ごとに更新する。
   Consent:
     kind: entity
-    description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。sub と client_id は同一 tenant_id 内の既存 User と OAuth2Client を指す。
+    description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。user_id と client_id は既存 User と OAuth2Client を指す。
     identity:
-      - tenant_id
       - user_id
       - client_id
     fields:
-      tenant_id:
-        type: String
-        default: default
-        description: 所属テナント ID。
       user_id:
         type: String
       client_id:
@@ -2168,8 +2162,6 @@ models:
     kind: value_object
     description: 管理 API が返す所属テナント内の Consent 表現。
     fields:
-      tenant_id:
-        type: String
       user_id:
         type: String
       client_id:

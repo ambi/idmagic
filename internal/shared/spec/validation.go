@@ -175,7 +175,6 @@ var agentSchema = z.Struct(z.Shape{
 var agentCredentialBindingSchema = z.Struct(z.Shape{
 	"AgentID":   z.String().Min(1).Required(),
 	"ClientID":  z.String().Min(1).Required(),
-	"TenantID":  z.String().Min(1).Required(),
 	"CreatedAt": z.Time().Required(),
 })
 

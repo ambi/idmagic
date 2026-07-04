@@ -361,7 +361,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 	}
 	now = normalizedNow(now)
 	added, err := deps.AgentRepo.AddBinding(ctx, &spec.AgentCredentialBinding{
-		AgentID: agentID, ClientID: clientID, TenantID: tenantID, CreatedAt: now,
+		AgentID: agentID, ClientID: clientID, CreatedAt: now,
 	})
 	if err != nil {
 		return err

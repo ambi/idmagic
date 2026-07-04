@@ -17,7 +17,7 @@ type OAuth2ClientRepository interface {
 type ConsentRepository interface {
 	Find(ctx context.Context, tenantID, sub, clientID string) (*spec.Consent, error)
 	FindAll(ctx context.Context, tenantID string) ([]*spec.Consent, error)
-	Save(ctx context.Context, c *spec.Consent) error
+	Save(ctx context.Context, tenantID string, c *spec.Consent) error
 	Revoke(ctx context.Context, tenantID, sub, clientID string) error
 	// DeleteAllForSub は ADR-036 の anonymize cascade から呼ばれる。
 	// 対象 sub の Consent を物理削除する。

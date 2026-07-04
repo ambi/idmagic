@@ -13,7 +13,6 @@ import (
 )
 
 type adminConsentResponse struct {
-	TenantID  string            `json:"tenant_id"`
 	UserID    string            `json:"user_id"`
 	ClientID  string            `json:"client_id"`
 	Scopes    []string          `json:"scopes"`
@@ -71,7 +70,7 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 
 func toAdminConsentResponse(consent *spec.Consent) adminConsentResponse {
 	return adminConsentResponse{
-		TenantID: consent.TenantID, UserID: consent.UserID, ClientID: consent.ClientID,
+		UserID: consent.UserID, ClientID: consent.ClientID,
 		Scopes: slices.Clone(consent.Scopes), State: consent.State,
 		GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt, RevokedAt: consent.RevokedAt,
 	}

@@ -14,24 +14,29 @@ import (
 // ConsentRepository (OAuth2)
 // =====================================================================
 
+type memConsent struct {
+	spec.Consent
+	TenantID string
+}
+
 type ConsentRepository struct {
 	mu       sync.RWMutex
-	consents map[string]*spec.Consent
+	consents map[string]*memConsent
 }
 
 func NewConsentRepository() *ConsentRepository {
-	return &ConsentRepository{consents: map[string]*spec.Consent{}}
+	return &ConsentRepository{consents: map[string]*memConsent{}}
 }
 
 func (r *ConsentRepository) Find(_ context.Context, tenantID, sub, clientID string) (*spec.Consent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	consent := r.consents[consentKey(tenantID, sub, clientID)]
-	if consent == nil {
+	mc := r.consents[consentKey(tenantID, sub, clientID)]
+	if mc == nil {
 		return nil, nil
 	}
-	cloned := *consent
-	cloned.Scopes = slices.Clone(consent.Scopes)
+	cloned := mc.Consent
+	cloned.Scopes = slices.Clone(mc.Scopes)
 	return &cloned, nil
 }
 
@@ -39,12 +44,12 @@ func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*spec
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*spec.Consent, 0)
-	for _, consent := range r.consents {
-		if consent.TenantID != tenantID {
+	for _, mc := range r.consents {
+		if mc.TenantID != tenantID {
 			continue
 		}
-		cloned := *consent
-		cloned.Scopes = slices.Clone(consent.Scopes)
+		cloned := mc.Consent
+		cloned.Scopes = slices.Clone(mc.Scopes)
 		out = append(out, &cloned)
 	}
 	slices.SortFunc(out, func(a, b *spec.Consent) int {
@@ -56,26 +61,28 @@ func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*spec
 	return out, nil
 }
 
-func (r *ConsentRepository) Save(_ context.Context, c *spec.Consent) error {
+func (r *ConsentRepository) Save(_ context.Context, tenantID string, c *spec.Consent) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *c
-	defaultTenant(&cloned.TenantID)
 	cloned.Scopes = slices.Clone(c.Scopes)
-	r.consents[consentKey(cloned.TenantID, cloned.UserID, cloned.ClientID)] = &cloned
+	r.consents[consentKey(tenantID, cloned.UserID, cloned.ClientID)] = &memConsent{
+		Consent:  cloned,
+		TenantID: tenantID,
+	}
 	return nil
 }
 
 func (r *ConsentRepository) Revoke(_ context.Context, tenantID, sub, clientID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	c, ok := r.consents[consentKey(tenantID, sub, clientID)]
+	mc, ok := r.consents[consentKey(tenantID, sub, clientID)]
 	if !ok {
 		return nil
 	}
 	now := time.Now().UTC()
-	c.State = spec.ConsentRevoked
-	c.RevokedAt = &now
+	mc.State = spec.ConsentRevoked
+	mc.RevokedAt = &now
 	return nil
 }
 
