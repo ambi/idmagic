@@ -25,10 +25,10 @@ setup: setup-ra install-ui
 setup-ra:
     git submodule update --init --recursive
     cd .ra/regenerative-architecture/tools && bun install
-    mkdir -p .claude
-    ln -sfn ../.ra/regenerative-architecture/.claude/skills .claude/skills
     mkdir -p .agents
-    ln -sfn ../.ra/regenerative-architecture/.claude/skills .agents/skills
+    ln -sfn ../.ra/regenerative-architecture/.agents/skills .agents/skills
+    mkdir -p .claude
+    ln -sfn ../.agents/skills .claude/skills
 
 
 # Install UI dependencies.
