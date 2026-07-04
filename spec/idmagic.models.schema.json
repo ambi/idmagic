@@ -4,6 +4,22 @@
   "title": "idmagic — generated model schemas",
   "description": "Generated from SCL models by scl-to-jsonschema. Do not edit by hand; regenerate from the spec.",
   "$defs": {
+    "AccessCondition": {
+      "type": "object",
+      "properties": {
+        "network": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "reauth_max_age_seconds": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Application sign-on policy の静的アクセス条件。network / device は入力点を保持し、reauth_max_age_seconds は認証または step-up の recency として評価する。"
+    },
     "AccessDeniedError": {
       "type": "object",
       "properties": {},
@@ -1950,6 +1966,156 @@
         "changedFields"
       ],
       "description": "管理者が Agent の name / description / kind / roles を更新した。"
+    },
+    "AppAccessDeniedByPolicy": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId",
+        "protocol",
+        "subject",
+        "reason"
+      ],
+      "description": "Application sign-on policy により federation を拒否した。"
+    },
+    "AppSignOnPolicy": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "default": "default"
+        },
+        "application_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignOnRule"
+          }
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "application_id",
+        "rules",
+        "updated_at"
+      ],
+      "description": "Application ごとのサインオンポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。"
+    },
+    "AppSignOnPolicyRequest": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignOnRule"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "rules"
+      ],
+      "description": "管理者が Application の sign-on policy を置き換えるリクエスト。"
+    },
+    "AppSignOnPolicyResponse": {
+      "type": "object",
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/AppSignOnPolicy"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy"
+      ],
+      "description": "Application の sign-on policy 表現。"
+    },
+    "AppSignOnPolicyUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorSub": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorSub",
+        "applicationId"
+      ],
+      "description": "Application の sign-on policy を更新した。"
+    },
+    "AppStepUpRequired": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId",
+        "protocol",
+        "subject"
+      ],
+      "description": "Application sign-on policy の認証強度を満たすため step-up が必要になった。"
     },
     "Application": {
       "type": "object",
@@ -6637,6 +6803,19 @@
       ],
       "description": "次回ログイン時にユーザへ強制するアクション (Keycloak Required Actions / Okta transitioning 相当)。"
     },
+    "RequiredAuthnLevel": {
+      "type": "object",
+      "properties": {
+        "acr": {
+          "type": "string"
+        },
+        "factor": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Application sign-on policy が要求する認証強度。acr と factor は両方指定でき、指定された条件をすべて満たす必要がある。"
+    },
     "ResponseMode": {
       "type": "string",
       "enum": [
@@ -7210,6 +7389,35 @@
         "sessionId"
       ],
       "description": "LoginSession を開始した。session 一覧・調査の起点。"
+    },
+    "SignOnRule": {
+      "type": "object",
+      "properties": {
+        "rule_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "required_authn": {
+          "$ref": "#/$defs/RequiredAuthnLevel"
+        },
+        "condition": {
+          "$ref": "#/$defs/AccessCondition"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "name",
+        "enabled",
+        "required_authn",
+        "condition"
+      ],
+      "description": "Application sign-on policy の単一ルール。"
     },
     "SignatureAlgorithm": {
       "type": "string",

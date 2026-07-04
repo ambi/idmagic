@@ -34,6 +34,8 @@ func RegisterRoutes(g *echo.Group, cd *support.Deps) {
 	g.GET("/api/admin/applications/:application_id/assignments", d.handleListAssignments)
 	g.POST("/api/admin/applications/:application_id/assignments", d.handleAssignApplication)
 	g.DELETE("/api/admin/applications/:application_id/assignments/:subject_type/:subject_id", d.handleUnassignApplication)
+	g.GET("/api/admin/applications/:application_id/sign-on-policy", d.handleGetSignOnPolicy)
+	g.PUT("/api/admin/applications/:application_id/sign-on-policy", d.handleUpdateSignOnPolicy)
 	g.PUT("/api/admin/applications/:application_id/categories", d.handleSetApplicationCategories)
 	g.GET("/api/admin/application-categories", d.handleListCategories)
 	g.POST("/api/admin/application-categories", d.handleCreateCategory)

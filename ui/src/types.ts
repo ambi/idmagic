@@ -116,6 +116,32 @@ export type ApplicationAssignment = {
   created_at: string
 }
 
+export type RequiredAuthnLevel = {
+  acr?: string
+  factor?: string
+}
+
+export type AccessCondition = {
+  network?: string
+  device?: string
+  reauth_max_age_seconds?: number
+}
+
+export type SignOnRule = {
+  rule_id: string
+  name: string
+  enabled: boolean
+  required_authn: RequiredAuthnLevel
+  condition: AccessCondition
+}
+
+export type AppSignOnPolicy = {
+  tenant_id: string
+  application_id: string
+  rules: SignOnRule[]
+  updated_at: string
+}
+
 // プロトコル設定はアプリ詳細で解決される。OAuth2 client / WS-Fed RP の実設定を映す。
 // advanced 項目を含め、低レベル client 画面を廃してアプリ編集画面に集約する (wi-76)。
 // client_type / token_endpoint_auth_method / fapi_profile は更新契約上の不変項目で表示専用。
@@ -161,6 +187,7 @@ export type AdminApplicationDetail = {
   oidc?: ApplicationOidcConfig | null
   wsfed?: ApplicationWsFedConfig | null
   saml?: ApplicationSamlConfig | null
+  sign_on_policy?: AppSignOnPolicy | null
 }
 
 export type AuthorizationDetailFieldRule = {

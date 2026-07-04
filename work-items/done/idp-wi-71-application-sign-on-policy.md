@@ -3,7 +3,7 @@ id: idp-wi-71-application-sign-on-policy
 title: "アプリケーション単位のサインオンポリシー (条件付きアクセス / step-up) を導入する"
 created_at: 2026-06-27
 authors: ["tn"]
-status: pending
+status: completed
 risk: high
 ---
 
@@ -23,7 +23,7 @@ step-up 可能なら昇格を促す。
 
 # Scope
 - **decision**:
-  - 新規 ADR-067: アプリ別サインオンポリシーの所有と評価点を確定する。ポリシーは ApplicationCatalog が所有し、評価は各 protocol context のフェデレーション開始時に Authentication の AuthenticationContext を入力として行う。条件 (要求 acr / 要求 factor、ネットワーク、デバイス信頼、再認証 max_age) の初期サポート範囲、 満たさない場合の挙動 (step-up 誘導 or 拒否) を決める。
+  - 新規 ADR-079: アプリ別サインオンポリシーの所有と評価点を確定する。ポリシーは ApplicationCatalog が所有し、評価は各 protocol context のフェデレーション開始時に Authentication の AuthenticationContext を入力として行う。条件 (要求 acr / 要求 factor、ネットワーク、デバイス信頼、再認証 max_age) の初期サポート範囲、 満たさない場合の挙動 (step-up 誘導 or 拒否) を決める。
 - **scl**:
   - ApplicationCatalog に AppSignOnPolicy / SignOnRule / AccessCondition (network / device / reauthMaxAge) / RequiredAuthnLevel (required acr / factor) を追加する。
   - interface: 管理者の sign-on policy CRUD (Application 配下)。評価は既存 フェデレーション開始 interface (Authorize / WsFederationSignIn / 将来 SAML SSO) 内で行う。
@@ -58,5 +58,31 @@ step-up 可能なら昇格を促す。
 # Risk Notes
 認証強度の判定を全フェデレーション開始経路に漏れなく適用する必要があり、1 経路でも
 評価が抜けると「ポリシーを迂回してログインできる」欠陥になる (wi-69 の割当ゲートと同じ
-クラスのリスク)。ADR-067 で評価点と fail-closed を先に固定し、AuthenticationContext を
+クラスのリスク)。ADR-079 で評価点と fail-closed を先に固定し、AuthenticationContext を
 唯一の入力にして protocol 横断で同じ判定器を通す。
+
+# Completion
+- **Completed At**: 2026-07-04
+- **Summary**:
+  ApplicationCatalog に AppSignOnPolicy / SignOnRule / RequiredAuthnLevel / AccessCondition を追加し、
+  tenant/application 単位で `application_sign_on_policies` に保存する管理 API と UI エディタを実装した。
+  既存の Application 割当ゲートを拡張し、OIDC / SAML / WS-Fed の federation 開始で同じ policy 評価器を通す。
+  OIDC は step-up 可能な不足を既存 TOTP 導線へ誘導し、SAML / WS-Fed は初期実装として fail-closed で拒否する。
+  評価点と所有関係は idp-ADR-079 に記録した。
+- **Verification Results**:
+  - `just yaml-check-scl`
+    - result: ok
+  - `GOCACHE=/tmp/idmagic-go-cache go test ./...`
+    - result: ok
+  - `just verify-go`
+    - result: ok (`golangci-lint run ./...`: 0 issues, `go test -race ./...`: ok)
+  - `just verify-ui`
+    - result: ok (format check, lint, typecheck, build)
+  - `just scl-render`
+    - result: ok
+  - `just yaml-check`
+    - result: blocked by pre-existing completed Work Item schema failures in `idp-wi-108-database-connection-resilience-circuit-breaker` and `idp-wi-44-authentication-event-store-and-search`; SCL and `idp-wi-71` validated successfully in that run.
+- **Affected Guarantees State**:
+  - app policy fail-closed: token / assertion issuance is blocked when an enabled sign-on policy rule is not satisfied or cannot be evaluated.
+  - protocol consistency: OIDC, SAML, and WS-Fed now call the shared Application policy evaluator after assignment gating.
+  - tenant isolation: policy storage and lookup use tenant_id + application_id and are wired through the tenant-scoped Application repository.

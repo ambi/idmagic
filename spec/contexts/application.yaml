@@ -173,6 +173,59 @@ models:
         description: visible か hidden か。
       created_at:
         type: Timestamp
+  RequiredAuthnLevel:
+    kind: value_object
+    description: Application sign-on policy が要求する認証強度。acr と factor は両方指定でき、指定された条件をすべて満たす必要がある。
+    fields:
+      acr:
+        type: String
+        optional: true
+      factor:
+        type: String
+        optional: true
+  AccessCondition:
+    kind: value_object
+    description: Application sign-on policy の静的アクセス条件。network / device は入力点を保持し、reauth_max_age_seconds は認証または step-up の recency として評価する。
+    fields:
+      network:
+        type: String
+        optional: true
+      device:
+        type: String
+        optional: true
+      reauth_max_age_seconds:
+        type: Integer
+        optional: true
+  SignOnRule:
+    kind: value_object
+    description: Application sign-on policy の単一ルール。
+    fields:
+      rule_id:
+        type: String
+      name:
+        type: String
+      enabled:
+        type: Boolean
+      required_authn:
+        type: RequiredAuthnLevel
+      condition:
+        type: AccessCondition
+  AppSignOnPolicy:
+    kind: entity
+    description: Application ごとのサインオンポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。
+    identity:
+      - tenant_id
+      - application_id
+    fields:
+      tenant_id:
+        type: String
+        default: default
+      application_id:
+        type: UUID
+      rules:
+        type: "SignOnRule[]"
+      updated_at:
+        type: Timestamp
   AdminApplicationResponse:
     kind: value_object
     description: 管理 API が返す Application 表現。
@@ -474,6 +527,18 @@ models:
     fields:
       assignments:
         type: "ApplicationAssignmentResponse[]"
+  AppSignOnPolicyRequest:
+    kind: value_object
+    description: 管理者が Application の sign-on policy を置き換えるリクエスト。
+    fields:
+      rules:
+        type: "SignOnRule[]"
+  AppSignOnPolicyResponse:
+    kind: value_object
+    description: Application の sign-on policy 表現。
+    fields:
+      policy:
+        type: AppSignOnPolicy
   MyApplication:
     kind: value_object
     description: 利用者ポータルに表示する割当済みアプリ 1 件。
@@ -681,6 +746,48 @@ models:
       actorSub:
         type: String
       categoryId:
+        type: String
+  AppSignOnPolicyUpdated:
+    kind: event
+    description: Application の sign-on policy を更新した。
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+      actorSub:
+        type: String
+      applicationId:
+        type: String
+  AppAccessDeniedByPolicy:
+    kind: event
+    description: Application sign-on policy により federation を拒否した。
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+      protocol:
+        type: String
+      subject:
+        type: String
+      reason:
+        type: String
+  AppStepUpRequired:
+    kind: event
+    description: Application sign-on policy の認証強度を満たすため step-up が必要になった。
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+      protocol:
+        type: String
+      subject:
         type: String
 interfaces:
   ListAdminApplications:
@@ -953,6 +1060,42 @@ interfaces:
         path: "/api/admin/applications/{application_id}/assignments/{subject_type}/{subject_id}"
         successful_status_codes:
           - "204"
+  GetAppSignOnPolicy:
+    description: 管理者が Application の sign-on policy を取得する。未設定なら空 rules の policy を返す。
+    input:
+      application_id:
+        type: String
+    output:
+      response:
+        type: AppSignOnPolicyResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/applications/{application_id}/sign-on-policy"
+  UpdateAppSignOnPolicy:
+    description: 管理者が Application の sign-on policy を置き換える。
+    input:
+      application_id:
+        type: String
+      request:
+        type: AppSignOnPolicyRequest
+    output:
+      response:
+        type: AppSignOnPolicyResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - AppSignOnPolicyUpdated
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/applications/{application_id}/sign-on-policy"
+        request_form: body
   ListApplicationCategories:
     description: 管理者が所属テナントの ApplicationCategory を position 昇順で一覧する。
     output:
@@ -1090,6 +1233,14 @@ invariants:
     description: "ListMyApplications は visible 割当のみ返す。hidden 割当は一覧から除外するが\nプロトコル利用は引き続き許可する。\n"
     target: ApplicationAssignment
     always: listed_in_portal implies (assigned and visibility == visible)
+  AppPolicyFailClosed:
+    description: Application sign-on policy の要求を満たせない subject には token / assertion を発行しない。評価不能な条件も拒否として扱う。
+    target: AppSignOnPolicy
+    never: federation_completed and policy_result != allow
+  AppPolicyEvaluatedAcrossProtocols:
+    description: OIDC authorize、WS-Fed sign-in、SAML SSO は同じ Application sign-on policy 評価器を通し、protocol ごとの個別条件分岐で迂回できない。
+    target: AppSignOnPolicy
+    always: federation_started_via_binding implies app_sign_on_policy_evaluated
   ApplicationIconSafeServing:
     description: Application icon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
     target: Application
@@ -1108,6 +1259,11 @@ permissions:
     description: Application へのユーザー / グループ割当の参照・追加・削除。
     actor: User
     resource: ApplicationAssignment
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+  AdminApplicationPoliciesManage:
+    description: 所属テナント内の Application sign-on policy の参照・更新。
+    actor: User
+    resource: AppSignOnPolicy
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminApplicationCategoriesManage:
     description: 所属テナント内の ApplicationCategory の参照・作成・更新・削除と Application への付与。
@@ -1191,6 +1347,27 @@ scenarios:
         steps:
           - エラー "InvalidRequestError"
           - 既存アイコンは置き換わらない
+  管理者はアプリケーション別サインオンポリシーを設定できる:
+    goal: 管理者が Application ごとに MFA / 再認証条件を設定し、フェデレーション開始時に強制する。
+    primary_actor: Administrator
+    scope: Application
+    level: user_goal
+    preconditions:
+      - 管理者が Application 編集画面を開いている
+      - Application は OIDC / SAML / WS-Fed のいずれかの protocol binding を持つ
+    main_success:
+      - 管理者が MFA ACR と再認証最大経過秒数を要求する sign-on policy を保存する
+      - 単要素セッションの利用者が対象 Application にアクセスする
+      - システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する
+      - システムは token / assertion 発行前に policy を評価する
+    extensions:
+      - condition: 未対応の network / device 条件を含む
+        steps:
+          - 対象 Application への federation は拒否される
+          - "AppAccessDeniedByPolicy が発行される"
+      - condition: 管理者以外が policy を更新する
+        steps:
+          - エラー "AccessDeniedError"
   ダッシュボードは所属テナントの集計を表示する:
     goal: 管理ダッシュボードが所属テナントの集計を表示する。
     primary_actor: Administrator
@@ -1218,6 +1395,8 @@ user_experience:
         - DetachProtocolBinding
         - UpdateApplicationOidcConfig
         - UpdateApplicationWsFedConfig
+        - GetAppSignOnPolicy
+        - UpdateAppSignOnPolicy
         - ListApplicationAssignments
         - AssignApplication
         - UnassignApplication
@@ -1300,3 +1479,12 @@ user_experience:
         - AccountApps
       interfaces:
         - ReorderMyApplications
+    - id: UX-APPLICATION-SIGN-ON-POLICY
+      category: security
+      adoption: required
+      statement: AdminApplications は Application 編集画面で sign-on policy の有効化、要求 ACR / factor、再認証最大経過秒数、静的条件を編集できるようにし、保存後の federation 開始で同じ条件が protocol 横断に適用されることを示す。
+      screens:
+        - AdminApplications
+      interfaces:
+        - GetAppSignOnPolicy
+        - UpdateAppSignOnPolicy

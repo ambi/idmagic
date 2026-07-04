@@ -96,6 +96,36 @@ func (v AssignmentVisibility) Valid() bool {
 	return false
 }
 
+// RequiredAuthnLevel は Application sign-on policy が要求する認証強度。
+type RequiredAuthnLevel struct {
+	ACR    string `json:"acr,omitempty"`
+	Factor string `json:"factor,omitempty"`
+}
+
+// AccessCondition は Application sign-on policy の静的条件。
+type AccessCondition struct {
+	Network             string `json:"network,omitempty"`
+	Device              string `json:"device,omitempty"`
+	ReauthMaxAgeSeconds *int   `json:"reauth_max_age_seconds,omitempty"`
+}
+
+// SignOnRule は Application sign-on policy の 1 ルール。
+type SignOnRule struct {
+	RuleID        string             `json:"rule_id"`
+	Name          string             `json:"name"`
+	Enabled       bool               `json:"enabled"`
+	RequiredAuthn RequiredAuthnLevel `json:"required_authn"`
+	Condition     AccessCondition    `json:"condition"`
+}
+
+// AppSignOnPolicy は Application ごとの federation 開始条件。
+type AppSignOnPolicy struct {
+	TenantID      string       `json:"tenant_id"`
+	ApplicationID string       `json:"application_id"`
+	Rules         []SignOnRule `json:"rules"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
 // ProtocolBinding は Application に紐づく protocol binding (wi-69, ADR-064)。
 // binding key は protocol ごとに異なる: OIDC は client_id、WS-Fed は wtrealm、SAML は entity_id。
 type ProtocolBinding struct {
@@ -257,6 +287,42 @@ type ApplicationUnassigned struct {
 
 func (e *ApplicationUnassigned) EventType() string     { return "ApplicationUnassigned" }
 func (e *ApplicationUnassigned) OccurredAt() time.Time { return e.At }
+
+// AppSignOnPolicyUpdated は Application の sign-on policy を更新した event。
+type AppSignOnPolicyUpdated struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ActorSub      string    `json:"actorSub"`
+	ApplicationID string    `json:"applicationId"`
+}
+
+func (e *AppSignOnPolicyUpdated) EventType() string     { return "AppSignOnPolicyUpdated" }
+func (e *AppSignOnPolicyUpdated) OccurredAt() time.Time { return e.At }
+
+// AppAccessDeniedByPolicy は policy により federation を拒否した event。
+type AppAccessDeniedByPolicy struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
+	Protocol      string    `json:"protocol"`
+	Subject       string    `json:"subject"`
+	Reason        string    `json:"reason"`
+}
+
+func (e *AppAccessDeniedByPolicy) EventType() string     { return "AppAccessDeniedByPolicy" }
+func (e *AppAccessDeniedByPolicy) OccurredAt() time.Time { return e.At }
+
+// AppStepUpRequired は policy により step-up が必要になった event。
+type AppStepUpRequired struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
+	Protocol      string    `json:"protocol"`
+	Subject       string    `json:"subject"`
+}
+
+func (e *AppStepUpRequired) EventType() string     { return "AppStepUpRequired" }
+func (e *AppStepUpRequired) OccurredAt() time.Time { return e.At }
 
 // ApplicationCategoryCreated は ApplicationCategory を作成した event (wi-70)。
 type ApplicationCategoryCreated struct {

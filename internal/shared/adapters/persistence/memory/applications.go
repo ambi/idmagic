@@ -30,6 +30,12 @@ func cloneApplication(app *spec.Application) *spec.Application {
 	return &cloned
 }
 
+func cloneSignOnPolicy(policy *spec.AppSignOnPolicy) *spec.AppSignOnPolicy {
+	cloned := *policy
+	cloned.Rules = slices.Clone(policy.Rules)
+	return &cloned
+}
+
 // =====================================================================
 // ApplicationIconStore (wi-74, ADR-073)
 // =====================================================================
@@ -160,6 +166,43 @@ func (r *ApplicationRepository) RemoveCategory(_ context.Context, tenantID, cate
 		}
 		app.CategoryIDs = slices.DeleteFunc(app.CategoryIDs, func(id string) bool { return id == categoryID })
 	}
+	return nil
+}
+
+// =====================================================================
+// SignOnPolicyRepository (wi-71, ADR-079)
+// =====================================================================
+
+type SignOnPolicyRepository struct {
+	mu       sync.RWMutex
+	policies map[string]*spec.AppSignOnPolicy // key: tenantKey(tenant_id, application_id)
+}
+
+func NewSignOnPolicyRepository() *SignOnPolicyRepository {
+	return &SignOnPolicyRepository{policies: map[string]*spec.AppSignOnPolicy{}}
+}
+
+func (r *SignOnPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*spec.AppSignOnPolicy, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	policy := r.policies[tenantKey(tenantID, applicationID)]
+	if policy == nil {
+		return nil, nil
+	}
+	return cloneSignOnPolicy(policy), nil
+}
+
+func (r *SignOnPolicyRepository) Save(_ context.Context, policy *spec.AppSignOnPolicy) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.policies[tenantKey(policy.TenantID, policy.ApplicationID)] = cloneSignOnPolicy(policy)
+	return nil
+}
+
+func (r *SignOnPolicyRepository) Delete(_ context.Context, tenantID, applicationID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.policies, tenantKey(tenantID, applicationID))
 	return nil
 }
 

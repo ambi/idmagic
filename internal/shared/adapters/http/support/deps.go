@@ -28,61 +28,62 @@ import (
 
 // Deps は全 HTTP ハンドラが共有する依存集約。bootstrap が一様に配線する。
 type Deps struct {
-	Issuer                     string
-	SCL                        *spec.SCL
-	TenantRepo                 tenantports.TenantRepository
-	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
-	LegacyBareIssuer           bool
-	ClientRepo                 oauthports.OAuth2ClientRepository
-	UserRepo                   idmports.UserRepository
-	ConsentRepo                oauthports.ConsentRepository
-	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
-	RequestStore               oauthports.AuthorizationRequestStore
-	CodeStore                  oauthports.AuthorizationCodeStore
-	PARStore                   oauthports.PARStore
-	RefreshStore               oauthports.RefreshTokenStore
-	DeviceCodeStore            oauthports.DeviceCodeStore
-	DpopReplayStore            oauthports.DpopReplayStore
-	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
-	AccessTokenDenylist        oauthports.AccessTokenDenylist
-	KeyStore                   oauthports.KeyStore
-	TokenIssuer                oauthports.TokenIssuer
-	TokenIntrospector          oauthports.TokenIntrospector
-	AuditEventRepo             oauthports.AuditEventRepository
-	AuthEventBucketStore       authnports.AuthEventBucketStore
-	Authorizer                 oauthports.Authorizer
-	JWKResolver                *crypto.JWKResolver
-	PasswordHasher             authnports.PasswordHasher
-	GroupRepo                  idmports.GroupRepository
-	AgentRepo                  idmports.AgentRepository
-	MfaFactorRepo              authnports.MfaFactorRepository
-	PasswordHistoryRepo        authnports.PasswordHistoryRepository
-	PasswordResetTokenStore    authnports.PasswordResetTokenStore
-	EmailChangeTokenStore      authnports.EmailChangeTokenStore
-	EmailSender                authnports.EmailSender
-	BreachedPasswordChecker    authnports.BreachedPasswordChecker
-	LoginAttemptThrottle       authnports.LoginAttemptThrottle
-	TrustedForwardedHops       int
-	SentinelPasswordHash       string
-	SessionManager             *authusecases.SessionManager
-	AuthnResolver              authdomain.AuthenticationContextResolver
-	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
-	SamlSPRepo                 samlports.SamlServiceProviderRepository
-	FederationSigner           *samltoken.Signer
-	ApplicationRepo            appports.ApplicationRepository
-	ApplicationIconStore       appports.ApplicationIconStore
-	ApplicationAssignmentRepo  appports.AssignmentRepository
-	ApplicationOrderingRepo    appports.ApplicationOrderingRepository
-	ApplicationCategoryRepo    appports.ApplicationCategoryRepository
-	OperationTimeout           time.Duration
-	DetachedCompletionTimeout  time.Duration
-	AbortMetrics               HTTPAbortMetrics
-	Emit                       func(spec.DomainEvent)
-	HealthInfo                 HealthInfo
-	DbPing                     func(context.Context) error
-	ValkeyPing                 func(context.Context) error
-	ShuttingDown               *atomic.Bool
-	StartupComplete            *atomic.Bool
+	Issuer                      string
+	SCL                         *spec.SCL
+	TenantRepo                  tenantports.TenantRepository
+	AttrSchemaRepo              tenantports.TenantUserAttributeSchemaRepository
+	LegacyBareIssuer            bool
+	ClientRepo                  oauthports.OAuth2ClientRepository
+	UserRepo                    idmports.UserRepository
+	ConsentRepo                 oauthports.ConsentRepository
+	AuthzDetailTypeRepo         oauthports.AuthorizationDetailTypeRepository
+	RequestStore                oauthports.AuthorizationRequestStore
+	CodeStore                   oauthports.AuthorizationCodeStore
+	PARStore                    oauthports.PARStore
+	RefreshStore                oauthports.RefreshTokenStore
+	DeviceCodeStore             oauthports.DeviceCodeStore
+	DpopReplayStore             oauthports.DpopReplayStore
+	ClientAssertionReplayStore  oauthports.ClientAssertionReplayStore
+	AccessTokenDenylist         oauthports.AccessTokenDenylist
+	KeyStore                    oauthports.KeyStore
+	TokenIssuer                 oauthports.TokenIssuer
+	TokenIntrospector           oauthports.TokenIntrospector
+	AuditEventRepo              oauthports.AuditEventRepository
+	AuthEventBucketStore        authnports.AuthEventBucketStore
+	Authorizer                  oauthports.Authorizer
+	JWKResolver                 *crypto.JWKResolver
+	PasswordHasher              authnports.PasswordHasher
+	GroupRepo                   idmports.GroupRepository
+	AgentRepo                   idmports.AgentRepository
+	MfaFactorRepo               authnports.MfaFactorRepository
+	PasswordHistoryRepo         authnports.PasswordHistoryRepository
+	PasswordResetTokenStore     authnports.PasswordResetTokenStore
+	EmailChangeTokenStore       authnports.EmailChangeTokenStore
+	EmailSender                 authnports.EmailSender
+	BreachedPasswordChecker     authnports.BreachedPasswordChecker
+	LoginAttemptThrottle        authnports.LoginAttemptThrottle
+	TrustedForwardedHops        int
+	SentinelPasswordHash        string
+	SessionManager              *authusecases.SessionManager
+	AuthnResolver               authdomain.AuthenticationContextResolver
+	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
+	SamlSPRepo                  samlports.SamlServiceProviderRepository
+	FederationSigner            *samltoken.Signer
+	ApplicationRepo             appports.ApplicationRepository
+	ApplicationIconStore        appports.ApplicationIconStore
+	ApplicationAssignmentRepo   appports.AssignmentRepository
+	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
+	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
+	ApplicationSignOnPolicyRepo appports.SignOnPolicyRepository
+	OperationTimeout            time.Duration
+	DetachedCompletionTimeout   time.Duration
+	AbortMetrics                HTTPAbortMetrics
+	Emit                        func(spec.DomainEvent)
+	HealthInfo                  HealthInfo
+	DbPing                      func(context.Context) error
+	ValkeyPing                  func(context.Context) error
+	ShuttingDown                *atomic.Bool
+	StartupComplete             *atomic.Bool
 }
 
 // HealthInfo は bootstrap が決定した実行時構成のラベル。

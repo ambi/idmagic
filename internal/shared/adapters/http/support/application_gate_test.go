@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	authdomain "idmagic/internal/authentication/domain"
+	authusecases "idmagic/internal/authentication/usecases"
 	"idmagic/internal/shared/adapters/http/support"
 	"idmagic/internal/shared/adapters/persistence/memory"
 	"idmagic/internal/shared/spec"
@@ -54,5 +56,44 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	}
 	if allowed, err := d.ApplicationAccessAllowed(ctx, "default", spec.ProtocolBindingOIDC, "c1", "alice"); err != nil || allowed {
 		t.Fatalf("disabled application must be denied: allowed=%v err=%v", allowed, err)
+	}
+}
+
+func TestApplicationAccessEvaluatesSignOnPolicy(t *testing.T) {
+	ctx := context.Background()
+	apps := memory.NewApplicationRepository()
+	assignments := memory.NewApplicationAssignmentRepository()
+	policies := memory.NewSignOnPolicyRepository()
+	now := time.Now().UTC()
+	app := &spec.Application{
+		TenantID: "default", ApplicationID: "app-1", Name: "App", Kind: spec.ApplicationFederated, Status: spec.ApplicationActive,
+		Bindings:  []spec.ProtocolBinding{{Type: spec.ProtocolBindingOIDC, ClientID: "c1"}},
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := apps.Save(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := assignments.Save(ctx, &spec.ApplicationAssignment{
+		TenantID: "default", ApplicationID: "app-1", SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+		Visibility: spec.AssignmentVisible, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := policies.Save(ctx, &spec.AppSignOnPolicy{
+		TenantID: "default", ApplicationID: "app-1", UpdatedAt: now,
+		Rules: []spec.SignOnRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: spec.RequiredAuthnLevel{ACR: authusecases.ACRMFA}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	d := support.Deps{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignOnPolicyRepo: policies}
+
+	decision, err := d.EvaluateApplicationAccess(ctx, "default", spec.ProtocolBindingOIDC, "c1", "alice", &authdomain.AuthenticationContext{
+		Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !decision.StepUpRequired || decision.Allowed {
+		t.Fatalf("decision=%+v, want step-up required", decision)
 	}
 }

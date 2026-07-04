@@ -31,6 +31,7 @@ type ApplicationDeps struct {
 	Repo           ports.ApplicationRepository
 	IconStore      ports.ApplicationIconStore
 	AssignmentRepo ports.AssignmentRepository
+	PolicyRepo     ports.SignOnPolicyRepository
 	Emit           func(spec.DomainEvent)
 }
 
@@ -134,6 +135,11 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorSub, appl
 	}
 	if err := deps.AssignmentRepo.DeleteByApplication(ctx, tenantID, applicationID); err != nil {
 		return err
+	}
+	if deps.PolicyRepo != nil {
+		if err := deps.PolicyRepo.Delete(ctx, tenantID, applicationID); err != nil {
+			return err
+		}
 	}
 	if err := deps.Repo.Delete(ctx, tenantID, applicationID); err != nil {
 		return err

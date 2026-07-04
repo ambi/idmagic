@@ -315,6 +315,16 @@ CREATE TABLE application_icons (
         REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
 );
 
+CREATE TABLE application_sign_on_policies (
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    application_id UUID NOT NULL,
+    rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (tenant_id, application_id),
+    FOREIGN KEY (tenant_id, application_id)
+        REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
+);
+
 CREATE TABLE application_assignments (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     application_id UUID NOT NULL,

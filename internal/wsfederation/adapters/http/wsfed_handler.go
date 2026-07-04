@@ -87,13 +87,23 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 
 	// 割当ゲート (wi-69): RP が Application binding に属する場合、未割当 subject には
 	// assertion を発行しない (fail-closed, AssignmentGatesProtocol)。
-	allowed, err := d.ApplicationAccessAllowed(ctx, tenantID, spec.ProtocolBindingWsFed, rp.Wtrealm, authn.Sub)
+	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingWsFed, rp.Wtrealm, authn.Sub, authn)
 	if err != nil {
 		return err
 	}
-	if !allowed {
-		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "subject not assigned to application"})
-		return c.String(http.StatusForbidden, "この利用者はアプリケーションに割り当てられていません")
+	if !decision.Allowed {
+		reason := decision.Reason
+		if decision.StepUpRequired {
+			reason = "step-up required by application sign-on policy"
+			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.Sub})
+		} else if reason == "" {
+			reason = "subject not assigned to application"
+		}
+		if decision.ApplicationID != "" {
+			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.Sub, Reason: reason})
+		}
+		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
+		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインオンポリシーを満たしていません")
 	}
 
 	// wfresh: 認証が古すぎれば再認証のためログインへ誘導する。

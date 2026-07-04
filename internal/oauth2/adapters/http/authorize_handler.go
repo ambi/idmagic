@@ -592,7 +592,7 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 			}
 		}
 	}
-	redirectTo, err := d.issueCodeURL(ctx, req, authn.Sub, time.Unix(authn.AuthTime, 0))
+	redirectTo, err := d.issueCodeURL(ctx, c, req, authn, time.Unix(authn.AuthTime, 0))
 	if err != nil {
 		return err
 	}
@@ -654,7 +654,7 @@ func (d Deps) completeAfterAuthn(
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	redirectTo, err := d.issueCodeURL(ctx, req, authn.Sub, time.Unix(authn.AuthTime, 0))
+	redirectTo, err := d.issueCodeURL(ctx, c, req, authn, time.Unix(authn.AuthTime, 0))
 	return authorizationNext{RedirectTo: redirectTo}, err
 }
 
@@ -678,8 +678,9 @@ func (d Deps) clientIsFirstParty(ctx context.Context, clientID string) bool {
 
 func (d Deps) issueCodeURL(
 	ctx context.Context,
+	c *echo.Context,
 	req *spec.AuthorizationRequest,
-	sub string,
+	authn *authdomain.AuthenticationContext,
 	authTime time.Time,
 ) (string, error) {
 	iss := tenancy.Issuer(ctx, d.Issuer)
@@ -689,14 +690,41 @@ func (d Deps) issueCodeURL(
 	// ただし first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
 	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない (ADR-061)。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
-		allowed, err := d.ApplicationAccessAllowed(
-			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, sub,
+		decision, err := d.EvaluateApplicationAccess(
+			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, authn.Sub, authn,
 		)
 		if err != nil {
 			return "", err
 		}
-		if !allowed {
-			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションに割り当てられていません"), nil
+		if decision.StepUpRequired {
+			if d.Emit != nil {
+				d.Emit(&spec.AppStepUpRequired{
+					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
+					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.Sub,
+				})
+			}
+			if d.canUseTOTP(c, authn.Sub) { //nolint:contextcheck // HTTP request context is required for factor lookup.
+				pending, err := d.SessionManager.CreateWithPending(ctx, authn.Sub, authn.AMR, time.Now().UTC(), true)
+				if err != nil {
+					return "", err
+				}
+				d.setSessionCookie(c, pending.SessionID)    //nolint:contextcheck // Cookie path is derived from the Echo request.
+				return support.TenantRoute(c, "/totp"), nil //nolint:contextcheck // Redirect URL is derived from the Echo request.
+			}
+			return authorizationErrorURL(req, iss, "access_denied", "アプリケーションのサインオンポリシーを満たせません"), nil
+		}
+		if !decision.Allowed {
+			reason := decision.Reason
+			if reason == "" {
+				reason = "subject not assigned to application"
+			}
+			if d.Emit != nil && decision.ApplicationID != "" {
+				d.Emit(&spec.AppAccessDeniedByPolicy{
+					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
+					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.Sub, Reason: reason,
+				})
+			}
+			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションにアクセスできません"), nil
 		}
 	}
 	out, err := usecases.CompleteLogin(ctx, usecases.CompleteLoginDeps{
@@ -704,7 +732,7 @@ func (d Deps) issueCodeURL(
 		CodeStore:    d.CodeStore,
 	}, usecases.CompleteLoginInput{
 		RequestID: req.ID,
-		Sub:       sub,
+		Sub:       authn.Sub,
 		AuthTime:  authTime,
 		AMR:       req.AMR,
 		ACR:       stringValue(req.ACR),
@@ -718,7 +746,7 @@ func (d Deps) issueCodeURL(
 	}
 	if d.Emit != nil {
 		d.Emit(&spec.AuthorizationCodeIssued{
-			At: time.Now().UTC(), TenantID: tenantID, ClientID: req.ClientID, Sub: sub,
+			At: time.Now().UTC(), TenantID: tenantID, ClientID: req.ClientID, Sub: authn.Sub,
 			Scopes: out.Code.Scopes, CodeChallengeMethod: req.CodeChallengeMethod,
 		})
 	}

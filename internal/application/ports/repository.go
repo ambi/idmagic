@@ -72,3 +72,13 @@ type AssignmentRepository interface {
 	// DeleteByApplication は Application の全割当を削除する (Application 削除時のクリーンアップ)。
 	DeleteByApplication(ctx context.Context, tenantID, applicationID string) error
 }
+
+// SignOnPolicyRepository は Application sign-on policy の永続境界。
+type SignOnPolicyRepository interface {
+	// Get は application_id に一致する policy を返す。未設定なら (nil, nil)。
+	Get(ctx context.Context, tenantID, applicationID string) (*spec.AppSignOnPolicy, error)
+	// Save は policy を upsert する。
+	Save(ctx context.Context, policy *spec.AppSignOnPolicy) error
+	// Delete は application_id に一致する policy を削除する (冪等)。
+	Delete(ctx context.Context, tenantID, applicationID string) error
+}

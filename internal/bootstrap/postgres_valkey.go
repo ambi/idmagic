@@ -109,17 +109,18 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 			return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
 		},
-		KeyStore:                  selectKeyStore(keyStore),
-		EventSink:                 sink,
-		AuditEventRepo:            &postgres.AuditEventRepository{Pool: resilientDB},
-		AuthEventBucketStore:      &postgres.AuthEventBucketStore{Pool: resilientDB},
-		WsFedRPRepo:               &postgres.WsFedRelyingPartyRepository{Pool: resilientDB},
-		SamlSPRepo:                &postgres.SamlServiceProviderRepository{Pool: resilientDB},
-		ApplicationRepo:           &postgres.ApplicationRepository{Pool: resilientDB},
-		ApplicationIconStore:      &postgres.ApplicationIconStore{Pool: resilientDB},
-		ApplicationAssignmentRepo: &postgres.ApplicationAssignmentRepository{Pool: resilientDB},
-		ApplicationOrderingRepo:   &postgres.ApplicationOrderingRepository{Pool: resilientDB},
-		ApplicationCategoryRepo:   &postgres.ApplicationCategoryRepository{Pool: resilientDB},
+		KeyStore:                    selectKeyStore(keyStore),
+		EventSink:                   sink,
+		AuditEventRepo:              &postgres.AuditEventRepository{Pool: resilientDB},
+		AuthEventBucketStore:        &postgres.AuthEventBucketStore{Pool: resilientDB},
+		WsFedRPRepo:                 &postgres.WsFedRelyingPartyRepository{Pool: resilientDB},
+		SamlSPRepo:                  &postgres.SamlServiceProviderRepository{Pool: resilientDB},
+		ApplicationRepo:             &postgres.ApplicationRepository{Pool: resilientDB},
+		ApplicationIconStore:        &postgres.ApplicationIconStore{Pool: resilientDB},
+		ApplicationAssignmentRepo:   &postgres.ApplicationAssignmentRepository{Pool: resilientDB},
+		ApplicationOrderingRepo:     &postgres.ApplicationOrderingRepository{Pool: resilientDB},
+		ApplicationCategoryRepo:     &postgres.ApplicationCategoryRepository{Pool: resilientDB},
+		ApplicationSignOnPolicyRepo: &postgres.SignOnPolicyRepository{Pool: resilientDB},
 		Close: func() {
 			_ = valkeyClient.Close()
 			pool.Close()

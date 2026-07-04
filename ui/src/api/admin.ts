@@ -15,6 +15,8 @@ import type {
   AdminUserGroups,
   ApplicationAssignment,
   ApplicationStatus,
+  AppSignOnPolicy,
+  SignOnRule,
   ProtocolBinding,
   ProtocolBindingType,
   AuthorizationDetailType,
@@ -771,6 +773,27 @@ export async function unassignApplication(
     `/api/admin/applications/${encodeURIComponent(id)}/assignments/${encodeURIComponent(subjectType)}/${encodeURIComponent(subjectID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
+}
+
+export async function getAppSignOnPolicy(id: string): Promise<AppSignOnPolicy> {
+  return (
+    await request<{ policy: AppSignOnPolicy }>(
+      `/api/admin/applications/${encodeURIComponent(id)}/sign-on-policy`,
+    )
+  ).policy
+}
+
+export async function updateAppSignOnPolicy(
+  csrfToken: string,
+  id: string,
+  rules: SignOnRule[],
+): Promise<AppSignOnPolicy> {
+  return (
+    await request<{ policy: AppSignOnPolicy }>(
+      `/api/admin/applications/${encodeURIComponent(id)}/sign-on-policy`,
+      adminRequest(csrfToken, 'PUT', { rules }),
+    )
+  ).policy
 }
 
 // ApplicationCategory の管理 (wi-70, ADR-069)。tenant 単位で定義し Application に付与する。

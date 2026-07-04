@@ -40,21 +40,22 @@ type Dependencies struct {
 	// NewLoginAttemptThrottle は SCL 由来のしきい値から throttle adapter を生成する。
 	// memory ランタイムはプロセスメモリ版、postgres_valkey ランタイムは Valkey 共有版を返す
 	// (ADR-077: 複数レプリカで閾値がクラスタ全体で一つになるよう共有ストア化する)。
-	NewLoginAttemptThrottle   func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
-	KeyStore                  oauthports.KeyStore
-	EventSink                 oauthports.EventSink
-	AuditEventRepo            oauthports.AuditEventRepository
-	AuthEventBucketStore      authnports.AuthEventBucketStore
-	WsFedRPRepo               wsfederationports.WsFedRelyingPartyRepository
-	SamlSPRepo                samlports.SamlServiceProviderRepository
-	ApplicationRepo           appports.ApplicationRepository
-	ApplicationIconStore      appports.ApplicationIconStore
-	ApplicationAssignmentRepo appports.AssignmentRepository
-	ApplicationOrderingRepo   appports.ApplicationOrderingRepository
-	ApplicationCategoryRepo   appports.ApplicationCategoryRepository
-	Close                     func()
-	DbPing                    func(context.Context) error
-	ValkeyPing                func(context.Context) error
+	NewLoginAttemptThrottle     func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
+	KeyStore                    oauthports.KeyStore
+	EventSink                   oauthports.EventSink
+	AuditEventRepo              oauthports.AuditEventRepository
+	AuthEventBucketStore        authnports.AuthEventBucketStore
+	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
+	SamlSPRepo                  samlports.SamlServiceProviderRepository
+	ApplicationRepo             appports.ApplicationRepository
+	ApplicationIconStore        appports.ApplicationIconStore
+	ApplicationAssignmentRepo   appports.AssignmentRepository
+	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
+	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
+	ApplicationSignOnPolicyRepo appports.SignOnPolicyRepository
+	Close                       func()
+	DbPing                      func(context.Context) error
+	ValkeyPing                  func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

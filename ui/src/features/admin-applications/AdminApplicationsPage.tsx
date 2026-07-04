@@ -34,6 +34,7 @@ import {
   unassignApplication,
   updateAdminApplication,
   updateApplicationOidcConfig,
+  updateAppSignOnPolicy,
   updateApplicationSamlConfig,
   updateApplicationWsFedConfig,
   uploadApplicationIcon,
@@ -55,6 +56,7 @@ import type {
   ApplicationAssignment,
   ApplicationCategory,
   ApplicationStatus,
+  SignOnRule,
   WsFedClaimMappingRule,
   WsFedTokenType,
 } from '../../types'
@@ -110,6 +112,18 @@ const NAMEID_FORMATS: SelectOption[] = [
 const STATUS_OPTIONS: SelectOption[] = [
   { value: 'active', label: '有効' },
   { value: 'disabled', label: '無効' },
+]
+
+const SIGN_ON_ACR_OPTIONS: SelectOption[] = [
+  { value: '', label: '要求しない' },
+  { value: 'urn:idmagic:acr:pwd', label: 'Password' },
+  { value: 'urn:idmagic:acr:mfa', label: 'MFA' },
+]
+
+const SIGN_ON_FACTOR_OPTIONS: SelectOption[] = [
+  { value: '', label: '要求しない' },
+  { value: 'password', label: 'Password' },
+  { value: 'totp', label: 'TOTP' },
 ]
 
 // OIDC client の token endpoint 認証方式。作成時に確定し以後不変。
@@ -860,6 +874,15 @@ export function AdminApplicationEditPage({
   const [samlRulesJSON, setSamlRulesJSON] = useState(
     JSON.stringify(detail.saml?.rules ?? [], null, 2),
   )
+  const initialSignOnRule = detail.sign_on_policy?.rules?.[0]
+  const [signOnEnabled, setSignOnEnabled] = useState(initialSignOnRule?.enabled ?? false)
+  const [signOnACR, setSignOnACR] = useState(initialSignOnRule?.required_authn.acr ?? '')
+  const [signOnFactor, setSignOnFactor] = useState(initialSignOnRule?.required_authn.factor ?? '')
+  const [signOnReauthMaxAge, setSignOnReauthMaxAge] = useState(
+    initialSignOnRule?.condition.reauth_max_age_seconds?.toString() ?? '',
+  )
+  const [signOnNetwork, setSignOnNetwork] = useState(initialSignOnRule?.condition.network ?? '')
+  const [signOnDevice, setSignOnDevice] = useState(initialSignOnRule?.condition.device ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -1014,6 +1037,37 @@ export function AdminApplicationEditPage({
             rules: nextRules,
           })
         }
+      }
+      const reauthText = signOnReauthMaxAge.trim()
+      const reauthMaxAge = reauthText === '' ? undefined : Number.parseInt(reauthText, 10)
+      if (
+        reauthText !== '' &&
+        (reauthMaxAge === undefined || !Number.isFinite(reauthMaxAge) || reauthMaxAge <= 0)
+      ) {
+        setError('再認証最大経過秒数は正の整数で指定してください。')
+        setSaving(false)
+        return
+      }
+      const nextSignOnRules: SignOnRule[] = signOnEnabled
+        ? [
+            {
+              rule_id: initialSignOnRule?.rule_id ?? '',
+              name: 'Default sign-on rule',
+              enabled: true,
+              required_authn: {
+                acr: signOnACR || undefined,
+                factor: signOnFactor || undefined,
+              },
+              condition: {
+                reauth_max_age_seconds: reauthMaxAge,
+                network: signOnNetwork.trim() || undefined,
+                device: signOnDevice.trim() || undefined,
+              },
+            },
+          ]
+        : []
+      if (JSON.stringify(nextSignOnRules) !== JSON.stringify(detail.sign_on_policy?.rules ?? [])) {
+        await updateAppSignOnPolicy(csrfToken, app.application_id, nextSignOnRules)
       }
       window.location.assign(detailURL(app.application_id))
     } catch (cause) {
@@ -1411,6 +1465,79 @@ export function AdminApplicationEditPage({
                     は値が解決できないと fail-closed で sign-in を拒否します。
                   </p>
                 </div>
+              </section>
+            ) : null}
+
+            {app.kind !== 'service' ? (
+              <section className="grid gap-4 border-t border-slate-200 pt-5">
+                <div className="flex items-center gap-2">
+                  <IconKey size={16} className="text-slate-400" aria-hidden="true" />
+                  <SectionTitle>サインオンポリシー</SectionTitle>
+                </div>
+                <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={signOnEnabled}
+                    onChange={(e) => setSignOnEnabled(e.target.checked)}
+                    className="size-4"
+                  />
+                  このアプリケーションで追加の認証条件を要求する
+                </label>
+                {signOnEnabled ? (
+                  <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label>要求 ACR</Label>
+                        <Select
+                          value={signOnACR}
+                          onValueChange={setSignOnACR}
+                          options={SIGN_ON_ACR_OPTIONS}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label>要求 factor</Label>
+                        <Select
+                          value={signOnFactor}
+                          onValueChange={setSignOnFactor}
+                          options={SIGN_ON_FACTOR_OPTIONS}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-sign-on-reauth">再認証最大経過秒数</Label>
+                      <Input
+                        id="edit-sign-on-reauth"
+                        type="number"
+                        min="1"
+                        value={signOnReauthMaxAge}
+                        onChange={(e) => setSignOnReauthMaxAge(e.target.value)}
+                        placeholder="300"
+                      />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-sign-on-network">ネットワーク条件</Label>
+                        <Input
+                          id="edit-sign-on-network"
+                          value={signOnNetwork}
+                          onChange={(e) => setSignOnNetwork(e.target.value)}
+                          placeholder="将来の条件名"
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-sign-on-device">デバイス条件</Label>
+                        <Input
+                          id="edit-sign-on-device"
+                          value={signOnDevice}
+                          onChange={(e) => setSignOnDevice(e.target.value)}
+                          placeholder="将来の条件名"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 
