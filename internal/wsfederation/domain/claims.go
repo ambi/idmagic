@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // Attributes は解決済みの identity 属性。属性名から値群への対応で、多値属性を表せる。

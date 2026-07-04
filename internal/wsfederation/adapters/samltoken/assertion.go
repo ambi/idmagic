@@ -19,7 +19,7 @@ import (
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"idmagic/internal/wsfederation/domain"
+	"github.com/ambi/idmagic/internal/wsfederation/domain"
 )
 
 const (

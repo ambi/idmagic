@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func newGroupDeps(t *testing.T) (idmusecases.AdminGroupDeps, *[]spec.DomainEvent) {

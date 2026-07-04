@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"idmagic/internal/oauth2/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/oauth2/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

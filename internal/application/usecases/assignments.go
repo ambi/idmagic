@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/application/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/application/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 type AssignmentDeps struct {

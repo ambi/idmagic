@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/authentication/domain"
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/authentication/domain"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestStepUpSatisfiedRecencyWindow(t *testing.T) {

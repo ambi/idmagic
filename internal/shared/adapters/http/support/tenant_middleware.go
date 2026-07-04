@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 
 	"github.com/labstack/echo/v5"
 )

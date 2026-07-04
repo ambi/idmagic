@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	authdomain "idmagic/internal/authentication/domain"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 
 	"github.com/labstack/echo/v5"
 )

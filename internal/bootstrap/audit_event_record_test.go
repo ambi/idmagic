@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // wi-35: emit 時点で event に載せた tenantId が、監査レコードの TenantID に

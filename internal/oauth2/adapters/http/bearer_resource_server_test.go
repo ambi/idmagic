@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	httpadapter "idmagic/internal/shared/adapters/http/server"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

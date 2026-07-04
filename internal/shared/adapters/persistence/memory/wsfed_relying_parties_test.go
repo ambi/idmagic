@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestWsFedRelyingPartyRepository(t *testing.T) {

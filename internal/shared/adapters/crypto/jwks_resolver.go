@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 const maxJWKSBytes = 1 << 20

@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/shared/logging"
 
 	"github.com/labstack/echo/v5"
 )

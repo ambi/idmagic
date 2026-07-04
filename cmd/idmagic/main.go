@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	"idmagic/internal/bootstrap"
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/bootstrap"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 func main() {

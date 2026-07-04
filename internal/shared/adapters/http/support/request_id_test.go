@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/shared/logging"
 
 	"github.com/labstack/echo/v5"
 )

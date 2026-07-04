@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func exchangeDepsWithDetailTypes(t *testing.T, issuer *recordingIssuer, results map[string]*ports.IntrospectionResult) ExchangeTokenDeps {

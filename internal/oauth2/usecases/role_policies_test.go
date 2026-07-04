@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestListRolePoliciesFiltersControlPlanePermissions(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // user_code 文字集合 (0/O, 1/I/L の混同を避けた子音 + 数字回避)。RFC 8628 §6.1 推奨。

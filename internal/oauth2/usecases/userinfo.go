@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type UserInfoInput struct {

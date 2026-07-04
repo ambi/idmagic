@@ -8,7 +8,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 )
 
 type Handler struct {

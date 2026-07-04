@@ -14,7 +14,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 const (

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	samldomain "idmagic/internal/saml/domain"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

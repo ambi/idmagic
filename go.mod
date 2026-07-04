@@ -1,4 +1,4 @@
-module idmagic
+module github.com/ambi/idmagic
 
 go 1.26
 

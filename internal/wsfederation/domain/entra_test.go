@@ -3,7 +3,7 @@ package domain
 import (
 	"testing"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestNormalizeImmutableID_GUIDUsesMicrosoftByteOrder(t *testing.T) {

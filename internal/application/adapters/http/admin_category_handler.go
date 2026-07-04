@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	appusecases "idmagic/internal/application/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	oauthusecases "idmagic/internal/oauth2/usecases"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
 
 	"github.com/labstack/echo/v5"
 )

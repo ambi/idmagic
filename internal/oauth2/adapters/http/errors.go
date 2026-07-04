@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"slices"
 
-	"idmagic/internal/oauth2/usecases"
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/oauth2/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )

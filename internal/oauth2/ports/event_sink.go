@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // EventSink はドメインイベントの出力先。observable side-effect の境界。

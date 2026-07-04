@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // IntrospectionResult は RFC 7662 のレスポンス。

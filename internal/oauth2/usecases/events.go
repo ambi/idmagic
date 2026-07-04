@@ -1,6 +1,6 @@
 package usecases
 
-import "idmagic/internal/shared/spec"
+import "github.com/ambi/idmagic/internal/shared/spec"
 
 // emit はイベントを emit-callback に流す。Event 構造体側で At を埋めた状態で渡す前提。
 func emit(f func(spec.DomainEvent), e spec.DomainEvent) {

@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/shared/logging"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"

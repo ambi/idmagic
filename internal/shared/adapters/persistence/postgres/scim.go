@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"idmagic/internal/scim/ports"
+	"github.com/ambi/idmagic/internal/scim/ports"
 )
 
 type ScimRepository struct{ Pool DB }

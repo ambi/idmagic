@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	feddomain "idmagic/internal/wsfederation/domain"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	feddomain "github.com/ambi/idmagic/internal/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )

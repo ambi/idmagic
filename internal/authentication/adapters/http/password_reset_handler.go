@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 
 	"github.com/labstack/echo/v5"
 )

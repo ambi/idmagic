@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 const EmailChangeTokenTTLSeconds = 1800

@@ -4,7 +4,7 @@ package domain
 import (
 	"errors"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 var (

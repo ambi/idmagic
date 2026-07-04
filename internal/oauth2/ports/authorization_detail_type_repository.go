@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // AuthorizationDetailTypeRepository はテナント登録済みの authorization_details

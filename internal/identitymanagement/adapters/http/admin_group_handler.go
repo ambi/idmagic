@@ -7,9 +7,9 @@ import (
 	"slices"
 	"time"
 
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

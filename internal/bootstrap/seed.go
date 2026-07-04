@@ -5,13 +5,13 @@ import (
 	"errors"
 	"time"
 
-	appports "idmagic/internal/application/ports"
-	authnports "idmagic/internal/authentication/ports"
-	authusecases "idmagic/internal/authentication/usecases"
-	idmports "idmagic/internal/identitymanagement/ports"
-	oauthdomain "idmagic/internal/oauth2/domain"
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
+	appports "github.com/ambi/idmagic/internal/application/ports"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthdomain "github.com/ambi/idmagic/internal/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // seedDemoData は SKIP_DEMO_SEED が空のとき、デモ用クライアントとユーザーを 1 件投入する。

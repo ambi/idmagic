@@ -15,7 +15,7 @@ import (
 	"slices"
 	"strings"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // standardArrayFields は AuthorizationDetail の標準配列フィールド (RFC 9396) を

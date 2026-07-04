@@ -7,13 +7,13 @@ import (
 	"slices"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/wsfederation/adapters/samltoken"
-	"idmagic/internal/wsfederation/adapters/wsfed"
-	feddomain "idmagic/internal/wsfederation/domain"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/wsfed"
+	feddomain "github.com/ambi/idmagic/internal/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )

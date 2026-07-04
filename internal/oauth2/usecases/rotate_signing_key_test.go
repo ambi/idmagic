@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/persistence/memory"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 )
 
 func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {

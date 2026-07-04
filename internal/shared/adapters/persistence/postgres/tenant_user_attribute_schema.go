@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/jackc/pgx/v5"
 )

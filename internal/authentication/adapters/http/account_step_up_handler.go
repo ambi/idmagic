@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/http/support"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )

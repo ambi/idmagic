@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"idmagic/internal/shared/adapters/notification"
+	"github.com/ambi/idmagic/internal/shared/adapters/notification"
 )
 
 func TestResolveEmailSenderDefaultsToConsole(t *testing.T) {

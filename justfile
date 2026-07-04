@@ -12,7 +12,7 @@ golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golang
 git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
 build_date := `date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown"`
 version := env_var_or_default("VERSION", "0.0.0-dev")
-ldflags := "-X idmagic/internal/shared/version.Version=" + version + " -X idmagic/internal/shared/version.GitCommit=" + git_commit + " -X idmagic/internal/shared/version.BuildDate=" + build_date
+ldflags := "-X github.com/ambi/idmagic/internal/shared/version.Version=" + version + " -X github.com/ambi/idmagic/internal/shared/version.GitCommit=" + git_commit + " -X github.com/ambi/idmagic/internal/shared/version.BuildDate=" + build_date
 
 # Show this command map.
 default:

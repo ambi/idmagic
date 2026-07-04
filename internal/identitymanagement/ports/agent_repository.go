@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // AgentRepository は tenant-scoped な Agent 集約とその OAuth2Client 束縛を永続化する

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 )
 
 func TestPasswordResetTokenStoreInvalidatesPreviousTokenForSubject(t *testing.T) {

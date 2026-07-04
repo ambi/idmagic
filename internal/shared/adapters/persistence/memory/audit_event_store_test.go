@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
 )
 
 func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, sub string) *ports.AuditEventRecord {

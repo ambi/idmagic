@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/shared/adapters/crypto"
-	httpadapter "idmagic/internal/shared/adapters/http/server"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/notification"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/adapters/policy"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/notification"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/adapters/policy"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

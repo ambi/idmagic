@@ -3,7 +3,7 @@ package scim
 import (
 	"github.com/labstack/echo/v5"
 
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 )
 
 func RegisterRoutes(g *echo.Group, sd *support.Deps, u *Usecases) {

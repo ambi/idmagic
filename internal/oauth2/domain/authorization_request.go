@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // AuthorizationRequestPolicy は prompt / max_age / id_token_hint 等の OIDC 規定値による

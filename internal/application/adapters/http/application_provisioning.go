@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	appusecases "idmagic/internal/application/usecases"
-	oauthusecases "idmagic/internal/oauth2/usecases"
-	samldomain "idmagic/internal/saml/domain"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
+	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

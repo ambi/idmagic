@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom attribute 定義集合

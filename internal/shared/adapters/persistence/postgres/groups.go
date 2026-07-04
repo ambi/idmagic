@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // GroupRepository は ADR-038 の Group 集約とメンバーシップを PostgreSQL に永続化する。

@@ -14,11 +14,11 @@ import (
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"idmagic/internal/saml/adapters/samlresponse"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/wsfederation/adapters/samltoken"
-	"idmagic/internal/wsfederation/domain"
+	"github.com/ambi/idmagic/internal/saml/adapters/samlresponse"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
+	"github.com/ambi/idmagic/internal/wsfederation/domain"
 )
 
 func newSigner(t *testing.T) (*samltoken.Signer, *x509.Certificate) {

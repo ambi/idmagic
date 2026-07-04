@@ -7,7 +7,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 )
 
 func dummyAssertion() *etree.Element {

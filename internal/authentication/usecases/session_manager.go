@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/authentication/domain"
-	"idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/authentication/domain"
+	"github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 const (

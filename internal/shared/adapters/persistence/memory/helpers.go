@@ -6,7 +6,7 @@
 // 全コンテキストへ配線するが、コンテキスト境界は各 ports が担保する。
 package memory
 
-import "idmagic/internal/shared/spec"
+import "github.com/ambi/idmagic/internal/shared/spec"
 
 func defaultTenant(tenantID *string) {
 	if *tenantID == "" {

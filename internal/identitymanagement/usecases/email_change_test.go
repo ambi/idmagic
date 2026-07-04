@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/notification"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/notification"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {

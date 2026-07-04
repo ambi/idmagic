@@ -11,8 +11,8 @@ import (
 	"sync"
 	"testing"
 
-	adaptercrypto "idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/spec"
+	adaptercrypto "github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // fakeTransit は Vault Transit を in-memory の RSA 鍵で模擬する。

@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	oauth2http "idmagic/internal/oauth2/adapters/http"
-	"idmagic/internal/shared/adapters/crypto"
-	httpadapter "idmagic/internal/shared/adapters/http/server"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	oauth2http "github.com/ambi/idmagic/internal/oauth2/adapters/http"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 
 	"github.com/labstack/echo/v5"
 )

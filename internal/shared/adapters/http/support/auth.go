@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	authdomain "idmagic/internal/authentication/domain"
-	"idmagic/internal/shared/spec"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

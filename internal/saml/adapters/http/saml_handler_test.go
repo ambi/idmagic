@@ -15,13 +15,13 @@ import (
 	"testing"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	samldomain "idmagic/internal/saml/domain"
-	httpadapter "idmagic/internal/shared/adapters/http/server"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/wsfederation/adapters/samltoken"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
 
 	"github.com/labstack/echo/v5"
 )

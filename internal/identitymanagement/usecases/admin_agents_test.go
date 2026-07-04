@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent) {

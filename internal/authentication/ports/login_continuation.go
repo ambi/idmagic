@@ -6,7 +6,7 @@ import (
 	"context"
 	"net/http"
 
-	"idmagic/internal/authentication/domain"
+	"github.com/ambi/idmagic/internal/authentication/domain"
 )
 
 type LoginContinuation interface {

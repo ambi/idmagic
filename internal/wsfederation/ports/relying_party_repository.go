@@ -4,7 +4,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // WsFedRelyingPartyRepository は WS-Federation relying party 登録の永続境界 (wi-61)。

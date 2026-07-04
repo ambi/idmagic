@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestAuthorizationCodeRedeemIsAtomic(t *testing.T) {

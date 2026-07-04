@@ -4,7 +4,7 @@ package ports
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // ApplicationRepository は Application aggregate の永続境界 (wi-69)。

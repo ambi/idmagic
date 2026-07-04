@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // WS-Federation の wa アクション値。

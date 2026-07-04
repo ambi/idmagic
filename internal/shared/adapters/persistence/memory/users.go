@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // =====================================================================

@@ -11,8 +11,8 @@ import (
 	"sort"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/spec"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // ErrSessionNotFound は対象セッションが存在しないか、本人のものでない場合。

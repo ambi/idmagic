@@ -12,8 +12,8 @@ import (
 	"context"
 	"time"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // RetentionPolicy は種類別の保持日数と global cap。0 以下の日数は「無期限保持」を意味する。

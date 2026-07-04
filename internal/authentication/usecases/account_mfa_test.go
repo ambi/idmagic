@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *memory.UserRepository, *[]spec.DomainEvent) {

@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/scim/ports"
-	"idmagic/internal/shared/spec"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/scim/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 var ErrNotFound = errors.New("SCIM resource not found")

@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	appports "idmagic/internal/application/ports"
-	"idmagic/internal/shared/spec"
+	appports "github.com/ambi/idmagic/internal/application/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // ApplicationRepository は ApplicationCatalog の Application aggregate を PostgreSQL に

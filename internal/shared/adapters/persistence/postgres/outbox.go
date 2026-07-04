@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // eventTopics はドメインイベント種別を outbox トピックへ対応づける。

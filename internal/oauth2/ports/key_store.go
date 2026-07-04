@@ -5,7 +5,7 @@ import (
 	"crypto"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // SigningKey は本実装では RSA を想定。alg=PS256 のみ。

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func newRequiredActionFixture(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *[]spec.DomainEvent, *spec.User) {

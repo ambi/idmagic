@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	samldomain "idmagic/internal/saml/domain"
-	"idmagic/internal/shared/spec"
+	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 const sampleAuthnRequest = `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +

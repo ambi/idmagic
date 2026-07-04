@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

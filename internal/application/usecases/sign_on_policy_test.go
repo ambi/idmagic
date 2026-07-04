@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/spec"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestEvaluateSignOnPolicyRequiresMFA(t *testing.T) {

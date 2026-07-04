@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

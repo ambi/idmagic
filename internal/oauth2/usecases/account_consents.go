@@ -8,8 +8,8 @@ package usecases
 import (
 	"context"
 
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 // ListConsentsForSub は指定 sub の active な (granted) Consent のみを返す。

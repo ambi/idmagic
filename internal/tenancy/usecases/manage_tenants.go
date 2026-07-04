@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/spec"
-	tenantports "idmagic/internal/tenancy/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 )
 
 var (

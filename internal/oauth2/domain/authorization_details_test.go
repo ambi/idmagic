@@ -3,7 +3,7 @@ package domain
 import (
 	"testing"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // paymentType は RFC 9396 の payment_initiation を模した登録 type。

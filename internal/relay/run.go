@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"idmagic/internal/shared/adapters/eventsink"
-	"idmagic/internal/shared/adapters/persistence/postgres"
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/shared/adapters/eventsink"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 // Run は outbox → Kafka リレーを起動する。SIGINT/SIGTERM で graceful shutdown。

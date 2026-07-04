@@ -12,8 +12,8 @@ import (
 
 	"github.com/beevik/etree"
 
-	"idmagic/internal/saml/adapters/metadata"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/saml/adapters/metadata"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func selfSignedCert(t *testing.T) *x509.Certificate {

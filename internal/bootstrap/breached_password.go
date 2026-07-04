@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/adapters/policy"
-	"idmagic/internal/shared/logging"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/policy"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 // breachedPasswordCheckerVersion は HIBP の User-Agent に乗せる版番号 (HIBP の etiquette)。

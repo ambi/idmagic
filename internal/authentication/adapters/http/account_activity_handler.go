@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/http/support"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )

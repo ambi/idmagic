@@ -14,7 +14,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 )
 
 // WS-Federation passive で用いる名前空間。WS-Fed 1.x passive は WS-Trust 2005/02 を用いる。

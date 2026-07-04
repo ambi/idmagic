@@ -9,9 +9,9 @@ import (
 	"errors"
 	"time"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 var ErrConsentNotFound = errors.New("consent not found")

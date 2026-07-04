@@ -6,10 +6,10 @@ import (
 	"slices"
 	"time"
 
-	oauthusecases "idmagic/internal/oauth2/usecases"
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {

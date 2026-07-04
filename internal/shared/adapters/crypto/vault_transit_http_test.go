@@ -12,7 +12,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	adaptercrypto "idmagic/internal/shared/adapters/crypto"
+	adaptercrypto "github.com/ambi/idmagic/internal/shared/adapters/crypto"
 )
 
 func TestHTTPTransitEngineLatestPublicKeyAndSign(t *testing.T) {

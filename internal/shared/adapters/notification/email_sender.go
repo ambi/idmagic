@@ -3,8 +3,8 @@ package notification
 import (
 	"context"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/logging"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 // ConsoleEmailSender は dev / demo 用の配送アダプタ。本番では EMAIL_SENDER=smtp を使う。

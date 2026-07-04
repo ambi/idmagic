@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 )
 
 func signClientAssertion(

@@ -6,12 +6,12 @@ import (
 	"os"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/adapters/eventsink"
-	"idmagic/internal/shared/adapters/persistence/postgres"
-	valkeystore "idmagic/internal/shared/adapters/persistence/valkey"
-	"idmagic/internal/shared/resilience"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/eventsink"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/postgres"
+	valkeystore "github.com/ambi/idmagic/internal/shared/adapters/persistence/valkey"
+	"github.com/ambi/idmagic/internal/shared/resilience"
 )
 
 func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {

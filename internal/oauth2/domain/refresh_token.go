@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 const (

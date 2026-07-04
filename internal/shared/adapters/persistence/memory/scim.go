@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"idmagic/internal/scim/ports"
+	"github.com/ambi/idmagic/internal/scim/ports"
 )
 
 type ScimRepository struct {

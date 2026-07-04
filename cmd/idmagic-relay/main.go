@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	"idmagic/internal/relay"
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/relay"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 func main() {

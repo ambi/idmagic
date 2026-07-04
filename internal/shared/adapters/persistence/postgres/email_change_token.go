@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	authnports "idmagic/internal/authentication/ports"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 )
 
 // EmailChangeTokenStore (Authentication)

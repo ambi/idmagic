@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type RolePolicy struct {

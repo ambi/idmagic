@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/adapters/notification"
-	"idmagic/internal/shared/logging"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/notification"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 // resolveEmailSender は EMAIL_SENDER / SMTP_* 環境変数から EmailSender adapter を組み立てる。

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/saml/adapters/metadata"
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/saml/adapters/metadata"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )

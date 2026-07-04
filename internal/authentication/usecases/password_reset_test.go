@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/adapters/notification"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/adapters/notification"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {

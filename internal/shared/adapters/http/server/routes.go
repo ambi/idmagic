@@ -6,16 +6,16 @@
 package server
 
 import (
-	apphttp "idmagic/internal/application/adapters/http"
-	authhttp "idmagic/internal/authentication/adapters/http"
-	idmhttp "idmagic/internal/identitymanagement/adapters/http"
-	oauth2http "idmagic/internal/oauth2/adapters/http"
-	samlhttp "idmagic/internal/saml/adapters/http"
-	"idmagic/internal/scim"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	tenancyhttp "idmagic/internal/tenancy/adapters/http"
-	wsfederationhttp "idmagic/internal/wsfederation/adapters/http"
+	apphttp "github.com/ambi/idmagic/internal/application/adapters/http"
+	authhttp "github.com/ambi/idmagic/internal/authentication/adapters/http"
+	idmhttp "github.com/ambi/idmagic/internal/identitymanagement/adapters/http"
+	oauth2http "github.com/ambi/idmagic/internal/oauth2/adapters/http"
+	samlhttp "github.com/ambi/idmagic/internal/saml/adapters/http"
+	"github.com/ambi/idmagic/internal/scim"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	tenancyhttp "github.com/ambi/idmagic/internal/tenancy/adapters/http"
+	wsfederationhttp "github.com/ambi/idmagic/internal/wsfederation/adapters/http"
 
 	"github.com/labstack/echo/v5"
 )

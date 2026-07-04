@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	httpadapter "idmagic/internal/shared/adapters/http/server"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

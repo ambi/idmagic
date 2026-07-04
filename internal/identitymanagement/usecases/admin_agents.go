@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	idmports "idmagic/internal/identitymanagement/ports"
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 var (

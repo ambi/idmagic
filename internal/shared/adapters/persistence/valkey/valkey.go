@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/resilience"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/shared/resilience"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 
 	goredis "github.com/redis/go-redis/v9"
 )

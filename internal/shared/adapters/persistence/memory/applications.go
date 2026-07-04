@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"idmagic/internal/application/ports"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/application/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // =====================================================================

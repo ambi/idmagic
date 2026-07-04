@@ -17,8 +17,8 @@ import (
 
 	"github.com/beevik/etree"
 
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/wsfederation/adapters/samltoken"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
 )
 
 const (

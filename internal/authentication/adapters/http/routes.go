@@ -6,7 +6,7 @@
 package http
 
 import (
-	"idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )

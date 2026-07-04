@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/wsfederation/adapters/metadata"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/metadata"
 
 	"github.com/labstack/echo/v5"
 )

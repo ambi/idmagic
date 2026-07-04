@@ -9,8 +9,8 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/http/support"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 )
 
 type accountContextResponse struct {

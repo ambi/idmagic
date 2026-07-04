@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/adapters/crypto"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
 )
 
 // selectKeyStore は KEY_PROVIDER=vault のとき Vault Transit を本番 KeyProvider として

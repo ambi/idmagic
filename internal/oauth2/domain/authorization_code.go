@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 const authCodeBytes = 32

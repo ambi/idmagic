@@ -4,8 +4,8 @@ import (
 	"errors"
 	"os"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/adapters/policy"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/policy"
 )
 
 func assembleAuthorizer() (oauthports.Authorizer, error) {

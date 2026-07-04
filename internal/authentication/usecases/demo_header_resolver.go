@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"idmagic/internal/authentication/domain"
+	"github.com/ambi/idmagic/internal/authentication/domain"
 )
 
 type DemoHeaderResolver struct{}

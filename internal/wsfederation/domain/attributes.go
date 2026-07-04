@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // 標準 User フィールドを指す属性キー。ClaimMappingRule.source_key から参照する。

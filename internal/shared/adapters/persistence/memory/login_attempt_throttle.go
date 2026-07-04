@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 )
 
 type loginCounter struct {

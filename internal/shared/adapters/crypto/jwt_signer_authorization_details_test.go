@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestSignAccessTokenIncludesAuthorizationDetails(t *testing.T) {

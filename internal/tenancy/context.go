@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type contextKey string

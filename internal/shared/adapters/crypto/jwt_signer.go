@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 const (

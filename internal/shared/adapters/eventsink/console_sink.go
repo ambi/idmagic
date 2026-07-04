@@ -4,8 +4,8 @@ package eventsink
 import (
 	"context"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type ConsoleSink struct {

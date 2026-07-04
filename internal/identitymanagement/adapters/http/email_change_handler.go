@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/http/support"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )

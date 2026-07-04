@@ -8,8 +8,8 @@ import (
 	"context"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/logging"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 // startRetentionSweep は保持期間 sweep の goroutine を起動する。

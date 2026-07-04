@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"idmagic/internal/shared/resilience"
+	"github.com/ambi/idmagic/internal/shared/resilience"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

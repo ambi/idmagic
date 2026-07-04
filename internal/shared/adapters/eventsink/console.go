@@ -8,8 +8,8 @@ import (
 	"os"
 	"sync"
 
-	"idmagic/internal/shared/logging"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type Console struct {

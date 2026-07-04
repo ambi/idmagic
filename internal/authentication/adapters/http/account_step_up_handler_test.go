@@ -16,13 +16,13 @@ import (
 	"testing"
 	"time"
 
-	authhttp "idmagic/internal/authentication/adapters/http"
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/adapters/crypto"
-	httpadapter "idmagic/internal/shared/adapters/http/server"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	authhttp "github.com/ambi/idmagic/internal/authentication/adapters/http"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

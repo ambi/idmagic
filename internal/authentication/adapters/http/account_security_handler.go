@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

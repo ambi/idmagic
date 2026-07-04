@@ -15,14 +15,14 @@ import (
 	"strings"
 	"time"
 
-	authdomain "idmagic/internal/authentication/domain"
-	authnports "idmagic/internal/authentication/ports"
-	authusecases "idmagic/internal/authentication/usecases"
-	oauthdomain "idmagic/internal/oauth2/domain"
-	"idmagic/internal/oauth2/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	oauthdomain "github.com/ambi/idmagic/internal/oauth2/domain"
+	"github.com/ambi/idmagic/internal/oauth2/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 
 	"github.com/labstack/echo/v5"
 )

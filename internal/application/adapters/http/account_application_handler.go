@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	appports "idmagic/internal/application/ports"
-	appusecases "idmagic/internal/application/usecases"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	appports "github.com/ambi/idmagic/internal/application/ports"
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

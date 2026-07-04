@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	authusecases "idmagic/internal/authentication/usecases"
-	samldomain "idmagic/internal/saml/domain"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"

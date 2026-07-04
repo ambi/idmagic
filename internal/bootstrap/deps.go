@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 
-	appports "idmagic/internal/application/ports"
-	authnports "idmagic/internal/authentication/ports"
-	idmports "idmagic/internal/identitymanagement/ports"
-	oauthports "idmagic/internal/oauth2/ports"
-	samlports "idmagic/internal/saml/ports"
-	scimports "idmagic/internal/scim/ports"
-	tenantports "idmagic/internal/tenancy/ports"
-	wsfederationports "idmagic/internal/wsfederation/ports"
+	appports "github.com/ambi/idmagic/internal/application/ports"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	samlports "github.com/ambi/idmagic/internal/saml/ports"
+	scimports "github.com/ambi/idmagic/internal/scim/ports"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
+	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
 )
 
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。

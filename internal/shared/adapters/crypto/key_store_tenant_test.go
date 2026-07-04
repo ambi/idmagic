@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 func tenantCtx(id string) context.Context {

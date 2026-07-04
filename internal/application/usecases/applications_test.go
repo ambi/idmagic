@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"idmagic/internal/application/ports"
-	appusecases "idmagic/internal/application/usecases"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/application/ports"
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 func tenantContext() context.Context {

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"idmagic/internal/shared/spec"
-	tenantports "idmagic/internal/tenancy/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 )
 
 // ErrInvalidUserAttributeSchema は custom 属性定義が不正 (key 衝突 / 重複 / 形式違反)

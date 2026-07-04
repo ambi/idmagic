@@ -11,11 +11,11 @@ import (
 	"errors"
 	"time"
 
-	"idmagic/internal/authentication/domain"
-	authnports "idmagic/internal/authentication/ports"
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/authentication/domain"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 // StepUpRecencySeconds は step-up が有効とみなされる窓 (5 分)。

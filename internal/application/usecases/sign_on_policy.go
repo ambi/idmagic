@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"idmagic/internal/application/ports"
-	authdomain "idmagic/internal/authentication/domain"
-	authusecases "idmagic/internal/authentication/usecases"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/application/ports"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 var (

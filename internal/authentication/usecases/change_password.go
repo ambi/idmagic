@@ -6,9 +6,9 @@ import (
 	"slices"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/shared/spec"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 var (

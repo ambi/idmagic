@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/oauth2/domain"
-	"idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/oauth2/domain"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 type RefreshInput struct {

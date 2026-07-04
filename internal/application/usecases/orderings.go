@@ -9,9 +9,9 @@ import (
 	"slices"
 	"time"
 
-	"idmagic/internal/application/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
+	"github.com/ambi/idmagic/internal/application/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 // ErrUnassignedInOrder は手動順に割当済み visible でない application_id が含まれていた。

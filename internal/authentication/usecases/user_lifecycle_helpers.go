@@ -3,7 +3,7 @@ package usecases
 import (
 	"time"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // removeRequiredAction は action を除いた新しいスライスを返す (元を破壊しない)。

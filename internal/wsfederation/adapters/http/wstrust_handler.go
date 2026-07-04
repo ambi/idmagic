@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/wsfederation/adapters/samltoken"
-	"idmagic/internal/wsfederation/adapters/wstrust"
-	feddomain "idmagic/internal/wsfederation/domain"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/wstrust"
+	feddomain "github.com/ambi/idmagic/internal/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )

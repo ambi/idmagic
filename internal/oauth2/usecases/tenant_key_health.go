@@ -4,10 +4,10 @@ package usecases
 import (
 	"context"
 
-	"idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
-	tenantports "idmagic/internal/tenancy/ports"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 )
 
 type TenantKeyHealthDeps struct {

@@ -10,10 +10,10 @@ import (
 	"context"
 	"time"
 
-	appports "idmagic/internal/application/ports"
-	appusecases "idmagic/internal/application/usecases"
-	authdomain "idmagic/internal/authentication/domain"
-	"idmagic/internal/shared/spec"
+	appports "github.com/ambi/idmagic/internal/application/ports"
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
+	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type ApplicationAccessDecision struct {

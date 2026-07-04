@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	authnports "idmagic/internal/authentication/ports"
-	"idmagic/internal/shared/logging"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	"github.com/ambi/idmagic/internal/shared/logging"
 )
 
 // SMTPTLSMode は SMTP 接続時の TLS 戦略を表す (ADR-035 §2)。

@@ -10,10 +10,10 @@ import (
 	"math/big"
 	"time"
 
-	samlports "idmagic/internal/saml/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/wsfederation/adapters/samltoken"
-	wsfederationports "idmagic/internal/wsfederation/ports"
+	samlports "github.com/ambi/idmagic/internal/saml/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
+	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
 )
 
 // newDevFederationSigner は開発用の自己署名 federation 署名証明書から署名器を作る。

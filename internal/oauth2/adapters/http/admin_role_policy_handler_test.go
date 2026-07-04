@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	oauth2http "idmagic/internal/oauth2/adapters/http"
+	oauth2http "github.com/ambi/idmagic/internal/oauth2/adapters/http"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {

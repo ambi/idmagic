@@ -14,7 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/oauth2/ports"
 )
 
 const (

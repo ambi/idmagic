@@ -12,10 +12,10 @@ import (
 	"maps"
 	"time"
 
-	idmports "idmagic/internal/identitymanagement/ports"
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/tenancy"
-	tenantports "idmagic/internal/tenancy/ports"
+	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/tenancy"
+	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 )
 
 // ErrAttributeNotEditable は self-service で editable_by_user=false の属性を

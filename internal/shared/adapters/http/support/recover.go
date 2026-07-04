@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"idmagic/internal/shared/logging"
+	"github.com/ambi/idmagic/internal/shared/logging"
 
 	"github.com/labstack/echo/v5"
 )

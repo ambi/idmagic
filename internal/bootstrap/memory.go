@@ -3,11 +3,11 @@ package bootstrap
 import (
 	"context"
 
-	authnports "idmagic/internal/authentication/ports"
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/adapters/eventsink"
-	"idmagic/internal/shared/adapters/persistence/memory"
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/adapters/eventsink"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 )
 
 func assembleMemory() (*Dependencies, error) {

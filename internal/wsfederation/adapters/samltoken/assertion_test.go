@@ -12,8 +12,8 @@ import (
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"idmagic/internal/shared/spec"
-	"idmagic/internal/wsfederation/domain"
+	"github.com/ambi/idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/wsfederation/domain"
 )
 
 // selfSignedCert は署名検証のためのテスト用 X.509 証明書と鍵を生成する。

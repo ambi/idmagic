@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	appusecases "idmagic/internal/application/usecases"
-	"idmagic/internal/shared/adapters/persistence/memory"
-	"idmagic/internal/shared/spec"
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func newCategoryDeps() (appusecases.CategoryDeps, appusecases.ApplicationDeps) {

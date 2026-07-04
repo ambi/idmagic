@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestRemoteAuthorizer(t *testing.T) {

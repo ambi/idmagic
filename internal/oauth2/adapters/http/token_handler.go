@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	oauthports "idmagic/internal/oauth2/ports"
-	"idmagic/internal/oauth2/usecases"
-	"idmagic/internal/shared/adapters/crypto"
-	"idmagic/internal/shared/adapters/http/support"
-	"idmagic/internal/shared/spec"
+	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/oauth2/usecases"
+	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
+	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )

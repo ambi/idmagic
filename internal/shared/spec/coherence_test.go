@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"idmagic/internal/authentication/usecases"
-	idmusecases "idmagic/internal/identitymanagement/usecases"
-	"idmagic/internal/shared/spec"
+	"github.com/ambi/idmagic/internal/authentication/usecases"
+	idmusecases "github.com/ambi/idmagic/internal/identitymanagement/usecases"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestPasswordPolicyMinLengthMatchesSCL(t *testing.T) {
