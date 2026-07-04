@@ -206,3 +206,21 @@ context_map:
         uses:
           - SigningKeyRef
         reason: SAML assertion / metadata 署名は SigningKeys の鍵境界に従う。
+  Scim:
+    description: "SCIM 2.0 Inbound Provisioning プロトコルファミリーの全責務を所有する。/scim/v2/Users, /scim/v2/Groups などのエンドポイントを提供し、外部の IDP/Identity Provider (Okta, Google IAM, Entra ID) からのユーザー・グループ同期を処理する。"
+    path: contexts/scim.yaml
+    publishes:
+      - ScimUserRef
+      - ScimGroupRef
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: SCIM クライアント、トークン、プロビジョニングデータはテナント境界内に閉じる。
+      IdentityManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - GroupRef
+        reason: SCIM のプロビジョニング要求は User および Group aggregate の作成・更新・削除へと変換・適用される。

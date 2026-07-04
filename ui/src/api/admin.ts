@@ -9,6 +9,8 @@ import type {
   AdminGroupMember,
   AdminKey,
   AdminSettings,
+  ScimConfig,
+  ScimToken,
   TenantKeyHealth,
   AdminTenant,
   AdminUser,
@@ -850,5 +852,31 @@ export async function setApplicationCategories(
   return request(
     `/api/admin/applications/${encodeURIComponent(id)}/categories`,
     adminRequest(csrfToken, 'PUT', { category_ids: categoryIDs }),
+  )
+}
+
+export async function getScimConfig(): Promise<ScimConfig> {
+  return request<ScimConfig>('/api/admin/scim/config')
+}
+
+export async function updateScimConfig(csrfToken: string, enabled: boolean): Promise<ScimConfig> {
+  return request('/api/admin/scim/config', adminRequest(csrfToken, 'PUT', { enabled }))
+}
+
+export async function listScimTokens(): Promise<ScimToken[]> {
+  return (await request<{ tokens: ScimToken[] }>('/api/admin/scim/tokens')).tokens
+}
+
+export async function createScimToken(
+  csrfToken: string,
+  input: { description: string; expiry_days: number },
+): Promise<{ token: string; meta: ScimToken }> {
+  return request('/api/admin/scim/tokens', adminRequest(csrfToken, 'POST', input))
+}
+
+export async function revokeScimToken(csrfToken: string, id: string): Promise<void> {
+  await request(
+    `/api/admin/scim/tokens/${encodeURIComponent(id)}`,
+    adminRequest(csrfToken, 'DELETE'),
   )
 }

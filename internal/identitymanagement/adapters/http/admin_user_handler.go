@@ -65,6 +65,7 @@ type adminUserResponse struct {
 	PurgeAfter        *time.Time `json:"purge_after,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
+	ScimSource        *string    `json:"scim_source,omitempty"`
 }
 
 type adminRequiredActionRequest struct {
@@ -105,7 +106,15 @@ func (d Deps) handleGetAdminUser(c *echo.Context) error {
 	if user.TenantID != support.RequestTenantID(c) {
 		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
+	res := toAdminUserResponse(user)
+	if d.ScimRepo != nil {
+		ref, _ := d.ScimRepo.FindUserRefByUserSub(c.Request().Context(), user.TenantID, user.Sub)
+		if ref != nil {
+			src := "SCIM"
+			res.ScimSource = &src
+		}
+	}
+	return support.NoStoreJSON(c, http.StatusOK, res)
 }
 
 func (d Deps) handleCreateAdminUser(c *echo.Context) error {

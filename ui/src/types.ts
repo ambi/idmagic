@@ -26,6 +26,7 @@ export type AdminUser = {
   purge_after?: string
   created_at: string
   updated_at: string
+  scim_source?: string
 }
 
 export const REQUIRED_ACTIONS = [
@@ -299,6 +300,7 @@ export type AdminGroup = {
   member_count: number
   created_at: string
   updated_at?: string
+  scim_source?: string
 }
 
 export type AdminGroupMember = {
@@ -499,4 +501,16 @@ export type AccountSession = {
 export type BrowserFlowResponse = {
   next?: string
   redirect_to?: string
+}
+
+export type ScimToken = {
+  id: string
+  description?: string
+  created_at: string
+  expires_at?: string
+}
+
+export type ScimConfig = {
+  tenant_id: string
+  enabled: boolean
 }

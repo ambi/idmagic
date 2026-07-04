@@ -1,0 +1,336 @@
+system: idmagic
+spec_version: "2.0"
+context: Scim
+
+models:
+  ScimUserRef:
+    kind: entity
+    description: SCIM 2.0 の ID と IdP 内部の User (sub) を紐付けるマッピング。
+    identity: scim_id
+    fields:
+      tenant_id:
+        type: String
+      scim_id:
+        type: String
+      user_sub:
+        type: String
+  ScimGroupRef:
+    kind: entity
+    description: SCIM 2.0 の ID と IdP 内部の Group (id) を紐付けるマッピング。
+    identity: scim_id
+    fields:
+      tenant_id:
+        type: String
+      scim_id:
+        type: String
+      group_id:
+        type: String
+  ScimConfig:
+    kind: entity
+    description: テナントごとの SCIM 2.0 Inbound Provisioning 有効化設定。
+    identity: tenant_id
+    fields:
+      tenant_id:
+        type: String
+      enabled:
+        type: Boolean
+  ScimToken:
+    kind: entity
+    description: SCIM 2.0 API へのアクセス用 Bearer Token。
+    identity: id
+    fields:
+      tenant_id:
+        type: String
+      id:
+        type: String
+      token_hash:
+        type: String
+      description:
+        type: String
+      created_at:
+        type: Timestamp
+      expires_at:
+        type: Timestamp
+        optional: true
+interfaces:
+  GetScimServiceProviderConfig:
+    description: SCIM 2.0 /ServiceProviderConfig を取得する。
+    input:
+      tenant_id:
+        type: String
+    output:
+      config:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: GET
+        path: /scim/v2/ServiceProviderConfig
+  GetScimResourceTypes:
+    description: SCIM 2.0 /ResourceTypes を取得する。
+    input:
+      tenant_id:
+        type: String
+    output:
+      types:
+        type: "Map<String,JSON>[]"
+    bindings:
+      - kind: http
+        method: GET
+        path: /scim/v2/ResourceTypes
+  GetScimSchemas:
+    description: SCIM 2.0 /Schemas を取得する。
+    input:
+      tenant_id:
+        type: String
+    output:
+      schemas:
+        type: "Map<String,JSON>[]"
+    bindings:
+      - kind: http
+        method: GET
+        path: /scim/v2/Schemas
+  CreateScimUser:
+    description: SCIM 2.0 /Users に対する POST 要求。内部 User の作成（または mapping 適用）を処理する。
+    input:
+      tenant_id:
+        type: String
+      body:
+        type: "Map<String,JSON>"
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: POST
+        path: /scim/v2/Users
+  GetScimUser:
+    description: SCIM 2.0 /Users/{id} に対する GET 要求。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: GET
+        path: "/scim/v2/Users/{id}"
+  PatchScimUser:
+    description: SCIM 2.0 /Users/{id} に対する PATCH 要求。active の変更や属性の更新を処理する。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+      body:
+        type: "Map<String,JSON>"
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: PATCH
+        path: "/scim/v2/Users/{id}"
+  UpdateScimUser:
+    description: SCIM 2.0 /Users/{id} に対する PUT 要求。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+      body:
+        type: "Map<String,JSON>"
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/scim/v2/Users/{id}"
+  DeleteScimUser:
+    description: SCIM 2.0 /Users/{id} に対する DELETE 要求。内部 User を soft-delete する。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/scim/v2/Users/{id}"
+  CreateScimGroup:
+    description: SCIM 2.0 /Groups に対する POST 要求。
+    input:
+      tenant_id:
+        type: String
+      body:
+        type: "Map<String,JSON>"
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: POST
+        path: /scim/v2/Groups
+  GetScimGroup:
+    description: SCIM 2.0 /Groups/{id} に対する GET 要求。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: GET
+        path: "/scim/v2/Groups/{id}"
+  PatchScimGroup:
+    description: SCIM 2.0 /Groups/{id} に対する PATCH 要求。メンバーの追加・削除などを処理する。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+      body:
+        type: "Map<String,JSON>"
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: PATCH
+        path: "/scim/v2/Groups/{id}"
+  UpdateScimGroup:
+    description: SCIM 2.0 /Groups/{id} に対する PUT 要求。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+      body:
+        type: "Map<String,JSON>"
+    output:
+      response:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/scim/v2/Groups/{id}"
+  DeleteScimGroup:
+    description: SCIM 2.0 /Groups/{id} に対する DELETE 要求。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/scim/v2/Groups/{id}"
+  GetScimConfig:
+    description: テナントの SCIM 同期設定を取得する。
+    input:
+      tenant_id:
+        type: String
+    output:
+      config:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/scim/config
+  UpdateScimConfig:
+    description: テナントの SCIM 同期設定を更新する。
+    input:
+      tenant_id:
+        type: String
+      enabled:
+        type: Boolean
+    output:
+      config:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: PUT
+        path: /api/admin/scim/config
+  ListScimTokens:
+    description: テナントの SCIM トークン一覧を取得する。
+    input:
+      tenant_id:
+        type: String
+    output:
+      tokens:
+        type: "Map<String,JSON>[]"
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/scim/tokens
+  CreateScimToken:
+    description: テナントの SCIM トークンを新規発行する。
+    input:
+      tenant_id:
+        type: String
+      description:
+        type: String
+      expiry_days:
+        type: Integer
+    output:
+      token:
+        type: "Map<String,JSON>"
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/scim/tokens
+  RevokeScimToken:
+    description: テナントの SCIM トークンを無効化する。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/scim/tokens/{id}"
+permissions:
+  ScimProvision:
+    description: SCIM 2.0 プロビジョニング API を呼び出す権限。
+    actor: Agent
+    resource: User
+    allow_when: "true"
+  ManageScimSettings:
+    description: SCIM 連携設定やトークンを管理する権限。
+    actor: User
+    resource: ScimConfig
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+scenarios:
+  外部IDPからのSCIMユーザー同期ライフサイクル:
+    goal: 外部 IDP からの SCIM ユーザープロビジョニングを処理する。
+    primary_actor: Agent
+    scope: Scim
+    level: user_goal
+    preconditions:
+      - "SCIM Bearer Token が有効化されている"
+    main_success:
+      - "SCIMクライアントが CreateScimUser を呼び出す"
+      - "内部 User が作成され status が Active になる"
+      - "SCIMクライアントが PatchScimUser で active=false を指定する"
+      - "内部 User が Disabled になる"
+      - "SCIMクライアントが DeleteScimUser を呼び出す"
+      - "内部 User が PendingDeletion に遷移する"
+  外部IDPからのSCIMグループおよびメンバーシップ同期:
+    goal: 外部 IDP からの SCIM グループおよびメンバーシップ同期。
+    primary_actor: Agent
+    scope: Scim
+    level: user_goal
+    preconditions:
+      - "SCIM Bearer Token が有効化されている"
+    main_success:
+      - "SCIMクライアントが CreateScimGroup を呼び出す"
+      - "グループが作成される"
+      - "SCIMクライアントが PatchScimGroup でメンバー追加を指定する"
+      - "GroupMembership が同期され User の有効ロールが更新される"

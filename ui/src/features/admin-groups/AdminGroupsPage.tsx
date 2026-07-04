@@ -9,6 +9,7 @@ import {
   IconUserPlus,
   IconUsersGroup,
   IconX,
+  IconAlertTriangle,
 } from '@tabler/icons-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import {
@@ -451,7 +452,14 @@ function GroupDetailCard({
               <IconUsersGroup size={22} aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-lg font-semibold text-slate-950">{group.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="truncate text-lg font-semibold text-slate-950">{group.name}</h2>
+                {group.scim_source && (
+                  <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                    SCIM 同期 ({group.scim_source})
+                  </span>
+                )}
+              </div>
               <p className="mt-0.5 truncate font-mono text-sm text-slate-500">{group.id}</p>
             </div>
           </div>
@@ -558,7 +566,7 @@ function GroupDetailCard({
                 <Button
                   variant="ghost"
                   className="text-rose-700 hover:bg-rose-50"
-                  disabled={localBusy}
+                  disabled={localBusy || !!group.scim_source}
                   onClick={() =>
                     withLocal(async () => {
                       await removeAdminGroupMember(csrfToken, group.id, member.user_sub)
@@ -580,7 +588,8 @@ function GroupDetailCard({
             <select
               value={addSub}
               onChange={(e) => setAddSub(e.target.value)}
-              className="h-9 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm"
+              disabled={!!group.scim_source}
+              className="h-9 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
               aria-label="追加するユーザー"
             >
               <option value="">ユーザーを選択…</option>
@@ -591,7 +600,7 @@ function GroupDetailCard({
               ))}
             </select>
             <Button
-              disabled={localBusy || !addSub}
+              disabled={localBusy || !addSub || !!group.scim_source}
               onClick={() =>
                 withLocal(async () => {
                   await addAdminGroupMember(csrfToken, group.id, addSub)
@@ -604,6 +613,15 @@ function GroupDetailCard({
               追加
             </Button>
           </div>
+
+          {group.scim_source && (
+            <p className="mt-3 text-xs text-blue-700 flex items-center gap-1.5">
+              <IconAlertTriangle size={14} />
+              <span>
+                このグループのメンバーは SCIM 同期により管理されているため、直接変更できません。
+              </span>
+            </p>
+          )}
         </section>
       </Card>
       {editing ? (
@@ -704,6 +722,21 @@ function GroupEditorDialog({
               </Alert>
             ) : null}
             <div className="grid gap-6 p-6">
+              {group.scim_source && (
+                <Alert className="mb-2">
+                  <div className="flex gap-3">
+                    <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-950">SCIM 同期グループ</p>
+                      <p className="mt-1 text-xs leading-5 text-blue-800">
+                        このグループは外部 IDP ({group.scim_source}) から自動同期されています。
+                        グループ名と説明は直接編集できません。
+                      </p>
+                    </div>
+                  </div>
+                </Alert>
+              )}
+
               <section className="grid gap-4">
                 <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
                   基本情報
@@ -716,6 +749,8 @@ function GroupEditorDialog({
                     onChange={(e) => setName(e.target.value)}
                     required
                     aria-invalid={nameInvalid}
+                    readOnly={!!group.scim_source}
+                    className={group.scim_source ? 'bg-slate-50' : undefined}
                   />
                 </div>
                 <div className="grid gap-1.5">
@@ -724,6 +759,8 @@ function GroupEditorDialog({
                     id="group-editor-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    readOnly={!!group.scim_source}
+                    className={group.scim_source ? 'bg-slate-50' : undefined}
                   />
                 </div>
               </section>

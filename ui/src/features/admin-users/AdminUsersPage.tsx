@@ -678,6 +678,11 @@ export function AdminUserDetailPage({
                 {user.name || user.preferred_username}
               </h2>
               <StatusBadge status={userLifecycleStatus(user)} compact />
+              {user.scim_source && (
+                <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                  SCIM 同期 ({user.scim_source})
+                </span>
+              )}
             </div>
             <p className="mt-0.5 text-sm text-slate-500">@{user.preferred_username}</p>
           </div>
@@ -712,6 +717,15 @@ export function AdminUserDetailPage({
                 />
                 <DetailRow icon={IconUser} label="Subject ID" value={user.sub} mono />
               </dl>
+              {user.scim_source && (
+                <div className="mt-4 border-t border-slate-100 pt-4 flex items-center gap-2 text-xs text-blue-700">
+                  <IconAlertTriangle size={15} />
+                  <span>
+                    このユーザーは SCIM
+                    同期によりプロビジョニングされているため、プロフィール属性は直接編集できません。
+                  </span>
+                </div>
+              )}
             </Card>
 
             <Card className="p-5">
@@ -1311,10 +1325,12 @@ function AdminAttributeField({
   def,
   value,
   onChange,
+  readOnly,
 }: {
   def: UserAttributeDef
   value: string
   onChange: (next: string) => void
+  readOnly?: boolean
 }) {
   const id = `user-editor-attr-${def.key}`
   const label = attributeLabel(def)
@@ -1325,8 +1341,9 @@ function AdminAttributeField({
           id={id}
           type="checkbox"
           checked={value === 'true'}
-          onChange={(event) => onChange(event.target.checked ? 'true' : 'false')}
-          className="size-4 rounded border-slate-300"
+          onChange={(event) => !readOnly && onChange(event.target.checked ? 'true' : 'false')}
+          disabled={readOnly}
+          className="size-4 rounded border-slate-300 disabled:opacity-50"
         />
         <span className="font-mono">{label}</span>
       </label>
@@ -1343,6 +1360,8 @@ function AdminAttributeField({
         value={value}
         placeholder={def.type === 'string_array' ? 'カンマ区切り' : undefined}
         onChange={(event) => onChange(event.target.value)}
+        readOnly={readOnly}
+        className={readOnly ? 'bg-slate-50' : undefined}
       />
     </div>
   )
@@ -1363,10 +1382,12 @@ function AdminAttributeEditorGroups({
   defs,
   values,
   onChange,
+  readOnly,
 }: {
   defs: UserAttributeDef[]
   values: Record<string, string>
   onChange: (key: string, next: string) => void
+  readOnly?: boolean
 }) {
   const groups = groupedAttributeDefs(defs)
   if (groups.length === 0) return null
@@ -1389,6 +1410,7 @@ function AdminAttributeEditorGroups({
               def={def}
               value={values[def.key] ?? ''}
               onChange={(next) => onChange(def.key, next)}
+              readOnly={readOnly}
             />
           ))}
         </fieldset>
@@ -1536,6 +1558,21 @@ function UserEditorDialog({
               </div>
             ) : (
               <div className="grid gap-6 p-6">
+                {user.scim_source && (
+                  <Alert>
+                    <div className="flex gap-3">
+                      <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
+                      <div>
+                        <p className="text-sm font-semibold text-blue-950">SCIM 同期ユーザー</p>
+                        <p className="mt-1 text-xs leading-5 text-blue-800">
+                          このユーザーは {user.scim_source} から自動同期されています。
+                          プロフィール属性とカスタム属性は直接編集できません。
+                        </p>
+                      </div>
+                    </div>
+                  </Alert>
+                )}
+
                 <section className="grid gap-4">
                   <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
                     プロフィール
@@ -1546,9 +1583,11 @@ function UserEditorDialog({
                       id="user-editor-username"
                       value={username}
                       onChange={(event) => setUsername(event.target.value)}
-                      autoFocus
+                      autoFocus={!user.scim_source}
                       required
                       aria-invalid={usernameInvalid}
+                      readOnly={!!user.scim_source}
+                      className={user.scim_source ? 'bg-slate-50' : undefined}
                     />
                     <p className="text-xs leading-5 text-slate-500">
                       login 時に使われる識別子です。空にはできません。
@@ -1560,6 +1599,8 @@ function UserEditorDialog({
                       id="user-editor-name"
                       value={name}
                       onChange={(event) => setName(event.target.value)}
+                      readOnly={!!user.scim_source}
+                      className={user.scim_source ? 'bg-slate-50' : undefined}
                     />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1569,6 +1610,8 @@ function UserEditorDialog({
                         id="user-editor-given-name"
                         value={givenName}
                         onChange={(event) => setGivenName(event.target.value)}
+                        readOnly={!!user.scim_source}
+                        className={user.scim_source ? 'bg-slate-50' : undefined}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -1577,6 +1620,8 @@ function UserEditorDialog({
                         id="user-editor-family-name"
                         value={familyName}
                         onChange={(event) => setFamilyName(event.target.value)}
+                        readOnly={!!user.scim_source}
+                        className={user.scim_source ? 'bg-slate-50' : undefined}
                       />
                     </div>
                   </div>
@@ -1590,6 +1635,8 @@ function UserEditorDialog({
                         setEmail(event.target.value)
                         setEmailVerifiedTouched(false)
                       }}
+                      readOnly={!!user.scim_source}
+                      className={user.scim_source ? 'bg-slate-50' : undefined}
                     />
                     {emailChanged && (
                       <p className="text-xs leading-5 text-amber-700">
@@ -1600,12 +1647,13 @@ function UserEditorDialog({
                   <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                     <input
                       type="checkbox"
-                      className="mt-0.5 size-4 rounded border-slate-300"
+                      className="mt-0.5 size-4 rounded border-slate-300 disabled:opacity-50"
                       checked={effectiveEmailVerified}
                       onChange={(event) => {
                         setEmailVerified(event.target.checked)
                         setEmailVerifiedTouched(true)
                       }}
+                      disabled={!!user.scim_source}
                     />
                     <span>
                       <span className="block font-semibold text-slate-900">
@@ -1636,6 +1684,7 @@ function UserEditorDialog({
                   defs={attributeDefs}
                   values={attrDraft}
                   onChange={(key, next) => setAttrDraft((current) => ({ ...current, [key]: next }))}
+                  readOnly={!!user.scim_source}
                 />
               </div>
             )}

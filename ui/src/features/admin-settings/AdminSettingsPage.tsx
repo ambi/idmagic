@@ -1,6 +1,14 @@
-import { IconMail, IconShieldLock, IconTag } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
-import { AuthenticationAPIError, updateAdminSettings } from '../../api'
+import { IconMail, IconShieldLock, IconTag, IconUsers } from '@tabler/icons-react'
+import { type FormEvent, useState, useEffect } from 'react'
+import {
+  AuthenticationAPIError,
+  updateAdminSettings,
+  getScimConfig,
+  updateScimConfig,
+  listScimTokens,
+  createScimToken,
+  revokeScimToken,
+} from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -8,11 +16,11 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { cn } from '../../lib/utils'
-import type { AdminSettings } from '../../types'
+import type { AdminSettings, ScimToken } from '../../types'
 
 const DEFAULT_TENANT_ID = 'default'
 
-type TabKey = 'general' | 'password-policy' | 'email'
+type TabKey = 'general' | 'password-policy' | 'email' | 'scim'
 
 type Tab = {
   key: TabKey
@@ -34,6 +42,12 @@ const tabs: Tab[] = [
     label: 'パスワードポリシー',
     description: 'テナント単位の上書き値。空欄のフィールドは IdMagic の標準値が適用されます。',
     icon: IconShieldLock,
+  },
+  {
+    key: 'scim',
+    label: 'SCIM 同期',
+    description: '外部 IDP からの SCIM 2.0 Inbound Provisioning を設定します。',
+    icon: IconUsers,
   },
   {
     key: 'email',
@@ -124,6 +138,9 @@ export function AdminSettingsPage({
               settings={settings}
               onSaved={(next) => setSettings(next)}
             />
+          ) : null}
+          {active === 'scim' ? (
+            <ScimTab csrfToken={csrfToken} tenantID={settings.tenant_id} />
           ) : null}
           {active === 'email' ? (
             <Card className="p-6">
@@ -474,5 +491,258 @@ function PolicyField({
       />
       <p className="text-xs text-slate-500">{hint}</p>
     </div>
+  )
+}
+
+function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string }) {
+  const [enabled, setEnabled] = useState(false)
+  const [tokens, setTokens] = useState<ScimToken[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [tokenDesc, setTokenDesc] = useState('')
+  const [tokenExpiry, setTokenExpiry] = useState('7')
+  const [generatedToken, setGeneratedToken] = useState('')
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const config = await getScimConfig()
+        setEnabled(config.enabled)
+        if (config.enabled) {
+          const tList = await listScimTokens()
+          setTokens(tList)
+        }
+      } catch {
+        setError('SCIM設定を取得できませんでした。')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  async function handleToggle() {
+    setError('')
+    setNotice('')
+    const nextEnabled = !enabled
+    try {
+      await updateScimConfig(csrfToken, nextEnabled)
+      setEnabled(nextEnabled)
+      setNotice(nextEnabled ? 'SCIM 同期を有効にしました。' : 'SCIM 同期を無効にしました。')
+      if (nextEnabled) {
+        const tList = await listScimTokens()
+        setTokens(tList)
+      }
+    } catch {
+      setError('設定を更新できませんでした。')
+    }
+  }
+
+  async function handleCreateToken(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    setNotice('')
+    setGeneratedToken('')
+    if (!tokenDesc.trim()) {
+      setError('トークンの説明を入力してください。')
+      return
+    }
+    try {
+      const res = await createScimToken(csrfToken, {
+        description: tokenDesc.trim(),
+        expiry_days: Number.parseInt(tokenExpiry, 10),
+      })
+      setGeneratedToken(res.token)
+      setTokenDesc('')
+      const tList = await listScimTokens()
+      setTokens(tList)
+      setNotice('SCIM Bearer トークンを発行しました。')
+    } catch {
+      setError('トークンを発行できませんでした。')
+    }
+  }
+
+  async function handleRevokeToken(id: string) {
+    setError('')
+    setNotice('')
+    try {
+      await revokeScimToken(csrfToken, id)
+      setTokens(tokens.filter((t) => t.id !== id))
+      setNotice('トークンを失効させました。')
+    } catch {
+      setError('トークンを失効できませんでした。')
+    }
+  }
+
+  if (loading) {
+    return <div className="text-sm text-slate-500">読み込み中…</div>
+  }
+
+  const endpointUrl = `${window.location.origin}/realms/${tenantID}/scim/v2`
+
+  return (
+    <Card className="p-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">
+            SCIM 同期 (Inbound Provisioning)
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Okta や Google IAM などからユーザー・グループを自動同期するための設定です。
+          </p>
+        </div>
+        <Button type="button" variant={enabled ? 'destructive' : 'default'} onClick={handleToggle}>
+          {enabled ? 'SCIMを無効化' : 'SCIMを有効化'}
+        </Button>
+      </header>
+
+      <div className="mt-6 grid gap-6">
+        {error ? <Alert variant="destructive">{error}</Alert> : null}
+        {notice ? <Alert variant="success">{notice}</Alert> : null}
+
+        {enabled ? (
+          <>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">接続情報</h3>
+              <div className="mt-3 grid gap-3">
+                <div>
+                  <span className="text-xs text-slate-500">SCIM 2.0 Base URL (エンドポイント)</span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={endpointUrl}
+                      className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(endpointUrl)
+                        setNotice('URLをクリップボードにコピーしました。')
+                      }}
+                    >
+                      コピー
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    外部 IDP の SCIM コネクタ設定でこの URL を指定します。
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              <h3 className="text-sm font-semibold text-slate-900">SCIM 認証トークン</h3>
+
+              {generatedToken ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <h4 className="text-sm font-bold text-emerald-800">
+                    発行された SCIM Bearer トークン
+                  </h4>
+                  <p className="mt-1 text-xs text-emerald-700">
+                    セキュリティのため、このトークンは一度しか表示されません。必ずコピーして安全な場所に保管してください。
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={generatedToken}
+                      className="flex-1 rounded-md border border-emerald-300 bg-white px-3 py-1.5 font-mono text-sm text-emerald-900"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedToken)
+                        setNotice('トークンをコピーしました。')
+                      }}
+                    >
+                      コピー
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {tokens.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  有効な認証トークンがありません。下のフォームから作成してください。
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-left text-sm text-slate-700">
+                    <thead className="bg-slate-50 font-semibold text-slate-900">
+                      <tr>
+                        <th className="px-4 py-2">説明</th>
+                        <th className="px-4 py-2">作成日時</th>
+                        <th className="px-4 py-2">有効期限</th>
+                        <th className="px-4 py-2">アクション</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {tokens.map((tok) => (
+                        <tr key={tok.id}>
+                          <td className="px-4 py-3">{tok.description}</td>
+                          <td className="px-4 py-3">{new Date(tok.created_at).toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            {tok.expires_at ? new Date(tok.expires_at).toLocaleString() : 'なし'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleRevokeToken(tok.id)}
+                            >
+                              失効
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <form
+                onSubmit={handleCreateToken}
+                className="mt-4 rounded-lg border border-slate-200 p-4"
+              >
+                <h4 className="text-sm font-semibold text-slate-900">新規トークンの作成</h4>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="token-desc">トークンの説明</Label>
+                    <Input
+                      id="token-desc"
+                      placeholder="例: Okta-SCIM-Integration"
+                      value={tokenDesc}
+                      onChange={(e) => setTokenDesc(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="token-expiry">有効期間 (日数)</Label>
+                    <Input
+                      id="token-expiry"
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={tokenExpiry}
+                      onChange={(e) => setTokenExpiry(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Button type="submit">トークンを発行</Button>
+                </div>
+              </form>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">
+            SCIM 同期は現在無効化されています。外部 IDP
+            からの自動プロビジョニングを使用するには、有効化してください。
+          </p>
+        )}
+      </div>
+    </Card>
   )
 }

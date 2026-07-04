@@ -390,3 +390,41 @@ CREATE TABLE application_categories (
     updated_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (tenant_id, category_id)
 );
+
+CREATE TABLE scim_configs (
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    last_sync_at TIMESTAMPTZ,
+    error_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (tenant_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE scim_tokens (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    token_hash TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE scim_user_refs (
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    scim_id TEXT NOT NULL,
+    user_sub TEXT NOT NULL,
+    PRIMARY KEY (tenant_id, scim_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    FOREIGN KEY (user_sub) REFERENCES users(sub) ON DELETE CASCADE
+);
+
+CREATE TABLE scim_group_refs (
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    scim_id TEXT NOT NULL,
+    group_id TEXT NOT NULL,
+    PRIMARY KEY (tenant_id, scim_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+);
+

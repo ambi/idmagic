@@ -158,6 +158,7 @@ func Run() error {
 	}
 	httpadapter.Register(e, httpsupport.Deps{
 		Issuer: issuer, SCL: sclDoc,
+		ScimRepo:         deps.ScimRepo,
 		TenantRepo:       deps.TenantRepo,
 		AttrSchemaRepo:   deps.AttrSchemaRepo,
 		LegacyBareIssuer: envDefault("LEGACY_BARE_ISSUER", "false") == "true",

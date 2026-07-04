@@ -56,6 +56,14 @@ var rolePermissionInterfaces = map[string][]string{
 	"AdminApplicationPoliciesManage":      {"GetAppSignOnPolicy", "UpdateAppSignOnPolicy"},
 	"AdminApplicationCategoriesManage":    {"ListApplicationCategories", "CreateApplicationCategory", "UpdateApplicationCategory", "DeleteApplicationCategory", "SetApplicationCategories"},
 	"AdminFederationTrustsManage":         {"RegisterSamlServiceProvider", "ListSamlServiceProviders", "DeleteSamlServiceProvider", "RegisterWsFedRelyingParty", "ListWsFedRelyingParties", "DeleteWsFedRelyingParty"},
+	"ScimProvision": {
+		"GetScimServiceProviderConfig", "GetScimResourceTypes", "GetScimSchemas",
+		"CreateScimUser", "GetScimUser", "PatchScimUser", "UpdateScimUser", "DeleteScimUser",
+		"CreateScimGroup", "GetScimGroup", "PatchScimGroup", "UpdateScimGroup", "DeleteScimGroup",
+	},
+	"ManageScimSettings": {
+		"GetScimConfig", "UpdateScimConfig", "ListScimTokens", "CreateScimToken", "RevokeScimToken",
+	},
 }
 
 func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]RolePolicy, error) {

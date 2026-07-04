@@ -9,6 +9,7 @@ import (
 	idmports "idmagic/internal/identitymanagement/ports"
 	oauthports "idmagic/internal/oauth2/ports"
 	samlports "idmagic/internal/saml/ports"
+	scimports "idmagic/internal/scim/ports"
 	tenantports "idmagic/internal/tenancy/ports"
 	wsfederationports "idmagic/internal/wsfederation/ports"
 )
@@ -16,6 +17,7 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
+	ScimRepo                scimports.ScimRepository
 	ClientRepo              oauthports.OAuth2ClientRepository
 	TenantRepo              tenantports.TenantRepository
 	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository

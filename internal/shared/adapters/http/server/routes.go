@@ -11,6 +11,7 @@ import (
 	idmhttp "idmagic/internal/identitymanagement/adapters/http"
 	oauth2http "idmagic/internal/oauth2/adapters/http"
 	samlhttp "idmagic/internal/saml/adapters/http"
+	"idmagic/internal/scim"
 	"idmagic/internal/shared/adapters/http/support"
 	"idmagic/internal/shared/spec"
 	tenancyhttp "idmagic/internal/tenancy/adapters/http"
@@ -52,4 +53,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	wsfederationhttp.RegisterRoutes(g, d.Deps)
 	samlhttp.RegisterRoutes(g, d.Deps)
 	apphttp.RegisterRoutes(g, d.Deps)
+
+	scimUsecases := scim.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
+	scim.RegisterRoutes(g, d.Deps, scimUsecases)
 }

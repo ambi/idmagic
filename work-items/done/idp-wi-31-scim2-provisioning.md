@@ -3,7 +3,7 @@ id: idp-wi-31-scim2-provisioning
 title: "SCIM 2.0 provisioning を user / group lifecycle の外部契約として実装する"
 created_at: 2026-06-20
 authors: ["tn"]
-status: pending
+status: done
 risk: high
 ---
 
@@ -51,3 +51,17 @@ user / group provisioning、deprovisioning、group sync が重要になる。
 SCIM は外部 system of record との契約なので、内部 admin 操作よりデータ破壊の
 影響が大きい。`active=false` と delete の意味を ADR で先に固定し、hard delete
 は既存 ADR-036 と矛盾させない。
+
+# Completion
+- **ADR & SCL**:
+  - `idp-ADR-080-scim2-inbound-provisioning.md` を作成し、SCIM Inbound Provisioning の仕様とデータモデル、セキュリティ方針を定義。
+  - `spec/contexts/scim.yaml` に SCIM 仕様を SCL-first で定義し、`scl.yaml` に統合。
+- **Backend & Database**:
+  - `deploy/schema/postgres.sql` に SCIM 関連テーブルスキーマを追加。
+  - `internal/scim` に SCIM Inbound Provisioning 用の Echo ハンドラ、ポート、ユースケースおよびリポジトリ層を実装。
+  - メモリリポジトリを使用した SCIM User/Group ライフサイクル・メンバーシップ同期の結合テスト `scim_test.go` がすべて PASS することを確認。
+  - Go バックエンドのリンター (`golangci-lint` / `gofumpt`) とテストが完全にパスする状態を達成。
+- **Frontend UI**:
+  - `AdminSettingsPage.tsx` に SCIM 同期設定タブを実装し、Bearer トークンの発行・失効ライフサイクルを構築。
+  - `AdminUsersPage.tsx`, `AdminGroupsPage.tsx` に SCIM 同期対象 principal に対する直接編集の抑止 (readonly / disabled 制御) および警告表示を統合。
+  - フロントエンドの Biome Lint/Format および TypeScript Typecheck, Vite Build が正常に完了することを確認。

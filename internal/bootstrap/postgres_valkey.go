@@ -85,6 +85,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	}
 
 	return &Dependencies{
+		ScimRepo:                &postgres.ScimRepository{Pool: resilientDB},
 		TenantRepo:              &postgres.TenantRepository{Pool: resilientDB},
 		AttrSchemaRepo:          &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
 		ClientRepo:              &postgres.OAuth2ClientRepository{Pool: resilientDB},

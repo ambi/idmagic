@@ -19,6 +19,7 @@ import (
 	idmports "idmagic/internal/identitymanagement/ports"
 	oauthports "idmagic/internal/oauth2/ports"
 	samlports "idmagic/internal/saml/ports"
+	scimports "idmagic/internal/scim/ports"
 	"idmagic/internal/shared/adapters/crypto"
 	"idmagic/internal/shared/spec"
 	tenantports "idmagic/internal/tenancy/ports"
@@ -30,6 +31,7 @@ import (
 type Deps struct {
 	Issuer                      string
 	SCL                         *spec.SCL
+	ScimRepo                    scimports.ScimRepository
 	TenantRepo                  tenantports.TenantRepository
 	AttrSchemaRepo              tenantports.TenantUserAttributeSchemaRepository
 	LegacyBareIssuer            bool

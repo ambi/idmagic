@@ -35,6 +35,7 @@ type groupSummaryResponse struct {
 	MemberCount int        `json:"member_count"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
+	ScimSource  *string    `json:"scim_source,omitempty"`
 }
 
 type groupMemberResponse struct {
@@ -73,8 +74,16 @@ func (d Deps) handleGetGroup(c *echo.Context) error {
 	if err != nil {
 		return d.writeAdminGroupError(c, err)
 	}
+	res := toGroupSummaryResponse(group, len(members))
+	if d.ScimRepo != nil {
+		ref, _ := d.ScimRepo.FindGroupRefByGroupID(c.Request().Context(), group.TenantID, group.ID)
+		if ref != nil {
+			src := "SCIM"
+			res.ScimSource = &src
+		}
+	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"group":   toGroupSummaryResponse(group, len(members)),
+		"group":   res,
 		"members": d.toGroupMemberResponses(c.Request().Context(), members),
 	})
 }
