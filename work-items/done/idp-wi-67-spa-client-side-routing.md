@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 管理コンソール (`/admin/*`) とアカウントポータル (`/account/*`) のサイドバー / パンくず
 リンクは素の `<a href>` で、クリックごとに SPA 全体がフルリロードされる。ブート時の
@@ -24,10 +25,17 @@ route だけを描画する」静的構造 ([[wi-22]] の SPA スモーク参照
 巨大な分岐を route 単位の loader に分解し、@tanstack/react-router の本来のルーティングを使う。
 
 # Scope
-- **decision**: ルーティング方式の決定: ブート時単発 PageData から、route 単位 loader + SPA ナビゲーションへ移行する方針と、サーバ駆動の `kind` 解決をどう廃止/縮小するかを 確定する (必要なら ADR)。
-- **go**: サーバ側の HTML 配信が `kind` を前提にしている箇所があれば、SPA が任意の admin / account パスを直接開けるよう調整する (deep link / リロード耐性)。API 契約は不変。
-- **ui**: サイドバー / パンくず / メニューのリンクを SPA ナビゲーション (router.navigate / Link) に置き換え、フルリロードを廃止する。, `api/pageData.ts` の単発分岐を route 単位の loader に分解し、遷移時はその route の データだけを取得する。共有コンテキスト (`/api/auth/account` など) はキャッシュ/共有して 重複取得を避ける。, OIDC RP のトークン取得 (ensureLoggedIn) を、ブートだけでなく SPA ナビゲーション時にも route guard として機能させる ([[wi-66-portals-as-oidc-rp]] と整合)。, 直接リロード・ブラウザ戻る/進む・deep link が壊れないことを担保する。
-- **documentation**: ui/ARCHITECTURE.md の SPA dispatcher 記述を新ルーティングモデルに更新する。
+- **decision**:
+  - ルーティング方式の決定: ブート時単発 PageData から、route 単位 loader + SPA ナビゲーションへ移行する方針と、サーバ駆動の `kind` 解決をどう廃止/縮小するかを 確定する (必要なら ADR)。
+- **go**:
+  - サーバ側の HTML 配信が `kind` を前提にしている箇所があれば、SPA が任意の admin / account パスを直接開けるよう調整する (deep link / リロード耐性)。API 契約は不変。
+- **ui**:
+  - サイドバー / パンくず / メニューのリンクを SPA ナビゲーション (router.navigate / Link) に置き換え、フルリロードを廃止する。
+  - `api/pageData.ts` の単発分岐を route 単位の loader に分解し、遷移時はその route の データだけを取得する。共有コンテキスト (`/api/auth/account` など) はキャッシュ/共有して 重複取得を避ける。
+  - OIDC RP のトークン取得 (ensureLoggedIn) を、ブートだけでなく SPA ナビゲーション時にも route guard として機能させる ([[wi-66-portals-as-oidc-rp]] と整合)。
+  - 直接リロード・ブラウザ戻る/進む・deep link が壊れないことを担保する。
+- **documentation**:
+  - ui/ARCHITECTURE.md の SPA dispatcher 記述を新ルーティングモデルに更新する。
 
 # Out of Scope
 - 認証ロジック自体の変更 ([[wi-66-portals-as-oidc-rp]] が所有)。本 WI は遷移方式に閉じる。
@@ -35,9 +43,9 @@ route だけを描画する」静的構造 ([[wi-22]] の SPA スモーク参照
 - サーバ側レンダリング (SSR) の導入。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui build`
+- `bun --cwd idmagic/ui run lint`
 - 手動: サイドバー遷移がフルリロードせず即時であること、deep link / リロード / 戻る進むが壊れないこと。
 
 # Risk Notes
@@ -57,7 +65,17 @@ route だけを描画する」静的構造 ([[wi-22]] の SPA スモーク参照
   (pathname / searchStr) を受け取る resolvePageData に分離した。markPage は Suspense 境界の
   内側で呼び、lazy chunk のロード完了 (ページ DOM 実在) と meta 表明を一致させた。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `bun --cwd idmagic/ui run lint`
+    - result: ok
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui build`
+    - result: ok
+  - `bun --cwd idmagic/ui run test:e2e`
+    - result: 2 pass (golden path + admin sidebar client-side navigation)
+- **Affected Guarantees State**:
+  - navigation latency: サイドバー遷移は対象 route のデータのみ取得し、ドキュメントを再読込しない (E2E: marker 保持 + location.pathname 更新)
+  - no blank flash: ページコンポーネントを route loader 内で await 解決し (React.lazy/Suspense を遷移経路から排除)、loader 解決まで前ページを表示したままにするため初回クリックでも空白が出ない。先読みは初回 loader の高速化用
+  - deep link / reload: 任意パスの直接オープンも router loader が解決 (golden-path E2E は full-nav 経路を継続検証)
+  - auth guard: 未ログイン admin/account は loader 内 ensureLoggedIn で OIDC ログインへ誘導
+  - API 契約不変: /api/{admin,account}/* は変更なし

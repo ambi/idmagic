@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: high
 ---
+
 # Motivation
 [[wi-49-agent-identity-first-class-principal]] と
 [[wi-50-token-exchange-delegation-actor-chain]] は completed だが、レビューで
@@ -27,11 +28,28 @@ risk: high
 Exchange の安全性と再現性を満たすための是正である。
 
 # Scope
-- **decision**: Agent と OAuth2Client の束縛 cardinality を明確化する。既定は「1 client_id は tenant 内で高々 1 Agent にのみ束縛できる」とし、複数 Agent 共有を許す場合は status gate の合成規則を ADR-048 追記で明示する。, kill 済み Agent の扱いを ADR-048 / wi-49 completion と整合させる。既定は killed Agent の delete を拒否し、監査保持と kill-switch 維持を優先する。, Token Exchange の actor / audience 許可をどの既存 Authorizer / AuthZEN context に載せるかを ADR-049 追記で明示する。
-- **scl**: 必要なら AgentCredentialBinding の一意性制約、DeleteAgent の killed 拒否、 RegisterAgent / UpdateAgent の owner_sub 存在確認を assurance / invariant に 追記する。, TokenExchangeRequest の requested_token_type 受理条件と、TokenGrantTokenExchange の policy context (client_id / actor_sub / subject_sub / resource / scope / delegation_depth) を明示する。
-- **go**: DeleteAgent は Killed の Agent を拒否する。回復不能停止後の purge が必要なら 別 interface / permission として設計する。, AgentCredentialBinding は tenant 内 client_id 一意を強制する。Postgres migration と in-memory repository の両方で同じ制約を持つ。, BindCredential は client の存在・tenant 一致に加え、既に別 Agent に束縛済みの client_id を拒否する。失敗は明示的な domain error にする。, RegisterAgent / UpdateAgent は owner_sub が同一 tenant の既存 User を指すことを fail-closed に検証する。将来の owning group / organization owner は別途拡張する。, ExchangeToken は TokenGrantTokenExchange の Authorizer / policy gate を実行し、 actor_sub / subject_sub / resource / requested scope / delegation depth を context に渡す。未許可は invalid_grant または access_denied として拒否する。, requested_token_type は空または access_token のみ許可し、未対応値は invalid_request で拒否する。
-- **http**: 上記の domain error を admin API と /token の OAuth error response に 一貫して変換する。
-- **tests**: kill → delete が拒否され、同じ client の client_credentials 発行が拒否され続ける。, 1 client_id を 2 Agent に bind しようとすると拒否される。, owner_sub が存在しない / 別 tenant の user を指す Agent 登録・更新は拒否される。, Token Exchange は policy 未許可の actor / resource を拒否し、許可時のみ発行する。, requested_token_type に未対応値を指定すると拒否される。
+- **decision**:
+  - Agent と OAuth2Client の束縛 cardinality を明確化する。既定は「1 client_id は tenant 内で高々 1 Agent にのみ束縛できる」とし、複数 Agent 共有を許す場合は status gate の合成規則を ADR-048 追記で明示する。
+  - kill 済み Agent の扱いを ADR-048 / wi-49 completion と整合させる。既定は killed Agent の delete を拒否し、監査保持と kill-switch 維持を優先する。
+  - Token Exchange の actor / audience 許可をどの既存 Authorizer / AuthZEN context に載せるかを ADR-049 追記で明示する。
+- **scl**:
+  - 必要なら AgentCredentialBinding の一意性制約、DeleteAgent の killed 拒否、 RegisterAgent / UpdateAgent の owner_sub 存在確認を assurance / invariant に 追記する。
+  - TokenExchangeRequest の requested_token_type 受理条件と、TokenGrantTokenExchange の policy context (client_id / actor_sub / subject_sub / resource / scope / delegation_depth) を明示する。
+- **go**:
+  - DeleteAgent は Killed の Agent を拒否する。回復不能停止後の purge が必要なら 別 interface / permission として設計する。
+  - AgentCredentialBinding は tenant 内 client_id 一意を強制する。Postgres migration と in-memory repository の両方で同じ制約を持つ。
+  - BindCredential は client の存在・tenant 一致に加え、既に別 Agent に束縛済みの client_id を拒否する。失敗は明示的な domain error にする。
+  - RegisterAgent / UpdateAgent は owner_sub が同一 tenant の既存 User を指すことを fail-closed に検証する。将来の owning group / organization owner は別途拡張する。
+  - ExchangeToken は TokenGrantTokenExchange の Authorizer / policy gate を実行し、 actor_sub / subject_sub / resource / requested scope / delegation depth を context に渡す。未許可は invalid_grant または access_denied として拒否する。
+  - requested_token_type は空または access_token のみ許可し、未対応値は invalid_request で拒否する。
+- **http**:
+  - 上記の domain error を admin API と /token の OAuth error response に 一貫して変換する。
+- **tests**:
+  - kill → delete が拒否され、同じ client の client_credentials 発行が拒否され続ける。
+  - 1 client_id を 2 Agent に bind しようとすると拒否される。
+  - owner_sub が存在しない / 別 tenant の user を指す Agent 登録・更新は拒否される。
+  - Token Exchange は policy 未許可の actor / resource を拒否し、許可時のみ発行する。
+  - requested_token_type に未対応値を指定すると拒否される。
 
 # Out of Scope
 - CAEP / SSF による既発行 access token の即時失効 ([[wi-58-continuous-access-evaluation-agent-revocation]])。
@@ -40,11 +58,12 @@ Exchange の安全性と再現性を満たすための是正である。
 - owning group / organization owner の本格実装。まず human User owner の存在確認に閉じる。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: Agent delete / binding uniqueness / owner validation / token-exchange policy gate の境界。
+- `GOCACHE=/tmp/idmagic-cache go test -race ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun run yaml-check:work-items` (in: tools)
 - 手動: Agent を登録し client を bind → client_credentials token を取得 → kill → delete が拒否される → 同じ client_credentials token 取得も拒否されることを確認する。
 - 手動: token-exchange を未許可 resource で要求すると拒否され、許可済み resource で aud 限定 token が発行されることを確認する。
 
@@ -68,8 +87,19 @@ Exchange の安全性と再現性を満たすための是正である。
   delegation_depth / requested scopes を載せ、local policy は grant 宣言・client scope
   subset・resource 必須を fail-closed に評価する。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+    - result: passed
+  - `GOCACHE=/tmp/idmagic-cache go test -race ./...` (in: idmagic)
+    - result: passed
+  - `GOCACHE=/tmp/idmagic-cache go build ./...` (in: idmagic)
+    - result: passed
+  - `GOCACHE=/tmp/idmagic-cache GOLANGCI_LINT_CACHE=/tmp/idmagic-golangci-cache golangci-lint run ./...` (in: idmagic)
+    - result: passed, 0 issues
+  - `bun run yaml-check:work-items` (in: tools)
+    - result: passed
+- **Affected Guarantees State**:
+  - 即時停止の一貫性: pass。killed Agent の delete を拒否し、束縛削除による発行再開を防ぐ。
+  - Agent と client の対応の決定性: pass。tenant 内 client_id 一意 index と use case guard を追加した。
+  - 所有の明確化: pass。owner_sub は同一 tenant の active User のみ受理する。
+  - 委譲制御: pass。Token Exchange は Authorizer gate を通り、外部 AuthZEN が actor / subject / audience / depth を評価できる。
+  - RFC 8693 入力の fail-closed: pass。未対応 requested_token_type を拒否する。

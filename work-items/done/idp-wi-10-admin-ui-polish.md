@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 日常的に画面を触っていて、操作の流れに引っかかる箇所が 4 つ見えた。
 1 本の WI でまとめて整える (個別の優先度はどれも低〜中だが、放置すると
@@ -31,12 +32,23 @@ risk: medium
 
 # Scope
 - **ui**:
-  - pages: LoginPage — "パスワードを忘れた場合" リンクを password 入力欄 の **下** (送信ボタンの直前 or 直後) に移動する。tab order が `username → password → submit → forgot link` になるよう DOM 順を直す。視覚的なヒエラルキー (font-size / color) は 現状を踏襲し、主要 CTA (送信ボタン) より目立たないことを維持 する。, AdminUsersPage — 既存の `AttributeEditorDialog` を `UserEditorDialog` にリネーム (or 統合) し、Profile セクション と Roles セクションを内側に並べる。Profile 4 項目 (preferred_username / name / email / email_verified) と Roles 編集を 1 つの保存ボタンで送信する。Roles に変更がある ときだけ、保存前に "review changes" の second-step confirmation を出す (現 RoleEditorDialog の動線を移植する)。Profile だけ の変更なら一発で送信。UserDetails 詳細パネルの "ロールを変更" ボタンを削除し、"属性を編集" ボタンを "編集" (or "編集 (属性 とロール)") に改名する。api.ts は `updateAdminUserAttributes` と `updateAdminUserRoles` を残したまま、ダイアログ側で 「変更があった項目だけ送る」or「両方一括 PATCH」のどちらかに 統一する (推奨は後者: backend の `UpdateUserInput` が pointer optional なので、変更フィールドだけ非 nil で送れば既存の use case で完結する)。, AdminDashboardPage (新規) — ルート: `/admin` (tenant 内)。 既存 sidebar の "概要" 項目に紐付ける (`adminNav.ts` の disabled を解除)。カード 4 枚: 総ユーザー数 (active / disabled の比率) / クライアント数 (`active` のみカウント) / tenant 内 consent 数 (`active` のみカウント) / 24h 以内の admin audit event 数。直近 5 件の audit event リスト (timestamp / type / actor → target)。クリックで AdminAuditEventsPage の filter に飛ばす。クイックリンク (アイコン付き 4-6 枚): "ユーザを追加" / "クライアントを追加" / "鍵を確認" / "監査ログを開く"。tenant 管理リンクは `system_admin` かつ default tenant の時のみ出す。, 全 admin ページの `更新` ボタンを削除し、テーブル直上の フィルタ行に IconRefresh のみのアイコンボタンを置く (aria-label="一覧を再読み込み")。AdminUsers / AdminClients / AdminConsents / AdminAuditEvents / AdminKeys / AdminTenants の 6 ページを揃える。
-  - api: admin dashboard 用の集計は **専用 endpoint を作らず**、既存 list endpoint を並列に叩いて UI 側で count する (page load 時に Promise.all)。endpoint 追加は scope が膨らむので避ける。, 既存 `listAdminAuditEvents` の `after` パラメータで 24h 絞り込みを admin dashboard 側で行う。
-  - routing: `/admin` を AdminDashboardPage に割り当てる。loadPageData の ディスパッチに追加する。, 既存 `/admin/users` 等の挙動は変更しない。
-  - navigation: `adminNavItems` の "概要" を有効化し、`href='/admin'`、 `active = path === '/admin'` で他項目と排他にする。
-- **scl**: 変更なし。新規 endpoint / 新規モデル / 新規 event は導入しない。 ダッシュボードは既存データの read-only 集計表示のみ。
-- **documentation**: idmagic/README.md と idmagic/ui/README.md には新規記述を 増やさない (admin 画面の sidebar に "概要" が増えるだけのため、 README の admin UI 説明の文言は微調整のみ可)。
+  - pages:
+    - LoginPage — "パスワードを忘れた場合" リンクを password 入力欄 の **下** (送信ボタンの直前 or 直後) に移動する。tab order が `username → password → submit → forgot link` になるよう DOM 順を直す。視覚的なヒエラルキー (font-size / color) は 現状を踏襲し、主要 CTA (送信ボタン) より目立たないことを維持 する。
+    - AdminUsersPage — 既存の `AttributeEditorDialog` を `UserEditorDialog` にリネーム (or 統合) し、Profile セクション と Roles セクションを内側に並べる。Profile 4 項目 (preferred_username / name / email / email_verified) と Roles 編集を 1 つの保存ボタンで送信する。Roles に変更がある ときだけ、保存前に "review changes" の second-step confirmation を出す (現 RoleEditorDialog の動線を移植する)。Profile だけ の変更なら一発で送信。UserDetails 詳細パネルの "ロールを変更" ボタンを削除し、"属性を編集" ボタンを "編集" (or "編集 (属性 とロール)") に改名する。api.ts は `updateAdminUserAttributes` と `updateAdminUserRoles` を残したまま、ダイアログ側で 「変更があった項目だけ送る」or「両方一括 PATCH」のどちらかに 統一する (推奨は後者: backend の `UpdateUserInput` が pointer optional なので、変更フィールドだけ非 nil で送れば既存の use case で完結する)。
+    - AdminDashboardPage (新規) — ルート: `/admin` (tenant 内)。 既存 sidebar の "概要" 項目に紐付ける (`adminNav.ts` の disabled を解除)。カード 4 枚: 総ユーザー数 (active / disabled の比率) / クライアント数 (`active` のみカウント) / tenant 内 consent 数 (`active` のみカウント) / 24h 以内の admin audit event 数。直近 5 件の audit event リスト (timestamp / type / actor → target)。クリックで AdminAuditEventsPage の filter に飛ばす。クイックリンク (アイコン付き 4-6 枚): "ユーザを追加" / "クライアントを追加" / "鍵を確認" / "監査ログを開く"。tenant 管理リンクは `system_admin` かつ default tenant の時のみ出す。
+    - 全 admin ページの `更新` ボタンを削除し、テーブル直上の フィルタ行に IconRefresh のみのアイコンボタンを置く (aria-label="一覧を再読み込み")。AdminUsers / AdminClients / AdminConsents / AdminAuditEvents / AdminKeys / AdminTenants の 6 ページを揃える。
+  - api:
+    - admin dashboard 用の集計は **専用 endpoint を作らず**、既存 list endpoint を並列に叩いて UI 側で count する (page load 時に Promise.all)。endpoint 追加は scope が膨らむので避ける。
+    - 既存 `listAdminAuditEvents` の `after` パラメータで 24h 絞り込みを admin dashboard 側で行う。
+  - routing:
+    - `/admin` を AdminDashboardPage に割り当てる。loadPageData の ディスパッチに追加する。
+    - 既存 `/admin/users` 等の挙動は変更しない。
+  - navigation:
+    - `adminNavItems` の "概要" を有効化し、`href='/admin'`、 `active = path === '/admin'` で他項目と排他にする。
+- **scl**:
+  - 変更なし。新規 endpoint / 新規モデル / 新規 event は導入しない。 ダッシュボードは既存データの read-only 集計表示のみ。
+- **documentation**:
+  - idmagic/README.md と idmagic/ui/README.md には新規記述を 増やさない (admin 画面の sidebar に "概要" が増えるだけのため、 README の admin UI 説明の文言は微調整のみ可)。
 
 # Out of Scope
 - 新規 backend endpoint (集計 API / metrics API)。
@@ -48,10 +60,11 @@ risk: medium
 - end user 側 (`/account/*`) の改修。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `go test ./internal/adapters/http/...` (in: idmagic)
+  - reason: backend は変更しないが、admin handler テストで wire 形式の 回帰がないことを確認する。
 - 手動 1 (LoginPage): username → tab → password → tab → submit ボタンの順で focus が遷移すること、forgot link は submit の直後 で focus 可能になることを確認。
 - 手動 2 (UserEditorDialog): alice の name と email を変更 → 保存 → 一覧と detail に反映、audit に user.updated が出ることを確認。 続けて roles を変更 → review confirmation が出てから保存できる ことを確認。両方同時に変更しても 1 リクエストで反映されることを 確認。
 - 手動 3 (AdminDashboardPage): `/admin` を開いてカード 4 枚と直近 audit event が出ること、クイックリンクの 4-6 ボタンが対応ページ に遷移すること、`system_admin` で default realm のときだけ tenant クイックリンクが出ること。
@@ -100,8 +113,18 @@ AdminDashboardPage は既存 list endpoint を集計に流用するため、tena
   primary 操作と並んで見えていた refresh が、副次的な affordance として
   正しく扱われる位置に収まった。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok (tsc --noEmit pass)
+  - `bun --cwd idmagic/ui lint`
+    - result: ok (biome lint pass, 40 files)
+  - `bun --cwd idmagic/ui build`
+    - result: ok (vite build pass, 6284 modules)
+  - `go test ./internal/adapters/http/...` (in: idmagic)
+    - result: ok (admin handler 既存テストの回帰なし)
   - 手動確認 (residual): 各 commit ごとの実ブラウザ操作は本セッションでは 未実施。typecheck / lint / build / go test がすべて緑であることから 回帰の主リスクは低いが、wi-10 の verification にある手動 1〜4 は dev サーバ起動時に行う必要がある。
+- **Affected Guarantees State**:
+  - admin RBAC: AdminDashboardPage は既存 `verifyBrowserRequest` + `requireAdmin` を通る (新規経路を追加していないため)。
+  - CSRF: dashboard は read-only のため CSRF token 不要。GET endpoint のみ。UserEditorDialog の保存は既存 PATCH の CSRF protection をそのまま 使う。
+  - UserEditorDialog: ロール変更時の "review changes" 二段階確認は維持。 admin / system_admin role の付け外しが他の編集に紛れて起きない。
+  - SCL coherence: scl.yaml を変更していないため SCLPermissionsCoverage 系テストは無影響。
+  - backend 既存挙動: PATCH `/admin/users/:sub` の pointer-optional semantics に乗り、変更フィールドのみを送る。`equalOptionalString` で no-change を判定する既存 use case 挙動は不変。

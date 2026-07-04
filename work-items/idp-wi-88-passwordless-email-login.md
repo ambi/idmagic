@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: medium
 ---
+
 # Motivation
 現状の first-factor は password のみで、パスワードレスの選択肢が無い。代表的な
 IdP はいずれも email ベースのパスワードレス認証を持つ:
@@ -21,12 +22,24 @@ passwordless first-factor を、テナント設定でゲートして追加する
 passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 
 # Scope
-- **decision**: 新規 ADR: email magic link / email OTP を passwordless first-factor として 採用する。challenge は期限付き・単発消費 (ADR-030 の one-time token 方針)、 amr / acr へ反映 (例 amr: otp / mfa)、account enumeration 抑止、テナント設定 (allow_passwordless_email) でのゲートを記録する。
-- **scl**: §3.3 interfaces: StartEmailLogin (email 入力で challenge 発行) と CompleteEmailLogin (code 入力 / link 検証) を追加する。, [object Object], §3.4 states/events: EmailLoginChallengeIssued / EmailLoginSucceeded を 追加する。, §3.5 invariants: challenge は単発消費・短命・試行回数制限を明示する。, §3.6 scenarios: email login 成立と、期限切れ / 再利用拒否のシナリオを追加。, [object Object]
-- **go**: email login challenge ストア (port + memory + postgres + migration) を password reset token と同パターンで追加し、既存 email sender で送信する。, usecase: challenge 発行 / 検証を追加し、成功時に既存の browser session / 認証イベントへ配線する。amr を正しく反映する。
-- **http**: POST /login/email/start / POST /login/email/verify と、magic link の landing ルートを追加する (CSRF + same-origin)。試行回数 / rate limit は [[wi-27-endpoint-rate-limit-and-bot-mitigation]] に委譲する。
-- **ui**: LoginPage に「email でログイン」導線を追加し、EmailLoginPage (code 入力) と magic link の着地画面を追加する。
-- **documentation**: README に passwordless email login の有効化と磁気リンクの扱いを追記する。
+- **decision**:
+  - 新規 ADR: email magic link / email OTP を passwordless first-factor として 採用する。challenge は期限付き・単発消費 (ADR-030 の one-time token 方針)、 amr / acr へ反映 (例 amr: otp / mfa)、account enumeration 抑止、テナント設定 (allow_passwordless_email) でのゲートを記録する。
+- **scl**:
+  - §3.3 interfaces: StartEmailLogin (email 入力で challenge 発行) と CompleteEmailLogin (code 入力 / link 検証) を追加する。
+  - §3.2 models: EmailLoginChallenge を追加する。
+  - §3.4 states/events: EmailLoginChallengeIssued / EmailLoginSucceeded を 追加する。
+  - §3.5 invariants: challenge は単発消費・短命・試行回数制限を明示する。
+  - §3.6 scenarios: email login 成立と、期限切れ / 再利用拒否のシナリオを追加。
+  - tenancy: AdminSettings に allow_passwordless_email を追加する。
+- **go**:
+  - email login challenge ストア (port + memory + postgres + migration) を password reset token と同パターンで追加し、既存 email sender で送信する。
+  - usecase: challenge 発行 / 検証を追加し、成功時に既存の browser session / 認証イベントへ配線する。amr を正しく反映する。
+- **http**:
+  - POST /login/email/start / POST /login/email/verify と、magic link の landing ルートを追加する (CSRF + same-origin)。試行回数 / rate limit は [[wi-27-endpoint-rate-limit-and-bot-mitigation]] に委譲する。
+- **ui**:
+  - LoginPage に「email でログイン」導線を追加し、EmailLoginPage (code 入力) と magic link の着地画面を追加する。
+- **documentation**:
+  - README に passwordless email login の有効化と磁気リンクの扱いを追記する。
 
 # Out of Scope
 - SMS / 音声 OTP (外部 gateway 依存の別 WI)。
@@ -35,12 +48,12 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 - step-up での email factor 利用 (初期は first-factor login に限定)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
 - 手動: テナント設定で有効化 → email でログイン開始 → 届いた code / link で サインイン成立。期限切れ / 使用済み challenge が拒否されることを確認する。
 
 # Risk Notes

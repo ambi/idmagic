@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: high
 ---
+
 # Motivation
 Okta の App Sign-On Policy も Entra ID の Conditional Access も、認証強度や許可条件を
 テナント全体ではなくアプリケーション単位で要求できる。「この業務アプリは MFA 必須」
@@ -21,11 +22,22 @@ idmagic は現状、認証強度をアプリ単位で要求する仕組みを持
 step-up 可能なら昇格を促す。
 
 # Scope
-- **decision**: 新規 ADR-067: アプリ別サインオンポリシーの所有と評価点を確定する。ポリシーは ApplicationCatalog が所有し、評価は各 protocol context のフェデレーション開始時に Authentication の AuthenticationContext を入力として行う。条件 (要求 acr / 要求 factor、ネットワーク、デバイス信頼、再認証 max_age) の初期サポート範囲、 満たさない場合の挙動 (step-up 誘導 or 拒否) を決める。
-- **scl**: ApplicationCatalog に AppSignOnPolicy / SignOnRule / AccessCondition (network / device / reauthMaxAge) / RequiredAuthnLevel (required acr / factor) を追加する。, interface: 管理者の sign-on policy CRUD (Application 配下)。評価は既存 フェデレーション開始 interface (Authorize / WsFederationSignIn / 将来 SAML SSO) 内で行う。, [object Object], invariant: AppPolicyFailClosed (要求を満たせない場合トークン/アサーションを発行しない)、 AppPolicyEvaluatedAcrossProtocols (全 binding で同じポリシーを評価する)。, [object Object]
-- **go**: sign-on policy の persistence (application_sign_on_policies テーブル、tenant scope)。, フェデレーション開始経路でポリシー評価器を呼び、AuthenticationContext と条件を突き合わせ、 不足時は step-up へ誘導するか fail-closed で拒否する。
-- **http**: /admin/applications/{id}/sign-on-policy の取得/更新。
-- **ui**: [object Object], [object Object]
+- **decision**:
+  - 新規 ADR-067: アプリ別サインオンポリシーの所有と評価点を確定する。ポリシーは ApplicationCatalog が所有し、評価は各 protocol context のフェデレーション開始時に Authentication の AuthenticationContext を入力として行う。条件 (要求 acr / 要求 factor、ネットワーク、デバイス信頼、再認証 max_age) の初期サポート範囲、 満たさない場合の挙動 (step-up 誘導 or 拒否) を決める。
+- **scl**:
+  - ApplicationCatalog に AppSignOnPolicy / SignOnRule / AccessCondition (network / device / reauthMaxAge) / RequiredAuthnLevel (required acr / factor) を追加する。
+  - interface: 管理者の sign-on policy CRUD (Application 配下)。評価は既存 フェデレーション開始 interface (Authorize / WsFederationSignIn / 将来 SAML SSO) 内で行う。
+  - event: AppSignOnPolicyUpdated / AppAccessDeniedByPolicy / AppStepUpRequired。
+  - invariant: AppPolicyFailClosed (要求を満たせない場合トークン/アサーションを発行しない)、 AppPolicyEvaluatedAcrossProtocols (全 binding で同じポリシーを評価する)。
+  - permission: AdminApplicationPoliciesManage。
+- **go**:
+  - sign-on policy の persistence (application_sign_on_policies テーブル、tenant scope)。
+  - フェデレーション開始経路でポリシー評価器を呼び、AuthenticationContext と条件を突き合わせ、 不足時は step-up へ誘導するか fail-closed で拒否する。
+- **http**:
+  - /admin/applications/{id}/sign-on-policy の取得/更新。
+- **ui**:
+  - admin: Application 詳細に sign-on policy エディタ (要求強度・条件)。
+  - account/auth-flow: ポリシー不足時の step-up 画面誘導と拒否時の明確な理由表示。
 
 # Out of Scope
 - リスクスコアリング/UEBA など動的リスク評価エンジン。初期は静的条件のみ。
@@ -34,13 +46,13 @@ step-up 可能なら昇格を促す。
 - 割当そのもの ([[wi-69-application-catalog-aggregate-and-assignment]])。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `bun run yaml-check:work-items` (in: tools)
+- `bun run yaml-check:scl` (in: tools)
 - 手動: MFA 必須ポリシーを設定したアプリに単要素セッションでアクセスし step-up に 誘導され、昇格後に SSO 完了することを確認する。step-up 不可条件では拒否されることを確認する。
 
 # Risk Notes

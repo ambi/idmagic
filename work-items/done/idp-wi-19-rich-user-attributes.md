@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 現在の `spec.User` は OIDC Core の最小プロファイル
 (`sub` / `preferred_username` / `name` / `given_name` / `family_name` /
@@ -47,33 +48,55 @@ API / SCIM / OIDC UserInfo / 監査の各境界に同時に響くため、影響
 慎重に分けて段階的に追加する。
 
 # Scope
-- **decision**: 新規 ADR を 1 本追加する: **ADR-037 user-profile-shape**。 OIDC Core §5.1 必須クレーム + SCIM Core/Enterprise + tenant-defined custom attributes の 3 層構造を `spec.User` に持たせる方針と、 Keycloak の "UserProfile SPI" を参考に **属性を declarative schema で管理する** か **構造体直書きを増やす** かの判断を 記録する。本 WI では実装容易性を優先して **構造体直書き (OIDC 標準) + 別 aggregate (組織属性) + map[string]CustomAttr (custom)** の混合方式を採用し、その理由を ADR に書く。, ADR-038 user-custom-attribute-policy: テナント定義のカスタム属性に ついて、(a) 属性名の命名規則 (snake_case / namespace prefix の 強制), (b) 値の型 (string / int / bool / date / multi-valued string), (c) 可視性 (private / self_readable / admin_readable / claim_exposed), (d) 必須/任意, (e) 変更権限 (admin only / user editable) を定義する schema を tenant 単位で持つ方針を記す。, 既存 ADR-031 (admin-user-api-and-rbac) と ADR-036 (user-deletion- and-anonymization) は属性の増加に追随して、(a) 監査ログに含める attribute の許容リスト、(b) tombstone 時に何を残し何を消すか、を 更新する。新 ADR の追記 1〜2 行で済む想定。
-- **scl**: `User` model に OIDC §5.1 標準クレーム (`middle_name` / `nickname` / `profile` / `picture` / `website` / `gender` / `birthdate` / `zoneinfo` / `locale` / `phone_number` / `phone_number_verified` / `updated_at`) を pointer-optional で追加する。`address` は OIDC `address` Claim (RFC 5.1.1) と同形の `AddressClaim` 型を 別 model として定義し、`User.address: AddressClaim, optional` とする。, `UserOrganization` を新 model として定義し、`User.organization: UserOrganization, optional` を持たせる。フィールド: `title` / `department` / `division` / `organization_name` / `employee_number` / `cost_center` / `manager_sub` / `hire_date` / `employment_type`。SCIM `enterprise:User` 拡張と同等。, `UserLifecycle` を新 model として、`status: UserStatus {active / disabled / locked / staged / suspended}` / `last_login_at` / `password_changed_at` / `required_actions: RequiredAction[]` を持たせる。`disabled_at` / `deleted_at` は `UserLifecycle` 内に移して User 直下から消す (migration: 既存 フィールドを保ったまま二重持ち→片方を deprecate)。, `TenantAttributeSchema` 新 aggregate: tenant が保有する custom attribute 定義 (`key` / `type` / `multi_valued` / `required` / `editable_by_user` / `claim_name` / `visibility`) を tenant 単位 で並べる。`User.custom_attributes: map<string, CustomAttrValue>` を tenant の schema に対して validate する flow を SCL の precondition に書く。, 新規イベント:
-  UserRequiredActionSet / UserRequiredActionCleared
-    (tenantId / targetSub / action / actorSub)
-profile / 組織 / 連絡先 / custom 属性の変更は ADR-039 の
-thin-core 再設計に伴い既存 `UserUpdated` (changedFields に
-"attributes" 等を載せる) に集約し、属性ごとの粒度イベント
-(UserProfileUpdated / UserOrganizationUpdated / UserContact* /
-UserCustomAttributeUpdated) は導入しない。, 新規 interface:
-  UpdateUserProfile        (Authentication / self、実装済み)
-  SetUserRequiredAction / ClearUserRequiredAction (Authentication / admin)
-  GetTenantAttributeSchema / UpdateTenantAttributeSchema (Tenancy、実装済み)
-組織属性は admin の `UpdateAdminUser` が attributes 経由で扱い、
-self-service 経路 (end-user 用) は `UpdateUserProfile` に分けて
-admin/self の境界を表現する。連絡先専用 interface
-(AddUserContact 等) は多値連絡先を採らないため設けない。
+- **decision**:
+  - 新規 ADR を 1 本追加する: **ADR-037 user-profile-shape**。 OIDC Core §5.1 必須クレーム + SCIM Core/Enterprise + tenant-defined custom attributes の 3 層構造を `spec.User` に持たせる方針と、 Keycloak の "UserProfile SPI" を参考に **属性を declarative schema で管理する** か **構造体直書きを増やす** かの判断を 記録する。本 WI では実装容易性を優先して **構造体直書き (OIDC 標準) + 別 aggregate (組織属性) + map[string]CustomAttr (custom)** の混合方式を採用し、その理由を ADR に書く。
+  - ADR-038 user-custom-attribute-policy: テナント定義のカスタム属性に ついて、(a) 属性名の命名規則 (snake_case / namespace prefix の 強制), (b) 値の型 (string / int / bool / date / multi-valued string), (c) 可視性 (private / self_readable / admin_readable / claim_exposed), (d) 必須/任意, (e) 変更権限 (admin only / user editable) を定義する schema を tenant 単位で持つ方針を記す。
+  - 既存 ADR-031 (admin-user-api-and-rbac) と ADR-036 (user-deletion- and-anonymization) は属性の増加に追随して、(a) 監査ログに含める attribute の許容リスト、(b) tombstone 時に何を残し何を消すか、を 更新する。新 ADR の追記 1〜2 行で済む想定。
+- **scl**:
+  - `User` model に OIDC §5.1 標準クレーム (`middle_name` / `nickname` / `profile` / `picture` / `website` / `gender` / `birthdate` / `zoneinfo` / `locale` / `phone_number` / `phone_number_verified` / `updated_at`) を pointer-optional で追加する。`address` は OIDC `address` Claim (RFC 5.1.1) と同形の `AddressClaim` 型を 別 model として定義し、`User.address: AddressClaim, optional` とする。
+  - `UserOrganization` を新 model として定義し、`User.organization: UserOrganization, optional` を持たせる。フィールド: `title` / `department` / `division` / `organization_name` / `employee_number` / `cost_center` / `manager_sub` / `hire_date` / `employment_type`。SCIM `enterprise:User` 拡張と同等。
+  - `UserLifecycle` を新 model として、`status: UserStatus {active / disabled / locked / staged / suspended}` / `last_login_at` / `password_changed_at` / `required_actions: RequiredAction[]` を持たせる。`disabled_at` / `deleted_at` は `UserLifecycle` 内に移して User 直下から消す (migration: 既存 フィールドを保ったまま二重持ち→片方を deprecate)。
+  - `TenantAttributeSchema` 新 aggregate: tenant が保有する custom attribute 定義 (`key` / `type` / `multi_valued` / `required` / `editable_by_user` / `claim_name` / `visibility`) を tenant 単位 で並べる。`User.custom_attributes: map<string, CustomAttrValue>` を tenant の schema に対して validate する flow を SCL の precondition に書く。
+  - 新規イベント:
+      UserRequiredActionSet / UserRequiredActionCleared
+        (tenantId / targetSub / action / actorSub)
+    profile / 組織 / 連絡先 / custom 属性の変更は ADR-039 の thin-core 再設計に伴い既存 `UserUpdated` (changedFields に "attributes" 等を載せる) に集約し、属性ごとの粒度イベント (UserProfileUpdated / UserOrganizationUpdated / UserContact* / UserCustomAttributeUpdated) は導入しない。
+  - 新規 interface:
+      UpdateUserProfile        (Authentication / self、実装済み)
+      SetUserRequiredAction / ClearUserRequiredAction (Authentication / admin)
+      GetTenantAttributeSchema / UpdateTenantAttributeSchema (Tenancy、実装済み)
+    組織属性は admin の `UpdateAdminUser` が attributes 経由で扱い、 self-service 経路 (end-user 用) は `UpdateUserProfile` に分けて admin/self の境界を表現する。連絡先専用 interface (AddUserContact 等) は多値連絡先を採らないため設けない。
 - **go**:
-  - domain: `internal/spec/schemas.go` の `User` struct を上記 SCL に合わせて 拡張する。既存フィールド (`Name` / `Email` / `EmailVerified`) は 後方互換のため残す (UserContact.Emails と二重持ち)。`Validate` と JSON タグを更新する。Schema は zog で OIDC Core / SCIM の文字列長制限 (e.g. `phone_number` E.164 マッチ) を含めて 追加する。, 新型 `AddressClaim` / `UserOrganization` / `UserContact` / `UserLifecycle` / `VerifiedClaim` / `CustomAttrValue` / `TenantAttributeDef` を `internal/spec/schemas.go` に追加し、 zog schema と Validate() を生やす。`CustomAttrValue` は sum type (string / number / boolean / date / string[]) として union 表現する。, `internal/tenancy` に `TenantAttributeSchema` aggregate と repository port を追加する。tenant aggregate 自体に embed する のではなく独立 aggregate として持ち、tenant 削除時に cascade する規約を新たに ADR で言及する。
-  - http: `/api/admin/users/{sub}` の PATCH を拡張し、新フィールドを pointer-optional で受ける。レスポンスは展開済みの `UserDetail` (User + UserOrganization + UserContact + UserLifecycle + custom_attributes + verified_claims) を返す。 admin の RBAC は `AdminUserWrite`。, end-user 向け `/api/account/profile` (GET / PATCH) を新設し、 self が変更可能な属性だけを許す (UserOrganization / status / required_actions / roles は admin only)。, `/api/admin/tenant/attribute_schema` (GET / PUT) を新設し、 テナントの custom attribute schema を admin が編集できる。, `/api/auth/userinfo` (OIDC) を拡張し、対象 scope に応じて新 clamls を返す。`profile` scope に OIDC §5.4 で定義済みの 標準クレーム、`phone` scope に `phone_number` / `phone_number_verified`、`address` scope に `address`、 `custom_attribute` scope (新設) に visibility=claim_exposed の custom attribute をそれぞれ通す。
-  - usecases: `usecases.UpdateUser` / `UpdateAdminUser` を上記の新 interface に 分解する。共通の "profile patch" の検証は 1 つの関数に集約し、 admin / self の差は actor の permission で吸収する。, `usecases.UpdateUserProfile` (self) は `editable_by_user=true` の custom attribute / 連絡先以外を変更できないことを保証する。 admin への昇格は `UpdateAdminUser` 経由に限定する。, `RequiredAction` の集合を変更する API は admin 専用とし、 `ClearRequiredAction` のうち本人の能動 (例: 自分で パスワードを変えた結果として `UPDATE_PASSWORD` を消す) は 既存 use case (`ChangePassword` 等) から自動で発火させる。, 既存 admin event emit を新型イベントに分割する。changedKeys の集計はパッチ前後の構造体 diff を取って計算する小関数を 新設する (新規 dep: 無し、reflect 不要、enum 化した keys を 手書き)。
-  - persistence: in-memory adapter / Postgres adapter とも ADR-039 の通り `lifecycle` / `attributes` を JSONB の単一カラムに格納する (migration 0009)。多値属性の別テーブル化 (`user_emails` 等) は 採らない (上記 amendments(a))。required_actions / last_login_at / password_changed_at は `lifecycle` JSONB に含めて Save で追従するため追加スキーマは不要。
-  - audit: 新イベント (UserRequiredActionSet / Cleared) を `audit_event_record.go` 経由でレコード化する。属性値の平文は 残さず changedFields 粒度に留める規約 (ADR-018 / ADR-039) を継続。
+  - domain:
+    - `internal/spec/schemas.go` の `User` struct を上記 SCL に合わせて 拡張する。既存フィールド (`Name` / `Email` / `EmailVerified`) は 後方互換のため残す (UserContact.Emails と二重持ち)。`Validate` と JSON タグを更新する。Schema は zog で OIDC Core / SCIM の文字列長制限 (e.g. `phone_number` E.164 マッチ) を含めて 追加する。
+    - 新型 `AddressClaim` / `UserOrganization` / `UserContact` / `UserLifecycle` / `VerifiedClaim` / `CustomAttrValue` / `TenantAttributeDef` を `internal/spec/schemas.go` に追加し、 zog schema と Validate() を生やす。`CustomAttrValue` は sum type (string / number / boolean / date / string[]) として union 表現する。
+    - `internal/tenancy` に `TenantAttributeSchema` aggregate と repository port を追加する。tenant aggregate 自体に embed する のではなく独立 aggregate として持ち、tenant 削除時に cascade する規約を新たに ADR で言及する。
+  - http:
+    - `/api/admin/users/{sub}` の PATCH を拡張し、新フィールドを pointer-optional で受ける。レスポンスは展開済みの `UserDetail` (User + UserOrganization + UserContact + UserLifecycle + custom_attributes + verified_claims) を返す。 admin の RBAC は `AdminUserWrite`。
+    - end-user 向け `/api/account/profile` (GET / PATCH) を新設し、 self が変更可能な属性だけを許す (UserOrganization / status / required_actions / roles は admin only)。
+    - `/api/admin/tenant/attribute_schema` (GET / PUT) を新設し、 テナントの custom attribute schema を admin が編集できる。
+    - `/api/auth/userinfo` (OIDC) を拡張し、対象 scope に応じて新 clamls を返す。`profile` scope に OIDC §5.4 で定義済みの 標準クレーム、`phone` scope に `phone_number` / `phone_number_verified`、`address` scope に `address`、 `custom_attribute` scope (新設) に visibility=claim_exposed の custom attribute をそれぞれ通す。
+  - usecases:
+    - `usecases.UpdateUser` / `UpdateAdminUser` を上記の新 interface に 分解する。共通の "profile patch" の検証は 1 つの関数に集約し、 admin / self の差は actor の permission で吸収する。
+    - `usecases.UpdateUserProfile` (self) は `editable_by_user=true` の custom attribute / 連絡先以外を変更できないことを保証する。 admin への昇格は `UpdateAdminUser` 経由に限定する。
+    - `RequiredAction` の集合を変更する API は admin 専用とし、 `ClearRequiredAction` のうち本人の能動 (例: 自分で パスワードを変えた結果として `UPDATE_PASSWORD` を消す) は 既存 use case (`ChangePassword` 等) から自動で発火させる。
+    - 既存 admin event emit を新型イベントに分割する。changedKeys の集計はパッチ前後の構造体 diff を取って計算する小関数を 新設する (新規 dep: 無し、reflect 不要、enum 化した keys を 手書き)。
+  - persistence:
+    - in-memory adapter / Postgres adapter とも ADR-039 の通り `lifecycle` / `attributes` を JSONB の単一カラムに格納する (migration 0009)。多値属性の別テーブル化 (`user_emails` 等) は 採らない (上記 amendments(a))。required_actions / last_login_at / password_changed_at は `lifecycle` JSONB に含めて Save で追従するため追加スキーマは不要。
+  - audit:
+    - 新イベント (UserRequiredActionSet / Cleared) を `audit_event_record.go` 経由でレコード化する。属性値の平文は 残さず changedFields 粒度に留める規約 (ADR-018 / ADR-039) を継続。
 - **ui**:
-  - api: `ui/src/types.ts` に新フィールド・新型を追加。`UserDetail` responseShape を admin 用と self 用の 2 系統に分け、両者の 共通部分のみを `UserProfile` として抽出する。
-  - pages: `AdminUsersPage` の user editor に attributes 編集と Required Actions の付与/解除、last_login_at / password_changed_at の read-only 表示を追加する。多値連絡先 / Verified Claims タブは 設けない (上記 amendments)。詳細 2-pane 化は wi-21 と共通で扱う。, `/admin/tenant/attributes` ページを新設し、tenant の custom attribute schema を編集できるようにする。新規 nav 項目 `Attributes` (admin nav 配下、Settings タブ内のサブ項目でも可)。, end-user 側のプロフィール編集ページは本 WI ではバックエンド + 最小フォームだけ用意し、本格 UI は [[wi-21-end-user-account-portal]] 側で扱う。
-  - routing: `/admin/users/{sub}` のサブパスを正式に作る (現在は list query のみ)。`/admin/tenant/attributes` を追加。
-- **documentation**: idmagic/README.md に "User attribute model" のセクションを 設けて 3 層構造 (OIDC 標準 / SCIM Enterprise / Custom) を 5 行 程度で記述する。, SPECIFICATION_CORE_LANGUAGE.md には触れない (本 WI は SCL の ドキュメント側ではなく `spec/scl.yaml` の語彙拡張のみ)。
+  - api:
+    - `ui/src/types.ts` に新フィールド・新型を追加。`UserDetail` responseShape を admin 用と self 用の 2 系統に分け、両者の 共通部分のみを `UserProfile` として抽出する。
+  - pages:
+    - `AdminUsersPage` の user editor に attributes 編集と Required Actions の付与/解除、last_login_at / password_changed_at の read-only 表示を追加する。多値連絡先 / Verified Claims タブは 設けない (上記 amendments)。詳細 2-pane 化は wi-21 と共通で扱う。
+    - `/admin/tenant/attributes` ページを新設し、tenant の custom attribute schema を編集できるようにする。新規 nav 項目 `Attributes` (admin nav 配下、Settings タブ内のサブ項目でも可)。
+    - end-user 側のプロフィール編集ページは本 WI ではバックエンド + 最小フォームだけ用意し、本格 UI は [[wi-21-end-user-account-portal]] 側で扱う。
+  - routing:
+    - `/admin/users/{sub}` のサブパスを正式に作る (現在は list query のみ)。`/admin/tenant/attributes` を追加。
+- **documentation**:
+  - idmagic/README.md に "User attribute model" のセクションを 設けて 3 層構造 (OIDC 標準 / SCIM Enterprise / Custom) を 5 行 程度で記述する。
+  - SPECIFICATION_CORE_LANGUAGE.md には触れない (本 WI は SCL の ドキュメント側ではなく `spec/scl.yaml` の語彙拡張のみ)。
 
 # Out of Scope
 - SCIM 2.0 サーバ実装 (`/scim/v2/Users` の HTTP インターフェース 全体)。User attribute model は SCIM Core/Enterprise に互換にする が、SCIM プロトコル本体は別 WI。
@@ -85,12 +108,13 @@ admin/self の境界を表現する。連絡先専用 interface
 - SCIM の bulk operations / patch operations、属性 schema 配布 (Schemas endpoint) の RP 向け露出。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: 新 schema の validate / use case の admin・self 境界 / tenant attribute schema の custom attribute 検証 / multi-valued contact の primary 一意制約 / required actions の自動クリア (パスワード 変更で UPDATE_PASSWORD が消える) の各単体テスト。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
 - 手動 1: admin が `/admin/users/{sub}` の detail で organization / contact / required actions / custom attribute を編集 → リロード 後に反映され、`UserProfileUpdated` 等のイベントが `/admin/audit_events` に表示される。
 - 手動 2: tenant の attribute schema に `region` (string, required, editable_by_user=false) を追加 → 新規 user 作成時に admin から のみ設定でき、self では編集できないことを確認。
 - 手動 3: OIDC のクライアントが `scope=openid profile phone address` で /authorize → 取得した ID Token / UserInfo に新クレームが 出現することを `demo-client` の callback ページで確認。
@@ -140,11 +164,26 @@ scope_split を別途用意することを推奨。
   当初設計のうち amendments(a)〜(c) (多値連絡先 / VerifiedClaim / 属性ごとの
   粒度イベント) を thin-core 再設計に伴い正式に descope した。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `go test ./...` (in: idmagic)
+    - result: ok
+  - `golangci-lint run ./...` (in: idmagic)
+    - result: 0 issues
+  - `go build ./...` (in: idmagic)
+    - result: ok
+  - `bun run yaml-check:all` (in: tools)
+    - result: ok
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui lint`
+    - result: ok (46 files)
+  - `bun --cwd idmagic/ui build`
+    - result: ok
   - 手動 1-7 は実ブラウザでの目視確認が未実施。
+- **Affected Guarantees State**:
+  - tenant isolation: 新規 API は requestTenantID / loadTenantUser でテナント越え参照を拒否 (ADR-034)。
+  - admin RBAC: SetUserRequiredAction / ClearUserRequiredAction は requireAdmin 必須。self 経路 (UpdateUserProfile) とは分離。
+  - OIDC ID Token / UserInfo: 既存 RP のクレーム集合は不変。scope gating は ClaimsForScopes で維持。
+  - 監査ログ: UserRequiredActionSet/Cleared は changedFields/enum 粒度のみ平文。属性値は ADR-018/039 に従い非露出。
+  - SCL coherence: events (UserRequiredActionSet/Cleared)・interfaces (Set/ClearUserRequiredAction)・AdminUserResponse/AdminRequiredActionRequest を SCL/Go 同期。yaml-check:scl + coherence test OK。
+  - backwards compatibility: admin API レスポンスはフィールド追加のみ。
+  - 内部表現の非露出: Required Actions の UI は requiredActionLabel() で日本語化し snake_case enum を表示しない。

@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: medium
 ---
+
 # Motivation
 現状の設定は bootstrap の各所で `envDefault` / `envInt` / `envDuration` を
 直接呼んで読み、値の妥当性を集中検証しない。特に `envInt` / `envDuration` は
@@ -22,9 +23,15 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 起動時に明確なエラーで止める。
 
 # Scope
-- **decision**: 新規 ADR: 設定を集約する Config 型の位置づけ、fail-fast の対象（必須欠落・型不正・ 範囲外・相互矛盾）と、後方互換のために warning に留める範囲を定義する。 secret は値をログに出さない方針を明記する。
-- **go**: env 由来設定を単一の Config 構造体へ集約してパース・検証する層を bootstrap に追加する。 検証失敗は Run() の起動前に集約エラーで返し、部分起動させない。, `envInt` / `envDuration` の「不正値を黙って fallback」を、少なくとも security/運用に 効く項目では明示エラー化する。範囲・必須・相互依存（persistence=postgres なら DSN 必須等）を検証する。, 検証済み Config を各 assemble / handler へ渡し、散在した os.Getenv 直参照を減らす。, secret（DSN・SMTP 資格情報・API キー等）は検証エラーやログに値を出さない。
-- **documentation**: Config 型定義から設定リファレンス（キー名・型・既定値・必須・意味）を生成し、 README から参照できるようにする。手書き一覧の二重管理を避ける。
+- **decision**:
+  - 新規 ADR: 設定を集約する Config 型の位置づけ、fail-fast の対象（必須欠落・型不正・ 範囲外・相互矛盾）と、後方互換のために warning に留める範囲を定義する。 secret は値をログに出さない方針を明記する。
+- **go**:
+  - env 由来設定を単一の Config 構造体へ集約してパース・検証する層を bootstrap に追加する。 検証失敗は Run() の起動前に集約エラーで返し、部分起動させない。
+  - `envInt` / `envDuration` の「不正値を黙って fallback」を、少なくとも security/運用に 効く項目では明示エラー化する。範囲・必須・相互依存（persistence=postgres なら DSN 必須等）を検証する。
+  - 検証済み Config を各 assemble / handler へ渡し、散在した os.Getenv 直参照を減らす。
+  - secret（DSN・SMTP 資格情報・API キー等）は検証エラーやログに値を出さない。
+- **documentation**:
+  - Config 型定義から設定リファレンス（キー名・型・既定値・必須・意味）を生成し、 README から参照できるようにする。手書き一覧の二重管理を避ける。
 
 # Out of Scope
 - 動的な設定ホットリロード。
@@ -32,8 +39,8 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 - 既存の環境変数キー名の一斉改名（互換維持を優先）。
 
 # Verification
-- [object Object]
-- [object Object]
+- `go test -race ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
 - 手動: 必須値欠落・不正 URL・矛盾する組み合わせで起動させ、明確なエラーで停止し 部分起動しないことを確認する。
 - 手動: 生成された設定リファレンスが実 Config 型と一致することを確認する。
 

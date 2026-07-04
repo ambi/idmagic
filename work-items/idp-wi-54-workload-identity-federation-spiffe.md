@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: high
 ---
+
 # Motivation
 自律エージェントは人間の介在なしにコンテナ / 関数 / VM 上で起動し、行動するため、
 長期シークレットを埋め込まない非人間 ID のブートストラップが要る。現代の基盤は
@@ -23,10 +24,17 @@ k8s SA token / クラウド federation token) を検証し、
 シークレットレスで資格情報を得られる。
 
 # Scope
-- **decision**: 新規 ADR [[ADR-053]]: 信頼する attestation 種別 (OIDC JWT を起点、X.509-SVID は将来)、 trust domain / issuer の登録方法、外部 subject から idmagic principal (Agent / client) への mapping 規則、token-exchange (RFC 8693) を交換機構に使う前提、 鍵・issuer の検証点を確定する。
-- **scl**: 新規 model: WorkloadIdentityProvider / TrustDomain / AttestationClaim / SubjectMapping。subject_token_type に workload 系を追加する。, [object Object], [object Object]
-- **go**: 外部 issuer の JWKS 取得・検証、attestation claim の検証、subject mapping、 idmagic token への交換を fail-closed で実装する。, 短命トークン既定 (long-lived 資格情報を発行しない)。
-- **http**: federation provider 管理 API。token-exchange への workload subject 受理。
+- **decision**:
+  - 新規 ADR [[ADR-053]]: 信頼する attestation 種別 (OIDC JWT を起点、X.509-SVID は将来)、 trust domain / issuer の登録方法、外部 subject から idmagic principal (Agent / client) への mapping 規則、token-exchange (RFC 8693) を交換機構に使う前提、 鍵・issuer の検証点を確定する。
+- **scl**:
+  - 新規 model: WorkloadIdentityProvider / TrustDomain / AttestationClaim / SubjectMapping。subject_token_type に workload 系を追加する。
+  - 新規 event: WorkloadIdentityProviderConfigured / WorkloadTokenExchanged / WorkloadAttestationRejected。
+  - 新規 interface: 管理用の federation provider CRUD。permission AdminWorkloadIdentityManage。
+- **go**:
+  - 外部 issuer の JWKS 取得・検証、attestation claim の検証、subject mapping、 idmagic token への交換を fail-closed で実装する。
+  - 短命トークン既定 (long-lived 資格情報を発行しない)。
+- **http**:
+  - federation provider 管理 API。token-exchange への workload subject 受理。
 
 # Out of Scope
 - SPIRE server / agent の同梱・運用 (idmagic は relying party / federation 側)。
@@ -34,9 +42,10 @@ k8s SA token / クラウド federation token) を検証し、
 - Transaction Tokens による内部サービス間伝播 (将来 WI、Txn-Tokens draft)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: 外部 JWT 検証、未登録 issuer / 改竄 attestation の拒否、subject mapping、短命 TTL の境界。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
 - 手動: mock workload issuer の token を提示 → idmagic token に交換 → 未登録 issuer は拒否されることを確認する。
 
 # Risk Notes

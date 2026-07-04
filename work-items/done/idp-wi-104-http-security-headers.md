@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 現状 Go 側にセキュリティレスポンスヘッダ（Content-Security-Policy、
 Strict-Transport-Security、X-Frame-Options / frame-ancestors、
@@ -41,11 +42,19 @@ OWASP ASVS もこれらを要求する。idmagic も UI が別プロセスでも
   許容、粗いヘッダは多層。この分担を新規 ADR に明文化する。
 
 # Scope
-- **decision**: 新規 ADR: 適用するヘッダ集合と各値、CSP の方式（nonce か hash か）、 IdP 画面は frame-ancestors 'none'（クリックジャッキング防止）とする方針、 OAuth/OIDC のリダイレクト・POST バインディング（SAML ACS 等）と矛盾しない範囲を定義する。
-- **scl**: System context に SecurityResponseHeaders / FrameAncestorsPolicy の objective を追加する。
-- **go**: セキュリティヘッダ middleware を追加し、認証系・ポータル・consent レスポンスへ一元適用する。 HSTS は TLS 終端前提を明示し、開発（http）では抑制できるようにする。, CSP を nonce ベースにし、per-request nonce を UI へ受け渡す。unsafe-inline に依存しない。 SAML/WS-Fed の自動 POST フォーム等インライン script が要る箇所は nonce/hash で許可する。, report-only モードと report 収集の切替を用意し、段階導入できるようにする。
-- **ui**: Bun ビルドの生成物が nonce ベース CSP と両立するよう、インライン script/style の扱いを整える。, CSP 違反で画面が壊れないことを e2e で担保する。
-- **documentation**: README に TLS 終端・HSTS・CSP report エンドポイントの設定を書く。
+- **decision**:
+  - 新規 ADR: 適用するヘッダ集合と各値、CSP の方式（nonce か hash か）、 IdP 画面は frame-ancestors 'none'（クリックジャッキング防止）とする方針、 OAuth/OIDC のリダイレクト・POST バインディング（SAML ACS 等）と矛盾しない範囲を定義する。
+- **scl**:
+  - System context に SecurityResponseHeaders / FrameAncestorsPolicy の objective を追加する。
+- **go**:
+  - セキュリティヘッダ middleware を追加し、認証系・ポータル・consent レスポンスへ一元適用する。 HSTS は TLS 終端前提を明示し、開発（http）では抑制できるようにする。
+  - CSP を nonce ベースにし、per-request nonce を UI へ受け渡す。unsafe-inline に依存しない。 SAML/WS-Fed の自動 POST フォーム等インライン script が要る箇所は nonce/hash で許可する。
+  - report-only モードと report 収集の切替を用意し、段階導入できるようにする。
+- **ui**:
+  - Bun ビルドの生成物が nonce ベース CSP と両立するよう、インライン script/style の扱いを整える。
+  - CSP 違反で画面が壊れないことを e2e で担保する。
+- **documentation**:
+  - README に TLS 終端・HSTS・CSP report エンドポイントの設定を書く。
 
 # Out of Scope
 - WAF / CDN 側のヘッダ注入。
@@ -53,9 +62,9 @@ OWASP ASVS もこれらを要求する。idmagic も UI が別プロセスでも
 - CORS ポリシーの再設計（必要なら別 WI）。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test -race ./...` (in: idmagic)
+- `bun run build` (in: idmagic/ui)
+- `bun run typecheck` (in: idmagic/ui)
 - 手動: login / consent / account portal のレスポンスに CSP・HSTS・frame-ancestors 'none' が 付き、iframe 埋め込みが拒否されることを確認する。
 - 手動: authorization_code フローと SAML POST バインディングが CSP enforce 下で通ることを確認する。
 

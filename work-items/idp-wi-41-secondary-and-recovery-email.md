@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: medium
 ---
+
 # Motivation
 [[wi-21-end-user-account-portal]] の account portal は primary email の
 変更 (再検証フロー) までを実装した。一方、業界の "マイページ" は primary
@@ -25,21 +26,27 @@ risk: medium
 足すか attribute の string_array で表すかを ADR で決める。
 
 # Scope
-- **decision**: 新規 ADR: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (ADR-040 の sparse attribute) として持つか、 専用 companion table を切るかを決める。検証は ADR-030 の one-time token と 同方針 (hash 保存・単発消費・期限付き) にする。
-- **scl**: 新規 interface: UpdateRecoveryEmail / UpdateRecoveryPhone / AddSecondaryEmail / VerifySecondaryEmail / RemoveSecondaryEmail (self)。 対応 model と検証イベント (RecoveryContactUpdated 等) を追加する。
-- **go**: 検証トークンストア (port + memory + postgres + migration) を email change の パターン (EmailChangeTokenStore) に倣って追加。usecase は actor.sub 固定。
-- **http**: `/api/account/recovery_email` (PUT) / `/api/account/recovery_phone` (PUT) / `/api/account/emails` (POST/DELETE) / `…/verify_start` / `…/verify_finish`。 全て CSRF + same-origin + 認証必須。
-- **ui**: AccountEmailsPage を primary / secondary / recovery に拡張し、Add / Verify / Remove / Make primary を出す。検証はメール送信のみで、リンク踏みは別ルート。
-- **documentation**: README の account portal 節に recovery / secondary 連絡先の扱いを追記。
+- **decision**:
+  - 新規 ADR: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (ADR-040 の sparse attribute) として持つか、 専用 companion table を切るかを決める。検証は ADR-030 の one-time token と 同方針 (hash 保存・単発消費・期限付き) にする。
+- **scl**:
+  - 新規 interface: UpdateRecoveryEmail / UpdateRecoveryPhone / AddSecondaryEmail / VerifySecondaryEmail / RemoveSecondaryEmail (self)。 対応 model と検証イベント (RecoveryContactUpdated 等) を追加する。
+- **go**:
+  - 検証トークンストア (port + memory + postgres + migration) を email change の パターン (EmailChangeTokenStore) に倣って追加。usecase は actor.sub 固定。
+- **http**:
+  - `/api/account/recovery_email` (PUT) / `/api/account/recovery_phone` (PUT) / `/api/account/emails` (POST/DELETE) / `…/verify_start` / `…/verify_finish`。 全て CSRF + same-origin + 認証必須。
+- **ui**:
+  - AccountEmailsPage を primary / secondary / recovery に拡張し、Add / Verify / Remove / Make primary を出す。検証はメール送信のみで、リンク踏みは別ルート。
+- **documentation**:
+  - README の account portal 節に recovery / secondary 連絡先の扱いを追記。
 
 # Out of Scope
 - SMS による電話番号検証の実送信 (検証コード生成までで、配信は通知 WI)。
 - 連絡先を使った step-up / 通知 ([[wi-43-account-portal-step-up-auth]] / 通知 WI)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `bun --cwd idmagic/ui build`
 - 手動: recovery email を設定 → 確認メールのリンクで検証完了 → 再ロードで "確認済み" 表示。secondary email を追加 → 検証 → primary に昇格できる。
 
 # Risk Notes

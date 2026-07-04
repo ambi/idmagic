@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 ログアウト状態 (session 無し) で `/admin/users` などをブラウザに
 直接打ち込むと、現状は `/api/auth/account` が 401 を返した結果、
@@ -28,13 +29,23 @@ UI 側の `request()` が AuthenticationAPIError を投げて
 
 # Scope
 - **go**:
-  - http: `/api/auth/account` の 401 ハンドリングは変更しない (バックエンド 側のレスポンスはそのまま 401 を返す)。リダイレクトは UI 層で 行う。これにより API 単体の挙動は別経路 (CLI 等) のために維持 される。, 既存の `/authorize` (GET) は未認証時に login にリダイレクトする 実装が既にある。AdminAPI ルートは別系統なのでこの動線には 乗らない。本 WI はそれを SPA 側で吸収する設計に揃える。
+  - http:
+    - `/api/auth/account` の 401 ハンドリングは変更しない (バックエンド 側のレスポンスはそのまま 401 を返す)。リダイレクトは UI 層で 行う。これにより API 単体の挙動は別経路 (CLI 等) のために維持 される。
+    - 既存の `/authorize` (GET) は未認証時に login にリダイレクトする 実装が既にある。AdminAPI ルートは別系統なのでこの動線には 乗らない。本 WI はそれを SPA 側で吸収する設計に揃える。
 - **ui**:
-  - api: ui/src/api.ts の `loadPageData()` が `/api/auth/account` を呼ぶ 際の 401 を AuthenticationAPIError ではなく、専用の `UnauthenticatedError` (新規) として扱うか、HTTP status を 判別できるよう `request()` を拡張する。, `/admin/*` 系のページ kind を返す前に account が必要なすべての 分岐で、401 を catch → return `{ kind: 'admin-unauthenticated', returnTo: <current-path> }` を返す形に揃える。
-  - pages: 新規 ページ kind `'admin-unauthenticated'` を `PageData` に 追加。router.tsx で `/admin/*` パスかつ kind が `admin-unauthenticated` の場合は、即座に `window.location.assign` で `/authorize` (= デモログイン経路) または `/login` に遷移 させる。`returnTo` は sessionStorage / URL query (`?next=/admin/users` 形式) で保持し、ログイン成功後の `continueBrowserFlow` で復元する。, 遷移先を `/authorize` にするか `/login` にするかは設計判断: idmagic 自身が IdP であり、admin もまず認可コードフローを 通って入る前提で `/authorize` を起点にする。authn 成立後、 管理 SPA に戻る redirect_uri は `/admin/*` のフルパスに 合わせる。, SPA 起点 (`/admin/users` 直打ち) からのログイン完了時、 SessionStorage に保存した returnTo パスへ `window.history. replaceState` 後にロードする。
-  - routing: 新規 `admin-unauthenticated` kind を扱う router.tsx エントリは 不要 (loadPageData 内で window.location.assign してしまうため)。 loadPageData が遷移を起こすことを明示するため、関数名や コメントを整理する。
-- **api**: 変更なし。
-- **documentation**: idmagic/ui/README.md に "未認証で /admin を直リンクすると `/authorize` 経由でログイン → 元のページに復帰" の挙動を 1〜2 行で明記する。
+  - api:
+    - ui/src/api.ts の `loadPageData()` が `/api/auth/account` を呼ぶ 際の 401 を AuthenticationAPIError ではなく、専用の `UnauthenticatedError` (新規) として扱うか、HTTP status を 判別できるよう `request()` を拡張する。
+    - `/admin/*` 系のページ kind を返す前に account が必要なすべての 分岐で、401 を catch → return `{ kind: 'admin-unauthenticated', returnTo: <current-path> }` を返す形に揃える。
+  - pages:
+    - 新規 ページ kind `'admin-unauthenticated'` を `PageData` に 追加。router.tsx で `/admin/*` パスかつ kind が `admin-unauthenticated` の場合は、即座に `window.location.assign` で `/authorize` (= デモログイン経路) または `/login` に遷移 させる。`returnTo` は sessionStorage / URL query (`?next=/admin/users` 形式) で保持し、ログイン成功後の `continueBrowserFlow` で復元する。
+    - 遷移先を `/authorize` にするか `/login` にするかは設計判断: idmagic 自身が IdP であり、admin もまず認可コードフローを 通って入る前提で `/authorize` を起点にする。authn 成立後、 管理 SPA に戻る redirect_uri は `/admin/*` のフルパスに 合わせる。
+    - SPA 起点 (`/admin/users` 直打ち) からのログイン完了時、 SessionStorage に保存した returnTo パスへ `window.history. replaceState` 後にロードする。
+  - routing:
+    - 新規 `admin-unauthenticated` kind を扱う router.tsx エントリは 不要 (loadPageData 内で window.location.assign してしまうため)。 loadPageData が遷移を起こすことを明示するため、関数名や コメントを整理する。
+- **api**:
+  - 変更なし。
+- **documentation**:
+  - idmagic/ui/README.md に "未認証で /admin を直リンクすると `/authorize` 経由でログイン → 元のページに復帰" の挙動を 1〜2 行で明記する。
 
 # Out of Scope
 - end user 側 (`/account/*`) の未認証時の挙動見直し。`/authorize` 起点の OAuth フローが既に正常で、本 WI は admin SPA だけ扱う。
@@ -44,10 +55,11 @@ UI 側の `request()` が AuthenticationAPIError を投げて
 - PKCE / state / nonce の発行を SPA 側で持つかどうかの設計 再評価。既存 `startDemoAuthorization` の枠を流用する。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `go test ./...` (in: idmagic)
+  - reason: backend に変更なし。回帰なしを再確認。
 - 手動 1: シークレットウィンドウで `/admin/users` を開く → 自動的に `/authorize` (or `/login`) に遷移する。
 - 手動 2: そのままログイン → 入力後に `/admin/users` に戻る。
 - 手動 3: シークレットウィンドウで `/admin/keys` を開く → ログイン 後に `/admin/keys` に戻る (returnTo が path に依存して動く)。
@@ -74,9 +86,17 @@ idmagic 自身が IdP であることに由来する判断。`/authorize` を選
   は SCL に既定済みの任意 `return_to` を受け取り、認証完了後に元の管理画面
   へ戻す。戻り先は現在の realm の `/admin` 配下だけを許可する。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui lint`
+    - result: ok (40 files)
+  - `bun --cwd idmagic/ui build`
+    - result: ok (6284 modules)
+  - `GOCACHE=/tmp/idmagic-cache go test -race ./...` (in: idmagic)
+    - result: ok
   - E2E: password login 復帰、TOTP login 復帰、//host、backslash、 encoded slash、absolute URL、別 realm、dot segment を検証
   - 実ブラウザのシークレットウィンドウによる手動確認は未実施。
+- **Affected Guarantees State**:
+  - API の既存 401 / 403 と admin RBAC 境界は不変
+  - CSRF double-submit 検証は直接 login / TOTP でも維持
+  - return_to は scheme / host / fragment / backslash / 別 realm / path traversal を拒否し、現在 realm の /admin 配下だけを許可

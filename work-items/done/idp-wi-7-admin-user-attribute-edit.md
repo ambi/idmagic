@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: low
 ---
+
 # Motivation
 idmagic の `UpdateUser` use case と HTTP endpoint
 (`PATCH /admin/users/:sub`) は `PreferredUsername` / `Name` / `Email` /
@@ -25,13 +26,24 @@ user maintenance 作業が監査経路つきで解禁される。
 
 # Scope
 - **ui**:
-  - pages: AdminUsersPage の詳細パネル (`UserDetails`) に "属性を編集" ボタンを 足し、`AttributeEditorDialog` を開く。, AttributeEditorDialog は次のフィールドを編集可能とする: `preferred_username` (required、unique 違反は server error として表示)、 `name`、`email`、`email_verified` (checkbox)。, 既存 `RoleEditorDialog` と並ぶ独立ダイアログとし、保存ボタン押下で PATCH `/admin/users/:sub` を呼ぶ。, メールアドレスを変更した場合、`email_verified` を勝手に true にしない (チェックを外す既定動作)。ADR-030 の email 検証規約を破らない。
-  - api: api.ts に `updateAdminUserAttributes(csrf, sub, attrs)` を追加し、 既存 `updateAdminUserRoles` と同じく PATCH `/admin/users/:sub` を呼ぶ。 ロール更新と属性更新の同時送信は許可しない (ダイアログを分けるため)。, 既存 `updateAdminUserRoles` は変更しない (call site が増えるだけ)。
-  - types: 既存 `AdminUser` 型を流用し、新規型は追加しない。
-  - navigation: 既存 sidebar navigation は変更しない (新規ページ無し)。
-  - a11y: ダイアログは `role="dialog" aria-modal="true"`、`aria-labelledby` を 付け、既存 `RoleEditorDialog` のパターンを揃える。
-- **scl**: 変更なし。`UpdateUser` interface / `user.updated` event の wire 形式は維持。
-- **documentation**: idmagic/README.md の Phase 4 「ユーザ属性編集 UI」行は、本 WI 完了後 `完了済` として除去する (completion で反映を記録する)。
+  - pages:
+    - AdminUsersPage の詳細パネル (`UserDetails`) に "属性を編集" ボタンを 足し、`AttributeEditorDialog` を開く。
+    - AttributeEditorDialog は次のフィールドを編集可能とする: `preferred_username` (required、unique 違反は server error として表示)、 `name`、`email`、`email_verified` (checkbox)。
+    - 既存 `RoleEditorDialog` と並ぶ独立ダイアログとし、保存ボタン押下で PATCH `/admin/users/:sub` を呼ぶ。
+    - メールアドレスを変更した場合、`email_verified` を勝手に true にしない (チェックを外す既定動作)。ADR-030 の email 検証規約を破らない。
+  - api:
+    - api.ts に `updateAdminUserAttributes(csrf, sub, attrs)` を追加し、 既存 `updateAdminUserRoles` と同じく PATCH `/admin/users/:sub` を呼ぶ。 ロール更新と属性更新の同時送信は許可しない (ダイアログを分けるため)。
+    - 既存 `updateAdminUserRoles` は変更しない (call site が増えるだけ)。
+  - types:
+    - 既存 `AdminUser` 型を流用し、新規型は追加しない。
+  - navigation:
+    - 既存 sidebar navigation は変更しない (新規ページ無し)。
+  - a11y:
+    - ダイアログは `role="dialog" aria-modal="true"`、`aria-labelledby` を 付け、既存 `RoleEditorDialog` のパターンを揃える。
+- **scl**:
+  - 変更なし。`UpdateUser` interface / `user.updated` event の wire 形式は維持。
+- **documentation**:
+  - idmagic/README.md の Phase 4 「ユーザ属性編集 UI」行は、本 WI 完了後 `完了済` として除去する (completion で反映を記録する)。
 
 # Out of Scope
 - 新規 backend endpoint / use case の追加。
@@ -41,10 +53,11 @@ user maintenance 作業が監査経路つきで解禁される。
 - 監査イベントの schema 拡張。既存 `user.updated` の changed-fields 表示を AdminAuditEventsPage で構造化する話は別 WI とする。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `go test ./internal/adapters/http/... ./internal/authentication/usecases/...` (in: idmagic)
+  - reason: backend に変更は無いが、既存の admin user handler テストの 回帰を確認する。
 - 手動: dev サーバで admin としてログイン → `/admin/users` で alice を選択 → 属性編集ダイアログを開いて `name` と `email` を変更 → 保存 → 一覧で反映、 `/admin/audit_events` に `user.updated` が表示される。
 
 # Risk Notes
@@ -61,8 +74,18 @@ user maintenance 作業が監査経路つきで解禁される。
   経路を解禁した。新規 backend endpoint / 新規 SCL field / 新規 event は
   追加していない (既存 `UpdateUser` use case + `user.updated` event を流用)。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok (tsc --noEmit pass)
+  - `bun --cwd idmagic/ui lint`
+    - result: ok (biome lint pass, 39 files)
+  - `bun --cwd idmagic/ui build`
+    - result: ok (vite build pass, 6283 modules)
+  - `go test ./internal/adapters/http/... ./internal/authentication/usecases/...` (in: idmagic)
+    - result: ok (admin_user_handler / admin_users 既存テストの回帰なし)
   - 手動確認 (residual): dev サーバを起動した実ブラウザ操作は本セッションで は実施していない。AdminUsersPage の他ダイアログ (RoleEditor / CreateUser) と同パターンで実装したため typecheck / lint / build 緑で 動作する見込み。実環境での操作確認は次回 dev 起動時に行う。
+- **Affected Guarantees State**:
+  - admin RBAC: 既存 `verifyBrowserRequest` + `requireAdmin` を流用するだけ なので回帰は無し。HTTP handler に変更が無いことを backend test の pass で再確認した (admin_user_handler.go テスト群)。
+  - CSRF: 既存の `X-CSRF-Token` + cookie ペアで保護される PATCH を流用。 新規 endpoint は無いため CSRF 仕様は不変。
+  - email verification 規約: email を編集すると UI が email_verified を 既定で false にリセットする。admin が改めて true にする場合は明示 操作が必要で、無意識のうちに未確認のメールを「確認済み」にできない。
+  - tenant 境界: 既存 `requireAdmin` が user.TenantID と request tenant の 一致を確認しているため、本 WI で追加の境界チェックは不要だった。
+  - SCL coherence は不変。

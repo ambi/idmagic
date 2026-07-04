@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 ADR-026 (password policy) は長さ・類似禁止・共通辞書を、ADR-027
 (password history) は履歴再利用禁止をそれぞれ実装済だが、これらは
@@ -20,24 +21,32 @@ ADR-028 (breached password checker) は port + HIBP Range API
 本 WI で ADR-028 の実装側を完成させる。
 
 # Scope
-- **decision**: 新規 ADR は不要。ADR-028 の実装 (HIBP Range API + bootstrap wiring) のみ。
-- **scl**: `objectives.PasswordPolicy` の breached check 関連 value (例: `breached_password_check_enabled`) が既に SCL に乗っている 場合は本 WI で実装が真値を満たす状態にする。乗っていなければ、 本 WI で `breached_password_check_enabled: bool` を追加する (default false。env で hibp を選んだときに動的に true 扱いと しても良いが、SCL 側は宣言的 default を持つ)。
+- **decision**:
+  - 新規 ADR は不要。ADR-028 の実装 (HIBP Range API + bootstrap wiring) のみ。
+- **scl**:
+  - `objectives.PasswordPolicy` の breached check 関連 value (例: `breached_password_check_enabled`) が既に SCL に乗っている 場合は本 WI で実装が真値を満たす状態にする。乗っていなければ、 本 WI で `breached_password_check_enabled: bool` を追加する (default false。env で hibp を選んだときに動的に true 扱いと しても良いが、SCL 側は宣言的 default を持つ)。
 - **go**:
-  - adapters: `internal/adapters/policy/hibp_breached_password_checker.go` を新設し `ports.BreachedPasswordChecker` を実装する。 構成:
-  - SHA-1 prefix 5 文字を `https://api.pwnedpasswords.com/range/{prefix}`
-    に GET (k-anonymity)。生 password を外部送信しない。
-  - timeout 2 秒 (ADR-028 §3 に従う)。
-  - `User-Agent: idmagic/<version>` を設定する (HIBP の
-    etiquette)。
-  - 結果 (suffix list) を in-memory LRU で TTL 10 分 cache。
-    cache キーは prefix 5 文字、cache 値は suffix の set。
-  - HTTP error / timeout / 5xx は `false` を返す (fail-open)。
-    failure を application log の `warn` で出し、metric 1 本
-    (`breached_password_checker_failures_total{reason=...}`)
-    を OpenTelemetry に乗せる。
-  - bootstrap: `internal/bootstrap/server.go` で `BREACHED_PASSWORD_CHECKER` 環境変数 (`noop` / `hibp`、default `noop`) を読み、対応する adapter を `Deps.BreachedPasswordChecker` に注入する。, 起動 log に `breached password checker: hibp` / `breached password checker: noop` を 1 行出す。SMTP adapter と同じ pattern。
-  - usecases: 変更なし。`authentication/usecases/password_policy.go` の 既存の `breachedChecker.IsBreached(...)` 呼び出しがそのまま 本 adapter を通る。
-- **documentation**: `idmagic/README.md` §設定 に `BREACHED_PASSWORD_CHECKER` を 追記する。`hibp` 選択時の外部依存 (api.pwnedpasswords.com への egress) と fail-open 挙動を明記する。, README §Phase 0 の HIBP 行をcompletion で除去を記録する。
+  - adapters:
+    - `internal/adapters/policy/hibp_breached_password_checker.go` を新設し `ports.BreachedPasswordChecker` を実装する。 構成:
+        - SHA-1 prefix 5 文字を `https://api.pwnedpasswords.com/range/{prefix}`
+          に GET (k-anonymity)。生 password を外部送信しない。
+        - timeout 2 秒 (ADR-028 §3 に従う)。
+        - `User-Agent: idmagic/<version>` を設定する (HIBP の
+          etiquette)。
+        - 結果 (suffix list) を in-memory LRU で TTL 10 分 cache。
+          cache キーは prefix 5 文字、cache 値は suffix の set。
+        - HTTP error / timeout / 5xx は `false` を返す (fail-open)。
+          failure を application log の `warn` で出し、metric 1 本
+          (`breached_password_checker_failures_total{reason=...}`)
+          を OpenTelemetry に乗せる。
+  - bootstrap:
+    - `internal/bootstrap/server.go` で `BREACHED_PASSWORD_CHECKER` 環境変数 (`noop` / `hibp`、default `noop`) を読み、対応する adapter を `Deps.BreachedPasswordChecker` に注入する。
+    - 起動 log に `breached password checker: hibp` / `breached password checker: noop` を 1 行出す。SMTP adapter と同じ pattern。
+  - usecases:
+    - 変更なし。`authentication/usecases/password_policy.go` の 既存の `breachedChecker.IsBreached(...)` 呼び出しがそのまま 本 adapter を通る。
+- **documentation**:
+  - `idmagic/README.md` §設定 に `BREACHED_PASSWORD_CHECKER` を 追記する。`hibp` 選択時の外部依存 (api.pwnedpasswords.com への egress) と fail-open 挙動を明記する。
+  - README §Phase 0 の HIBP 行をcompletion で除去を記録する。
 
 # Out of Scope
 - self-hosted bloom filter / 全 hash dump の同梱。online 依存をなくす 運用は別 WI で扱う。
@@ -47,9 +56,10 @@ ADR-028 (breached password checker) は port + HIBP Range API
 - Pwned password の count 閾値を usecase に持ち込む (ADR-028 §却下案 に従い、count は adapter 内部で見ない)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: mock HTTP server (httptest) を立て、(a) prefix 一致して breached、(b) prefix 一致せず未漏洩、(c) timeout、(d) 5xx、 (e) connection error の 5 経路で IsBreached の戻り値と metric 加算を確認する。LRU cache が同一 prefix の二度目を HTTP 経由せず返すことも確認する。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
 - 手動 1: `BREACHED_PASSWORD_CHECKER=hibp` で起動し、`/api/auth/login` にも使わない既知の breached password (例: `password`) で `POST /api/auth/register` または admin の password 設定経路に 投げ、`password_breached` で reject されることを確認する。
 - 手動 2: `BREACHED_PASSWORD_CHECKER=noop` (default) で同じ password を試し、辞書ヒットが無ければ通ることを確認する (既存挙動の維持)。
 - 手動 3: `BREACHED_PASSWORD_CHECKER=hibp` で起動した状態で、 `/etc/hosts` で `api.pwnedpasswords.com` を 127.0.0.1 に向けた blackhole に倒し、設定経路が timeout で reject されず通る (fail-open) ことと、warn log + metric 増分を確認する。
@@ -90,9 +100,29 @@ ADR-028 (breached password checker) は port + HIBP Range API
   SCL の objectives.PasswordPolicy に宣言的既定 breached_password_check_enabled:
   false を追加し、Go 双子定数と coherence test (ObjectiveBool) で突き合わせた。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `GOCACHE=/tmp/idmagic-cache go test ./...` - passed
+    - environment: idmagic
+    - result: 全 Go package 成功。httptest で breached / 未漏洩 / count=0 padding 除外 / timeout / 5xx / 接続失敗 / cache 再利用 / TTL eviction を検証。failure metric の reason 別加算も ManualReader で確認。
+  - `golangci-lint run ./...` - passed
+    - environment: idmagic
+    - result: 0 issues。
+  - `go build ./...` - passed
+    - environment: idmagic
+  - `bun run yaml-check:work-items` - passed
+    - environment: tools
+    - result: 91 file OK。
+  - `bun run yaml-check:scl` - passed
+    - environment: tools
+    - result: 13 file OK。
   - 手動 1/2/3 (起動サーバ経由の register/reset 経路 e2e、blackhole fail-open): 本セッションでは未実行。HIBP egress と稼働サーバを要するため operator 検証に 残す。検査ロジック・fail-open・metric 加算は上記 unit test で同経路をカバー済み。
+- **Affected Guarantees State**:
+  - guarantee: privacy (生 password 非送信 / prefix 5 文字のみ)
+  - state: passed
+  - guarantee: availability (HIBP 障害でも password 設定経路が落ちない fail-open)
+  - state: passed
+  - guarantee: observability (warn log + failure metric)
+  - state: passed
+  - guarantee: SCL coherence (PasswordPolicy breached 値と実装の一致)
+  - state: passed
+  - guarantee: backward compatibility (未設定環境は noop で挙動不変)
+  - state: passed

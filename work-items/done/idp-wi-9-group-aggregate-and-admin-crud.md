@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 現状 RBAC は `User.roles[]` のみで、組織内のロール割当はユーザ単位で
 手作業の積み上げになる。次が成立しない:
@@ -28,16 +29,41 @@ Group は tenant-scoped aggregate とし、cross-tenant 参照は禁止する
 (内部実装の差し替えのみで wire 形式は変えない)。
 
 # Scope
-- **decision**: 新規 ADR (`idmagic/decisions/ADR-037-group-aggregate-and-effective-roles.md`): Group を tenant-scoped aggregate とする、union semantics、階層なし、 deny ルールなし、自動所属なし、Group は `permissions` の `admin.groups.*` で保護、effective_roles の解決順序、id_token / userinfo に groups claim を出さない既定 (admin が opt-in できるかは別 WI)、`User.roles` を 残す理由 (個別 user override の経路として)。
-- **scl**: vocabulary: `aggregate.Group`、`event.GroupCreated` / `GroupUpdated` / `GroupDeleted` / `GroupMemberAdded` / `GroupMemberRemoved` を追加。, models: `Group { id, tenant_id, name, description?, roles[], created_at, updated_at }`、`GroupMember { group_id, user_sub, added_at }` を追加。, state_machines: `Group { Active }` の単一状態 (削除は aggregate 自体の lifecycle で表す)。, interfaces: `group.list / group.get / group.create / group.update / group.delete / group.members.add / group.members.remove` を AdminConsole コンポーネントに追加。, permissions: `admin.groups.read` / `admin.groups.write` を追加し、 `admin` ロールに紐付ける。`system_admin` は default tenant の管理 面のみ追加権限。, objectives: effective_roles の合成則と「membership 操作は audit event を必ず emit する」を保証義務として明記。, scenarios: admin が group を作成して user を所属させる → user の effective roles に group.roles が乗る、を 1 シナリオで追加 (自然文 ステップ、§3.6 形式)。
+- **decision**:
+  - 新規 ADR (`idmagic/decisions/ADR-037-group-aggregate-and-effective-roles.md`): Group を tenant-scoped aggregate とする、union semantics、階層なし、 deny ルールなし、自動所属なし、Group は `permissions` の `admin.groups.*` で保護、effective_roles の解決順序、id_token / userinfo に groups claim を出さない既定 (admin が opt-in できるかは別 WI)、`User.roles` を 残す理由 (個別 user override の経路として)。
+- **scl**:
+  - vocabulary: `aggregate.Group`、`event.GroupCreated` / `GroupUpdated` / `GroupDeleted` / `GroupMemberAdded` / `GroupMemberRemoved` を追加。
+  - models: `Group { id, tenant_id, name, description?, roles[], created_at, updated_at }`、`GroupMember { group_id, user_sub, added_at }` を追加。
+  - state_machines: `Group { Active }` の単一状態 (削除は aggregate 自体の lifecycle で表す)。
+  - interfaces: `group.list / group.get / group.create / group.update / group.delete / group.members.add / group.members.remove` を AdminConsole コンポーネントに追加。
+  - permissions: `admin.groups.read` / `admin.groups.write` を追加し、 `admin` ロールに紐付ける。`system_admin` は default tenant の管理 面のみ追加権限。
+  - objectives: effective_roles の合成則と「membership 操作は audit event を必ず emit する」を保証義務として明記。
+  - scenarios: admin が group を作成して user を所属させる → user の effective roles に group.roles が乗る、を 1 シナリオで追加 (自然文 ステップ、§3.6 形式)。
 - **go**:
-  - domain: internal/spec/ に Group / GroupMember 型と `EffectiveRoles(user, groups)` ヘルパを追加。`User` 自体は変更しない (memberships は 別 aggregate)。
-  - ports: GroupRepo: ListByTenant / FindByID / Save / Delete / ListMembersByGroup / ListGroupsByUser / AddMember / RemoveMember。, イベント emit は既存 `Emit` port を流用。
-  - usecases: admingroups.{ListGroups, GetGroup, CreateGroup, UpdateGroup, DeleteGroup, AddMember, RemoveMember}。すべて tenant boundary check と admin RBAC を通す。, 既存 `requireAdmin` / `requireSystemAdmin` が role 判定で EffectiveRoles を参照するように internal で差し替える (外部 API の wire 形式は不変)。, DeleteGroup は所属 user の membership も一括解除する。
-  - adapters: persistence: memory / postgres 両方に GroupRepo を追加。postgres は `groups` / `group_members` テーブルと外部キー制約 (tenant_id / cascade) を migration で導入。, http: `/admin/groups` (list / create)、`/admin/groups/:id` (get / update / delete)、`/admin/groups/:id/members/:sub` (POST add / DELETE remove)。CSRF と requireAdmin を共通。, [object Object]
-  - bootstrap: 起動時 EffectiveRoles の解決経路を組み立て、Deps 構造体に GroupRepo を配線する。
-- **ui**: 新規 AdminGroupsPage を追加: 一覧 (name / member count / roles 数)、 詳細パネル (name 編集 / description / roles 編集 + メンバー編集)、 作成・削除ダイアログ。確認なしの破壊的操作はしない。, AdminUsersPage の詳細パネルに「所属グループ」セクションを追加し、 group 一覧を表示する。group 名の click で AdminGroupsPage の 該当 group へ遷移する。membership 編集は AdminGroupsPage 側に 集約する (user 側からは membership 追加だけ可能とする inline コントロールを 1 つ用意する)。, 既存 sidebar (lib/adminNav.ts) に「グループ」を追加する。tenant 共通で表示。AdminTenantsPage 同様に navigation 配列の更新のみ。, effective roles の表示: AdminUsersPage の詳細パネルで「明示ロール (user.roles)」と「グループ由来ロール」を分けて表示する。union を 別段に出すことで admin の理解を助ける。
-- **documentation**: idmagic/README.md の Phase 4 「グループ」行は completion で 除去を記録する。, decisions/ 配下の README index に ADR-037 を追加する。, dev demo seed に `engineering` / `support` 2 group を入れ、demo.sh の認可 flow が group-derived 権限で動くことを確認できるようにする。
+  - domain:
+    - internal/spec/ に Group / GroupMember 型と `EffectiveRoles(user, groups)` ヘルパを追加。`User` 自体は変更しない (memberships は 別 aggregate)。
+  - ports:
+    - GroupRepo: ListByTenant / FindByID / Save / Delete / ListMembersByGroup / ListGroupsByUser / AddMember / RemoveMember。
+    - イベント emit は既存 `Emit` port を流用。
+  - usecases:
+    - admingroups.{ListGroups, GetGroup, CreateGroup, UpdateGroup, DeleteGroup, AddMember, RemoveMember}。すべて tenant boundary check と admin RBAC を通す。
+    - 既存 `requireAdmin` / `requireSystemAdmin` が role 判定で EffectiveRoles を参照するように internal で差し替える (外部 API の wire 形式は不変)。
+    - DeleteGroup は所属 user の membership も一括解除する。
+  - adapters:
+    - persistence: memory / postgres 両方に GroupRepo を追加。postgres は `groups` / `group_members` テーブルと外部キー制約 (tenant_id / cascade) を migration で導入。
+    - http: `/admin/groups` (list / create)、`/admin/groups/:id` (get / update / delete)、`/admin/groups/:id/members/:sub` (POST add / DELETE remove)。CSRF と requireAdmin を共通。
+    - eventsink: 既存 outbox 経路に新規 event を載せる (5 種類)。
+  - bootstrap:
+    - 起動時 EffectiveRoles の解決経路を組み立て、Deps 構造体に GroupRepo を配線する。
+- **ui**:
+  - 新規 AdminGroupsPage を追加: 一覧 (name / member count / roles 数)、 詳細パネル (name 編集 / description / roles 編集 + メンバー編集)、 作成・削除ダイアログ。確認なしの破壊的操作はしない。
+  - AdminUsersPage の詳細パネルに「所属グループ」セクションを追加し、 group 一覧を表示する。group 名の click で AdminGroupsPage の 該当 group へ遷移する。membership 編集は AdminGroupsPage 側に 集約する (user 側からは membership 追加だけ可能とする inline コントロールを 1 つ用意する)。
+  - 既存 sidebar (lib/adminNav.ts) に「グループ」を追加する。tenant 共通で表示。AdminTenantsPage 同様に navigation 配列の更新のみ。
+  - effective roles の表示: AdminUsersPage の詳細パネルで「明示ロール (user.roles)」と「グループ由来ロール」を分けて表示する。union を 別段に出すことで admin の理解を助ける。
+- **documentation**:
+  - idmagic/README.md の Phase 4 「グループ」行は completion で 除去を記録する。
+  - decisions/ 配下の README index に ADR-037 を追加する。
+  - dev demo seed に `engineering` / `support` 2 group を入れ、demo.sh の認可 flow が group-derived 権限で動くことを確認できるようにする。
 
 # Out of Scope
 - グループ階層 (group of groups / nested membership)。
@@ -49,13 +75,15 @@ Group は tenant-scoped aggregate とし、cross-tenant 参照は禁止する
 - グループに対する consent の bulk 操作 (Phase 5)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: 新 GroupRepo unit (memory / postgres)、effective_roles resolver、 DeleteGroup の cascade、HTTP handler RBAC / CSRF、event emit の確認。
+- `go vet ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `go test ./internal/spec/...` (in: idmagic)
+  - reason: SCL の読み込み、内部参照、Go バインディングとの整合を確認する。
 - 手動: dev サーバを起動し、admin で `/admin/groups` から `engineering` (`catalog:read`) を作成 → alice を追加 → `/admin/users` の詳細で「グループ由来ロール」に `catalog:read` が 表示される → demo.sh の authorization_code flow で `catalog:read` scope が許可されることを確認する。
 
 # Risk Notes
@@ -80,12 +108,26 @@ AUTO_MIGRATE の挙動を確認する。UI 側の sidebar 配列を 1 箇所
   管理 RBAC ゲートと `/account` セルフビューの両面に効く。グループが空なら
   `user.roles` と一致するため既存 wire 形式・既存テストは無変更で pass する。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `go build ./...` (in: idmagic)
+    - result: ok
+  - `go vet ./...` (in: idmagic)
+    - result: ok
+  - `go test ./...` (in: idmagic)
+    - result: ok (全パッケージ pass)
+  - `go test ./internal/spec/...` (in: idmagic)
+    - result: ok (SCL load + coherence + bindings)
+  - `golangci-lint run ./internal/...` (in: idmagic)
+    - result: ok (0 issues、変更パッケージ対象)
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui lint`
+    - result: ok (44 files、警告無し)
+  - `bun --cwd idmagic/ui build`
+    - result: ok (vite build pass)
   - 手動確認 (residual): dev サーバでの「/admin/groups で engineering 作成 → alice 追加 → /admin/users 詳細で『グループ由来ロール』に catalog:read 表示」の e2e は本セッションでは未実施。memory / http の単体テストで effective roles の RBAC 通過と membership cascade を検証済。
+- **Affected Guarantees State**:
+  - tenant isolation: Group は tenant-scoped。AddMember は対象 user を ロードし不在・別テナントなら reject。Postgres は tenant_id FK と tenant-scoped subquery で強制。
+  - RBAC backward compatibility: 空 group では effective_roles == user.roles となり既存 requireAdmin / requireSystemAdmin テストは無変更で pass。 GroupRepo 未注入時は raw user.Roles を返す。
+  - audit: group CRUD と membership 操作は AdminAuditEvent + domain event を emit。DeleteGroup の cascade も member ごとに GroupMemberRemoved を出す。
+  - SCL coherence: vocabulary / models / events / state / interfaces / permissions / invariants / scenario が新 aggregate と整合し、 go test ./internal/spec/... (coherence / bindings) が pass。
+  - 既存 wire 形式: /admin/users 系の response 型は不変。group 情報は 別 endpoint /api/admin/users/:sub/groups で取得する。

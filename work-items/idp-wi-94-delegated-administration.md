@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: high
 ---
+
 # Motivation
 現状の管理者権限はほぼ一枚岩で、テナント内の一部だけを任せる副管理者を表現
 できない。大規模テナント / 組織では代表的な IdP が委任管理を提供する:
@@ -19,12 +20,21 @@ risk: high
 例えば特定グループ / アプリだけを管理できる副管理者を表現できるようにする。
 
 # Scope
-- **decision**: 新規 ADR: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / permissions との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
-- **scl**: [object Object], §3.3 interfaces: admin 操作 (users / groups / applications 等) の認可に scope を反映する。副管理者割当の CRUD を追加する。, [object Object], §3.7 permissions: scope 外リソースへの管理操作を構造的に拒否する (既定 deny) ことを明示する。
-- **go**: 認可判定に scope を織り込み、既存 admin usecase のガードを scope 対応に する。scope 評価器を追加する。
-- **http**: 副管理者の割当 / 取消エンドポイントを追加する。
-- **ui**: AdminRolesPage / AdminUsers に scoped admin 割当 UI を追加する。
-- **documentation**: README に委任管理のスコープ次元と割当手順を追記する。
+- **decision**:
+  - 新規 ADR: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / permissions との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
+- **scl**:
+  - §3.2 models: AdminRoleAssignment / ResourceSet を追加する。
+  - §3.3 interfaces: admin 操作 (users / groups / applications 等) の認可に scope を反映する。副管理者割当の CRUD を追加する。
+  - §3.4 states/events: AdminRoleAssigned / AdminRoleRevoked を追加する。
+  - §3.7 permissions: scope 外リソースへの管理操作を構造的に拒否する (既定 deny) ことを明示する。
+- **go**:
+  - 認可判定に scope を織り込み、既存 admin usecase のガードを scope 対応に する。scope 評価器を追加する。
+- **http**:
+  - 副管理者の割当 / 取消エンドポイントを追加する。
+- **ui**:
+  - AdminRolesPage / AdminUsers に scoped admin 割当 UI を追加する。
+- **documentation**:
+  - README に委任管理のスコープ次元と割当手順を追記する。
 
 # Out of Scope
 - エンドユーザ向けの ReBAC / FGA ([[wi-53-rebac-fine-grained-authorization]])。
@@ -32,12 +42,12 @@ risk: high
 - cross-tenant delegation。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
 - 手動: 特定グループのみ管理できる副管理者を割当 → そのグループは操作でき、 scope 外のユーザ / グループ / アプリの管理操作が拒否されることを確認する。
 
 # Risk Notes

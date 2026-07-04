@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: medium
 ---
+
 # Motivation
 エージェントを第一級プリンシパルとして運用するには、ID・委譲・認可だけでなく
 「過剰行動を抑えるガードレール」「誰がどの権限で何をしたかの監査」「全エージェントの
@@ -22,11 +23,18 @@ rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]]) を持つが、エ
 運用統制を被せる総仕上げにあたる。
 
 # Scope
-- **decision**: 新規 ADR [[ADR-058]]: エージェント単位のガードレール種別 (レート / 予算・コスト / 行動回数 / 有効期限 / 許可リソース)、上限超過時の挙動 (拒否 / 要承認へ降格)、actor チェーンを 含む監査イベントの相関キー、インベントリの表示観点 (所有者・最終活動・付与権限) を確定する。
-- **scl**: 新規 model: AgentGuardrail / GuardrailKind / AgentActivitySummary / AgentAuditQuery。監査イベントに actor チェーン (act) と委譲深さを載せる。, [object Object], 新規 interface: ガードレール CRUD、エージェント別アクティビティ / 監査検索、 インベントリ一覧。permission AdminAgentGovernanceManage。
-- **go**: ガードレール評価 (トークン発行 / 行動経路でレート・予算・回数・有効期限を fail-closed に 強制)、actor チェーンを含む監査イベントの発火と相関検索 adapter を実装する。
-- **http**: ガードレール管理 API、エージェント監査検索 API、インベントリ API。
-- **ui**: [object Object]
+- **decision**:
+  - 新規 ADR [[ADR-058]]: エージェント単位のガードレール種別 (レート / 予算・コスト / 行動回数 / 有効期限 / 許可リソース)、上限超過時の挙動 (拒否 / 要承認へ降格)、actor チェーンを 含む監査イベントの相関キー、インベントリの表示観点 (所有者・最終活動・付与権限) を確定する。
+- **scl**:
+  - 新規 model: AgentGuardrail / GuardrailKind / AgentActivitySummary / AgentAuditQuery。監査イベントに actor チェーン (act) と委譲深さを載せる。
+  - 新規 event: GuardrailConfigured / GuardrailBreached / AgentActionAudited。
+  - 新規 interface: ガードレール CRUD、エージェント別アクティビティ / 監査検索、 インベントリ一覧。permission AdminAgentGovernanceManage。
+- **go**:
+  - ガードレール評価 (トークン発行 / 行動経路でレート・予算・回数・有効期限を fail-closed に 強制)、actor チェーンを含む監査イベントの発火と相関検索 adapter を実装する。
+- **http**:
+  - ガードレール管理 API、エージェント監査検索 API、インベントリ API。
+- **ui**:
+  - admin: エージェントインベントリ / 統制ダッシュボード、ガードレール設定、委譲チェーン込み監査ビュー。
 
 # Out of Scope
 - 課金・コスト計測基盤そのものの構築 (予算上限の評価フックの提供まで)。
@@ -34,11 +42,12 @@ rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]]) を持つが、エ
 - SIEM への外部エクスポート (まず内部監査・検索)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: レート / 予算 / 回数 / 有効期限の上限強制、超過時挙動、actor チェーン監査の相関、tenant scope の境界。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui build`
 - 手動: エージェントにレート / 予算上限を設定 → 上限内は許可・超過は拒否 → 委譲チェーン込みで監査に残ることを確認する。
 
 # Risk Notes

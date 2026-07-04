@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: medium
 ---
+
 # Motivation
 idmagic は攻撃者制御の入力を直接パースする箇所を多数持つ。SAML/WS-Fed の
 受信 XML（署名検証・XXE・XML canonicalization）、JWT/JWE のデコード
@@ -22,9 +23,15 @@ Go プロジェクト自身が stdlib のパーサをファジングしている
 自動探索し、発見した corpus を回帰として固定すべきである。
 
 # Scope
-- **go**: 対象パーサに `Fuzz*` を追加する: SAML/WS-Fed の受信 XML と署名前処理、 JWT/JWE デコード、redirect_uri 照合、PKCE、authorization/PAR パラメータ解析。, 不変条件を assertion 化する: パニックしない、境界時間内に返る（DoS 耐性）、 parse の冪等性、redirect_uri 照合が仕様どおり厳密一致であること。, 発見した crash/差分を seed corpus として testdata に固定し、回帰テスト化する。, XML パースの entity 展開・外部参照禁止（XXE 対策）を fuzz と assertion で担保する。
-- **ci**: CI で短時間の fuzz smoke（`-fuzz` を制限時間付き）を回し、蓄積 corpus は 通常テストとして常時実行する。長時間 fuzz は任意ジョブに分ける。
-- **documentation**: どのパーサが fuzz 対象で、どの不変条件を守るかを対象 context 近傍に記す。
+- **go**:
+  - 対象パーサに `Fuzz*` を追加する: SAML/WS-Fed の受信 XML と署名前処理、 JWT/JWE デコード、redirect_uri 照合、PKCE、authorization/PAR パラメータ解析。
+  - 不変条件を assertion 化する: パニックしない、境界時間内に返る（DoS 耐性）、 parse の冪等性、redirect_uri 照合が仕様どおり厳密一致であること。
+  - 発見した crash/差分を seed corpus として testdata に固定し、回帰テスト化する。
+  - XML パースの entity 展開・外部参照禁止（XXE 対策）を fuzz と assertion で担保する。
+- **ci**:
+  - CI で短時間の fuzz smoke（`-fuzz` を制限時間付き）を回し、蓄積 corpus は 通常テストとして常時実行する。長時間 fuzz は任意ジョブに分ける。
+- **documentation**:
+  - どのパーサが fuzz 対象で、どの不変条件を守るかを対象 context 近傍に記す。
 
 # Out of Scope
 - パーサ実装そのものの全面書き換え。
@@ -32,7 +39,7 @@ Go プロジェクト自身が stdlib のパーサをファジングしている
 - プロトコル準拠テスト（WI-33 が扱う conformance CI）。
 
 # Verification
-- [object Object]
+- `go test -race ./...` (in: idmagic)
 - cmd: 'go test -run=Fuzz -fuzz=Fuzz -fuzztime=30s ./internal/saml/...' in: idmagic
 - 手動: 既知の悪性入力（XXE ペイロード、alg=none JWT、部分一致 redirect_uri）で fuzz target が期待どおり拒否/非パニックであることを確認する。
 

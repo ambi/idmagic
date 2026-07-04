@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: high
 ---
+
 # Motivation
 本シリーズの capstone。idmagic を Microsoft Entra ID (旧 Azure AD) の検証済み
 ドメインに対する federated IdP として設定し、Microsoft 365 のブラウザ / リッチクライアント
@@ -29,11 +30,23 @@ WS-Federation、active (rich client) は WS-Trust で token を発行する。En
 通例)、本 WI も同じ立場を取る。これを ADR と運用ドキュメントで明示する。
 
 # Scope
-- **decision**: 新規 ADR: Entra federation の準拠プロファイルを確定する。required claims (`UPN` = `http://schemas.xmlsoap.org/claims/UPN`、`ImmutableID` / sourceAnchor = `nameidentifier` を persistent format で、objectGUID の base64 表現)、`IssuerUri` の規約、passive/active エンドポイントの URL 形、署名証明書要件 (鍵長・SHA-256 署名)、SAML 1.1 assertion を既定とすることを定める。1 テナントで複数の検証済みドメインを federation する場合の issuerUri / ドメイン → プロファイル mapping 規則も定める (Okta の Office 365 app 相当)。Hybrid Azure AD Join のデバイス登録は windowstransport + コンピュータアカウント Kerberos を要するためスコープ外とし、その理由 (Okta も同様の制約) と 回避策 (managed/PHS への切替や AD FS 併存) をドキュメント方針として明記する。, ADR-065 で Entra domain federation profile、sourceAnchor 変換、Hybrid Join 非対応の判断を記録する。
-- **scl**: 新規 model: EntraFederationProfile (issuerUri / sourceAnchor source / claim preset)。 既存の WsFedRelyingParty / claim mapping を Entra プリセットで束ねる。, [object Object], [object Object]
-- **go**: Entra プリセットを適用すると wi-63 の claim mapping に UPN / ImmutableID / nameidentifier(persistent) が自動構成され、未充足なら設定を拒否する (fail-closed)。, sourceAnchor (objectGUID 等) を base64 化して ImmutableID として発行する変換を実装する。, 1 テナントの複数検証済みドメインを federation できるよう、ドメイン → issuerUri / Entra プロファイルの mapping を持ち、サインイン時に正しいプロファイルへ解決する。, passive / active / MEX / metadata エンドポイントが Entra の登録値と一致する URL で 公開されることを保証する (wi-61 / wi-62 / wi-63 を配線)。ドメイン PC 無音 SSO は wi-65 を配線する。, Hybrid Join のデバイス登録は未提供であることを設定時に診断・明示し、回避策を案内する。
-- **ui**: admin に Entra federation セットアップ画面 (issuerUri・sourceAnchor 属性選択・PowerShell 設定値の表示) を追加する。
-- **documentation**: README / 運用ドキュメントに Entra federation 設定手順 (`Update-MgDomainFederationConfiguration` に渡す値)、required claims、無音 SSO の前提、および Hybrid Join デバイス登録が 範囲外であること (Okta 同様の既知制約) と回避策を書く。
+- **decision**:
+  - 新規 ADR: Entra federation の準拠プロファイルを確定する。required claims (`UPN` = `http://schemas.xmlsoap.org/claims/UPN`、`ImmutableID` / sourceAnchor = `nameidentifier` を persistent format で、objectGUID の base64 表現)、`IssuerUri` の規約、passive/active エンドポイントの URL 形、署名証明書要件 (鍵長・SHA-256 署名)、SAML 1.1 assertion を既定とすることを定める。1 テナントで複数の検証済みドメインを federation する場合の issuerUri / ドメイン → プロファイル mapping 規則も定める (Okta の Office 365 app 相当)。Hybrid Azure AD Join のデバイス登録は windowstransport + コンピュータアカウント Kerberos を要するためスコープ外とし、その理由 (Okta も同様の制約) と 回避策 (managed/PHS への切替や AD FS 併存) をドキュメント方針として明記する。
+  - ADR-065 で Entra domain federation profile、sourceAnchor 変換、Hybrid Join 非対応の判断を記録する。
+- **scl**:
+  - 新規 model: EntraFederationProfile (issuerUri / sourceAnchor source / claim preset)。 既存の WsFedRelyingParty / claim mapping を Entra プリセットで束ねる。
+  - 新規 interface: ConfigureEntraFederation (sourceAnchor 属性の指定と検証)。
+  - 新規 event: EntraFederationConfigured。
+- **go**:
+  - Entra プリセットを適用すると wi-63 の claim mapping に UPN / ImmutableID / nameidentifier(persistent) が自動構成され、未充足なら設定を拒否する (fail-closed)。
+  - sourceAnchor (objectGUID 等) を base64 化して ImmutableID として発行する変換を実装する。
+  - 1 テナントの複数検証済みドメインを federation できるよう、ドメイン → issuerUri / Entra プロファイルの mapping を持ち、サインイン時に正しいプロファイルへ解決する。
+  - passive / active / MEX / metadata エンドポイントが Entra の登録値と一致する URL で 公開されることを保証する (wi-61 / wi-62 / wi-63 を配線)。ドメイン PC 無音 SSO は wi-65 を配線する。
+  - Hybrid Join のデバイス登録は未提供であることを設定時に診断・明示し、回避策を案内する。
+- **ui**:
+  - admin に Entra federation セットアップ画面 (issuerUri・sourceAnchor 属性選択・PowerShell 設定値の表示) を追加する。
+- **documentation**:
+  - README / 運用ドキュメントに Entra federation 設定手順 (`Update-MgDomainFederationConfiguration` に渡す値)、required claims、無音 SSO の前提、および Hybrid Join デバイス登録が 範囲外であること (Okta 同様の既知制約) と回避策を書く。
 
 # Out of Scope
 - WS-Fed passive / WS-Trust active / metadata の基盤実装 (wi-61 / wi-62 / wi-63)。
@@ -44,11 +57,12 @@ WS-Federation、active (rich client) は WS-Trust で token を発行する。En
 - Microsoft Entra ID / Microsoft 365 の実テナントに対する end-to-end 接続検証 (domain federation 切替を伴う破壊的検証)。WS-* シリーズ共通の実テナント検証として [[wi-79-entra-real-tenant-end-to-end-verification]] に集約する。本 WI はローカル検証 (unit / integration / curl) とプリセット配線・診断までで完了とする。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+  - reason: Entra プリセットの claim 充足判定・sourceAnchor 変換・issuer 一致・未充足拒否の境界。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui build`
 - 手動: Hybrid Join 設定を試みると未提供である旨が API 応答 / UI で診断・案内されることを確認する。
 - 実テナント (passive / active サインイン・無音 SSO・claim 形状) の end-to-end 検証は [[wi-79-entra-real-tenant-end-to-end-verification]] に集約する。
 
@@ -77,8 +91,20 @@ windowstransport + コンピュータアカウント Kerberos を要するため
   wtrealm で正しい profile へ解決する。README に Update-MgDomainFederationConfiguration への値マッピング・
   required claims・無音 SSO 前提 (wi-65)・Hybrid Join 範囲外と回避策を追記した。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `go build ./...` (in: idmagic)
+    - result: ok
+  - `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+    - result: ok
+  - `golangci-lint run ./...` (in: idmagic)
+    - result: 0 issues
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui build`
+    - result: ok
+- **Affected Guarantees State**:
+  - claim 準拠: preset は UPN / ImmutableID / nameidentifier を Required とし、未充足は設定時・発行時とも fail-closed
+  - issuer 一貫性: 発行 token の issuer / wtrealm / audience を IssuerUri に揃える
+  - sourceAnchor 安定性: ImmutableID は不変属性 (objectGUID 等) を Microsoft byte order base64 で正規化
+  - 制約の明示: Hybrid Join 非対応を API 応答 known_limitations と UI Alert で診断・案内
+  - tenant isolation: Entra profile と RP は tenant ごとに分離し、複数ドメインは issuerUri で解決
+  - audit: EntraFederationConfigured を発行

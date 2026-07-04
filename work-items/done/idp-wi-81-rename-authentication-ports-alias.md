@@ -6,6 +6,7 @@ authors: ["Codex"]
 status: completed
 risk: low
 ---
+
 # Motivation
 `authports` は authentication の略として使われていたが、authorization の略にも見え、
 `oauthports` と並んだときに責務が読み取りづらい。認証を表す `authnports` に揃え、
@@ -13,7 +14,8 @@ authn/authz の区別を import alias に反映する。
 
 # Scope
 - **scl_sections**:
-- **code**: idmagic/internal/** imports of idmagic/internal/authentication/ports
+- **code**:
+  - idmagic/internal/** imports of idmagic/internal/authentication/ports
 
 # Out of Scope
 - package 名やディレクトリ名の変更
@@ -32,4 +34,9 @@ Go import alias と参照識別子だけの変更で、型・関数・package pa
   `idmagic/internal/authentication/ports` の import alias を `authports` から
   `authnports` に変更した。package 名、ディレクトリ名、SCL、公開 API は変更していない。
 - **Verification Results**:
-  - [object Object]
+  - `GOCACHE=/tmp/idmagic-cache go test ./...` - passed
+    - environment: /Users/tn/src/regenerative-architecture/idmagic
+    - result: 全 Go package が成功。
+- **Affected Guarantees State**:
+  - guarantee: 挙動不変の import alias 変更
+  - state: passed

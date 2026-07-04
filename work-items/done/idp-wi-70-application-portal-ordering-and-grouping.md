@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: low
 ---
+
 # Motivation
 [[wi-69-application-catalog-aggregate-and-assignment]] で利用者ポータルに
 アプリケーション一覧 (icon 付きタイル) が入る。割当アプリが増えると、固定順では
@@ -19,11 +20,22 @@ My Apps も、利用者がタイルを並べ替え、管理者がセクション
 グルーピングだけを足す。
 
 # Scope
-- **decision**: ADR 追補または軽量 ADR: 並び順の所有者を決める。既定整列 (アルファベット / 最近利用) は計算で出し、利用者の手動並び替えは per-user の表示設定として永続化する。 カテゴリは管理者が tenant 単位で定義し、Application に 0..N 個割り当てる。
-- **scl**: ApplicationCatalog に ApplicationCategory / ApplicationOrdering を追加し、 per-user の手動順を IdentityManagement (User の portal preference) 側に置くか ApplicationCatalog に置くかを ADR で確定して反映する。, interface: 管理者の Category CRUD と Application への付与、利用者の ReorderMyApplications (手動順保存)。ListMyApplications に並び順とカテゴリを含める。, [object Object], [object Object]
-- **go**: カテゴリの persistence (categories / application_categories テーブル、tenant scope)。, per-user の手動並び順の persistence と、未設定時の既定整列ロジック。
-- **http**: /admin/application-categories の CRUD と Application への付与。, /api/account/applications/order の取得/更新。
-- **ui**: [object Object], [object Object]
+- **decision**:
+  - ADR 追補または軽量 ADR: 並び順の所有者を決める。既定整列 (アルファベット / 最近利用) は計算で出し、利用者の手動並び替えは per-user の表示設定として永続化する。 カテゴリは管理者が tenant 単位で定義し、Application に 0..N 個割り当てる。
+- **scl**:
+  - ApplicationCatalog に ApplicationCategory / ApplicationOrdering を追加し、 per-user の手動順を IdentityManagement (User の portal preference) 側に置くか ApplicationCatalog に置くかを ADR で確定して反映する。
+  - interface: 管理者の Category CRUD と Application への付与、利用者の ReorderMyApplications (手動順保存)。ListMyApplications に並び順とカテゴリを含める。
+  - event: ApplicationCategoryCreated / ApplicationCategoryUpdated / ApplicationCategoryDeleted。
+  - permission: AdminApplicationCategoriesManage。
+- **go**:
+  - カテゴリの persistence (categories / application_categories テーブル、tenant scope)。
+  - per-user の手動並び順の persistence と、未設定時の既定整列ロジック。
+- **http**:
+  - /admin/application-categories の CRUD と Application への付与。
+  - /api/account/applications/order の取得/更新。
+- **ui**:
+  - account: ポータル一覧をカテゴリ別セクションで表示し、ドラッグ等で手動並び替えできる。
+  - admin: カテゴリ管理と、Application へのカテゴリ付与。
 
 # Out of Scope
 - アプリケーション本体・割当・アイコンの実装 ([[wi-69-application-catalog-aggregate-and-assignment]])。
@@ -31,13 +43,13 @@ My Apps も、利用者がタイルを並べ替え、管理者がセクション
 - ポータルのテーマ/ブランディング全般。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `bun run yaml-check:work-items` (in: tools)
+- `bun run yaml-check:scl` (in: tools)
 - 手動: 複数アプリを割当 → カテゴリを作成し付与 → 利用者ポータルでセクション表示と 手動並び替えが保存・再現されることを確認する。
 
 # Risk Notes
@@ -56,10 +68,21 @@ wi-69 の Application / Assignment 実装に依存するため、後続として
   定義 (position 昇順) でタイルをセクション表示し、未分類は「その他」に集める。所有関係は
   ADR-069 が定める。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+    - result: ok
+  - `golangci-lint run ./...` (in: idmagic)
+    - result: 0 issues
+  - `bun run typecheck` (in: idmagic/ui)
+    - result: ok
+  - `bun run lint` (in: idmagic/ui)
+    - result: ok
+  - `bun run build` (in: idmagic/ui)
+    - result: ok
+  - `bun run yaml-check:scl` (in: tools)
+    - result: ok
+  - `bun run yaml-check:work-items` (in: tools)
+    - result: ok
+- **Affected Guarantees State**:
+  - findability: ポータルは手動順とカテゴリセクションで割当アプリを整理して表示する。
+  - assignment scoping: ListMyApplications は visible 割当のみを対象にし、カテゴリ表示も同じ集合だけを並べる。未割当アプリは露出しない。
+  - tenant isolation: ApplicationOrdering は tenant_id + user_sub、ApplicationCategory と付与は tenant_id 境界に閉じる。

@@ -6,6 +6,7 @@ authors: ["tn"]
 status: completed
 risk: medium
 ---
+
 # Motivation
 idmagic には Application (上位集約)、SAML SP、WS-Federation relying party など複数の
 「接続先アプリケーション」概念が並ぶ。その中で OAuth2/OIDC の client 集約だけが接頭辞なしの
@@ -22,10 +23,15 @@ permission / event も OAuth2 接頭辞で揃える。
 標準語であり、文脈上曖昧でない。これらは標準との整合のためリネームしない。
 
 # Scope
-- **scl**: 集約 Client → OAuth2Client、AdminClient* DTO、ListAdminClients 等 interface、 AdminClientsManage permission、AdminClient* event をリネーム。owns_models / owns_interfaces / owns_permissions、screen/variant の interface 参照、語彙定義の文言を整合。, RFC wire 標準語は対象外として明示的に残す。
-- **go**: spec.Client → spec.OAuth2Client とその参照 (~56 箇所)、admin client use case / handler / repository / event 型の改名。OAuth2 bounded context 中心。
-- **ui**: AdminClient TS 型と関連参照の改名。HTTP path (/api/admin/clients) の扱いは別途判断。
-- **data**: 永続化のテーブル/カラム名・JSON tag・HTTP path を変えるかは互換性の観点で決める。 wire/storage の後方互換を壊さない範囲に留める。
+- **scl**:
+  - 集約 Client → OAuth2Client、AdminClient* DTO、ListAdminClients 等 interface、 AdminClientsManage permission、AdminClient* event をリネーム。owns_models / owns_interfaces / owns_permissions、screen/variant の interface 参照、語彙定義の文言を整合。
+  - RFC wire 標準語は対象外として明示的に残す。
+- **go**:
+  - spec.Client → spec.OAuth2Client とその参照 (~56 箇所)、admin client use case / handler / repository / event 型の改名。OAuth2 bounded context 中心。
+- **ui**:
+  - AdminClient TS 型と関連参照の改名。HTTP path (/api/admin/clients) の扱いは別途判断。
+- **data**:
+  - 永続化のテーブル/カラム名・JSON tag・HTTP path を変えるかは互換性の観点で決める。 wire/storage の後方互換を壊さない範囲に留める。
 
 # Out of Scope
 - [[wi-76-fold-advanced-protocol-settings-into-application-editor]] の機能変更。本 WI は リネームのみで挙動・フィールドを変えない。
@@ -33,12 +39,12 @@ permission / event も OAuth2 接頭辞で揃える。
 - WS-Federation / SAML 側の語彙。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
+- `golangci-lint run ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `bun run yaml-check:scl` (in: tools)
 - 手動: 認可・トークン・管理 API のふるまいがリネーム前と同一であることを既存テストで確認する。
 
 # Risk Notes
@@ -62,9 +68,28 @@ HTTP path を変える場合はマイグレーション/互換層を伴う。挙
   glossary のロール語 Client、wire 列挙 (ClientType / ClientCredentials 等) は不変。差分は
   純粋なリネーム (57 file、+265/-265)。挙動は変えていない。
 - **Verification Results**:
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
-  - [object Object]
+  - `GOCACHE=/tmp/idmagic-cache go test ./...` - passed
+    - environment: /Users/tn/src/regenerative-architecture/idmagic
+    - result: 全 29 package が成功 (spec↔impl coherence_test を含む)。
+  - `golangci-lint run ./...` - passed
+    - environment: /Users/tn/src/regenerative-architecture/idmagic
+    - result: golangci-lint fmt 整形後 0 issues。
+  - `bun --cwd idmagic/ui typecheck` - passed
+    - environment: /Users/tn/src/regenerative-architecture
+    - result: TypeScript typecheck が成功。
+  - `bun --cwd idmagic/ui lint` - passed
+    - environment: /Users/tn/src/regenerative-architecture
+    - result: biome lint が成功。
+  - `bun --cwd idmagic/ui build` - passed
+    - environment: /Users/tn/src/regenerative-architecture
+    - result: vite build が成功。
+  - `bun run yaml-check:scl` - passed
+    - environment: /Users/tn/src/regenerative-architecture/tools
+    - result: SCL 13 file が成功。
+- **Affected Guarantees State**:
+  - guarantee: ubiquitous language — 接頭辞なし Client の曖昧さ解消
+  - state: passed
+  - guarantee: behavior preservation — リネームのみで挙動不変
+  - state: passed
+  - guarantee: spec-impl parity — SCL と Go / UI が同一語彙で対応し生成 HTML もロックステップ更新
+  - state: passed

@@ -6,6 +6,7 @@ authors: ["tn"]
 status: pending
 risk: high
 ---
+
 # Motivation
 エージェントはユーザーに代わって多数の外部 SaaS API (Google・GitHub・Slack 等) を
 呼ぶ。これらの third-party token をアプリやエージェントが直接保持すると、漏洩・
@@ -22,11 +23,19 @@ idmagic は inbound federation / identity broker ([[wi-30-inbound-federation-and
 scope で絞って仲介する Token Vault を導入する。
 
 # Scope
-- **decision**: 新規 ADR [[ADR-054]]: upstream connection の定義 (provider・OAuth エンドポイント・scope)、 token の暗号化保管方式 (既存 KMS / KeyStore の流用)、refresh とローテーションの責務、 エージェントへの仲介方法 (直接返却 vs プロキシ)、最小権限と失効の伝播を確定する。
-- **scl**: 新規 model: FederatedConnection / UpstreamToken / ConnectionGrant / VaultTokenRequest / VaultTokenResponse。, [object Object], 新規 interface: 管理 connection CRUD、user の connection 連携 / 解除、 エージェント向け GetConnectionToken。permission AdminFederatedConnectionsManage。
-- **go**: upstream OAuth (authorization code) で token を取得・暗号化保管、refresh 管理、 失効、エージェント要求への仲介を実装する。仲介は委譲チェーンと connection scope で fail-closed に絞る。
-- **http**: connection 連携の開始 / コールバック、エージェント向け token 取得エンドポイント。
-- **ui**: [object Object], [object Object]
+- **decision**:
+  - 新規 ADR [[ADR-054]]: upstream connection の定義 (provider・OAuth エンドポイント・scope)、 token の暗号化保管方式 (既存 KMS / KeyStore の流用)、refresh とローテーションの責務、 エージェントへの仲介方法 (直接返却 vs プロキシ)、最小権限と失効の伝播を確定する。
+- **scl**:
+  - 新規 model: FederatedConnection / UpstreamToken / ConnectionGrant / VaultTokenRequest / VaultTokenResponse。
+  - 新規 event: ConnectionConfigured / UpstreamTokenStored / UpstreamTokenRefreshed / UpstreamTokenRevoked / VaultTokenIssued。
+  - 新規 interface: 管理 connection CRUD、user の connection 連携 / 解除、 エージェント向け GetConnectionToken。permission AdminFederatedConnectionsManage。
+- **go**:
+  - upstream OAuth (authorization code) で token を取得・暗号化保管、refresh 管理、 失効、エージェント要求への仲介を実装する。仲介は委譲チェーンと connection scope で fail-closed に絞る。
+- **http**:
+  - connection 連携の開始 / コールバック、エージェント向け token 取得エンドポイント。
+- **ui**:
+  - end-user: 連携済み外部サービスの一覧・連携 / 解除 (account portal)。
+  - admin: connection (provider) の定義・管理。
 
 # Out of Scope
 - 各 provider 固有 API のラッパー / SDK 同梱。
@@ -34,11 +43,12 @@ scope で絞って仲介する Token Vault を導入する。
 - 暗号鍵管理の新設 (既存 KMS / KeyStore を流用)。
 
 # Verification
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
-- [object Object]
+- `go test ./...` (in: idmagic)
+  - reason: token の暗号化保管・refresh・失効、仲介時の scope / 委譲絞り込み、解除後の取得拒否の境界。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui build`
 - 手動: ユーザーが外部 provider を連携 → エージェントが vault から token 取得 → 連携解除後は取得が拒否されることを確認する。
 
 # Risk Notes
