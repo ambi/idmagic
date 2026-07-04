@@ -64,8 +64,9 @@ Identity / Application / OAuth2 / SigningKeys の保存契約では tenant isola
 - **Summary**:
   SCL に tenant-local な参照整合性保証を明記し、Postgres 宣言的 schema に
   tenant / user / client / agent / application category / application ordering の
-  外部キーと ApplicationAssignment subject 検証 trigger を追加した。既存データ向けには
-  apply 前に孤児行を検出する preflight SQL を追加した。
+  外部キーと enum 的 CHECK を追加した。ApplicationAssignment の user/group 多態 subject と
+  Application.category_ids / bindings の配列・JSON 参照は、複雑な DB trigger を置かず
+  既存の use case validation で fail-closed に守る方針とした。
 - **Verification Results**:
   - `just yaml-check-scl`
     - result: ok (SCL YAML 12 files OK)

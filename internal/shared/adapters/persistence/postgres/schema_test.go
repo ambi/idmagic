@@ -21,7 +21,6 @@ func TestPostgresSchemaReferentialIntegrityConstraints(t *testing.T) {
 		"CONSTRAINT agent_credential_bindings_tenant_client_fkey\n        FOREIGN KEY (tenant_id, client_id)\n        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT",
 		"FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
 		"FOREIGN KEY (tenant_id, user_sub)\n        REFERENCES users (tenant_id, sub) ON DELETE CASCADE",
-		"CREATE TRIGGER application_assignments_subject_ref_trigger",
 	}
 	for _, want := range required {
 		if !strings.Contains(schema, want) {

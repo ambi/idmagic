@@ -417,40 +417,6 @@ CREATE TABLE application_categories (
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
-CREATE OR REPLACE FUNCTION validate_application_assignment_subject()
-RETURNS trigger AS $$
-BEGIN
-    IF NEW.subject_type = 'user' THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM users
-             WHERE tenant_id = NEW.tenant_id
-               AND sub = NEW.subject_id
-               AND lifecycle->>'status' IS DISTINCT FROM 'deleted'
-        ) THEN
-            RAISE foreign_key_violation
-                USING MESSAGE = 'application_assignments user subject must exist in the same tenant';
-        END IF;
-    ELSIF NEW.subject_type = 'group' THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM groups
-             WHERE tenant_id = NEW.tenant_id
-               AND id = NEW.subject_id
-        ) THEN
-            RAISE foreign_key_violation
-                USING MESSAGE = 'application_assignments group subject must exist in the same tenant';
-        END IF;
-    ELSE
-        RAISE check_violation
-            USING MESSAGE = 'application_assignments subject_type must be user or group';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER application_assignments_subject_ref_trigger
-    BEFORE INSERT OR UPDATE OF tenant_id, subject_type, subject_id ON application_assignments
-    FOR EACH ROW EXECUTE FUNCTION validate_application_assignment_subject();
-
 CREATE TABLE scim_configs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     enabled BOOLEAN NOT NULL DEFAULT FALSE,
