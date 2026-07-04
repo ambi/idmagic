@@ -73,7 +73,7 @@ models:
       - Signing
   SigningKey:
     kind: entity
-    description: トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。
+    description: トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。
     identity: kid
     fields:
       tenant_id:
@@ -338,6 +338,10 @@ invariants:
     description: "テナント指定 JWKS に載る鍵はすべて当該テナントに属する。\n反例: テナント A の JWKS にテナント B の kid が混じる = tenant isolation 違反。\n"
     target: SigningKey
     always: key in tenant_jwks(t) implies key.tenant_id == t
+  SigningKeyTenantExists:
+    description: "SigningKey は既存 Tenant に属する。存在しない tenant_id の鍵は保存できない。\n反例: orphan signing key が JWKS や署名鍵選択に現れる。\n"
+    target: SigningKey
+    always: key.tenant_id in Tenants
   KeyProviderFailClosed:
     description: "KeyProvider が到達不能なテナントでは新規署名 (token 発行) をしない。\n反例: provider 障害中に古い鍵で署名を続ける = fail-closed 違反。\n"
     target: SigningKey

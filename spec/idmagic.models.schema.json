@@ -7,18 +7,22 @@
     "AccessCondition": {
       "type": "object",
       "properties": {
-        "network": {
-          "type": "string"
-        },
-        "device": {
-          "type": "string"
+        "network_allow_cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "許可するクライアント IP の CIDR 一覧。空なら制限なし。非空でクライアント IP がいずれの CIDR にも含まれない、または IP を取得できない場合は fail-closed で拒否する。"
         },
         "reauth_max_age_seconds": {
           "type": "integer"
         }
       },
       "additionalProperties": false,
-      "description": "Application sign-on policy の静的アクセス条件。network / device は入力点を保持し、reauth_max_age_seconds は認証または step-up の recency として評価する。"
+      "required": [
+        "network_allow_cidrs"
+      ],
+      "description": "サインインポリシーの静的アクセス条件。すべて初期実装で実際に評価できる構造化条件のみを持つ。network_allow_cidrs はクライアント IP を許可 CIDR に突き合わせ、reauth_max_age_seconds は認証または step-up の recency として評価する。旧 network / device の自由入力は廃止した。"
     },
     "AccessDeniedError": {
       "type": "object",
@@ -1454,7 +1458,7 @@
         "owner_sub": {
           "type": "string",
           "minLength": 1,
-          "description": "所有者 User の sub。必須。"
+          "description": "所有者 User の sub。必須。同一 tenant_id の User でなければならない。"
         },
         "status": {
           "$ref": "#/$defs/AgentStatus",
@@ -1496,7 +1500,7 @@
         "roles",
         "created_at"
       ],
-      "description": "tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で既存 OAuth2Client に束縛してトークンを得る。owner は必須。"
+      "description": "tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で同一テナントの既存 OAuth2Client に束縛してトークンを得る。owner は同一テナントの既存 User で必須。"
     },
     "AgentCredentialBindRequest": {
       "type": "object",
@@ -1537,7 +1541,7 @@
         "tenant_id",
         "created_at"
       ],
-      "description": "Agent と OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。"
+      "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。永続化層は agent_id と client_id の tenant_id 一致を fail-closed に保証する。"
     },
     "AgentCredentialBound": {
       "type": "object",
@@ -1999,9 +2003,9 @@
         "subject",
         "reason"
       ],
-      "description": "Application sign-on policy により federation を拒否した。"
+      "description": "Application sign-in policy により federation を拒否した。"
     },
-    "AppSignOnPolicy": {
+    "AppSignInPolicy": {
       "type": "object",
       "properties": {
         "tenant_id": {
@@ -2015,7 +2019,7 @@
         "rules": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/SignOnRule"
+            "$ref": "#/$defs/SignInRule"
           }
         },
         "updated_at": {
@@ -2030,15 +2034,15 @@
         "rules",
         "updated_at"
       ],
-      "description": "Application ごとのサインオンポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。"
+      "description": "Application ごとのサインインポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。"
     },
-    "AppSignOnPolicyRequest": {
+    "AppSignInPolicyRequest": {
       "type": "object",
       "properties": {
         "rules": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/SignOnRule"
+            "$ref": "#/$defs/SignInRule"
           }
         }
       },
@@ -2046,22 +2050,22 @@
       "required": [
         "rules"
       ],
-      "description": "管理者が Application の sign-on policy を置き換えるリクエスト。"
+      "description": "管理者が Application の sign-in policy を置き換えるリクエスト。"
     },
-    "AppSignOnPolicyResponse": {
+    "AppSignInPolicyResponse": {
       "type": "object",
       "properties": {
         "policy": {
-          "$ref": "#/$defs/AppSignOnPolicy"
+          "$ref": "#/$defs/AppSignInPolicy"
         }
       },
       "additionalProperties": false,
       "required": [
         "policy"
       ],
-      "description": "Application の sign-on policy 表現。"
+      "description": "Application の sign-in policy 表現。"
     },
-    "AppSignOnPolicyUpdated": {
+    "AppSignInPolicyUpdated": {
       "type": "object",
       "properties": {
         "occurredAt": {
@@ -2085,7 +2089,7 @@
         "actorSub",
         "applicationId"
       ],
-      "description": "Application の sign-on policy を更新した。"
+      "description": "Application の sign-in policy を更新した。"
     },
     "AppStepUpRequired": {
       "type": "object",
@@ -2115,7 +2119,7 @@
         "protocol",
         "subject"
       ],
-      "description": "Application sign-on policy の認証強度を満たすため step-up が必要になった。"
+      "description": "Application sign-in policy の認証強度を満たすため step-up が必要になった。"
     },
     "Application": {
       "type": "object",
@@ -2191,7 +2195,7 @@
         "created_at",
         "updated_at"
       ],
-      "description": "運用者が「接続する業務アプリケーション」として扱う上位 aggregate。OIDC client / SAML SP / WS-Fed RP を protocol binding として束ね、表示名・アイコン・状態・割当を所有する。 weblink kind は binding を持たない外部リンク。"
+      "description": "運用者が「接続する業務アプリケーション」として扱う上位 aggregate。OIDC client / SAML SP / WS-Fed RP を protocol binding として束ね、表示名・アイコン・状態・割当を所有する。weblink kind は binding を持たない外部リンク。tenant_id は既存 Tenant を指し、category_ids と protocol binding の opaque key は use case が同一テナント内の既存参照として検証する。"
     },
     "ApplicationAssigned": {
       "type": "object",
@@ -2267,7 +2271,7 @@
         "visibility",
         "created_at"
       ],
-      "description": "Application へのユーザー / グループ割当。割当はポータル可視性とフェデレーション利用可否を fail-closed で制御する。hidden は一覧に出さないがプロトコル利用は許可する。"
+      "description": "Application へのユーザー / グループ割当。割当はポータル可視性とフェデレーション利用可否を fail-closed で制御する。hidden は一覧に出さないがプロトコル利用は許可する。subject_id は subject_type に応じて同一テナントの User.sub または Group.id を指す。"
     },
     "ApplicationAssignmentListResponse": {
       "type": "object",
@@ -2688,7 +2692,7 @@
         "user_sub",
         "application_ids"
       ],
-      "description": "利用者ポータルでの手動並び順 (ADR-069)。tenant_id + user_sub をキーに、Application の\n表示順を application_id の順序列として持つ。順序列に在って現在は未割当の application は\n一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。\n"
+      "description": "利用者ポータルでの手動並び順 (ADR-069)。tenant_id + user_sub をキーに、Application の\n表示順を application_id の順序列として持つ。user_sub は同一テナントの既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、同一テナントかつ本人に割当済み visible な Application のみに制限する。\n"
     },
     "ApplicationProvisionType": {
       "type": "string",
@@ -4316,7 +4320,7 @@
         "granted_at",
         "expires_at"
       ],
-      "description": "GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。"
+      "description": "GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。sub と client_id は同一 tenant_id 内の既存 User と OAuth2Client を指す。"
     },
     "ConsentGranted": {
       "type": "object",
@@ -6683,7 +6687,7 @@
         "expires_at",
         "absolute_expires_at"
       ],
-      "description": "リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。"
+      "description": "リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant_id / client_id / sub は同一テナントの既存 Tenant / OAuth2Client / User と整合する。"
     },
     "RefreshTokenReuseDetected": {
       "type": "object",
@@ -6806,15 +6810,24 @@
     "RequiredAuthnLevel": {
       "type": "object",
       "properties": {
-        "acr": {
-          "type": "string"
-        },
-        "factor": {
-          "type": "string"
+        "strength": {
+          "$ref": "#/$defs/RequiredAuthnStrength",
+          "default": "Password"
         }
       },
       "additionalProperties": false,
-      "description": "Application sign-on policy が要求する認証強度。acr と factor は両方指定でき、指定された条件をすべて満たす必要がある。"
+      "required": [
+        "strength"
+      ],
+      "description": "サインインポリシーが要求する認証強度。制約された選択肢 (Password / Mfa) を内部の acr / amr へ写像する。Mfa を満たさない場合は step-up で昇格を促す。"
+    },
+    "RequiredAuthnStrength": {
+      "type": "string",
+      "enum": [
+        "Password",
+        "Mfa"
+      ],
+      "description": "サインインポリシーが要求する認証強度。Password は追加要求なし (acr ⊇ urn:idmagic:acr:pwd)、Mfa は第二要素必須 (acr = urn:idmagic:acr:mfa、amr に otp / webauthn / hwk / swk のいずれかを含む)。"
     },
     "ResponseMode": {
       "type": "string",
@@ -7483,7 +7496,7 @@
       ],
       "description": "LoginSession を開始した。session 一覧・調査の起点。"
     },
-    "SignOnRule": {
+    "SignInRule": {
       "type": "object",
       "properties": {
         "rule_id": {
@@ -7510,7 +7523,7 @@
         "required_authn",
         "condition"
       ],
-      "description": "Application sign-on policy の単一ルール。"
+      "description": "サインインポリシーの単一ルール。"
     },
     "SignatureAlgorithm": {
       "type": "string",
@@ -7579,7 +7592,7 @@
         "state",
         "created_at"
       ],
-      "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。"
+      "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。"
     },
     "SigningKeyRotated": {
       "type": "object",
@@ -7813,7 +7826,7 @@
         "status",
         "created_at"
       ],
-      "description": "テナント (realm) 集約。Client / User / Consent / ポリシー / ブランディングはこの境界に閉じる。`default` テナントは起動時に自動作成され、削除・無効化とも不可。"
+      "description": "テナント (realm) 集約。Client / User / Consent / ポリシー / ブランディングはこの境界に閉じる。`default` テナントは起動時に自動作成され、削除・無効化とも不可。live aggregate は tenant_id で既存 Tenant を参照し、履歴・イベント用途の record は監査保持のため tenant 外部キーを持たない場合がある。"
     },
     "TenantCreateRequest": {
       "type": "object",

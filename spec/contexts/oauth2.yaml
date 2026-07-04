@@ -1296,7 +1296,7 @@ models:
         type: Timestamp
   Consent:
     kind: entity
-    description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。
+    description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。sub と client_id は同一 tenant_id 内の既存 User と OAuth2Client を指す。
     identity:
       - tenant_id
       - sub
@@ -1425,7 +1425,7 @@ models:
         type: Timestamp
   RefreshTokenRecord:
     kind: entity
-    description: リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。
+    description: リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant_id / client_id / sub は同一テナントの既存 Tenant / OAuth2Client / User と整合する。
     identity: id
     fields:
       id:
@@ -3777,6 +3777,10 @@ invariants:
     description: クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。
     assuming: event == ClientAuthenticationFailed
     always: "error == InvalidClient && size(error_description) == size(error_description_constant)"
+  TokenAndConsentReferencesStayTenantLocal:
+    description: "Consent と RefreshTokenRecord は同一 tenant_id 内の User と OAuth2Client だけを参照する。RefreshTokenRecord.parent_id は同じ family_id の既存 RefreshTokenRecord を指す。\n反例: tenant A の refresh token が tenant B の client_id または sub を持つ。\n"
+    target: RefreshTokenRecord
+    always: "refresh_token.sub in Users(refresh_token.tenant_id) && refresh_token.client_id in OAuth2Clients(refresh_token.tenant_id)"
 permissions:
   TokenGrantAuthorizationCode:
     description: 認可コード交換による access_token / id_token / refresh_token 発行
@@ -4527,6 +4531,10 @@ scenarios:
         steps:
           - "tenant_id \"acme\" で発行した refresh token \"RT1\" を \"/realms/default/token\" で再発行する"
           - "エラー \"InvalidGrantError\""
+      - condition: 保存層に別テナントの subject / client を持つ refresh token を書き込む
+        steps:
+          - "tenant_id \"acme\" の refresh token に tenant_id \"default\" の client_id または sub を指定する"
+          - "永続化層が参照整合性エラーで拒否する"
       - condition: 他テナントの device_code を交換する
         steps:
           - "tenant_id \"acme\" で発行し承認した device_code \"DC1\" を \"/realms/default/token\" で交換する"

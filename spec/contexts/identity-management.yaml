@@ -675,7 +675,7 @@ models:
         description: direct_roles ∪ group_roles。
   Agent:
     kind: entity
-    description: tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で既存 OAuth2Client に束縛してトークンを得る。owner は必須。
+    description: tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で同一テナントの既存 OAuth2Client に束縛してトークンを得る。owner は同一テナントの既存 User で必須。
     identity: id
     fields:
       id:
@@ -709,7 +709,7 @@ models:
         type: String
         constraints:
           - non_empty
-        description: 所有者 User の sub。必須。
+        description: 所有者 User の sub。必須。同一 tenant_id の User でなければならない。
       status:
         type: AgentStatus
         default: Active
@@ -730,7 +730,7 @@ models:
         description: 一方向終端 (kill) 時刻。
   AgentCredentialBinding:
     kind: entity
-    description: Agent と OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。
+    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。永続化層は agent_id と client_id の tenant_id 一致を fail-closed に保証する。
     identity:
       - agent_id
       - client_id
@@ -1873,6 +1873,10 @@ invariants:
     description: "PendingDeletion (soft-deleted) の User は Deleted と同じく認証系に対して\nfail-close でなければならない。login / authorize / token (refresh / exchange /\ndevice) / userinfo / introspect は Active でない限り成功してはならない。PII が\n温存されている点だけが Deleted との違いで、認証可否は変わらない。\n"
     target: User
     always: "user.status != Active => user is not authenticated and issues no new token"
+  AgentReferencesStayTenantLocal:
+    description: "Agent.owner_sub と AgentCredentialBinding.client_id は同一 tenant_id 内の live aggregate だけを指す。\n反例: tenant A の Agent が tenant B の User や OAuth2Client を参照する = tenant isolation 違反。\n"
+    target: Agent
+    always: "agent.owner_sub in Users(agent.tenant_id) && binding(agent).client_id in OAuth2Clients(agent.tenant_id)"
 permissions:
   AdminUserRead:
     description: 管理ユーザー情報の一覧・取得。
@@ -1933,6 +1937,11 @@ scenarios:
       - "管理者 \"operator\" がエージェント \"batch-agent\" を無効化する"
       - "管理者 \"operator\" がエージェント \"batch-agent\" を再有効化する"
       - "エージェント一覧に \"batch-agent\" が表示される"
+    extensions:
+      - condition: 別テナントの client 資格情報をバインドする
+        steps:
+          - "tenant_id \"acme\" の Agent に tenant_id \"default\" の client_id を指定する"
+          - "エラー \"InvalidRequestError\""
   管理者は無効化したユーザーを再有効化できる:
     goal: 管理者が無効化済みユーザーを再有効化する。
     primary_actor: Administrator

@@ -52,7 +52,8 @@ CREATE TABLE users (
     lifecycle JSONB NOT NULL DEFAULT jsonb_build_object('status', 'active'),
     attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
     CONSTRAINT users_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT users_tenant_sub_unique UNIQUE (tenant_id, sub)
 );
 
 CREATE UNIQUE INDEX users_preferred_username_active_idx
@@ -71,7 +72,7 @@ CREATE TABLE mfa_factors (
 
 CREATE TABLE consents (
     tenant_id TEXT NOT NULL DEFAULT 'default',
-    sub TEXT NOT NULL REFERENCES users(sub) ON DELETE RESTRICT,
+    sub TEXT NOT NULL,
     client_id TEXT NOT NULL,
     scopes JSONB NOT NULL,
     granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -82,7 +83,10 @@ CREATE TABLE consents (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT consents_tenant_client_fkey
         FOREIGN KEY (tenant_id, client_id)
-        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT
+        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT,
+    CONSTRAINT consents_tenant_sub_fkey
+        FOREIGN KEY (tenant_id, sub)
+        REFERENCES users(tenant_id, sub) ON DELETE RESTRICT
 );
 
 CREATE TABLE refresh_tokens (
@@ -104,7 +108,10 @@ CREATE TABLE refresh_tokens (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT refresh_tokens_tenant_client_fkey
         FOREIGN KEY (tenant_id, client_id)
-        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT
+        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT,
+    CONSTRAINT refresh_tokens_tenant_sub_fkey
+        FOREIGN KEY (tenant_id, sub)
+        REFERENCES users(tenant_id, sub) ON DELETE RESTRICT
 );
 
 CREATE INDEX refresh_tokens_family_id_idx ON refresh_tokens (family_id);
@@ -122,7 +129,9 @@ CREATE TABLE signing_keys (
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     rotated_at TIMESTAMPTZ,
-    archived_at TIMESTAMPTZ
+    archived_at TIMESTAMPTZ,
+    CONSTRAINT signing_keys_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
 CREATE UNIQUE INDEX signing_keys_single_active_idx
@@ -172,7 +181,8 @@ CREATE TABLE groups (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ,
     CONSTRAINT groups_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT groups_tenant_id_id_unique UNIQUE (tenant_id, id)
 );
 
 CREATE UNIQUE INDEX groups_tenant_name_idx ON groups (tenant_id, name);
@@ -250,7 +260,11 @@ CREATE TABLE agents (
     disabled_at TIMESTAMPTZ,
     killed_at TIMESTAMPTZ,
     CONSTRAINT agents_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT agents_tenant_owner_fkey
+        FOREIGN KEY (tenant_id, owner_sub)
+        REFERENCES users(tenant_id, sub) ON DELETE RESTRICT,
+    CONSTRAINT agents_tenant_id_id_unique UNIQUE (tenant_id, id)
 );
 
 CREATE UNIQUE INDEX agents_tenant_name_idx ON agents (tenant_id, name);
@@ -262,7 +276,13 @@ CREATE TABLE agent_credential_bindings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (agent_id, client_id),
     CONSTRAINT agent_credential_bindings_agent_id_fkey
-        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    CONSTRAINT agent_credential_bindings_tenant_agent_fkey
+        FOREIGN KEY (tenant_id, agent_id)
+        REFERENCES agents(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT agent_credential_bindings_tenant_client_fkey
+        FOREIGN KEY (tenant_id, client_id)
+        REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT
 );
 
 CREATE INDEX agent_credential_bindings_tenant_client_idx
@@ -299,7 +319,8 @@ CREATE TABLE applications (
     category_ids TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (tenant_id, application_id)
+    PRIMARY KEY (tenant_id, application_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE application_icons (
@@ -333,6 +354,8 @@ CREATE TABLE application_assignments (
     visibility TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (tenant_id, application_id, subject_type, subject_id),
+    CHECK (subject_type IN ('user', 'group')),
+    CHECK (visibility IN ('visible', 'hidden')),
     FOREIGN KEY (tenant_id, application_id)
         REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
 );
@@ -378,7 +401,9 @@ CREATE TABLE application_orderings (
     user_sub TEXT NOT NULL,
     application_ids TEXT[] NOT NULL DEFAULT '{}',
     updated_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (tenant_id, user_sub)
+    PRIMARY KEY (tenant_id, user_sub),
+    FOREIGN KEY (tenant_id, user_sub)
+        REFERENCES users (tenant_id, sub) ON DELETE CASCADE
 );
 
 CREATE TABLE application_categories (
@@ -388,8 +413,43 @@ CREATE TABLE application_categories (
     position INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (tenant_id, category_id)
+    PRIMARY KEY (tenant_id, category_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
+
+CREATE OR REPLACE FUNCTION validate_application_assignment_subject()
+RETURNS trigger AS $$
+BEGIN
+    IF NEW.subject_type = 'user' THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM users
+             WHERE tenant_id = NEW.tenant_id
+               AND sub = NEW.subject_id
+               AND lifecycle->>'status' IS DISTINCT FROM 'deleted'
+        ) THEN
+            RAISE foreign_key_violation
+                USING MESSAGE = 'application_assignments user subject must exist in the same tenant';
+        END IF;
+    ELSIF NEW.subject_type = 'group' THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM groups
+             WHERE tenant_id = NEW.tenant_id
+               AND id = NEW.subject_id
+        ) THEN
+            RAISE foreign_key_violation
+                USING MESSAGE = 'application_assignments group subject must exist in the same tenant';
+        END IF;
+    ELSE
+        RAISE check_violation
+            USING MESSAGE = 'application_assignments subject_type must be user or group';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER application_assignments_subject_ref_trigger
+    BEFORE INSERT OR UPDATE OF tenant_id, subject_type, subject_id ON application_assignments
+    FOR EACH ROW EXECUTE FUNCTION validate_application_assignment_subject();
 
 CREATE TABLE scim_configs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
@@ -427,4 +487,3 @@ CREATE TABLE scim_group_refs (
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
-
