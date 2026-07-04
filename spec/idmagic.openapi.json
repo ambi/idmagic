@@ -7762,6 +7762,819 @@
           }
         }
       }
+    },
+    "/scim/v2/ServiceProviderConfig": {
+      "get": {
+        "operationId": "GetScimServiceProviderConfig",
+        "summary": "SCIM 2.0 /ServiceProviderConfig を取得する。",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "config": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "config"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/ResourceTypes": {
+      "get": {
+        "operationId": "GetScimResourceTypes",
+        "summary": "SCIM 2.0 /ResourceTypes を取得する。",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "types"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Schemas": {
+      "get": {
+        "operationId": "GetScimSchemas",
+        "summary": "SCIM 2.0 /Schemas を取得する。",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemas": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "schemas"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Users": {
+      "post": {
+        "operationId": "CreateScimUser",
+        "summary": "SCIM 2.0 /Users に対する POST 要求。内部 User の作成（または mapping 適用）を処理する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "body": {}
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Users/{id}": {
+      "get": {
+        "operationId": "GetScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する GET 要求。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "PatchScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する PATCH 要求。active の変更や属性の更新を処理する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {}
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する PUT 要求。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {}
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する DELETE 要求。内部 User を soft-delete する。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/scim/v2/Groups": {
+      "post": {
+        "operationId": "CreateScimGroup",
+        "summary": "SCIM 2.0 /Groups に対する POST 要求。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "body": {}
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Groups/{id}": {
+      "get": {
+        "operationId": "GetScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する GET 要求。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "PatchScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する PATCH 要求。メンバーの追加・削除などを処理する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {}
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する PUT 要求。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {}
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する DELETE 要求。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/scim/config": {
+      "get": {
+        "operationId": "GetScimConfig",
+        "summary": "テナントの SCIM 同期設定を取得する。",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "config": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "config"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateScimConfig",
+        "summary": "テナントの SCIM 同期設定を更新する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "config": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "config"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/scim/tokens": {
+      "get": {
+        "operationId": "ListScimTokens",
+        "summary": "テナントの SCIM トークン一覧を取得する。",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tokens": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "tokens"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CreateScimToken",
+        "summary": "テナントの SCIM トークンを新規発行する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "expiry_days": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "description",
+                  "expiry_days"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {}
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "token"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/scim/tokens/{id}": {
+      "delete": {
+        "operationId": "RevokeScimToken",
+        "summary": "テナントの SCIM トークンを無効化する。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14914,6 +15727,99 @@
           "reason"
         ],
         "description": "SAML SSO 要求を拒否した (未登録 entityID・許可外 ACS URL・未割当 subject・解析失敗など)。"
+      },
+      "ScimConfig": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "enabled"
+        ],
+        "description": "テナントごとの SCIM 2.0 Inbound Provisioning 有効化設定。"
+      },
+      "ScimGroupRef": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "scim_id": {
+            "type": "string"
+          },
+          "group_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "scim_id",
+          "group_id"
+        ],
+        "description": "SCIM 2.0 の ID と IdP 内部の Group (id) を紐付けるマッピング。"
+      },
+      "ScimToken": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "token_hash": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "id",
+          "token_hash",
+          "description",
+          "created_at"
+        ],
+        "description": "SCIM 2.0 API へのアクセス用 Bearer Token。"
+      },
+      "ScimUserRef": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "scim_id": {
+            "type": "string"
+          },
+          "user_sub": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "scim_id",
+          "user_sub"
+        ],
+        "description": "SCIM 2.0 の ID と IdP 内部の User (sub) を紐付けるマッピング。"
       },
       "SecurityTokenEndpoint": {
         "type": "object",

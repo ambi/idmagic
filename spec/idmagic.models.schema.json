@@ -7153,6 +7153,99 @@
       ],
       "description": "SAML SSO 要求を拒否した (未登録 entityID・許可外 ACS URL・未割当 subject・解析失敗など)。"
     },
+    "ScimConfig": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "enabled"
+      ],
+      "description": "テナントごとの SCIM 2.0 Inbound Provisioning 有効化設定。"
+    },
+    "ScimGroupRef": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "scim_id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "scim_id",
+        "group_id"
+      ],
+      "description": "SCIM 2.0 の ID と IdP 内部の Group (id) を紐付けるマッピング。"
+    },
+    "ScimToken": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "token_hash": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "id",
+        "token_hash",
+        "description",
+        "created_at"
+      ],
+      "description": "SCIM 2.0 API へのアクセス用 Bearer Token。"
+    },
+    "ScimUserRef": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "scim_id": {
+          "type": "string"
+        },
+        "user_sub": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "scim_id",
+        "user_sub"
+      ],
+      "description": "SCIM 2.0 の ID と IdP 内部の User (sub) を紐付けるマッピング。"
+    },
     "SecurityTokenEndpoint": {
       "type": "object",
       "properties": {
