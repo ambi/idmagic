@@ -93,6 +93,23 @@ objectives:
         - server_timeout
         - upstream_timeout
       client_aborted_counts_as_server_error: false
+  RequestFaultIsolation:
+    kind: security
+    description: "いずれかの HTTP ハンドラで panic が発生しても、その障害は単一リクエストに局所化する。middleware が panic を捕捉して 500 に変換し stack とともに構造化ログへ記録し、プロセスは継続稼働する。併せて全リクエストに request_id を付与し、レスポンスヘッダとログコンテキストへ伝播する。request_id は secure-by-default で常にアプリが自前生成し、受信 X-Request-ID は運用者が REQUEST_ID_TRUST_INBOUND で明示的にオプトインしたときだけ (信頼できる境界プロキシが所有・消毒している前提で) 再利用する。信頼するか否かに関わらず受信値はサニタイズ (許可文字と長さ制限) してヘッダ/ログインジェクションを防ぐ。panic 由来のみを server error として扱い、client abort (context.Canceled) は ClientAbortLogClassification に従い server error に数えない。"
+    policy: request_fault_isolation
+    target: HTTPRequestMiddleware
+    value:
+      panic_recovery: true
+      panic_response_status: 500
+      panic_counts_as_server_error: true
+      process_continues_after_panic: true
+      request_id_header: X-Request-ID
+      request_id_self_generated_by_default: true
+      request_id_inbound_trust: opt_in
+      request_id_inbound_trust_flag: REQUEST_ID_TRUST_INBOUND
+      request_id_inbound_sanitized: true
+      request_id_in_response: true
+      request_id_in_log_context: true
   BuildInfo:
     kind: security
     description: "稼働中のバイナリの一意性を確定するため、ビルド時のメタデータ（version、git_commit、build_date、go_version）を埋め込み、露出する。"

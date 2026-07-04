@@ -84,8 +84,31 @@ func replaceAttr(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-// traceHandler injects trace_id / span_id from the active OpenTelemetry span in
-// the context, so application logs correlate with traces (ADR-017 / ADR-018).
+// requestIDKey is the context key under which the per-request correlation id is
+// stored so it can be attached to every application-log record for the request.
+type requestIDKey struct{}
+
+// ContextWithRequestID returns a context carrying the per-request correlation
+// id. Application logs emitted with this context gain a request_id field, which
+// lets multiple lines and client reports for one request be correlated even
+// when no OpenTelemetry span is active (RequestFaultIsolation objective).
+func ContextWithRequestID(ctx context.Context, id string) context.Context {
+	if id == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, requestIDKey{}, id)
+}
+
+// RequestIDFromContext returns the per-request correlation id, or "" if none is
+// present.
+func RequestIDFromContext(ctx context.Context) string {
+	id, _ := ctx.Value(requestIDKey{}).(string)
+	return id
+}
+
+// traceHandler injects trace_id / span_id from the active OpenTelemetry span and
+// request_id from the request context, so application logs correlate with traces
+// and with a single request (ADR-017 / ADR-018).
 type traceHandler struct{ slog.Handler }
 
 func (h *traceHandler) Handle(ctx context.Context, r slog.Record) error {
@@ -94,6 +117,9 @@ func (h *traceHandler) Handle(ctx context.Context, r slog.Record) error {
 			slog.String("trace_id", sc.TraceID().String()),
 			slog.String("span_id", sc.SpanID().String()),
 		)
+	}
+	if id := RequestIDFromContext(ctx); id != "" {
+		r.AddAttrs(slog.String("request_id", id))
 	}
 	return h.Handler.Handle(ctx, r)
 }

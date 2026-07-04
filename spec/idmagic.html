@@ -264,7 +264,7 @@ XML signing capability だけを共有する。
       <div class="eyebrow">Bounded Context · contexts/system.yaml</div>
       <h1>System</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">5</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-system-standards">
     <h2>Standards <span class="count">2</span></h2>
@@ -358,10 +358,10 @@ XML signing capability だけを共有する。
       </article></div>
   </section>
 <section id="context-system-objectives">
-    <h2>Objectives <span class="count">4</span></h2>
+    <h2>Objectives <span class="count">5</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">security <span class="count">4</span></h3>
+      <h3 class="grp-title">security <span class="count">5</span></h3>
       <div class="cards"><article class="card" id="context-system-obj-cancellationconsistency">
     <header><h3>CancellationConsistency</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。</p>
@@ -371,6 +371,11 @@ XML signing capability だけを共有する。
     <header><h3>ClientAbortLogClassification</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">client abort 由来の context.Canceled は server error として記録・集計せず、server timeout / upstream timeout と別 label で観測する。</p>
     <dl class="kv"><dt>policy</dt><dd><span class="text">http_cancel_classification</span></dd><dt>target</dt><dd><span class="text">HTTPErrorHandling</span></dd><dt>value</dt><dd><dl class="kv"><dt>metric</dt><dd><span class="text">http_request_aborts_total</span></dd><dt>labels</dt><dd><span class="chip">client_aborted</span> <span class="chip">server_timeout</span> <span class="chip">upstream_timeout</span></dd><dt>client_aborted_counts_as_server_error</dt><dd><code>false</code></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-requestfaultisolation">
+    <header><h3>RequestFaultIsolation</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">いずれかの HTTP ハンドラで panic が発生しても、その障害は単一リクエストに局所化する。middleware が panic を捕捉して 500 に変換し stack とともに構造化ログへ記録し、プロセスは継続稼働する。併せて全リクエストに request_id を付与し、レスポンスヘッダとログコンテキストへ伝播する。request_id は secure-by-default で常にアプリが自前生成し、受信 X-Request-ID は運用者が REQUEST_ID_TRUST_INBOUND で明示的にオプトインしたときだけ (信頼できる境界プロキシが所有・消毒している前提で) 再利用する。信頼するか否かに関わらず受信値はサニタイズ (許可文字と長さ制限) してヘッダ/ログインジェクションを防ぐ。panic 由来のみを server error として扱い、client abort (context.Canceled) は ClientAbortLogClassification に従い server error に数えない。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">request_fault_isolation</span></dd><dt>target</dt><dd><span class="text">HTTPRequestMiddleware</span></dd><dt>value</dt><dd><dl class="kv"><dt>panic_recovery</dt><dd><code>true</code></dd><dt>panic_response_status</dt><dd><code>500</code></dd><dt>panic_counts_as_server_error</dt><dd><code>true</code></dd><dt>process_continues_after_panic</dt><dd><code>true</code></dd><dt>request_id_header</dt><dd><span class="text">X-Request-ID</span></dd><dt>request_id_self_generated_by_default</dt><dd><code>true</code></dd><dt>request_id_inbound_trust</dt><dd><span class="text">opt_in</span></dd><dt>request_id_inbound_trust_flag</dt><dd><span class="text">REQUEST_ID_TRUST_INBOUND</span></dd><dt>request_id_inbound_sanitized</dt><dd><code>true</code></dd><dt>request_id_in_response</dt><dd><code>true</code></dd><dt>request_id_in_log_context</dt><dd><code>true</code></dd></dl></dd></dl>
   </article>
 <article class="card" id="context-system-obj-buildinfo">
     <header><h3>BuildInfo</h3><span class="badge badge-kind-security">security</span></header>

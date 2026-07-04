@@ -130,6 +130,7 @@ adapters are selected with environment variables:
 | `KEY_PROVIDER` | `local`, `vault` | signing key provider |
 | `VAULT_ADDR`, `VAULT_TOKEN` | Vault configuration | Vault Transit configuration |
 | `BREACHED_PASSWORD_CHECKER` | `noop`, `hibp` | breached password checker |
+| `REQUEST_ID_TRUST_INBOUND` | `false`, `true` | reuse an edge proxy's inbound `X-Request-ID` (see Request Correlation) |
 | `SKIP_DEMO_SEED` | `true` | disable demo seed data |
 
 For SMTP testing, Mailpit works well:
@@ -146,6 +147,34 @@ SMTP_FROM=noreply@idmagic.test \
 ```
 
 Open Mailpit at <http://127.0.0.1:8025/>.
+
+### Request Correlation (`X-Request-ID`)
+
+Every request is assigned a `request_id`. It is returned in the `X-Request-ID`
+response header and attached to every application log line for the request
+(alongside `trace_id` / `span_id` when `OBSERVABILITY=otel`), so a single request
+can be correlated across logs and with a client report.
+
+Correlation-id generation belongs at the edge. Because `X-Request-ID` is
+attacker-controllable, IdMagic is **secure by default**: it self-generates the id
+and ignores any inbound `X-Request-ID`, so a directly reachable client cannot
+spoof or collide correlation ids. Choose one of two setups:
+
+- **Trusted edge proxy owns the header.** If a proxy in front of IdMagic
+  generates (and thereby sanitizes) `X-Request-ID` for external traffic, set
+  `REQUEST_ID_TRUST_INBOUND=true` so that id flows into IdMagic's logs — giving a
+  single id shared across the proxy and application tiers. Only enable this when
+  the proxy actually sets/regenerates the header; a proxy that passes the client
+  value through untouched must not be trusted. Examples:
+  - Envoy / Istio regenerate `x-request-id` at the edge by default.
+  - nginx (≥ 1.11.0): `proxy_set_header X-Request-ID $request_id;`
+  - Caddy v2: `reverse_proxy` with `header_up X-Request-ID {http.request.uuid}`
+- **No proxy, or a proxy that cannot set the header.** Leave
+  `REQUEST_ID_TRUST_INBOUND=false` (the default); IdMagic generates its own id and
+  the inbound value is ignored. No proxy header configuration is required.
+
+Regardless of the setting, a reused inbound value is sanitized (bounded length,
+restricted character set) as defense in depth against header/log injection.
 
 ## Repository Map
 

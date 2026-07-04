@@ -95,6 +95,23 @@ func TestNew_NoTraceFieldsWithoutSpan(t *testing.T) {
 	}
 }
 
+func TestNew_RequestIDCorrelation(t *testing.T) {
+	var buf bytes.Buffer
+	log := New(&buf, slog.LevelInfo, "idmagic", "")
+
+	ctx := ContextWithRequestID(context.Background(), "req-abc-123")
+	log.Info(ctx, "with request id")
+	if rec := decodeLine(t, &buf); rec["request_id"] != "req-abc-123" {
+		t.Errorf("request_id = %v, want req-abc-123", rec["request_id"])
+	}
+
+	buf.Reset()
+	log.Info(context.Background(), "no request id")
+	if _, ok := decodeLine(t, &buf)["request_id"]; ok {
+		t.Error("request_id present without a request context")
+	}
+}
+
 func TestMaskEmail(t *testing.T) {
 	cases := map[string]string{
 		"alice@example.com":    "***@example.com",

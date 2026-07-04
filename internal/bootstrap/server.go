@@ -116,6 +116,13 @@ func Run() error {
 	e := echo.New()
 	// Echo フレームワークのログも同じ構造化ハンドラ (ADR-018 の field 規約) に載せる。
 	e.Logger = slogLogger
+	// RequestFaultIsolation objective: request_id を最外で付与し、その内側で
+	// panic を捕捉して 500 に局所化する。以降の otel / ハンドラの panic とログは
+	// 同じ request_id 配下に入る。受信 X-Request-ID は secure-by-default で無視し
+	// 自前生成する。信頼できる境界プロキシが所有・消毒している構成でのみ
+	// REQUEST_ID_TRUST_INBOUND=true で受信値の再利用を許可する。
+	e.Use(httpsupport.RequestIDMiddleware(envDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
+	e.Use(httpsupport.RecoverMiddleware(logger))
 	var otelProvider *observability.Provider
 	if runtime.Observability == "otel" {
 		otelProvider, err = observability.New(ctx, envDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
