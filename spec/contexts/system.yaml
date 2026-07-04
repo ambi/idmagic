@@ -110,6 +110,19 @@ objectives:
       request_id_inbound_sanitized: true
       request_id_in_response: true
       request_id_in_log_context: true
+  HTTPServerHardening:
+    kind: security
+    description: "インターネットに露出する境界 HTTP サーバとして、基盤 http.Server に read_header / read / write / idle タイムアウトを設定し、リクエストボディに上限を課す。これにより slowloris 等の低速接続によるコネクション枯渇や、巨大ボディによるメモリ枯渇といった単純なリソース枯渇 DoS (gosec G112 / CWE-400) に対する下限の耐性を確保する。値は env で上書きできるが既定は本番安全側に倒す。ボディ上限超過は 413 で拒否する。volumetric / TLS ハンドシェイク DoS の主防御は前段プロキシが担い、本目標はプロキシ非依存の多層防御としてアプリ自身のホップを守る (secure-by-default)。"
+    policy: http_server_hardening
+    target: HTTPBoundaryServer
+    value:
+      read_header_timeout_seconds: 10
+      read_timeout_seconds: 30
+      write_timeout_seconds: 60
+      idle_timeout_seconds: 120
+      max_body_bytes: 1048576
+      env_overridable: true
+      oversize_body_status: 413
   BuildInfo:
     kind: security
     description: "稼働中のバイナリの一意性を確定するため、ビルド時のメタデータ（version、git_commit、build_date、go_version）を埋め込み、露出する。"

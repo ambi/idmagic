@@ -22,6 +22,7 @@ import (
 	tenantusecases "idmagic/internal/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 // Run はサーバ全体を起動する。SIGINT/SIGTERM で graceful shutdown。
@@ -123,6 +124,10 @@ func Run() error {
 	// REQUEST_ID_TRUST_INBOUND=true で受信値の再利用を許可する。
 	e.Use(httpsupport.RequestIDMiddleware(envDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
 	e.Use(httpsupport.RecoverMiddleware(logger))
+	// HTTPServerHardening objective: ボディ上限を全リクエストに課し、超過は 413 で拒否する。
+	// request_id 付与と panic recover の内側に置き、拒否レスポンスも相関/回復対象にする。
+	hardening := loadHTTPServerHardening()
+	e.Use(middleware.BodyLimit(hardening.MaxBodyBytes))
 	var otelProvider *observability.Provider
 	if runtime.Observability == "otel" {
 		otelProvider, err = observability.New(ctx, envDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
@@ -185,8 +190,18 @@ func Run() error {
 
 	logger.Info(ctx, "server listening",
 		"commit", buildInfo.GitCommit, "build_date", buildInfo.BuildDate,
-		"addr", addr, "issuer", issuer)
-	startConfig := echo.StartConfig{Address: addr}
+		"addr", addr, "issuer", issuer,
+		"read_header_timeout", hardening.ReadHeaderTimeout, "read_timeout", hardening.ReadTimeout,
+		"write_timeout", hardening.WriteTimeout, "idle_timeout", hardening.IdleTimeout,
+		"max_body_bytes", hardening.MaxBodyBytes)
+	startConfig := echo.StartConfig{
+		Address: addr,
+		// HTTPServerHardening objective: 基盤 http.Server にタイムアウトを設定する。
+		BeforeServeFunc: func(s *http.Server) error {
+			hardening.apply(s)
+			return nil
+		},
+	}
 	if err := startConfig.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error(ctx, "server stopped with error", "error", err)
 	}

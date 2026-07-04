@@ -176,6 +176,29 @@ spoof or collide correlation ids. Choose one of two setups:
 Regardless of the setting, a reused inbound value is sanitized (bounded length,
 restricted character set) as defense in depth against header/log injection.
 
+### HTTP Server Hardening
+
+The boundary HTTP server applies production-safe timeouts and a request body
+limit so a single slow or oversized client cannot exhaust connections or memory
+(`gosec G112` / CWE-400). Bodies over the limit are rejected with `413`. Defaults
+are conservative and can be overridden per deployment:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HTTP_READ_HEADER_TIMEOUT` | `10s` | max time to read request headers (slowloris bound) |
+| `HTTP_READ_TIMEOUT` | `30s` | max time to read the full request |
+| `HTTP_WRITE_TIMEOUT` | `60s` | max time to write the response |
+| `HTTP_IDLE_TIMEOUT` | `120s` | keep-alive idle connection timeout |
+| `HTTP_MAX_BODY_BYTES` | `1048576` | max request body size in bytes (1 MiB) |
+
+This is defense in depth, not a substitute for an edge proxy. The **primary**
+line against volumetric floods and TLS-handshake slowloris is the fronting
+reverse proxy (Envoy / Nginx / Caddy / HAProxy), which sees total traffic and can
+stop abuse cheaply at the edge. IdMagic still enforces its own timeouts and body
+limit so it stays safe when run without a proxy, and so the proxy↔app hop and
+any in-cluster direct access are covered. Tune the proxy's own timeouts and
+connection limits alongside these values.
+
 ## Repository Map
 
 ```text
