@@ -14,7 +14,7 @@ import (
 )
 
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
-// 永続層 (memory/postgres) や event sink の差分を本構造体で吸収する。
+// 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
 	ClientRepo              oauthports.OAuth2ClientRepository
 	TenantRepo              tenantports.TenantRepository
@@ -38,7 +38,7 @@ type Dependencies struct {
 	AccessTokenDenylist     oauthports.AccessTokenDenylist
 	SessionStore            authnports.SessionStore
 	// NewLoginAttemptThrottle は SCL 由来のしきい値から throttle adapter を生成する。
-	// memory ランタイムはプロセスメモリ版、postgres ランタイムは Valkey 共有版を返す
+	// memory ランタイムはプロセスメモリ版、postgres_valkey ランタイムは Valkey 共有版を返す
 	// (ADR-077: 複数レプリカで閾値がクラスタ全体で一つになるよう共有ストア化する)。
 	NewLoginAttemptThrottle   func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
 	KeyStore                  oauthports.KeyStore
@@ -72,14 +72,14 @@ func loadRuntimeConfig() RuntimeConfig {
 	}
 }
 
-// assemble は PERSISTENCE 環境変数に応じて memory/postgres いずれかの構成を組み立てる。
+// assemble は PERSISTENCE 環境変数に応じて memory/postgres_valkey いずれかの構成を組み立てる。
 func assemble(ctx context.Context) (*Dependencies, error) {
 	switch envDefault("PERSISTENCE", "memory") {
 	case "memory":
 		return assembleMemory()
-	case "postgres":
-		return assemblePostgres(ctx)
+	case "postgres_valkey":
+		return assemblePostgresValkey(ctx)
 	default:
-		return nil, errors.New("PERSISTENCE must be memory or postgres")
+		return nil, errors.New("PERSISTENCE must be memory or postgres_valkey")
 	}
 }

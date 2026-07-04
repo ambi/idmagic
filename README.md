@@ -117,7 +117,7 @@ adapters are selected with environment variables:
 
 | Variable | Values | Purpose |
 | --- | --- | --- |
-| `PERSISTENCE` | `memory`, `postgres` | storage backend |
+| `PERSISTENCE` | `memory`, `postgres_valkey` | storage backend |
 | `DATABASE_URL` | connection string | PostgreSQL database connection |
 | `VALKEY_URL` | connection string | Valkey connection for volatile state |
 | `EVENT_SINK` | `console`, `outbox` | domain event destination |
@@ -155,8 +155,8 @@ Open Mailpit at <http://127.0.0.1:8025/>.
 
 ### High Availability & Shared State
 
-Running more than one replica requires the `postgres` runtime with a shared
-Valkey (`PERSISTENCE=postgres`, `DATABASE_URL`, `VALKEY_URL`). All ephemeral /
+Running more than one replica requires the `postgres_valkey` runtime with a shared
+Valkey (`PERSISTENCE=postgres_valkey`, `DATABASE_URL`, `VALKEY_URL`). All ephemeral /
 short-lived state is then kept in a store shared across replicas rather than in
 per-replica process memory:
 

@@ -192,7 +192,7 @@ objectives:
       auto_post_form_action_allowlist: destination_only
   SharedEphemeralStateHA:
     kind: security
-    description: "複数レプリカで水平スケールする本番構成 (PERSISTENCE=postgres) では、ephemeral / short-lived な状態を全てレプリカ間で共有するストア (Valkey) に載せ、per-replica のプロセスメモリに残さない。共有対象は authorization request / authorization code / PAR / device code / login session / DPoP・client-assertion replay / access-token denylist / login throttle。login throttle をプロセスメモリに残すと閾値がレプリカ数倍に緩むため (LoginThrottlePolicy 参照)、これも共有ストアに載せる。refresh token / audit event / auth-event bucket は Postgres が durable な共有ストアとして所有する。memory adapter は共有ストアを持たず単一レプリカ / テスト専用であり、複数レプリカ運用では Valkey (postgres ランタイム) が必須である。共有ストア到達不能時の縮退方針は状態ごとに定め、login throttle は fail_closed とする。"
+    description: "複数レプリカで水平スケールする本番構成 (PERSISTENCE=postgres_valkey) では、ephemeral / short-lived な状態を全てレプリカ間で共有するストア (Valkey) に載せ、per-replica のプロセスメモリに残さない。共有対象は authorization request / authorization code / PAR / device code / login session / DPoP・client-assertion replay / access-token denylist / login throttle。login throttle をプロセスメモリに残すと閾値がレプリカ数倍に緩むため (LoginThrottlePolicy 参照)、これも共有ストアに載せる。refresh token / audit event / auth-event bucket は Postgres が durable な共有ストアとして所有する。memory adapter は共有ストアを持たず単一レプリカ / テスト専用であり、複数レプリカ運用では Valkey (postgres_valkey ランタイム) が必須である。共有ストア到達不能時の縮退方針は状態ごとに定め、login throttle は fail_closed とする。"
     policy: shared_ephemeral_state_ha
     target: RuntimeTopology
     value:

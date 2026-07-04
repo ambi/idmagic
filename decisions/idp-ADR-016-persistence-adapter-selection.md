@@ -78,12 +78,15 @@ OAuth2 / OIDC IdP の状態は性質が大きく分かれる:
 `main.ts` の合成ルートに環境変数スイッチを置く:
 
 ```text
-PERSISTENCE = memory | postgres        (default: memory)
+PERSISTENCE = memory | postgres_valkey (default: memory)
 EVENT_SINK  = console | outbox | kafka (default: console)
 ```
 
-`PERSISTENCE=postgres` のとき、durable は Postgres、volatile は Valkey をセットで使う。
-これは「OAuth2 IdP の本番想定構成」が暗黙にこの組み合わせを前提とするため。
+`PERSISTENCE=postgres_valkey` のとき、durable は Postgres、volatile は Valkey をセットで使う。
+これは「OAuth2 IdP の本番想定構成」が暗黙にこの組み合わせを前提とするため。値を
+`postgres_valkey` とし durable/volatile 双方のバックエンドを名前に含めるのは、`postgres`
+単独名だと Valkey が必須である事実が読み取れず、将来 durable が増えた場合 (例
+`mysql_valkey`) にも組み合わせを区別できるようにするため。
 
 ## データライフサイクル制約の実装写像
 

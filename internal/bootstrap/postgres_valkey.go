@@ -12,10 +12,10 @@ import (
 	valkeystore "idmagic/internal/shared/adapters/persistence/valkey"
 )
 
-func assemblePostgres(ctx context.Context) (*Dependencies, error) {
+func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	databaseURL, valkeyURL := os.Getenv("DATABASE_URL"), os.Getenv("VALKEY_URL")
 	if databaseURL == "" || valkeyURL == "" {
-		return nil, errors.New("PERSISTENCE=postgres requires DATABASE_URL and VALKEY_URL")
+		return nil, errors.New("PERSISTENCE=postgres_valkey requires DATABASE_URL and VALKEY_URL")
 	}
 	pool, err := postgres.Open(ctx, databaseURL)
 	if err != nil {
