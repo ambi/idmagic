@@ -67,9 +67,9 @@ network CIDR 評価は 3 プロトコル経路すべてでクライアント IP 
   実評価できる構造化条件のみとし、network を許可 CIDR リスト (`network_allow_cidrs`) に、device を撤去した。
   評価器は fail-closed で、MFA 不足は step-up 誘導 (OIDC) / 拒否 (SAML・WS-Fed)、CIDR 不一致・クライアント IP
   不明は拒否する。クライアント IP を OIDC / SAML / WS-Fed の 3 経路で評価器に配線した (`Deps.ClientIP`、
-  TRUSTED_FORWARDED_HOPS ベース)。CIDR は保存時に検証する。旧テーブルの改称と rule JSON 変換は
-  `deploy/migrations/0001-rename-sign-on-to-sign-in-policy.sql` に明示的な runbook として置いた
-  (psqldef は declarative rename を drop+create と解釈するため)。評価点と所有関係は idp-ADR-079 を更新して記録した。
+  TRUSTED_FORWARDED_HOPS ベース)。CIDR は保存時に検証する。PostgreSQL レベルでは未リリースのため、
+  旧テーブル改称と rule JSON 変換用の個別 migration SQL は残さず、`deploy/schema/postgres.sql` の
+  現在形に統合した。評価点と所有関係は idp-ADR-079 を更新して記録した。
 - **Verification Results**:
   - `just yaml-check`
     - result: ok (SCL 12 files, work-items, ids all OK)
@@ -79,4 +79,5 @@ network CIDR 評価は 3 プロトコル経路すべてでクライアント IP 
     - result: ok (`go test -race ./...`: ok)
   - `just verify-ui`
     - result: ok (format check, lint, typecheck, build)
-  - 手動 (deploy): `deploy/migrations/0001-*.sql` 適用後に `psqldef --dry-run < deploy/schema/postgres.sql` が空になることを本番/ステージング反映時に確認する (本 WI では DB 未接続のため未実施)。
+  - 手動 (deploy): PostgreSQL レベルでは未リリースのため、個別 migration SQL は不要。
+    本番/ステージング反映時は `deploy/schema/postgres.sql` の dry-run / apply を確認する。
