@@ -611,6 +611,37 @@ func TestAccountContextRequiresAuthenticatedSession(t *testing.T) {
 	}
 }
 
+// TestAccountContextRejectsStaleBearerToken は、dev サーバ再起動などでサーバ側の
+// 署名鍵/セッションが失われた後にブラウザが古い access token を提示し続ける状況を模す。
+// resource server はこれを有効な資格情報として扱わず、SPA が保持トークンを破棄して
+// 再認可へ切り替えられるよう 401 authentication_required を返す (行き止まりにしない
+// wi-116 の回復シグナル契約)。
+func TestAccountContextRejectsStaleBearerToken(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+	client := browserClient(t)
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/auth/account", http.NoBody)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	// 失われた鍵で署名された (= もう検証できない) 過去のトークンを表す不透明な値。
+	req.Header.Set("Authorization", "Bearer stale.access.token")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("GET /api/auth/account: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status=%d, want 401; body=%s", resp.StatusCode, body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !bytes.Contains(body, []byte(`"error":"authentication_required"`)) {
+		t.Fatalf("unexpected body=%s", body)
+	}
+}
+
 func TestAccountContextReturnsCSRFTokenForAuthenticatedSession(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()

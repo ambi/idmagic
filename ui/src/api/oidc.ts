@@ -26,6 +26,10 @@ type LoginState = { state: string; verifier: string; audience: PortalAudience; r
 
 const LOGIN_KEY = 'ra_oidc_login'
 const sessionKey = (audience: PortalAudience) => `ra_oidc_token_${audience}`
+// 直近に復旧を試みた時刻を残すマーカー。再ログイン直後もなお 401 なら (設定不備の可能性)
+// 再認可ループに陥らないよう、この窓の間は自動復旧を抑止する。
+const reauthKey = (audience: PortalAudience) => `ra_oidc_reauth_${audience}`
+const REAUTH_SUPPRESS_MS = 60_000
 // access token 失効の手前で再取得するためのスキュー (秒)。
 const EXPIRY_SKEW_SECONDS = 30
 
@@ -152,6 +156,55 @@ export async function ensureLoggedIn(audience: PortalAudience, returnTo: string)
     }
   }
   await beginLogin(audience, returnTo)
+}
+
+// clearPortalState は portal の保持クライアント状態 (access/refresh token と進行中の
+// OIDC callback state) を破棄する。dev サーバ再起動などでサーバ側の署名鍵/セッションが
+// 失われ、stale なトークンが残ったときに古い資格情報を残さないために使う。
+function clearPortalState(audience: PortalAudience) {
+  clearSession(audience)
+  sessionStorage.removeItem(LOGIN_KEY)
+  activeBearer = null
+}
+
+// markPortalAuthenticated は portal の API 呼び出しが成功したことを記録し、復旧ループ
+// 抑止マーカーを解除する。次回の失効時は再び 1 回の自動復旧が効く。
+export function markPortalAuthenticated(audience: PortalAudience) {
+  sessionStorage.removeItem(reauthKey(audience))
+}
+
+// recoverPortalSession は、有効そうに見えたトークンを提示したのに API が 401 を返した
+// (サーバ側の login session / 署名鍵が失われた) ときの自動復旧。stale なトークンと
+// OIDC callback state を破棄し、同一オリジンの returnTo を保って 1 回だけ再認可する。
+// 直前の復旧からまだ間もない (= 再ログイン直後もなお 401) 場合は再認可を繰り返さず
+// false を返し、呼び出し側の再ログイン導線に委ねる。beginLogin はリダイレクトのため
+// 復旧を開始したときは戻らない。
+export async function recoverPortalSession(
+  audience: PortalAudience,
+  returnTo: string,
+): Promise<boolean> {
+  const marker = Number(sessionStorage.getItem(reauthKey(audience)))
+  if (Number.isFinite(marker) && marker > 0 && Date.now() - marker < REAUTH_SUPPRESS_MS) {
+    // 再ログイン直後にまた 401。再認可を繰り返さず行き止まり画面へ委ねる。
+    sessionStorage.removeItem(reauthKey(audience))
+    clearPortalState(audience)
+    return false
+  }
+  sessionStorage.setItem(reauthKey(audience), String(Date.now()))
+  clearPortalState(audience)
+  await beginLogin(audience, returnTo)
+  return true
+}
+
+// restartPortalLogin はユーザーが明示的に再ログインを選んだときの導線。抑止マーカーを
+// 解除して保持状態を破棄し、returnTo を保って再認可を開始する (戻らない)。
+export async function restartPortalLogin(
+  audience: PortalAudience,
+  returnTo: string,
+): Promise<never> {
+  sessionStorage.removeItem(reauthKey(audience))
+  clearPortalState(audience)
+  return beginLogin(audience, returnTo)
 }
 
 // completeLoginFromCallback は /callback で stored login state に対応する code を

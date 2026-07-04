@@ -293,6 +293,7 @@ user_experience:
         - loading
         - empty
         - access_denied
+        - reauthenticating
         - service_error
   transitions:
     - from: AdminDashboard
@@ -496,6 +497,19 @@ user_experience:
         - ListMyConsents
         - RevokeMyConsent
         - ExportAccountData
+    - id: UX-PORTAL-SESSION-RECOVERY
+      category: usability
+      adoption: required
+      statement: first-partyの管理コンソール/アカウントポータルは、保持するaccess tokenを提示したAPI呼び出しが401または失効セッションを返したとき行き止まりにしない。保持しているaccess token/refresh tokenとOIDC callback stateを破棄し、直前に開いていた画面への同一オリジン相対return_toを保ったまま再認可を1回だけ開始し、再ログイン完了まで管理APIを再試行しない。再認可後は元の画面パスへ復帰し、復旧できない場合も再ログイン導線を提示する。return_toは相対かつ同一オリジンに限定しopen redirectを防ぐ。
+      screens:
+        - AdminDashboard
+        - AccountHome
+      interfaces:
+        - Authorize
+        - GetBrowserTransaction
+        - SubmitBrowserLogin
+      standards:
+        - RFC9700
     - id: UX-KEYBOARD
       category: accessibility
       adoption: required

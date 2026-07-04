@@ -1,6 +1,11 @@
 import { redirect } from '@tanstack/react-router'
-import { request, tenantBasePath } from '../api/core'
-import { ensureLoggedIn, type PortalAudience } from '../api/oidc'
+import { request, tenantBasePath, UnauthenticatedError } from '../api/core'
+import {
+  ensureLoggedIn,
+  markPortalAuthenticated,
+  type PortalAudience,
+  recoverPortalSession,
+} from '../api/oidc'
 
 export type AccountContextResponse = {
   csrf_token: string
@@ -19,8 +24,25 @@ export async function requirePortalAccount(
   pathname: string,
   search: string,
 ): Promise<AccountContextResponse> {
-  await ensureLoggedIn(audience, `${tenantBasePath()}${pathname}${search}`)
-  return request<AccountContextResponse>('/api/auth/account')
+  const returnTo = `${tenantBasePath()}${pathname}${search}`
+  await ensureLoggedIn(audience, returnTo)
+  try {
+    const account = await request<AccountContextResponse>('/api/auth/account')
+    // 有効なセッションを確認できたので復旧ループ抑止マーカーを解除する。
+    markPortalAuthenticated(audience)
+    return account
+  } catch (error) {
+    // stale なトークンを提示していた (dev サーバ再起動などでサーバ側セッション/署名鍵が
+    // 失われた) 場合、行き止まりにせず保持状態を破棄して 1 回だけ再認可し、元の画面へ戻す。
+    if (error instanceof UnauthenticatedError) {
+      const recovering = await recoverPortalSession(audience, returnTo)
+      if (recovering) {
+        // beginLogin がリダイレクトするため通常ここには戻らない。
+        return new Promise<AccountContextResponse>(() => {})
+      }
+    }
+    throw error
+  }
 }
 
 // requireSystemAccount はシステムコンソール (/system) 用ガード。admin ポータルで

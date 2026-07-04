@@ -1433,6 +1433,30 @@ scenarios:
           - browser TOTP API に誤ったコードを送信する
           - "エラー \"InvalidRequestError\""
           - LoginSession は authentication_pending のままである
+  管理コンソールのセッションが失効しても再ログインで元の画面に戻れる:
+    goal: 管理者がサーバ側セッション失効後に管理画面をリロードしても、行き止まりにならず再ログインして元の画面へ戻れる。
+    primary_actor: Administrator
+    scope: Authentication
+    level: user_goal
+    description: "dev サーバ再起動などでサーバ側の login session / auth transaction / 署名鍵が\n失われ、ブラウザには stale なトークン・cookie・OIDC callback state だけが残った状態からの\n復旧。first-party 管理コンソールは失効を検出したら保持クライアント状態を破棄し、同一オリジンの\nreturn_to を保って再認可し直す。\n"
+    preconditions:
+      - "管理者 \"operator\" が管理コンソールで認証済みである"
+    main_success:
+      - サーバ側の login session と署名鍵が失われる
+      - "管理者 \"operator\" が直前に開いていた管理画面をリロードする"
+      - 保持していた access token / refresh token / OIDC callback state が破棄される
+      - 同一オリジンの return_to を保ったまま再ログイン導線が表示される
+      - "管理者 \"operator\" が再ログインする"
+      - 直前に開いていた管理画面のパスへ復帰する
+    extensions:
+      - condition: 再ログインが完了するまで管理 API を再試行しない
+        steps:
+          - 失効したセッションのまま管理 API へアクセスする
+          - 再認可を 1 回だけ開始し、認証完了まで同じ管理 API を再試行しない
+      - condition: return_to に外部 URL が指定される
+        steps:
+          - 外部 URL を return_to に指定して再ログインを試みる
+          - 外部 URL へはリダイレクトされず安全な既定の管理画面へ戻る
 user_experience:
   screens:
     Login:

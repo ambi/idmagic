@@ -3,7 +3,7 @@ id: idp-wi-116-recover-admin-session-after-dev-restart
 title: "開発サーバ再起動後の管理画面で再ログイン復旧導線を出す"
 created_at: 2026-07-04
 authors: [tn]
-status: pending
+status: completed
 risk: medium
 ---
 
@@ -44,3 +44,43 @@ risk: medium
 # Risk Notes
 認証失効時の復旧導線は open redirect や stale token 再利用と隣り合わせになる。
 復旧時は古いクライアント状態を明示的に捨て、`return_to` を相対パスに制限し、認証が完了するまでは管理 API を再試行し続けないようにする。
+
+# Completion
+- **Completed At**: 2026-07-04
+- **Summary**:
+  first-party 管理コンソール / アカウントポータル (ADR-061 の OIDC RP) が、保持する
+  access token を提示した `/api/auth/account` 呼び出しで 401 / 失効セッションを受けたとき、
+  行き止まりの「認証を続行できません」画面に落ちず復旧するようにした。
+  - SCL: `spec/contexts/system.yaml` に UX 要件 `UX-PORTAL-SESSION-RECOVERY`
+    (保持トークン / OIDC callback state の破棄・同一オリジン相対 `return_to` での 1 回だけの
+    再認可・認証完了まで管理 API を再試行しない・open redirect 拒否) を追加し、
+    `AdminDashboard` 画面に `reauthenticating` state を足した。
+    `spec/contexts/authentication.yaml` に失効セッションからの復旧シナリオ
+    (return_to 安全性と再試行抑止の extension を含む) を追加した。
+  - UI: `ui/src/api/oidc.ts` に `recoverPortalSession` (stale トークン + refresh token +
+    進行中 OIDC callback state を破棄し、returnTo を保って 1 回だけ再認可。直近再認可からの
+    ループは `ra_oidc_reauth_*` マーカーで抑止)、`markPortalAuthenticated`、
+    `restartPortalLogin` を追加。`ui/src/routes/-guards.ts` は `/api/auth/account` の
+    `UnauthenticatedError` を捕捉して復旧を起動する。`ui/src/router.tsx` の `ErrorScreen` は
+    portal パスでは行き止まりにせず、現在のパスへ戻る「再ログイン」導線を表示する。
+  - Go: 復旧が依拠する識別可能なシグナルを回帰固定する handler test を追加
+    (`TestAccountContextRejectsStaleBearerToken`: 失効 Bearer → 401 authentication_required)。
+    サーバの既存挙動 (transaction 欠落 + `return_to` での login 応答、失効セッションの
+    401、`return_to` の相対 / 同一オリジン検証) を再利用したため production Go コードは変更なし。
+  - E2E: `ui/tests/e2e/admin-session-recovery.spec.ts` を追加。/admin/users にログイン後、
+    sessionStorage の access token を検証不能な値へ差し替えてリロードし、行き止まりにならず
+    再認可して /admin/users へ戻り、stale トークンが破棄されることを検証する。
+- **Verification Results**:
+  - `just yaml-check-scl`
+    - result: ok (全 12 ファイル OK)
+  - UI: `bun run format:check` / `lint` / `typecheck` / `build`
+    - result: ok
+  - Go: `go test -race ./...`
+    - result: ok (FAIL / panic なし)
+  - Go lint: `golangci-lint run ./internal/shared/adapters/http/server/...`
+    - result: 0 issues
+  - E2E: `bun test tests/e2e/admin-session-recovery.spec.ts`
+    - result: 1 pass
+- **Affected Guarantees State**: 既存の認証・認可・return_to 検証の保証は不変。
+  first-party portal の失効時復旧という UX 保証を新設した。サーバ側の認証判定・
+  return_to 検証は既存挙動を再利用しており実体に変更はない。
