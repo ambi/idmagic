@@ -169,6 +169,7 @@ func Run() error {
 			ValkeyPing:                deps.ValkeyPing,
 			ShuttingDown:              shuttingDown,
 			StartupComplete:           startupComplete,
+			TenantRepo:                deps.TenantRepo,
 			HealthInfo: httpsupport.HealthInfo{
 				Persistence:   runtime.Persistence,
 				EventSink:     runtime.EventSink,
