@@ -17,6 +17,7 @@ import (
 
 	"github.com/beevik/etree"
 
+	"idmagic/internal/shared/adapters/http/support"
 	"idmagic/internal/wsfederation/adapters/samltoken"
 )
 
@@ -98,6 +99,8 @@ func BuildResponse(in ResponseInput, signer *samltoken.Signer) ([]byte, error) {
 }
 
 // EncodePostForm は SAMLResponse を base64 化し、ACS への自動 POST フォーム HTML を返す。
+// 自動送信は inline event handler ではなく固定の <script> で行い、その内容は CSP hash で
+// 許可される (support.AutoSubmitScript, ADR-076)。'unsafe-inline' 無しの厳格 CSP でも通る。
 func EncodePostForm(responseXML []byte, acsURL, relayState string) ([]byte, error) {
 	if strings.TrimSpace(acsURL) == "" {
 		return nil, fmt.Errorf("samlresponse: ACS URL is required")
@@ -108,10 +111,12 @@ func EncodePostForm(responseXML []byte, acsURL, relayState string) ([]byte, erro
 		ACSURL       template.URL
 		SAMLResponse string
 		RelayState   string
+		Script       template.JS
 	}{
 		ACSURL:       template.URL(acsURL),
 		SAMLResponse: encoded,
 		RelayState:   relayState,
+		Script:       template.JS(support.AutoSubmitScript),
 	}
 	if err := postForm.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("samlresponse: render post form: %w", err)
@@ -131,12 +136,13 @@ func newID() (string, error) {
 var postForm = template.Must(template.New("saml-post").Parse(`<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Sign in</title></head>
-<body onload="document.forms[0].submit()">
+<body>
 <form method="POST" action="{{.ACSURL}}">
 <input type="hidden" name="SAMLResponse" value="{{.SAMLResponse}}">
 {{if .RelayState}}<input type="hidden" name="RelayState" value="{{.RelayState}}">
 {{end}}<noscript><input type="submit" value="Continue"></noscript>
 </form>
+<script>{{.Script}}</script>
 </body>
 </html>
 `))

@@ -1,3 +1,7 @@
+# Header ownership (ADR-076): the gateway sets security headers on the SPA static
+# HTML/assets it serves (below). Responses reverse-proxied to the Go backend carry
+# their own security headers (CSP / frame-ancestors 'none' / HSTS / nosniff) from
+# the app's boundary middleware, so they are deliberately not re-set here.
 :8080 {
 	encode zstd gzip
 

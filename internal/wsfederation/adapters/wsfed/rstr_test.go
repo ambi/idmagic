@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/beevik/etree"
+
+	"idmagic/internal/shared/adapters/http/support"
 )
 
 func dummyAssertion() *etree.Element {
@@ -63,6 +65,14 @@ func TestRenderPassiveForm(t *testing.T) {
 	}
 	if !strings.Contains(s, `name="wctx"`) || !strings.Contains(s, "ctx-42") {
 		t.Fatal("wctx hidden input missing")
+	}
+	// 自動送信は inline event handler ではなく固定の <script> で行い、CSP hash で許可される
+	// (support.AutoSubmitScript, ADR-076)。
+	if strings.Contains(s, "onload=") {
+		t.Fatal("form must not use an inline onload handler under strict CSP")
+	}
+	if !strings.Contains(s, "<script>"+support.AutoSubmitScript+"</script>") {
+		t.Fatalf("pinned submit script missing: %s", s)
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	"idmagic/internal/saml/adapters/samlresponse"
+	"idmagic/internal/shared/adapters/http/support"
 	"idmagic/internal/shared/spec"
 	"idmagic/internal/wsfederation/adapters/samltoken"
 	"idmagic/internal/wsfederation/domain"
@@ -180,6 +181,14 @@ func TestEncodePostForm(t *testing.T) {
 	}
 	if !bytes.Contains(out, []byte(`action="https://sp.example.com/acs"`)) {
 		t.Error("form does not POST to ACS URL")
+	}
+	// 自動送信は inline event handler ではなく固定の <script> で行う。その内容は
+	// CSP hash で許可される (support.AutoSubmitScript, ADR-076)。
+	if bytes.Contains(out, []byte("onload=")) {
+		t.Error("form must not use an inline onload handler under strict CSP")
+	}
+	if !bytes.Contains(out, []byte("<script>"+support.AutoSubmitScript+"</script>")) {
+		t.Errorf("form does not contain the pinned submit script: %s", out)
 	}
 }
 

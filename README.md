@@ -131,6 +131,11 @@ adapters are selected with environment variables:
 | `VAULT_ADDR`, `VAULT_TOKEN` | Vault configuration | Vault Transit configuration |
 | `BREACHED_PASSWORD_CHECKER` | `noop`, `hibp` | breached password checker |
 | `REQUEST_ID_TRUST_INBOUND` | `false`, `true` | reuse an edge proxy's inbound `X-Request-ID` (see Request Correlation) |
+| `HSTS_ENABLED` | `false`, `true` | emit `Strict-Transport-Security` (only when TLS is terminated at/ahead of this hop; see Security Response Headers) |
+| `HSTS_MAX_AGE_SECONDS` | `31536000` | HSTS `max-age` when enabled |
+| `HSTS_INCLUDE_SUBDOMAINS` | `true`, `false` | add `includeSubDomains` to HSTS |
+| `CSP_REPORT_ONLY` | `false`, `true` | send CSP as `Content-Security-Policy-Report-Only` for staged rollout |
+| `CSP_REPORT_URI` | URL/path | CSP `report-uri` for violation collection |
 | `SKIP_DEMO_SEED` | `true` | disable demo seed data |
 
 For SMTP testing, Mailpit works well:
@@ -198,6 +203,39 @@ stop abuse cheaply at the edge. IdMagic still enforces its own timeouts and body
 limit so it stays safe when run without a proxy, and so the proxy↔app hop and
 any in-cluster direct access are covered. Tune the proxy's own timeouts and
 connection limits alongside these values.
+
+### Security Response Headers
+
+Every backend response carries security headers applied by a boundary middleware
+(ADR-076): `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`,
+`X-Frame-Options: DENY`, and a strict `Content-Security-Policy`
+(`default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`).
+`frame-ancestors 'none'` plus `X-Frame-Options: DENY` forbid framing so the
+login / consent / portal surfaces cannot be clickjacked. The CSP does not use
+`'unsafe-inline'`: the only inline script IdMagic renders is the fixed
+auto-submit of the SAML ACS / WS-Fed POST-binding form, which is pinned by a
+`script-src 'sha256-…'` hash on that response, and its `form-action` is narrowed
+to the destination endpoint.
+
+**Header ownership (app vs edge).** CSP and `frame-ancestors` require per-route
+decisions and are owned by IdMagic so they hold even behind a minimal or absent
+proxy (secure by default). The SPA is served by the gateway (see `ui/Caddyfile`),
+which sets its own `script-src 'self'` CSP for the static HTML — IdMagic's
+middleware covers the backend responses the gateway reverse-proxies.
+
+**HSTS is owned by the TLS terminator.** `Strict-Transport-Security` is off by
+default so development over plain `http` is not poisoned. Enable it only when TLS
+is terminated at or ahead of this hop:
+
+- Terminating TLS at the edge proxy (typical): leave HSTS to the proxy, keep
+  `HSTS_ENABLED=false`.
+- Terminating TLS at/for the app, or wanting the app to assert it: set
+  `HSTS_ENABLED=true` (tune `HSTS_MAX_AGE_SECONDS` / `HSTS_INCLUDE_SUBDOMAINS`).
+
+**Staged rollout / reporting.** To tighten CSP without breaking a page, set
+`CSP_REPORT_ONLY=true` to emit `Content-Security-Policy-Report-Only` and
+`CSP_REPORT_URI=<url>` to collect violations, observe, then switch back to
+enforce (`CSP_REPORT_ONLY=false`).
 
 ## Repository Map
 

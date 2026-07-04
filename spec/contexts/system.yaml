@@ -159,6 +159,37 @@ objectives:
         - trace_id
         - span_id
       pii_in_application_log: false
+  SecurityResponseHeaders:
+    kind: security
+    description: "境界 HTTP サーバが返す全レスポンスに、セキュリティレスポンスヘッダを middleware で一元的に付与する (secure-by-default)。X-Content-Type-Options: nosniff で MIME スニッフィングを止め、Referrer-Policy: no-referrer でリファラ漏洩を防ぎ、Content-Security-Policy で default-src を 'none' に閉じる (base CSP は script-src を持たず全 script を拒否)。'unsafe-inline' には依存しない。SAML ACS / WS-Fed への自動 POST フォームが必要とする固定のインライン submit script は、その内容を CSP hash (sha256) で当該レスポンスにのみ明示的に許可する (nonce は用いない)。CSP は enforce と report-only を CSP_REPORT_ONLY で切替でき、CSP_REPORT_URI で違反レポート収集先を指定して段階導入できる。Strict-Transport-Security は TLS 終端層が所有すべきヘッダで、TLS を終端している前提が要る。既定 (開発 http) では抑制し、HSTS_ENABLED で明示的にオプトインしたときだけ付与する (エッジプロキシへの委譲を許容)。CSP と frame-ancestors は per-route の機微判断を要しプロキシへ委譲できないためアプリが所有する (詳細は ADR)。"
+    policy: http_security_headers
+    target: HTTPBoundaryResponse
+    value:
+      applies_to: all_backend_responses
+      x_content_type_options: nosniff
+      referrer_policy: no-referrer
+      csp_default_src: none
+      csp_base_uri: none
+      csp_form_action: self
+      csp_inline_script_allowance: hash
+      csp_unsafe_inline: false
+      csp_report_only_toggle: CSP_REPORT_ONLY
+      csp_report_uri_env: CSP_REPORT_URI
+      hsts_owned_by_tls_terminator: true
+      hsts_toggle: HSTS_ENABLED
+      hsts_suppressed_on_dev_http: true
+      hsts_max_age_seconds: 31536000
+      hsts_include_subdomains: true
+  FrameAncestorsPolicy:
+    kind: security
+    description: "login / consent / account portal をはじめ IdP が返す全レスポンスは frame-ancestors 'none' (併せて X-Frame-Options: DENY) とし、iframe 埋め込みを禁止して consent / login のクリックジャッキング (同意の乗っ取り) を防ぐ。frame-ancestors の per-route 判断はアプリの知識でありプロキシへ委譲できない (secure-by-default でアプリ単体で成立させる)。SAML ACS / WS-Fed への自動 POST フォームは cross-origin へ form 送信するため、CSP form-action にのみ送信先を明示的に許可し、frame-ancestors は 'none' を維持する。"
+    policy: frame_ancestors
+    target: HTTPBoundaryResponse
+    value:
+      frame_ancestors: none
+      x_frame_options: DENY
+      applies_to: all_backend_responses
+      auto_post_form_action_allowlist: destination_only
 user_experience:
   accessibility:
     standard: WCAG22

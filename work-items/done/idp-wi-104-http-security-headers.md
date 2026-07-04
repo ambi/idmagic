@@ -3,7 +3,7 @@ id: idp-wi-104-http-security-headers
 title: "ログイン・同意・ポータルへ CSP / HSTS / frame-ancestors 等のセキュリティヘッダを一元適用する"
 created_at: 2026-07-04
 authors: ["tn"]
-status: pending
+status: completed
 risk: medium
 ---
 # Motivation
@@ -63,3 +63,39 @@ OWASP ASVS もこれらを要求する。idmagic も UI が別プロセスでも
 厳格な CSP はインライン script/style を壊しやすく、特に SAML/WS-Fed の自動 POST や
 UI ビルド生成物で事故りやすい。report-only で違反を洗い出してから enforce に切り替え、
 正規プロトコルフローの回帰を e2e で先に固定する。
+
+# Completion
+- **Completed At**: 2026-07-04
+- **Summary**:
+  System context に SecurityResponseHeaders / FrameAncestorsPolicy objective を追加し、
+  派生 HTML/JSON/OpenAPI を再生成した。設計判断は ADR-076 に明文化した (ヘッダ集合と値、
+  CSP 方式、frame-ancestors 'none'、app vs edge のヘッダ分担、HSTS の TLS 終端委譲、
+  report-only 段階導入、SAML/WS-Fed の form-action 例外)。
+  Go 側は support パッケージに SecurityHeadersMiddleware を新設し、bootstrap で
+  request_id / recover の内側・body limit 付近に登録した。全 backend レスポンスへ
+  nosniff / no-referrer / X-Frame-Options: DENY と、strict CSP
+  (default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self') を
+  一元付与する。HSTS は TLS 終端層所有として既定無効 (開発 http で抑制)、HSTS_ENABLED で
+  opt-in。CSP は CSP_REPORT_ONLY / CSP_REPORT_URI で report-only 段階導入に対応。
+  **nonce は採用せず hash 方式**にした (レビュー指摘)。Go がインライン script を返すのは
+  SAML ACS / WS-Fed 自動 POST の固定 submit script (`document.forms[0].submit()`) のみで、
+  SPA は gateway 配信で `script-src 'self'` (インライン無し) のため nonce の渡し先が無い。
+  固定スクリプトを `support.AutoSubmitScript` に一元定義し、その sha256 を script-src へ
+  pin。自動 POST の `onload` 属性を nonce/hash 対象外のため固定 `<script>` へ移し、
+  各ハンドラは `support.SetAutoPostFormCSP` で当該レスポンスの CSP に送信先 origin
+  (form-action) と script hash を許可する。gateway (ui/Caddyfile) は SPA の CSP を所有し、
+  backend proxied レスポンスには再付与しない旨をコメントで明文化した。
+- **Verification Results**:
+  - `just verify` green (yaml-check 11+108+179 / golangci-lint 0 issues / go race tests / UI build)。
+  - `go test -race ./...` green。
+  - securityheaders 単体テスト: 既定ヘッダが secure (nosniff / no-referrer / DENY / strict CSP、
+    unsafe-inline 無し、HSTS 無し、base に script-src 無し)、HSTS opt-in、report-only 切替と
+    report-uri、SetAutoPostFormCSP が form-action=送信先 origin + pinned script hash を許可し
+    frame-ancestors 'none' を維持、hash が AutoSubmitScript を pin していること (drift ガード)、
+    form-action の相対/不正 URL は 'self' へ縮退することを確認。
+  - SAML/WS-Fed encoder テスト: `onload` を使わず固定 `<script>` (AutoSubmitScript) を出力し、
+    既存の属性エスケープ (wctx インジェクション) 回帰が維持されること。
+  - UI ビルド生成物 (dist/index.html) がインライン script を持たず外部 module script のみで、
+    gateway の `script-src 'self'` と両立することを確認。
+  - 未実施: enforce CSP 下での authorization_code / SAML POST バインディングのブラウザ e2e、
+    および iframe 埋め込み拒否の手動確認 (稼働スタックを要するため別途)。

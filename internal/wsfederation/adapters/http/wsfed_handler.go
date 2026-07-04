@@ -143,6 +143,9 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "rstr serialize failed")
 	}
+	// 自動 POST は cross-origin の ReplyURL へ form 送信し固定の submit script を含む。
+	// 当該レスポンスの CSP に form-action=ReplyURL と script hash を許可する (ADR-076)。
+	support.SetAutoPostFormCSP(c, validated.ReplyURL)
 	formHTML, err := wsfed.RenderPassiveForm(validated.ReplyURL, wresult, validated.Wctx)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "form render failed")

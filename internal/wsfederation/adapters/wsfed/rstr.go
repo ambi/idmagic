@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/beevik/etree"
+
+	"idmagic/internal/shared/adapters/http/support"
 )
 
 // WS-Federation passive で用いる名前空間。WS-Fed 1.x passive は WS-Trust 2005/02 を用いる。
@@ -86,19 +88,22 @@ func SerializeRSTR(rstr *etree.Element) (string, error) {
 var passiveForm = template.Must(template.New("wsfed-passive").Parse(`<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Sign in</title></head>
-<body onload="document.forms[0].submit()">
+<body>
 <form method="POST" action="{{.ReplyURL}}">
 <input type="hidden" name="wa" value="wsignin1.0">
 <input type="hidden" name="wresult" value="{{.Wresult}}">
 {{if .Wctx}}<input type="hidden" name="wctx" value="{{.Wctx}}">
 {{end}}<noscript><input type="submit" value="Continue"></noscript>
 </form>
+<script>{{.Script}}</script>
 </body>
 </html>
 `))
 
 // RenderPassiveForm は自動 POST フォームの HTML を生成する。replyURL は呼び出し側で
-// 許可集合に対して検証済みであること (ValidateSignIn)。
+// 許可集合に対して検証済みであること (ValidateSignIn)。自動送信は inline event handler
+// ではなく固定の <script> で行い、その内容は CSP hash で許可される
+// (support.AutoSubmitScript, ADR-076)。'unsafe-inline' 無しの厳格 CSP でも通る。
 func RenderPassiveForm(replyURL, wresult, wctx string) ([]byte, error) {
 	if strings.TrimSpace(replyURL) == "" {
 		return nil, fmt.Errorf("wsfed: reply URL is required")
@@ -108,10 +113,12 @@ func RenderPassiveForm(replyURL, wresult, wctx string) ([]byte, error) {
 		ReplyURL template.URL
 		Wresult  string
 		Wctx     string
+		Script   template.JS
 	}{
 		ReplyURL: template.URL(replyURL),
 		Wresult:  wresult,
 		Wctx:     wctx,
+		Script:   template.JS(support.AutoSubmitScript),
 	}
 	if err := passiveForm.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("wsfed: render passive form: %w", err)

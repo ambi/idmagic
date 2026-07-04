@@ -124,6 +124,10 @@ func Run() error {
 	// REQUEST_ID_TRUST_INBOUND=true で受信値の再利用を許可する。
 	e.Use(httpsupport.RequestIDMiddleware(envDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
 	e.Use(httpsupport.RecoverMiddleware(logger))
+	// SecurityResponseHeaders / FrameAncestorsPolicy objectives (ADR-076):
+	// backend レスポンスへ CSP (nonce ベース) / frame-ancestors 'none' / nosniff 等を
+	// 一元付与する。HSTS は TLS 終端層が所有するため既定は無効 (開発 http では抑制)。
+	e.Use(httpsupport.SecurityHeadersMiddleware(loadSecurityHeaders(os.Getenv)))
 	// HTTPServerHardening objective: ボディ上限を全リクエストに課し、超過は 413 で拒否する。
 	// request_id 付与と panic recover の内側に置き、拒否レスポンスも相関/回復対象にする。
 	hardening := loadHTTPServerHardening()
