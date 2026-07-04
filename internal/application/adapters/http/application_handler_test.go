@@ -38,6 +38,7 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		ApplicationAssignmentRepo: memory.NewApplicationAssignmentRepository(),
 		ApplicationOrderingRepo:   memory.NewApplicationOrderingRepository(),
 		ApplicationCategoryRepo:   memory.NewApplicationCategoryRepository(),
+		DefaultSignInPolicyRepo:   memory.NewDefaultSignInPolicyRepository(),
 		SamlSPRepo:                memory.NewSamlServiceProviderRepository(),
 		AuthnResolver:             authusecases.DemoHeaderResolver{},
 		Emit:                      func(spec.DomainEvent) {},
@@ -178,6 +179,121 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 	}
 	if apps := myApplications(t, e, "regular"); len(apps) != 0 {
 		t.Fatalf("hidden assignment should hide app from portal, got %d", len(apps))
+	}
+}
+
+// テナント既定サインインポリシーを設定すると、アプリ個別ポリシーが未設定でも
+// 上書きモデル: 個別ポリシー未設定なら effective はデフォルト、設定するとデフォルトを上書きし
+// デフォルトより弱ければ weaker_than_default が立つ (wi-115, ADR-081)。
+func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
+	e := newApplicationHandler(t)
+	csrf, cookie := appCSRF(t, e)
+
+	// テナントデフォルトで MFA 必須を設定。
+	put := adminJSON(t, e, http.MethodPut, "/api/admin/default-sign-in-policy", csrf, cookie, map[string]any{
+		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
+	})
+	if put.Code != http.StatusOK {
+		t.Fatalf("put default status=%d body=%s", put.Code, put.Body.String())
+	}
+
+	get := adminJSON(t, e, http.MethodGet, "/api/admin/default-sign-in-policy", csrf, cookie, nil)
+	if get.Code != http.StatusOK {
+		t.Fatalf("get default status=%d body=%s", get.Code, get.Body.String())
+	}
+	var defaultBody struct {
+		Policy struct {
+			Rules []map[string]any `json:"rules"`
+		} `json:"policy"`
+	}
+	if err := json.Unmarshal(get.Body.Bytes(), &defaultBody); err != nil {
+		t.Fatal(err)
+	}
+	if len(defaultBody.Policy.Rules) != 1 {
+		t.Fatalf("default rules=%d, want 1", len(defaultBody.Policy.Rules))
+	}
+
+	// アプリを作成し、個別ポリシー未設定なら effective はデフォルトになる。
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+		"name": "Payroll", "type": "weblink", "launch_url": "https://payroll.example",
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	var created struct {
+		Application struct {
+			ApplicationID string `json:"application_id"`
+		} `json:"application"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	view := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+created.Application.ApplicationID+"/sign-in-policy", csrf, cookie, nil)
+	if view.Code != http.StatusOK {
+		t.Fatalf("get app policy status=%d body=%s", view.Code, view.Body.String())
+	}
+	var appView struct {
+		Policy struct {
+			Rules []map[string]any `json:"rules"`
+		} `json:"policy"`
+		TenantDefault struct {
+			Rules []map[string]any `json:"rules"`
+		} `json:"tenant_default"`
+		EffectiveRules    []map[string]any `json:"effective_rules"`
+		WeakerThanDefault bool             `json:"weaker_than_default"`
+	}
+	if err := json.Unmarshal(view.Body.Bytes(), &appView); err != nil {
+		t.Fatal(err)
+	}
+	if len(appView.Policy.Rules) != 0 {
+		t.Fatalf("app rules=%d, want 0", len(appView.Policy.Rules))
+	}
+	if len(appView.TenantDefault.Rules) != 1 {
+		t.Fatalf("tenant_default rules=%d, want 1", len(appView.TenantDefault.Rules))
+	}
+	if len(appView.EffectiveRules) != 1 {
+		t.Fatalf("effective_rules=%d, want 1 (default applies)", len(appView.EffectiveRules))
+	}
+	if appView.WeakerThanDefault {
+		t.Fatal("unconfigured app must not be weaker than default")
+	}
+
+	// アプリに弱い個別ポリシー (パスワードのみ) を設定するとデフォルトを上書きし、警告フラグが立つ。
+	upd := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+created.Application.ApplicationID+"/sign-in-policy", csrf, cookie, map[string]any{
+		"rules": []map[string]any{{"name": "Password", "enabled": true, "required_authn": map[string]any{"strength": "Password"}}},
+	})
+	if upd.Code != http.StatusOK {
+		t.Fatalf("put app policy status=%d body=%s", upd.Code, upd.Body.String())
+	}
+	var updView struct {
+		EffectiveRules    []map[string]any `json:"effective_rules"`
+		WeakerThanDefault bool             `json:"weaker_than_default"`
+	}
+	if err := json.Unmarshal(upd.Body.Bytes(), &updView); err != nil {
+		t.Fatal(err)
+	}
+	if len(updView.EffectiveRules) != 1 {
+		t.Fatalf("effective_rules after override=%d, want 1", len(updView.EffectiveRules))
+	}
+	if strength, _ := updView.EffectiveRules[0]["required_authn"].(map[string]any); strength["strength"] != "Password" {
+		t.Fatalf("effective strength=%v, want Password (app override)", strength["strength"])
+	}
+	if !updView.WeakerThanDefault {
+		t.Fatal("password override under mfa default must set weaker_than_default")
+	}
+
+	// 非管理者はデフォルトポリシーを更新できない。
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/default-sign-in-policy", bytes.NewReader([]byte(`{"rules":[]}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://idp.test")
+	req.Header.Set("X-Csrf-Token", csrf)
+	req.Header.Set("X-Demo-Sub", "regular")
+	req.AddCookie(cookie)
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+	if res.Code == http.StatusOK {
+		t.Fatalf("non-admin default update should be rejected, got %d", res.Code)
 	}
 }
 

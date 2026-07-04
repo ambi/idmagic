@@ -143,6 +143,22 @@ export type AppSignInPolicy = {
   updated_at: string
 }
 
+// テナントデフォルトサインインポリシー (wi-115, ADR-081)。例外設定のない全アプリに floor として適用される。
+export type TenantDefaultSignInPolicy = {
+  tenant_id: string
+  rules: SignInRule[]
+  updated_at: string
+}
+
+// アプリ詳細で「このアプリの上書き」「テナントデフォルト」「最終的に適用されるポリシー」を区別する (ADR-081)。
+// weaker_than_default はアプリ個別ポリシーがデフォルトより弱いときの警告フラグ。
+export type AppSignInPolicyView = {
+  policy: AppSignInPolicy
+  tenant_default: TenantDefaultSignInPolicy
+  effective_rules: SignInRule[]
+  weaker_than_default: boolean
+}
+
 // プロトコル設定はアプリ詳細で解決される。OAuth2 client / WS-Fed RP の実設定を映す。
 // advanced 項目を含め、低レベル client 画面を廃してアプリ編集画面に集約する (wi-76)。
 // client_type / token_endpoint_auth_method / fapi_profile は更新契約上の不変項目で表示専用。
@@ -188,7 +204,7 @@ export type AdminApplicationDetail = {
   oidc?: ApplicationOidcConfig | null
   wsfed?: ApplicationWsFedConfig | null
   saml?: ApplicationSamlConfig | null
-  sign_in_policy?: AppSignInPolicy | null
+  sign_in_policy?: AppSignInPolicyView | null
 }
 
 export type AuthorizationDetailFieldRule = {

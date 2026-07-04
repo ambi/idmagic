@@ -82,3 +82,11 @@ type SignInPolicyRepository interface {
 	// Delete は application_id に一致する policy を削除する (冪等)。
 	Delete(ctx context.Context, tenantID, applicationID string) error
 }
+
+// DefaultSignInPolicyRepository はテナント既定 sign-in policy の永続境界 (ADR-081)。
+type DefaultSignInPolicyRepository interface {
+	// Get は tenant_id に一致する既定 policy を返す。未設定なら (nil, nil)。
+	Get(ctx context.Context, tenantID string) (*spec.TenantDefaultSignInPolicy, error)
+	// Save は既定 policy を upsert する。
+	Save(ctx context.Context, policy *spec.TenantDefaultSignInPolicy) error
+}

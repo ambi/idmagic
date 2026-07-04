@@ -120,6 +120,65 @@ const SIGN_IN_STRENGTH_OPTIONS: SelectOption[] = [
   { value: 'Mfa', label: 'MFA 必須' },
 ]
 
+// summarizeSignInRule は 1 件のサインインルールを利用者向けの日本語 1 行へ要約する。
+// 内部ルール名は表示せず、テナントデフォルト・実効ポリシーの読み取り専用表示に用いる (wi-115, ADR-081)。
+function summarizeSignInRule(rule: SignInRule): string {
+  const parts: string[] = [rule.required_authn.strength === 'Mfa' ? 'MFA 必須' : 'パスワードのみ']
+  if (rule.condition.reauth_max_age_seconds) {
+    parts.push(`再認証まで ${rule.condition.reauth_max_age_seconds} 秒`)
+  }
+  const cidrs = rule.condition.network_allow_cidrs ?? []
+  if (cidrs.length > 0) {
+    parts.push(`許可ネットワーク ${cidrs.join(', ')}`)
+  }
+  return parts.join(' / ')
+}
+
+// 編集中のアプリ個別ポリシー入力から表示用の SignInRule を組み立てる (ADR-081, 上書きモデル)。
+function appRuleFromInputs(
+  strength: RequiredAuthnStrength,
+  reauthText: string,
+  cidrsText: string,
+): SignInRule {
+  const reauth = reauthText.trim() === '' ? undefined : Number.parseInt(reauthText.trim(), 10)
+  const cidrs = cidrsText
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '')
+  return {
+    rule_id: 'app-override',
+    name: 'app-override',
+    enabled: true,
+    required_authn: { strength },
+    condition: {
+      reauth_max_age_seconds: reauth && Number.isFinite(reauth) && reauth > 0 ? reauth : undefined,
+      network_allow_cidrs: cidrs.length > 0 ? cidrs : undefined,
+    },
+  }
+}
+
+// signInRuleWeakerThanDefault はアプリ個別ルールがデフォルトより弱いかの UI 用ヒント判定。
+// 認証強度・再認証を求めるまでの時間・許可ネットワークの 3 項目で見る (サーバの判定と対応, ADR-081)。
+function signInRuleWeakerThanDefault(appRule: SignInRule, defaultRules: SignInRule[]): boolean {
+  const def = defaultRules.find((rule) => rule.enabled)
+  if (!def) return false
+  if (def.required_authn.strength === 'Mfa' && appRule.required_authn.strength !== 'Mfa') {
+    return true
+  }
+  const defReauth = def.condition.reauth_max_age_seconds
+  const appReauth = appRule.condition.reauth_max_age_seconds
+  if (defReauth != null && (appReauth == null || appReauth > defReauth)) {
+    return true
+  }
+  const defCIDRs = def.condition.network_allow_cidrs ?? []
+  const appCIDRs = appRule.condition.network_allow_cidrs ?? []
+  if (defCIDRs.length > 0) {
+    if (appCIDRs.length === 0) return true
+    if (appCIDRs.some((entry) => !defCIDRs.includes(entry))) return true
+  }
+  return false
+}
+
 // OIDC client の token endpoint 認証方式。作成時に確定し以後不変。
 const AUTH_METHODS: SelectOption[] = [
   { value: 'client_secret_basic', label: 'client_secret_basic' },
@@ -868,7 +927,8 @@ export function AdminApplicationEditPage({
   const [samlRulesJSON, setSamlRulesJSON] = useState(
     JSON.stringify(detail.saml?.rules ?? [], null, 2),
   )
-  const initialSignInRule = detail.sign_in_policy?.rules?.[0]
+  const signInView = detail.sign_in_policy
+  const initialSignInRule = signInView?.policy?.rules?.[0]
   const [signInEnabled, setSignInEnabled] = useState(initialSignInRule?.enabled ?? false)
   const [signInStrength, setSignInStrength] = useState<RequiredAuthnStrength>(
     initialSignInRule?.required_authn.strength ?? 'Password',
@@ -1040,7 +1100,7 @@ export function AdminApplicationEditPage({
         reauthText !== '' &&
         (reauthMaxAge === undefined || !Number.isFinite(reauthMaxAge) || reauthMaxAge <= 0)
       ) {
-        setError('再認証最大経過秒数は正の整数で指定してください。')
+        setError('再認証を求めるまでの時間は正の整数（秒）で指定してください。')
         setSaving(false)
         return
       }
@@ -1052,7 +1112,7 @@ export function AdminApplicationEditPage({
         ? [
             {
               rule_id: initialSignInRule?.rule_id ?? '',
-              name: 'Default sign-in rule',
+              name: 'app-override',
               enabled: true,
               required_authn: {
                 strength: signInStrength,
@@ -1064,7 +1124,8 @@ export function AdminApplicationEditPage({
             },
           ]
         : []
-      if (JSON.stringify(nextSignInRules) !== JSON.stringify(detail.sign_in_policy?.rules ?? [])) {
+      const prevSignInRules = signInView?.policy?.rules ?? []
+      if (JSON.stringify(nextSignInRules) !== JSON.stringify(prevSignInRules)) {
         await updateAppSignInPolicy(csrfToken, app.application_id, nextSignInRules)
       }
       window.location.assign(detailURL(app.application_id))
@@ -1479,7 +1540,7 @@ export function AdminApplicationEditPage({
                     onChange={(e) => setSignInEnabled(e.target.checked)}
                     className="size-4"
                   />
-                  このアプリケーションで追加のサインイン要件を課す
+                  このアプリ独自のサインインポリシーを設定する（テナントデフォルトを上書き）
                 </label>
                 {signInEnabled ? (
                   <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1497,17 +1558,17 @@ export function AdminApplicationEditPage({
                       </p>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="edit-sign-in-reauth">再認証最大経過秒数</Label>
+                      <Label htmlFor="edit-sign-in-reauth">再認証を求めるまでの時間（秒）</Label>
                       <Input
                         id="edit-sign-in-reauth"
                         type="number"
                         min="1"
                         value={signInReauthMaxAge}
                         onChange={(e) => setSignInReauthMaxAge(e.target.value)}
-                        placeholder="300"
+                        placeholder="例: 3600"
                       />
                       <p className="text-xs text-slate-500">
-                        指定した秒数より前の認証は再認証を要求します。空欄なら制限しません。
+                        この秒数を超えた認証は再認証（再ログイン）を求めます。空欄なら無期限です。
                       </p>
                     </div>
                     <div className="grid gap-1.5">
@@ -1528,6 +1589,56 @@ export function AdminApplicationEditPage({
                     </div>
                   </div>
                 ) : null}
+                {(() => {
+                  const defaultRules = signInView?.tenant_default?.rules ?? []
+                  const appRule = appRuleFromInputs(
+                    signInStrength,
+                    signInReauthMaxAge,
+                    signInNetworkCIDRs,
+                  )
+                  const effectiveSummary = signInEnabled
+                    ? summarizeSignInRule(appRule)
+                    : defaultRules
+                        .filter((r) => r.enabled)
+                        .map(summarizeSignInRule)
+                        .join('、') || '追加要件なし'
+                  const weaker = signInEnabled && signInRuleWeakerThanDefault(appRule, defaultRules)
+                  return (
+                    <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4">
+                      <div className="grid gap-1">
+                        <p className="text-xs font-semibold text-slate-500">テナントデフォルト</p>
+                        {defaultRules.filter((r) => r.enabled).length > 0 ? (
+                          <ul className="grid gap-1 text-xs text-slate-600">
+                            {defaultRules
+                              .filter((r) => r.enabled)
+                              .map((rule) => (
+                                <li key={rule.rule_id}>{summarizeSignInRule(rule)}</li>
+                              ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-slate-500">追加要件なし</p>
+                        )}
+                      </div>
+                      <div className="grid gap-1">
+                        <p className="text-xs font-semibold text-slate-500">
+                          最終的に適用されるポリシー
+                        </p>
+                        <p className="text-xs text-slate-600">{effectiveSummary}</p>
+                        <p className="text-xs text-slate-400">
+                          {signInEnabled
+                            ? 'このアプリの上書きが適用されます。'
+                            : 'このアプリはテナントデフォルトが適用されます。'}
+                          保存後に確定します。
+                        </p>
+                      </div>
+                      {weaker ? (
+                        <Alert variant="destructive">
+                          この設定はテナントデフォルトより弱くなっています（認証強度・再認証を求めるまでの時間・許可ネットワークのいずれか）。保存は可能ですが、意図した緩和かご確認ください。
+                        </Alert>
+                      ) : null}
+                    </div>
+                  )
+                })()}
               </section>
             ) : null}
 

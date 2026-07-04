@@ -63,6 +63,10 @@ type signInPolicyRequest struct {
 	Rules []spec.SignInRule `json:"rules"`
 }
 
+type defaultSignInPolicyRequest struct {
+	Rules []spec.SignInRule `json:"rules"`
+}
+
 func (d Deps) handleListApplications(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
@@ -94,8 +98,12 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
+	signInView, err := d.signInPolicyView(c, policy)
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"application": toApplicationResponse(app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_in_policy": policy,
+		"application": toApplicationResponse(app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_in_policy": signInView,
 	})
 }
 
@@ -307,6 +315,26 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// signInPolicyView は app 個別・テナントデフォルト・上書き後 effective を区別して返す (ADR-081)。
+// weaker_than_default はアプリ独自ポリシーがデフォルトより弱いときの UI 警告用フラグ。
+func (d Deps) signInPolicyView(c *echo.Context, policy *spec.AppSignInPolicy) (map[string]any, error) {
+	deps := d.signInPolicyDeps()
+	defaultPolicy, err := appusecases.GetDefaultSignInPolicy(c.Request().Context(), deps)
+	if err != nil {
+		return nil, err
+	}
+	effective := appusecases.EffectiveSignInRules(defaultPolicy, policy)
+	if effective == nil {
+		effective = []spec.SignInRule{}
+	}
+	return map[string]any{
+		"policy":              policy,
+		"tenant_default":      defaultPolicy,
+		"effective_rules":     effective,
+		"weaker_than_default": appusecases.AppPolicyWeakerThanDefault(defaultPolicy, policy),
+	}, nil
+}
+
 func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
@@ -315,7 +343,11 @@ func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy})
+	view, err := d.signInPolicyView(c, policy)
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, view)
 }
 
 func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
@@ -332,6 +364,42 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	}
 	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
 		ActorSub: actor.Sub, ApplicationID: c.Param("application_id"), Rules: req.Rules, Now: time.Now().UTC(),
+	})
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	view, err := d.signInPolicyView(c, policy)
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, view)
+}
+
+func (d Deps) handleGetDefaultSignInPolicy(c *echo.Context) error {
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	policy, err := appusecases.GetDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps())
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy})
+}
+
+func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var req defaultSignInPolicyRequest
+	if err := support.DecodeJSON(c.Request(), &req); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+	}
+	policy, err := appusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateDefaultSignInPolicyInput{
+		ActorSub: actor.Sub, Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -355,7 +423,8 @@ func (d Deps) assignmentDeps() appusecases.AssignmentDeps {
 
 func (d Deps) signInPolicyDeps() appusecases.SignInPolicyDeps {
 	return appusecases.SignInPolicyDeps{
-		AppRepo: d.ApplicationRepo, PolicyRepo: d.ApplicationSignInPolicyRepo, Emit: d.Emit,
+		AppRepo: d.ApplicationRepo, PolicyRepo: d.ApplicationSignInPolicyRepo,
+		DefaultRepo: d.DefaultSignInPolicyRepo, Emit: d.Emit,
 	}
 }
 

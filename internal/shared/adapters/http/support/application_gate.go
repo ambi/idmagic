@@ -116,7 +116,16 @@ func (d Deps) EvaluateApplicationAccess(
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
-	evaluation := appusecases.EvaluateSignInPolicy(policy, authn, clientIP, time.Now().UTC())
+	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル, ADR-081)。
+	var defaultPolicy *spec.TenantDefaultSignInPolicy
+	if d.DefaultSignInPolicyRepo != nil {
+		defaultPolicy, err = d.DefaultSignInPolicyRepo.Get(ctx, tenantID)
+		if err != nil {
+			return ApplicationAccessDecision{}, err
+		}
+	}
+	effective := appusecases.EffectivePolicyForEvaluation(defaultPolicy, policy)
+	evaluation := appusecases.EvaluateSignInPolicy(effective, authn, clientIP, time.Now().UTC())
 	switch evaluation.Decision {
 	case appusecases.PolicyAllow:
 		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ApplicationID}, nil

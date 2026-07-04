@@ -346,6 +346,12 @@ CREATE TABLE application_sign_in_policies (
         REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
 );
 
+CREATE TABLE tenant_default_sign_in_policies (
+    tenant_id TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+    rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE application_assignments (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     application_id UUID NOT NULL,

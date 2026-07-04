@@ -87,84 +87,86 @@ type AuthZResponse struct {
 }
 
 const (
-	ActionTokenGrantAuthorizationCode         = "token:grant_authorization_code"
-	ActionTokenGrantRefresh                   = "token:grant_refresh"
-	ActionTokenGrantClientCredentials         = "token:grant_client_credentials"
-	ActionTokenGrantDeviceCode                = "token:grant_device_code"
-	ActionTokenGrantTokenExchange             = "token:grant_token_exchange"
-	ActionTokenIntrospect                     = "token:introspect"
-	ActionTokenRevoke                         = "token:revoke"
-	ActionUserInfoRead                        = "userinfo:read"
-	ActionAuthorizeInitiate                   = "authorize:initiate"
-	ActionAdminUserRead                       = "admin:user_read"
-	ActionAdminUserCreate                     = "admin:user_create"
-	ActionAdminUserUpdate                     = "admin:user_update"
-	ActionAdminUserDelete                     = "admin:user_delete"
-	ActionAdminUserRestore                    = "admin:user_restore"
-	ActionAdminUserPurge                      = "admin:user_purge"
-	ActionAdminOAuth2ClientsManage            = "admin:clients_manage"
-	ActionAdminConsentsManage                 = "admin:consents_manage"
-	ActionAdminTenantsManage                  = "admin:tenants_manage"
-	ActionAdminSettingsRead                   = "admin:settings_read"
-	ActionAdminSettingsUpdate                 = "admin:settings_update"
-	ActionAdminAuditEventsRead                = "admin:audit_events_read"
-	ActionAdminKeysRead                       = "admin:keys_read"
-	ActionTenantKeysRotate                    = "admin:keys_rotate"
-	ActionTenantKeysDisable                   = "admin:keys_disable"
-	ActionSystemKeyHealthRead                 = "admin:keys_health_read"
-	ActionAdminGroupsRead                     = "admin:groups_read"
-	ActionAdminGroupsWrite                    = "admin:groups_write"
-	ActionAdminAgentsManage                   = "admin:agents_manage"
-	ActionAdminAuthorizationDetailTypesManage = "admin:authorization_detail_types_manage"
-	ActionAdminApplicationsManage             = "admin:applications_manage"
-	ActionAdminApplicationAssignmentsManage   = "admin:application_assignments_manage"
-	ActionAdminApplicationPoliciesManage      = "admin:application_policies_manage"
-	ActionAdminApplicationCategoriesManage    = "admin:application_categories_manage"
-	ActionAdminFederationTrustsManage         = "admin:federation_trusts_manage"
-	ActionMyApplicationsRead                  = "account:applications_read"
-	ActionScimProvision                       = "scim:provision"
-	ActionManageScimSettings                  = "admin:scim_settings_manage"
+	ActionTokenGrantAuthorizationCode          = "token:grant_authorization_code"
+	ActionTokenGrantRefresh                    = "token:grant_refresh"
+	ActionTokenGrantClientCredentials          = "token:grant_client_credentials"
+	ActionTokenGrantDeviceCode                 = "token:grant_device_code"
+	ActionTokenGrantTokenExchange              = "token:grant_token_exchange"
+	ActionTokenIntrospect                      = "token:introspect"
+	ActionTokenRevoke                          = "token:revoke"
+	ActionUserInfoRead                         = "userinfo:read"
+	ActionAuthorizeInitiate                    = "authorize:initiate"
+	ActionAdminUserRead                        = "admin:user_read"
+	ActionAdminUserCreate                      = "admin:user_create"
+	ActionAdminUserUpdate                      = "admin:user_update"
+	ActionAdminUserDelete                      = "admin:user_delete"
+	ActionAdminUserRestore                     = "admin:user_restore"
+	ActionAdminUserPurge                       = "admin:user_purge"
+	ActionAdminOAuth2ClientsManage             = "admin:clients_manage"
+	ActionAdminConsentsManage                  = "admin:consents_manage"
+	ActionAdminTenantsManage                   = "admin:tenants_manage"
+	ActionAdminSettingsRead                    = "admin:settings_read"
+	ActionAdminSettingsUpdate                  = "admin:settings_update"
+	ActionAdminAuditEventsRead                 = "admin:audit_events_read"
+	ActionAdminKeysRead                        = "admin:keys_read"
+	ActionTenantKeysRotate                     = "admin:keys_rotate"
+	ActionTenantKeysDisable                    = "admin:keys_disable"
+	ActionSystemKeyHealthRead                  = "admin:keys_health_read"
+	ActionAdminGroupsRead                      = "admin:groups_read"
+	ActionAdminGroupsWrite                     = "admin:groups_write"
+	ActionAdminAgentsManage                    = "admin:agents_manage"
+	ActionAdminAuthorizationDetailTypesManage  = "admin:authorization_detail_types_manage"
+	ActionAdminApplicationsManage              = "admin:applications_manage"
+	ActionAdminApplicationAssignmentsManage    = "admin:application_assignments_manage"
+	ActionAdminApplicationPoliciesManage       = "admin:application_policies_manage"
+	ActionAdminTenantDefaultSignInPolicyManage = "admin:tenant_default_sign_in_policy_manage"
+	ActionAdminApplicationCategoriesManage     = "admin:application_categories_manage"
+	ActionAdminFederationTrustsManage          = "admin:federation_trusts_manage"
+	ActionMyApplicationsRead                   = "account:applications_read"
+	ActionScimProvision                        = "scim:provision"
+	ActionManageScimSettings                   = "admin:scim_settings_manage"
 )
 
 // PascalCase (SCL permissions のキー) → AuthZ action 名。
 var actionNameMapping = map[string]string{
-	"TokenGrantAuthorizationCode":         ActionTokenGrantAuthorizationCode,
-	"TokenGrantRefresh":                   ActionTokenGrantRefresh,
-	"TokenGrantClientCredentials":         ActionTokenGrantClientCredentials,
-	"TokenGrantDeviceCode":                ActionTokenGrantDeviceCode,
-	"TokenGrantTokenExchange":             ActionTokenGrantTokenExchange,
-	"TokenIntrospect":                     ActionTokenIntrospect,
-	"TokenRevoke":                         ActionTokenRevoke,
-	"UserInfoRead":                        ActionUserInfoRead,
-	"AuthorizeInitiate":                   ActionAuthorizeInitiate,
-	"AdminUserRead":                       ActionAdminUserRead,
-	"AdminUserCreate":                     ActionAdminUserCreate,
-	"AdminUserUpdate":                     ActionAdminUserUpdate,
-	"AdminUserDelete":                     ActionAdminUserDelete,
-	"AdminUserRestore":                    ActionAdminUserRestore,
-	"AdminUserPurge":                      ActionAdminUserPurge,
-	"AdminOAuth2ClientsManage":            ActionAdminOAuth2ClientsManage,
-	"AdminConsentsManage":                 ActionAdminConsentsManage,
-	"AdminTenantsManage":                  ActionAdminTenantsManage,
-	"AdminSettingsRead":                   ActionAdminSettingsRead,
-	"AdminSettingsUpdate":                 ActionAdminSettingsUpdate,
-	"AdminAuditEventsRead":                ActionAdminAuditEventsRead,
-	"AdminKeysRead":                       ActionAdminKeysRead,
-	"TenantKeysRotate":                    ActionTenantKeysRotate,
-	"TenantKeysDisable":                   ActionTenantKeysDisable,
-	"SystemKeyHealthRead":                 ActionSystemKeyHealthRead,
-	"AdminGroupsRead":                     ActionAdminGroupsRead,
-	"AdminGroupsWrite":                    ActionAdminGroupsWrite,
-	"AdminAgentsManage":                   ActionAdminAgentsManage,
-	"AdminAuthorizationDetailTypesManage": ActionAdminAuthorizationDetailTypesManage,
-	"AdminApplicationsManage":             ActionAdminApplicationsManage,
-	"AdminApplicationAssignmentsManage":   ActionAdminApplicationAssignmentsManage,
-	"AdminApplicationPoliciesManage":      ActionAdminApplicationPoliciesManage,
-	"AdminApplicationCategoriesManage":    ActionAdminApplicationCategoriesManage,
-	"AdminFederationTrustsManage":         ActionAdminFederationTrustsManage,
-	"MyApplicationsRead":                  ActionMyApplicationsRead,
-	"ScimProvision":                       ActionScimProvision,
-	"ManageScimSettings":                  ActionManageScimSettings,
+	"TokenGrantAuthorizationCode":          ActionTokenGrantAuthorizationCode,
+	"TokenGrantRefresh":                    ActionTokenGrantRefresh,
+	"TokenGrantClientCredentials":          ActionTokenGrantClientCredentials,
+	"TokenGrantDeviceCode":                 ActionTokenGrantDeviceCode,
+	"TokenGrantTokenExchange":              ActionTokenGrantTokenExchange,
+	"TokenIntrospect":                      ActionTokenIntrospect,
+	"TokenRevoke":                          ActionTokenRevoke,
+	"UserInfoRead":                         ActionUserInfoRead,
+	"AuthorizeInitiate":                    ActionAuthorizeInitiate,
+	"AdminUserRead":                        ActionAdminUserRead,
+	"AdminUserCreate":                      ActionAdminUserCreate,
+	"AdminUserUpdate":                      ActionAdminUserUpdate,
+	"AdminUserDelete":                      ActionAdminUserDelete,
+	"AdminUserRestore":                     ActionAdminUserRestore,
+	"AdminUserPurge":                       ActionAdminUserPurge,
+	"AdminOAuth2ClientsManage":             ActionAdminOAuth2ClientsManage,
+	"AdminConsentsManage":                  ActionAdminConsentsManage,
+	"AdminTenantsManage":                   ActionAdminTenantsManage,
+	"AdminSettingsRead":                    ActionAdminSettingsRead,
+	"AdminSettingsUpdate":                  ActionAdminSettingsUpdate,
+	"AdminAuditEventsRead":                 ActionAdminAuditEventsRead,
+	"AdminKeysRead":                        ActionAdminKeysRead,
+	"TenantKeysRotate":                     ActionTenantKeysRotate,
+	"TenantKeysDisable":                    ActionTenantKeysDisable,
+	"SystemKeyHealthRead":                  ActionSystemKeyHealthRead,
+	"AdminGroupsRead":                      ActionAdminGroupsRead,
+	"AdminGroupsWrite":                     ActionAdminGroupsWrite,
+	"AdminAgentsManage":                    ActionAdminAgentsManage,
+	"AdminAuthorizationDetailTypesManage":  ActionAdminAuthorizationDetailTypesManage,
+	"AdminApplicationsManage":              ActionAdminApplicationsManage,
+	"AdminApplicationAssignmentsManage":    ActionAdminApplicationAssignmentsManage,
+	"AdminApplicationPoliciesManage":       ActionAdminApplicationPoliciesManage,
+	"AdminTenantDefaultSignInPolicyManage": ActionAdminTenantDefaultSignInPolicyManage,
+	"AdminApplicationCategoriesManage":     ActionAdminApplicationCategoriesManage,
+	"AdminFederationTrustsManage":          ActionAdminFederationTrustsManage,
+	"MyApplicationsRead":                   ActionMyApplicationsRead,
+	"ScimProvision":                        ActionScimProvision,
+	"ManageScimSettings":                   ActionManageScimSettings,
 }
 
 func ActionNameForPermission(permissionName string) (string, bool) {
@@ -260,6 +262,9 @@ var actionRules = map[string][]string{
 		"actor_is_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
 	},
 	ActionAdminApplicationPoliciesManage: {
+		"actor_is_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
+	},
+	ActionAdminTenantDefaultSignInPolicyManage: {
 		"actor_is_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
 	},
 	ActionAdminApplicationCategoriesManage: {

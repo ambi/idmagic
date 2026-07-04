@@ -23,9 +23,10 @@ var (
 )
 
 type SignInPolicyDeps struct {
-	AppRepo    ports.ApplicationRepository
-	PolicyRepo ports.SignInPolicyRepository
-	Emit       func(spec.DomainEvent)
+	AppRepo     ports.ApplicationRepository
+	PolicyRepo  ports.SignInPolicyRepository
+	DefaultRepo ports.DefaultSignInPolicyRepository
+	Emit        func(spec.DomainEvent)
 }
 
 type UpdateSignInPolicyInput struct {
@@ -83,6 +84,159 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 		At: policy.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: in.ApplicationID,
 	})
 	return policy, nil
+}
+
+// EmptyDefaultSignInPolicy は未設定テナントの空のデフォルトポリシーを返す。
+func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *spec.TenantDefaultSignInPolicy {
+	return &spec.TenantDefaultSignInPolicy{
+		TenantID: tenantID, Rules: []spec.SignInRule{}, UpdatedAt: adminNow(now),
+	}
+}
+
+// GetDefaultSignInPolicy はテナントデフォルト sign-in policy を取得する。未設定なら空ルールを返す。
+func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*spec.TenantDefaultSignInPolicy, error) {
+	tenantID := tenancy.TenantID(ctx)
+	if deps.DefaultRepo == nil {
+		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
+	}
+	policy, err := deps.DefaultRepo.Get(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if policy == nil {
+		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
+	}
+	if policy.Rules == nil {
+		policy.Rules = []spec.SignInRule{}
+	}
+	return policy, nil
+}
+
+type UpdateDefaultSignInPolicyInput struct {
+	ActorSub string
+	Rules    []spec.SignInRule
+	Now      time.Time
+}
+
+// UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える (ADR-081)。
+// 空 rules で保存すればデフォルトは allow-all に戻る。
+func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateDefaultSignInPolicyInput) (*spec.TenantDefaultSignInPolicy, error) {
+	tenantID := tenancy.TenantID(ctx)
+	rules := slices.Clone(in.Rules)
+	if err := ValidateSignInPolicyRules(rules); err != nil {
+		return nil, err
+	}
+	policy := &spec.TenantDefaultSignInPolicy{
+		TenantID: tenantID, Rules: rules, UpdatedAt: adminNow(in.Now),
+	}
+	if deps.DefaultRepo != nil {
+		if err := deps.DefaultRepo.Save(ctx, policy); err != nil {
+			return nil, err
+		}
+	}
+	emit(deps.Emit, &spec.TenantDefaultSignInPolicyUpdated{
+		At: policy.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub,
+	})
+	return policy, nil
+}
+
+// appPolicyConfigured はアプリが独自の sign-in policy を持つ (デフォルトを上書きする) かを返す。
+// 有効ルールが 1 つでもあれば「設定あり」とみなす (ADR-081)。
+func appPolicyConfigured(app *spec.AppSignInPolicy) bool {
+	if app == nil {
+		return false
+	}
+	for _, rule := range app.Rules {
+		if rule.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+// EffectiveSignInRules は上書きモデルで実際に適用されるルール列を返す (ADR-081)。
+// アプリが独自ポリシーを持てばそれがデフォルトを完全に置換し、持たなければデフォルトを適用する。
+func EffectiveSignInRules(def *spec.TenantDefaultSignInPolicy, app *spec.AppSignInPolicy) []spec.SignInRule {
+	if appPolicyConfigured(app) {
+		return slices.Clone(app.Rules)
+	}
+	if def != nil {
+		return slices.Clone(def.Rules)
+	}
+	return nil
+}
+
+// EffectivePolicyForEvaluation は上書き後の実効ルールで評価用 policy を組み立てる。ルールが無ければ nil。
+func EffectivePolicyForEvaluation(def *spec.TenantDefaultSignInPolicy, app *spec.AppSignInPolicy) *spec.AppSignInPolicy {
+	rules := EffectiveSignInRules(def, app)
+	if len(rules) == 0 {
+		return nil
+	}
+	out := &spec.AppSignInPolicy{Rules: rules}
+	if app != nil {
+		out.TenantID = app.TenantID
+		out.ApplicationID = app.ApplicationID
+	}
+	return out
+}
+
+// signInSettings は 1 ポリシー分の設定を強度比較のために平坦化した表現。
+// UI は常に単一ルールを書き込むため、有効な最初のルールから読み取る。
+type signInSettings struct {
+	requireMfa bool
+	reauth     *int
+	cidrs      []string
+}
+
+func settingsFromRules(rules []spec.SignInRule) signInSettings {
+	for _, rule := range rules {
+		if !rule.Enabled {
+			continue
+		}
+		return signInSettings{
+			requireMfa: rule.RequiredAuthn.Strength == spec.RequiredAuthnMfa,
+			reauth:     rule.Condition.ReauthMaxAgeSeconds,
+			cidrs:      rule.Condition.NetworkAllowCIDRs,
+		}
+	}
+	return signInSettings{}
+}
+
+// AppPolicyWeakerThanDefault はアプリ独自ポリシーがデフォルトより弱いかを返す (ADR-081, UI 警告用)。
+// アプリが独自ポリシーを持たなければ (=デフォルトを適用) 常に false。弱さは認証強度・再認証時間・
+// 許可ネットワークの 3 項目のいずれかで判定する。
+func AppPolicyWeakerThanDefault(def *spec.TenantDefaultSignInPolicy, app *spec.AppSignInPolicy) bool {
+	if !appPolicyConfigured(app) {
+		return false
+	}
+	var defSettings signInSettings
+	if def != nil {
+		defSettings = settingsFromRules(def.Rules)
+	}
+	appSettings := settingsFromRules(app.Rules)
+
+	// 認証強度: デフォルトが MFA 必須なのにアプリがそうでない。
+	if defSettings.requireMfa && !appSettings.requireMfa {
+		return true
+	}
+	// 再認証時間: デフォルトに上限があるのにアプリが未設定、または上限を延ばしている。
+	if defSettings.reauth != nil {
+		if appSettings.reauth == nil || *appSettings.reauth > *defSettings.reauth {
+			return true
+		}
+	}
+	// 許可ネットワーク: デフォルトが制限しているのにアプリが未制限、またはデフォルト外を許可する。
+	if len(defSettings.cidrs) > 0 {
+		if len(appSettings.cidrs) == 0 {
+			return true
+		}
+		for _, entry := range appSettings.cidrs {
+			if !slices.Contains(defSettings.cidrs, entry) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func ValidateSignInPolicyRules(rules []spec.SignInRule) error {

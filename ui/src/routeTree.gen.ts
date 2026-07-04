@@ -27,6 +27,7 @@ import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
 import { Route as SystemKeysRouteImport } from './routes/system/keys'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
@@ -143,6 +144,11 @@ const SystemKeysRoute = SystemKeysRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSignInPolicyRoute = AdminSignInPolicyRouteImport.update({
+  id: '/sign-in-policy',
+  path: '/sign-in-policy',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -315,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
@@ -359,6 +366,7 @@ export interface FileRoutesByTo {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
@@ -455,6 +464,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/sign-in-policy'
     | '/admin/users'
     | '/system/keys'
     | '/system/tenants'
@@ -499,6 +509,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/sign-in-policy'
     | '/admin/users'
     | '/system/keys'
     | '/system/tenants'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/sign-in-policy'
     | '/admin/users'
     | '/system/keys'
     | '/system/tenants'
@@ -704,6 +716,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/sign-in-policy': {
+      id: '/admin/sign-in-policy'
+      path: '/sign-in-policy'
+      fullPath: '/admin/sign-in-policy'
+      preLoaderRoute: typeof AdminSignInPolicyRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/settings': {
@@ -956,6 +975,7 @@ interface AdminRouteRouteChildren {
   AdminKeysRoute: typeof AdminKeysRoute
   AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSignInPolicyRoute: typeof AdminSignInPolicyRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRoute
@@ -977,6 +997,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminKeysRoute: AdminKeysRoute,
   AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSignInPolicyRoute: AdminSignInPolicyRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminAgentsAgentIdRoute: AdminAgentsAgentIdRoute,

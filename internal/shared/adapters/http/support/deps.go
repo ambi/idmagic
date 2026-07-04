@@ -77,6 +77,7 @@ type Deps struct {
 	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
 	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
 	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
 	OperationTimeout            time.Duration
 	DetachedCompletionTimeout   time.Duration
 	AbortMetrics                HTTPAbortMetrics

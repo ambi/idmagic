@@ -136,11 +136,20 @@ type SignInRule struct {
 }
 
 // AppSignInPolicy は Application ごとの federation 開始条件。
+// 設定されるとテナントデフォルトを上書き (置換) する (ADR-081)。
 type AppSignInPolicy struct {
 	TenantID      string       `json:"tenant_id"`
 	ApplicationID string       `json:"application_id"`
 	Rules         []SignInRule `json:"rules"`
 	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
+// TenantDefaultSignInPolicy はテナントデフォルトの federation 開始条件 (ADR-081)。
+// 例外設定のない全 Application の評価でアプリ個別ポリシーの前に合成される最低要件 (floor)。
+type TenantDefaultSignInPolicy struct {
+	TenantID  string       `json:"tenant_id"`
+	Rules     []SignInRule `json:"rules"`
+	UpdatedAt time.Time    `json:"updated_at"`
 }
 
 // ProtocolBinding は Application に紐づく protocol binding (wi-69, ADR-064)。
@@ -315,6 +324,18 @@ type AppSignInPolicyUpdated struct {
 
 func (e *AppSignInPolicyUpdated) EventType() string     { return "AppSignInPolicyUpdated" }
 func (e *AppSignInPolicyUpdated) OccurredAt() time.Time { return e.At }
+
+// TenantDefaultSignInPolicyUpdated はテナント既定 sign-in policy を更新した event (ADR-081)。
+type TenantDefaultSignInPolicyUpdated struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	ActorSub string    `json:"actorSub"`
+}
+
+func (e *TenantDefaultSignInPolicyUpdated) EventType() string {
+	return "TenantDefaultSignInPolicyUpdated"
+}
+func (e *TenantDefaultSignInPolicyUpdated) OccurredAt() time.Time { return e.At }
 
 // AppAccessDeniedByPolicy は policy により federation を拒否した event。
 type AppAccessDeniedByPolicy struct {

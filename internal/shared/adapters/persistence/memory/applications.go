@@ -207,6 +207,42 @@ func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, application
 }
 
 // =====================================================================
+// DefaultSignInPolicyRepository (wi-115, ADR-081)
+// =====================================================================
+
+func cloneDefaultSignInPolicy(policy *spec.TenantDefaultSignInPolicy) *spec.TenantDefaultSignInPolicy {
+	cloned := *policy
+	cloned.Rules = slices.Clone(policy.Rules)
+	return &cloned
+}
+
+type DefaultSignInPolicyRepository struct {
+	mu       sync.RWMutex
+	policies map[string]*spec.TenantDefaultSignInPolicy // key: tenant_id
+}
+
+func NewDefaultSignInPolicyRepository() *DefaultSignInPolicyRepository {
+	return &DefaultSignInPolicyRepository{policies: map[string]*spec.TenantDefaultSignInPolicy{}}
+}
+
+func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) (*spec.TenantDefaultSignInPolicy, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	policy := r.policies[tenantID]
+	if policy == nil {
+		return nil, nil
+	}
+	return cloneDefaultSignInPolicy(policy), nil
+}
+
+func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *spec.TenantDefaultSignInPolicy) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.policies[policy.TenantID] = cloneDefaultSignInPolicy(policy)
+	return nil
+}
+
+// =====================================================================
 // AssignmentRepository (wi-69)
 // =====================================================================
 

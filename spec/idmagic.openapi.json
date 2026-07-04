@@ -6136,7 +6136,7 @@
     "/api/admin/applications/{application_id}/sign-in-policy": {
       "get": {
         "operationId": "GetAppSignInPolicy",
-        "summary": "管理者が Application の sign-in policy を取得する。未設定なら空 rules の policy を返す。",
+        "summary": "管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。",
         "parameters": [
           {
             "name": "application_id",
@@ -6240,6 +6240,108 @@
                   "properties": {
                     "response": {
                       "$ref": "#/components/schemas/AppSignInPolicyResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/default-sign-in-policy": {
+      "get": {
+        "operationId": "GetTenantDefaultSignInPolicy",
+        "summary": "管理者がテナントデフォルト sign-in policy を取得する。未設定なら空 rules の policy を返す (ADR-081)。",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/TenantDefaultSignInPolicyResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateTenantDefaultSignInPolicy",
+        "summary": "管理者がテナントデフォルト sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/TenantDefaultSignInPolicyRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/TenantDefaultSignInPolicyResponse"
                     }
                   },
                   "additionalProperties": false,
@@ -10609,7 +10711,7 @@
           "rules",
           "updated_at"
         ],
-        "description": "Application ごとのサインインポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。"
+        "description": "Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。"
       },
       "AppSignInPolicyRequest": {
         "type": "object",
@@ -10625,20 +10727,37 @@
         "required": [
           "rules"
         ],
-        "description": "管理者が Application の sign-in policy を置き換えるリクエスト。"
+        "description": "管理者が Application の sign-in policy を置き換えるリクエスト。有効ルールを送るとテナントデフォルトを上書きし、空で送るとデフォルト適用に戻る。"
       },
       "AppSignInPolicyResponse": {
         "type": "object",
         "properties": {
           "policy": {
             "$ref": "#/components/schemas/AppSignInPolicy"
+          },
+          "tenant_default": {
+            "$ref": "#/components/schemas/TenantDefaultSignInPolicy"
+          },
+          "effective_rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignInRule"
+            },
+            "description": "上書きモデルで実際に評価されるルール列。アプリが有効ルールを持てば policy.rules、持たなければ tenant_default.rules。"
+          },
+          "weaker_than_default": {
+            "type": "boolean",
+            "description": "アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない (ADR-081)。"
           }
         },
         "additionalProperties": false,
         "required": [
-          "policy"
+          "policy",
+          "tenant_default",
+          "effective_rules",
+          "weaker_than_default"
         ],
-        "description": "Application の sign-in policy 表現。"
+        "description": "Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」\n「実際に適用される effective ルール列」を区別して表示できるようにする (ADR-081)。\n"
       },
       "AppSignInPolicyUpdated": {
         "type": "object",
@@ -16446,6 +16565,83 @@
           "tenantId"
         ],
         "description": "system_admin が新規テナントを作成した。"
+      },
+      "TenantDefaultSignInPolicy": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "default": "default"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignInRule"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "rules",
+          "updated_at"
+        ],
+        "description": "テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。"
+      },
+      "TenantDefaultSignInPolicyRequest": {
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignInRule"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "rules"
+        ],
+        "description": "管理者がテナントデフォルト sign-in policy を置き換えるリクエスト。"
+      },
+      "TenantDefaultSignInPolicyResponse": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/TenantDefaultSignInPolicy"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "policy"
+        ],
+        "description": "テナントデフォルト sign-in policy 表現。"
+      },
+      "TenantDefaultSignInPolicyUpdated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorSub": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorSub"
+        ],
+        "description": "テナントデフォルト sign-in policy を更新した (クリアを含む)。"
       },
       "TenantDisabled": {
         "type": "object",

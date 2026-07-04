@@ -53,6 +53,7 @@ func assembleMemory() (*Dependencies, error) {
 		ApplicationOrderingRepo:     memory.NewApplicationOrderingRepository(),
 		ApplicationCategoryRepo:     memory.NewApplicationCategoryRepository(),
 		ApplicationSignInPolicyRepo: memory.NewSignInPolicyRepository(),
+		DefaultSignInPolicyRepo:     memory.NewDefaultSignInPolicyRepository(),
 		Close:                       func() {},
 		DbPing:                      func(c context.Context) error { return nil },
 		ValkeyPing:                  func(c context.Context) error { return nil },

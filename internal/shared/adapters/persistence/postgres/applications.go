@@ -184,6 +184,51 @@ func (r *SignInPolicyRepository) Delete(ctx context.Context, tenantID, applicati
 	return err
 }
 
+// DefaultSignInPolicyRepository はテナント既定 sign-in policy を PostgreSQL に永続化する (ADR-081)。
+type DefaultSignInPolicyRepository struct{ Pool DB }
+
+func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string) (*spec.TenantDefaultSignInPolicy, error) {
+	var (
+		policy spec.TenantDefaultSignInPolicy
+		rules  []byte
+	)
+	err := r.Pool.QueryRow(ctx, `
+SELECT tenant_id,rules,updated_at
+  FROM tenant_default_sign_in_policies
+ WHERE tenant_id=$1`, tenantID).
+		Scan(&policy.TenantID, &rules, &policy.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	policy.Rules = []spec.SignInRule{}
+	if len(rules) > 0 {
+		if err := json.Unmarshal(rules, &policy.Rules); err != nil {
+			return nil, err
+		}
+	}
+	return &policy, nil
+}
+
+func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *spec.TenantDefaultSignInPolicy) error {
+	rules := policy.Rules
+	if rules == nil {
+		rules = []spec.SignInRule{}
+	}
+	encoded, err := json.Marshal(rules)
+	if err != nil {
+		return err
+	}
+	_, err = r.Pool.Exec(ctx, `
+INSERT INTO tenant_default_sign_in_policies (tenant_id,rules,updated_at)
+VALUES ($1,$2,$3)
+ON CONFLICT (tenant_id) DO UPDATE SET rules=EXCLUDED.rules,updated_at=EXCLUDED.updated_at`,
+		policy.TenantID, encoded, policy.UpdatedAt)
+	return err
+}
+
 // ApplicationIconStore は Application icon blob を PostgreSQL に保存する (wi-74, ADR-073)。
 type ApplicationIconStore struct{ Pool DB }
 

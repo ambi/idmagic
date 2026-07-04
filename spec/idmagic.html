@@ -16675,7 +16675,7 @@ system_admin は default tenant 経路から全テナント横断的に参照で
       <div class="eyebrow">Bounded Context · contexts/application.yaml</div>
       <h1>Application</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">56</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">25</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-invariants"><span class="stat-num">7</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-permissions"><span class="stat-num">5</span><span class="stat-label">permissions</span></a><a class="stat" href="#context-application-user_experience"><span class="stat-num">2</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">60</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">27</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-invariants"><span class="stat-num">8</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">7</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-permissions"><span class="stat-num">6</span><span class="stat-label">permissions</span></a><a class="stat" href="#context-application-user_experience"><span class="stat-num">3</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-application-glossary">
     <h2>Glossary <span class="count">2</span></h2>
@@ -16700,10 +16700,10 @@ system_admin は default tenant 経路から全テナント横断的に参照で
     </article></div>
   </section>
 <section id="context-application-models">
-    <h2>Models <span class="count">56</span></h2>
+    <h2>Models <span class="count">60</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">entity <span class="count">5</span></h3>
+      <h3 class="grp-title">entity <span class="count">6</span></h3>
       <div class="cards"><article class="card" id="context-application-model-application">
     <header><h3>Application</h3><span class="badge badge-kind-entity">entity</span></header>
     <p class="desc">運用者が「接続する業務アプリケーション」として扱う上位 aggregate。OIDC client / SAML SP / WS-Fed RP を protocol binding として束ね、表示名・アイコン・状態・割当を所有する。weblink kind は binding を持たない外部リンク。tenant_id は既存 Tenant を指し、category_ids と protocol binding の opaque key は use case が同一テナント内の既存参照として検証する。</p>
@@ -16880,7 +16880,7 @@ system_admin は default tenant 経路から全テナント横断的に参照で
   </article>
 <article class="card" id="context-application-model-appsigninpolicy">
     <header><h3>AppSignInPolicy</h3><span class="badge badge-kind-entity">entity</span></header>
-    <p class="desc">Application ごとのサインインポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。</p>
+    <p class="desc">Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。</p>
     <dl class="kv"><dt>identity</dt><dd><code>tenant_id, application_id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -16895,6 +16895,33 @@ system_admin は default tenant 経路から全テナント横断的に参照で
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">rules</code></td>
+    <td><code class="type">SignInRule[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">updated_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-application-model-tenantdefaultsigninpolicy">
+    <header><h3>TenantDefaultSignInPolicy</h3><span class="badge badge-kind-entity">entity</span></header>
+    <p class="desc">テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。</p>
+    <dl class="kv"><dt>identity</dt><dd><code>tenant_id</code></dd></dl>
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">tenant_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-default">default: default</span></td>
     <td></td>
   </tr><tr>
     <td><code class="name">rules</code></td>
@@ -16943,7 +16970,7 @@ system_admin は default tenant 経路から全テナント横断的に参照で
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">30</span></h3>
+      <h3 class="grp-title">value object <span class="count">32</span></h3>
       <div class="cards"><article class="card" id="context-application-model-protocolbinding">
     <header><h3>ProtocolBinding</h3><span class="badge badge-kind-value_object">value object</span></header>
     <p class="desc">Application に紐づく protocol binding。OIDC client / WS-Fed RP / 将来 SAML SP への 参照を opaque key で保持する。binding の wire 挙動は各 protocol context が所有する。</p>
@@ -17723,7 +17750,7 @@ system_admin は default tenant 経路から全テナント横断的に参照で
   </article>
 <article class="card" id="context-application-model-appsigninpolicyrequest">
     <header><h3>AppSignInPolicyRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">管理者が Application の sign-in policy を置き換えるリクエスト。</p>
+    <p class="desc">管理者が Application の sign-in policy を置き換えるリクエスト。有効ルールを送るとテナントデフォルトを上書きし、空で送るとデフォルト適用に戻る。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -17738,13 +17765,63 @@ system_admin は default tenant 経路から全テナント横断的に参照で
   </article>
 <article class="card" id="context-application-model-appsigninpolicyresponse">
     <header><h3>AppSignInPolicyResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">Application の sign-in policy 表現。</p>
+    <p class="desc">Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」
+「実際に適用される effective ルール列」を区別して表示できるようにする (ADR-081)。
+</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
     <td><code class="name">policy</code></td>
     <td><code class="type">AppSignInPolicy</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenant_default</code></td>
+    <td><code class="type">TenantDefaultSignInPolicy</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">effective_rules</code></td>
+    <td><code class="type">SignInRule[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>上書きモデルで実際に評価されるルール列。アプリが有効ルールを持てば policy.rules、持たなければ tenant_default.rules。</td>
+  </tr><tr>
+    <td><code class="name">weaker_than_default</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない (ADR-081)。</td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-application-model-tenantdefaultsigninpolicyrequest">
+    <header><h3>TenantDefaultSignInPolicyRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">管理者がテナントデフォルト sign-in policy を置き換えるリクエスト。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">rules</code></td>
+    <td><code class="type">SignInRule[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-application-model-tenantdefaultsigninpolicyresponse">
+    <header><h3>TenantDefaultSignInPolicyResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">テナントデフォルト sign-in policy 表現。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">policy</code></td>
+    <td><code class="type">TenantDefaultSignInPolicy</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -17917,7 +17994,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">14</span></h3>
+      <h3 class="grp-title">event <span class="count">15</span></h3>
       <div class="cards"><article class="card" id="context-application-model-applicationcreated">
     <header><h3>ApplicationCreated</h3><span class="badge badge-kind-event">event</span></header>
     <p class="desc">Application を作成した。</p>
@@ -18362,6 +18439,33 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </tr></tbody>
   </table>
   </article>
+<article class="card" id="context-application-model-tenantdefaultsigninpolicyupdated">
+    <header><h3>TenantDefaultSignInPolicyUpdated</h3><span class="badge badge-kind-event">event</span></header>
+    <p class="desc">テナントデフォルト sign-in policy を更新した (クリアを含む)。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorSub</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
 <article class="card" id="context-application-model-appaccessdeniedbypolicy">
     <header><h3>AppAccessDeniedByPolicy</h3><span class="badge badge-kind-event">event</span></header>
     <p class="desc">Application sign-in policy により federation を拒否した。</p>
@@ -18449,7 +18553,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
     </div>
   </section>
 <section id="context-application-interfaces">
-    <h2>Interfaces <span class="count">25</span></h2>
+    <h2>Interfaces <span class="count">27</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="context-application-iface-listadminapplications">
     <header><h3>ListAdminApplications</h3><span class="badge badge-readonly">read-only</span></header>
@@ -18950,7 +19054,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </article>
 <article class="card" id="context-application-iface-getappsigninpolicy">
     <header><h3>GetAppSignInPolicy</h3><span class="badge badge-readonly">read-only</span></header>
-    <p class="desc">管理者が Application の sign-in policy を取得する。未設定なら空 rules の policy を返す。</p>
+    <p class="desc">管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -19020,6 +19124,63 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/applications/{application_id}/sign-in-policy</code> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-application-iface-gettenantdefaultsigninpolicy">
+    <header><h3>GetTenantDefaultSignInPolicy</h3><span class="badge badge-readonly">read-only</span></header>
+    <p class="desc">管理者がテナントデフォルト sign-in policy を取得する。未設定なら空 rules の policy を返す (ADR-081)。</p>
+
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">TenantDefaultSignInPolicyResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-application-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/default-sign-in-policy</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-application-iface-updatetenantdefaultsigninpolicy">
+    <header><h3>UpdateTenantDefaultSignInPolicy</h3></header>
+    <p class="desc">管理者がテナントデフォルト sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">TenantDefaultSignInPolicyRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">TenantDefaultSignInPolicyResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-application-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-application-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-application-model-tenantdefaultsigninpolicyupdated">TenantDefaultSignInPolicyUpdated</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/default-sign-in-policy</code> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="context-application-iface-listapplicationcategories">
@@ -19267,7 +19428,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
   </article></div>
   </section>
 <section id="context-application-invariants">
-    <h2>Invariants <span class="count">7</span></h2>
+    <h2>Invariants <span class="count">8</span></h2>
     <p class="lead">入力に依らず常に成り立つ不変条件、または決して起きてはならない事象。</p>
     <div class="cards"><article class="card" id="context-application-inv-assignmentgatesprotocol">
     <header><h3>AssignmentGatesProtocol</h3></header>
@@ -19292,9 +19453,18 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
   </article>
 <article class="card" id="context-application-inv-apppolicyevaluatedacrossprotocols">
     <header><h3>AppPolicyEvaluatedAcrossProtocols</h3></header>
-    <p class="desc">OIDC authorize、WS-Fed sign-in、SAML SSO は同じ Application sign-in policy 評価器を通し、protocol ごとの個別条件分岐で迂回できない。クライアント IP も全経路で評価器に渡す。</p>
+    <p class="desc">OIDC authorize、WS-Fed sign-in、SAML SSO は同じ Application sign-in policy 評価器を通し、protocol ごとの個別条件分岐で迂回できない。評価器には上書きモデルの実効ポリシー (アプリ独自ルールがあればそれ、なければテナントデフォルト) とクライアント IP を全経路で渡す。</p>
     <dl class="kv"><dt>target</dt><dd><code>AppSignInPolicy</code></dd></dl>
     <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">federation_started_via_binding implies app_sign_in_policy_evaluated</code></div>
+  </article>
+<article class="card" id="context-application-inv-defaultpolicyapplieswhenappunset">
+    <header><h3>DefaultPolicyAppliesWhenAppUnset</h3></header>
+    <p class="desc">独自の sign-in policy を持たない Application は、federation 開始時にテナントデフォルトポリシーで
+fail-closed 評価される。アプリが有効ルールを持つ場合はデフォルトを上書き (置換) し、その実効ポリシーで評価する。
+どちらの経路でも評価器は fail-closed。
+反例: デフォルトで MFA を要求しているのに、独自ポリシーを持たないアプリへ単要素で federation を完了できる。</p>
+    <dl class="kv"><dt>target</dt><dd><code>TenantDefaultSignInPolicy</code></dd></dl>
+    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">federation_completed and effective_policy_result != allow</code></div>
   </article>
 <article class="card" id="context-application-inv-applicationiconsafeserving">
     <header><h3>ApplicationIconSafeServing</h3></header>
@@ -19317,7 +19487,7 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
   </article></div>
   </section>
 <section id="context-application-scenarios">
-    <h2>Scenarios <span class="count">6</span></h2>
+    <h2>Scenarios <span class="count">7</span></h2>
     <p class="lead">受け入れ例。自然文ステップで書かれた振る舞いの具体例。引用された既知の名前は定義へリンクする。</p>
     <div class="cards"><article class="card scenario" id="context-application-scn-client">
     <header><h3>管理者は所属テナントの client を作成・更新・削除できる</h3></header>
@@ -19386,7 +19556,7 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
 
     <div class="sub"><div class="label">Preconditions</div><ul class="vlist"><li>管理者が Application 編集画面を開いている</li><li>Application は OIDC / SAML / WS-Fed のいずれかの protocol binding を持つ</li></ul></div>
 
-    <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が MFA 必須と再認証最大経過秒数を要求する sign-in policy を保存する</li><li class="scn-step">単要素セッションの利用者が対象 Application にアクセスする</li><li class="scn-step">システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する</li><li class="scn-step">システムは token / assertion 発行前に policy を評価する</li></ol></div>
+    <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する</li><li class="scn-step">単要素セッションの利用者が対象 Application にアクセスする</li><li class="scn-step">システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する</li><li class="scn-step">システムは token / assertion 発行前に policy を評価する</li></ol></div>
 
     <div class="sub"><div class="label">Extensions</div><div class="requirements"><article class="requirement">
         <header><code class="name">許可 CIDR に含まれないクライアント IP、またはクライアント IP を取得できない</code></header>
@@ -19394,6 +19564,27 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
       </article><article class="requirement">
         <header><code class="name">管理者以外が policy を更新する</code></header>
         <ol class="scn-steps"><li class="scn-step">エラー <code class="step-arg">AccessDeniedError</code></li></ol>
+      </article></div></div>
+
+  </article>
+<article class="card scenario" id="context-application-scn-u-5qwyiy">
+    <header><h3>管理者はテナントデフォルトサインインポリシーを設定し全アプリに適用できる</h3></header>
+
+    <dl class="kv"><dt>goal</dt><dd>管理者がテナントデフォルトサインインポリシーを設定し、独自ポリシーを持たない全 Application の federation 開始に baseline として適用する。</dd><dt>primary actor</dt><dd><span class="chip">Administrator</span></dd><dt>scope</dt><dd><span class="chip">Application</span></dd><dt>level</dt><dd><span class="chip">user_goal</span></dd></dl>
+
+    <div class="sub"><div class="label">Preconditions</div><ul class="vlist"><li>roles=[<code class="step-arg">admin</code>] のユーザー <code class="step-arg">operator</code> がサインインポリシー画面を開いている</li><li>テナントに OIDC binding を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない</li></ul></div>
+
+    <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が MFA 必須を要求するテナントデフォルトサインインポリシーを保存する</li><li class="scn-step">TenantDefaultSignInPolicyUpdated が発行される</li><li class="scn-step">単要素セッションの利用者が個別ポリシーを持たない Application にアクセスする</li><li class="scn-step">システムはデフォルトポリシーを適用し step-up を要求する</li></ol></div>
+
+    <div class="sub"><div class="label">Extensions</div><div class="requirements"><article class="requirement">
+        <header><code class="name">低リスクアプリだけデフォルトを上書きして緩和する</code></header>
+        <ol class="scn-steps"><li class="scn-step">管理者が対象 Application に弱いサインインポリシー (例: パスワードのみ) を設定してデフォルトを上書きする</li><li class="scn-step">システムはデフォルトより弱い旨の警告を表示するが保存は許可する</li><li class="scn-step">単要素セッションの利用者が当該 Application に step-up なしでアクセスできる</li><li class="scn-step">他の Application ではデフォルトの MFA 必須が引き続き適用される</li></ol>
+      </article><article class="requirement">
+        <header><code class="name">アプリ詳細で最終適用ポリシーを確認する</code></header>
+        <ol class="scn-steps"><li class="scn-step">アプリ編集画面はテナントデフォルト・このアプリの上書き・最終的に適用されるポリシーを区別して表示する</li></ol>
+      </article><article class="requirement">
+        <header><code class="name">デフォルトポリシーを空にして解除する</code></header>
+        <ol class="scn-steps"><li class="scn-step">管理者がルールを空にして保存する</li><li class="scn-step">TenantDefaultSignInPolicyUpdated が発行される</li><li class="scn-step">以降、独自ポリシーを持たない Application の federation 開始は追加要件を課さない</li></ol>
       </article></div></div>
 
   </article>
@@ -19411,7 +19602,7 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
   </article></div>
   </section>
 <section id="context-application-permissions">
-    <h2>Permissions <span class="count">5</span></h2>
+    <h2>Permissions <span class="count">6</span></h2>
     <p class="lead">誰が、何に対して、どんな条件で何ができるかを宣言する認可ルール。</p>
     <div class="cards"><article class="card" id="context-application-perm-adminapplicationsmanage">
     <header><h3>AdminApplicationsManage</h3></header>
@@ -19431,6 +19622,12 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
     <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">AppSignInPolicy</code></dd></dl>
     <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
   </article>
+<article class="card" id="context-application-perm-admintenantdefaultsigninpolicymanage">
+    <header><h3>AdminTenantDefaultSignInPolicyManage</h3></header>
+    <p class="desc">所属テナントのデフォルト sign-in policy の参照・更新。</p>
+    <dl class="kv"><dt>actor</dt><dd><code class="name">User</code></dd><dt>operation</dt><dd><span class="muted">—</span></dd><dt>resource</dt><dd><code class="name">TenantDefaultSignInPolicy</code></dd></dl>
+    <div class="clause"><div class="clause-label ok">allow when</div><code class="expr">admin in actor.roles &amp;&amp; actor.disabled_at == null &amp;&amp; context.authenticated == true &amp;&amp; actor.tenant_id == resource.tenant_id</code></div>
+  </article>
 <article class="card" id="context-application-perm-adminapplicationcategoriesmanage">
     <header><h3>AdminApplicationCategoriesManage</h3></header>
     <p class="desc">所属テナント内の ApplicationCategory の参照・作成・更新・削除と Application への付与。</p>
@@ -19445,7 +19642,7 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
   </article></div>
   </section>
 <section id="context-application-user_experience">
-    <h2>User Experience <span class="count">2</span></h2>
+    <h2>User Experience <span class="count">3</span></h2>
     <p class="lead">ブラウザ画面、画面遷移、セキュリティ・プライバシー・アクセシビリティ要件。</p>
     <dl class="kv">
 
@@ -19465,7 +19662,7 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="Screen transitions">
+      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="Screen transitions">
         <defs>
           <marker id="arrow-ux-transitions" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -19475,14 +19672,17 @@ authorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認�
         <a href="#context-application-screen-adminapplications"><g class="diagram-node diagram-node-screen" id="context-application-diagram-ux-transitions-node-adminapplications">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">AdminApplications</text>
-      </g></a><a href="#context-application-screen-accountapps"><g class="diagram-node diagram-node-screen" id="context-application-diagram-ux-transitions-node-accountapps">
+      </g></a><a href="#context-application-screen-adminsigninpolicy"><g class="diagram-node diagram-node-screen" id="context-application-diagram-ux-transitions-node-adminsigninpolicy">
         <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">AccountApps</text>
+        <text x="384" y="70">AdminSignInPolicy</text>
+      </g></a><a href="#context-application-screen-accountapps"><g class="diagram-node diagram-node-screen" id="context-application-diagram-ux-transitions-node-accountapps">
+        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
+        <text x="128" y="196">AccountApps</text>
       </g></a>
       </svg>
     </div>
   </div>
-    <div class="group"><h3 class="grp-title">Screens <span class="count">2</span></h3><div class="cards"><article class="card" id="context-application-screen-adminapplications">
+    <div class="group"><h3 class="grp-title">Screens <span class="count">3</span></h3><div class="cards"><article class="card" id="context-application-screen-adminapplications">
         <header><h3>AdminApplications</h3><span class="chip chip-hint">/admin/applications</span></header>
         <p class="desc">管理者が OAuth2 / WS-Federation / service の各種クライアントを単一の「アプリケーション」として
 一覧・作成・更新・削除し、protocol binding の追加・削除、OIDC / WS-Fed の設定、
@@ -19492,6 +19692,15 @@ DPoP、作成時に確定する認証方式) もここで編集し、専用の�
 </p>
         <div class="reference-row"><span class="reference-label">interfaces</span><a class="chip chip-iface-ref" href="#context-application-iface-listadminapplications">ListAdminApplications</a> <a class="chip chip-iface-ref" href="#context-application-iface-getadminapplication">GetAdminApplication</a> <a class="chip chip-iface-ref" href="#context-application-iface-createadminapplication">CreateAdminApplication</a> <a class="chip chip-iface-ref" href="#context-application-iface-updateadminapplication">UpdateAdminApplication</a> <a class="chip chip-iface-ref" href="#context-application-iface-uploadapplicationicon">UploadApplicationIcon</a> <a class="chip chip-iface-ref" href="#context-application-iface-deleteapplicationicon">DeleteApplicationIcon</a> <a class="chip chip-iface-ref" href="#context-application-iface-deleteadminapplication">DeleteAdminApplication</a> <a class="chip chip-iface-ref" href="#context-application-iface-attachprotocolbinding">AttachProtocolBinding</a> <a class="chip chip-iface-ref" href="#context-application-iface-detachprotocolbinding">DetachProtocolBinding</a> <a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationoidcconfig">UpdateApplicationOidcConfig</a> <a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationwsfedconfig">UpdateApplicationWsFedConfig</a> <a class="chip chip-iface-ref" href="#context-application-iface-getappsigninpolicy">GetAppSignInPolicy</a> <a class="chip chip-iface-ref" href="#context-application-iface-updateappsigninpolicy">UpdateAppSignInPolicy</a> <a class="chip chip-iface-ref" href="#context-application-iface-listapplicationassignments">ListApplicationAssignments</a> <a class="chip chip-iface-ref" href="#context-application-iface-assignapplication">AssignApplication</a> <a class="chip chip-iface-ref" href="#context-application-iface-unassignapplication">UnassignApplication</a> <a class="chip chip-iface-ref" href="#context-application-iface-listapplicationcategories">ListApplicationCategories</a> <a class="chip chip-iface-ref" href="#context-application-iface-createapplicationcategory">CreateApplicationCategory</a> <a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationcategory">UpdateApplicationCategory</a> <a class="chip chip-iface-ref" href="#context-application-iface-deleteapplicationcategory">DeleteApplicationCategory</a> <a class="chip chip-iface-ref" href="#context-application-iface-setapplicationcategories">SetApplicationCategories</a> <a class="chip chip-iface-ref" href="#context-application-iface-listadminusers">ListAdminUsers</a> <a class="chip chip-iface-ref" href="#context-application-iface-listgroups">ListGroups</a></div>
         <div class="chip-row"><span class="chip">ready</span> <span class="chip">loading</span> <span class="chip">submitting</span> <span class="chip">empty</span> <span class="chip">secret_issued</span> <span class="chip">delete_confirmation</span> <span class="chip">access_denied</span> <span class="chip">service_error</span></div>
+      </article><article class="card" id="context-application-screen-adminsigninpolicy">
+        <header><h3>AdminSignInPolicy</h3><span class="chip chip-hint">/admin/sign-in-policy</span></header>
+        <p class="desc">テナントのサインインポリシーを総合的に扱う画面。上段で全 Application 共通のデフォルトポリシー
+(要求認証強度・再認証を求めるまでの時間・許可 CIDR を制約された選択肢で) を詳細表示し、編集モードに切り替えて編集する。
+下段で各 Application の個別設定 (上書き) の有無・デフォルトより弱い警告・最終的に適用される実効ポリシーを
+一覧して編集画面へ導線する (ADR-081)。
+</p>
+        <div class="reference-row"><span class="reference-label">interfaces</span><a class="chip chip-iface-ref" href="#context-application-iface-gettenantdefaultsigninpolicy">GetTenantDefaultSignInPolicy</a> <a class="chip chip-iface-ref" href="#context-application-iface-updatetenantdefaultsigninpolicy">UpdateTenantDefaultSignInPolicy</a> <a class="chip chip-iface-ref" href="#context-application-iface-listadminapplications">ListAdminApplications</a> <a class="chip chip-iface-ref" href="#context-application-iface-getappsigninpolicy">GetAppSignInPolicy</a></div>
+        <div class="chip-row"><span class="chip">viewing</span> <span class="chip">editing</span> <span class="chip">loading</span> <span class="chip">submitting</span> <span class="chip">access_denied</span> <span class="chip">service_error</span></div>
       </article><article class="card" id="context-application-screen-accountapps">
         <header><h3>AccountApps</h3><span class="chip chip-hint">/account/apps</span></header>
         <p class="desc">end-user が利用できるアプリケーションをタイルで一覧し、起動する。管理者が定義したカテゴリ
@@ -19506,7 +19715,7 @@ DPoP、作成時に確定する認証方式) もここで編集し、専用の�
         <td><a class="chip" href="#context-application-screen-adminusers">AdminUsers</a></td>
         <td></td>
       </tr></tbody></table></div>
-    <div class="group"><h3 class="grp-title">Requirements <span class="count">6</span></h3><div class="requirements"><article class="requirement" id="context-application-ux-ux-admin-client-secret">
+    <div class="group"><h3 class="grp-title">Requirements <span class="count">8</span></h3><div class="requirements"><article class="requirement" id="context-application-ux-ux-admin-client-secret">
         <header>
           <code class="name">UX-ADMIN-CLIENT-SECRET</code>
           <span class="badge badge-adoption-required">required</span>
@@ -19557,7 +19766,25 @@ DPoP、作成時に確定する認証方式) もここで編集し、専用の�
           <span class="badge badge-adoption-required">required</span>
           <span class="badge badge-category">security</span>
         </header>
-        <p>AdminApplications は Application 編集画面で sign-in policy の有効化、要求認証強度 (パスワードのみ / MFA 必須)、再認証最大経過秒数、許可 CIDR を制約された選択肢で編集できるようにし、保存後の federation 開始で同じ条件が protocol 横断に適用されることを示す。自由入力の未評価条件は入力できない。</p>
+        <p>AdminApplications は Application 編集画面で sign-in policy の有効化、要求認証強度 (パスワードのみ / MFA 必須)、再認証を求めるまでの時間 (秒)、許可 CIDR を制約された選択肢で編集できるようにし、保存後の federation 開始で同じ条件が protocol 横断に適用されることを示す。自由入力の未評価条件は入力できない。</p>
+        <div class="reference-row"><span class="reference-label">screens</span><a class="chip" href="#context-application-screen-adminapplications">AdminApplications</a></div>
+        <div class="reference-row"><span class="reference-label">interfaces</span><a class="chip chip-ref" href="#context-application-iface-getappsigninpolicy">GetAppSignInPolicy</a> <a class="chip chip-ref" href="#context-application-iface-updateappsigninpolicy">UpdateAppSignInPolicy</a></div>
+      </article><article class="requirement" id="context-application-ux-ux-tenant-default-sign-in-policy">
+        <header>
+          <code class="name">UX-TENANT-DEFAULT-SIGN-IN-POLICY</code>
+          <span class="badge badge-adoption-required">required</span>
+          <span class="badge badge-category">security</span>
+        </header>
+        <p>AdminSignInPolicy はテナント全 Application に適用するデフォルトサインインポリシーを、まず詳細表示し編集モードで編集する (他の設定画面と同じ詳細→編集の作法)。編集項目はアプリ個別ポリシーと同じ制約された選択肢 (要求認証強度・再認証を求めるまでの時間・許可 CIDR)。あわせて各 Application の個別設定 (上書き) の有無・デフォルトより弱い警告・実効ポリシーを一覧表示する。認証強度を最低・その他を空にすれば追加要件のない状態に戻せる。</p>
+        <div class="reference-row"><span class="reference-label">screens</span><a class="chip" href="#context-application-screen-adminsigninpolicy">AdminSignInPolicy</a></div>
+        <div class="reference-row"><span class="reference-label">interfaces</span><a class="chip chip-ref" href="#context-application-iface-gettenantdefaultsigninpolicy">GetTenantDefaultSignInPolicy</a> <a class="chip chip-ref" href="#context-application-iface-updatetenantdefaultsigninpolicy">UpdateTenantDefaultSignInPolicy</a> <a class="chip chip-ref" href="#context-application-iface-listadminapplications">ListAdminApplications</a> <a class="chip chip-ref" href="#context-application-iface-getappsigninpolicy">GetAppSignInPolicy</a></div>
+      </article><article class="requirement" id="context-application-ux-ux-application-effective-sign-in-policy">
+        <header>
+          <code class="name">UX-APPLICATION-EFFECTIVE-SIGN-IN-POLICY</code>
+          <span class="badge badge-adoption-required">required</span>
+          <span class="badge badge-category">security</span>
+        </header>
+        <p>AdminApplications は Application 編集画面で「テナントデフォルト」「このアプリの上書き」「最終的に適用されるポリシー」を区別して表示する。アプリ個別ポリシーはデフォルトを上書き (置換) し、デフォルトより弱い設定 (認証強度・再認証を求めるまでの時間・許可ネットワークのいずれかを緩める) のときは警告を表示する。</p>
         <div class="reference-row"><span class="reference-label">screens</span><a class="chip" href="#context-application-screen-adminapplications">AdminApplications</a></div>
         <div class="reference-row"><span class="reference-label">interfaces</span><a class="chip chip-ref" href="#context-application-iface-getappsigninpolicy">GetAppSignInPolicy</a> <a class="chip chip-ref" href="#context-application-iface-updateappsigninpolicy">UpdateAppSignInPolicy</a></div>
       </article></div></div>

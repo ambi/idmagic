@@ -17,7 +17,8 @@ import type {
   AdminUserGroups,
   ApplicationAssignment,
   ApplicationStatus,
-  AppSignInPolicy,
+  AppSignInPolicyView,
+  TenantDefaultSignInPolicy,
   SignInRule,
   ProtocolBinding,
   ProtocolBindingType,
@@ -777,22 +778,36 @@ export async function unassignApplication(
   )
 }
 
-export async function getAppSignInPolicy(id: string): Promise<AppSignInPolicy> {
-  return (
-    await request<{ policy: AppSignInPolicy }>(
-      `/api/admin/applications/${encodeURIComponent(id)}/sign-in-policy`,
-    )
-  ).policy
+export async function getAppSignInPolicy(id: string): Promise<AppSignInPolicyView> {
+  return await request<AppSignInPolicyView>(
+    `/api/admin/applications/${encodeURIComponent(id)}/sign-in-policy`,
+  )
 }
 
 export async function updateAppSignInPolicy(
   csrfToken: string,
   id: string,
   rules: SignInRule[],
-): Promise<AppSignInPolicy> {
+): Promise<AppSignInPolicyView> {
+  return await request<AppSignInPolicyView>(
+    `/api/admin/applications/${encodeURIComponent(id)}/sign-in-policy`,
+    adminRequest(csrfToken, 'PUT', { rules }),
+  )
+}
+
+// テナントデフォルトサインインポリシー (wi-115, ADR-081)。
+export async function getTenantDefaultSignInPolicy(): Promise<TenantDefaultSignInPolicy> {
+  return (await request<{ policy: TenantDefaultSignInPolicy }>('/api/admin/default-sign-in-policy'))
+    .policy
+}
+
+export async function updateTenantDefaultSignInPolicy(
+  csrfToken: string,
+  rules: SignInRule[],
+): Promise<TenantDefaultSignInPolicy> {
   return (
-    await request<{ policy: AppSignInPolicy }>(
-      `/api/admin/applications/${encodeURIComponent(id)}/sign-in-policy`,
+    await request<{ policy: TenantDefaultSignInPolicy }>(
+      '/api/admin/default-sign-in-policy',
       adminRequest(csrfToken, 'PUT', { rules }),
     )
   ).policy

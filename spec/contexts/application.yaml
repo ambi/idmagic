@@ -212,7 +212,7 @@ models:
         type: AccessCondition
   AppSignInPolicy:
     kind: entity
-    description: Application ごとのサインインポリシー。ApplicationCatalog が所有し、protocol binding 経由のフェデレーション開始時に共通評価される。
+    description: Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。
     identity:
       - tenant_id
       - application_id
@@ -222,6 +222,19 @@ models:
         default: default
       application_id:
         type: UUID
+      rules:
+        type: "SignInRule[]"
+      updated_at:
+        type: Timestamp
+  TenantDefaultSignInPolicy:
+    kind: entity
+    description: テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。
+    identity:
+      - tenant_id
+    fields:
+      tenant_id:
+        type: String
+        default: default
       rules:
         type: "SignInRule[]"
       updated_at:
@@ -529,16 +542,36 @@ models:
         type: "ApplicationAssignmentResponse[]"
   AppSignInPolicyRequest:
     kind: value_object
-    description: 管理者が Application の sign-in policy を置き換えるリクエスト。
+    description: 管理者が Application の sign-in policy を置き換えるリクエスト。有効ルールを送るとテナントデフォルトを上書きし、空で送るとデフォルト適用に戻る。
     fields:
       rules:
         type: "SignInRule[]"
   AppSignInPolicyResponse:
     kind: value_object
-    description: Application の sign-in policy 表現。
+    description: "Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」\n「実際に適用される effective ルール列」を区別して表示できるようにする (ADR-081)。\n"
     fields:
       policy:
         type: AppSignInPolicy
+      tenant_default:
+        type: TenantDefaultSignInPolicy
+      effective_rules:
+        type: "SignInRule[]"
+        description: 上書きモデルで実際に評価されるルール列。アプリが有効ルールを持てば policy.rules、持たなければ tenant_default.rules。
+      weaker_than_default:
+        type: Boolean
+        description: アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない (ADR-081)。
+  TenantDefaultSignInPolicyRequest:
+    kind: value_object
+    description: 管理者がテナントデフォルト sign-in policy を置き換えるリクエスト。
+    fields:
+      rules:
+        type: "SignInRule[]"
+  TenantDefaultSignInPolicyResponse:
+    kind: value_object
+    description: テナントデフォルト sign-in policy 表現。
+    fields:
+      policy:
+        type: TenantDefaultSignInPolicy
   MyApplication:
     kind: value_object
     description: 利用者ポータルに表示する割当済みアプリ 1 件。
@@ -758,6 +791,16 @@ models:
       actorSub:
         type: String
       applicationId:
+        type: String
+  TenantDefaultSignInPolicyUpdated:
+    kind: event
+    description: テナントデフォルト sign-in policy を更新した (クリアを含む)。
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+      actorSub:
         type: String
   AppAccessDeniedByPolicy:
     kind: event
@@ -1061,7 +1104,7 @@ interfaces:
         successful_status_codes:
           - "204"
   GetAppSignInPolicy:
-    description: 管理者が Application の sign-in policy を取得する。未設定なら空 rules の policy を返す。
+    description: 管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。
     input:
       application_id:
         type: String
@@ -1095,6 +1138,36 @@ interfaces:
       - kind: http
         method: PUT
         path: "/api/admin/applications/{application_id}/sign-in-policy"
+        request_form: body
+  GetTenantDefaultSignInPolicy:
+    description: 管理者がテナントデフォルト sign-in policy を取得する。未設定なら空 rules の policy を返す (ADR-081)。
+    output:
+      response:
+        type: TenantDefaultSignInPolicyResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/default-sign-in-policy
+  UpdateTenantDefaultSignInPolicy:
+    description: 管理者がテナントデフォルト sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。
+    input:
+      request:
+        type: TenantDefaultSignInPolicyRequest
+    output:
+      response:
+        type: TenantDefaultSignInPolicyResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - TenantDefaultSignInPolicyUpdated
+    bindings:
+      - kind: http
+        method: PUT
+        path: /api/admin/default-sign-in-policy
         request_form: body
   ListApplicationCategories:
     description: 管理者が所属テナントの ApplicationCategory を position 昇順で一覧する。
@@ -1238,9 +1311,13 @@ invariants:
     target: AppSignInPolicy
     never: federation_completed and policy_result != allow
   AppPolicyEvaluatedAcrossProtocols:
-    description: OIDC authorize、WS-Fed sign-in、SAML SSO は同じ Application sign-in policy 評価器を通し、protocol ごとの個別条件分岐で迂回できない。クライアント IP も全経路で評価器に渡す。
+    description: OIDC authorize、WS-Fed sign-in、SAML SSO は同じ Application sign-in policy 評価器を通し、protocol ごとの個別条件分岐で迂回できない。評価器には上書きモデルの実効ポリシー (アプリ独自ルールがあればそれ、なければテナントデフォルト) とクライアント IP を全経路で渡す。
     target: AppSignInPolicy
     always: federation_started_via_binding implies app_sign_in_policy_evaluated
+  DefaultPolicyAppliesWhenAppUnset:
+    description: "独自の sign-in policy を持たない Application は、federation 開始時にテナントデフォルトポリシーで\nfail-closed 評価される。アプリが有効ルールを持つ場合はデフォルトを上書き (置換) し、その実効ポリシーで評価する。\nどちらの経路でも評価器は fail-closed。\n反例: デフォルトで MFA を要求しているのに、独自ポリシーを持たないアプリへ単要素で federation を完了できる。\n"
+    target: TenantDefaultSignInPolicy
+    never: federation_completed and effective_policy_result != allow
   ApplicationIconSafeServing:
     description: Application icon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
     target: Application
@@ -1268,6 +1345,11 @@ permissions:
     description: 所属テナント内の Application sign-in policy の参照・更新。
     actor: User
     resource: AppSignInPolicy
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+  AdminTenantDefaultSignInPolicyManage:
+    description: 所属テナントのデフォルト sign-in policy の参照・更新。
+    actor: User
+    resource: TenantDefaultSignInPolicy
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminApplicationCategoriesManage:
     description: 所属テナント内の ApplicationCategory の参照・作成・更新・削除と Application への付与。
@@ -1365,7 +1447,7 @@ scenarios:
       - 管理者が Application 編集画面を開いている
       - Application は OIDC / SAML / WS-Fed のいずれかの protocol binding を持つ
     main_success:
-      - 管理者が MFA 必須と再認証最大経過秒数を要求する sign-in policy を保存する
+      - 管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する
       - 単要素セッションの利用者が対象 Application にアクセスする
       - システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する
       - システムは token / assertion 発行前に policy を評価する
@@ -1377,6 +1459,34 @@ scenarios:
       - condition: 管理者以外が policy を更新する
         steps:
           - エラー "AccessDeniedError"
+  管理者はテナントデフォルトサインインポリシーを設定し全アプリに適用できる:
+    goal: 管理者がテナントデフォルトサインインポリシーを設定し、独自ポリシーを持たない全 Application の federation 開始に baseline として適用する。
+    primary_actor: Administrator
+    scope: Application
+    level: user_goal
+    preconditions:
+      - "roles=[\"admin\"] のユーザー \"operator\" がサインインポリシー画面を開いている"
+      - テナントに OIDC binding を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない
+    main_success:
+      - 管理者が MFA 必須を要求するテナントデフォルトサインインポリシーを保存する
+      - "TenantDefaultSignInPolicyUpdated が発行される"
+      - 単要素セッションの利用者が個別ポリシーを持たない Application にアクセスする
+      - システムはデフォルトポリシーを適用し step-up を要求する
+    extensions:
+      - condition: 低リスクアプリだけデフォルトを上書きして緩和する
+        steps:
+          - "管理者が対象 Application に弱いサインインポリシー (例: パスワードのみ) を設定してデフォルトを上書きする"
+          - システムはデフォルトより弱い旨の警告を表示するが保存は許可する
+          - 単要素セッションの利用者が当該 Application に step-up なしでアクセスできる
+          - 他の Application ではデフォルトの MFA 必須が引き続き適用される
+      - condition: アプリ詳細で最終適用ポリシーを確認する
+        steps:
+          - アプリ編集画面はテナントデフォルト・このアプリの上書き・最終的に適用されるポリシーを区別して表示する
+      - condition: デフォルトポリシーを空にして解除する
+        steps:
+          - 管理者がルールを空にして保存する
+          - "TenantDefaultSignInPolicyUpdated が発行される"
+          - 以降、独自ポリシーを持たない Application の federation 開始は追加要件を課さない
   ダッシュボードは所属テナントの集計を表示する:
     goal: 管理ダッシュボードが所属テナントの集計を表示する。
     primary_actor: Administrator
@@ -1423,6 +1533,21 @@ user_experience:
         - empty
         - secret_issued
         - delete_confirmation
+        - access_denied
+        - service_error
+    AdminSignInPolicy:
+      route: /admin/sign-in-policy
+      purpose: "テナントのサインインポリシーを総合的に扱う画面。上段で全 Application 共通のデフォルトポリシー\n(要求認証強度・再認証を求めるまでの時間・許可 CIDR を制約された選択肢で) を詳細表示し、編集モードに切り替えて編集する。\n下段で各 Application の個別設定 (上書き) の有無・デフォルトより弱い警告・最終的に適用される実効ポリシーを\n一覧して編集画面へ導線する (ADR-081)。\n"
+      interfaces:
+        - GetTenantDefaultSignInPolicy
+        - UpdateTenantDefaultSignInPolicy
+        - ListAdminApplications
+        - GetAppSignInPolicy
+      states:
+        - viewing
+        - editing
+        - loading
+        - submitting
         - access_denied
         - service_error
     AccountApps:
@@ -1491,7 +1616,27 @@ user_experience:
     - id: UX-APPLICATION-SIGN-IN-POLICY
       category: security
       adoption: required
-      statement: AdminApplications は Application 編集画面で sign-in policy の有効化、要求認証強度 (パスワードのみ / MFA 必須)、再認証最大経過秒数、許可 CIDR を制約された選択肢で編集できるようにし、保存後の federation 開始で同じ条件が protocol 横断に適用されることを示す。自由入力の未評価条件は入力できない。
+      statement: AdminApplications は Application 編集画面で sign-in policy の有効化、要求認証強度 (パスワードのみ / MFA 必須)、再認証を求めるまでの時間 (秒)、許可 CIDR を制約された選択肢で編集できるようにし、保存後の federation 開始で同じ条件が protocol 横断に適用されることを示す。自由入力の未評価条件は入力できない。
+      screens:
+        - AdminApplications
+      interfaces:
+        - GetAppSignInPolicy
+        - UpdateAppSignInPolicy
+    - id: UX-TENANT-DEFAULT-SIGN-IN-POLICY
+      category: security
+      adoption: required
+      statement: AdminSignInPolicy はテナント全 Application に適用するデフォルトサインインポリシーを、まず詳細表示し編集モードで編集する (他の設定画面と同じ詳細→編集の作法)。編集項目はアプリ個別ポリシーと同じ制約された選択肢 (要求認証強度・再認証を求めるまでの時間・許可 CIDR)。あわせて各 Application の個別設定 (上書き) の有無・デフォルトより弱い警告・実効ポリシーを一覧表示する。認証強度を最低・その他を空にすれば追加要件のない状態に戻せる。
+      screens:
+        - AdminSignInPolicy
+      interfaces:
+        - GetTenantDefaultSignInPolicy
+        - UpdateTenantDefaultSignInPolicy
+        - ListAdminApplications
+        - GetAppSignInPolicy
+    - id: UX-APPLICATION-EFFECTIVE-SIGN-IN-POLICY
+      category: security
+      adoption: required
+      statement: AdminApplications は Application 編集画面で「テナントデフォルト」「このアプリの上書き」「最終的に適用されるポリシー」を区別して表示する。アプリ個別ポリシーはデフォルトを上書き (置換) し、デフォルトより弱い設定 (認証強度・再認証を求めるまでの時間・許可ネットワークのいずれかを緩める) のときは警告を表示する。
       screens:
         - AdminApplications
       interfaces:

@@ -21,6 +21,7 @@ export type AdminNavKey =
   | 'agents'
   | 'roles'
   | 'applications'
+  | 'sign-in-policy'
   | 'entra-federation'
   | 'authz-detail-types'
   | 'consents'
@@ -80,6 +81,13 @@ export function adminNavItems(active: AdminNavKey): AdminNavItem[] {
       icon: IconApps,
       href: tenantURL('/admin/applications'),
       active: active === 'applications',
+    },
+    {
+      key: 'sign-in-policy',
+      label: 'サインインポリシー',
+      icon: IconShieldLock,
+      href: tenantURL('/admin/sign-in-policy'),
+      active: active === 'sign-in-policy',
     },
     {
       key: 'authz-detail-types',

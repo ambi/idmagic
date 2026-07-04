@@ -75,6 +75,111 @@ func TestEvaluateSignInPolicyReauthMaxAge(t *testing.T) {
 	}
 }
 
+func mfaRule(id string) spec.SignInRule {
+	return spec.SignInRule{
+		RuleID: id, Name: "MFA", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+	}
+}
+
+func passwordRule(id string) spec.SignInRule {
+	return spec.SignInRule{
+		RuleID: id, Name: "Password", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnPassword},
+	}
+}
+
+func TestEffectiveSignInRulesAppOverridesDefault(t *testing.T) {
+	def := &spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{mfaRule("default-1")}}
+	app := &spec.AppSignInPolicy{Rules: []spec.SignInRule{passwordRule("app-1")}}
+
+	// アプリが独自ポリシーを持てばデフォルトを完全に置換する (合成しない)。
+	got := EffectiveSignInRules(def, app)
+	if len(got) != 1 || got[0].RuleID != "app-1" {
+		t.Fatalf("override result=%v, want only [app-1]", got)
+	}
+}
+
+func TestEffectiveSignInRulesFallsBackToDefault(t *testing.T) {
+	def := &spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{mfaRule("default-1")}}
+
+	// アプリが独自ポリシーを持たなければデフォルトを適用する。
+	got := EffectiveSignInRules(def, &spec.AppSignInPolicy{Rules: []spec.SignInRule{}})
+	if len(got) != 1 || got[0].RuleID != "default-1" {
+		t.Fatalf("fallback result=%v, want only [default-1]", got)
+	}
+}
+
+func TestEffectivePolicyForEvaluationNoRulesReturnsNil(t *testing.T) {
+	if p := EffectivePolicyForEvaluation(nil, &spec.AppSignInPolicy{}); p != nil {
+		t.Fatalf("expected nil policy for empty effective rules, got %+v", p)
+	}
+}
+
+func TestEffectivePolicyOverrideCanGoBelowDefault(t *testing.T) {
+	def := &spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{mfaRule("default-1")}}
+	singleFactor := &authdomain.AuthenticationContext{Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"}}
+
+	// アプリ独自ポリシーが無ければデフォルトの MFA 要求が適用される。
+	appNoPolicy := &spec.AppSignInPolicy{Rules: []spec.SignInRule{}}
+	effective := EffectivePolicyForEvaluation(def, appNoPolicy)
+	if got := EvaluateSignInPolicy(effective, singleFactor, "", time.Now().UTC()); got.Decision != PolicyStepUpRequired {
+		t.Fatalf("default decision=%s, want %s", got.Decision, PolicyStepUpRequired)
+	}
+
+	// 上書きモデルではアプリ独自ポリシーがデフォルトより弱くても適用される (警告は別途)。
+	appWeaker := &spec.AppSignInPolicy{Rules: []spec.SignInRule{passwordRule("app-1")}}
+	if got := EvaluateSignInPolicy(EffectivePolicyForEvaluation(def, appWeaker), singleFactor, "", time.Now().UTC()); got.Decision != PolicyAllow {
+		t.Fatalf("override decision=%s, want %s", got.Decision, PolicyAllow)
+	}
+}
+
+func TestAppPolicyWeakerThanDefault(t *testing.T) {
+	longer := 600
+	shorter := 300
+	def := &spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{
+		RuleID: "d", Name: "d", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+		Condition:     spec.AccessCondition{ReauthMaxAgeSeconds: &shorter, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+	}}}
+
+	// 独自ポリシー無し → デフォルト適用なので弱くない。
+	if AppPolicyWeakerThanDefault(def, &spec.AppSignInPolicy{}) {
+		t.Fatal("unconfigured app must not be weaker")
+	}
+	// 認証強度の引き下げ。
+	if !AppPolicyWeakerThanDefault(def, &spec.AppSignInPolicy{Rules: []spec.SignInRule{passwordRule("a")}}) {
+		t.Fatal("password override must be weaker than mfa default")
+	}
+	// 再認証時間の緩和 (延長)。
+	weakReauth := &spec.AppSignInPolicy{Rules: []spec.SignInRule{{
+		RuleID: "a", Name: "a", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+		Condition:     spec.AccessCondition{ReauthMaxAgeSeconds: &longer, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+	}}}
+	if !AppPolicyWeakerThanDefault(def, weakReauth) {
+		t.Fatal("longer reauth window must be weaker")
+	}
+	// 許可ネットワークの緩和 (制限撤廃)。
+	noCIDR := &spec.AppSignInPolicy{Rules: []spec.SignInRule{{
+		RuleID: "a", Name: "a", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+		Condition:     spec.AccessCondition{ReauthMaxAgeSeconds: &shorter},
+	}}}
+	if !AppPolicyWeakerThanDefault(def, noCIDR) {
+		t.Fatal("removing network restriction must be weaker")
+	}
+	// 全項目でデフォルト以上 → 弱くない。
+	strong := &spec.AppSignInPolicy{Rules: []spec.SignInRule{{
+		RuleID: "a", Name: "a", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+		Condition:     spec.AccessCondition{ReauthMaxAgeSeconds: &shorter, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+	}}}
+	if AppPolicyWeakerThanDefault(def, strong) {
+		t.Fatal("equal-strength override must not be weaker")
+	}
+}
+
 func TestValidateSignInPolicyRulesRejectsInvalidCIDR(t *testing.T) {
 	rules := []spec.SignInRule{{
 		Name: "bad", Enabled: true,
