@@ -121,7 +121,7 @@ type WsFedSignInIssued struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
 	Wtrealm  string    `json:"wtrealm"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userIdNone"`
 }
 
 func (e *WsFedSignInIssued) EventType() string     { return "WsFedSignInIssued" }
@@ -153,7 +153,7 @@ type WsTrustTokenIssued struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`
 	AppliesTo string    `json:"appliesTo"`
-	Sub       string    `json:"sub"`
+	UserID    string    `json:"userIdNone"`
 }
 
 func (e *WsTrustTokenIssued) EventType() string     { return "WsTrustTokenIssued" }

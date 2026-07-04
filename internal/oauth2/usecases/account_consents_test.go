@@ -23,7 +23,7 @@ func saveConsent(t *testing.T, repo *memory.ConsentRepository, sub, client strin
 	t.Helper()
 	now := time.Now().UTC()
 	if err := repo.Save(accountConsentCtx(), &spec.Consent{
-		TenantID: spec.DefaultTenantID, Sub: sub, ClientID: client, Scopes: []string{"openid"},
+		TenantID: spec.DefaultTenantID, UserID: sub, ClientID: client, Scopes: []string{"openid"},
 		State: state, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)

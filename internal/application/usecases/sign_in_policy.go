@@ -30,7 +30,7 @@ type SignInPolicyDeps struct {
 }
 
 type UpdateSignInPolicyInput struct {
-	ActorSub      string
+	ActorUserID   string
 	ApplicationID string
 	Rules         []spec.SignInRule
 	Now           time.Time
@@ -90,7 +90,7 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 		}
 	}
 	emit(deps.Emit, &spec.AppSignInPolicyUpdated{
-		At: policy.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: in.ApplicationID,
+		At: policy.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
 	})
 	return policy, nil
 }
@@ -123,9 +123,9 @@ func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*spec.T
 }
 
 type UpdateDefaultSignInPolicyInput struct {
-	ActorSub string
-	Rules    []spec.SignInRule
-	Now      time.Time
+	ActorUserID string
+	Rules       []spec.SignInRule
+	Now         time.Time
 }
 
 // UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える (ADR-081)。
@@ -153,7 +153,7 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 		}
 	}
 	emit(deps.Emit, &spec.TenantDefaultSignInPolicyUpdated{
-		At: policy.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub,
+		At: policy.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
 	})
 	return policy, nil
 }

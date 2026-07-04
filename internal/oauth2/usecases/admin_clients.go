@@ -23,7 +23,7 @@ type AdminOAuth2ClientDeps struct {
 }
 
 type CreateAdminOAuth2ClientInput struct {
-	ActorSub     string
+	ActorUserID  string
 	Registration RegisterClientInput
 	Now          time.Time
 }
@@ -40,13 +40,13 @@ func CreateAdminOAuth2Client(
 		return nil, err
 	}
 	emit(deps.Emit, &spec.AdminOAuth2ClientCreated{
-		At: adminNow(in.Now), TenantID: result.Client.TenantID, ActorSub: in.ActorSub, ClientID: result.Client.ClientID,
+		At: adminNow(in.Now), TenantID: result.Client.TenantID, ActorUserID: in.ActorUserID, ClientID: result.Client.ClientID,
 	})
 	return result, nil
 }
 
 type UpdateAdminOAuth2ClientInput struct {
-	ActorSub        string
+	ActorUserID     string
 	ClientID        string
 	ClientName      *string
 	RedirectURIs    *[]string
@@ -108,7 +108,7 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 		return nil, err
 	}
 	emit(deps.Emit, &spec.AdminOAuth2ClientUpdated{
-		At: adminNow(in.Now), TenantID: tenantID, ActorSub: in.ActorSub, ClientID: client.ClientID,
+		At: adminNow(in.Now), TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: client.ClientID,
 		ChangedFields: changed,
 	})
 	return &updated, nil
@@ -117,7 +117,7 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 func DeleteAdminOAuth2Client(
 	ctx context.Context,
 	deps AdminOAuth2ClientDeps,
-	actorSub, clientID string,
+	actorUserID, clientID string,
 	now time.Time,
 ) error {
 	tenantID := tenancy.TenantID(ctx)
@@ -132,7 +132,7 @@ func DeleteAdminOAuth2Client(
 		return err
 	}
 	emit(deps.Emit, &spec.AdminOAuth2ClientDeleted{
-		At: adminNow(now), TenantID: tenantID, ActorSub: actorSub, ClientID: clientID,
+		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ClientID: clientID,
 	})
 	return nil
 }

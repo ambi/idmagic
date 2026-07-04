@@ -73,7 +73,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	if domain.IsRefreshTokenAbsoluteExpired(record, now) {
 		return nil, NewOAuthError("invalid_grant", "リフレッシュトークン絶対期限切れ")
 	}
-	user, err := deps.UserRepo.FindBySub(ctx, record.Sub)
+	user, err := deps.UserRepo.FindBySub(ctx, record.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:           client,
-		Sub:              record.Sub,
+		Sub:              record.UserID,
 		Scopes:           record.Scopes,
 		SenderConstraint: record.SenderConstraint,
 		AuthTime:         now.Unix(),
@@ -121,7 +121,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, Sub: record.Sub, Scopes: record.Scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
+	emit(deps.Emit, &spec.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: record.UserID, Scopes: record.Scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
 
 	tokenType := "Bearer"
 	if record.SenderConstraint != nil && record.SenderConstraint.Type == spec.SenderConstraintDPoP {

@@ -23,7 +23,7 @@ func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileD
 	}
 	ctx := context.Background()
 	user, err := idmusecases.CreateUser(ctx, adminDeps, idmusecases.CreateUserInput{
-		ActorSub: "admin", PreferredUsername: "dave", Password: "initial-password-9182", Now: time.Now().UTC(),
+		ActorUserID: "admin", PreferredUsername: "dave", Password: "initial-password-9182", Now: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestUpdateUserProfileEditsNameAndEditableAttribute(t *testing.T) {
 		"nickname": {Type: spec.AttributeTypeString, String: new("davey")},
 	}
 	updated, _, err := idmusecases.UpdateUserProfile(ctx, deps, idmusecases.UpdateUserProfileInput{
-		Sub: user.Sub, GivenName: new("Dave"), Attributes: &attrs, Now: time.Now().UTC(),
+		Sub: user.ID, GivenName: new("Dave"), Attributes: &attrs, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
@@ -68,7 +68,7 @@ func TestUpdateUserProfileRejectsAdminManagedAttribute(t *testing.T) {
 		"department": {Type: spec.AttributeTypeString, String: new("Sales")}, // editable_by_user=false
 	}
 	_, _, err := idmusecases.UpdateUserProfile(ctx, deps, idmusecases.UpdateUserProfileInput{
-		Sub: user.Sub, Attributes: &attrs, Now: time.Now().UTC(),
+		Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
 	})
 	if !errors.Is(err, idmusecases.ErrAttributeNotEditable) {
 		t.Fatalf("expected ErrAttributeNotEditable, got %v", err)
@@ -81,7 +81,7 @@ func TestUpdateUserProfileRejectsUndefinedAttribute(t *testing.T) {
 		"not_a_real_attribute": {Type: spec.AttributeTypeString, String: new("x")},
 	}
 	_, _, err := idmusecases.UpdateUserProfile(ctx, deps, idmusecases.UpdateUserProfileInput{
-		Sub: user.Sub, Attributes: &attrs, Now: time.Now().UTC(),
+		Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
 	})
 	if !errors.Is(err, idmusecases.ErrInvalidAttribute) {
 		t.Fatalf("expected ErrInvalidAttribute, got %v", err)
@@ -90,7 +90,7 @@ func TestUpdateUserProfileRejectsUndefinedAttribute(t *testing.T) {
 
 func TestGetUserProfileShowsReadOnlyOrganizationAttributes(t *testing.T) {
 	ctx, deps, user := accountTestDeps(t)
-	_, defs, err := idmusecases.GetUserProfile(ctx, deps, user.Sub)
+	_, defs, err := idmusecases.GetUserProfile(ctx, deps, user.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

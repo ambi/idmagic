@@ -74,7 +74,7 @@ func (d Deps) handleDeviceAPI(c *echo.Context) error {
 			c.Request().Context(),
 			usecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
 			input.UserCode,
-			authn.Sub,
+			authn.UserID,
 			time.Now().UTC(),
 		); err != nil {
 			return writeOAuthError(c, err)
@@ -85,7 +85,7 @@ func (d Deps) handleDeviceAPI(c *echo.Context) error {
 		c.Request().Context(),
 		usecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
 		input.UserCode,
-		authn.Sub,
+		authn.UserID,
 		time.Now().UTC(),
 	); err != nil {
 		return writeOAuthError(c, err)

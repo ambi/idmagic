@@ -18,12 +18,12 @@ type GroupRepository interface {
 	ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*spec.GroupMember, error)
 	// ListGroupsByUser は指定 User が所属するグループを返す。認可経路 (effective
 	// roles の解決) と admin UI の両方から呼ばれる。
-	ListGroupsByUser(ctx context.Context, tenantID, userSub string) ([]*spec.Group, error)
+	ListGroupsByUser(ctx context.Context, tenantID, userID string) ([]*spec.Group, error)
 	CountMembers(ctx context.Context, tenantID, groupID string) (int, error)
 	// AddMember は membership を追加し、新規追加なら true を返す。既に所属済みなら
 	// false を返し no-op とする (冪等)。
 	AddMember(ctx context.Context, member *spec.GroupMember) (bool, error)
 	// RemoveMember は membership を削除し、削除されたなら true を返す。非所属なら
 	// false を返し no-op とする (冪等)。
-	RemoveMember(ctx context.Context, tenantID, groupID, userSub string) (bool, error)
+	RemoveMember(ctx context.Context, tenantID, groupID, userID string) (bool, error)
 }

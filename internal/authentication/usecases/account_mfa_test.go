@@ -16,7 +16,7 @@ func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *memory.UserRepository, 
 	userRepo := memory.NewUserRepository()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent

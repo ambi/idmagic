@@ -54,7 +54,7 @@ type SubjectRef struct {
 // ApplicationOrderingRepository は利用者ごとのポータル手動並び順の永続境界 (wi-70, ADR-069)。
 type ApplicationOrderingRepository interface {
 	// Get は利用者の手動並び順 (application_id の順序列) を返す。未保存なら (nil, nil)。
-	Get(ctx context.Context, tenantID, userSub string) (*spec.ApplicationOrdering, error)
+	Get(ctx context.Context, tenantID, userID string) (*spec.ApplicationOrdering, error)
 	// Save は利用者の手動並び順を upsert する。
 	Save(ctx context.Context, ordering *spec.ApplicationOrdering) error
 }

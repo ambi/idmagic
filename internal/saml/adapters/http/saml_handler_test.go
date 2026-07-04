@@ -101,7 +101,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	})
 
 	userRepo := memory.NewUserRepository()
-	userRepo.Seed(&spec.User{Sub: "user-1", PreferredUsername: "alice"})
+	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice"})
 
 	e := echo.New()
 	httpadapter.Register(e, support.Deps{
@@ -158,7 +158,7 @@ func authnRequestRedirectWith(t *testing.T, issuer, acsURL, destination string, 
 }
 
 func TestSamlSSO_SPInitiatedAuthenticatedIssuesPostForm(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
 	samlReq := authnRequestRedirect(t, "https://sp.example.com", "https://sp.example.com/acs")
 	rec := get(e, "/saml/sso?SAMLRequest="+url.QueryEscape(samlReq)+"&RelayState=state-1")
@@ -184,7 +184,7 @@ func TestSamlSSO_SPInitiatedAuthenticatedIssuesPostForm(t *testing.T) {
 }
 
 func TestSamlSSO_IdPInitiatedIssuesPostForm(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Unix()})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
 
 	rec := get(e, "/saml/sso?entityID="+url.QueryEscape("https://sp.example.com"))
 	if rec.Code != http.StatusOK {
@@ -220,7 +220,7 @@ func TestSamlSSO_UnauthenticatedRedirectsToLogin(t *testing.T) {
 }
 
 func TestSamlSSO_ForceAuthnWithStaleSessionRedirectsToLogin(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Add(-10 * time.Minute).Unix(), AMR: []string{"pwd"}})
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Add(-10 * time.Minute).Unix(), AMR: []string{"pwd"}})
 
 	samlReq := authnRequestRedirectWith(t, "https://sp.example.com", "", "https://idp.example/realms/default/saml/sso", true)
 	rec := get(e, "/saml/sso?SAMLRequest="+url.QueryEscape(samlReq))
@@ -233,7 +233,7 @@ func TestSamlSSO_ForceAuthnWithStaleSessionRedirectsToLogin(t *testing.T) {
 }
 
 func TestSamlSSO_UnknownServiceProviderRejected(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"})
 	samlReq := authnRequestRedirect(t, "https://evil.example.com", "")
 	if rec := get(e, "/saml/sso?SAMLRequest="+url.QueryEscape(samlReq)); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
@@ -244,7 +244,7 @@ func TestSamlSSO_UnknownServiceProviderRejected(t *testing.T) {
 }
 
 func TestSamlSSO_DisallowedACSRejected(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"})
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"})
 	samlReq := authnRequestRedirect(t, "https://sp.example.com", "https://evil.example.com/steal")
 	rec := get(e, "/saml/sso?SAMLRequest="+url.QueryEscape(samlReq))
 	if rec.Code != http.StatusBadRequest {
@@ -253,7 +253,7 @@ func TestSamlSSO_DisallowedACSRejected(t *testing.T) {
 }
 
 func TestSamlSSO_DestinationMismatchRejected(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"})
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"})
 	samlReq := authnRequestRedirectWith(t, "https://sp.example.com", "", "https://evil-idp.example/saml/sso", false)
 	rec := get(e, "/saml/sso?SAMLRequest="+url.QueryEscape(samlReq))
 	if rec.Code != http.StatusBadRequest {
@@ -274,7 +274,7 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 		}},
 	})
 	userRepo := memory.NewUserRepository()
-	userRepo.Seed(&spec.User{Sub: "user-1", PreferredUsername: "alice"})
+	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice"})
 	e := echo.New()
 	httpadapter.Register(e, support.Deps{
 		Issuer:           "https://idp.example",
@@ -282,7 +282,7 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 		SamlSPRepo:       spRepo,
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
-		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Unix()}},
+		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()}},
 	})
 	samlReq := authnRequestRedirect(t, "https://sp.example.com", "https://sp.example.com/acs")
 	rec := get(e, "/saml/sso?SAMLRequest="+url.QueryEscape(samlReq))
@@ -406,7 +406,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	userRepo := memory.NewUserRepository()
 	userRepo.Seed(&spec.User{
-		Sub:               "admin-1",
+		ID:                "admin-1",
 		TenantID:          spec.DefaultTenantID,
 		PreferredUsername: "admin@example.com",
 		Roles:             []string{"admin"},
@@ -417,7 +417,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		SCL:           spec.MustLoadSCL(),
 		SamlSPRepo:    memory.NewSamlServiceProviderRepository(),
 		UserRepo:      userRepo,
-		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{Sub: "admin-1"}},
+		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})
 	return e
 }
@@ -473,7 +473,7 @@ func TestAdminServiceProvider_RejectsUnsupportedSignedAuthnRequests(t *testing.T
 }
 
 func TestAdminServiceProvider_ForbiddenForNonAdmin(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"}) // 非 admin
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
 	if rec := get(e, "/api/admin/saml/service-providers"); rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d, want 403", rec.Code)
 	}

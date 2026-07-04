@@ -4,7 +4,7 @@ package postgres
 // 永続化する読み出しモデル。in-memory 実装 (memory.AuditEventStore) と同じ port 契約を
 // 満たし、admin の時系列調査 / 本人サインイン履歴 / wi-44 の認証イベント検索が共有する。
 // 付加属性 (ip_truncated / ip_hash / session_id 等) は payload JSONB に載るため、本テーブルは
-// 構造化カラムを増やさず type / sub / occurred_at の絞り込みだけを担う (ADR-041)。
+// 構造化カラムを増やさず type / user_id / occurred_at の絞り込みだけを担う (ADR-041)。
 
 import (
 	"context"
@@ -45,19 +45,19 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 	if rec == nil || rec.ID == "" || rec.Type == "" {
 		return nil
 	}
-	var sub *string
-	if s, ok := rec.Payload["sub"].(string); ok && s != "" {
-		sub = &s
+	var userID *string
+	if s, ok := rec.Payload["userId"].(string); ok && s != "" {
+		userID = &s
 	}
 	payload := rec.Payload
 	if payload == nil {
 		payload = map[string]any{}
 	}
 	_, err := r.Pool.Exec(ctx, `
-INSERT INTO audit_events (id,tenant_id,type,sub,occurred_at,payload)
+INSERT INTO audit_events (id,tenant_id,type,user_id,occurred_at,payload)
 VALUES ($1,$2,$3,$4,$5,$6)
 ON CONFLICT (id) DO NOTHING`,
-		rec.ID, rec.TenantID, rec.Type, sub, rec.OccurredAt, payload)
+		rec.ID, rec.TenantID, rec.Type, userID, rec.OccurredAt, payload)
 	return err
 }
 
@@ -84,8 +84,8 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	if len(q.Types) > 0 {
 		add("type = ANY($%d)", q.Types)
 	}
-	if q.Sub != "" {
-		add("sub = $%d", q.Sub)
+	if q.UserID != "" {
+		add("user_id = $%d", q.UserID)
 	}
 	if !q.After.IsZero() {
 		add("occurred_at >= $%d", q.After)

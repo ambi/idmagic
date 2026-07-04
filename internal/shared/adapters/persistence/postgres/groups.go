@@ -83,7 +83,7 @@ WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_sub`, tenantID, groupID
 	out := []*spec.GroupMember{}
 	for rows.Next() {
 		var m spec.GroupMember
-		if err := rows.Scan(&m.GroupID, &m.UserSub, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.GroupID, &m.UserID, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, &m)
@@ -91,11 +91,11 @@ WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_sub`, tenantID, groupID
 	return out, rows.Err()
 }
 
-func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userSub string) ([]*spec.Group, error) {
+func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID string) ([]*spec.Group, error) {
 	rows, err := r.Pool.Query(ctx, `
 SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.created_at,g.updated_at
 FROM groups g JOIN group_members gm ON gm.group_id=g.id
-WHERE g.tenant_id=$1 AND gm.user_sub=$2 ORDER BY g.name`, tenantID, userSub)
+WHERE g.tenant_id=$1 AND gm.user_sub=$2 ORDER BY g.name`, tenantID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,19 +123,19 @@ func (r *GroupRepository) AddMember(ctx context.Context, member *spec.GroupMembe
 	tag, err := r.Pool.Exec(ctx, `
 INSERT INTO group_members (group_id,user_sub,created_at) VALUES ($1,$2,$3)
 ON CONFLICT (group_id,user_sub) DO NOTHING`,
-		member.GroupID, member.UserSub, member.CreatedAt)
+		member.GroupID, member.UserID, member.CreatedAt)
 	if err != nil {
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
 }
 
-func (r *GroupRepository) RemoveMember(ctx context.Context, tenantID, groupID, userSub string) (bool, error) {
+func (r *GroupRepository) RemoveMember(ctx context.Context, tenantID, groupID, userID string) (bool, error) {
 	tag, err := r.Pool.Exec(ctx, `
 DELETE FROM group_members
 WHERE group_id=$2 AND user_sub=$3
   AND group_id IN (SELECT id FROM groups WHERE tenant_id=$1 AND id=$2)`,
-		tenantID, groupID, userSub)
+		tenantID, groupID, userID)
 	if err != nil {
 		return false, err
 	}

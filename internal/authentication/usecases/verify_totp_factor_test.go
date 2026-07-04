@@ -26,7 +26,7 @@ func TestVerifyTOTPFactorUpdatesLastUsedAt(t *testing.T) {
 	created := time.Unix(1, 0).UTC()
 	now := time.Unix(59, 0).UTC()
 	if err := repo.Save(context.Background(), &spec.MfaFactor{
-		Sub: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: created,
+		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: created,
 	}); err != nil {
 		t.Fatalf("save factor: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestVerifyTOTPFactorRejectsInvalidCode(t *testing.T) {
 	repo := memory.NewMfaFactorRepository()
 	secret := rfc6238SHA1SecretBase32
 	if err := repo.Save(context.Background(), &spec.MfaFactor{
-		Sub: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: time.Unix(1, 0).UTC(),
+		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: time.Unix(1, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("save factor: %v", err)
 	}

@@ -92,7 +92,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	if err != nil {
 		t.Fatalf("hash sentinel: %v", err)
 	}
-	userRepo.Seed(&spec.User{Sub: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
+	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
 	e := echo.New()
 	httpadapter.Register(e, support.Deps{
@@ -128,7 +128,7 @@ func get(e *echo.Echo, target string) *httptest.ResponseRecorder {
 }
 
 func TestWsFedSignIn_AuthenticatedIssuesPassiveForm(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Unix()})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
 
 	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wctx=ctx-42")
 	if rec.Code != http.StatusOK {
@@ -153,7 +153,7 @@ func TestWsFedSignIn_AuthenticatedIssuesPassiveForm(t *testing.T) {
 }
 
 func TestWsFedSignIn_DefaultsToSAML11Token(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
 	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp")
 	if rec.Code != http.StatusOK {
@@ -173,7 +173,7 @@ func TestWsFedSignIn_DefaultsToSAML11Token(t *testing.T) {
 func TestWsFedSignIn_StaleSessionWithWfreshRedirectsToLogin(t *testing.T) {
 	// 認証から十分時間が経過したセッションに wfresh=0 を要求すると再認証へ誘導される。
 	staleAuthTime := time.Now().Add(-30 * time.Minute).Unix()
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: staleAuthTime, AMR: []string{"pwd"}})
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: staleAuthTime, AMR: []string{"pwd"}})
 
 	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wfresh=0")
 	if rec.Code != http.StatusSeeOther {
@@ -185,7 +185,7 @@ func TestWsFedSignIn_StaleSessionWithWfreshRedirectsToLogin(t *testing.T) {
 }
 
 func TestWsFedSignIn_UnsupportedWauthRejected(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
 	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wauth=urn:federation:authentication:windows")
 	if rec.Code != http.StatusBadRequest {
@@ -214,7 +214,7 @@ func TestWsFedSignIn_UnauthenticatedRedirectsToLogin(t *testing.T) {
 }
 
 func TestWsFedSignIn_UnknownRelyingParty(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"})
 	if rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:unknown"); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}
@@ -224,7 +224,7 @@ func TestWsFedSignIn_UnknownRelyingParty(t *testing.T) {
 }
 
 func TestWsFedSignIn_DisallowedWreplyRejected(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"})
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"})
 	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wreply=https://evil.example/steal")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400 (open redirect prevention)", rec.Code)
@@ -430,7 +430,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	userRepo := memory.NewUserRepository()
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
 	userRepo.Seed(&spec.User{
-		Sub:               "admin-1",
+		ID:                "admin-1",
 		TenantID:          spec.DefaultTenantID,
 		PreferredUsername: "admin@contoso.com",
 		Roles:             []string{"admin"},
@@ -444,7 +444,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		SCL:           spec.MustLoadSCL(),
 		WsFedRPRepo:   memory.NewWsFedRelyingPartyRepository(),
 		UserRepo:      userRepo,
-		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{Sub: "admin-1"}},
+		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})
 	return e
 }
@@ -489,7 +489,7 @@ func TestAdminRelyingParty_RejectsInvalid(t *testing.T) {
 }
 
 func TestAdminRelyingParty_ForbiddenForNonAdmin(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{Sub: "user-1"}) // 非 admin
+	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
 	if rec := get(e, "/api/admin/wsfed/relying-parties"); rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d, want 403", rec.Code)
 	}

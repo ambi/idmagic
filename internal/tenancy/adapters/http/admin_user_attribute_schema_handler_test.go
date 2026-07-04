@@ -40,7 +40,7 @@ func newUserAttributeSchemaServer(
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			Sub: actor.Sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}
 	}
 	events := make([]spec.DomainEvent, 0)

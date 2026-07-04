@@ -13,7 +13,7 @@ import (
 // 定義 custom) は Attributes に sparse に格納する (ADR-039)。テナントは実際に使う
 // 属性しか持たないため、固定カラム/フィールドの肥大を避けられる。
 type User struct {
-	Sub               string                    `json:"sub"`
+	ID                string                    `json:"id"`
 	TenantID          string                    `json:"tenant_id"`
 	PreferredUsername string                    `json:"preferred_username"`
 	PasswordHash      string                    `json:"password_hash"`

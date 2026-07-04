@@ -41,7 +41,7 @@ func ListSignInActivity(
 	records, err := repo.List(ctx, oauthports.AuditEventQuery{
 		TenantID: tenantID,
 		Type:     (&spec.UserAuthenticated{}).EventType(),
-		Sub:      sub,
+		UserID:   sub,
 		Limit:    limit,
 	})
 	if err != nil {

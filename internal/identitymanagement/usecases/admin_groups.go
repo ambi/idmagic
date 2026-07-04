@@ -74,7 +74,7 @@ func GetGroup(ctx context.Context, deps AdminGroupDeps, id string) (*spec.Group,
 }
 
 type CreateGroupInput struct {
-	ActorSub    string
+	ActorUserID string
 	Name        string
 	Description *string
 	Roles       []string
@@ -109,12 +109,12 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err := deps.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.GroupCreated{At: now, TenantID: group.TenantID, ActorSub: in.ActorSub, GroupID: group.ID})
+	adminEmit(deps.Emit, &spec.GroupCreated{At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID})
 	return group, nil
 }
 
 type UpdateGroupInput struct {
-	ActorSub    string
+	ActorUserID string
 	ID          string
 	Name        *string
 	Description *string
@@ -175,14 +175,14 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 		return nil, err
 	}
 	adminEmit(deps.Emit, &spec.GroupUpdated{
-		At: now, TenantID: group.TenantID, ActorSub: in.ActorSub, GroupID: group.ID, ChangedFields: changed,
+		At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID, ChangedFields: changed,
 	})
 	return &updated, nil
 }
 
 // DeleteGroup はグループを物理削除し、所属 membership を cascade で解除する。
 // 解除メンバーごとに GroupMemberRemoved を emit し、最後に GroupDeleted を emit する。
-func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorSub, id string, now time.Time) error {
+func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -197,26 +197,26 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorSub, id string, 
 	}
 	now = normalizedNow(now)
 	for _, member := range members {
-		removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, id, member.UserSub)
+		removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, id, member.UserID)
 		if err != nil {
 			return err
 		}
 		if removed {
 			adminEmit(deps.Emit, &spec.GroupMemberRemoved{
-				At: now, TenantID: tenantID, ActorSub: actorSub, GroupID: id, UserSub: member.UserSub,
+				At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id, UserID: member.UserID,
 			})
 		}
 	}
 	if err := deps.GroupRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	adminEmit(deps.Emit, &spec.GroupDeleted{At: now, TenantID: tenantID, ActorSub: actorSub, GroupID: id})
+	adminEmit(deps.Emit, &spec.GroupDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id})
 	return nil
 }
 
 // AddMember は同一テナントの User をグループに所属させる。既所属なら no-op で
 // イベントも emit しない (冪等)。
-func AddMember(ctx context.Context, deps AdminGroupDeps, actorSub, groupID, userSub string, now time.Time) error {
+func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
@@ -225,7 +225,7 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorSub, groupID, user
 	if group == nil {
 		return ErrGroupNotFound
 	}
-	user, err := deps.UserRepo.FindBySub(ctx, userSub)
+	user, err := deps.UserRepo.FindBySub(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -234,21 +234,21 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorSub, groupID, user
 	}
 	now = normalizedNow(now)
 	added, err := deps.GroupRepo.AddMember(ctx, &spec.GroupMember{
-		GroupID: groupID, UserSub: userSub, CreatedAt: now,
+		GroupID: groupID, UserID: userID, CreatedAt: now,
 	})
 	if err != nil {
 		return err
 	}
 	if added {
 		adminEmit(deps.Emit, &spec.GroupMemberAdded{
-			At: now, TenantID: tenantID, ActorSub: actorSub, GroupID: groupID, UserSub: userSub,
+			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
 		})
 	}
 	return nil
 }
 
 // RemoveMember はグループから User を外す。非所属なら no-op で event も emit しない。
-func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorSub, groupID, userSub string, now time.Time) error {
+func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
@@ -258,13 +258,13 @@ func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorSub, groupID, u
 		return ErrGroupNotFound
 	}
 	now = normalizedNow(now)
-	removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, groupID, userSub)
+	removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, groupID, userID)
 	if err != nil {
 		return err
 	}
 	if removed {
 		adminEmit(deps.Emit, &spec.GroupMemberRemoved{
-			At: now, TenantID: tenantID, ActorSub: actorSub, GroupID: groupID, UserSub: userSub,
+			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
 		})
 	}
 	return nil

@@ -69,7 +69,7 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantCreated{At: now, ActorSub: actor.Sub, TenantID: tenant.ID})
+		d.Emit(&spec.TenantCreated{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, tenant)
 }
@@ -101,7 +101,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	}
 	if d.Emit != nil {
 		d.Emit(&spec.TenantUpdated{
-			At: now, ActorSub: actor.Sub, TenantID: tenant.ID,
+			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			ChangedFields: tenantChangedFields(input),
 		})
 	}
@@ -161,9 +161,9 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	}
 	if d.Emit != nil {
 		if disabled {
-			d.Emit(&spec.TenantDisabled{At: now, ActorSub: actor.Sub, TenantID: tenant.ID})
+			d.Emit(&spec.TenantDisabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 		} else {
-			d.Emit(&spec.TenantEnabled{At: now, ActorSub: actor.Sub, TenantID: tenant.ID})
+			d.Emit(&spec.TenantEnabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 		}
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -177,7 +177,7 @@ func (d Deps) requireSystemAdmin(c *echo.Context) (*spec.User, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return nil, support.ErrAdminAuthenticationRequired
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return nil, err
 	}

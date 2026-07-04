@@ -15,7 +15,7 @@ func userInfoFixture(t *testing.T) *memory.UserRepository {
 	t.Helper()
 	repo := memory.NewUserRepository()
 	repo.Seed(&spec.User{
-		Sub: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol",
+		ID: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol",
 		Name: new("Carol Q"), Email: new("carol@example.com"), EmailVerified: true,
 		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
 		Attributes: map[string]spec.AttributeValue{

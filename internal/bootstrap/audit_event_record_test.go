@@ -13,7 +13,7 @@ import (
 func TestNewAuditEventRecordExtractsTenantID(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	rec, err := newAuditEventRecord(&spec.UserAuthenticated{
-		At: now, TenantID: "acme", Sub: "user_alice", AMR: []string{"pwd"},
+		At: now, TenantID: "acme", UserID: "user_alice", AMR: []string{"pwd"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -35,8 +35,8 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	for _, ev := range []spec.DomainEvent{
 		&spec.ClientRegistered{At: now, TenantID: "acme", ClientID: "demo-client"},
-		&spec.AccessTokenIssued{At: now, TenantID: "acme", JTI: "jti", ClientID: "demo-client", Sub: "user_alice"},
-		&spec.ConsentGrantedEvent{At: now, TenantID: "acme", Sub: "user_alice", ClientID: "demo-client"},
+		&spec.AccessTokenIssued{At: now, TenantID: "acme", JTI: "jti", ClientID: "demo-client", UserID: "user_alice"},
+		&spec.ConsentGrantedEvent{At: now, TenantID: "acme", UserID: "user_alice", ClientID: "demo-client"},
 	} {
 		rec, err := newAuditEventRecord(ev)
 		if err != nil {

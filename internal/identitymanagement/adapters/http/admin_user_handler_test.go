@@ -59,22 +59,22 @@ func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
 		t.Fatalf("password material leaked in response: %s", create.Body.String())
 	}
 	var created struct {
-		Sub string `json:"sub"`
+		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Sub == "" {
-		t.Fatal("created sub is empty")
+	if created.ID == "" {
+		t.Fatal("created id is empty")
 	}
 
 	disable := adminJSONRequest(
-		t, e, http.MethodPost, "/api/admin/users/"+created.Sub+"/disable", csrf, cookie, nil,
+		t, e, http.MethodPost, "/api/admin/users/"+created.ID+"/disable", csrf, cookie, nil,
 	)
 	if disable.Code != http.StatusNoContent {
 		t.Fatalf("disable status=%d body=%s", disable.Code, disable.Body.String())
 	}
-	user, err := repo.FindBySub(context.Background(), created.Sub)
+	user, err := repo.FindBySub(context.Background(), created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "/api/auth/account", http.NoBody)
-	request.Header.Set("X-Demo-Sub", created.Sub)
+	request.Header.Set("X-Demo-Sub", created.ID)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized {
@@ -104,14 +104,14 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
 	}
 	var created struct {
-		Sub string `json:"sub"`
+		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
 
 	set := adminJSONRequest(t, e, http.MethodPost,
-		"/api/admin/users/"+created.Sub+"/required_actions", csrf, cookie,
+		"/api/admin/users/"+created.ID+"/required_actions", csrf, cookie,
 		map[string]any{"action": "update_password"})
 	if set.Code != http.StatusOK {
 		t.Fatalf("set status=%d body=%s", set.Code, set.Body.String())
@@ -125,7 +125,7 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	if len(afterSet.RequiredActions) != 1 || afterSet.RequiredActions[0] != "update_password" {
 		t.Fatalf("required_actions=%v, want [update_password]", afterSet.RequiredActions)
 	}
-	user, err := repo.FindBySub(context.Background(), created.Sub)
+	user, err := repo.FindBySub(context.Background(), created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,18 +134,18 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	}
 
 	bad := adminJSONRequest(t, e, http.MethodPost,
-		"/api/admin/users/"+created.Sub+"/required_actions", csrf, cookie,
+		"/api/admin/users/"+created.ID+"/required_actions", csrf, cookie,
 		map[string]any{"action": "teleport"})
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("invalid action status=%d body=%s", bad.Code, bad.Body.String())
 	}
 
 	cleared := adminJSONRequest(t, e, http.MethodDelete,
-		"/api/admin/users/"+created.Sub+"/required_actions/update_password", csrf, cookie, nil)
+		"/api/admin/users/"+created.ID+"/required_actions/update_password", csrf, cookie, nil)
 	if cleared.Code != http.StatusOK {
 		t.Fatalf("clear status=%d body=%s", cleared.Code, cleared.Body.String())
 	}
-	user, err = repo.FindBySub(context.Background(), created.Sub)
+	user, err = repo.FindBySub(context.Background(), created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
 	}
 	var created struct {
-		Sub string `json:"sub"`
+		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
@@ -176,24 +176,24 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 
 	// purge=true で完全削除 (anonymize cascade) パスを検証する。既定 DELETE は
 	// soft-delete で、その挙動は TestAdminUserAPISoftDeletesAndRestores が検証する。
-	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.Sub+"?purge=true", csrf, cookie,
+	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.ID+"?purge=true", csrf, cookie,
 		map[string]any{"reason": "leaving company"})
 	if del.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", del.Code, del.Body.String())
 	}
 
 	// Tombstone is invisible to FindBySub.
-	if user, _ := repo.FindBySub(context.Background(), created.Sub); user != nil {
+	if user, _ := repo.FindBySub(context.Background(), created.ID); user != nil {
 		t.Fatalf("FindBySub returned deleted user: %+v", user)
 	}
-	tombstone, err := repo.FindBySubIncludingDeleted(context.Background(), created.Sub)
+	tombstone, err := repo.FindBySubIncludingDeleted(context.Background(), created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tombstone == nil || !tombstone.IsDeleted() {
 		t.Fatalf("tombstone not persisted: %+v", tombstone)
 	}
-	if tombstone.PreferredUsername != "deleted:"+created.Sub || tombstone.Email != nil {
+	if tombstone.PreferredUsername != "deleted:"+created.ID || tombstone.Email != nil {
 		t.Fatalf("PII not anonymized: %+v", tombstone)
 	}
 
@@ -202,12 +202,12 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 	list.Header.Set("X-Demo-Sub", "admin")
 	listResp := httptest.NewRecorder()
 	e.ServeHTTP(listResp, list)
-	if strings.Contains(listResp.Body.String(), created.Sub) {
+	if strings.Contains(listResp.Body.String(), created.ID) {
 		t.Fatalf("deleted user still listed: %s", listResp.Body.String())
 	}
 
 	// Idempotent.
-	again := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.Sub+"?purge=true", csrf, cookie, nil)
+	again := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.ID+"?purge=true", csrf, cookie, nil)
 	if again.Code != http.StatusNoContent {
 		t.Fatalf("idempotent delete status=%d body=%s", again.Code, again.Body.String())
 	}
@@ -227,29 +227,29 @@ func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
 		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
 	}
 	var created struct {
-		Sub string `json:"sub"`
+		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
 
 	// 既定 DELETE は soft-delete: PII は温存され status は pending_deletion。
-	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.Sub, csrf, cookie,
+	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.ID, csrf, cookie,
 		map[string]any{"reason": "maybe leaving"})
 	if del.Code != http.StatusNoContent {
 		t.Fatalf("soft-delete status=%d body=%s", del.Code, del.Body.String())
 	}
-	user, _ := repo.FindBySub(context.Background(), created.Sub)
+	user, _ := repo.FindBySub(context.Background(), created.ID)
 	if user == nil || !user.IsSoftDeleted() || user.Email == nil {
 		t.Fatalf("expected visible soft-deleted user with PII, got %+v", user)
 	}
 
 	// 復元: status は Active に戻り、PII は温存されたまま。
-	restore := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users/"+created.Sub+"/restore", csrf, cookie, nil)
+	restore := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users/"+created.ID+"/restore", csrf, cookie, nil)
 	if restore.Code != http.StatusOK {
 		t.Fatalf("restore status=%d body=%s", restore.Code, restore.Body.String())
 	}
-	restored, _ := repo.FindBySub(context.Background(), created.Sub)
+	restored, _ := repo.FindBySub(context.Background(), created.ID)
 	if restored == nil || !restored.IsActive() || restored.Email == nil {
 		t.Fatalf("expected active restored user with PII, got %+v", restored)
 	}
@@ -277,11 +277,11 @@ func newAdminUserHandler(
 	now := time.Now().UTC()
 	for _, user := range []*spec.User{
 		{
-			Sub: "admin", PreferredUsername: "admin", PasswordHash: "unused",
+			ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 			Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 		},
 		{
-			Sub: "regular", PreferredUsername: "regular", PasswordHash: "unused",
+			ID: "regular", PreferredUsername: "regular", PasswordHash: "unused",
 			CreatedAt: now, UpdatedAt: now,
 		},
 	} {

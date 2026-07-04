@@ -74,7 +74,7 @@ ON CONFLICT (sub) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
  family_name=EXCLUDED.family_name,email=EXCLUDED.email,email_verified=EXCLUDED.email_verified,
  mfa_enrolled=EXCLUDED.mfa_enrolled,roles=EXCLUDED.roles,lifecycle=EXCLUDED.lifecycle,
  attributes=EXCLUDED.attributes,updated_at=EXCLUDED.updated_at`,
-		u.Sub, u.TenantID, u.PreferredUsername, u.PasswordHash, u.Name, u.GivenName, u.FamilyName, u.Email,
+		u.ID, u.TenantID, u.PreferredUsername, u.PasswordHash, u.Name, u.GivenName, u.FamilyName, u.Email,
 		u.EmailVerified, u.MfaEnrolled, u.Roles, lifecycle, attributes, u.CreatedAt, u.UpdatedAt)
 	return err
 }
@@ -85,7 +85,7 @@ email_verified,mfa_enrolled,roles,lifecycle,attributes,created_at,updated_at FRO
 func scanUser(row rowScanner) (*spec.User, error) {
 	var u spec.User
 	var lifecycle, attributes []byte
-	err := row.Scan(&u.Sub, &u.TenantID, &u.PreferredUsername, &u.PasswordHash, &u.Name, &u.GivenName,
+	err := row.Scan(&u.ID, &u.TenantID, &u.PreferredUsername, &u.PasswordHash, &u.Name, &u.GivenName,
 		&u.FamilyName, &u.Email, &u.EmailVerified, &u.MfaEnrolled, &u.Roles, &lifecycle, &attributes,
 		&u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

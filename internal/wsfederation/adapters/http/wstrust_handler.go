@@ -91,7 +91,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "rstr build failed")
 	}
-	d.emit(&spec.WsTrustTokenIssued{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Sub: user.Sub})
+	d.emit(&spec.WsTrustTokenIssued{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, UserID: user.ID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.Blob(http.StatusOK, "application/soap+xml; charset=utf-8", out)
 }

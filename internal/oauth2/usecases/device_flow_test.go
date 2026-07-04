@@ -36,7 +36,7 @@ func newDeviceFixture() deviceFixture {
 		CreatedAt:                now,
 	})
 	userRepo.Seed(&spec.User{
-		Sub: "user", PreferredUsername: "alice", PasswordHash: "hash",
+		ID: "user", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
 	return deviceFixture{

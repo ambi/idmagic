@@ -255,7 +255,7 @@ models:
       entityId:
         type: String
         description: 発行先 SP の entityID。
-      sub:
+      userId:
         type: String
         description: subject (NameID 由来の user)。
   SamlSignInRejected:

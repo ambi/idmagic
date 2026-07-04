@@ -22,7 +22,7 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &current, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
@@ -55,7 +55,7 @@ func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &current, EmailVerified: false, CreatedAt: now, UpdatedAt: now,
 		Lifecycle: spec.UserLifecycle{
 			Status:          spec.UserStatusActive,
@@ -105,11 +105,11 @@ func TestRequestEmailChangeRejectsAddressTakenByAnotherUser(t *testing.T) {
 	mine := "mine@example.com"
 	taken := "taken@example.com"
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &mine, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&spec.User{
-		Sub: "user-bob", PreferredUsername: "bob", PasswordHash: "unused",
+		ID: "user-bob", PreferredUsername: "bob", PasswordHash: "unused",
 		Email: &taken, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	err := usecases.RequestEmailChange(ctx, usecases.RequestEmailChangeDeps{

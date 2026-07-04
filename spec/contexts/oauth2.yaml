@@ -1302,14 +1302,14 @@ models:
     description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。sub と client_id は同一 tenant_id 内の既存 User と OAuth2Client を指す。
     identity:
       - tenant_id
-      - sub
+      - user_id
       - client_id
     fields:
       tenant_id:
         type: String
         default: default
         description: 所属テナント ID。
-      sub:
+      user_id:
         type: String
       client_id:
         type: String
@@ -1454,7 +1454,7 @@ models:
         optional: true
       client_id:
         type: String
-      sub:
+      user_id:
         type: String
       scopes:
         type: "String[]"
@@ -1516,7 +1516,7 @@ models:
       par_request_uri:
         type: String
         optional: true
-      sub:
+      user_id:
         type: String
         optional: true
       auth_time:
@@ -1559,7 +1559,7 @@ models:
         type: UUID
       client_id:
         type: String
-      sub:
+      user_id:
         type: String
       scopes:
         type: "String[]"
@@ -1643,7 +1643,7 @@ models:
         type: "String[]"
       state:
         type: DeviceCodeState
-      sub:
+      user_id:
         type: String
         optional: true
       auth_time:
@@ -2170,7 +2170,7 @@ models:
     fields:
       tenant_id:
         type: String
-      sub:
+      user_id:
         type: String
       client_id:
         type: String
@@ -2223,7 +2223,7 @@ models:
         type: String
         optional: true
         description: イベントカテゴリ絞り込み。authentication / success / fail / aggregated / user / group / client / consent / token / tenant / key。
-      sub:
+      user_id:
         type: String
         optional: true
         description: 対象ユーザー sub の完全一致フィルタ。
@@ -2628,7 +2628,7 @@ models:
       tenantId:
         type: String
         description: クライアントが属するテナント ID。actor と一致する。
-      actorSub:
+      actorUserId:
         type: String
       clientId:
         type: String
@@ -2641,7 +2641,7 @@ models:
       tenantId:
         type: String
         description: クライアントが属するテナント ID。actor と一致する。
-      actorSub:
+      actorUserId:
         type: String
       clientId:
         type: String
@@ -2656,7 +2656,7 @@ models:
       tenantId:
         type: String
         description: クライアントが属するテナント ID。actor と一致する。
-      actorSub:
+      actorUserId:
         type: String
       clientId:
         type: String
@@ -2669,7 +2669,7 @@ models:
       tenantId:
         type: String
         description: 同意が起きたテナント ID。
-      sub:
+      userId:
         type: String
       clientId:
         type: String
@@ -2684,11 +2684,11 @@ models:
       tenantId:
         type: String
         description: 同意が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
         optional: true
         description: 管理 API からの撤回時の Administrator sub。ResourceOwner 自身の撤回では省略可。
-      sub:
+      userId:
         type: String
       clientId:
         type: String
@@ -2702,7 +2702,7 @@ models:
         type: String
       clientId:
         type: String
-      sub:
+      userId:
         type: String
         optional: true
         description: 要求時点で確定していれば principal の sub。
@@ -2717,7 +2717,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       clientId:
         type: String
@@ -2747,7 +2747,7 @@ models:
         description: 認可コードを発行したテナント ID。
       clientId:
         type: String
-      sub:
+      userId:
         type: String
       scopes:
         type: "String[]"
@@ -2765,7 +2765,7 @@ models:
         description: 交換が起きたテナント ID。
       clientId:
         type: String
-      sub:
+      userId:
         type: String
   AccessTokenIssued:
     kind: event
@@ -2780,7 +2780,7 @@ models:
         type: String
       clientId:
         type: String
-      sub:
+      userId:
         type: String
       scopes:
         type: "String[]"
@@ -2805,7 +2805,7 @@ models:
         optional: true
       clientId:
         type: String
-      sub:
+      userId:
         type: String
   RefreshTokenRotated:
     kind: event
@@ -2862,10 +2862,10 @@ models:
       tenantId:
         type: String
         description: トークン交換が起きたテナント ID。
-      actorSub:
+      actorUserId:
         type: String
         description: 発行トークンの現在アクター (act.sub)。
-      subjectSub:
+      subjectUserId:
         type: String
         description: 発行トークンの subject (sub)。subject_token の sub を維持する。
       audience:
@@ -2883,7 +2883,7 @@ models:
       tenantId:
         type: String
         description: トークン交換が拒否されたテナント ID。
-      actorSub:
+      actorUserId:
         type: String
         optional: true
         description: 拒否時に判明している現在アクター。不明な場合は空。
@@ -2943,7 +2943,7 @@ models:
         description: 承認が起きたテナント ID。
       clientId:
         type: String
-      sub:
+      userId:
         type: String
   DeviceAuthorizationDenied:
     kind: event
@@ -2956,7 +2956,7 @@ models:
         description: 拒否が起きたテナント ID。
       clientId:
         type: String
-      sub:
+      userId:
         type: String
         optional: true
 states:
@@ -3600,7 +3600,7 @@ interfaces:
   GetAdminConsent:
     description: 管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。
     input:
-      sub:
+      user_id:
         type: String
       client_id:
         type: String
@@ -3614,11 +3614,11 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/admin/consents/{sub}/{client_id}"
+        path: "/admin/consents/{user_id}/{client_id}"
   RevokeAdminConsent:
     description: 管理者が所属テナントの Consent を論理撤回する。管理者による Consent の作成・scope 拡張は許可しない。
     input:
-      sub:
+      user_id:
         type: String
       client_id:
         type: String
@@ -3630,11 +3630,11 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/admin/consents/{sub}/{client_id}"
+        path: "/admin/consents/{user_id}/{client_id}"
         successful_status_codes:
           - "204"
   ListMyConsents:
-    description: "認証済みユーザーが自身の接続済みアプリ (active な Consent) 一覧を取得する\n(self-service)。対象は actor.sub に固定し、他人の Consent は返さない。\n"
+    description: "認証済みユーザーが自身の接続済みアプリ (active な Consent) 一覧を取得する\n(self-service)。対象は actor.id に固定し、他人の Consent は返さない。\n"
     output:
       response:
         type: AccountConsentListResponse
@@ -3646,7 +3646,7 @@ interfaces:
         method: GET
         path: /api/account/consents
   RevokeMyConsent:
-    description: "認証済みユーザーが自身の Consent を client_id 指定で論理撤回する (self-service)。\nactor.sub == target.sub に固定。次回その client の認可では consent が再要求される。\n"
+    description: "認証済みユーザーが自身の Consent を client_id 指定で論理撤回する (self-service)。\nactor.id == target.id に固定。次回その client の認可では consent が再要求される。\n"
     input:
       client_id:
         type: String
@@ -3791,7 +3791,7 @@ invariants:
   TokenAndConsentReferencesStayTenantLocal:
     description: "Consent と RefreshTokenRecord は同一 tenant_id 内の User と OAuth2Client だけを参照する。RefreshTokenRecord.parent_id は同じ family_id の既存 RefreshTokenRecord を指す。\n反例: tenant A の refresh token が tenant B の client_id または sub を持つ。\n"
     target: RefreshTokenRecord
-    always: "refresh_token.sub in Users(refresh_token.tenant_id) && refresh_token.client_id in OAuth2Clients(refresh_token.tenant_id)"
+    always: "refresh_token.user_id in Users(refresh_token.tenant_id) && refresh_token.client_id in OAuth2Clients(refresh_token.tenant_id)"
 permissions:
   TokenGrantAuthorizationCode:
     description: 認可コード交換による access_token / id_token / refresh_token 発行
@@ -4499,7 +4499,7 @@ scenarios:
       - "管理者 \"operator\" が Consent 一覧と単一 Consent を取得する"
       - "管理者 \"operator\" がユーザー \"alice\" と client \"portal\" の Consent を撤回する"
       - Consent の state は Revoked で revoked_at が記録される
-      - "\"ConsentRevoked\" が actorSub \"operator\" で発行される"
+      - "\"ConsentRevoked\" が actorUserId \"operator\" で発行される"
       - 管理者が Consent を作成または scope 拡張する interface は存在しない
   ユーザーは接続済みアプリの同意を自分で撤回できる:
     goal: ユーザーが接続済みアプリの同意を一覧して撤回する。

@@ -52,7 +52,7 @@ func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in Con
 	if err != nil {
 		return nil, err
 	}
-	if existing != nil && existing.Sub != user.Sub {
+	if existing != nil && existing.ID != user.ID {
 		return nil, ErrEmailTaken
 	}
 
@@ -71,10 +71,10 @@ func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in Con
 		return nil, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.EmailChanged{At: now, TenantID: user.TenantID, Sub: user.Sub})
+		deps.Emit(&spec.EmailChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
 		if clearedVerifyEmail {
 			deps.Emit(&spec.UserRequiredActionCleared{
-				At: now, TenantID: user.TenantID, ActorSub: user.Sub, TargetSub: user.Sub,
+				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
 				Action: string(spec.RequiredActionVerifyEmail),
 			})
 		}

@@ -76,7 +76,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 	if err != nil {
 		return err
 	}
-	if existing != nil && existing.Sub != user.Sub {
+	if existing != nil && existing.ID != user.ID {
 		return ErrEmailTaken
 	}
 
@@ -90,7 +90,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 		ttl = EmailChangeTokenTTLSeconds * time.Second
 	}
 	if err := deps.TokenStore.Save(ctx, authnports.EmailChangeTokenRecord{
-		Sub: user.Sub, TokenHash: sha256Hex(rawToken), NewEmail: newEmail,
+		Sub: user.ID, TokenHash: sha256Hex(rawToken), NewEmail: newEmail,
 		CreatedAt: now, ExpiresAt: now.Add(ttl),
 	}); err != nil {
 		return err
@@ -108,7 +108,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 	})
 	if deps.Emit != nil {
 		deps.Emit(&spec.EmailChangeRequested{
-			At: now, TenantID: user.TenantID, Sub: user.Sub, NewEmailHash: sha256Hex(newEmail),
+			At: now, TenantID: user.TenantID, UserID: user.ID, NewEmailHash: sha256Hex(newEmail),
 		})
 		deps.Emit(&spec.EmailSent{
 			At: now, ToHash: sha256Hex(newEmail), Purpose: "email_change", Delivered: delivered,

@@ -28,7 +28,7 @@ func attrTestDeps(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *me
 func createAttrUser(ctx context.Context, t *testing.T, deps idmusecases.AdminUserDeps) *spec.User {
 	t.Helper()
 	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
-		ActorSub: "admin", PreferredUsername: "carol", Password: "initial-password-9182",
+		ActorUserID: "admin", PreferredUsername: "carol", Password: "initial-password-9182",
 		Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -46,7 +46,7 @@ func TestUpdateUserAcceptsBuiltinAttribute(t *testing.T) {
 		"phone_number": {Type: spec.AttributeTypeString, String: new("+819012345678")},
 	}
 	updated, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
-		ActorSub: "admin", Sub: user.Sub, GivenName: new("Carol"), Attributes: &attrs,
+		ActorUserID: "admin", Sub: user.ID, GivenName: new("Carol"), Attributes: &attrs,
 		Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -68,7 +68,7 @@ func TestUpdateUserRejectsUndefinedAttribute(t *testing.T) {
 		"not_a_real_attribute": {Type: spec.AttributeTypeString, String: new("x")},
 	}
 	_, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
-		ActorSub: "admin", Sub: user.Sub, Attributes: &attrs, Now: time.Now().UTC(),
+		ActorUserID: "admin", Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
 	})
 	if !errors.Is(err, idmusecases.ErrInvalidAttribute) {
 		t.Fatalf("expected ErrInvalidAttribute, got %v", err)
@@ -92,7 +92,7 @@ func TestUpdateUserAcceptsTenantCustomAttribute(t *testing.T) {
 		"region": {Type: spec.AttributeTypeString, String: new("apac")},
 	}
 	updated, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
-		ActorSub: "admin", Sub: user.Sub, Attributes: &attrs, Now: time.Now().UTC(),
+		ActorUserID: "admin", Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
@@ -104,7 +104,7 @@ func TestUpdateUserAcceptsTenantCustomAttribute(t *testing.T) {
 	// schema 未定義の custom key は拒否される。
 	bad := map[string]spec.AttributeValue{"zone": {Type: spec.AttributeTypeString, String: new("z")}}
 	if _, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
-		ActorSub: "admin", Sub: user.Sub, Attributes: &bad, Now: time.Now().UTC(),
+		ActorUserID: "admin", Sub: user.ID, Attributes: &bad, Now: time.Now().UTC(),
 	}); !errors.Is(err, idmusecases.ErrInvalidAttribute) {
 		t.Fatalf("expected ErrInvalidAttribute for undefined custom key, got %v", err)
 	}

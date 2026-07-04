@@ -115,7 +115,7 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in ports.IDTokenInput) (str
 	issuer := tenancy.Issuer(ctx, s.Issuer)
 	claims := map[string]any{
 		"iss":       issuer,
-		"sub":       in.User.Sub,
+		"sub":       in.User.ID,
 		"aud":       in.Client.ClientID,
 		"iat":       now,
 		"exp":       now + idTokenTTLSeconds,

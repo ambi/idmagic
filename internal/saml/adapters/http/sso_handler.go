@@ -110,14 +110,14 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 	}
 
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
-	if authn == nil || authn.Sub == "" || authn.AuthenticationPending {
+	if authn == nil || authn.UserID == "" || authn.AuthenticationPending {
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c, resumeURL))
 	}
 	now := time.Now().UTC()
 	if samldomain.RequiresFreshAuth(req.ForceAuthn, time.Unix(authn.AuthTime, 0).UTC(), now) {
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c, resumeURL))
 	}
-	user, err := d.UserRepo.FindBySub(ctx, authn.Sub)
+	user, err := d.UserRepo.FindBySub(ctx, authn.UserID)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 	}
 
 	// 割当ゲート: SP が Application binding に属する場合、未割当 subject には発行しない (fail-closed)。
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingSAML, sp.EntityID, authn.Sub, authn, d.ClientIP(c.Request()))
+	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingSAML, sp.EntityID, authn.UserID, authn, d.ClientIP(c.Request()))
 	if err != nil {
 		return err
 	}
@@ -134,12 +134,12 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 		reason := decision.Reason
 		if decision.StepUpRequired {
 			reason = "step-up required by application sign-in policy"
-			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.Sub})
+			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.UserID})
 		} else if reason == "" {
 			reason = "subject not assigned to application"
 		}
 		if decision.ApplicationID != "" {
-			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.Sub, Reason: reason})
+			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.UserID, Reason: reason})
 		}
 		d.emit(&spec.SamlSignInRejected{At: now, TenantID: tenantID, EntityID: sp.EntityID, Reason: reason})
 		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインインポリシーを満たしていません")
@@ -177,7 +177,7 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 		return d.rejectSSO(c, sp.EntityID, "form render failed", err)
 	}
 
-	d.emit(&spec.SamlSignInIssued{At: now, TenantID: tenantID, EntityID: sp.EntityID, Sub: authn.Sub})
+	d.emit(&spec.SamlSignInIssued{At: now, TenantID: tenantID, EntityID: sp.EntityID, UserID: authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }

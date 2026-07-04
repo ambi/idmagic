@@ -48,7 +48,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 		t.Fatal(err)
 	}
 	userRepo.Seed(&spec.User{
-		Sub: "user-1", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
+		ID: "user-1", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
 		PasswordHash: hash, MfaEnrolled: true,
 		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
@@ -60,7 +60,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 	}
 	mfaRepo := memory.NewMfaFactorRepository()
 	if err := mfaRepo.Save(ctx, &spec.MfaFactor{
-		Sub: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
+		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 func seedSession(t *testing.T, store *memory.SessionStore, id string, authTime time.Time) string {
 	t.Helper()
 	sess := &spec.LoginSession{
-		ID: id, TenantID: spec.DefaultTenantID, Sub: "user-1",
+		ID: id, TenantID: spec.DefaultTenantID, UserID: "user-1",
 		AuthTime: authTime.Unix(), AMR: []string{"pwd"},
 		ACR:       authusecases.DeriveACR([]string{"pwd"}),
 		ExpiresAt: time.Now().Add(time.Hour),

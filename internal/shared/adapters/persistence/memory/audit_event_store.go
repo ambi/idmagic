@@ -125,9 +125,9 @@ func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) boo
 	if len(q.Types) > 0 && !slices.Contains(q.Types, rec.Type) {
 		return false
 	}
-	if q.Sub != "" {
-		sub, _ := rec.Payload["sub"].(string)
-		if sub != q.Sub {
+	if q.UserID != "" {
+		userID, _ := rec.Payload["userId"].(string)
+		if userID != q.UserID {
 			return false
 		}
 	}

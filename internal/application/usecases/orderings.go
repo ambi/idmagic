@@ -18,11 +18,11 @@ import (
 var ErrUnassignedInOrder = errors.New("ordering contains an unassigned application")
 
 // GetMyApplicationOrder は利用者の保存済み手動並び順を返す。未保存なら空スライス。
-func GetMyApplicationOrder(ctx context.Context, repo ports.ApplicationOrderingRepository, userSub string) ([]string, error) {
+func GetMyApplicationOrder(ctx context.Context, repo ports.ApplicationOrderingRepository, userID string) ([]string, error) {
 	if repo == nil {
 		return []string{}, nil
 	}
-	ordering, err := repo.Get(ctx, tenancy.TenantID(ctx), userSub)
+	ordering, err := repo.Get(ctx, tenancy.TenantID(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func ApplyManualOrder(apps []*spec.Application, order []string) []*spec.Applicat
 // SaveMyApplicationOrder は利用者の手動並び順を検証して保存する。application_ids は
 // 利用者に割当済みの visible active アプリのみを含めること。重複は除去し、それ以外の
 // id を含む場合は ErrUnassignedInOrder を返す。
-func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userSub string, subjects []ports.SubjectRef, applicationIDs []string, now time.Time) ([]string, error) {
+func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID string, subjects []ports.SubjectRef, applicationIDs []string, now time.Time) ([]string, error) {
 	assigned, err := ListMyApplications(ctx, deps, subjects)
 	if err != nil {
 		return nil, err
@@ -92,12 +92,12 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userSub st
 	nowAt := adminNow(now)
 	ordering := &spec.ApplicationOrdering{
 		TenantID:       tenancy.TenantID(ctx),
-		UserSub:        userSub,
+		UserID:         userID,
 		ApplicationIDs: cleaned,
 		CreatedAt:      nowAt,
 		UpdatedAt:      nowAt,
 	}
-	if existing, err := deps.OrderingRepo.Get(ctx, ordering.TenantID, userSub); err != nil {
+	if existing, err := deps.OrderingRepo.Get(ctx, ordering.TenantID, userID); err != nil {
 		return nil, err
 	} else if existing != nil && !existing.CreatedAt.IsZero() {
 		ordering.CreatedAt = existing.CreatedAt

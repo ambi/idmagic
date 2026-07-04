@@ -176,7 +176,7 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 	}
 
 	user := &spec.User{
-		Sub:               sub,
+		ID:                sub,
 		TenantID:          tenantID,
 		PreferredUsername: userName,
 		PasswordHash:      "", // SCIM users usually don't have local password initially
@@ -212,7 +212,7 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 	ref := &ports.ScimUserRef{
 		TenantID: tenantID,
 		ScimID:   scimID,
-		UserSub:  sub,
+		UserID:   sub,
 	}
 	if err := u.ScimRepo.SaveUserRef(ctx, ref); err != nil {
 		return nil, err
@@ -230,7 +230,7 @@ func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[st
 		return nil, ErrNotFound
 	}
 
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserSub)
+	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 		return nil, ErrNotFound
 	}
 
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserSub)
+	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 		return nil, ErrNotFound
 	}
 
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserSub)
+	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (u *Usecases) DeleteUser(ctx context.Context, tenantID, scimID string) erro
 		return errors.New("user not found")
 	}
 
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserSub)
+	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
 	if err != nil {
 		return err
 	}
@@ -393,11 +393,11 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID, filter string) ([]ma
 
 	var out []map[string]any
 	for _, user := range users {
-		ref, err := u.ScimRepo.FindUserRefByUserSub(ctx, tenantID, user.Sub)
+		ref, err := u.ScimRepo.FindUserRefByUserID(ctx, tenantID, user.ID)
 		if err != nil {
 			return nil, err
 		}
-		scimID := user.Sub
+		scimID := user.ID
 		if ref != nil {
 			scimID = ref.ScimID
 		}
@@ -514,7 +514,7 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 					if err == nil && userRef != nil {
 						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
 							GroupID:   id,
-							UserSub:   userRef.UserSub,
+							UserID:    userRef.UserID,
 							CreatedAt: time.Now(),
 						}); err != nil {
 							return nil, err
@@ -604,7 +604,7 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 			return nil, err
 		}
 		for _, m := range existingMembers {
-			if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, group.ID, m.UserSub); err != nil {
+			if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, group.ID, m.UserID); err != nil {
 				return nil, err
 			}
 		}
@@ -617,7 +617,7 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 					if err == nil && userRef != nil {
 						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
 							GroupID:   group.ID,
-							UserSub:   userRef.UserSub,
+							UserID:    userRef.UserID,
 							CreatedAt: time.Now(),
 						}); err != nil {
 							return nil, err
@@ -701,7 +701,7 @@ func (u *Usecases) patchAddMembers(ctx context.Context, tenantID, groupID string
 					if err == nil && userRef != nil {
 						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
 							GroupID:   groupID,
-							UserSub:   userRef.UserSub,
+							UserID:    userRef.UserID,
 							CreatedAt: time.Now(),
 						}); err != nil {
 							return err
@@ -722,7 +722,7 @@ func (u *Usecases) patchRemoveMembers(ctx context.Context, tenantID, groupID str
 				if userScimID != "" {
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, userRef.UserSub); err != nil {
+						if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, userRef.UserID); err != nil {
 							return err
 						}
 					}
@@ -739,7 +739,7 @@ func (u *Usecases) patchReplaceMembers(ctx context.Context, tenantID, groupID st
 		return err
 	}
 	for _, m := range existingMembers {
-		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, m.UserSub); err != nil {
+		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, m.UserID); err != nil {
 			return err
 		}
 	}
@@ -769,14 +769,14 @@ func (u *Usecases) toScimGroup(ctx context.Context, group *spec.Group, scimID st
 
 	scimMembers := []map[string]any{}
 	for _, m := range members {
-		ref, err := u.ScimRepo.FindUserRefByUserSub(ctx, group.TenantID, m.UserSub)
-		userScimID := m.UserSub
+		ref, err := u.ScimRepo.FindUserRefByUserID(ctx, group.TenantID, m.UserID)
+		userScimID := m.UserID
 		if err == nil && ref != nil {
 			userScimID = ref.ScimID
 		}
 		scimMembers = append(scimMembers, map[string]any{
 			"value":   userScimID,
-			"display": m.UserSub,
+			"display": m.UserID,
 		})
 	}
 

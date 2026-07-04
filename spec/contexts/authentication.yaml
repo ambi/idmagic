@@ -92,10 +92,10 @@ models:
     kind: entity
     description: "ユーザーが登録した第二要素 (MFA) 1 件。Totp の場合 secret は base32 で保存し、認証時に RFC 6238 (T0=0, STEP=30s, 6-digit) で評価する。User.mfa_enrolled の真値はこの集合の非空性と同義。"
     identity:
-      - sub
+      - user_id
       - type
     fields:
-      sub:
+      user_id:
         type: String
         description: 所有者ユーザの sub。
       type:
@@ -122,7 +122,7 @@ models:
     fields:
       id:
         type: UUID
-      sub:
+      user_id:
         type: String
       auth_time:
         type: Integer
@@ -142,7 +142,7 @@ models:
     kind: value_object
     description: Authentication bounded context が OAuth2/OIDC bounded context に渡す認証結果。OAuth2/OIDC は password、UserRepository、session cookie の詳細を参照しない。
     fields:
-      sub:
+      user_id:
         type: String
       auth_time:
         type: Integer
@@ -370,7 +370,7 @@ models:
     identity: token_hash
     description: "パスワードリセット用の単発消費トークン。\ntoken は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ。\n期限切れ / consume 済みの行は GC するが、INSERT 時に同 sub の未消費を\n失効させる軽い掃除も行う。\n"
     fields:
-      sub:
+      user_id:
         type: String
       token_hash:
         type: String
@@ -392,7 +392,7 @@ models:
       tenantId:
         type: String
         description: 認証が起きたテナント ID。監査ビューのテナント絞り込みに使う。
-      sub:
+      userId:
         type: String
       amr:
         type: "String[]"
@@ -489,7 +489,7 @@ models:
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
-      sub:
+      userId:
         type: String
   LoginThrottled:
     kind: event
@@ -544,7 +544,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       step:
         type: String
@@ -576,7 +576,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       factorType:
         type: MfaFactorType
@@ -591,7 +591,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       factorType:
         type: MfaFactorType
@@ -606,7 +606,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
         optional: true
       factorType:
@@ -622,7 +622,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       remainingCount:
         type: Integer
@@ -635,7 +635,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       sessionId:
         type: String
@@ -659,7 +659,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       sessionId:
         type: String
@@ -671,7 +671,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       provider:
         type: String
@@ -687,10 +687,10 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      actorSub:
+      actorUserId:
         type: String
         description: impersonate した admin の sub
-      targetSub:
+      targetUserId:
         type: String
         description: 対象 user の sub
       sessionId:
@@ -703,9 +703,9 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
       sessionId:
         type: String
@@ -744,7 +744,7 @@ models:
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
-      sub:
+      userId:
         type: String
       factorType:
         type: MfaFactorType
@@ -757,24 +757,24 @@ models:
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
-      sub:
+      userId:
         type: String
       factorType:
         type: MfaFactorType
   SessionEnded:
     kind: event
-    description: "LoginSession が終了した。本人 / admin の明示的な失効では actorSub が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
+    description: "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
     payload:
       occurredAt:
         type: Timestamp
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
-      sub:
+      userId:
         type: String
       sessionId:
         type: String
-      actorSub:
+      actorUserId:
         type: String
         description: 失効を実行した主体の sub (self は本人)。
       reason:
@@ -788,7 +788,7 @@ models:
       tenantId:
         type: String
         description: 本人の所属テナント ID。
-      sub:
+      userId:
         type: String
       sessionId:
         type: String
@@ -801,7 +801,7 @@ models:
       tenantId:
         type: String
         description: 本人の所属テナント ID。
-      sub:
+      userId:
         type: String
       sessionId:
         type: String
@@ -877,7 +877,7 @@ interfaces:
         path: /api/auth/change_password
         request_body: json
   GetAccountSecurity:
-    description: "認証済みユーザーが自身のセキュリティ概要を取得する (self-service)。対象は actor.sub に\n固定。パスワード変更日時と MFA (TOTP) 登録状態を返す。\n"
+    description: "認証済みユーザーが自身のセキュリティ概要を取得する (self-service)。対象は actor.id に\n固定。パスワード変更日時と MFA (TOTP) 登録状態を返す。\n"
     output:
       security:
         type: AccountSecurityResponse
@@ -901,7 +901,7 @@ interfaces:
         method: POST
         path: /api/account/mfa/totp/enroll/start
   ConfirmTotpEnrollment:
-    description: "secret に対するコードの所持証明を検証し、TOTP factor を永続化する (self-service)。\nactor.sub に固定し、確定時に User.mfa_enrolled を true にする。\n"
+    description: "secret に対するコードの所持証明を検証し、TOTP factor を永続化する (self-service)。\nactor.id に固定し、確定時に User.mfa_enrolled を true にする。\n"
     input:
       request:
         type: TOTPEnrollmentConfirmRequest
@@ -916,7 +916,7 @@ interfaces:
         path: /api/account/mfa/totp/enroll/confirm
         request_form: body
   RemoveTotpFactor:
-    description: "有効な TOTP コード (所持証明) を検証してから TOTP factor を解除する (self-service)。\nactor.sub に固定し、解除時に User.mfa_enrolled を false に戻す。\n"
+    description: "有効な TOTP コード (所持証明) を検証してから TOTP factor を解除する (self-service)。\nactor.id に固定し、解除時に User.mfa_enrolled を false に戻す。\n"
     input:
       request:
         type: MfaFactorRemoveRequest
@@ -933,7 +933,7 @@ interfaces:
         path: /api/account/mfa/totp/remove
         request_form: body
   ListMySignInActivity:
-    description: "認証済みユーザーが自身の直近サインイン履歴を取得する (self-service)。対象は\nactor.sub に固定。既存の監査イベントストア (UserAuthenticated) から発生時刻の降順で\n最大 limit 件を返す。limit 既定 10 / 上限 50。\n"
+    description: "認証済みユーザーが自身の直近サインイン履歴を取得する (self-service)。対象は\nactor.id に固定。既存の監査イベントストア (UserAuthenticated) から発生時刻の降順で\n最大 limit 件を返す。limit 既定 10 / 上限 50。\n"
     output:
       activity:
         type: UserSignInActivityResponse
@@ -955,7 +955,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/users/{sub}/signin_activity"
+        path: "/api/admin/users/{user_id}/signin_activity"
   ListAuthenticationEventBuckets:
     description: "admin が認証イベント集約 (bucket) を一覧する。攻撃時に個別行へ\n落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で window_start の\n降順に返す。permission は AdminAuditEventsRead を再利用する。limit 既定 50 / 上限 200。\n"
     output:
@@ -969,7 +969,7 @@ interfaces:
         method: GET
         path: /api/admin/authentication_event_buckets
   ListMySessions:
-    description: "認証済みユーザーが自身の有効なセッションを取得する (self-service)。対象は\nactor.sub に固定。現在のセッションを current=true でマークし、開始時刻の降順で返す。\n"
+    description: "認証済みユーザーが自身の有効なセッションを取得する (self-service)。対象は\nactor.id に固定。現在のセッションを current=true でマークし、開始時刻の降順で返す。\n"
     output:
       sessions:
         type: AccountSessionListResponse
@@ -1072,7 +1072,7 @@ invariants:
   PasswordHistoryNoReuse:
     description: "change-password 受領時、新パスワードは同一 sub の直近 history_depth 件のハッシュと\n一致してはならない。反例: 直前のパスワードを再設定でき、漏洩済みクレデンシャルでログイン可能なまま。\n"
     assuming: event == ChangePassword
-    never: "PasswordHistoryEntries(sub=event.sub, depth=PasswordPolicy.value.history_depth).exists(x, PasswordHasher.verify(event.new_password, x.encoded) == true)"
+    never: "PasswordHistoryEntries(user_id=event.user_id, depth=PasswordPolicy.value.history_depth).exists(x, PasswordHasher.verify(event.new_password, x.encoded) == true)"
 objectives:
   PasswordPolicy:
     kind: security

@@ -115,7 +115,7 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 	}
 	label := totpFactorLabel
 	factor := &spec.MfaFactor{
-		Sub: user.Sub, Type: spec.MfaFactorTOTP, Secret: &secret, Label: &label, CreatedAt: now,
+		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: &secret, Label: &label, CreatedAt: now,
 	}
 	if err := factor.Validate(); err != nil {
 		return err
@@ -130,7 +130,7 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 	}
 	if deps.Emit != nil {
 		deps.Emit(&spec.MfaFactorEnrolled{
-			At: now, TenantID: user.TenantID, Sub: user.Sub, FactorType: spec.MfaFactorTOTP,
+			At: now, TenantID: user.TenantID, UserID: user.ID, FactorType: spec.MfaFactorTOTP,
 		})
 	}
 	return nil
@@ -171,7 +171,7 @@ func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFac
 	}
 	if deps.Emit != nil {
 		deps.Emit(&spec.MfaFactorRemoved{
-			At: now, TenantID: user.TenantID, Sub: user.Sub, FactorType: spec.MfaFactorTOTP,
+			At: now, TenantID: user.TenantID, UserID: user.ID, FactorType: spec.MfaFactorTOTP,
 		})
 	}
 	return nil

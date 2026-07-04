@@ -296,7 +296,7 @@ models:
     payload:
       occurredAt:
         type: Timestamp
-      actorSub:
+      actorUserId:
         type: String
       tenantId:
         type: String
@@ -306,7 +306,7 @@ models:
     payload:
       occurredAt:
         type: Timestamp
-      actorSub:
+      actorUserId:
         type: String
       tenantId:
         type: String
@@ -318,7 +318,7 @@ models:
     payload:
       occurredAt:
         type: Timestamp
-      actorSub:
+      actorUserId:
         type: String
       tenantId:
         type: String
@@ -330,7 +330,7 @@ models:
     payload:
       occurredAt:
         type: Timestamp
-      actorSub:
+      actorUserId:
         type: String
       tenantId:
         type: String
@@ -340,7 +340,7 @@ models:
     payload:
       occurredAt:
         type: Timestamp
-      actorSub:
+      actorUserId:
         type: String
       tenantId:
         type: String

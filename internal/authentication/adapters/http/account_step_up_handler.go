@@ -56,7 +56,7 @@ func (d Deps) requireStepUpSession(c *echo.Context) (sub, sessionID string, err 
 	if !authusecases.StepUpSatisfied(authn, time.Now().UTC()) {
 		return "", "", authusecases.ErrStepUpRequired
 	}
-	return authn.Sub, authn.SessionID, nil
+	return authn.UserID, authn.SessionID, nil
 }
 
 func (d Deps) handleStartStepUp(c *echo.Context) error {
@@ -67,7 +67,7 @@ func (d Deps) handleStartStepUp(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	methods, err := authusecases.StepUpStart(c.Request().Context(), d.stepUpDeps(), authn.Sub, authn.SessionID)
+	methods, err := authusecases.StepUpStart(c.Request().Context(), d.stepUpDeps(), authn.UserID, authn.SessionID)
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
@@ -91,7 +91,7 @@ func (d Deps) handleCompleteStepUp(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	if err := authusecases.CompleteStepUp(c.Request().Context(), d.stepUpDeps(), authusecases.CompleteStepUpInput{
-		Sub:       authn.Sub,
+		Sub:       authn.UserID,
 		SessionID: authn.SessionID,
 		Method:    authusecases.StepUpMethod(input.Method),
 		Password:  input.Password,

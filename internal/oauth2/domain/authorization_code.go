@@ -45,7 +45,7 @@ func GenerateAuthorizationCode(in AuthorizationCodeInput) (*spec.AuthorizationCo
 		TenantID:               in.TenantID,
 		AuthorizationRequestID: in.AuthorizationRequestID,
 		ClientID:               in.ClientID,
-		Sub:                    in.Sub,
+		UserID:                 in.Sub,
 		Scopes:                 in.Scopes,
 		RedirectURI:            in.RedirectURI,
 		CodeChallenge:          in.CodeChallenge,

@@ -64,7 +64,7 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 		ttl = PasswordResetTokenTTLSeconds * time.Second
 	}
 	if err := deps.TokenStore.Save(ctx, authnports.PasswordResetTokenRecord{
-		Sub:       user.Sub,
+		Sub:       user.ID,
 		TokenHash: sha256Hex(rawToken),
 		CreatedAt: now,
 		ExpiresAt: now.Add(ttl),

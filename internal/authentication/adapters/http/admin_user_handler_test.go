@@ -29,7 +29,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 	}
 	now := time.Now().UTC()
 	repo.Seed(&spec.User{
-		Sub: "disabled", PreferredUsername: "disabled", PasswordHash: hash,
+		ID: "disabled", PreferredUsername: "disabled", PasswordHash: hash,
 		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusDisabled, StatusChangedAt: &now},
 		CreatedAt: now, UpdatedAt: now,
 	})

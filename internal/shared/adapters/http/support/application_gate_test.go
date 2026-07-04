@@ -88,7 +88,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	d := support.Deps{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
 
 	decision, err := d.EvaluateApplicationAccess(ctx, "default", spec.ProtocolBindingOIDC, "c1", "alice", &authdomain.AuthenticationContext{
-		Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
+		UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
 	}, "")
 	if err != nil {
 		t.Fatal(err)
@@ -132,7 +132,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 		ApplicationRepo: apps, ApplicationAssignmentRepo: assignments,
 		ApplicationSignInPolicyRepo: policies, DefaultSignInPolicyRepo: defaults,
 	}
-	singleFactor := &authdomain.AuthenticationContext{Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"}}
+	singleFactor := &authdomain.AuthenticationContext{UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"}}
 
 	// 個別ポリシーが無ければデフォルトの MFA が適用される。
 	decision, err := d.EvaluateApplicationAccess(ctx, "default", spec.ProtocolBindingOIDC, "c1", "alice", singleFactor, "")

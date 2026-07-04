@@ -124,7 +124,7 @@ func (r *ScimRepository) FindUserRefByScimID(_ context.Context, tenantID, scimID
 	return &cloned, nil
 }
 
-func (r *ScimRepository) FindUserRefByUserSub(_ context.Context, tenantID, userSub string) (*ports.ScimUserRef, error) {
+func (r *ScimRepository) FindUserRefByUserID(_ context.Context, tenantID, userID string) (*ports.ScimUserRef, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	refs := r.userRefs[tenantID]
@@ -132,7 +132,7 @@ func (r *ScimRepository) FindUserRefByUserSub(_ context.Context, tenantID, userS
 		return nil, nil
 	}
 	for _, ref := range refs {
-		if ref.UserSub == userSub {
+		if ref.UserID == userID {
 			cloned := *ref
 			return &cloned, nil
 		}

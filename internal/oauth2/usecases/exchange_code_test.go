@@ -63,7 +63,7 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 		CreatedAt:                now,
 	})
 	userRepo.Seed(&spec.User{
-		Sub: "user", PreferredUsername: "alice", PasswordHash: "hash",
+		ID: "user", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -73,7 +73,7 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 		Code:                   "authorization-code",
 		AuthorizationRequestID: "00000000-0000-4000-8000-000000000001",
 		ClientID:               "client",
-		Sub:                    "user",
+		UserID:                 "user",
 		Scopes:                 scopes,
 		RedirectURI:            "https://client.example/cb",
 		CodeChallenge:          base64.RawURLEncoding.EncodeToString(sum[:]),

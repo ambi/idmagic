@@ -8,7 +8,7 @@ import (
 func validUser() User {
 	now := time.Now().UTC()
 	return User{
-		Sub:               "user_alice",
+		ID:                "user_alice",
 		PreferredUsername: "alice",
 		PasswordHash:      "$argon2id$v=19$m=19456,t=2,p=1$...",
 		EmailVerified:     true,
@@ -26,7 +26,7 @@ func TestUserValidateAcceptsMinimumValidShape(t *testing.T) {
 
 func TestUserValidateRejectsEmptySub(t *testing.T) {
 	u := validUser()
-	u.Sub = ""
+	u.ID = ""
 	if err := u.Validate(); err == nil {
 		t.Fatal("expected error for empty sub")
 	}

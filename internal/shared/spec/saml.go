@@ -85,7 +85,7 @@ type SamlSignInIssued struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
 	EntityID string    `json:"entityId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userIdNone"`
 }
 
 func (e *SamlSignInIssued) EventType() string     { return "SamlSignInIssued" }

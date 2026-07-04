@@ -62,7 +62,7 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 				Active:    true,
 				Scope:     strings.Join(rec.Scopes, " "),
 				ClientID:  rec.ClientID,
-				Sub:       rec.Sub,
+				Sub:       rec.UserID,
 				TokenType: "refresh_token",
 				Iat:       rec.IssuedAt.Unix(),
 				Exp:       rec.ExpiresAt.Unix(),

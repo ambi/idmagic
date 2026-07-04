@@ -139,13 +139,13 @@ func (d Deps) validateEntraSourceAnchors(c *echo.Context, sourceAttr string) err
 		attrs := feddomain.ResolveUserAttributes(*user)
 		withProfile, err := feddomain.ApplyEntraProfile(attrs, &spec.EntraFederationProfile{SourceAnchorAttribute: sourceAttr})
 		if err != nil {
-			return errBadRequest("sourceAnchor validation failed for user " + user.Sub + ": " + err.Error())
+			return errBadRequest("sourceAnchor validation failed for user " + user.ID + ": " + err.Error())
 		}
 		immutableID := withProfile[feddomain.EntraImmutableIDAttribute][0]
 		if previous, ok := seen[immutableID]; ok {
-			return errBadRequest("sourceAnchor attribute " + sourceAttr + " is not unique: users " + previous + " and " + user.Sub)
+			return errBadRequest("sourceAnchor attribute " + sourceAttr + " is not unique: users " + previous + " and " + user.ID)
 		}
-		seen[immutableID] = user.Sub
+		seen[immutableID] = user.ID
 	}
 	return nil
 }

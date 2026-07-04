@@ -26,7 +26,7 @@ func (e *ClientRegistered) OccurredAt() time.Time { return e.At }
 type UserAuthenticated struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 	AMR      []string  `json:"amr"`
 	// wi-44 / ADR-041: 産業標準の optional 属性 (後方互換: 既存 payload は破壊しない)。
 	// IP / device は ADR-046 の PII ポリシーに従い truncated / hash で持つ。
@@ -102,7 +102,7 @@ func (e *AuthenticationEventAggregated) OccurredAt() time.Time { return e.At }
 type AuthenticationStepCompleted struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`
-	Sub       string    `json:"sub"`
+	UserID    string    `json:"userId"`
 	Step      string    `json:"step"`
 	SessionID string    `json:"sessionId,omitempty"`
 }
@@ -124,7 +124,7 @@ func (e *AuthenticationStepFailed) OccurredAt() time.Time { return e.At }
 type MfaChallengeIssued struct {
 	At         time.Time     `json:"-"`
 	TenantID   string        `json:"tenantId"`
-	Sub        string        `json:"sub"`
+	UserID     string        `json:"userId"`
 	FactorType MfaFactorType `json:"factorType"`
 	SessionID  string        `json:"sessionId,omitempty"`
 }
@@ -135,7 +135,7 @@ func (e *MfaChallengeIssued) OccurredAt() time.Time { return e.At }
 type MfaChallengeSucceeded struct {
 	At         time.Time     `json:"-"`
 	TenantID   string        `json:"tenantId"`
-	Sub        string        `json:"sub"`
+	UserID     string        `json:"userId"`
 	FactorType MfaFactorType `json:"factorType"`
 	SessionID  string        `json:"sessionId,omitempty"`
 }
@@ -146,7 +146,7 @@ func (e *MfaChallengeSucceeded) OccurredAt() time.Time { return e.At }
 type MfaChallengeFailed struct {
 	At         time.Time     `json:"-"`
 	TenantID   string        `json:"tenantId"`
-	Sub        string        `json:"sub,omitempty"`
+	UserID     string        `json:"userId,omitempty"`
 	FactorType MfaFactorType `json:"factorType"`
 	SessionID  string        `json:"sessionId,omitempty"`
 }
@@ -157,7 +157,7 @@ func (e *MfaChallengeFailed) OccurredAt() time.Time { return e.At }
 type BackupCodeConsumed struct {
 	At             time.Time `json:"-"`
 	TenantID       string    `json:"tenantId"`
-	Sub            string    `json:"sub"`
+	UserID         string    `json:"userId"`
 	RemainingCount *int      `json:"remainingCount,omitempty"`
 }
 
@@ -167,7 +167,7 @@ func (e *BackupCodeConsumed) OccurredAt() time.Time { return e.At }
 type SessionStarted struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`
-	Sub         string    `json:"sub"`
+	UserID      string    `json:"userId"`
 	SessionID   string    `json:"sessionId"`
 	AMR         []string  `json:"amr,omitempty"`
 	ACR         string    `json:"acr,omitempty"`
@@ -181,7 +181,7 @@ func (e *SessionStarted) OccurredAt() time.Time { return e.At }
 type SessionRefreshed struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`
-	Sub       string    `json:"sub"`
+	UserID    string    `json:"userId"`
 	SessionID string    `json:"sessionId"`
 }
 
@@ -191,7 +191,7 @@ func (e *SessionRefreshed) OccurredAt() time.Time { return e.At }
 type FederatedAuthenticated struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`
-	Sub       string    `json:"sub"`
+	UserID    string    `json:"userId"`
 	Provider  string    `json:"provider"`
 	SessionID string    `json:"sessionId,omitempty"`
 }
@@ -202,7 +202,7 @@ func (e *FederatedAuthenticated) OccurredAt() time.Time { return e.At }
 type FederationLinked struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 	Provider string    `json:"provider"`
 }
 
@@ -212,7 +212,7 @@ func (e *FederationLinked) OccurredAt() time.Time { return e.At }
 type FederationUnlinked struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 	Provider string    `json:"provider"`
 }
 
@@ -220,22 +220,22 @@ func (e *FederationUnlinked) EventType() string     { return "FederationUnlinked
 func (e *FederationUnlinked) OccurredAt() time.Time { return e.At }
 
 type SessionImpersonationStarted struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
-	SessionID string    `json:"sessionId"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
+	SessionID    string    `json:"sessionId"`
 }
 
 func (e *SessionImpersonationStarted) EventType() string     { return "SessionImpersonationStarted" }
 func (e *SessionImpersonationStarted) OccurredAt() time.Time { return e.At }
 
 type SessionImpersonationEnded struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
-	SessionID string    `json:"sessionId"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
+	SessionID    string    `json:"sessionId"`
 }
 
 func (e *SessionImpersonationEnded) EventType() string     { return "SessionImpersonationEnded" }
@@ -244,7 +244,7 @@ func (e *SessionImpersonationEnded) OccurredAt() time.Time { return e.At }
 type PasswordChanged struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *PasswordChanged) EventType() string     { return "PasswordChanged" }
@@ -272,7 +272,7 @@ func (e *EmailSent) OccurredAt() time.Time { return e.At }
 type EmailChangeRequested struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`
-	Sub          string    `json:"sub"`
+	UserID       string    `json:"userId"`
 	NewEmailHash string    `json:"newEmailHash"`
 }
 
@@ -282,7 +282,7 @@ func (e *EmailChangeRequested) OccurredAt() time.Time { return e.At }
 type EmailChanged struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *EmailChanged) EventType() string     { return "EmailChanged" }
@@ -293,7 +293,7 @@ func (e *EmailChanged) OccurredAt() time.Time { return e.At }
 type MfaFactorEnrolled struct {
 	At         time.Time     `json:"-"`
 	TenantID   string        `json:"tenantId"`
-	Sub        string        `json:"sub"`
+	UserID     string        `json:"userId"`
 	FactorType MfaFactorType `json:"factorType"`
 }
 
@@ -305,7 +305,7 @@ func (e *MfaFactorEnrolled) OccurredAt() time.Time { return e.At }
 type MfaFactorRemoved struct {
 	At         time.Time     `json:"-"`
 	TenantID   string        `json:"tenantId"`
-	Sub        string        `json:"sub"`
+	UserID     string        `json:"userId"`
 	FactorType MfaFactorType `json:"factorType"`
 }
 
@@ -313,10 +313,10 @@ func (e *MfaFactorRemoved) EventType() string     { return "MfaFactorRemoved" }
 func (e *MfaFactorRemoved) OccurredAt() time.Time { return e.At }
 
 type UserCreated struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
 }
 
 func (e *UserCreated) EventType() string     { return "UserCreated" }
@@ -327,7 +327,7 @@ func (e *UserCreated) OccurredAt() time.Time { return e.At }
 type StepUpRequested struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`
-	Sub       string    `json:"sub"`
+	UserID    string    `json:"userId"`
 	SessionID string    `json:"sessionId"`
 }
 
@@ -339,7 +339,7 @@ func (e *StepUpRequested) OccurredAt() time.Time { return e.At }
 type StepUpCompleted struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`
-	Sub       string    `json:"sub"`
+	UserID    string    `json:"userId"`
 	SessionID string    `json:"sessionId"`
 	Method    string    `json:"method"`
 }
@@ -348,14 +348,14 @@ func (e *StepUpCompleted) EventType() string     { return "StepUpCompleted" }
 func (e *StepUpCompleted) OccurredAt() time.Time { return e.At }
 
 // SessionEnded は LoginSession が終了した (wi-20)。self / admin の明示的な失効では
-// ActorSub が操作者、reason が self_revoke / admin_revoke になる。
+// ActorUserID が操作者、reason が self_revoke / admin_revoke になる。
 type SessionEnded struct {
-	At        time.Time        `json:"-"`
-	TenantID  string           `json:"tenantId"`
-	Sub       string           `json:"sub"`
-	SessionID string           `json:"sessionId"`
-	ActorSub  string           `json:"actorSub"`
-	Reason    SessionEndReason `json:"reason"`
+	At          time.Time        `json:"-"`
+	TenantID    string           `json:"tenantId"`
+	UserID      string           `json:"userId"`
+	SessionID   string           `json:"sessionId"`
+	ActorUserID string           `json:"actorUserId"`
+	Reason      SessionEndReason `json:"reason"`
 }
 
 func (e *SessionEnded) EventType() string     { return "SessionEnded" }
@@ -364,8 +364,8 @@ func (e *SessionEnded) OccurredAt() time.Time { return e.At }
 type UserUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
-	TargetSub     string    `json:"targetSub"`
+	ActorUserID   string    `json:"actorUserId"`
+	TargetUserID  string    `json:"targetUserId"`
 	ChangedFields []string  `json:"changedFields"`
 }
 
@@ -373,20 +373,20 @@ func (e *UserUpdated) EventType() string     { return "UserUpdated" }
 func (e *UserUpdated) OccurredAt() time.Time { return e.At }
 
 type UserDisabled struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
 }
 
 func (e *UserDisabled) EventType() string     { return "UserDisabled" }
 func (e *UserDisabled) OccurredAt() time.Time { return e.At }
 
 type UserEnabled struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
 }
 
 func (e *UserEnabled) EventType() string     { return "UserEnabled" }
@@ -395,11 +395,11 @@ func (e *UserEnabled) OccurredAt() time.Time { return e.At }
 // UserRequiredActionSet は admin が次回ログイン時の強制アクションを付与した
 // (Keycloak Required Actions 相当 / wi-19)。値は監査に平文で残しても安全な enum。
 type UserRequiredActionSet struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
-	Action    string    `json:"action"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
+	Action       string    `json:"action"`
 }
 
 func (e *UserRequiredActionSet) EventType() string     { return "UserRequiredActionSet" }
@@ -407,13 +407,13 @@ func (e *UserRequiredActionSet) OccurredAt() time.Time { return e.At }
 
 // UserRequiredActionCleared は強制アクションが解除された。admin の明示解除のほか、
 // 本人がパスワードを変更した結果 update_password が自動解除される場合も発火する
-// (その場合 ActorSub は対象本人の sub)。
+// (その場合 ActorUserID は対象本人の sub)。
 type UserRequiredActionCleared struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
-	Action    string    `json:"action"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
+	Action       string    `json:"action"`
 }
 
 func (e *UserRequiredActionCleared) EventType() string     { return "UserRequiredActionCleared" }
@@ -422,11 +422,11 @@ func (e *UserRequiredActionCleared) OccurredAt() time.Time { return e.At }
 // UserSoftDeleted は admin がユーザーを soft-delete (削除予約) した。status は
 // PendingDeletion に遷移し、PII / Consent / RefreshToken / Session は温存される。
 type UserSoftDeleted struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
-	Reason    string    `json:"reason,omitempty"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
+	Reason       string    `json:"reason,omitempty"`
 }
 
 func (e *UserSoftDeleted) EventType() string     { return "UserSoftDeleted" }
@@ -435,10 +435,10 @@ func (e *UserSoftDeleted) OccurredAt() time.Time { return e.At }
 // UserRestored は admin が PendingDeletion のユーザーを Restore した。status は
 // Active に戻り、PII / credential は温存されたままログインが再開する。
 type UserRestored struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
 }
 
 func (e *UserRestored) EventType() string     { return "UserRestored" }
@@ -447,21 +447,21 @@ func (e *UserRestored) OccurredAt() time.Time { return e.At }
 // UserDeleted は admin または猶予期間経過後の自動 purge がユーザーを Purge した。
 // PII は anonymize 済みで、関連 aggregate は cascade 削除されている。
 type UserDeleted struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	ActorSub  string    `json:"actorSub"`
-	TargetSub string    `json:"targetSub"`
-	Reason    string    `json:"reason,omitempty"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	TargetUserID string    `json:"targetUserId"`
+	Reason       string    `json:"reason,omitempty"`
 }
 
 func (e *UserDeleted) EventType() string     { return "UserDeleted" }
 func (e *UserDeleted) OccurredAt() time.Time { return e.At }
 
 type AgentRegistered struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
 }
 
 func (e *AgentRegistered) EventType() string     { return "AgentRegistered" }
@@ -470,7 +470,7 @@ func (e *AgentRegistered) OccurredAt() time.Time { return e.At }
 type AgentUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	AgentID       string    `json:"agentId"`
 	ChangedFields []string  `json:"changedFields"`
 }
@@ -479,84 +479,84 @@ func (e *AgentUpdated) EventType() string     { return "AgentUpdated" }
 func (e *AgentUpdated) OccurredAt() time.Time { return e.At }
 
 type AgentDisabled struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
 }
 
 func (e *AgentDisabled) EventType() string     { return "AgentDisabled" }
 func (e *AgentDisabled) OccurredAt() time.Time { return e.At }
 
 type AgentEnabled struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
 }
 
 func (e *AgentEnabled) EventType() string     { return "AgentEnabled" }
 func (e *AgentEnabled) OccurredAt() time.Time { return e.At }
 
 type AgentKilled struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
 }
 
 func (e *AgentKilled) EventType() string     { return "AgentKilled" }
 func (e *AgentKilled) OccurredAt() time.Time { return e.At }
 
 type AgentDeleted struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
 }
 
 func (e *AgentDeleted) EventType() string     { return "AgentDeleted" }
 func (e *AgentDeleted) OccurredAt() time.Time { return e.At }
 
 type AgentOwnerChanged struct {
-	At               time.Time `json:"-"`
-	TenantID         string    `json:"tenantId"`
-	ActorSub         string    `json:"actorSub"`
-	AgentID          string    `json:"agentId"`
-	PreviousOwnerSub string    `json:"previousOwnerSub"`
-	NewOwnerSub      string    `json:"newOwnerSub"`
+	At                  time.Time `json:"-"`
+	TenantID            string    `json:"tenantId"`
+	ActorUserID         string    `json:"actorUserId"`
+	AgentID             string    `json:"agentId"`
+	PreviousOwnerUserID string    `json:"previousOwnerUserId"`
+	NewOwnerUserID      string    `json:"newOwnerUserId"`
 }
 
 func (e *AgentOwnerChanged) EventType() string     { return "AgentOwnerChanged" }
 func (e *AgentOwnerChanged) OccurredAt() time.Time { return e.At }
 
 type AgentCredentialBound struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
-	ClientID string    `json:"clientId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
+	ClientID    string    `json:"clientId"`
 }
 
 func (e *AgentCredentialBound) EventType() string     { return "AgentCredentialBound" }
 func (e *AgentCredentialBound) OccurredAt() time.Time { return e.At }
 
 type AgentCredentialUnbound struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	AgentID  string    `json:"agentId"`
-	ClientID string    `json:"clientId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	AgentID     string    `json:"agentId"`
+	ClientID    string    `json:"clientId"`
 }
 
 func (e *AgentCredentialUnbound) EventType() string     { return "AgentCredentialUnbound" }
 func (e *AgentCredentialUnbound) OccurredAt() time.Time { return e.At }
 
 type AdminOAuth2ClientCreated struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	ClientID string    `json:"clientId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	ClientID    string    `json:"clientId"`
 }
 
 func (e *AdminOAuth2ClientCreated) EventType() string     { return "AdminOAuth2ClientCreated" }
@@ -565,7 +565,7 @@ func (e *AdminOAuth2ClientCreated) OccurredAt() time.Time { return e.At }
 type AdminOAuth2ClientUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ClientID      string    `json:"clientId"`
 	ChangedFields []string  `json:"changedFields"`
 }
@@ -574,10 +574,10 @@ func (e *AdminOAuth2ClientUpdated) EventType() string     { return "AdminOAuth2C
 func (e *AdminOAuth2ClientUpdated) OccurredAt() time.Time { return e.At }
 
 type AdminOAuth2ClientDeleted struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	ClientID string    `json:"clientId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	ClientID    string    `json:"clientId"`
 }
 
 func (e *AdminOAuth2ClientDeleted) EventType() string     { return "AdminOAuth2ClientDeleted" }
@@ -586,7 +586,7 @@ func (e *AdminOAuth2ClientDeleted) OccurredAt() time.Time { return e.At }
 type ConsentGrantedEvent struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 	ClientID string    `json:"clientId"`
 	Scopes   []string  `json:"scopes"`
 }
@@ -595,11 +595,11 @@ func (e *ConsentGrantedEvent) EventType() string     { return "ConsentGranted" }
 func (e *ConsentGrantedEvent) OccurredAt() time.Time { return e.At }
 
 type ConsentRevokedEvent struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub,omitempty"`
-	Sub      string    `json:"sub"`
-	ClientID string    `json:"clientId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId,omitempty"`
+	UserID      string    `json:"userId"`
+	ClientID    string    `json:"clientId"`
 }
 
 func (e *ConsentRevokedEvent) EventType() string     { return "ConsentRevoked" }
@@ -611,7 +611,7 @@ type AuthorizationDetailsRequested struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`
 	ClientID    string    `json:"clientId"`
-	Sub         string    `json:"sub,omitempty"`
+	UserID      string    `json:"userId,omitempty"`
 	DetailTypes []string  `json:"detailTypes"`
 }
 
@@ -623,7 +623,7 @@ func (e *AuthorizationDetailsRequested) OccurredAt() time.Time { return e.At }
 type AuthorizationDetailsConsented struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`
-	Sub         string    `json:"sub"`
+	UserID      string    `json:"userId"`
 	ClientID    string    `json:"clientId"`
 	DetailTypes []string  `json:"detailTypes"`
 }
@@ -647,7 +647,7 @@ type AuthorizationCodeIssued struct {
 	At                  time.Time           `json:"-"`
 	TenantID            string              `json:"tenantId"`
 	ClientID            string              `json:"clientId"`
-	Sub                 string              `json:"sub"`
+	UserID              string              `json:"userId"`
 	Scopes              []string            `json:"scopes"`
 	CodeChallengeMethod CodeChallengeMethod `json:"codeChallengeMethod"`
 }
@@ -659,7 +659,7 @@ type AuthorizationCodeRedeemed struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
 	ClientID string    `json:"clientId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *AuthorizationCodeRedeemed) EventType() string     { return "AuthorizationCodeRedeemed" }
@@ -670,7 +670,7 @@ type AccessTokenIssued struct {
 	TenantID         string    `json:"tenantId"`
 	JTI              string    `json:"jti"`
 	ClientID         string    `json:"clientId"`
-	Sub              string    `json:"sub"`
+	UserID           string    `json:"userId"`
 	Scopes           []string  `json:"scopes"`
 	SenderConstraint string    `json:"senderConstraint"` // "none" | "dpop" | "mtls"
 }
@@ -685,7 +685,7 @@ type RefreshTokenIssued struct {
 	FamilyID string    `json:"familyId"`
 	ParentID string    `json:"parentId,omitempty"`
 	ClientID string    `json:"clientId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *RefreshTokenIssued) EventType() string     { return "RefreshTokenIssued" }
@@ -727,8 +727,8 @@ func (e *TokenIntrospected) OccurredAt() time.Time { return e.At }
 type TokenExchanged struct {
 	At              time.Time `json:"-"`
 	TenantID        string    `json:"tenantId"`
-	ActorSub        string    `json:"actorSub"`
-	SubjectSub      string    `json:"subjectSub"`
+	ActorUserID     string    `json:"actorUserId"`
+	SubjectUserID   string    `json:"subjectUserId"`
 	Audience        string    `json:"audience"`
 	DelegationDepth int       `json:"delegationDepth"`
 }
@@ -737,10 +737,10 @@ func (e *TokenExchanged) EventType() string     { return "TokenExchanged" }
 func (e *TokenExchanged) OccurredAt() time.Time { return e.At }
 
 type TokenExchangeRejected struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub,omitempty"`
-	Reason   string    `json:"reason"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId,omitempty"`
+	Reason      string    `json:"reason"`
 }
 
 func (e *TokenExchangeRejected) EventType() string     { return "TokenExchangeRejected" }
@@ -791,7 +791,7 @@ type DeviceAuthorizationApproved struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
 	ClientID string    `json:"clientId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *DeviceAuthorizationApproved) EventType() string     { return "DeviceAuthorizationApproved" }
@@ -801,16 +801,16 @@ type DeviceAuthorizationDenied struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
 	ClientID string    `json:"clientId"`
-	Sub      string    `json:"sub"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *DeviceAuthorizationDenied) EventType() string     { return "DeviceAuthorizationDenied" }
 func (e *DeviceAuthorizationDenied) OccurredAt() time.Time { return e.At }
 
 type TenantCreated struct {
-	At       time.Time `json:"-"`
-	ActorSub string    `json:"actorSub"`
-	TenantID string    `json:"tenantId"`
+	At          time.Time `json:"-"`
+	ActorUserID string    `json:"actorUserId"`
+	TenantID    string    `json:"tenantId"`
 }
 
 func (e *TenantCreated) EventType() string     { return "TenantCreated" }
@@ -818,7 +818,7 @@ func (e *TenantCreated) OccurredAt() time.Time { return e.At }
 
 type TenantUpdated struct {
 	At            time.Time `json:"-"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	TenantID      string    `json:"tenantId"`
 	ChangedFields []string  `json:"changedFields"`
 }
@@ -828,7 +828,7 @@ func (e *TenantUpdated) OccurredAt() time.Time { return e.At }
 
 type TenantUserAttributeSchemaUpdated struct {
 	At            time.Time `json:"-"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	TenantID      string    `json:"tenantId"`
 	AttributeKeys []string  `json:"attributeKeys"`
 }
@@ -839,28 +839,28 @@ func (e *TenantUserAttributeSchemaUpdated) EventType() string {
 func (e *TenantUserAttributeSchemaUpdated) OccurredAt() time.Time { return e.At }
 
 type TenantDisabled struct {
-	At       time.Time `json:"-"`
-	ActorSub string    `json:"actorSub"`
-	TenantID string    `json:"tenantId"`
+	At          time.Time `json:"-"`
+	ActorUserID string    `json:"actorUserId"`
+	TenantID    string    `json:"tenantId"`
 }
 
 func (e *TenantDisabled) EventType() string     { return "TenantDisabled" }
 func (e *TenantDisabled) OccurredAt() time.Time { return e.At }
 
 type TenantEnabled struct {
-	At       time.Time `json:"-"`
-	ActorSub string    `json:"actorSub"`
-	TenantID string    `json:"tenantId"`
+	At          time.Time `json:"-"`
+	ActorUserID string    `json:"actorUserId"`
+	TenantID    string    `json:"tenantId"`
 }
 
 func (e *TenantEnabled) EventType() string     { return "TenantEnabled" }
 func (e *TenantEnabled) OccurredAt() time.Time { return e.At }
 
 type GroupCreated struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	GroupID  string    `json:"groupId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
 }
 
 func (e *GroupCreated) EventType() string     { return "GroupCreated" }
@@ -869,7 +869,7 @@ func (e *GroupCreated) OccurredAt() time.Time { return e.At }
 type GroupUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	GroupID       string    `json:"groupId"`
 	ChangedFields []string  `json:"changedFields"`
 }
@@ -878,32 +878,32 @@ func (e *GroupUpdated) EventType() string     { return "GroupUpdated" }
 func (e *GroupUpdated) OccurredAt() time.Time { return e.At }
 
 type GroupDeleted struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	GroupID  string    `json:"groupId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
 }
 
 func (e *GroupDeleted) EventType() string     { return "GroupDeleted" }
 func (e *GroupDeleted) OccurredAt() time.Time { return e.At }
 
 type GroupMemberAdded struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	GroupID  string    `json:"groupId"`
-	UserSub  string    `json:"userSub"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
+	UserID      string    `json:"userId"`
 }
 
 func (e *GroupMemberAdded) EventType() string     { return "GroupMemberAdded" }
 func (e *GroupMemberAdded) OccurredAt() time.Time { return e.At }
 
 type GroupMemberRemoved struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
-	GroupID  string    `json:"groupId"`
-	UserSub  string    `json:"userSub"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
+	UserID      string    `json:"userId"`
 }
 
 func (e *GroupMemberRemoved) EventType() string     { return "GroupMemberRemoved" }

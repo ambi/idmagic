@@ -96,7 +96,7 @@ func UserInfo(
 	if !u.IsActive() {
 		return nil, NewOAuthError("invalid_token", "ユーザーは無効化されています")
 	}
-	res := &UserInfoResponse{Sub: u.Sub}
+	res := &UserInfoResponse{Sub: u.ID}
 	if slices.Contains(in.Scopes, "profile") {
 		if u.Name != nil {
 			res.Name = *u.Name

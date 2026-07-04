@@ -58,7 +58,7 @@ func (d Deps) handleCreateCategory(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	category, err := appusecases.CreateCategory(c.Request().Context(), d.categoryDeps(), appusecases.CreateCategoryInput{
-		ActorSub: actor.Sub, Name: req.Name, Position: req.Position, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, Name: req.Name, Position: req.Position, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)
@@ -83,7 +83,7 @@ func (d Deps) handleUpdateCategory(c *echo.Context) error {
 		name = nil
 	}
 	category, err := appusecases.UpdateCategory(c.Request().Context(), d.categoryDeps(), appusecases.UpdateCategoryInput{
-		ActorSub: actor.Sub, CategoryID: c.Param("category_id"), Name: name, Position: req.Position, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, CategoryID: c.Param("category_id"), Name: name, Position: req.Position, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)
@@ -100,7 +100,7 @@ func (d Deps) handleDeleteCategory(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if err := appusecases.DeleteCategory(
-		c.Request().Context(), d.categoryDeps(), actor.Sub, c.Param("category_id"), time.Now().UTC(),
+		c.Request().Context(), d.categoryDeps(), actor.ID, c.Param("category_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeCategoryError(c, err)
 	}
@@ -121,7 +121,7 @@ func (d Deps) handleSetApplicationCategories(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	app, err := appusecases.SetApplicationCategories(c.Request().Context(), d.categoryDeps(), appusecases.SetApplicationCategoriesInput{
-		ActorSub: actor.Sub, ApplicationID: c.Param("application_id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)

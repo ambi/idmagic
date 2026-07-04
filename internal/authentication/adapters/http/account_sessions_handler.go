@@ -55,7 +55,7 @@ func (d Deps) requireAuthenticatedSession(c *echo.Context) (sub, sessionID strin
 	if authn == nil || authn.AuthenticationPending {
 		return "", "", support.ErrAdminAuthenticationRequired
 	}
-	return authn.Sub, authn.SessionID, nil
+	return authn.UserID, authn.SessionID, nil
 }
 
 func (d Deps) handleListAccountSessions(c *echo.Context) error {

@@ -19,7 +19,7 @@ func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID st
 	var scopes []byte
 	err := r.Pool.QueryRow(ctx, `SELECT tenant_id,sub,client_id,scopes,granted_at,expires_at,revoked_at
 FROM consents WHERE tenant_id=$1 AND sub=$2 AND client_id=$3`, tenantID, sub, clientID).
-		Scan(&c.TenantID, &c.Sub, &c.ClientID, &scopes, &c.GrantedAt, &c.ExpiresAt, &c.RevokedAt)
+		Scan(&c.TenantID, &c.UserID, &c.ClientID, &scopes, &c.GrantedAt, &c.ExpiresAt, &c.RevokedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -53,7 +53,7 @@ FROM consents WHERE tenant_id=$1 ORDER BY sub,client_id`, tenantID)
 		var consent spec.Consent
 		var scopes []byte
 		if err := rows.Scan(
-			&consent.TenantID, &consent.Sub, &consent.ClientID, &scopes,
+			&consent.TenantID, &consent.UserID, &consent.ClientID, &scopes,
 			&consent.GrantedAt, &consent.ExpiresAt, &consent.RevokedAt,
 		); err != nil {
 			return nil, err
@@ -83,7 +83,7 @@ func (r *ConsentRepository) Save(ctx context.Context, c *spec.Consent) error {
 (tenant_id,sub,client_id,scopes,granted_at,expires_at,revoked_at) VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT (tenant_id,sub,client_id) DO UPDATE SET scopes=EXCLUDED.scopes,
 granted_at=EXCLUDED.granted_at,expires_at=EXCLUDED.expires_at,revoked_at=EXCLUDED.revoked_at,updated_at=now()`,
-		c.TenantID, c.Sub, c.ClientID, string(scopes), c.GrantedAt, c.ExpiresAt, c.RevokedAt)
+		c.TenantID, c.UserID, c.ClientID, string(scopes), c.GrantedAt, c.ExpiresAt, c.RevokedAt)
 	return err
 }
 

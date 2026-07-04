@@ -22,7 +22,7 @@ type AssignmentDeps struct {
 }
 
 type AssignApplicationInput struct {
-	ActorSub      string
+	ActorUserID   string
 	ApplicationID string
 	SubjectType   spec.AssignmentSubjectType
 	SubjectID     string
@@ -66,19 +66,19 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ApplicationAssigned{
-		At: assignment.CreatedAt, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: in.ApplicationID,
+		At: assignment.CreatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
 		SubjectType: string(in.SubjectType), SubjectID: subjectID,
 	})
 	return assignment, nil
 }
 
-func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorSub, applicationID string, subjectType spec.AssignmentSubjectType, subjectID string, now time.Time) error {
+func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, applicationID string, subjectType spec.AssignmentSubjectType, subjectID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	if err := deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, subjectType, subjectID); err != nil {
 		return err
 	}
 	emit(deps.Emit, &spec.ApplicationUnassigned{
-		At: adminNow(now), TenantID: tenantID, ActorSub: actorSub, ApplicationID: applicationID,
+		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID,
 		SubjectType: string(subjectType), SubjectID: subjectID,
 	})
 	return nil

@@ -119,7 +119,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	switch req.Type {
 	case "weblink":
 		app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
-			ActorSub: actor.Sub, Name: req.Name, Kind: spec.ApplicationWeblink,
+			ActorUserID: actor.ID, Name: req.Name, Kind: spec.ApplicationWeblink,
 			LaunchURL: req.LaunchURL, Now: now,
 		})
 		if err != nil {
@@ -144,14 +144,14 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			registration.JwksURI = &uri
 		}
 		result, err := oauthusecases.CreateAdminOAuth2Client(ctx, oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.CreateAdminOAuth2ClientInput{
-			ActorSub:     actor.Sub,
+			ActorUserID:  actor.ID,
 			Registration: registration,
 			Now:          now,
 		})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.Sub, req, now, spec.ApplicationFederated,
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationFederated,
 			spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
@@ -164,7 +164,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
 		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
 		result, err := oauthusecases.CreateAdminOAuth2Client(ctx, oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.CreateAdminOAuth2ClientInput{
-			ActorSub: actor.Sub,
+			ActorUserID: actor.ID,
 			Registration: oauthusecases.RegisterClientInput{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,
 				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
@@ -175,7 +175,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.Sub, req, now, spec.ApplicationService,
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationService,
 			spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
@@ -201,7 +201,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 			return err
 		}
-		app, err := d.createCatalogApp(ctx, actor.Sub, req, now, spec.ApplicationFederated,
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationFederated,
 			spec.ProtocolBinding{Type: spec.ProtocolBindingWsFed, Wtrealm: req.Wtrealm})
 		if err != nil {
 			return d.writeApplicationError(c, err)
@@ -234,7 +234,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
 			return err
 		}
-		app, err := d.createCatalogApp(ctx, actor.Sub, req, now, spec.ApplicationFederated,
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationFederated,
 			spec.ProtocolBinding{Type: spec.ProtocolBindingSAML, EntityID: req.EntityID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
@@ -247,15 +247,15 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 }
 
 // createCatalogApp は指定 kind の Application を作成し、protocol binding を接続する。
-func (d Deps) createCatalogApp(ctx context.Context, actorSub string, req createApplicationRequest, now time.Time, kind spec.ApplicationKind, binding spec.ProtocolBinding) (*spec.Application, error) {
+func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind spec.ApplicationKind, binding spec.ProtocolBinding) (*spec.Application, error) {
 	app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
-		ActorSub: actorSub, Name: req.Name, Kind: kind, LaunchURL: req.LaunchURL, Now: now,
+		ActorUserID: actorUserID, Name: req.Name, Kind: kind, LaunchURL: req.LaunchURL, Now: now,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return appusecases.AttachBinding(ctx, d.applicationDeps(), appusecases.AttachBindingInput{
-		ActorSub: actorSub, ApplicationID: app.ApplicationID, Binding: binding, Now: now,
+		ActorUserID: actorUserID, ApplicationID: app.ApplicationID, Binding: binding, Now: now,
 	})
 }
 
@@ -344,7 +344,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	if _, err := oauthusecases.UpdateAdminOAuth2Client(c.Request().Context(), oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.UpdateAdminOAuth2ClientInput{
-		ActorSub: actor.Sub, ClientID: clientID,
+		ActorUserID: actor.ID, ClientID: clientID,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
 		Now: time.Now().UTC(),

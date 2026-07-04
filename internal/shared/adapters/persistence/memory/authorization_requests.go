@@ -64,7 +64,7 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 	if !ok {
 		return fmt.Errorf("authorization request %q not found", id)
 	}
-	req.Sub = &sub
+	req.UserID = &sub
 	req.AuthTime = &authTime
 	req.AMR = slices.Clone(amr)
 	req.ACR = &acr

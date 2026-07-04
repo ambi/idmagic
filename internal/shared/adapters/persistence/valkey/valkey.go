@@ -176,7 +176,7 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 	acr string,
 ) error {
 	return s.update(ctx, id, func(req *spec.AuthorizationRequest) error {
-		req.Sub, req.AuthTime = &sub, &authTime
+		req.UserID, req.AuthTime = &sub, &authTime
 		req.AMR, req.ACR = amr, &acr
 		return nil
 	})
@@ -419,7 +419,7 @@ func (s *DeviceCodeStore) DeleteAllForSub(ctx context.Context, sub string) error
 		if err := getJSON(ctx, s.Client, key, &rec); err != nil {
 			return err
 		}
-		if rec.Sub == nil || *rec.Sub != sub {
+		if rec.UserID == nil || *rec.UserID != sub {
 			continue
 		}
 		pipe := s.Client.TxPipeline()
@@ -501,7 +501,7 @@ func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*spec.Login
 		if session.ID == "" {
 			continue
 		}
-		if session.Sub == sub && !session.AuthenticationPending {
+		if session.UserID == sub && !session.AuthenticationPending {
 			copied := session
 			out = append(out, &copied)
 		}
@@ -518,7 +518,7 @@ func (s *SessionStore) DeleteAllForSub(ctx context.Context, sub string) error {
 		if err := getJSON(ctx, s.Client, key, &session); err != nil {
 			return err
 		}
-		if session.Sub == sub {
+		if session.UserID == sub {
 			if err := s.Client.Del(ctx, key).Err(); err != nil {
 				return err
 			}

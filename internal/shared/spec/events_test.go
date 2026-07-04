@@ -9,7 +9,7 @@ import (
 func TestMarshalDomainEventUsesContractFieldNames(t *testing.T) {
 	data, err := MarshalDomainEvent(&RefreshTokenIssued{
 		At:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		TokenID: "token", FamilyID: "family", ClientID: "client", Sub: "user",
+		TokenID: "token", FamilyID: "family", ClientID: "client", UserID: "user",
 	})
 	if err != nil {
 		t.Fatal(err)

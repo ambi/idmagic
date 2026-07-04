@@ -102,9 +102,9 @@ func UpdateUserProfile(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, nil, err
 	}
-	// self 編集は actorSub == targetSub。changedFields の粒度で記録する (ADR-018)。
+	// self 編集は actorUserID == targetUserID。changedFields の粒度で記録する (ADR-018)。
 	adminEmit(deps.Emit, &spec.UserUpdated{
-		At: now, TenantID: user.TenantID, ActorSub: user.Sub, TargetSub: user.Sub, ChangedFields: changed,
+		At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID, ChangedFields: changed,
 	})
 	return &updated, defs, nil
 }

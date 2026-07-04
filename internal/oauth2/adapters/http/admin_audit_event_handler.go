@@ -222,8 +222,8 @@ func parseAuditEventQuery(c *echo.Context, actor *spec.User) (oauthports.AuditEv
 		}
 		q.Types = types
 	}
-	if sub := c.QueryParam("sub"); sub != "" {
-		q.Sub = sub
+	if userID := c.QueryParam("user_id"); userID != "" {
+		q.UserID = userID
 	}
 	if after := c.QueryParam("after"); after != "" {
 		t, err := time.Parse(time.RFC3339, after)

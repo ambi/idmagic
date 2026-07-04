@@ -12,7 +12,7 @@ models:
         type: String
       scim_id:
         type: String
-      user_sub:
+      user_id:
         type: String
   ScimGroupRef:
     kind: entity

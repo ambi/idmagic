@@ -23,7 +23,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	}
 	now := time.Date(2025, 6, 10, 0, 0, 0, 0, time.UTC)
 	user := &spec.User{
-		Sub: "user-1", PreferredUsername: "alice", PasswordHash: hash,
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	}
 	if err := userRepo.Save(context.Background(), user); err != nil {
@@ -39,7 +39,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 			events = append(events, event)
 		},
 	}, ChangePasswordInput{
-		Sub:             user.Sub,
+		Sub:             user.ID,
 		CurrentPassword: "demo-password-1234",
 		NewPassword:     "fresh-pass-9182",
 		Now:             now,
@@ -57,7 +57,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	if !ok {
 		t.Fatal("updated hash does not verify new password")
 	}
-	recent, err := historyRepo.Recent(context.Background(), user.Sub, PasswordPolicyHistoryDepth)
+	recent, err := historyRepo.Recent(context.Background(), user.ID, PasswordPolicyHistoryDepth)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestChangePasswordRejectsCurrentPasswordMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := userRepo.Save(context.Background(), &spec.User{
-		Sub: "user-1", PreferredUsername: "alice", PasswordHash: hash,
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
 		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 	}
 	now := time.Date(2025, 6, 10, 0, 0, 0, 0, time.UTC)
 	if err := userRepo.Save(context.Background(), &spec.User{
-		Sub: "user-1", PreferredUsername: "alice", PasswordHash: hash,
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	}
 	now := time.Now().UTC()
 	if err := userRepo.Save(context.Background(), &spec.User{
-		Sub: "user-1", PreferredUsername: "alice", PasswordHash: initialHash,
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: initialHash,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)

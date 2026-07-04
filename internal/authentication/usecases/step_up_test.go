@@ -63,7 +63,7 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *SessionManager,
 		t.Fatal(err)
 	}
 	if err := userRepo.Save(ctx, &spec.User{
-		Sub: "user-1", PreferredUsername: "alice", PasswordHash: hash, MfaEnrolled: true,
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash, MfaEnrolled: true,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *SessionManager,
 	}
 	mfaRepo := memory.NewMfaFactorRepository()
 	if err := mfaRepo.Save(ctx, &spec.MfaFactor{
-		Sub: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now.Add(-time.Hour),
+		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 		t.Fatalf("expected 1 event, got %d", len(*events))
 	}
 	completed, ok := (*events)[0].(*spec.StepUpCompleted)
-	if !ok || completed.Method != "password" || completed.Sub != "user-1" {
+	if !ok || completed.Method != "password" || completed.UserID != "user-1" {
 		t.Fatalf("unexpected event %#v", (*events)[0])
 	}
 }

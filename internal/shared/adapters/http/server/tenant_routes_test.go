@@ -24,7 +24,7 @@ func (r *fixedAuthnResolver) Resolve(
 	context.Context,
 	authdomain.Headers,
 ) (*authdomain.AuthenticationContext, error) {
-	return &authdomain.AuthenticationContext{Sub: r.sub, AuthTime: time.Now().Unix()}, nil
+	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix()}, nil
 }
 
 func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
@@ -99,11 +99,11 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	users := memory.NewUserRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
-		Sub: "ops", TenantID: spec.DefaultTenantID, PreferredUsername: "ops",
+		ID: "ops", TenantID: spec.DefaultTenantID, PreferredUsername: "ops",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&spec.User{
-		Sub: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	resolver := &fixedAuthnResolver{sub: "ops"}
@@ -139,7 +139,7 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 	}
 	users := memory.NewUserRepository()
 	users.Seed(&spec.User{
-		Sub: "acme-admin", TenantID: "acme", PreferredUsername: "acme-admin",
+		ID: "acme-admin", TenantID: "acme", PreferredUsername: "acme-admin",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	resolver := &fixedAuthnResolver{sub: "acme-admin"}

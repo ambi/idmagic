@@ -19,7 +19,7 @@ type Agent struct {
 	Name        string      `json:"name"`
 	Description *string     `json:"description,omitempty"`
 	Kind        AgentKind   `json:"kind"`
-	OwnerSub    string      `json:"owner_sub"`
+	OwnerUserID string      `json:"owner_user_id"`
 	Status      AgentStatus `json:"status"`
 	Roles       []string    `json:"roles"`
 	CreatedAt   time.Time   `json:"created_at"`

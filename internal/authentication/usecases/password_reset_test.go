@@ -25,7 +25,7 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 	email := "alice@example.com"
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &email, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
@@ -85,7 +85,7 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: currentHash,
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: currentHash,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	})
 	rawToken := "reset-token-aaaa"

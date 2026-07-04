@@ -22,14 +22,14 @@ func TestCreateCategoryAssignsTrailingPosition(t *testing.T) {
 	ctx := tenantContext()
 	deps, _ := newCategoryDeps()
 
-	first, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorSub: "admin", Name: "Work"})
+	first, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorUserID: "admin", Name: "Work"})
 	if err != nil {
 		t.Fatalf("create first: %v", err)
 	}
 	if first.Position != 0 {
 		t.Fatalf("first position want 0, got %d", first.Position)
 	}
-	second, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorSub: "admin", Name: "Personal"})
+	second, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorUserID: "admin", Name: "Personal"})
 	if err != nil {
 		t.Fatalf("create second: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestCreateCategoryAssignsTrailingPosition(t *testing.T) {
 func TestCreateCategoryRejectsBlankName(t *testing.T) {
 	ctx := tenantContext()
 	deps, _ := newCategoryDeps()
-	if _, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorSub: "admin", Name: "  "}); !errors.Is(err, appusecases.ErrCategoryNameRequired) {
+	if _, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorUserID: "admin", Name: "  "}); !errors.Is(err, appusecases.ErrCategoryNameRequired) {
 		t.Fatalf("expected ErrCategoryNameRequired, got %v", err)
 	}
 }
@@ -50,12 +50,12 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 	ctx := tenantContext()
 	deps, appDeps := newCategoryDeps()
 
-	work, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorSub: "admin", Name: "Work"})
+	work, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorUserID: "admin", Name: "Work"})
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorSub: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)
@@ -63,7 +63,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 
 	// 重複を含めても 1 件に正規化される。
 	updated, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorSub: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.CategoryID, work.CategoryID},
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.CategoryID, work.CategoryID},
 	})
 	if err != nil {
 		t.Fatalf("set categories: %v", err)
@@ -74,7 +74,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 
 	// 未知のカテゴリは拒否する。
 	if _, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorSub: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{"nope"},
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{"nope"},
 	}); !errors.Is(err, appusecases.ErrUnknownCategory) {
 		t.Fatalf("expected ErrUnknownCategory, got %v", err)
 	}
@@ -84,18 +84,18 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 	ctx := tenantContext()
 	deps, appDeps := newCategoryDeps()
 
-	work, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorSub: "admin", Name: "Work"})
+	work, err := appusecases.CreateCategory(ctx, deps, appusecases.CreateCategoryInput{ActorUserID: "admin", Name: "Work"})
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorSub: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)
 	}
 	if _, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorSub: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.CategoryID},
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.CategoryID},
 	}); err != nil {
 		t.Fatalf("set categories: %v", err)
 	}

@@ -39,7 +39,7 @@ type groupSummaryResponse struct {
 }
 
 type groupMemberResponse struct {
-	UserSub           string    `json:"user_sub"`
+	UserID            string    `json:"user_id"`
 	PreferredUsername string    `json:"preferred_username"`
 	CreatedAt         time.Time `json:"created_at"`
 }
@@ -101,7 +101,7 @@ func (d Deps) handleCreateGroup(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	group, err := idmusecases.CreateGroup(c.Request().Context(), d.adminGroupDeps(), idmusecases.CreateGroupInput{
-		ActorSub: actor.Sub, Name: input.Name, Description: input.Description, Roles: input.Roles, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, Name: input.Name, Description: input.Description, Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeAdminGroupError(c, err)
@@ -122,7 +122,7 @@ func (d Deps) handleUpdateGroup(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	group, err := idmusecases.UpdateGroup(c.Request().Context(), d.adminGroupDeps(), idmusecases.UpdateGroupInput{
-		ActorSub: actor.Sub, ID: c.Param("group_id"),
+		ActorUserID: actor.ID, ID: c.Param("group_id"),
 		Name: input.Name, Description: input.Description, Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -143,7 +143,7 @@ func (d Deps) handleDeleteGroup(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := idmusecases.DeleteGroup(c.Request().Context(), d.adminGroupDeps(), actor.Sub, c.Param("group_id"), time.Now().UTC()); err != nil {
+	if err := idmusecases.DeleteGroup(c.Request().Context(), d.adminGroupDeps(), actor.ID, c.Param("group_id"), time.Now().UTC()); err != nil {
 		return d.writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -158,7 +158,7 @@ func (d Deps) handleAddGroupMember(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := idmusecases.AddMember(c.Request().Context(), d.adminGroupDeps(), actor.Sub, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
+	if err := idmusecases.AddMember(c.Request().Context(), d.adminGroupDeps(), actor.ID, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
 		return d.writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -173,7 +173,7 @@ func (d Deps) handleRemoveGroupMember(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := idmusecases.RemoveMember(c.Request().Context(), d.adminGroupDeps(), actor.Sub, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
+	if err := idmusecases.RemoveMember(c.Request().Context(), d.adminGroupDeps(), actor.ID, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
 		return d.writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -211,11 +211,11 @@ func (d Deps) adminGroupDeps() idmusecases.AdminGroupDeps {
 func (d Deps) toGroupMemberResponses(ctx context.Context, members []*spec.GroupMember) []groupMemberResponse {
 	out := make([]groupMemberResponse, len(members))
 	for i, member := range members {
-		username := member.UserSub
-		if user, err := d.UserRepo.FindBySub(ctx, member.UserSub); err == nil && user != nil {
+		username := member.UserID
+		if user, err := d.UserRepo.FindBySub(ctx, member.UserID); err == nil && user != nil {
 			username = user.PreferredUsername
 		}
-		out[i] = groupMemberResponse{UserSub: member.UserSub, PreferredUsername: username, CreatedAt: member.CreatedAt}
+		out[i] = groupMemberResponse{UserID: member.UserID, PreferredUsername: username, CreatedAt: member.CreatedAt}
 	}
 	return out
 }

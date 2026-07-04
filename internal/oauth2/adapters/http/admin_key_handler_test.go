@@ -39,7 +39,7 @@ func newKeyAdminServer(t *testing.T, actor *spec.User) (*echo.Echo, *crypto.InMe
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			Sub: actor.Sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}
 	}
 	events := make([]spec.DomainEvent, 0)
@@ -57,7 +57,7 @@ func newKeyAdminServer(t *testing.T, actor *spec.User) (*echo.Echo, *crypto.InMe
 func keyAdminUser(sub, tenantID string, roles []string) *spec.User {
 	now := time.Now().UTC()
 	return &spec.User{
-		Sub: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
+		ID: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}
 }

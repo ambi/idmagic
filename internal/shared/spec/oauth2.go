@@ -52,7 +52,7 @@ func hasJWKs(jwks map[string]any) bool {
 
 type Consent struct {
 	TenantID             string                `json:"tenant_id"`
-	Sub                  string                `json:"sub"`
+	UserID               string                `json:"user_id"`
 	ClientID             string                `json:"client_id"`
 	Scopes               []string              `json:"scopes"`
 	State                ConsentState          `json:"state"`
@@ -132,7 +132,7 @@ type AuthorizationRequest struct {
 	Prompt               *string                    `json:"prompt,omitempty"`
 	MaxAge               *int                       `json:"max_age,omitempty"`
 	ParRequestURI        *string                    `json:"par_request_uri,omitempty"`
-	Sub                  *string                    `json:"sub,omitempty"`
+	UserID               *string                    `json:"user_id,omitempty"`
 	AuthTime             *int64                     `json:"auth_time,omitempty"`
 	AMR                  []string                   `json:"amr,omitempty"`
 	ACR                  *string                    `json:"acr,omitempty"`
@@ -155,7 +155,7 @@ type AuthorizationCodeRecord struct {
 	TenantID               string                       `json:"tenant_id"`
 	AuthorizationRequestID string                       `json:"authorization_request_id"`
 	ClientID               string                       `json:"client_id"`
-	Sub                    string                       `json:"sub"`
+	UserID                 string                       `json:"user_id"`
 	Scopes                 []string                     `json:"scopes"`
 	RedirectURI            string                       `json:"redirect_uri"`
 	CodeChallenge          string                       `json:"code_challenge"`
@@ -197,7 +197,7 @@ type RefreshTokenRecord struct {
 	FamilyID          string            `json:"family_id"`
 	ParentID          *string           `json:"parent_id,omitempty"`
 	ClientID          string            `json:"client_id"`
-	Sub               string            `json:"sub"`
+	UserID            string            `json:"user_id"`
 	Scopes            []string          `json:"scopes"`
 	IssuedAt          time.Time         `json:"issued_at"`
 	ExpiresAt         time.Time         `json:"expires_at"`
@@ -240,7 +240,7 @@ type DeviceAuthorization struct {
 	ClientID        string              `json:"client_id"`
 	Scopes          []string            `json:"scopes"`
 	State           DeviceCodeFlowState `json:"state"`
-	Sub             *string             `json:"sub,omitempty"`
+	UserID          *string             `json:"user_id,omitempty"`
 	AuthTime        *int64              `json:"auth_time,omitempty"`
 	IntervalSeconds int                 `json:"interval_seconds"`
 	LastPolledAt    *time.Time          `json:"last_polled_at,omitempty"`

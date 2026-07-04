@@ -58,13 +58,13 @@ func TestSaveAndGetMyApplicationOrder(t *testing.T) {
 	for _, name := range []string{"Alpha", "Beta", "Gamma"} {
 		app, err := appusecases.CreateApplication(ctx,
 			appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
-			appusecases.CreateApplicationInput{ActorSub: "admin", Name: name, Kind: spec.ApplicationFederated})
+			appusecases.CreateApplicationInput{ActorUserID: "admin", Name: name, Kind: spec.ApplicationFederated})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
 		ids[name] = app.ApplicationID
 		if _, err := appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
-			ActorSub: "admin", ApplicationID: app.ApplicationID,
+			ActorUserID: "admin", ApplicationID: app.ApplicationID,
 			SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
 		}); err != nil {
 			t.Fatalf("assign %s: %v", name, err)

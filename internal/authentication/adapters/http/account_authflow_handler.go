@@ -15,7 +15,7 @@ import (
 
 type accountContextResponse struct {
 	CSRFToken         string   `json:"csrf_token"`
-	Sub               string   `json:"sub"`
+	ID                string   `json:"id"`
 	PreferredUsername string   `json:"preferred_username,omitempty"`
 	TenantID          string   `json:"tenant_id,omitempty"`
 	Roles             []string `json:"roles,omitempty"`
@@ -38,9 +38,9 @@ func (d Deps) handleAccountContext(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	resp := accountContextResponse{CSRFToken: csrf, Sub: authn.Sub}
+	resp := accountContextResponse{CSRFToken: csrf, ID: authn.UserID}
 	if d.UserRepo != nil {
-		if user, _ := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub); user != nil {
+		if user, _ := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID); user != nil {
 			resp.PreferredUsername = user.PreferredUsername
 			resp.TenantID = user.TenantID
 			// グループ由来ロールを含む有効ロールを返す (ADR-038)。
@@ -81,7 +81,7 @@ func (d Deps) handleChangePasswordAPI(c *echo.Context) error {
 		Emit:                d.Emit,
 		Policy:              snap,
 	}, authusecases.ChangePasswordInput{
-		Sub:             authn.Sub,
+		Sub:             authn.UserID,
 		CurrentPassword: input.CurrentPassword,
 		NewPassword:     input.NewPassword,
 		Now:             time.Now().UTC(),

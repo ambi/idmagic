@@ -29,7 +29,7 @@ func (g Group) Validate() error {
 // GroupMember は User と Group の所属関係。group_id × user_sub で一意。
 type GroupMember struct {
 	GroupID   string    `json:"group_id"`
-	UserSub   string    `json:"user_sub"`
+	UserID    string    `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

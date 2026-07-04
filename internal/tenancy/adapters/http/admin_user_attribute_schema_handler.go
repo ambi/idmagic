@@ -77,7 +77,7 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 			keys[i] = def.Key
 		}
 		d.Emit(&spec.TenantUserAttributeSchemaUpdated{
-			At: time.Now().UTC(), ActorSub: actor.Sub, TenantID: actor.TenantID, AttributeKeys: keys,
+			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, AttributeKeys: keys,
 		})
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toUserAttributeSchemaResponse(schema))

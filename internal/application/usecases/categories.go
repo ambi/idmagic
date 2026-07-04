@@ -36,10 +36,10 @@ func ListCategories(ctx context.Context, deps CategoryDeps) ([]*spec.Application
 }
 
 type CreateCategoryInput struct {
-	ActorSub string
-	Name     string
-	Position *int
-	Now      time.Time
+	ActorUserID string
+	Name        string
+	Position    *int
+	Now         time.Time
 }
 
 func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInput) (*spec.ApplicationCategory, error) {
@@ -64,7 +64,7 @@ func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInp
 	if err := deps.Repo.Save(ctx, category); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorSub: in.ActorSub, CategoryID: id})
+	emit(deps.Emit, &spec.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id})
 	return category, nil
 }
 
@@ -81,11 +81,11 @@ func resolvePosition(ctx context.Context, deps CategoryDeps, tenantID string, re
 }
 
 type UpdateCategoryInput struct {
-	ActorSub   string
-	CategoryID string
-	Name       *string
-	Position   *int
-	Now        time.Time
+	ActorUserID string
+	CategoryID  string
+	Name        *string
+	Position    *int
+	Now         time.Time
 }
 
 func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInput) (*spec.ApplicationCategory, error) {
@@ -121,12 +121,12 @@ func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInp
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ApplicationCategoryUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub, CategoryID: category.CategoryID,
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: category.CategoryID,
 	})
 	return &updated, nil
 }
 
-func DeleteCategory(ctx context.Context, deps CategoryDeps, actorSub, categoryID string, now time.Time) error {
+func DeleteCategory(ctx context.Context, deps CategoryDeps, actorUserID, categoryID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	category, err := deps.Repo.FindByID(ctx, tenantID, categoryID)
 	if err != nil {
@@ -141,12 +141,12 @@ func DeleteCategory(ctx context.Context, deps CategoryDeps, actorSub, categoryID
 	if err := deps.AppRepo.RemoveCategory(ctx, tenantID, categoryID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorSub: actorSub, CategoryID: categoryID})
+	emit(deps.Emit, &spec.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID})
 	return nil
 }
 
 type SetApplicationCategoriesInput struct {
-	ActorSub      string
+	ActorUserID   string
 	ApplicationID string
 	CategoryIDs   []string
 	Now           time.Time
@@ -191,7 +191,7 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ApplicationUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub,
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
 		ApplicationID: app.ApplicationID, ChangedFields: []string{"category_ids"},
 	})
 	return &updated, nil

@@ -71,11 +71,11 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 
 	// セッション解決。未認証ならログインへ誘導し、認証後に同じ URL へ戻す。
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
-	if authn == nil || authn.Sub == "" || authn.AuthenticationPending {
+	if authn == nil || authn.UserID == "" || authn.AuthenticationPending {
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
 	}
 
-	user, err := d.UserRepo.FindBySub(ctx, authn.Sub)
+	user, err := d.UserRepo.FindBySub(ctx, authn.UserID)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 
 	// 割当ゲート (wi-69): RP が Application binding に属する場合、未割当 subject には
 	// assertion を発行しない (fail-closed, AssignmentGatesProtocol)。
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingWsFed, rp.Wtrealm, authn.Sub, authn, d.ClientIP(c.Request()))
+	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingWsFed, rp.Wtrealm, authn.UserID, authn, d.ClientIP(c.Request()))
 	if err != nil {
 		return err
 	}
@@ -95,12 +95,12 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 		reason := decision.Reason
 		if decision.StepUpRequired {
 			reason = "step-up required by application sign-in policy"
-			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.Sub})
+			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.UserID})
 		} else if reason == "" {
 			reason = "subject not assigned to application"
 		}
 		if decision.ApplicationID != "" {
-			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.Sub, Reason: reason})
+			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.UserID, Reason: reason})
 		}
 		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
 		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインインポリシーを満たしていません")
@@ -161,7 +161,7 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 		return c.String(http.StatusInternalServerError, "form render failed")
 	}
 
-	d.emit(&spec.WsFedSignInIssued{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Sub: authn.Sub})
+	d.emit(&spec.WsFedSignInIssued{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }

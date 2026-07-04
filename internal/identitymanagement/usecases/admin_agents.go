@@ -84,11 +84,11 @@ func GetAgent(ctx context.Context, deps AdminAgentDeps, id string) (*AgentView, 
 }
 
 type RegisterAgentInput struct {
-	ActorSub    string
+	ActorUserID string
 	Name        string
 	Description *string
 	Kind        *spec.AgentKind
-	OwnerSub    string
+	OwnerUserID string
 	Roles       []string
 	Now         time.Time
 }
@@ -102,9 +102,9 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err := ensureAgentNameAvailable(ctx, deps, tenantID, name, ""); err != nil {
 		return nil, err
 	}
-	owner := strings.TrimSpace(in.OwnerSub)
+	owner := strings.TrimSpace(in.OwnerUserID)
 	if owner == "" {
-		owner = strings.TrimSpace(in.ActorSub)
+		owner = strings.TrimSpace(in.ActorUserID)
 	}
 	if owner == "" {
 		return nil, ErrAgentOwnerRequired
@@ -123,7 +123,7 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	now := normalizedNow(in.Now)
 	agent := &spec.Agent{
 		ID: id, TenantID: tenantID, Name: name, Description: normalizeDescription(in.Description),
-		Kind: normalizeAgentKind(in.Kind), OwnerSub: owner, Status: spec.AgentStatusActive,
+		Kind: normalizeAgentKind(in.Kind), OwnerUserID: owner, Status: spec.AgentStatusActive,
 		Roles: roles, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := agent.Validate(); err != nil {
@@ -132,17 +132,17 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err := deps.AgentRepo.Save(ctx, agent); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.AgentRegistered{At: now, TenantID: agent.TenantID, ActorSub: in.ActorSub, AgentID: agent.ID})
+	adminEmit(deps.Emit, &spec.AgentRegistered{At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID})
 	return agent, nil
 }
 
 type UpdateAgentInput struct {
-	ActorSub    string
+	ActorUserID string
 	ID          string
 	Name        *string
 	Description *string
 	Kind        *spec.AgentKind
-	OwnerSub    *string
+	OwnerUserID *string
 	Roles       *[]string
 	Now         time.Time
 }
@@ -161,7 +161,7 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 	}
 	updated := *agent
 	changed := []string{}
-	previousOwner := agent.OwnerSub
+	previousOwner := agent.OwnerUserID
 	ownerChanged := false
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
@@ -190,16 +190,16 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 			changed = append(changed, "kind")
 		}
 	}
-	if in.OwnerSub != nil {
-		owner := strings.TrimSpace(*in.OwnerSub)
+	if in.OwnerUserID != nil {
+		owner := strings.TrimSpace(*in.OwnerUserID)
 		if owner == "" {
 			return nil, ErrAgentOwnerRequired
 		}
-		if owner != agent.OwnerSub {
+		if owner != agent.OwnerUserID {
 			if err := ensureAgentOwner(ctx, deps, tenantID, owner); err != nil {
 				return nil, err
 			}
-			updated.OwnerSub = owner
+			updated.OwnerUserID = owner
 			changed = append(changed, "owner_sub")
 			ownerChanged = true
 		}
@@ -226,12 +226,12 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 		return nil, err
 	}
 	adminEmit(deps.Emit, &spec.AgentUpdated{
-		At: now, TenantID: agent.TenantID, ActorSub: in.ActorSub, AgentID: agent.ID, ChangedFields: changed,
+		At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID, ChangedFields: changed,
 	})
 	if ownerChanged {
 		adminEmit(deps.Emit, &spec.AgentOwnerChanged{
-			At: now, TenantID: agent.TenantID, ActorSub: in.ActorSub, AgentID: agent.ID,
-			PreviousOwnerSub: previousOwner, NewOwnerSub: updated.OwnerSub,
+			At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID,
+			PreviousOwnerUserID: previousOwner, NewOwnerUserID: updated.OwnerUserID,
 		})
 	}
 	return &updated, nil
@@ -239,7 +239,7 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 
 // SetAgentDisabled は Agent を運用停止 (disabled=true) / 再稼働 (disabled=false) する。
 // Killed の Agent は復帰できないため reject する (一方向終端)。
-func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorSub, id string, disabled bool, now time.Time) (*spec.Agent, error) {
+func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, disabled bool, now time.Time) (*spec.Agent, error) {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -268,16 +268,16 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorSub, id str
 		return nil, err
 	}
 	if disabled {
-		adminEmit(deps.Emit, &spec.AgentDisabled{At: now, TenantID: tenantID, ActorSub: actorSub, AgentID: agent.ID})
+		adminEmit(deps.Emit, &spec.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	} else {
-		adminEmit(deps.Emit, &spec.AgentEnabled{At: now, TenantID: tenantID, ActorSub: actorSub, AgentID: agent.ID})
+		adminEmit(deps.Emit, &spec.AgentEnabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	}
 	return &updated, nil
 }
 
 // KillAgent は Agent を緊急停止し Killed (一方向終端) に遷移させる。既に Killed なら
 // reject する (冪等ではなく irreversible なため明示エラー)。
-func KillAgent(ctx context.Context, deps AdminAgentDeps, actorSub, id string, now time.Time) (*spec.Agent, error) {
+func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, now time.Time) (*spec.Agent, error) {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -300,12 +300,12 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorSub, id string, no
 	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.AgentKilled{At: now, TenantID: tenantID, ActorSub: actorSub, AgentID: agent.ID})
+	adminEmit(deps.Emit, &spec.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	return &updated, nil
 }
 
 // DeleteAgent は Agent を物理削除し、束縛は cascade で解除する。
-func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorSub, id string, now time.Time) error {
+func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -321,13 +321,13 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorSub, id string, 
 	if err := deps.AgentRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	adminEmit(deps.Emit, &spec.AgentDeleted{At: now, TenantID: tenantID, ActorSub: actorSub, AgentID: id})
+	adminEmit(deps.Emit, &spec.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
 	return nil
 }
 
 // BindCredential は Agent に同一テナントの OAuth2Client を束縛する。既束縛なら no-op
 // で event も emit しない (冪等)。
-func BindCredential(ctx context.Context, deps AdminAgentDeps, actorSub, agentID, clientID string, now time.Time) error {
+func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agentID, clientID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
 	if err != nil {
@@ -377,17 +377,17 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorSub, agentID,
 	}
 	if added {
 		adminEmit(deps.Emit, &spec.AgentCredentialBound{
-			At: now, TenantID: tenantID, ActorSub: actorSub, AgentID: agentID, ClientID: clientID,
+			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}
 	return nil
 }
 
-func ensureAgentOwner(ctx context.Context, deps AdminAgentDeps, tenantID, ownerSub string) error {
+func ensureAgentOwner(ctx context.Context, deps AdminAgentDeps, tenantID, ownerUserID string) error {
 	if deps.UserRepo == nil {
 		return ErrAgentOwnerNotFound
 	}
-	user, err := deps.UserRepo.FindBySub(ctx, ownerSub)
+	user, err := deps.UserRepo.FindBySub(ctx, ownerUserID)
 	if err != nil {
 		return err
 	}
@@ -399,7 +399,7 @@ func ensureAgentOwner(ctx context.Context, deps AdminAgentDeps, tenantID, ownerS
 
 // UnbindCredential は Agent から OAuth2Client の束縛を解除する。非束縛なら no-op で
 // event も emit しない (冪等)。
-func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorSub, agentID, clientID string, now time.Time) error {
+func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agentID, clientID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
 	if err != nil {
@@ -415,7 +415,7 @@ func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorSub, agentI
 	}
 	if removed {
 		adminEmit(deps.Emit, &spec.AgentCredentialUnbound{
-			At: now, TenantID: tenantID, ActorSub: actorSub, AgentID: agentID, ClientID: clientID,
+			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}
 	return nil

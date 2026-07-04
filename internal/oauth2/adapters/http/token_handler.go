@@ -160,7 +160,7 @@ func (d Deps) handleToken(c *echo.Context) error {
 			if sc != nil {
 				tag = string(sc.Type)
 			}
-			d.Emit(&spec.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, Sub: client.ClientID, Scopes: scopes, SenderConstraint: tag})
+			d.Emit(&spec.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag})
 		}
 		tokenType := "Bearer"
 		if sc != nil && sc.Type == spec.SenderConstraintDPoP {

@@ -265,7 +265,7 @@ models:
       wtrealm:
         type: String
         description: 発行先 RP の wtrealm。
-      sub:
+      userId:
         type: String
         description: subject (NameID 由来の user)。
   WsFedSignInRejected:
@@ -309,7 +309,7 @@ models:
       appliesTo:
         type: String
         description: 発行先 RP / audience。
-      sub:
+      userId:
         type: String
         description: subject user。
   WsTrustTokenRejected:

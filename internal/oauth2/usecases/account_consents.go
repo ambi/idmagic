@@ -21,7 +21,7 @@ func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*s
 	}
 	mine := make([]*spec.Consent, 0)
 	for _, consent := range all {
-		if consent.Sub == sub && consent.State == spec.ConsentGranted {
+		if consent.UserID == sub && consent.State == spec.ConsentGranted {
 			mine = append(mine, consent)
 		}
 	}

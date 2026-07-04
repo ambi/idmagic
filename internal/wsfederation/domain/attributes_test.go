@@ -8,7 +8,7 @@ import (
 
 func TestResolveUserAttributes_StandardFields(t *testing.T) {
 	u := spec.User{
-		Sub:               "user-1",
+		ID:                "user-1",
 		PreferredUsername: "alice",
 		Email:             new("alice@contoso.com"),
 		EmailVerified:     true,
@@ -49,7 +49,7 @@ func TestResolveUserAttributes_CustomAttributes(t *testing.T) {
 	num := 42.0
 	flag := true
 	u := spec.User{
-		Sub: "user-2",
+		ID: "user-2",
 		Attributes: map[string]spec.AttributeValue{
 			"object_guid": {Type: spec.AttributeTypeString, String: new("AAECAwQFBgc=")},
 			"groups":      {Type: spec.AttributeTypeStringArray, StringArray: []string{"g1", "g2"}},

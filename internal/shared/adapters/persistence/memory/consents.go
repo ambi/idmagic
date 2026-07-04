@@ -48,8 +48,8 @@ func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*spec
 		out = append(out, &cloned)
 	}
 	slices.SortFunc(out, func(a, b *spec.Consent) int {
-		if a.Sub != b.Sub {
-			return strings.Compare(a.Sub, b.Sub)
+		if a.UserID != b.UserID {
+			return strings.Compare(a.UserID, b.UserID)
 		}
 		return strings.Compare(a.ClientID, b.ClientID)
 	})
@@ -62,7 +62,7 @@ func (r *ConsentRepository) Save(_ context.Context, c *spec.Consent) error {
 	cloned := *c
 	defaultTenant(&cloned.TenantID)
 	cloned.Scopes = slices.Clone(c.Scopes)
-	r.consents[consentKey(cloned.TenantID, cloned.Sub, cloned.ClientID)] = &cloned
+	r.consents[consentKey(cloned.TenantID, cloned.UserID, cloned.ClientID)] = &cloned
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (r *ConsentRepository) DeleteAllForSub(_ context.Context, sub string) error
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for key, consent := range r.consents {
-		if consent.Sub == sub {
+		if consent.UserID == sub {
 			delete(r.consents, key)
 		}
 	}

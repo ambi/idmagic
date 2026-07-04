@@ -17,7 +17,7 @@ func (DemoHeaderResolver) Resolve(_ context.Context, h domain.Headers) (*domain.
 		return nil, nil
 	}
 	return &domain.AuthenticationContext{
-		Sub:      sub,
+		UserID:   sub,
 		AuthTime: time.Now().Unix(),
 		AMR:      []string{"pwd"},
 	}, nil

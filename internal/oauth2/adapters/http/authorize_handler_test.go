@@ -75,7 +75,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	})
 	if authn != nil {
 		userRepo.Seed(&spec.User{
-			Sub: authn.Sub, PreferredUsername: "alice",
+			ID: authn.UserID, PreferredUsername: "alice",
 			TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 		})
 	}
@@ -131,7 +131,7 @@ func TestAuthorizePromptNoneWithoutSessionReturnsLoginRequired(t *testing.T) {
 
 func TestAuthorizePromptLoginForcesReauthentication(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
-		Sub: "user_alice", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+		UserID: "user_alice", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 	}
 	e := newAuthorizeTestServer(t, authn, nil)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"login"}}))
@@ -146,7 +146,7 @@ func TestAuthorizePromptLoginForcesReauthentication(t *testing.T) {
 func TestAuthorizeMaxAgeBeyondLastAuthForcesReauthentication(t *testing.T) {
 	// auth_time が 1 時間前、max_age=60 → NeedsReauthentication=true。
 	authn := &authdomain.AuthenticationContext{
-		Sub: "user_alice", AuthTime: time.Now().Add(-time.Hour).Unix(), AMR: []string{"pwd"},
+		UserID: "user_alice", AuthTime: time.Now().Add(-time.Hour).Unix(), AMR: []string{"pwd"},
 	}
 	e := newAuthorizeTestServer(t, authn, nil)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"max_age": {"60"}}))
@@ -161,12 +161,12 @@ func TestAuthorizeMaxAgeBeyondLastAuthForcesReauthentication(t *testing.T) {
 func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 	now := time.Now().UTC()
 	authn := &authdomain.AuthenticationContext{
-		Sub: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
 	// 既存 Consent。prompt=consent が無ければ即 issueCode に進む。
 	consent := &spec.Consent{
 		TenantID: spec.DefaultTenantID,
-		Sub:      "user_alice", ClientID: authClientID,
+		UserID:   "user_alice", ClientID: authClientID,
 		Scopes:    []string{"openid", "profile"},
 		State:     spec.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
@@ -186,7 +186,7 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	now := time.Now().UTC()
 	authn := &authdomain.AuthenticationContext{
-		Sub: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
 	e := newAuthorizeTestServer(t, authn, nil)
 	q := authorizeQuery(url.Values{})

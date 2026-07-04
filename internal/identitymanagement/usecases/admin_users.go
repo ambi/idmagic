@@ -65,7 +65,7 @@ func (d AdminUserDeps) graceSeconds() int {
 }
 
 type CreateUserInput struct {
-	ActorSub          string
+	ActorUserID       string
 	PreferredUsername string
 	Password          string
 	Name              *string
@@ -106,7 +106,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*s
 	}
 	now := normalizedNow(in.Now)
 	user := &spec.User{
-		Sub: "user_" + id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
+		ID: "user_" + id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
 		Name: in.Name, Email: in.Email, EmailVerified: in.EmailVerified, Roles: roles,
 		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
@@ -117,15 +117,15 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*s
 	if err := deps.UserRepo.Save(ctx, user); err != nil {
 		return nil, err
 	}
-	if err := deps.PasswordHistoryRepo.Add(ctx, user.Sub, passwordHash, now); err != nil {
+	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, passwordHash, now); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.UserCreated{At: now, TenantID: user.TenantID, ActorSub: in.ActorSub, TargetSub: user.Sub})
+	adminEmit(deps.Emit, &spec.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID})
 	return user, nil
 }
 
 type UpdateUserInput struct {
-	ActorSub          string
+	ActorUserID       string
 	Sub               string
 	PreferredUsername *string
 	Name              *string
@@ -162,7 +162,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*s
 			if err != nil {
 				return nil, err
 			}
-			if existing != nil && existing.Sub != user.Sub {
+			if existing != nil && existing.ID != user.ID {
 				return nil, ErrUsernameConflict
 			}
 			updated.PreferredUsername = username
@@ -222,7 +222,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*s
 		return nil, err
 	}
 	adminEmit(deps.Emit, &spec.UserUpdated{
-		At: now, TenantID: user.TenantID, ActorSub: in.ActorSub, TargetSub: user.Sub, ChangedFields: changed,
+		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, ChangedFields: changed,
 	})
 	return &updated, nil
 }
@@ -230,11 +230,11 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*s
 func SetUserDisabled(
 	ctx context.Context,
 	deps AdminUserDeps,
-	actorSub, targetSub string,
+	actorUserID, targetUserID string,
 	disabled bool,
 	now time.Time,
 ) (*spec.User, error) {
-	user, err := deps.UserRepo.FindBySub(ctx, targetSub)
+	user, err := deps.UserRepo.FindBySub(ctx, targetUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +244,7 @@ func SetUserDisabled(
 	if user.TenantID != tenancy.TenantID(ctx) {
 		return nil, ErrUserNotFound
 	}
-	if disabled && actorSub == user.Sub && hasPrivilegedRole(user.Roles) {
+	if disabled && actorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return nil, ErrSelfDisableForbidden
 	}
 	updated := *user
@@ -267,9 +267,9 @@ func SetUserDisabled(
 		return nil, err
 	}
 	if disabled {
-		adminEmit(deps.Emit, &spec.UserDisabled{At: now, TenantID: updated.TenantID, ActorSub: actorSub, TargetSub: targetSub})
+		adminEmit(deps.Emit, &spec.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
-		adminEmit(deps.Emit, &spec.UserEnabled{At: now, TenantID: updated.TenantID, ActorSub: actorSub, TargetSub: targetSub})
+		adminEmit(deps.Emit, &spec.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	}
 	return &updated, nil
 }
@@ -282,14 +282,14 @@ var ErrInvalidRequiredAction = errors.New("required action is not in enum")
 func SetUserRequiredAction(
 	ctx context.Context,
 	deps AdminUserDeps,
-	actorSub, targetSub string,
+	actorUserID, targetUserID string,
 	action spec.RequiredAction,
 	now time.Time,
 ) (*spec.User, error) {
 	if !action.Valid() {
 		return nil, ErrInvalidRequiredAction
 	}
-	user, err := loadTenantUser(ctx, deps, targetSub)
+	user, err := loadTenantUser(ctx, deps, targetUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func SetUserRequiredAction(
 		return nil, err
 	}
 	adminEmit(deps.Emit, &spec.UserRequiredActionSet{
-		At: now, TenantID: updated.TenantID, ActorSub: actorSub, TargetSub: targetSub, Action: string(action),
+		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
 	})
 	return &updated, nil
 }
@@ -318,14 +318,14 @@ func SetUserRequiredAction(
 func ClearUserRequiredAction(
 	ctx context.Context,
 	deps AdminUserDeps,
-	actorSub, targetSub string,
+	actorUserID, targetUserID string,
 	action spec.RequiredAction,
 	now time.Time,
 ) (*spec.User, error) {
 	if !action.Valid() {
 		return nil, ErrInvalidRequiredAction
 	}
-	user, err := loadTenantUser(ctx, deps, targetSub)
+	user, err := loadTenantUser(ctx, deps, targetUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func ClearUserRequiredAction(
 		return nil, err
 	}
 	adminEmit(deps.Emit, &spec.UserRequiredActionCleared{
-		At: now, TenantID: updated.TenantID, ActorSub: actorSub, TargetSub: targetSub, Action: string(action),
+		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
 	})
 	return &updated, nil
 }
@@ -407,10 +407,10 @@ func adminEmit(sink func(spec.DomainEvent), event spec.DomainEvent) {
 
 // DeleteUserInput は ADR-036 の DeleteUser use case 入力。
 type DeleteUserInput struct {
-	ActorSub string
-	Sub      string
-	Reason   string
-	Now      time.Time
+	ActorUserID string
+	Sub         string
+	Reason      string
+	Now         time.Time
 }
 
 // DeleteUser は ADR-036 の anonymize cascade を実行する。
@@ -436,7 +436,7 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if user.IsDeleted() {
 		return nil
 	}
-	if in.ActorSub == user.Sub && hasPrivilegedRole(user.Roles) {
+	if in.ActorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return ErrSelfDeleteForbidden
 	}
 	now := normalizedNow(in.Now)
@@ -447,11 +447,11 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := deps.UserRepo.Save(ctx, tombstone); err != nil {
 		return err
 	}
-	if err := cascadeDeleteForSub(ctx, deps, user.Sub); err != nil {
+	if err := cascadeDeleteForSub(ctx, deps, user.ID); err != nil {
 		return err
 	}
 	adminEmit(deps.Emit, &spec.UserDeleted{
-		At: now, TenantID: user.TenantID, ActorSub: in.ActorSub, TargetSub: user.Sub, Reason: in.Reason,
+		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, Reason: in.Reason,
 	})
 	return nil
 }
@@ -480,10 +480,10 @@ var (
 
 // SoftDeleteUserInput は soft-delete (削除予約) の入力。
 type SoftDeleteUserInput struct {
-	ActorSub string
-	Sub      string
-	Reason   string
-	Now      time.Time
+	ActorUserID string
+	Sub         string
+	Reason      string
+	Now         time.Time
 }
 
 // SoftDeleteUser は user を PendingDeletion に遷移させ UserSoftDeleted を emit する。
@@ -495,7 +495,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err != nil {
 		return err
 	}
-	if in.ActorSub == user.Sub && hasPrivilegedRole(user.Roles) {
+	if in.ActorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return ErrSelfDeleteForbidden
 	}
 	if user.Lifecycle.EffectiveStatus() == spec.UserStatusPendingDeletion {
@@ -513,7 +513,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 		return err
 	}
 	adminEmit(deps.Emit, &spec.UserSoftDeleted{
-		At: now, TenantID: updated.TenantID, ActorSub: in.ActorSub, TargetSub: updated.Sub, Reason: in.Reason,
+		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
 	})
 	return nil
 }
@@ -523,13 +523,13 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 // でない場合は ErrUserNotPendingDeletion、猶予期間を過ぎている場合は
 // ErrRestoreGracePeriodExpired を返す。自分自身 (admin/system_admin) は reject する。
 func RestoreUser(
-	ctx context.Context, deps AdminUserDeps, actorSub, targetSub string, now time.Time,
+	ctx context.Context, deps AdminUserDeps, actorUserID, targetUserID string, now time.Time,
 ) (*spec.User, error) {
-	user, err := loadTenantUser(ctx, deps, targetSub)
+	user, err := loadTenantUser(ctx, deps, targetUserID)
 	if err != nil {
 		return nil, err
 	}
-	if actorSub == user.Sub && hasPrivilegedRole(user.Roles) {
+	if actorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return nil, ErrSelfDeleteForbidden
 	}
 	if user.Lifecycle.EffectiveStatus() != spec.UserStatusPendingDeletion {
@@ -547,7 +547,7 @@ func RestoreUser(
 		return nil, err
 	}
 	adminEmit(deps.Emit, &spec.UserRestored{
-		At: now, TenantID: updated.TenantID, ActorSub: actorSub, TargetSub: updated.Sub,
+		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: updated.ID,
 	})
 	return &updated, nil
 }
@@ -570,7 +570,7 @@ func PurgeExpiredSoftDeleted(ctx context.Context, deps AdminUserDeps, now time.T
 			continue
 		}
 		if err := DeleteUser(ctx, deps, DeleteUserInput{
-			ActorSub: autoPurgeActor, Sub: user.Sub, Reason: autoPurgeReason, Now: now,
+			ActorUserID: autoPurgeActor, Sub: user.ID, Reason: autoPurgeReason, Now: now,
 		}); err != nil {
 			return err
 		}
@@ -609,7 +609,7 @@ func effectiveUserAttributeDefs(
 
 func anonymizeUser(user *spec.User, now time.Time) *spec.User {
 	tombstone := *user
-	tombstone.PreferredUsername = "deleted:" + user.Sub
+	tombstone.PreferredUsername = "deleted:" + user.ID
 	tombstone.PasswordHash = deletedPasswordHashSentinel
 	tombstone.Name = nil
 	tombstone.GivenName = nil

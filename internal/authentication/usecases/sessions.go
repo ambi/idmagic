@@ -75,7 +75,7 @@ func RevokeOwnSession(
 	if err != nil {
 		return err
 	}
-	if sess == nil || sess.Sub != sub {
+	if sess == nil || sess.UserID != sub {
 		return ErrSessionNotFound
 	}
 	if err := deps.Store.Delete(ctx, sessionID); err != nil {
@@ -112,7 +112,7 @@ func RevokeOtherSessions(
 func emitSessionEnded(
 	emit func(spec.DomainEvent),
 	sess *spec.LoginSession,
-	actorSub string,
+	actorUserID string,
 	reason spec.SessionEndReason,
 	now time.Time,
 ) {
@@ -120,7 +120,7 @@ func emitSessionEnded(
 		return
 	}
 	emit(&spec.SessionEnded{
-		At: normalizedNow(now), TenantID: sess.TenantID, Sub: sess.Sub,
-		SessionID: sess.ID, ActorSub: actorSub, Reason: reason,
+		At: normalizedNow(now), TenantID: sess.TenantID, UserID: sess.UserID,
+		SessionID: sess.ID, ActorUserID: actorUserID, Reason: reason,
 	})
 }

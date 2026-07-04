@@ -217,7 +217,7 @@ type ApplicationAssignment struct {
 // tenant_id + user_sub をキーに、Application の表示順を application_id の順序列で持つ。
 type ApplicationOrdering struct {
 	TenantID       string    `json:"tenant_id"`
-	UserSub        string    `json:"user_sub"`
+	UserID         string    `json:"user_id"`
 	ApplicationIDs []string  `json:"application_ids"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
@@ -227,7 +227,7 @@ type ApplicationOrdering struct {
 type ApplicationCreated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 }
 
@@ -238,7 +238,7 @@ func (e *ApplicationCreated) OccurredAt() time.Time { return e.At }
 type ApplicationUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 	ChangedFields []string  `json:"changedFields"`
 }
@@ -250,7 +250,7 @@ func (e *ApplicationUpdated) OccurredAt() time.Time { return e.At }
 type ApplicationIconUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 	Action        string    `json:"action"`
 }
@@ -262,7 +262,7 @@ func (e *ApplicationIconUpdated) OccurredAt() time.Time { return e.At }
 type ApplicationDeleted struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 }
 
@@ -273,7 +273,7 @@ func (e *ApplicationDeleted) OccurredAt() time.Time { return e.At }
 type ProtocolBindingAttached struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 	BindingType   string    `json:"bindingType"`
 }
@@ -285,7 +285,7 @@ func (e *ProtocolBindingAttached) OccurredAt() time.Time { return e.At }
 type ProtocolBindingDetached struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 	BindingType   string    `json:"bindingType"`
 }
@@ -297,7 +297,7 @@ func (e *ProtocolBindingDetached) OccurredAt() time.Time { return e.At }
 type ApplicationAssigned struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 	SubjectType   string    `json:"subjectType"`
 	SubjectID     string    `json:"subjectId"`
@@ -310,7 +310,7 @@ func (e *ApplicationAssigned) OccurredAt() time.Time { return e.At }
 type ApplicationUnassigned struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 	SubjectType   string    `json:"subjectType"`
 	SubjectID     string    `json:"subjectId"`
@@ -323,7 +323,7 @@ func (e *ApplicationUnassigned) OccurredAt() time.Time { return e.At }
 type AppSignInPolicyUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
-	ActorSub      string    `json:"actorSub"`
+	ActorUserID   string    `json:"actorUserId"`
 	ApplicationID string    `json:"applicationId"`
 }
 
@@ -332,9 +332,9 @@ func (e *AppSignInPolicyUpdated) OccurredAt() time.Time { return e.At }
 
 // TenantDefaultSignInPolicyUpdated はテナント既定 sign-in policy を更新した event (ADR-081)。
 type TenantDefaultSignInPolicyUpdated struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ActorSub string    `json:"actorSub"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
 }
 
 func (e *TenantDefaultSignInPolicyUpdated) EventType() string {
@@ -369,10 +369,10 @@ func (e *AppStepUpRequired) OccurredAt() time.Time { return e.At }
 
 // ApplicationCategoryCreated は ApplicationCategory を作成した event (wi-70)。
 type ApplicationCategoryCreated struct {
-	At         time.Time `json:"-"`
-	TenantID   string    `json:"tenantId"`
-	ActorSub   string    `json:"actorSub"`
-	CategoryID string    `json:"categoryId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	CategoryID  string    `json:"categoryId"`
 }
 
 func (e *ApplicationCategoryCreated) EventType() string     { return "ApplicationCategoryCreated" }
@@ -380,10 +380,10 @@ func (e *ApplicationCategoryCreated) OccurredAt() time.Time { return e.At }
 
 // ApplicationCategoryUpdated は ApplicationCategory を更新した event (wi-70)。
 type ApplicationCategoryUpdated struct {
-	At         time.Time `json:"-"`
-	TenantID   string    `json:"tenantId"`
-	ActorSub   string    `json:"actorSub"`
-	CategoryID string    `json:"categoryId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	CategoryID  string    `json:"categoryId"`
 }
 
 func (e *ApplicationCategoryUpdated) EventType() string     { return "ApplicationCategoryUpdated" }
@@ -391,10 +391,10 @@ func (e *ApplicationCategoryUpdated) OccurredAt() time.Time { return e.At }
 
 // ApplicationCategoryDeleted は ApplicationCategory を削除した event (wi-70)。
 type ApplicationCategoryDeleted struct {
-	At         time.Time `json:"-"`
-	TenantID   string    `json:"tenantId"`
-	ActorSub   string    `json:"actorSub"`
-	CategoryID string    `json:"categoryId"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	CategoryID  string    `json:"categoryId"`
 }
 
 func (e *ApplicationCategoryDeleted) EventType() string     { return "ApplicationCategoryDeleted" }

@@ -30,12 +30,12 @@ func (r *UserRepository) Seed(u *spec.User) {
 func (r *UserRepository) Save(_ context.Context, u *spec.User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if existing := r.bySub[u.Sub]; existing != nil &&
+	if existing := r.bySub[u.ID]; existing != nil &&
 		existing.PreferredUsername != u.PreferredUsername {
 		delete(r.byUser, tenantKey(existing.TenantID, existing.PreferredUsername))
 	}
 	defaultTenant(&u.TenantID)
-	r.bySub[u.Sub] = u
+	r.bySub[u.ID] = u
 	r.byUser[tenantKey(u.TenantID, u.PreferredUsername)] = u
 	return nil
 }

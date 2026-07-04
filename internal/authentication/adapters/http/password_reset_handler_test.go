@@ -90,7 +90,7 @@ func newPasswordResetHandler(
 	email := "alice@example.com"
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "user-alice", PreferredUsername: "alice", PasswordHash: hash,
+		ID: "user-alice", PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	if err := historyRepo.Add(context.Background(), "user-alice", hash, now); err != nil {

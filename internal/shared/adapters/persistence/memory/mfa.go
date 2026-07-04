@@ -26,7 +26,7 @@ func (r *MfaFactorRepository) ListBySub(_ context.Context, sub string) ([]*spec.
 	defer r.mu.RUnlock()
 	out := []*spec.MfaFactor{}
 	for _, factor := range r.factors {
-		if factor.Sub == sub {
+		if factor.UserID == sub {
 			out = append(out, cloneMfaFactor(factor))
 		}
 	}
@@ -46,7 +46,7 @@ func (r *MfaFactorRepository) Find(
 func (r *MfaFactorRepository) Save(_ context.Context, factor *spec.MfaFactor) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.factors[mfaFactorKey(factor.Sub, factor.Type)] = cloneMfaFactor(factor)
+	r.factors[mfaFactorKey(factor.UserID, factor.Type)] = cloneMfaFactor(factor)
 	return nil
 }
 

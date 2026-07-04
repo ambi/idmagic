@@ -36,11 +36,11 @@ type ApplicationDeps struct {
 }
 
 type CreateApplicationInput struct {
-	ActorSub  string
-	Name      string
-	Kind      spec.ApplicationKind
-	LaunchURL string
-	Now       time.Time
+	ActorUserID string
+	Name        string
+	Kind        spec.ApplicationKind
+	LaunchURL   string
+	Now         time.Time
 }
 
 func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput) (*spec.Application, error) {
@@ -67,12 +67,12 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 	if err := deps.Repo.Save(ctx, app); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.ApplicationCreated{At: now, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: id})
+	emit(deps.Emit, &spec.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id})
 	return app, nil
 }
 
 type UpdateApplicationInput struct {
-	ActorSub      string
+	ActorUserID   string
 	ApplicationID string
 	Name          *string
 	Status        *spec.ApplicationStatus
@@ -119,12 +119,12 @@ func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateAppli
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ApplicationUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: app.ApplicationID, ChangedFields: changed,
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, ChangedFields: changed,
 	})
 	return &updated, nil
 }
 
-func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorSub, applicationID string, now time.Time) error {
+func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
@@ -144,12 +144,12 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorSub, appl
 	if err := deps.Repo.Delete(ctx, tenantID, applicationID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorSub: actorSub, ApplicationID: applicationID})
+	emit(deps.Emit, &spec.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
 	return nil
 }
 
 type UploadApplicationIconInput struct {
-	ActorSub      string
+	ActorUserID   string
 	ApplicationID string
 	ObjectKey     string
 	Data          []byte
@@ -199,12 +199,12 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ApplicationIconUpdated{
-		At: now, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: app.ApplicationID, Action: "uploaded",
+		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, Action: "uploaded",
 	})
 	return &updated, nil
 }
 
-func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorSub, applicationID string, now time.Time) (*spec.Application, error) {
+func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time) (*spec.Application, error) {
 	if deps.IconStore == nil {
 		return nil, errors.New("application icon store is not configured")
 	}
@@ -229,7 +229,7 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorSub, 
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ApplicationIconUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorSub: actorSub, ApplicationID: applicationID, Action: "deleted",
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, Action: "deleted",
 	})
 	return &updated, nil
 }
@@ -258,7 +258,7 @@ func DetectApplicationIconContentType(data []byte) (string, error) {
 }
 
 type AttachBindingInput struct {
-	ActorSub      string
+	ActorUserID   string
 	ApplicationID string
 	Binding       spec.ProtocolBinding
 	Now           time.Time
@@ -291,12 +291,12 @@ func AttachBinding(ctx context.Context, deps ApplicationDeps, in AttachBindingIn
 		return nil, err
 	}
 	emit(deps.Emit, &spec.ProtocolBindingAttached{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorSub: in.ActorSub, ApplicationID: app.ApplicationID, BindingType: string(in.Binding.Type),
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, BindingType: string(in.Binding.Type),
 	})
 	return &updated, nil
 }
 
-func DetachBinding(ctx context.Context, deps ApplicationDeps, actorSub, applicationID string, bindingType spec.ProtocolBindingType, now time.Time) error {
+func DetachBinding(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, bindingType spec.ProtocolBindingType, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
@@ -314,7 +314,7 @@ func DetachBinding(ctx context.Context, deps ApplicationDeps, actorSub, applicat
 		return err
 	}
 	emit(deps.Emit, &spec.ProtocolBindingDetached{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorSub: actorSub, ApplicationID: applicationID, BindingType: string(bindingType),
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, BindingType: string(bindingType),
 	})
 	return nil
 }

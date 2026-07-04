@@ -42,7 +42,7 @@ func (r *MfaFactorRepository) Save(ctx context.Context, factor *spec.MfaFactor) 
 INSERT INTO mfa_factors (sub,type,secret,label,created_at,last_used_at)
 VALUES ($1,$2,$3,$4,$5,$6)
 ON CONFLICT (sub,type) DO UPDATE SET secret=EXCLUDED.secret,label=EXCLUDED.label,last_used_at=EXCLUDED.last_used_at,updated_at=now()`,
-		factor.Sub, factor.Type, factor.Secret, factor.Label, factor.CreatedAt, factor.LastUsedAt)
+		factor.UserID, factor.Type, factor.Secret, factor.Label, factor.CreatedAt, factor.LastUsedAt)
 	return err
 }
 
@@ -60,7 +60,7 @@ const mfaFactorSelect = `SELECT sub,type,secret,label,created_at,last_used_at FR
 
 func scanMfaFactor(row rowScanner) (*spec.MfaFactor, error) {
 	var factor spec.MfaFactor
-	err := row.Scan(&factor.Sub, &factor.Type, &factor.Secret, &factor.Label, &factor.CreatedAt, &factor.LastUsedAt)
+	err := row.Scan(&factor.UserID, &factor.Type, &factor.Secret, &factor.Label, &factor.CreatedAt, &factor.LastUsedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

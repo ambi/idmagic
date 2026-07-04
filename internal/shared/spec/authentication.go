@@ -5,7 +5,7 @@ package spec
 import "time"
 
 type MfaFactor struct {
-	Sub        string        `json:"sub"`
+	UserID     string        `json:"user_id"`
 	Type       MfaFactorType `json:"type"`
 	Secret     *string       `json:"secret,omitempty"`
 	Label      *string       `json:"label,omitempty"`
@@ -20,7 +20,7 @@ func (m MfaFactor) Validate() error {
 type LoginSession struct {
 	ID                    string    `json:"id"`
 	TenantID              string    `json:"tenant_id"`
-	Sub                   string    `json:"sub"`
+	UserID                string    `json:"user_id"`
 	AuthTime              int64     `json:"auth_time"`
 	AMR                   []string  `json:"amr"`
 	ACR                   string    `json:"acr"`

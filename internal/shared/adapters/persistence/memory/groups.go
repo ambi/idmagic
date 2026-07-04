@@ -79,16 +79,16 @@ func (r *GroupRepository) ListMembersByGroup(_ context.Context, tenantID, groupI
 		cloned := *member
 		out = append(out, &cloned)
 	}
-	slices.SortFunc(out, func(a, b *spec.GroupMember) int { return strings.Compare(a.UserSub, b.UserSub) })
+	slices.SortFunc(out, func(a, b *spec.GroupMember) int { return strings.Compare(a.UserID, b.UserID) })
 	return out, nil
 }
 
-func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userSub string) ([]*spec.Group, error) {
+func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID string) ([]*spec.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*spec.Group, 0)
 	for key, members := range r.members {
-		if !slices.ContainsFunc(members, func(m *spec.GroupMember) bool { return m.UserSub == userSub }) {
+		if !slices.ContainsFunc(members, func(m *spec.GroupMember) bool { return m.UserID == userID }) {
 			continue
 		}
 		group := r.groups[key]
@@ -111,7 +111,7 @@ func (r *GroupRepository) AddMember(_ context.Context, member *spec.GroupMember)
 	defer r.mu.Unlock()
 	key := r.memberKey(member.GroupID)
 	for _, existing := range r.members[key] {
-		if existing.UserSub == member.UserSub {
+		if existing.UserID == member.UserID {
 			return false, nil
 		}
 	}
@@ -120,13 +120,13 @@ func (r *GroupRepository) AddMember(_ context.Context, member *spec.GroupMember)
 	return true, nil
 }
 
-func (r *GroupRepository) RemoveMember(_ context.Context, tenantID, groupID, userSub string) (bool, error) {
+func (r *GroupRepository) RemoveMember(_ context.Context, tenantID, groupID, userID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := tenantKey(tenantID, groupID)
 	members := r.members[key]
 	for i, existing := range members {
-		if existing.UserSub == userSub {
+		if existing.UserID == userID {
 			r.members[key] = slices.Delete(members, i, i+1)
 			return true, nil
 		}

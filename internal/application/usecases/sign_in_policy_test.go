@@ -16,7 +16,7 @@ func TestEvaluateSignInPolicyRequiresMFA(t *testing.T) {
 	}}}
 
 	got := EvaluateSignInPolicy(policy, &authdomain.AuthenticationContext{
-		Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
+		UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
 	}, "", time.Now().UTC())
 
 	if got.Decision != PolicyStepUpRequired {
@@ -31,7 +31,7 @@ func TestEvaluateSignInPolicyMfaSatisfied(t *testing.T) {
 	}}}
 
 	got := EvaluateSignInPolicy(policy, &authdomain.AuthenticationContext{
-		Sub: "alice", ACR: authusecases.ACRMFA, AMR: []string{"pwd", "otp"},
+		UserID: "alice", ACR: authusecases.ACRMFA, AMR: []string{"pwd", "otp"},
 	}, "", time.Now().UTC())
 
 	if got.Decision != PolicyAllow {
@@ -44,7 +44,7 @@ func TestEvaluateSignInPolicyNetworkCIDRAllows(t *testing.T) {
 		RuleID: "rule-1", Name: "Network", Enabled: true,
 		Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
 	}}}
-	authn := &authdomain.AuthenticationContext{Sub: "alice", ACR: authusecases.ACRMFA, AMR: []string{"pwd", "otp"}}
+	authn := &authdomain.AuthenticationContext{UserID: "alice", ACR: authusecases.ACRMFA, AMR: []string{"pwd", "otp"}}
 
 	if got := EvaluateSignInPolicy(policy, authn, "10.1.2.3", time.Now().UTC()); got.Decision != PolicyAllow {
 		t.Fatalf("in-range decision=%s, want %s", got.Decision, PolicyAllow)
@@ -67,7 +67,7 @@ func TestEvaluateSignInPolicyReauthMaxAge(t *testing.T) {
 	}}}
 
 	got := EvaluateSignInPolicy(policy, &authdomain.AuthenticationContext{
-		Sub: "alice", AuthTime: now.Add(-10 * time.Minute).Unix(), StepUpAt: now.Add(-2 * time.Minute).Unix(),
+		UserID: "alice", AuthTime: now.Add(-10 * time.Minute).Unix(), StepUpAt: now.Add(-2 * time.Minute).Unix(),
 	}, "", now)
 
 	if got.Decision != PolicyAllow {
@@ -118,7 +118,7 @@ func TestEffectivePolicyForEvaluationNoRulesReturnsNil(t *testing.T) {
 
 func TestEffectivePolicyOverrideCanGoBelowDefault(t *testing.T) {
 	def := &spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{mfaRule("default-1")}}
-	singleFactor := &authdomain.AuthenticationContext{Sub: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"}}
+	singleFactor := &authdomain.AuthenticationContext{UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"}}
 
 	// アプリ独自ポリシーが無ければデフォルトの MFA 要求が適用される。
 	appNoPolicy := &spec.AppSignInPolicy{Rules: []spec.SignInRule{}}

@@ -42,7 +42,7 @@ func ResolveUserAttributes(u spec.User) Attributes {
 		}
 	}
 
-	put(AttrSub, u.Sub)
+	put(AttrSub, u.ID)
 	put(AttrPreferredUsername, u.PreferredUsername)
 	put(AttrEmailVerified, strconv.FormatBool(u.EmailVerified))
 	put(AttrRoles, u.Roles...)

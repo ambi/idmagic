@@ -35,7 +35,7 @@ func newAccountServer(t *testing.T, user *spec.User) *echo.Echo {
 	resolver := &fakeAuthnResolver{}
 	if user != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			Sub: user.Sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: user.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}
 	}
 	e := echo.New()
@@ -51,7 +51,7 @@ func accountUser() *spec.User {
 	now := time.Now().UTC()
 	name := "Dave Q"
 	return &spec.User{
-		Sub: "user-1", PreferredUsername: "dave", TenantID: spec.DefaultTenantID, Name: &name,
+		ID: "user-1", PreferredUsername: "dave", TenantID: spec.DefaultTenantID, Name: &name,
 		PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHQ$aGFzaGhhc2g",
 		Lifecycle:    spec.UserLifecycle{Status: spec.UserStatusActive},
 		Attributes: map[string]spec.AttributeValue{

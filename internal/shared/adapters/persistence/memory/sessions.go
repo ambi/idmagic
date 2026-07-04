@@ -70,7 +70,7 @@ func (s *SessionStore) ListBySub(_ context.Context, sub string) ([]*spec.LoginSe
 			delete(s.sessions, id)
 			continue
 		}
-		if sess.Sub == sub && !sess.AuthenticationPending {
+		if sess.UserID == sub && !sess.AuthenticationPending {
 			out = append(out, sess)
 		}
 	}
@@ -81,7 +81,7 @@ func (s *SessionStore) DeleteAllForSub(_ context.Context, sub string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id, sess := range s.sessions {
-		if sess.Sub == sub {
+		if sess.UserID == sub {
 			delete(s.sessions, id)
 		}
 	}

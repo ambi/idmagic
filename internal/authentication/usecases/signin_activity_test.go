@@ -23,23 +23,23 @@ func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 	}
 	add(&oauthports.AuditEventRecord{
 		ID: "1", TenantID: "t1", Type: "UserAuthenticated", OccurredAt: base,
-		Payload: map[string]any{"sub": "alice", "amr": []any{"pwd"}},
+		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd"}},
 	})
 	add(&oauthports.AuditEventRecord{
 		ID: "2", TenantID: "t1", Type: "PasswordChanged", OccurredAt: base.Add(time.Minute),
-		Payload: map[string]any{"sub": "alice"},
+		Payload: map[string]any{"userId": "alice"},
 	})
 	add(&oauthports.AuditEventRecord{
 		ID: "3", TenantID: "t1", Type: "UserAuthenticated", OccurredAt: base.Add(2 * time.Minute),
-		Payload: map[string]any{"sub": "bob", "amr": []any{"pwd"}},
+		Payload: map[string]any{"userId": "bob", "amr": []any{"pwd"}},
 	})
 	add(&oauthports.AuditEventRecord{
 		ID: "4", TenantID: "t2", Type: "UserAuthenticated", OccurredAt: base.Add(3 * time.Minute),
-		Payload: map[string]any{"sub": "alice", "amr": []any{"pwd"}},
+		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd"}},
 	})
 	add(&oauthports.AuditEventRecord{
 		ID: "5", TenantID: "t1", Type: "UserAuthenticated", OccurredAt: base.Add(4 * time.Minute),
-		Payload: map[string]any{"sub": "alice", "amr": []any{"pwd", "otp"}},
+		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd", "otp"}},
 	})
 
 	got, err := usecases.ListSignInActivity(ctx, store, "t1", "alice", 0)
@@ -67,7 +67,7 @@ func TestListSignInActivityClampsLimit(t *testing.T) {
 		if err := store.Append(ctx, &oauthports.AuditEventRecord{
 			ID: string(rune('a' + (i % 26))), TenantID: "t1", Type: "UserAuthenticated",
 			OccurredAt: base.Add(time.Duration(i) * time.Minute),
-			Payload:    map[string]any{"sub": "alice", "amr": []any{"pwd"}},
+			Payload:    map[string]any{"userId": "alice", "amr": []any{"pwd"}},
 		}); err != nil {
 			t.Fatal(err)
 		}

@@ -19,7 +19,7 @@ created_at,updated_at,disabled_at,killed_at FROM agents`
 
 func scanAgent(row rowScanner) (*spec.Agent, error) {
 	var a spec.Agent
-	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Description, &a.Kind, &a.OwnerSub, &a.Status,
+	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Description, &a.Kind, &a.OwnerUserID, &a.Status,
 		&a.Roles, &a.CreatedAt, &a.UpdatedAt, &a.DisabledAt, &a.KilledAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -66,7 +66,7 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,
  kind=EXCLUDED.kind,owner_sub=EXCLUDED.owner_sub,status=EXCLUDED.status,roles=EXCLUDED.roles,
  updated_at=EXCLUDED.updated_at,disabled_at=EXCLUDED.disabled_at,killed_at=EXCLUDED.killed_at`,
-		agent.ID, agent.TenantID, agent.Name, agent.Description, agent.Kind, agent.OwnerSub,
+		agent.ID, agent.TenantID, agent.Name, agent.Description, agent.Kind, agent.OwnerUserID,
 		agent.Status, roles, agent.CreatedAt, agent.UpdatedAt, agent.DisabledAt, agent.KilledAt)
 	return err
 }

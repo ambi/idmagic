@@ -74,7 +74,7 @@ func (s *RefreshTokenStore) DeleteAllForSub(_ context.Context, sub string) error
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id, rec := range s.byID {
-		if rec.Sub == sub {
+		if rec.UserID == sub {
 			delete(s.byID, id)
 			delete(s.byHash, rec.Hash)
 		}

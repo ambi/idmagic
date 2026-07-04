@@ -142,11 +142,11 @@ func newAdminOAuth2ClientHandler(
 	clients := memory.NewClientRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
-		Sub: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&spec.User{
-		Sub: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
+		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	events := []spec.DomainEvent{}

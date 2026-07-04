@@ -43,7 +43,7 @@ func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 	codes := memory.NewAuthorizationCodeStore()
 	if err := codes.Save(context.Background(), &spec.AuthorizationCodeRecord{
 		Code: "AC1", TenantID: "acme", AuthorizationRequestID: "7856cb4e-7405-4d24-9c04-475cbb13f6f1",
-		ClientID: "web-app", Sub: "user", RedirectURI: "https://app.example/callback",
+		ClientID: "web-app", UserID: "user", RedirectURI: "https://app.example/callback",
 		CodeChallenge: "challenge", CodeChallengeMethod: spec.CodeChallengeMethodS256,
 		State: spec.AuthCodeRecordIssued, IssuedAt: time.Now().UTC(),
 		ExpiresAt: time.Now().UTC().Add(time.Minute),
@@ -72,7 +72,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 	})
 	users := memory.NewUserRepository()
 	users.Seed(&spec.User{
-		Sub: "user", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
+		ID: "user", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})
 
@@ -106,7 +106,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 	users := memory.NewUserRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
-		Sub: "user", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
+		ID: "user", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -121,7 +121,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 		ClientID:        "tv-app",
 		Scopes:          []string{"openid"},
 		State:           spec.DeviceFlowApproved,
-		Sub:             &sub,
+		UserID:          &sub,
 		AuthTime:        &authTime,
 		IntervalSeconds: 5,
 		IssuedAt:        now,

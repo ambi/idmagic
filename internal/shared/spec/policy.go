@@ -62,8 +62,8 @@ type AuthZContext struct {
 	ParUsed           bool                    `json:"parUsed,omitempty"`
 	Authenticated     bool                    `json:"authenticated,omitempty"`
 	Now               time.Time               `json:"now,omitzero"`
-	ActorSub          string                  `json:"actorSub,omitempty"`
-	SubjectSub        string                  `json:"subjectSub,omitempty"`
+	ActorUserID       string                  `json:"actorUserId,omitempty"`
+	SubjectUserID     string                  `json:"subjectUserID,omitempty"`
 	Audience          string                  `json:"audience,omitempty"`
 	DelegationDepth   int                     `json:"delegationDepth,omitempty"`
 }

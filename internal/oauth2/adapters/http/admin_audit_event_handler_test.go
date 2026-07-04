@@ -38,7 +38,7 @@ func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.Au
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			Sub: actor.Sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}
 	}
 	e := echo.New()
@@ -53,7 +53,7 @@ func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.Au
 func auditUser(sub, tenantID string, roles []string) *spec.User {
 	now := time.Now().UTC()
 	return &spec.User{
-		Sub: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
+		ID: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}
 }
@@ -62,7 +62,7 @@ func auditEvent(tenantID, typ, sub string, occurredAt time.Time) *oauthports.Aud
 	return &oauthports.AuditEventRecord{
 		ID:       tenantID + ":" + typ + ":" + sub + ":" + occurredAt.Format(time.RFC3339Nano),
 		TenantID: tenantID, Type: typ, OccurredAt: occurredAt,
-		Payload: map[string]any{"sub": sub, "tenantId": tenantID, "type": typ},
+		Payload: map[string]any{"userId": sub, "tenantId": tenantID, "type": typ},
 	}
 }
 
@@ -176,14 +176,14 @@ func TestAdminAuditEventsFilterByTypeAndSub(t *testing.T) {
 		auditEvent("acme", "AccessTokenIssued", "alice", now.Add(-2*time.Second)),
 	}
 	e := newAuditAdminServer(t, user, events)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?type=UserAuthenticated&sub=alice")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?type=UserAuthenticated&user_id=alice")
 	var body struct {
 		Events []oauth2http.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 ||
 		body.Events[0].Type != "UserAuthenticated" ||
-		body.Events[0].Payload["sub"] != "alice" {
+		body.Events[0].Payload["userId"] != "alice" {
 		t.Fatalf("filter mismatch: %+v", body.Events)
 	}
 }

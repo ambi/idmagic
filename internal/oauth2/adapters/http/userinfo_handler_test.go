@@ -92,7 +92,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 
 	userRepo := memory.NewUserRepository()
 	userRepo.Seed(&spec.User{
-		Sub: "user_alice", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
+		ID: "user_alice", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
 		CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -161,7 +161,7 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 
 	userRepo := memory.NewUserRepository()
 	userRepo.Seed(&spec.User{
-		Sub: "user_bob", PreferredUsername: "bob", TenantID: "acme",
+		ID: "user_bob", PreferredUsername: "bob", TenantID: "acme",
 		CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -246,7 +246,7 @@ func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDeny
 	userRepo := memory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "user_alice", PreferredUsername: "alice",
+		ID: "user_alice", PreferredUsername: "alice",
 		TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()

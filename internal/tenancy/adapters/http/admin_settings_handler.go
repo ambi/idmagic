@@ -89,7 +89,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 	}
 	if d.Emit != nil {
 		d.Emit(&spec.TenantUpdated{
-			At: now, ActorSub: actor.Sub, TenantID: tenant.ID,
+			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			ChangedFields: adminSettingsChangedFields(input),
 		})
 	}

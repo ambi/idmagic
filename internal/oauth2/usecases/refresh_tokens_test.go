@@ -40,7 +40,7 @@ func newRefreshFixture(t *testing.T, sc *spec.SenderConstraint, now time.Time, t
 		CreatedAt:                now,
 	})
 	userRepo.Seed(&spec.User{
-		Sub: "user", PreferredUsername: "alice", PasswordHash: "hash",
+		ID: "user", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
 

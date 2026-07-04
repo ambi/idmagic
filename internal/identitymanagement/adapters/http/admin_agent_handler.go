@@ -17,7 +17,7 @@ type agentRegisterRequest struct {
 	Name        string          `json:"name"`
 	Description *string         `json:"description"`
 	Kind        *spec.AgentKind `json:"kind"`
-	OwnerSub    *string         `json:"owner_sub"`
+	OwnerUserID *string         `json:"owner_user_id"`
 	Roles       []string        `json:"roles"`
 }
 
@@ -25,7 +25,7 @@ type agentUpdateRequest struct {
 	Name        *string         `json:"name"`
 	Description *string         `json:"description"`
 	Kind        *spec.AgentKind `json:"kind"`
-	OwnerSub    *string         `json:"owner_sub"`
+	OwnerUserID *string         `json:"owner_user_id"`
 	Roles       *[]string       `json:"roles"`
 }
 
@@ -39,7 +39,7 @@ type agentSummaryResponse struct {
 	Name        string           `json:"name"`
 	Description *string          `json:"description,omitempty"`
 	Kind        spec.AgentKind   `json:"kind"`
-	OwnerSub    string           `json:"owner_sub"`
+	OwnerUserID string           `json:"owner_user_id"`
 	Status      spec.AgentStatus `json:"status"`
 	Roles       []string         `json:"roles"`
 	ClientIDs   []string         `json:"client_ids"`
@@ -87,13 +87,13 @@ func (d Deps) handleRegisterAgent(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	ownerSub := ""
-	if input.OwnerSub != nil {
-		ownerSub = *input.OwnerSub
+	ownerUserID := ""
+	if input.OwnerUserID != nil {
+		ownerUserID = *input.OwnerUserID
 	}
 	agent, err := idmusecases.RegisterAgent(c.Request().Context(), d.adminAgentDeps(), idmusecases.RegisterAgentInput{
-		ActorSub: actor.Sub, Name: input.Name, Description: input.Description,
-		Kind: input.Kind, OwnerSub: ownerSub, Roles: input.Roles, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, Name: input.Name, Description: input.Description,
+		Kind: input.Kind, OwnerUserID: ownerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeAdminAgentError(c, err)
@@ -115,9 +115,9 @@ func (d Deps) handleUpdateAgent(c *echo.Context) error {
 	}
 	agentID := c.Param("agent_id")
 	if _, err := idmusecases.UpdateAgent(c.Request().Context(), d.adminAgentDeps(), idmusecases.UpdateAgentInput{
-		ActorSub: actor.Sub, ID: agentID,
+		ActorUserID: actor.ID, ID: agentID,
 		Name: input.Name, Description: input.Description, Kind: input.Kind,
-		OwnerSub: input.OwnerSub, Roles: input.Roles, Now: time.Now().UTC(),
+		OwnerUserID: input.OwnerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	}); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
@@ -129,29 +129,29 @@ func (d Deps) handleUpdateAgent(c *echo.Context) error {
 }
 
 func (d Deps) handleDisableAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorSub, id string) error {
-		_, err := idmusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorSub, id, true, time.Now().UTC())
+	return d.changeAgentStatus(c, func(actorUserID, id string) error {
+		_, err := idmusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, true, time.Now().UTC())
 		return err
 	})
 }
 
 func (d Deps) handleEnableAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorSub, id string) error {
-		_, err := idmusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorSub, id, false, time.Now().UTC())
+	return d.changeAgentStatus(c, func(actorUserID, id string) error {
+		_, err := idmusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, false, time.Now().UTC())
 		return err
 	})
 }
 
 func (d Deps) handleKillAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorSub, id string) error {
-		_, err := idmusecases.KillAgent(c.Request().Context(), d.adminAgentDeps(), actorSub, id, time.Now().UTC())
+	return d.changeAgentStatus(c, func(actorUserID, id string) error {
+		_, err := idmusecases.KillAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
 		return err
 	})
 }
 
 func (d Deps) handleDeleteAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorSub, id string) error {
-		return idmusecases.DeleteAgent(c.Request().Context(), d.adminAgentDeps(), actorSub, id, time.Now().UTC())
+	return d.changeAgentStatus(c, func(actorUserID, id string) error {
+		return idmusecases.DeleteAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
 	})
 }
 
@@ -167,7 +167,7 @@ func (d Deps) handleBindAgentCredential(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	if err := idmusecases.BindCredential(c.Request().Context(), d.adminAgentDeps(), actor.Sub, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
+	if err := idmusecases.BindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -182,7 +182,7 @@ func (d Deps) handleUnbindAgentCredential(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := idmusecases.UnbindCredential(c.Request().Context(), d.adminAgentDeps(), actor.Sub, c.Param("agent_id"), c.Param("client_id"), time.Now().UTC()); err != nil {
+	if err := idmusecases.UnbindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), c.Param("client_id"), time.Now().UTC()); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -191,7 +191,7 @@ func (d Deps) handleUnbindAgentCredential(c *echo.Context) error {
 
 // changeAgentStatus は disable / enable / kill / delete の共通処理 (verify + admin gate
 // + 204)。
-func (d Deps) changeAgentStatus(c *echo.Context, action func(actorSub, id string) error) error {
+func (d Deps) changeAgentStatus(c *echo.Context, action func(actorUserID, id string) error) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (d Deps) changeAgentStatus(c *echo.Context, action func(actorSub, id string
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := action(actor.Sub, c.Param("agent_id")); err != nil {
+	if err := action(actor.ID, c.Param("agent_id")); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -216,7 +216,7 @@ func toAgentSummaryResponse(agent *spec.Agent, clientIDs []string) agentSummaryR
 	}
 	return agentSummaryResponse{
 		ID: agent.ID, TenantID: agent.TenantID, Name: agent.Name, Description: agent.Description,
-		Kind: agent.Kind, OwnerSub: agent.OwnerSub, Status: agent.Status,
+		Kind: agent.Kind, OwnerUserID: agent.OwnerUserID, Status: agent.Status,
 		Roles: slices.Clone(agent.Roles), ClientIDs: slices.Clone(clientIDs),
 		CreatedAt: agent.CreatedAt, UpdatedAt: agent.UpdatedAt,
 		DisabledAt: agent.DisabledAt, KilledAt: agent.KilledAt,

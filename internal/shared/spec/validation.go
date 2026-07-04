@@ -105,7 +105,7 @@ func clientUsesRedirect(client *OAuth2Client) bool {
 }
 
 var userSchema = z.Struct(z.Shape{
-	"Sub":               z.String().Required(),
+	"ID":               z.String().Required(),
 	"PreferredUsername": z.String().Min(1).Max(100).Required(),
 	"PasswordHash":      z.String().Required(),
 	"Name":              z.Ptr(z.String().Max(200)),
@@ -149,7 +149,7 @@ var groupSchema = z.Struct(z.Shape{
 
 var groupMemberSchema = z.Struct(z.Shape{
 	"GroupID":   z.String().Min(1).Required(),
-	"UserSub":   z.String().Min(1).Required(),
+	"UserID":    z.String().Min(1).Required(),
 	"CreatedAt": z.Time().Required(),
 })
 
@@ -162,7 +162,7 @@ var agentSchema = z.Struct(z.Shape{
 		func(value *AgentKind, _ z.Ctx) bool { return value.Valid() },
 		z.Message("agent kind is not in enum"),
 	).Required(),
-	"OwnerSub": z.String().Min(1).Required(),
+	"OwnerUserID": z.String().Min(1).Required(),
 	"Status": z.StringLike[AgentStatus]().TestFunc(
 		func(value *AgentStatus, _ z.Ctx) bool { return value.Valid() },
 		z.Message("agent status is not in enum"),
@@ -201,7 +201,7 @@ var authorizationDetailTypeSchema = z.Struct(z.Shape{
 })
 
 var mfaFactorSchema = z.Struct(z.Shape{
-	"Sub": z.String().Required(),
+	"UserID": z.String().Required(),
 	"Type": z.StringLike[MfaFactorType]().TestFunc(
 		func(value *MfaFactorType, _ z.Ctx) bool { return value.Valid() },
 		z.Message("mfa factor type is not in enum"),
@@ -214,7 +214,7 @@ var mfaFactorSchema = z.Struct(z.Shape{
 }, z.Message("totp factor requires secret"))
 
 var consentSchema = z.Struct(z.Shape{
-	"Sub":      z.String().Required(),
+	"UserID":      z.String().Required(),
 	"ClientID": z.String().Required(),
 	"Scopes":   z.Slice(z.String()).Min(1).Required(),
 	"State": z.StringLike[ConsentState]().TestFunc(
@@ -251,7 +251,7 @@ var authorizationCodeRecordSchema = z.Struct(z.Shape{
 	"Code":                   z.String().Required(),
 	"AuthorizationRequestID": z.String().UUID().Required(),
 	"ClientID":               z.String().Required(),
-	"Sub":                    z.String().Required(),
+	"UserID":                    z.String().Required(),
 	"RedirectURI":            z.String().URL().Required(),
 	"CodeChallenge":          z.String().Required(),
 	"CodeChallengeMethod": z.StringLike[CodeChallengeMethod]().OneOf(
@@ -268,7 +268,7 @@ var authorizationCodeRecordSchema = z.Struct(z.Shape{
 
 var loginSessionSchema = z.Struct(z.Shape{
 	"ID":        z.String().UUID().Required(),
-	"Sub":       z.String().Required(),
+	"UserID":       z.String().Required(),
 	"AMR":       z.Slice(z.String()).Min(1).Required(),
 	"ACR":       z.String().Required(),
 	"ExpiresAt": z.Time().Required(),
@@ -285,7 +285,7 @@ var refreshTokenRecordSchema = z.Struct(z.Shape{
 	"Hash":              z.String().Required(),
 	"FamilyID":          z.String().UUID().Required(),
 	"ClientID":          z.String().Required(),
-	"Sub":               z.String().Required(),
+	"UserID":               z.String().Required(),
 	"IssuedAt":          z.Time().Required(),
 	"ExpiresAt":         z.Time().Required(),
 	"AbsoluteExpiresAt": z.Time().Required(),

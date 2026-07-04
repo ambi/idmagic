@@ -48,7 +48,7 @@ func (d Deps) handleListMyApplications(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	order, err := appusecases.GetMyApplicationOrder(ctx, d.ApplicationOrderingRepo, user.Sub)
+	order, err := appusecases.GetMyApplicationOrder(ctx, d.ApplicationOrderingRepo, user.ID)
 	if err != nil {
 		return err
 	}
@@ -89,11 +89,11 @@ func (d Deps) portalCategories(ctx context.Context) ([]portalCategoryResponse, e
 
 // subjectsForUser は割当解決に使う subject 群 (本人 + 所属グループ) を組み立てる (wi-69)。
 func (d Deps) subjectsForUser(ctx context.Context, user *spec.User) []appports.SubjectRef {
-	subjects := []appports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: user.Sub}}
+	subjects := []appports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: user.ID}}
 	if d.GroupRepo == nil {
 		return subjects
 	}
-	groups, err := d.GroupRepo.ListGroupsByUser(ctx, user.TenantID, user.Sub)
+	groups, err := d.GroupRepo.ListGroupsByUser(ctx, user.TenantID, user.ID)
 	if err != nil {
 		return subjects
 	}
@@ -109,7 +109,7 @@ func (d Deps) handleGetMyApplicationOrder(c *echo.Context) error {
 	if err != nil {
 		return d.writePortalAuthError(c, err)
 	}
-	order, err := appusecases.GetMyApplicationOrder(c.Request().Context(), d.ApplicationOrderingRepo, user.Sub)
+	order, err := appusecases.GetMyApplicationOrder(c.Request().Context(), d.ApplicationOrderingRepo, user.ID)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (d Deps) handleReorderMyApplications(c *echo.Context) error {
 	}
 	ctx := c.Request().Context()
 	subjects := d.subjectsForUser(ctx, user)
-	saved, err := appusecases.SaveMyApplicationOrder(ctx, d.assignmentDeps(), user.Sub, subjects, req.ApplicationIDs, time.Now().UTC())
+	saved, err := appusecases.SaveMyApplicationOrder(ctx, d.assignmentDeps(), user.ID, subjects, req.ApplicationIDs, time.Now().UTC())
 	if err != nil {
 		if errors.Is(err, appusecases.ErrUnassignedInOrder) {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "割当されていないアプリは並び順に含められません")
@@ -151,7 +151,7 @@ func (d Deps) resolvePortalUser(c *echo.Context) (*spec.User, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return nil, errPortalUnauthorized
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return nil, err
 	}

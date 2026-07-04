@@ -92,14 +92,14 @@ func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef
 		ON CONFLICT (tenant_id, scim_id) DO UPDATE SET
 			user_sub=EXCLUDED.user_sub,
 			updated_at=now()
-	`, ref.TenantID, ref.ScimID, ref.UserSub)
+	`, ref.TenantID, ref.ScimID, ref.UserID)
 	return err
 }
 
 func (r *ScimRepository) FindUserRefByScimID(ctx context.Context, tenantID, scimID string) (*ports.ScimUserRef, error) {
 	var ref ports.ScimUserRef
 	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_sub FROM scim_user_refs WHERE tenant_id=$1 AND scim_id=$2", tenantID, scimID).
-		Scan(&ref.TenantID, &ref.ScimID, &ref.UserSub)
+		Scan(&ref.TenantID, &ref.ScimID, &ref.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -109,10 +109,10 @@ func (r *ScimRepository) FindUserRefByScimID(ctx context.Context, tenantID, scim
 	return &ref, nil
 }
 
-func (r *ScimRepository) FindUserRefByUserSub(ctx context.Context, tenantID, userSub string) (*ports.ScimUserRef, error) {
+func (r *ScimRepository) FindUserRefByUserID(ctx context.Context, tenantID, userID string) (*ports.ScimUserRef, error) {
 	var ref ports.ScimUserRef
-	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_sub FROM scim_user_refs WHERE tenant_id=$1 AND user_sub=$2", tenantID, userSub).
-		Scan(&ref.TenantID, &ref.ScimID, &ref.UserSub)
+	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_sub FROM scim_user_refs WHERE tenant_id=$1 AND user_sub=$2", tenantID, userID).
+		Scan(&ref.TenantID, &ref.ScimID, &ref.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

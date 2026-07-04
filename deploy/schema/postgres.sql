@@ -1,3 +1,25 @@
+-- User identity policy (ADR-082):
+-- - The User's canonical identifier is the domain column users.id (global,
+--   unique across tenants). The OIDC `sub` claim, SAML NameID, WS-Fed subject,
+--   and SCIM resource references are protocol-facing projections of users.id;
+--   the protocol vocabulary `sub` is not used as a storage identity.
+-- - A User's own identifier is `id`; a reference to a User from another table is
+--   `user_id` (an owner reference is `owner_user_id`).
+
+-- tenant_id key policy (ADR-082): keep tenant_id on a table only when it serves
+-- search, a constraint, retention, or audit; do not add it just because tenant
+-- is reachable through a parent. Four cases:
+-- - tenant-owned aggregate / tenant-scoped config: tenant_id is part of the PK or
+--   a unique key (users, groups, clients, applications).
+-- - child of a tenant-scoped natural key: carry tenant_id and use a composite FK
+--   so the DB rejects tenant mismatches (consents, refresh_tokens,
+--   application_orderings, agents.owner_user_id, scim_user_refs, scim_group_refs).
+-- - child of a globally unique parent: rely on the global key and omit tenant_id
+--   unless per-tenant search/retention is required (mfa_factors, password_history,
+--   password_reset_tokens, email_change_tokens, group_members).
+-- - append-only / audit / outbox / throttling: decide by emit-time tenant, query
+--   boundary, and retention (audit_events, authentication_event_buckets, outbox).
+
 -- Timestamp policy:
 -- - Every table has created_at.
 -- - Tables whose rows can be updated after creation have updated_at.
@@ -45,7 +67,7 @@ CREATE TABLE clients (
 );
 
 CREATE TABLE users (
-    sub TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'default',
     preferred_username TEXT NOT NULL,
     password_hash TEXT NOT NULL,
@@ -62,7 +84,7 @@ CREATE TABLE users (
     attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
     CONSTRAINT users_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
-    CONSTRAINT users_tenant_sub_unique UNIQUE (tenant_id, sub)
+    CONSTRAINT users_tenant_id_unique UNIQUE (tenant_id, id)
 );
 
 CREATE UNIQUE INDEX users_preferred_username_active_idx
@@ -70,19 +92,19 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
     WHERE lifecycle->>'status' <> 'deleted';
 
 CREATE TABLE mfa_factors (
-    sub TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type TEXT NOT NULL,
     secret TEXT,
     label TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_used_at TIMESTAMPTZ,
-    PRIMARY KEY (sub, type)
+    PRIMARY KEY (user_id, type)
 );
 
 CREATE TABLE consents (
     tenant_id TEXT NOT NULL DEFAULT 'default',
-    sub TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     client_id TEXT NOT NULL,
     scopes JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -90,15 +112,15 @@ CREATE TABLE consents (
     granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
-    PRIMARY KEY (tenant_id, sub, client_id),
+    PRIMARY KEY (tenant_id, user_id, client_id),
     CONSTRAINT consents_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT consents_tenant_client_fkey
         FOREIGN KEY (tenant_id, client_id)
         REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT,
-    CONSTRAINT consents_tenant_sub_fkey
-        FOREIGN KEY (tenant_id, sub)
-        REFERENCES users(tenant_id, sub) ON DELETE RESTRICT
+    CONSTRAINT consents_tenant_user_fkey
+        FOREIGN KEY (tenant_id, user_id)
+        REFERENCES users(tenant_id, id) ON DELETE RESTRICT
 );
 
 CREATE TABLE refresh_tokens (
@@ -108,7 +130,7 @@ CREATE TABLE refresh_tokens (
     parent_id UUID REFERENCES refresh_tokens(id) ON DELETE NO ACTION,
     tenant_id TEXT NOT NULL DEFAULT 'default',
     client_id TEXT NOT NULL,
-    sub TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     scopes JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -123,13 +145,13 @@ CREATE TABLE refresh_tokens (
     CONSTRAINT refresh_tokens_tenant_client_fkey
         FOREIGN KEY (tenant_id, client_id)
         REFERENCES clients(tenant_id, client_id) ON DELETE RESTRICT,
-    CONSTRAINT refresh_tokens_tenant_sub_fkey
-        FOREIGN KEY (tenant_id, sub)
-        REFERENCES users(tenant_id, sub) ON DELETE RESTRICT
+    CONSTRAINT refresh_tokens_tenant_user_fkey
+        FOREIGN KEY (tenant_id, user_id)
+        REFERENCES users(tenant_id, id) ON DELETE RESTRICT
 );
 
 CREATE INDEX refresh_tokens_family_id_idx ON refresh_tokens (family_id);
-CREATE INDEX refresh_tokens_tenant_sub_idx ON refresh_tokens (tenant_id, sub);
+CREATE INDEX refresh_tokens_tenant_user_idx ON refresh_tokens (tenant_id, user_id);
 CREATE INDEX refresh_tokens_tenant_client_idx ON refresh_tokens (tenant_id, client_id);
 
 CREATE TABLE signing_keys (
@@ -170,22 +192,22 @@ CREATE INDEX outbox_unpublished_idx ON outbox (id) WHERE published_at IS NULL;
 
 CREATE TABLE password_history (
     id BIGSERIAL PRIMARY KEY,
-    sub TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     encoded TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX password_history_sub_created_at_idx
-    ON password_history (sub, created_at DESC, id DESC);
+CREATE INDEX password_history_user_id_created_at_idx
+    ON password_history (user_id, created_at DESC, id DESC);
 
 CREATE TABLE password_reset_tokens (
     token_hash TEXT PRIMARY KEY,
-    sub TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE INDEX password_reset_tokens_sub_idx ON password_reset_tokens (sub);
+CREATE INDEX password_reset_tokens_user_id_idx ON password_reset_tokens (user_id);
 CREATE INDEX password_reset_tokens_expires_at_idx ON password_reset_tokens (expires_at);
 
 CREATE TABLE groups (
@@ -205,16 +227,16 @@ CREATE UNIQUE INDEX groups_tenant_name_idx ON groups (tenant_id, name);
 
 CREATE TABLE group_members (
     group_id TEXT NOT NULL,
-    user_sub TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (group_id, user_sub),
+    PRIMARY KEY (group_id, user_id),
     CONSTRAINT group_members_group_id_fkey
         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-    CONSTRAINT group_members_user_sub_fkey
-        FOREIGN KEY (user_sub) REFERENCES users(sub) ON DELETE CASCADE
+    CONSTRAINT group_members_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX group_members_user_sub_idx ON group_members (user_sub);
+CREATE INDEX group_members_user_id_idx ON group_members (user_id);
 
 CREATE TABLE tenant_user_attribute_schemas (
     tenant_id TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
@@ -225,20 +247,20 @@ CREATE TABLE tenant_user_attribute_schemas (
 
 CREATE TABLE email_change_tokens (
     token_hash TEXT PRIMARY KEY,
-    sub TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     new_email TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE INDEX email_change_tokens_sub_idx ON email_change_tokens (sub);
+CREATE INDEX email_change_tokens_user_id_idx ON email_change_tokens (user_id);
 CREATE INDEX email_change_tokens_expires_at_idx ON email_change_tokens (expires_at);
 
 CREATE TABLE audit_events (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT '',
     type TEXT NOT NULL,
-    sub TEXT,
+    user_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     occurred_at TIMESTAMPTZ NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb
@@ -247,7 +269,7 @@ CREATE TABLE audit_events (
 CREATE INDEX audit_events_tenant_occurred_idx
     ON audit_events (tenant_id, occurred_at DESC);
 CREATE INDEX audit_events_type_idx ON audit_events (type);
-CREATE INDEX audit_events_sub_idx ON audit_events (sub) WHERE sub IS NOT NULL;
+CREATE INDEX audit_events_user_id_idx ON audit_events (user_id) WHERE user_id IS NOT NULL;
 
 CREATE TABLE authentication_event_buckets (
     tenant_id TEXT NOT NULL,
@@ -271,7 +293,7 @@ CREATE TABLE agents (
     name TEXT NOT NULL,
     description TEXT,
     kind TEXT NOT NULL DEFAULT 'supervised',
-    owner_sub TEXT NOT NULL,
+    owner_user_id TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'disabled', 'killed')),
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -282,8 +304,8 @@ CREATE TABLE agents (
     CONSTRAINT agents_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT agents_tenant_owner_fkey
-        FOREIGN KEY (tenant_id, owner_sub)
-        REFERENCES users(tenant_id, sub) ON DELETE RESTRICT,
+        FOREIGN KEY (tenant_id, owner_user_id)
+        REFERENCES users(tenant_id, id) ON DELETE RESTRICT,
     CONSTRAINT agents_tenant_id_id_unique UNIQUE (tenant_id, id)
 );
 
@@ -428,13 +450,13 @@ CREATE TABLE wsfed_relying_parties (
 
 CREATE TABLE application_orderings (
     tenant_id TEXT NOT NULL DEFAULT 'default',
-    user_sub TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     application_ids TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, user_sub),
-    FOREIGN KEY (tenant_id, user_sub)
-        REFERENCES users (tenant_id, sub) ON DELETE CASCADE
+    PRIMARY KEY (tenant_id, user_id),
+    FOREIGN KEY (tenant_id, user_id)
+        REFERENCES users (tenant_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE application_categories (
@@ -473,12 +495,12 @@ CREATE TABLE scim_tokens (
 CREATE TABLE scim_user_refs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     scim_id TEXT NOT NULL,
-    user_sub TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
-    FOREIGN KEY (user_sub) REFERENCES users(sub) ON DELETE CASCADE
+    FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE scim_group_refs (
@@ -489,5 +511,5 @@ CREATE TABLE scim_group_refs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+    FOREIGN KEY (tenant_id, group_id) REFERENCES groups(tenant_id, id) ON DELETE CASCADE
 );

@@ -49,7 +49,7 @@ func (m *SessionManager) CreateWithPending(
 	sess := &spec.LoginSession{
 		ID:                    id,
 		TenantID:              tenancy.TenantID(ctx),
-		Sub:                   sub,
+		UserID:                sub,
 		AuthTime:              now.Unix(),
 		AMR:                   amr,
 		ACR:                   DeriveACR(amr),
@@ -60,7 +60,7 @@ func (m *SessionManager) CreateWithPending(
 		return nil, err
 	}
 	return &domain.AuthenticationContext{
-		Sub:                   sub,
+		UserID:                sub,
 		AuthTime:              sess.AuthTime,
 		AMR:                   amr,
 		ACR:                   sess.ACR,
@@ -94,7 +94,7 @@ func (m *SessionManager) CompleteFactor(
 		return nil, err
 	}
 	return &domain.AuthenticationContext{
-		Sub:                   sess.Sub,
+		UserID:                sess.UserID,
 		AuthTime:              sess.AuthTime,
 		AMR:                   slices.Clone(sess.AMR),
 		ACR:                   sess.ACR,
@@ -126,7 +126,7 @@ func (m *SessionManager) RecordStepUp(
 		return nil, err
 	}
 	return &domain.AuthenticationContext{
-		Sub:                   sess.Sub,
+		UserID:                sess.UserID,
 		AuthTime:              sess.AuthTime,
 		AMR:                   slices.Clone(sess.AMR),
 		ACR:                   sess.ACR,
@@ -152,7 +152,7 @@ func (m *SessionManager) Resolve(ctx context.Context, headers domain.Headers) (*
 		return nil, nil
 	}
 	return &domain.AuthenticationContext{
-		Sub:                   sess.Sub,
+		UserID:                sess.UserID,
 		AuthTime:              sess.AuthTime,
 		AMR:                   sess.AMR,
 		ACR:                   sess.ACR,

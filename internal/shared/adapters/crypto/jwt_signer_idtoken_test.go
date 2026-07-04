@@ -33,7 +33,7 @@ func idTokenTestUser() *spec.User {
 	nick := "cici"
 	phone := "+819012345678"
 	return &spec.User{
-		Sub: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol", Name: &name,
+		ID: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol", Name: &name,
 		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
 		Attributes: map[string]spec.AttributeValue{
 			"nickname":     {Type: spec.AttributeTypeString, String: &nick},

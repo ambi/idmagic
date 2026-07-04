@@ -66,7 +66,7 @@ func ResetPasswordWithToken(
 	}
 
 	depth := snap.HistoryDepth
-	recent, err := deps.PasswordHistoryRepo.Recent(ctx, user.Sub, depth)
+	recent, err := deps.PasswordHistoryRepo.Recent(ctx, user.ID, depth)
 	if err != nil {
 		return nil, err
 	}
@@ -105,14 +105,14 @@ func ResetPasswordWithToken(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := deps.PasswordHistoryRepo.Add(ctx, user.Sub, encoded, now); err != nil {
+	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, encoded, now); err != nil {
 		return nil, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.PasswordChanged{At: now, TenantID: user.TenantID, Sub: user.Sub})
+		deps.Emit(&spec.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
 		if clearedUpdatePassword {
 			deps.Emit(&spec.UserRequiredActionCleared{
-				At: now, TenantID: user.TenantID, ActorSub: user.Sub, TargetSub: user.Sub,
+				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
 				Action: string(spec.RequiredActionUpdatePassword),
 			})
 		}

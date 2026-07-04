@@ -42,7 +42,7 @@ type adminUserDeleteRequest struct {
 }
 
 type adminUserResponse struct {
-	Sub               string                         `json:"sub"`
+	ID                string                         `json:"id"`
 	PreferredUsername string                         `json:"preferred_username"`
 	Name              *string                        `json:"name,omitempty"`
 	GivenName         *string                        `json:"given_name,omitempty"`
@@ -108,7 +108,7 @@ func (d Deps) handleGetAdminUser(c *echo.Context) error {
 	}
 	res := toAdminUserResponse(user)
 	if d.ScimRepo != nil {
-		ref, _ := d.ScimRepo.FindUserRefByUserSub(c.Request().Context(), user.TenantID, user.Sub)
+		ref, _ := d.ScimRepo.FindUserRefByUserID(c.Request().Context(), user.TenantID, user.ID)
 		if ref != nil {
 			src := "SCIM"
 			res.ScimSource = &src
@@ -135,7 +135,7 @@ func (d Deps) handleCreateAdminUser(c *echo.Context) error {
 		ctx,
 		d.adminUserDeps(),
 		idmusecases.CreateUserInput{
-			ActorSub: actor.Sub, PreferredUsername: input.PreferredUsername,
+			ActorUserID: actor.ID, PreferredUsername: input.PreferredUsername,
 			Password: input.Password, Name: input.Name, Email: input.Email,
 			EmailVerified: input.EmailVerified, Roles: input.Roles, Now: time.Now().UTC(),
 		},
@@ -164,7 +164,7 @@ func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
 		ctx,
 		d.adminUserDeps(),
 		idmusecases.UpdateUserInput{
-			ActorSub: actor.Sub, Sub: c.Param("sub"),
+			ActorUserID: actor.ID, Sub: c.Param("sub"),
 			PreferredUsername: input.PreferredUsername, Name: input.Name,
 			GivenName: input.GivenName, FamilyName: input.FamilyName, Email: input.Email,
 			EmailVerified: input.EmailVerified, Roles: input.Roles,
@@ -205,11 +205,11 @@ func (d Deps) handleDeleteAdminUser(c *echo.Context) error {
 	defer cancel()
 	if c.QueryParam("purge") == "true" || input.Force {
 		err = idmusecases.DeleteUser(ctx, d.adminUserDeps(), idmusecases.DeleteUserInput{
-			ActorSub: actor.Sub, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
+			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	} else {
 		err = idmusecases.SoftDeleteUser(ctx, d.adminUserDeps(), idmusecases.SoftDeleteUserInput{
-			ActorSub: actor.Sub, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
+			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	}
 	if err != nil {
@@ -230,7 +230,7 @@ func (d Deps) handleRestoreAdminUser(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	user, err := idmusecases.RestoreUser(
-		ctx, d.adminUserDeps(), actor.Sub, c.Param("sub"), time.Now().UTC(),
+		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), time.Now().UTC(),
 	)
 	if err != nil {
 		return d.writeAdminUserError(c, err)
@@ -249,7 +249,7 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	_, err = idmusecases.SetUserDisabled(
-		ctx, d.adminUserDeps(), actor.Sub, c.Param("sub"), disabled, time.Now().UTC(),
+		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
 	)
 	if err != nil {
 		return d.writeAdminUserError(c, err)
@@ -322,7 +322,7 @@ func toAdminUserResponse(user *spec.User) adminUserResponse {
 		}
 	}
 	return adminUserResponse{
-		Sub: user.Sub, PreferredUsername: user.PreferredUsername, Name: user.Name,
+		ID: user.ID, PreferredUsername: user.PreferredUsername, Name: user.Name,
 		GivenName: user.GivenName, FamilyName: user.FamilyName,
 		Email: user.Email, EmailVerified: user.EmailVerified, MfaEnrolled: user.MfaEnrolled,
 		Roles: slices.Clone(user.Roles), Status: user.Lifecycle.EffectiveStatus(),
@@ -352,7 +352,7 @@ func (d Deps) handleSetUserRequiredAction(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	user, err := idmusecases.SetUserRequiredAction(
-		ctx, d.adminUserDeps(), actor.Sub, c.Param("sub"),
+		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
 		spec.RequiredAction(input.Action), time.Now().UTC(),
 	)
 	if err != nil {
@@ -372,7 +372,7 @@ func (d Deps) handleClearUserRequiredAction(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	user, err := idmusecases.ClearUserRequiredAction(
-		ctx, d.adminUserDeps(), actor.Sub, c.Param("sub"),
+		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
 		spec.RequiredAction(c.Param("action")), time.Now().UTC(),
 	)
 	if err != nil {

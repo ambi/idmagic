@@ -354,12 +354,12 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Contex
 // (wi-70, ADR-069)。application_ids は順序を保つ text[] で格納し、tenant 境界に閉じる。
 type ApplicationOrderingRepository struct{ Pool DB }
 
-func (r *ApplicationOrderingRepository) Get(ctx context.Context, tenantID, userSub string) (*spec.ApplicationOrdering, error) {
+func (r *ApplicationOrderingRepository) Get(ctx context.Context, tenantID, userID string) (*spec.ApplicationOrdering, error) {
 	var o spec.ApplicationOrdering
 	err := r.Pool.QueryRow(ctx,
 		`SELECT tenant_id,user_sub,application_ids,created_at,updated_at FROM application_orderings
- WHERE tenant_id=$1 AND user_sub=$2`, tenantID, userSub).
-		Scan(&o.TenantID, &o.UserSub, &o.ApplicationIDs, &o.CreatedAt, &o.UpdatedAt)
+ WHERE tenant_id=$1 AND user_sub=$2`, tenantID, userID).
+		Scan(&o.TenantID, &o.UserID, &o.ApplicationIDs, &o.CreatedAt, &o.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -379,7 +379,7 @@ INSERT INTO application_orderings (tenant_id,user_sub,application_ids,created_at
 VALUES ($1,$2,$3,$4,$5)
 ON CONFLICT (tenant_id,user_sub) DO UPDATE SET
  application_ids=EXCLUDED.application_ids,updated_at=EXCLUDED.updated_at`,
-		o.TenantID, o.UserSub, ids, o.CreatedAt, o.UpdatedAt)
+		o.TenantID, o.UserID, ids, o.CreatedAt, o.UpdatedAt)
 	return err
 }
 

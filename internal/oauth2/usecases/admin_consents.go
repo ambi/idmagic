@@ -43,7 +43,7 @@ func GetConsent(
 func RevokeConsent(
 	ctx context.Context,
 	deps ConsentDeps,
-	actorSub, sub, clientID string,
+	actorUserID, sub, clientID string,
 	now time.Time,
 ) error {
 	if _, err := GetConsent(ctx, deps, sub, clientID); err != nil {
@@ -53,7 +53,7 @@ func RevokeConsent(
 		return err
 	}
 	emit(deps.Emit, &spec.ConsentRevokedEvent{
-		At: adminNow(now), TenantID: tenancy.TenantID(ctx), ActorSub: actorSub, Sub: sub, ClientID: clientID,
+		At: adminNow(now), TenantID: tenancy.TenantID(ctx), ActorUserID: actorUserID, UserID: sub, ClientID: clientID,
 	})
 	return nil
 }

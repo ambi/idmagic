@@ -119,7 +119,7 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 		registration.ResponseTypes = append(registration.ResponseTypes, spec.ResponseType(responseType))
 	}
 	result, err := oauthusecases.CreateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), oauthusecases.CreateAdminOAuth2ClientInput{
-		ActorSub: actor.Sub, Registration: registration, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, Registration: registration, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
@@ -144,7 +144,7 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	client, err := oauthusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), oauthusecases.UpdateAdminOAuth2ClientInput{
-		ActorSub: actor.Sub, ClientID: c.Param("client_id"), ClientName: req.ClientName,
+		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
 		Now: time.Now().UTC(),
@@ -164,7 +164,7 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if err := oauthusecases.DeleteAdminOAuth2Client(
-		c.Request().Context(), d.adminClientDeps(), actor.Sub, c.Param("client_id"), time.Now().UTC(),
+		c.Request().Context(), d.adminClientDeps(), actor.ID, c.Param("client_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
 	}

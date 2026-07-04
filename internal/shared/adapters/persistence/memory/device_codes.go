@@ -75,7 +75,7 @@ func (s *DeviceCodeStore) DeleteAllForSub(_ context.Context, sub string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for hash, rec := range s.byHash {
-		if rec.Sub != nil && *rec.Sub == sub {
+		if rec.UserID != nil && *rec.UserID == sub {
 			delete(s.byHash, hash)
 			delete(s.byUserCode, rec.UserCode)
 		}

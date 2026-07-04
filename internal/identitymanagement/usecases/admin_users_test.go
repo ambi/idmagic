@@ -25,7 +25,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	email := "bob@example.com"
 	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
-		ActorSub: "admin", PreferredUsername: "bob", Password: "initial-password-9182",
+		ActorUserID: "admin", PreferredUsername: "bob", Password: "initial-password-9182",
 		Email: &email, Roles: []string{"support", "support"}, Now: now,
 	})
 	if err != nil {
@@ -40,7 +40,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	updatedName := "Bob"
 	roles := []string{"admin", "support"}
 	user, err = idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
-		ActorSub: "admin", Sub: user.Sub, Name: &updatedName, Roles: &roles, Now: now.Add(time.Minute),
+		ActorUserID: "admin", Sub: user.ID, Name: &updatedName, Roles: &roles, Now: now.Add(time.Minute),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 		t.Fatalf("updated user=%+v", user)
 	}
 	user, err = idmusecases.SetUserDisabled(
-		ctx, deps, "admin", user.Sub, true, now.Add(2*time.Minute),
+		ctx, deps, "admin", user.ID, true, now.Add(2*time.Minute),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 		t.Fatalf("last event=%s", got)
 	}
 	user, err = idmusecases.SetUserDisabled(
-		ctx, deps, "admin", user.Sub, false, now.Add(3*time.Minute),
+		ctx, deps, "admin", user.ID, false, now.Add(3*time.Minute),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 	repo := memory.NewUserRepository()
 	now := time.Now().UTC()
 	repo.Seed(&spec.User{
-		Sub: "existing", PreferredUsername: "bob", PasswordHash: "hash",
+		ID: "existing", PreferredUsername: "bob", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
 	_, err := idmusecases.CreateUser(context.Background(), idmusecases.AdminUserDeps{
@@ -111,7 +111,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	}
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
-		ActorSub: "admin", PreferredUsername: "alice", Password: "initial-password-9182",
+		ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182",
 		Roles: []string{"support"}, Now: now,
 	})
 	if err != nil {
@@ -119,48 +119,48 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	}
 	// Seed cascade artifacts.
 	_ = consentRepo.Save(ctx, &spec.Consent{
-		TenantID: spec.DefaultTenantID, Sub: user.Sub, ClientID: "client-a",
+		TenantID: spec.DefaultTenantID, UserID: user.ID, ClientID: "client-a",
 		Scopes: []string{"openid"}, State: spec.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
 	_ = refreshStore.Save(ctx, &spec.RefreshTokenRecord{
 		ID: "rt-1", TenantID: spec.DefaultTenantID, Hash: "hash-1",
-		FamilyID: "fam-1", ClientID: "client-a", Sub: user.Sub,
+		FamilyID: "fam-1", ClientID: "client-a", UserID: user.ID,
 		Scopes: []string{"openid"}, IssuedAt: now,
 		ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.AddDate(0, 0, 30),
 	})
 	_ = sessionStore.Save(ctx, &spec.LoginSession{
-		ID: "sess-1", TenantID: spec.DefaultTenantID, Sub: user.Sub,
+		ID: "sess-1", TenantID: spec.DefaultTenantID, UserID: user.ID,
 		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: now.Add(time.Hour),
 	})
 	totpSecret := "JBSWY3DPEHPK3PXP"
 	_ = mfaRepo.Save(ctx, &spec.MfaFactor{
-		Sub: user.Sub, Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
+		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
 	})
 
 	if err := idmusecases.DeleteUser(ctx, deps, idmusecases.DeleteUserInput{
-		ActorSub: "admin", Sub: user.Sub, Reason: "leaving company", Now: now.Add(time.Hour),
+		ActorUserID: "admin", Sub: user.ID, Reason: "leaving company", Now: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if last, ok := events[len(events)-1].(*spec.UserDeleted); !ok || last.TargetSub != user.Sub || last.Reason != "leaving company" {
-		t.Fatalf("expected UserDeleted event with target=%s reason set, got %+v", user.Sub, events[len(events)-1])
+	if last, ok := events[len(events)-1].(*spec.UserDeleted); !ok || last.TargetUserID != user.ID || last.Reason != "leaving company" {
+		t.Fatalf("expected UserDeleted event with target=%s reason set, got %+v", user.ID, events[len(events)-1])
 	}
-	tombstone, err := userRepo.FindBySubIncludingDeleted(ctx, user.Sub)
+	tombstone, err := userRepo.FindBySubIncludingDeleted(ctx, user.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tombstone == nil || !tombstone.IsDeleted() {
 		t.Fatalf("expected tombstone with status=deleted, got %+v", tombstone)
 	}
-	if tombstone.PreferredUsername != "deleted:"+user.Sub {
+	if tombstone.PreferredUsername != "deleted:"+user.ID {
 		t.Fatalf("preferred_username not anonymized: %s", tombstone.PreferredUsername)
 	}
 	if tombstone.Email != nil || tombstone.Name != nil || len(tombstone.Roles) != 0 || tombstone.MfaEnrolled {
 		t.Fatalf("PII not anonymized: %+v", tombstone)
 	}
-	if seen, _ := userRepo.FindBySub(ctx, user.Sub); seen != nil {
+	if seen, _ := userRepo.FindBySub(ctx, user.ID); seen != nil {
 		t.Fatalf("FindBySub returned deleted user")
 	}
 	// Cascade verification.
@@ -173,13 +173,13 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	if sess, _ := sessionStore.Find(ctx, "sess-1"); sess != nil {
 		t.Fatalf("session cascade leaked: %+v", sess)
 	}
-	if factors, _ := mfaRepo.ListBySub(ctx, user.Sub); len(factors) != 0 {
+	if factors, _ := mfaRepo.ListBySub(ctx, user.ID); len(factors) != 0 {
 		t.Fatalf("mfa cascade leaked: %+v", factors)
 	}
 	// Re-delete is no-op (no new UserDeleted event).
 	prev := len(events)
 	if err := idmusecases.DeleteUser(ctx, deps, idmusecases.DeleteUserInput{
-		ActorSub: "admin", Sub: user.Sub, Now: now.Add(2 * time.Hour),
+		ActorUserID: "admin", Sub: user.ID, Now: now.Add(2 * time.Hour),
 	}); err != nil {
 		t.Fatalf("idempotent delete failed: %v", err)
 	}
@@ -193,11 +193,11 @@ func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
+		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	err := idmusecases.DeleteUser(ctx, idmusecases.AdminUserDeps{UserRepo: userRepo},
-		idmusecases.DeleteUserInput{ActorSub: "admin-1", Sub: "admin-1", Now: now})
+		idmusecases.DeleteUserInput{ActorUserID: "admin-1", Sub: "admin-1", Now: now})
 	if !errors.Is(err, idmusecases.ErrSelfDeleteForbidden) {
 		t.Fatalf("error=%v, want ErrSelfDeleteForbidden", err)
 	}
@@ -208,7 +208,7 @@ func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
+		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	deps := idmusecases.AdminUserDeps{UserRepo: userRepo}
@@ -230,7 +230,7 @@ func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "admin-2", PreferredUsername: "other-admin", PasswordHash: "hash",
+		ID: "admin-2", PreferredUsername: "other-admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	deps := idmusecases.AdminUserDeps{UserRepo: userRepo}
@@ -264,22 +264,22 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 	deps, consentRepo, userRepo := softDeleteTestDeps(&events)
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
+		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
 	_ = consentRepo.Save(ctx, &spec.Consent{
-		TenantID: spec.DefaultTenantID, Sub: "alice-1", ClientID: "client-a",
+		TenantID: spec.DefaultTenantID, UserID: "alice-1", ClientID: "client-a",
 		Scopes: []string{"openid"}, State: spec.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
 
 	if err := idmusecases.SoftDeleteUser(ctx, deps, idmusecases.SoftDeleteUserInput{
-		ActorSub: "admin", Sub: "alice-1", Reason: "maybe leaving", Now: now,
+		ActorUserID: "admin", Sub: "alice-1", Reason: "maybe leaving", Now: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	last, ok := events[len(events)-1].(*spec.UserSoftDeleted)
-	if !ok || last.TargetSub != "alice-1" || last.Reason != "maybe leaving" {
+	if !ok || last.TargetUserID != "alice-1" || last.Reason != "maybe leaving" {
 		t.Fatalf("expected UserSoftDeleted with target/reason, got %+v", events[len(events)-1])
 	}
 	// status は PendingDeletion で、FindBySub でまだ見える (tombstone と違い可視)。
@@ -297,7 +297,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 	// 冪等: 再 soft-delete は追加イベントを出さない。
 	prev := len(events)
 	if err := idmusecases.SoftDeleteUser(ctx, deps, idmusecases.SoftDeleteUserInput{
-		ActorSub: "admin", Sub: "alice-1", Now: now.Add(time.Minute),
+		ActorUserID: "admin", Sub: "alice-1", Now: now.Add(time.Minute),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -313,11 +313,11 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	email := "alice@example.com"
 	userRepo.Seed(&spec.User{
-		Sub: "alice-1", PreferredUsername: "alice", PasswordHash: "hash", Email: &email,
+		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash", Email: &email,
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
 	if err := idmusecases.SoftDeleteUser(ctx, deps, idmusecases.SoftDeleteUserInput{
-		ActorSub: "admin", Sub: "alice-1", Now: now,
+		ActorUserID: "admin", Sub: "alice-1", Now: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func TestRestoreUserRejectsNonPendingAndExpired(t *testing.T) {
 	deps.SoftDeleteGraceSeconds = 60
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
+		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
 	// Active user への restore は ErrUserNotPendingDeletion。
@@ -348,7 +348,7 @@ func TestRestoreUserRejectsNonPendingAndExpired(t *testing.T) {
 		t.Fatalf("error=%v, want ErrUserNotPendingDeletion", err)
 	}
 	if err := idmusecases.SoftDeleteUser(ctx, deps, idmusecases.SoftDeleteUserInput{
-		ActorSub: "admin", Sub: "alice-1", Now: now,
+		ActorUserID: "admin", Sub: "alice-1", Now: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -363,12 +363,12 @@ func TestSoftDeleteAndRestoreRejectSelf(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
+		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	deps := idmusecases.AdminUserDeps{UserRepo: userRepo}
 	if err := idmusecases.SoftDeleteUser(ctx, deps, idmusecases.SoftDeleteUserInput{
-		ActorSub: "admin-1", Sub: "admin-1", Now: now,
+		ActorUserID: "admin-1", Sub: "admin-1", Now: now,
 	}); !errors.Is(err, idmusecases.ErrSelfDeleteForbidden) {
 		t.Fatalf("soft-delete self error=%v, want ErrSelfDeleteForbidden", err)
 	}
@@ -384,11 +384,11 @@ func TestPurgeExpiredSoftDeletedAnonymizesAfterGrace(t *testing.T) {
 	deps.SoftDeleteGraceSeconds = 1
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
+		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
 	if err := idmusecases.SoftDeleteUser(ctx, deps, idmusecases.SoftDeleteUserInput{
-		ActorSub: "admin", Sub: "alice-1", Now: now,
+		ActorUserID: "admin", Sub: "alice-1", Now: now,
 	}); err != nil {
 		t.Fatal(err)
 	}

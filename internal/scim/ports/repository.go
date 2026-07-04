@@ -26,7 +26,7 @@ type ScimToken struct {
 type ScimUserRef struct {
 	TenantID string
 	ScimID   string
-	UserSub  string
+	UserID   string
 }
 
 type ScimGroupRef struct {
@@ -46,7 +46,7 @@ type ScimRepository interface {
 
 	SaveUserRef(ctx context.Context, ref *ScimUserRef) error
 	FindUserRefByScimID(ctx context.Context, tenantID, scimID string) (*ScimUserRef, error)
-	FindUserRefByUserSub(ctx context.Context, tenantID, userSub string) (*ScimUserRef, error)
+	FindUserRefByUserID(ctx context.Context, tenantID, userID string) (*ScimUserRef, error)
 	DeleteUserRef(ctx context.Context, tenantID, scimID string) error
 
 	SaveGroupRef(ctx context.Context, ref *ScimGroupRef) error

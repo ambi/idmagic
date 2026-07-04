@@ -27,7 +27,7 @@ func (d Deps) requireAuthenticatedSub(c *echo.Context) (string, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return "", support.ErrAdminAuthenticationRequired
 	}
-	return authn.Sub, nil
+	return authn.UserID, nil
 }
 
 func (d Deps) writeAccountError(c *echo.Context, err error) error {

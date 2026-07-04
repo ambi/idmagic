@@ -22,12 +22,12 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	now := time.Now().UTC()
 	for _, consent := range []*spec.Consent{
 		{
-			TenantID: spec.DefaultTenantID, Sub: "alice", ClientID: "portal",
+			TenantID: spec.DefaultTenantID, UserID: "alice", ClientID: "portal",
 			Scopes: []string{"openid", "profile"}, State: spec.ConsentGranted,
 			GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
 		},
 		{
-			TenantID: "acme", Sub: "alice", ClientID: "portal",
+			TenantID: "acme", UserID: "alice", ClientID: "portal",
 			Scopes: []string{"openid"}, State: spec.ConsentGranted,
 			GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
 		},
@@ -82,7 +82,7 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 		t.Fatalf("events=%v", *events)
 	}
 	event, ok := (*events)[0].(*spec.ConsentRevokedEvent)
-	if !ok || event.ActorSub != "admin" {
+	if !ok || event.ActorUserID != "admin" {
 		t.Fatalf("event=%+v", (*events)[0])
 	}
 }
@@ -91,7 +91,7 @@ func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 	e, consents, _ := newAdminConsentHandler()
 	now := time.Now().UTC()
 	if err := consents.Save(context.Background(), &spec.Consent{
-		TenantID: "acme", Sub: "alice", ClientID: "portal", Scopes: []string{"openid"},
+		TenantID: "acme", UserID: "alice", ClientID: "portal", Scopes: []string{"openid"},
 		State: spec.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -123,11 +123,11 @@ func newAdminConsentHandler() (*echo.Echo, *memory.ConsentRepository, *[]spec.Do
 	consents := memory.NewConsentRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
-		Sub: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&spec.User{
-		Sub: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
+		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	events := []spec.DomainEvent{}

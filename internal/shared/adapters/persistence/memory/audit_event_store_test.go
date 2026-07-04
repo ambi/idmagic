@@ -8,14 +8,14 @@ import (
 	"github.com/ambi/idmagic/internal/oauth2/ports"
 )
 
-func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, sub string) *ports.AuditEventRecord {
+func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, userID string) *ports.AuditEventRecord {
 	t.Helper()
 	return &ports.AuditEventRecord{
-		ID:         tenantID + ":" + typ + ":" + sub + ":" + occurredAt.Format(time.RFC3339Nano),
+		ID:         tenantID + ":" + typ + ":" + userID + ":" + occurredAt.Format(time.RFC3339Nano),
 		TenantID:   tenantID,
 		Type:       typ,
 		OccurredAt: occurredAt,
-		Payload:    map[string]any{"sub": sub, "tenantId": tenantID},
+		Payload:    map[string]any{"userId": userID, "tenantId": tenantID},
 	}
 }
 
@@ -47,12 +47,12 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 
 	// type フィルタ + sub フィルタの結合。
 	filtered, err := store.List(context.Background(), ports.AuditEventQuery{
-		TenantID: "acme", Type: "UserAuthenticated", Sub: "alice",
+		TenantID: "acme", Type: "UserAuthenticated", UserID: "alice",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(filtered) != 1 || filtered[0].Payload["sub"] != "alice" {
+	if len(filtered) != 1 || filtered[0].Payload["userId"] != "alice" {
 		t.Fatalf("filter mismatch: %+v", filtered)
 	}
 
@@ -72,7 +72,7 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(after) != 1 || after[0].Payload["sub"] != "carol" {
+	if len(after) != 1 || after[0].Payload["userId"] != "carol" {
 		t.Fatalf("After filter: %+v", after)
 	}
 }
@@ -111,7 +111,7 @@ func TestAuditEventStoreLimitCapsAt1000(t *testing.T) {
 		_ = store.Append(context.Background(), &ports.AuditEventRecord{
 			ID: "e" + time.Duration(i).String(), TenantID: "acme", Type: "X",
 			OccurredAt: base.Add(time.Duration(i) * time.Second),
-			Payload:    map[string]any{"sub": "u"},
+			Payload:    map[string]any{"userId": "u"},
 		})
 	}
 	out, _ := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme", Limit: 10000})

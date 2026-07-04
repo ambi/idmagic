@@ -66,7 +66,7 @@ func scanRefresh(row rowScanner) (*spec.RefreshTokenRecord, error) {
 	var rec spec.RefreshTokenRecord
 	var parentID *string
 	var scopes, constraint []byte
-	err := row.Scan(&rec.ID, &rec.TenantID, &rec.Hash, &rec.FamilyID, &parentID, &rec.ClientID, &rec.Sub,
+	err := row.Scan(&rec.ID, &rec.TenantID, &rec.Hash, &rec.FamilyID, &parentID, &rec.ClientID, &rec.UserID,
 		&scopes, &rec.IssuedAt, &rec.ExpiresAt, &rec.AbsoluteExpiresAt, &rec.Revoked,
 		&rec.Rotated, &constraint)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -102,7 +102,7 @@ func insertRefresh(ctx context.Context, db interface {
 	_, err = db.Exec(ctx, `INSERT INTO refresh_tokens
 (id,tenant_id,hash,family_id,parent_id,client_id,sub,scopes,issued_at,expires_at,absolute_expires_at,
 revoked,rotated,sender_constraint) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NULLIF($14,'null')::jsonb)`,
-		rec.ID, rec.TenantID, rec.Hash, rec.FamilyID, rec.ParentID, rec.ClientID, rec.Sub, string(scopes),
+		rec.ID, rec.TenantID, rec.Hash, rec.FamilyID, rec.ParentID, rec.ClientID, rec.UserID, string(scopes),
 		rec.IssuedAt, rec.ExpiresAt, rec.AbsoluteExpiresAt, rec.Revoked, rec.Rotated, string(constraint))
 	return err
 }

@@ -26,7 +26,7 @@ func (d Deps) ResolveAuthentication(c *echo.Context) (*authdomain.Authentication
 	if err != nil || authn == nil || d.UserRepo == nil {
 		return authn, err
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (d Deps) resolveAuthnContext(c *echo.Context) (*authdomain.AuthenticationCo
 		}
 		// access token 経由は session を持たないので SessionID は空。完全発行された
 		// access token は認証完了を含意するため AuthenticationPending は false。
-		return &authdomain.AuthenticationContext{Sub: res.Sub, AuthTime: res.Iat}, nil
+		return &authdomain.AuthenticationContext{UserID: res.Sub, AuthTime: res.Iat}, nil
 	}
 	if d.AuthnResolver == nil {
 		return nil, nil
@@ -113,7 +113,7 @@ func (d Deps) RequireAdmin(c *echo.Context) (*spec.User, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return nil, ErrAdminAuthenticationRequired
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (d Deps) ResolveAdminActor(c *echo.Context) (*spec.User, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return nil, ErrAdminAuthenticationRequired
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (d Deps) RequireAuditReader(c *echo.Context) (*spec.User, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return nil, ErrAdminAuthenticationRequired
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Sub)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (d Deps) EffectiveRoles(ctx context.Context, user *spec.User) []string {
 	if d.GroupRepo == nil {
 		return user.Roles
 	}
-	groups, err := d.GroupRepo.ListGroupsByUser(ctx, user.TenantID, user.Sub)
+	groups, err := d.GroupRepo.ListGroupsByUser(ctx, user.TenantID, user.ID)
 	if err != nil {
 		return user.Roles
 	}

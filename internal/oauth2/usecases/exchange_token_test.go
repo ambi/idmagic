@@ -260,7 +260,7 @@ func TestExchangeTokenUsesAuthorizerPolicyGate(t *testing.T) {
 	if authorizer.last.Action != spec.ActionTokenGrantTokenExchange {
 		t.Fatalf("action=%q", authorizer.last.Action)
 	}
-	if authorizer.last.Context.ActorSub != "client" || authorizer.last.Context.SubjectSub != "user-1" ||
+	if authorizer.last.Context.ActorUserID != "client" || authorizer.last.Context.SubjectUserID != "user-1" ||
 		authorizer.last.Context.Audience != "https://api.example" {
 		t.Fatalf("policy context=%+v", authorizer.last.Context)
 	}

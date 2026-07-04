@@ -359,10 +359,10 @@ func cloneOrdering(o *spec.ApplicationOrdering) *spec.ApplicationOrdering {
 	return &cloned
 }
 
-func (r *ApplicationOrderingRepository) Get(_ context.Context, tenantID, userSub string) (*spec.ApplicationOrdering, error) {
+func (r *ApplicationOrderingRepository) Get(_ context.Context, tenantID, userID string) (*spec.ApplicationOrdering, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	o := r.orderings[tenantKey(tenantID, userSub)]
+	o := r.orderings[tenantKey(tenantID, userID)]
 	if o == nil {
 		return nil, nil
 	}
@@ -372,7 +372,7 @@ func (r *ApplicationOrderingRepository) Get(_ context.Context, tenantID, userSub
 func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *spec.ApplicationOrdering) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := tenantKey(ordering.TenantID, ordering.UserSub)
+	key := tenantKey(ordering.TenantID, ordering.UserID)
 	cloned := cloneOrdering(ordering)
 	if existing := r.orderings[key]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt

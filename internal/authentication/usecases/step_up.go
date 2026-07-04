@@ -87,7 +87,7 @@ func StepUpStart(
 	}
 	if deps.Emit != nil {
 		deps.Emit(&spec.StepUpRequested{
-			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), Sub: sub, SessionID: sessionID,
+			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), UserID: sub, SessionID: sessionID,
 		})
 	}
 	return AvailableStepUpMethods(user), nil
@@ -150,7 +150,7 @@ func CompleteStepUp(ctx context.Context, deps StepUpDeps, in CompleteStepUpInput
 	}
 	if deps.Emit != nil {
 		deps.Emit(&spec.StepUpCompleted{
-			At: now, TenantID: tenancy.TenantID(ctx), Sub: in.Sub,
+			At: now, TenantID: tenancy.TenantID(ctx), UserID: in.Sub,
 			SessionID: in.SessionID, Method: string(in.Method),
 		})
 	}

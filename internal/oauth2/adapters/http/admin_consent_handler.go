@@ -14,7 +14,7 @@ import (
 
 type adminConsentResponse struct {
 	TenantID  string            `json:"tenant_id"`
-	Sub       string            `json:"sub"`
+	UserID    string            `json:"user_id"`
 	ClientID  string            `json:"client_id"`
 	Scopes    []string          `json:"scopes"`
 	State     spec.ConsentState `json:"state"`
@@ -60,7 +60,7 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if err := oauthusecases.RevokeConsent(
-		c.Request().Context(), d.ConsentDeps(), actor.Sub,
+		c.Request().Context(), d.ConsentDeps(), actor.ID,
 		c.Param("sub"), c.Param("client_id"), time.Now().UTC(),
 	); err != nil {
 		return d.WriteConsentError(c, err)
@@ -71,7 +71,7 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 
 func toAdminConsentResponse(consent *spec.Consent) adminConsentResponse {
 	return adminConsentResponse{
-		TenantID: consent.TenantID, Sub: consent.Sub, ClientID: consent.ClientID,
+		TenantID: consent.TenantID, UserID: consent.UserID, ClientID: consent.ClientID,
 		Scopes: slices.Clone(consent.Scopes), State: consent.State,
 		GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt, RevokedAt: consent.RevokedAt,
 	}

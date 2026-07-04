@@ -17,11 +17,11 @@ func newGroupDeps(t *testing.T) (idmusecases.AdminGroupDeps, *[]spec.DomainEvent
 	userRepo := memory.NewUserRepository()
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		Sub: "user_alice", TenantID: "default", PreferredUsername: "alice",
+		ID: "user_alice", TenantID: "default", PreferredUsername: "alice",
 		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&spec.User{
-		Sub: "user_other", TenantID: "acme", PreferredUsername: "other",
+		ID: "user_other", TenantID: "acme", PreferredUsername: "other",
 		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	events := &[]spec.DomainEvent{}
@@ -47,7 +47,7 @@ func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 
 	group, err := idmusecases.CreateGroup(ctx, deps, idmusecases.CreateGroupInput{
-		ActorSub: "operator", Name: "engineering", Roles: []string{"catalog:read"}, Now: now,
+		ActorUserID: "operator", Name: "engineering", Roles: []string{"catalog:read"}, Now: now,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
 
 	// 名前一意性
 	if _, err := idmusecases.CreateGroup(ctx, deps, idmusecases.CreateGroupInput{
-		ActorSub: "operator", Name: "Engineering", Now: now,
+		ActorUserID: "operator", Name: "Engineering", Now: now,
 	}); !errors.Is(err, idmusecases.ErrGroupNameConflict) {
 		t.Fatalf("expected name conflict, got %v", err)
 	}
@@ -91,7 +91,7 @@ func TestAddMemberRejectsCrossTenantUser(t *testing.T) {
 	deps, _ := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := idmusecases.CreateGroup(ctx, deps, idmusecases.CreateGroupInput{
-		ActorSub: "operator", Name: "engineering", Now: now,
+		ActorUserID: "operator", Name: "engineering", Now: now,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ func TestDeleteGroupCascadesMembership(t *testing.T) {
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := idmusecases.CreateGroup(ctx, deps, idmusecases.CreateGroupInput{
-		ActorSub: "operator", Name: "engineering", Now: now,
+		ActorUserID: "operator", Name: "engineering", Now: now,
 	})
 	if err != nil {
 		t.Fatal(err)

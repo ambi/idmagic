@@ -33,7 +33,7 @@ type AuditEventQuery struct {
 	// Types は複数 type のいずれかに一致する行のみを返す (空なら制限なし)。認証イベント
 	// 検索が success/fail/aggregated に対応する type 群へ絞り込むのに使う (wi-44)。
 	Types  []string
-	Sub    string
+	UserID string
 	After  time.Time
 	Before time.Time
 	Limit  int

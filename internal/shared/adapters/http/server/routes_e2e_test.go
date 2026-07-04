@@ -75,7 +75,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 	email := "alice@example.com"
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
+		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
 		Email: &email, EmailVerified: true,
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -138,7 +138,7 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	email := "alice@example.com"
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
+		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -147,7 +147,7 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	}
 	if totpSecret != "" {
 		if err := mfaFactorRepo.Save(context.Background(), &spec.MfaFactor{
-			Sub: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
+			UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed mfa factor: %v", err)
 		}
@@ -661,14 +661,14 @@ func TestAccountContextReturnsCSRFTokenForAuthenticatedSession(t *testing.T) {
 
 	ctx := getJSON[struct {
 		CSRFToken         string `json:"csrf_token"`
-		Sub               string `json:"sub"`
+		ID                string `json:"id"`
 		PreferredUsername string `json:"preferred_username"`
 	}](t, client, srv.URL+"/api/auth/account")
 	if ctx.CSRFToken == "" {
 		t.Fatal("csrf_token is empty")
 	}
-	if ctx.Sub != "user_alice" {
-		t.Fatalf("sub=%q, want user_alice", ctx.Sub)
+	if ctx.ID != "user_alice" {
+		t.Fatalf("id=%q, want user_alice", ctx.ID)
 	}
 	if ctx.PreferredUsername != demoUsername {
 		t.Fatalf("preferred_username=%q, want %q", ctx.PreferredUsername, demoUsername)

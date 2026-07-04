@@ -144,10 +144,10 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				if in.Prompt == "none" {
 					return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 				}
-				if needsStepUp && d.canUseTOTP(c, authn.Sub) {
+				if needsStepUp && d.canUseTOTP(c, authn.UserID) {
 					pending, err := d.SessionManager.CreateWithPending(
 						c.Request().Context(),
-						authn.Sub,
+						authn.UserID,
 						authn.AMR,
 						time.Now().UTC(),
 						true,
@@ -199,7 +199,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if req.Sub == nil {
+	if req.UserID == nil {
 		authn, _ := d.ResolveAuthentication(c)
 		if authn != nil && authn.AuthenticationPending {
 			return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "totp", CSRFToken: csrf})
@@ -210,7 +210,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	if authn != nil && authn.AuthenticationPending {
 		return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "totp", CSRFToken: csrf})
 	}
-	if authn == nil || authn.Sub != *req.Sub {
+	if authn == nil || authn.UserID != *req.UserID {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションが一致しません")
 	}
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
@@ -393,7 +393,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	authTime := time.Now().UTC()
 	authn, err := d.SessionManager.CreateWithPending(
 		c.Request().Context(),
-		user.Sub,
+		user.ID,
 		[]string{"pwd"},
 		authTime,
 		user.MfaEnrolled,
@@ -403,7 +403,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	}
 	d.setSessionCookie(c, authn.SessionID)
 	if d.Emit != nil {
-		d.Emit(&spec.UserAuthenticated{At: authTime, TenantID: user.TenantID, Sub: user.Sub, AMR: []string{"pwd"}})
+		d.Emit(&spec.UserAuthenticated{At: authTime, TenantID: user.TenantID, UserID: user.ID, AMR: []string{"pwd"}})
 	}
 	if user.MfaEnrolled {
 		next := support.TenantRoute(c, "/totp")
@@ -424,11 +424,11 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: input.ReturnTo})
 	}
 	if err := d.RequestStore.AttachAuthentication(
-		c.Request().Context(), req.ID, user.Sub, authn.AuthTime, authn.AMR, authn.ACR,
+		c.Request().Context(), req.ID, user.ID, authn.AuthTime, authn.AMR, authn.ACR,
 	); err != nil {
 		return writeOAuthError(c, err)
 	}
-	req.Sub, req.AuthTime = &user.Sub, &authn.AuthTime
+	req.UserID, req.AuthTime = &user.ID, &authn.AuthTime
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil || client == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
@@ -490,7 +490,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	result, err := authusecases.VerifyTOTPFactor(
 		c.Request().Context(),
 		d.MfaFactorRepo,
-		authn.Sub,
+		authn.UserID,
 		input.Code,
 		time.Now().UTC(),
 	)
@@ -498,7 +498,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 		return err
 	}
 	if !result.OK {
-		d.emitAuthenticationFailure(c, authn.Sub, result.Reason)
+		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "TOTPコードを確認してください。")
 	}
 	completed, err := d.SessionManager.CompleteFactor(c.Request().Context(), authn.SessionID, []string{"otp"})
@@ -510,10 +510,10 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	}
 	d.setSessionCookie(c, completed.SessionID)
 	if d.Emit != nil {
-		d.Emit(&spec.UserAuthenticated{At: time.Now().UTC(), Sub: completed.Sub, AMR: completed.AMR})
+		d.Emit(&spec.UserAuthenticated{At: time.Now().UTC(), UserID: completed.UserID, AMR: completed.AMR})
 	}
 	// full authentication 完了 (pwd + otp)。last_login_at 記録 + required action gate。
-	if user, err := d.UserRepo.FindBySub(c.Request().Context(), completed.Sub); err != nil {
+	if user, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID); err != nil {
 		return err
 	} else if user != nil {
 		gateNext, err := d.recordLoginAndRequiredAction(c, user, time.Now().UTC())
@@ -528,11 +528,11 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: input.ReturnTo})
 	}
 	if err := d.RequestStore.AttachAuthentication(
-		c.Request().Context(), req.ID, completed.Sub, completed.AuthTime, completed.AMR, completed.ACR,
+		c.Request().Context(), req.ID, completed.UserID, completed.AuthTime, completed.AMR, completed.ACR,
 	); err != nil {
 		return writeOAuthError(c, err)
 	}
-	req.Sub, req.AuthTime, req.AMR, req.ACR = &completed.Sub, &completed.AuthTime, completed.AMR, &completed.ACR
+	req.UserID, req.AuthTime, req.AMR, req.ACR = &completed.UserID, &completed.AuthTime, completed.AMR, &completed.ACR
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil || client == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
@@ -556,7 +556,7 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
 	}
 	authn, _ := d.ResolveAuthentication(c)
-	if authn == nil || req.Sub == nil || authn.Sub != *req.Sub {
+	if authn == nil || req.UserID == nil || authn.UserID != *req.UserID {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションが一致しません")
 	}
 	var input consentAPIRequest
@@ -575,7 +575,7 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	if d.ConsentRepo != nil {
 		now := time.Now().UTC()
 		if err := d.ConsentRepo.Save(ctx, &spec.Consent{
-			TenantID: support.RequestTenantID(c), Sub: authn.Sub, ClientID: req.ClientID,
+			TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID,
 			Scopes: scopes, State: spec.ConsentGranted,
 			GrantedAt: now, ExpiresAt: now.Add(365 * 24 * time.Hour),
 			AuthorizationDetails: req.AuthorizationDetails,
@@ -583,10 +583,10 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 			return err
 		}
 		if d.Emit != nil {
-			d.Emit(&spec.ConsentGrantedEvent{At: now, TenantID: support.RequestTenantID(c), Sub: authn.Sub, ClientID: req.ClientID, Scopes: scopes})
+			d.Emit(&spec.ConsentGrantedEvent{At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID, Scopes: scopes})
 			if len(req.AuthorizationDetails) > 0 {
 				d.Emit(&spec.AuthorizationDetailsConsented{
-					At: now, TenantID: support.RequestTenantID(c), Sub: authn.Sub, ClientID: req.ClientID,
+					At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID,
 					DetailTypes: oauthdomain.DetailTypes(req.AuthorizationDetails),
 				})
 			}
@@ -618,7 +618,7 @@ func (d Deps) completeAfterAuthn(
 	// resource owner が IdP 利用者自身であるため consent をスキップする (ADR-061)。
 	if d.ConsentRepo != nil && !client.FirstParty {
 		consent, _ := d.ConsentRepo.Find(
-			c.Request().Context(), support.RequestTenantID(c), authn.Sub, client.ClientID,
+			c.Request().Context(), support.RequestTenantID(c), authn.UserID, client.ClientID,
 		)
 		covered := consent != nil &&
 			consent.State == spec.ConsentGranted &&
@@ -644,11 +644,11 @@ func (d Deps) completeAfterAuthn(
 			ctx, cancel := d.OperationContext(c.Request().Context())
 			defer cancel()
 			if err := d.RequestStore.AttachAuthentication(
-				ctx, req.ID, authn.Sub, authn.AuthTime, authn.AMR, authn.ACR,
+				ctx, req.ID, authn.UserID, authn.AuthTime, authn.AMR, authn.ACR,
 			); err != nil {
 				return authorizationNext{}, err
 			}
-			req.Sub, req.AuthTime = &authn.Sub, &authn.AuthTime
+			req.UserID, req.AuthTime = &authn.UserID, &authn.AuthTime
 			return authorizationNext{Path: support.TenantRoute(c, "/consent")}, nil
 		}
 	}
@@ -691,7 +691,7 @@ func (d Deps) issueCodeURL(
 	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない (ADR-061)。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
 		decision, err := d.EvaluateApplicationAccess(
-			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, authn.Sub, authn, d.ClientIP(c.Request()),
+			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
 		)
 		if err != nil {
 			return "", err
@@ -700,11 +700,11 @@ func (d Deps) issueCodeURL(
 			if d.Emit != nil {
 				d.Emit(&spec.AppStepUpRequired{
 					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
-					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.Sub,
+					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.UserID,
 				})
 			}
-			if d.canUseTOTP(c, authn.Sub) { //nolint:contextcheck // HTTP request context is required for factor lookup.
-				pending, err := d.SessionManager.CreateWithPending(ctx, authn.Sub, authn.AMR, time.Now().UTC(), true)
+			if d.canUseTOTP(c, authn.UserID) { //nolint:contextcheck // HTTP request context is required for factor lookup.
+				pending, err := d.SessionManager.CreateWithPending(ctx, authn.UserID, authn.AMR, time.Now().UTC(), true)
 				if err != nil {
 					return "", err
 				}
@@ -721,7 +721,7 @@ func (d Deps) issueCodeURL(
 			if d.Emit != nil && decision.ApplicationID != "" {
 				d.Emit(&spec.AppAccessDeniedByPolicy{
 					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
-					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.Sub, Reason: reason,
+					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.UserID, Reason: reason,
 				})
 			}
 			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションにアクセスできません"), nil
@@ -732,7 +732,7 @@ func (d Deps) issueCodeURL(
 		CodeStore:    d.CodeStore,
 	}, usecases.CompleteLoginInput{
 		RequestID: req.ID,
-		Sub:       authn.Sub,
+		Sub:       authn.UserID,
 		AuthTime:  authTime,
 		AMR:       req.AMR,
 		ACR:       stringValue(req.ACR),
@@ -746,7 +746,7 @@ func (d Deps) issueCodeURL(
 	}
 	if d.Emit != nil {
 		d.Emit(&spec.AuthorizationCodeIssued{
-			At: time.Now().UTC(), TenantID: tenantID, ClientID: req.ClientID, Sub: authn.Sub,
+			At: time.Now().UTC(), TenantID: tenantID, ClientID: req.ClientID, UserID: authn.UserID,
 			Scopes: out.Code.Scopes, CodeChallengeMethod: req.CodeChallengeMethod,
 		})
 	}

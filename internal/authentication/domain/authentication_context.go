@@ -5,7 +5,7 @@ package domain
 import "context"
 
 type AuthenticationContext struct {
-	Sub                   string
+	UserID                string
 	AuthTime              int64
 	AMR                   []string
 	ACR                   string

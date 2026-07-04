@@ -15,7 +15,7 @@ import (
 )
 
 type AccountProfileResponse struct {
-	Sub               string                         `json:"sub"`
+	ID                string                         `json:"id"`
 	PreferredUsername string                         `json:"preferred_username"`
 	Name              *string                        `json:"name,omitempty"`
 	GivenName         *string                        `json:"given_name,omitempty"`
@@ -35,7 +35,7 @@ type AccountProfileResponse struct {
 // accountSummaryResponse は portal home 用のアカウント概要 (self-service)。
 // admin shell 用の AccountContext とは別契約で roles を含めない (wi-21 / ADR-042)。
 type accountSummaryResponse struct {
-	Sub               string                `json:"sub"`
+	ID                string                `json:"id"`
 	PreferredUsername string                `json:"preferred_username"`
 	Name              *string               `json:"name,omitempty"`
 	Email             *string               `json:"email,omitempty"`
@@ -56,7 +56,7 @@ type accountProfileUpdateRequest struct {
 
 func toAccountProfileResponse(user *spec.User, defs []spec.UserAttributeDef) AccountProfileResponse {
 	return AccountProfileResponse{
-		Sub: user.Sub, PreferredUsername: user.PreferredUsername,
+		ID: user.ID, PreferredUsername: user.PreferredUsername,
 		Name: user.Name, GivenName: user.GivenName, FamilyName: user.FamilyName,
 		Email: user.Email, EmailVerified: user.EmailVerified, MfaEnrolled: user.MfaEnrolled,
 		Status:             user.Lifecycle.EffectiveStatus(),
@@ -78,7 +78,7 @@ func toAccountSummaryResponse(user *spec.User) accountSummaryResponse {
 		actions = []spec.RequiredAction{}
 	}
 	return accountSummaryResponse{
-		Sub: user.Sub, PreferredUsername: user.PreferredUsername, Name: user.Name,
+		ID: user.ID, PreferredUsername: user.PreferredUsername, Name: user.Name,
 		Email: user.Email, EmailVerified: user.EmailVerified, MfaEnrolled: user.MfaEnrolled,
 		Status:            user.Lifecycle.EffectiveStatus(),
 		LastLoginAt:       user.Lifecycle.LastLoginAt,
@@ -144,7 +144,7 @@ func (d Deps) requireAuthenticatedSub(c *echo.Context) (string, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return "", support.ErrAdminAuthenticationRequired
 	}
-	return authn.Sub, nil
+	return authn.UserID, nil
 }
 
 func (d Deps) writeAccountError(c *echo.Context, err error) error {
@@ -179,5 +179,5 @@ func (d Deps) requireStepUpSub(c *echo.Context) (string, error) {
 	if !authusecases.StepUpSatisfied(authn, time.Now().UTC()) {
 		return "", authusecases.ErrStepUpRequired
 	}
-	return authn.Sub, nil
+	return authn.UserID, nil
 }

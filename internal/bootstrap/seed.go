@@ -61,7 +61,7 @@ func seedDemoData(
 	email := "alice@example.com"
 	totpSecret := envDefault("DEMO_TOTP_SECRET", "")
 	if err := users.Save(ctx, &spec.User{
-		Sub: "user_alice", TenantID: spec.DefaultTenantID,
+		ID: "user_alice", TenantID: spec.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		Roles:     []string{"admin"},
@@ -80,7 +80,7 @@ func seedDemoData(
 	// 用意し、既定テナントに所属する。
 	rootEmail := "root@example.com"
 	if err := users.Save(ctx, &spec.User{
-		Sub: "user_root", TenantID: spec.DefaultTenantID,
+		ID: "user_root", TenantID: spec.DefaultTenantID,
 		PreferredUsername: "root", PasswordHash: hash,
 		Email: &rootEmail, EmailVerified: true,
 		Roles:     []string{"admin", "system_admin"},
@@ -103,7 +103,7 @@ func seedDemoData(
 	}
 	label := "Demo TOTP"
 	return mfaFactors.Save(ctx, &spec.MfaFactor{
-		Sub: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
+		UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
 	})
 }
 
@@ -238,7 +238,7 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 		}
 	}
 	if _, err := groups.AddMember(ctx, &spec.GroupMember{
-		GroupID: "group_engineering", UserSub: "user_alice", CreatedAt: now,
+		GroupID: "group_engineering", UserID: "user_alice", CreatedAt: now,
 	}); err != nil {
 		return err
 	}

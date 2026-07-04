@@ -72,8 +72,8 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 	tenantID := tenancy.TenantID(ctx)
 
-	reject := func(actorSub string, err *OAuthError) (*ExchangeTokenResult, error) {
-		emit(deps.Emit, &spec.TokenExchangeRejected{At: now, TenantID: tenantID, ActorSub: actorSub, Reason: err.Code})
+	reject := func(actorUserID string, err *OAuthError) (*ExchangeTokenResult, error) {
+		emit(deps.Emit, &spec.TokenExchangeRejected{At: now, TenantID: tenantID, ActorUserID: actorUserID, Reason: err.Code})
 		return nil, err
 	}
 
@@ -215,10 +215,10 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 
 	emit(deps.Emit, &spec.AccessTokenIssued{
 		At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID,
-		Sub: subject.Sub, Scopes: grantedScopes, SenderConstraint: senderConstraintTag(sc),
+		UserID: subject.Sub, Scopes: grantedScopes, SenderConstraint: senderConstraintTag(sc),
 	})
 	emit(deps.Emit, &spec.TokenExchanged{
-		At: now, TenantID: tenantID, ActorSub: currentActorSub, SubjectSub: subject.Sub,
+		At: now, TenantID: tenantID, ActorUserID: currentActorSub, SubjectUserID: subject.Sub,
 		Audience: resource, DelegationDepth: depth,
 	})
 
@@ -240,7 +240,7 @@ func evaluateTokenExchangePolicy(
 	ctx context.Context,
 	authorizer ports.Authorizer,
 	client *spec.OAuth2Client,
-	actorSub, subjectSub, resource string,
+	actorUserID, subjectUserID, resource string,
 	scopes []string,
 	delegationDepth int,
 	now time.Time,
@@ -266,7 +266,7 @@ func evaluateTokenExchangePolicy(
 			},
 		},
 		Context: spec.AuthZContext{
-			ActorSub: actorSub, SubjectSub: subjectSub, Audience: resource,
+			ActorUserID: actorUserID, SubjectUserID: subjectUserID, Audience: resource,
 			DelegationDepth: delegationDepth, Now: now,
 		},
 	}

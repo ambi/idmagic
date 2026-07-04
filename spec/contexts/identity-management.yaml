@@ -27,7 +27,7 @@ glossary:
       - disable user
       - アカウント無効化
   UserDeletion:
-    definition: "User の tombstone 化と関連 aggregate の cascade 削除。`deleted_at` を設定し PII フィールドを匿名化、`sub` のみを audit のため保持する。`Deleted` は終端で復元できない。"
+    definition: "User の tombstone 化と関連 aggregate の cascade 削除。`deleted_at` を設定し PII フィールドを匿名化、`id` のみを audit のため保持する。`Deleted` は終端で復元できない。"
     aliases:
       - delete user
       - anonymize user
@@ -83,7 +83,7 @@ glossary:
       - effective roles
       - 有効ロール
   Agent:
-    definition: tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で既存 OAuth2Client に束縛してトークンを得る。owner (所有者 User の sub) は必須。
+    definition: tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で既存 OAuth2Client に束縛してトークンを得る。owner (所有者 User の id) は必須。
     aliases:
       - agent
       - エージェント
@@ -155,13 +155,13 @@ models:
   User:
     kind: entity
     description: "IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを\n型付きで持つ。それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 /\ntenant 定義 custom) は attributes に sparse に格納し、テナントが実際に使う属性\nだけが領域を消費する。\n"
-    identity: sub
+    identity: id
     fields:
-      sub:
+      id:
         type: String
         constraints:
           - non_empty
-        description: global 一意の subject。tenant 跨ぎでも衝突しない。
+        description: "User の canonical な domain 識別子。global 一意で tenant 跨ぎでも衝突しない。\nprotocol 境界ではこの id を写像して表現する: OIDC `sub` claim / SAML NameID /\nWS-Fed subject / SCIM リソース参照。protocol vocabulary (`sub` 等) を storage identity\nとして露出させない。pairwise subject など写像を差し替える場合も id 自体は不変。\n"
       tenant_id:
         type: String
         default: default
@@ -303,7 +303,7 @@ models:
           []
   AdminUserUpdateRequest:
     kind: value_object
-    description: 管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。sub と password_hash は変更しない。
+    description: 管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。id と password_hash は変更しない。
     fields:
       preferred_username:
         type: String
@@ -341,7 +341,7 @@ models:
     kind: value_object
     description: 管理 API が返すユーザー表現。password_hash は契約上含めない。
     fields:
-      sub:
+      id:
         type: String
       tenant_id:
         type: String
@@ -398,7 +398,7 @@ models:
     kind: value_object
     description: "`/api/account/profile` の返り値 (self-service)。呼び出しユーザ自身の表示用\nprojection。attributes は self が読める分 (self_readable / claim_exposed) のみ、\neditable_attributes は editable_by_user=true の定義一覧で、UI のフォーム描画に使う。\n"
     fields:
-      sub:
+      id:
         type: String
       preferred_username:
         type: String
@@ -462,7 +462,7 @@ models:
     kind: value_object
     description: "`/api/account/summary` の返り値 (end-user account portal のホーム)。呼び出し\nユーザ自身のアカウント概要で、admin shell 用の AccountContext (/api/auth/account)\nとは別契約。roles は含めず、最終ログイン・パスワード変更日時・MFA 状態・未対応の\nrequired actions を portal home の summary card 用に返す。\n"
     fields:
-      sub:
+      id:
         type: String
       preferred_username:
         type: String
@@ -560,14 +560,14 @@ models:
         optional: true
   GroupMember:
     kind: entity
-    description: User と Group の所属関係。group_id × user_sub で一意。
+    description: User と Group の所属関係。group_id × user_id で一意。
     identity:
       - group_id
-      - user_sub
+      - user_id
     fields:
       group_id:
         type: String
-      user_sub:
+      user_id:
         type: String
       created_at:
         type: Timestamp
@@ -644,7 +644,7 @@ models:
     kind: value_object
     description: グループ所属メンバー表現。
     fields:
-      user_sub:
+      user_id:
         type: String
       preferred_username:
         type: String
@@ -705,11 +705,11 @@ models:
       kind:
         type: AgentKind
         default: Supervised
-      owner_sub:
+      owner_user_id:
         type: String
         constraints:
           - non_empty
-        description: 所有者 User の sub。必須。同一 tenant_id の User でなければならない。
+        description: 所有者 User の id。必須。同一 tenant_id の User でなければならない。
       status:
         type: AgentStatus
         default: Active
@@ -746,7 +746,7 @@ models:
         type: Timestamp
   AgentRegisterRequest:
     kind: value_object
-    description: 管理者が Agent を登録する JSON リクエスト。owner_sub 省略時は actor を所有者とする。
+    description: 管理者が Agent を登録する JSON リクエスト。owner_user_id 省略時は actor を所有者とする。
     fields:
       name:
         type: String
@@ -763,16 +763,16 @@ models:
       kind:
         type: AgentKind
         optional: true
-      owner_sub:
+      owner_user_id:
         type: String
         optional: true
-        description: 省略時は actor の sub を所有者とする。
+        description: 省略時は actor の id を所有者とする。
       roles:
         type: "String[]"
         optional: true
   AgentUpdateRequest:
     kind: value_object
-    description: 管理者が Agent の name / description / kind / owner_sub / roles を更新する JSON リクエスト。省略フィールドは現状維持。owner_sub の変更は所有権移転。
+    description: 管理者が Agent の name / description / kind / owner_user_id / roles を更新する JSON リクエスト。省略フィールドは現状維持。owner_user_id の変更は所有権移転。
     fields:
       name:
         type: String
@@ -790,7 +790,7 @@ models:
       kind:
         type: AgentKind
         optional: true
-      owner_sub:
+      owner_user_id:
         type: String
         optional: true
         description: 変更は所有権移転 (AgentOwnerChanged)。
@@ -822,7 +822,7 @@ models:
         optional: true
       kind:
         type: AgentKind
-      owner_sub:
+      owner_user_id:
         type: String
       status:
         type: AgentStatus
@@ -856,7 +856,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       provider:
         type: String
@@ -868,7 +868,7 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      sub:
+      userId:
         type: String
       provider:
         type: String
@@ -881,7 +881,7 @@ models:
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
-      sub:
+      userId:
         type: String
       newEmailHash:
         type: String
@@ -895,7 +895,7 @@ models:
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
-      sub:
+      userId:
         type: String
   UserCreated:
     kind: event
@@ -906,9 +906,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
   UserUpdated:
     kind: event
@@ -919,9 +919,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
       changedFields:
         type: "String[]"
@@ -934,9 +934,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
   UserEnabled:
     kind: event
@@ -947,9 +947,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
   UserSoftDeleted:
     kind: event
@@ -960,9 +960,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
       reason:
         type: String
@@ -976,9 +976,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
   UserDeleted:
     kind: event
@@ -989,9 +989,9 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
       reason:
         type: String
@@ -1005,23 +1005,23 @@ models:
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
-      targetSub:
+      targetUserId:
         type: String
   UserRequiredActionCleared:
     kind: event
-    description: 強制アクションが解除された。admin の明示解除のほか、本人がパスワードを変更した結果 update_password が自動解除される場合も発火し、その際 actorSub は対象本人の sub になる。
+    description: 強制アクションが解除された。admin の明示解除のほか、本人がパスワードを変更した結果 update_password が自動解除される場合も発火し、その際 actor の id は対象本人の id になる。
     payload:
       occurredAt:
         type: Timestamp
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
-      actorSub:
+      actorUserId:
         type: String
         description: 解除を行った主体。自動解除時は対象本人。
-      targetSub:
+      targetUserId:
         type: String
   GroupCreated:
     kind: event
@@ -1032,7 +1032,7 @@ models:
       tenantId:
         type: String
         description: グループが属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       groupId:
         type: String
@@ -1045,7 +1045,7 @@ models:
       tenantId:
         type: String
         description: グループが属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       groupId:
         type: String
@@ -1060,7 +1060,7 @@ models:
       tenantId:
         type: String
         description: グループが属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       groupId:
         type: String
@@ -1073,11 +1073,11 @@ models:
       tenantId:
         type: String
         description: グループが属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       groupId:
         type: String
-      userSub:
+      userId:
         type: String
   GroupMemberRemoved:
     kind: event
@@ -1088,11 +1088,11 @@ models:
       tenantId:
         type: String
         description: グループが属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       groupId:
         type: String
-      userSub:
+      userId:
         type: String
   AgentRegistered:
     kind: event
@@ -1103,7 +1103,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1116,7 +1116,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1131,7 +1131,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1144,7 +1144,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1157,7 +1157,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1170,26 +1170,26 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
   AgentOwnerChanged:
     kind: event
-    description: 管理者が Agent の所有者 (owner_sub) を移転した。
+    description: 管理者が Agent の所有者 (owner_user_id) を移転した。
     payload:
       occurredAt:
         type: Timestamp
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
-      previousOwnerSub:
+      previousOwnerUserId:
         type: String
-      newOwnerSub:
+      newOwnerUserId:
         type: String
   AgentCredentialBound:
     kind: event
@@ -1200,7 +1200,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1215,7 +1215,7 @@ models:
       tenantId:
         type: String
         description: Agent が属するテナント ID。
-      actorSub:
+      actorUserId:
         type: String
       agentId:
         type: String
@@ -1282,7 +1282,7 @@ states:
         to: Killed
 interfaces:
   GetAccountSummary:
-    description: "認証済みユーザーが自身のアカウント概要を取得する (self-service portal home)。\n対象は actor.sub に固定。roles を含まず、最終ログイン・パスワード変更日時・\nMFA 状態・未対応 required actions を返す。admin shell の AccountContext とは\n別契約。\n"
+    description: "認証済みユーザーが自身のアカウント概要を取得する (self-service portal home)。\n対象は actor.id に固定。roles を含まず、最終ログイン・パスワード変更日時・\nMFA 状態・未対応 required actions を返す。admin shell の AccountContext とは\n別契約。\n"
     output:
       summary:
         type: AccountSummary
@@ -1294,7 +1294,7 @@ interfaces:
         method: GET
         path: /api/account/summary
   GetUserProfile:
-    description: "認証済みユーザーが自身のプロフィールを取得する (self-service)。対象は\nactor.sub に固定するため cross-user 参照は構造的に発生しない。attributes は\nself が読める分のみ、editable_attributes に編集可能定義を併せて返す。\n"
+    description: "認証済みユーザーが自身のプロフィールを取得する (self-service)。対象は\nactor.id に固定するため cross-user 参照は構造的に発生しない。attributes は\nself が読める分のみ、editable_attributes に編集可能定義を併せて返す。\n"
     output:
       profile:
         type: AccountProfileResponse
@@ -1306,7 +1306,7 @@ interfaces:
         method: GET
         path: /api/account/profile
   UpdateUserProfile:
-    description: "認証済みユーザーが自身の表示名と editable_by_user=true の属性を更新する\n(self-service)。actor.sub == target.sub に固定。属性は key 単位の merge とし、\neditable_by_user=false の key は拒否する。status / roles / organization の変更は\nadmin 専用で本経路では扱わない。\n"
+    description: "認証済みユーザーが自身の表示名と editable_by_user=true の属性を更新する\n(self-service)。actor.id == target.id に固定。属性は key 単位の merge とし、\neditable_by_user=false の key は拒否する。status / roles / organization の変更は\nadmin 専用で本経路では扱わない。\n"
     input:
       request:
         type: AccountProfileUpdateRequest
@@ -1324,7 +1324,7 @@ interfaces:
         path: /api/account/profile
         request_form: body
   RequestEmailChange:
-    description: "認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。actor.sub に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n"
+    description: "認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。actor.id に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n"
     input:
       request:
         type: AccountEmailChangeRequest
@@ -1356,7 +1356,7 @@ interfaces:
         path: /api/account/email/verify
         request_form: body
   ExportAccountData:
-    description: "認証済みユーザーが自身の個人データを JSON で取得する (self-service, GDPR access)。\n対象は actor.sub に固定。本ステージは同期生成で profile と consents を含む。\n"
+    description: "認証済みユーザーが自身の個人データを JSON で取得する (self-service, GDPR access)。\n対象は actor.id に固定。本ステージは同期生成で profile と consents を含む。\n"
     output:
       export:
         type: AccountDataExport
@@ -1380,9 +1380,9 @@ interfaces:
         method: GET
         path: /api/admin/users
   GetAdminUser:
-    description: 管理者が sub を指定してユーザーを取得する。
+    description: 管理者が id を指定してユーザーを取得する。
     input:
-      sub:
+      user_id:
         type: String
     output:
       user:
@@ -1394,7 +1394,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/users/{sub}"
+        path: "/api/admin/users/{user_id}"
   CreateAdminUser:
     description: 管理者が PasswordPolicy objective を満たす初期パスワードでユーザーを作成する。
     input:
@@ -1418,7 +1418,7 @@ interfaces:
   UpdateAdminUser:
     description: 管理者がユーザーのプロフィール、email_verified、roles を更新する。
     input:
-      sub:
+      user_id:
         type: String
       request:
         type: AdminUserUpdateRequest
@@ -1433,12 +1433,12 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/users/{sub}"
+        path: "/api/admin/users/{user_id}"
         request_form: body
   DisableAdminUser:
     description: 管理者がユーザーを無効化し、新規ログインと既存セッション利用を拒否する。
     input:
-      sub:
+      user_id:
         type: String
     errors:
       - InvalidRequestError
@@ -1448,13 +1448,13 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{sub}/disable"
+        path: "/api/admin/users/{user_id}/disable"
         successful_status_codes:
           - "204"
   EnableAdminUser:
     description: 管理者が無効化済みユーザーを再有効化する。
     input:
-      sub:
+      user_id:
         type: String
     errors:
       - InvalidRequestError
@@ -1464,13 +1464,13 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{sub}/enable"
+        path: "/api/admin/users/{user_id}/enable"
         successful_status_codes:
           - "204"
   DeleteAdminUser:
     description: "管理者がユーザーを削除する。既定は SoftDelete で、status を\nPendingDeletion に遷移させ PII / Consent / RefreshToken / Session を温存する\n(猶予期間内は Restore 可能)。`purge=true` の場合は ADR-036 の anonymize\ncascade を即時実施し tombstone 化する。いずれも冪等で、既に同じ終着状態の\nuser への再呼び出しは no-op として 204 を返す。自分自身は削除できない\n(admin / system_admin の自爆防止)。\n"
     input:
-      sub:
+      user_id:
         type: String
       purge:
         type: Boolean
@@ -1489,14 +1489,14 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/users/{sub}"
+        path: "/api/admin/users/{user_id}"
         request_form: body
         successful_status_codes:
           - "204"
   RestoreAdminUser:
     description: "管理者が PendingDeletion のユーザーを Restore する。status を Active\nに戻し PII / credential を温存したまま復元する。猶予期間を過ぎている、または\nPendingDeletion でない user に対しては InvalidRequestError を返す。復元後の\nuser を返す。\n"
     input:
-      sub:
+      user_id:
         type: String
     output:
       user:
@@ -1509,13 +1509,13 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{sub}/restore"
+        path: "/api/admin/users/{user_id}/restore"
         successful_status_codes:
           - "200"
   SetUserRequiredAction:
     description: "管理者が対象ユーザーに次回ログイン時の強制アクション (RequiredAction) を\n付与する。update_password を付与されたユーザーは次回ログイン時に\nchange-password 画面へ強制誘導される (本人の変更で自動解除)。冪等で、既に\n付与済みなら現状を返す。admin 専用。\n"
     input:
-      sub:
+      user_id:
         type: String
       request:
         type: AdminRequiredActionRequest
@@ -1530,12 +1530,12 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{sub}/required_actions"
+        path: "/api/admin/users/{user_id}/required_actions"
         request_form: body
   ClearUserRequiredAction:
     description: "管理者が対象ユーザーの強制アクションを解除する。冪等で、未付与なら\n現状を返す。admin 専用。本人のパスワード変更に伴う update_password の自動\n解除は ChangePassword / ResetPasswordWithToken 側で発火する。\n"
     input:
-      sub:
+      user_id:
         type: String
     output:
       user:
@@ -1548,7 +1548,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/users/{sub}/required_actions/{action}"
+        path: "/api/admin/users/{user_id}/required_actions/{action}"
   ListGroups:
     description: 管理者が所属テナントのグループを一覧する。各グループは member_count を含む。
     output:
@@ -1641,7 +1641,7 @@ interfaces:
     input:
       group_id:
         type: String
-      user_sub:
+      user_id:
         type: String
     errors:
       - InvalidRequestError
@@ -1652,7 +1652,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/groups/{group_id}/members/{user_sub}"
+        path: "/api/admin/groups/{group_id}/members/{user_id}"
         successful_status_codes:
           - "204"
   RemoveGroupMember:
@@ -1660,7 +1660,7 @@ interfaces:
     input:
       group_id:
         type: String
-      user_sub:
+      user_id:
         type: String
     errors:
       - InvalidRequestError
@@ -1671,13 +1671,13 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/groups/{group_id}/members/{user_sub}"
+        path: "/api/admin/groups/{group_id}/members/{user_id}"
         successful_status_codes:
           - "204"
   ListUserGroups:
     description: 管理者が指定 User の所属グループと有効ロール内訳 (明示 / グループ由来 / union) を取得する。
     input:
-      sub:
+      user_id:
         type: String
     output:
       response:
@@ -1689,7 +1689,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/users/{sub}/groups"
+        path: "/api/admin/users/{user_id}/groups"
   ListAgents:
     description: 管理者が所属テナントの Agent を一覧する。
     output:
@@ -1719,7 +1719,7 @@ interfaces:
         method: GET
         path: "/api/admin/agents/{agent_id}"
   RegisterAgent:
-    description: 管理者が所属テナントに Agent を登録する。name はテナント内で一意、owner_sub 省略時は actor を所有者とする。
+    description: 管理者が所属テナントに Agent を登録する。name はテナント内で一意、owner_user_id 省略時は actor を所有者とする。
     input:
       request:
         type: AgentRegisterRequest
@@ -1739,7 +1739,7 @@ interfaces:
         successful_status_codes:
           - "201"
   UpdateAgent:
-    description: 管理者が Agent の name / description / kind / owner_sub / roles を更新する。owner_sub の変更は所有権移転。
+    description: 管理者が Agent の name / description / kind / owner_user_id / roles を更新する。owner_user_id の変更は所有権移転。
     input:
       agent_id:
         type: String
@@ -1874,9 +1874,9 @@ invariants:
     target: User
     always: "user.status != Active => user is not authenticated and issues no new token"
   AgentReferencesStayTenantLocal:
-    description: "Agent.owner_sub と AgentCredentialBinding.client_id は同一 tenant_id 内の live aggregate だけを指す。\n反例: tenant A の Agent が tenant B の User や OAuth2Client を参照する = tenant isolation 違反。\n"
+    description: "Agent.owner_user_id と AgentCredentialBinding.client_id は同一 tenant_id 内の live aggregate だけを指す。\n反例: tenant A の Agent が tenant B の User や OAuth2Client を参照する = tenant isolation 違反。\n"
     target: Agent
-    always: "agent.owner_sub in Users(agent.tenant_id) && binding(agent).client_id in OAuth2Clients(agent.tenant_id)"
+    always: "agent.owner_user_id in Users(agent.tenant_id) && binding(agent).client_id in OAuth2Clients(agent.tenant_id)"
 permissions:
   AdminUserRead:
     description: 管理ユーザー情報の一覧・取得。
@@ -1894,17 +1894,17 @@ permissions:
     resource: User
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
   AdminUserDelete:
-    description: "管理者によるユーザーの soft-delete (削除予約)。status を PendingDeletion\nに遷移させる。actor.sub == resource.sub かつ admin / system_admin role を持つ\n場合は use case 側で reject する (自爆防止)。\n"
+    description: "管理者によるユーザーの soft-delete (削除予約)。status を PendingDeletion\nに遷移させる。actor.id == resource.id かつ admin / system_admin role を持つ\n場合は use case 側で reject する (自爆防止)。\n"
     actor: User
     resource: User
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminUserRestore:
-    description: "管理者による PendingDeletion ユーザーの復元。status を Active に戻す。\nactor.sub == resource.sub かつ admin / system_admin role を持つ場合は use case\n側で reject する (自爆防止)。\n"
+    description: "管理者による PendingDeletion ユーザーの復元。status を Active に戻す。\nactor.id == resource.id かつ admin / system_admin role を持つ場合は use case\n側で reject する (自爆防止)。\n"
     actor: User
     resource: User
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminUserPurge:
-    description: "管理者によるユーザーの完全削除 (purge)。ADR-036 の anonymize cascade で\ntombstone 化する。actor.sub == resource.sub かつ admin / system_admin role を\n持つ場合は use case 側で reject する (自爆防止)。\n"
+    description: "管理者によるユーザーの完全削除 (purge)。ADR-036 の anonymize cascade で\ntombstone 化する。actor.id == resource.id かつ admin / system_admin role を\n持つ場合は use case 側で reject する (自爆防止)。\n"
     actor: User
     resource: User
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"

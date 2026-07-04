@@ -22,11 +22,11 @@ func newAdminGroupHandler(t *testing.T) (*echo.Echo, *memory.GroupRepository) {
 	groupRepo := memory.NewGroupRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&spec.User{
-		Sub: "admin", PreferredUsername: "admin", PasswordHash: "unused",
+		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&spec.User{
-		Sub: "alice", PreferredUsername: "alice", PasswordHash: "unused",
+		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
@@ -111,7 +111,7 @@ func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	if err := groupRepo.Save(ctx, group); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := groupRepo.AddMember(ctx, &spec.GroupMember{GroupID: group.ID, UserSub: "alice", CreatedAt: time.Now().UTC()}); err != nil {
+	if _, err := groupRepo.AddMember(ctx, &spec.GroupMember{GroupID: group.ID, UserID: "alice", CreatedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodGet, "/api/admin/groups", http.NoBody)

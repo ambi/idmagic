@@ -93,7 +93,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if client == nil {
 		return nil, NewOAuthError("invalid_client", "未知の client_id")
 	}
-	user, err := deps.UserRepo.FindBySub(ctx, rec.Sub)
+	user, err := deps.UserRepo.FindBySub(ctx, rec.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:               client,
-		Sub:                  user.Sub,
+		Sub:                  user.ID,
 		Scopes:               rec.Scopes,
 		SenderConstraint:     sc,
 		AuthTime:             rec.AuthTime,
@@ -138,8 +138,8 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, Sub: user.Sub, Scopes: rec.Scopes, SenderConstraint: senderConstraintTag(sc)})
-	emit(deps.Emit, &spec.AuthorizationCodeRedeemed{At: now, TenantID: tenantID, ClientID: client.ClientID, Sub: user.Sub})
+	emit(deps.Emit, &spec.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: rec.Scopes, SenderConstraint: senderConstraintTag(sc)})
+	emit(deps.Emit, &spec.AuthorizationCodeRedeemed{At: now, TenantID: tenantID, ClientID: client.ClientID, UserID: user.ID})
 
 	var idToken string
 	if slices.Contains(rec.Scopes, "openid") {
@@ -162,7 +162,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 
 	var refreshToken string
 	if deps.RefreshStore != nil && slices.Contains(rec.Scopes, "offline_access") {
-		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.Sub, rec.Scopes, sc, now)
+		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, now)
 		if err != nil {
 			return nil, err
 		}
@@ -170,7 +170,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		if err := deps.RefreshStore.Save(ctx, gen.Record); err != nil {
 			return nil, err
 		}
-		emit(deps.Emit, &spec.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: gen.Record.ID, FamilyID: gen.Record.FamilyID, ClientID: client.ClientID, Sub: user.Sub})
+		emit(deps.Emit, &spec.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: gen.Record.ID, FamilyID: gen.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
 		if err := deps.CodeStore.LinkFamily(ctx, rec.Code, gen.Record.FamilyID); err != nil {
 			return nil, err
 		}
