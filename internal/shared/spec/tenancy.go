@@ -12,7 +12,7 @@ type Tenant struct {
 	Status                 TenantStatus            `json:"status"`
 	PasswordPolicyOverride *PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	CreatedAt              time.Time               `json:"created_at"`
-	UpdatedAt              *time.Time              `json:"updated_at,omitempty"`
+	UpdatedAt              time.Time               `json:"updated_at"`
 	DisabledAt             *time.Time              `json:"disabled_at,omitempty"`
 }
 

@@ -37,8 +37,9 @@ type UpdateSignInPolicyInput struct {
 }
 
 func EmptySignInPolicy(tenantID, applicationID string, now time.Time) *spec.AppSignInPolicy {
+	at := adminNow(now)
 	return &spec.AppSignInPolicy{
-		TenantID: tenantID, ApplicationID: applicationID, Rules: []spec.SignInRule{}, UpdatedAt: adminNow(now),
+		TenantID: tenantID, ApplicationID: applicationID, Rules: []spec.SignInRule{}, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
@@ -72,10 +73,18 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 	if err := ValidateSignInPolicyRules(rules); err != nil {
 		return nil, err
 	}
+	now := adminNow(in.Now)
 	policy := &spec.AppSignInPolicy{
-		TenantID: tenantID, ApplicationID: in.ApplicationID, Rules: rules, UpdatedAt: adminNow(in.Now),
+		TenantID: tenantID, ApplicationID: in.ApplicationID, Rules: rules, CreatedAt: now, UpdatedAt: now,
 	}
 	if deps.PolicyRepo != nil {
+		existing, err := deps.PolicyRepo.Get(ctx, tenantID, in.ApplicationID)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil && !existing.CreatedAt.IsZero() {
+			policy.CreatedAt = existing.CreatedAt
+		}
 		if err := deps.PolicyRepo.Save(ctx, policy); err != nil {
 			return nil, err
 		}
@@ -88,8 +97,9 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 
 // EmptyDefaultSignInPolicy は未設定テナントの空のデフォルトポリシーを返す。
 func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *spec.TenantDefaultSignInPolicy {
+	at := adminNow(now)
 	return &spec.TenantDefaultSignInPolicy{
-		TenantID: tenantID, Rules: []spec.SignInRule{}, UpdatedAt: adminNow(now),
+		TenantID: tenantID, Rules: []spec.SignInRule{}, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
@@ -126,10 +136,18 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 	if err := ValidateSignInPolicyRules(rules); err != nil {
 		return nil, err
 	}
+	now := adminNow(in.Now)
 	policy := &spec.TenantDefaultSignInPolicy{
-		TenantID: tenantID, Rules: rules, UpdatedAt: adminNow(in.Now),
+		TenantID: tenantID, Rules: rules, CreatedAt: now, UpdatedAt: now,
 	}
 	if deps.DefaultRepo != nil {
+		existing, err := deps.DefaultRepo.Get(ctx, tenantID)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil && !existing.CreatedAt.IsZero() {
+			policy.CreatedAt = existing.CreatedAt
+		}
 		if err := deps.DefaultRepo.Save(ctx, policy); err != nil {
 			return nil, err
 		}

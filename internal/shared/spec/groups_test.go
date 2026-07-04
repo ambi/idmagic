@@ -29,11 +29,11 @@ func TestEffectiveRolesEmptyGroupsEqualsUserRoles(t *testing.T) {
 
 func TestGroupValidate(t *testing.T) {
 	now := time.Now().UTC()
-	valid := Group{ID: "group_x", TenantID: "default", Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now}
+	valid := Group{ID: "group_x", TenantID: "default", Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now, UpdatedAt: now}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid group rejected: %v", err)
 	}
-	missingName := Group{ID: "group_x", TenantID: "default", CreatedAt: now}
+	missingName := Group{ID: "group_x", TenantID: "default", CreatedAt: now, UpdatedAt: now}
 	if err := missingName.Validate(); err == nil {
 		t.Fatal("group without name was accepted")
 	}

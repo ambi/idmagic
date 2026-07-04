@@ -53,10 +53,10 @@ type SamlServiceProvider struct {
 	SignResponse bool `json:"sign_response"`
 	// WantAuthnRequestsSigned は将来の SP ごとの AuthnRequest 署名検証 policy 用予約フィールド。
 	// true の場合は AuthnRequestSigningCertificatePEM で AuthnRequest / LogoutRequest を検証する。
-	WantAuthnRequestsSigned           bool       `json:"want_authn_requests_signed,omitempty"`
-	AuthnRequestSigningCertificatePEM string     `json:"authn_request_signing_certificate_pem,omitempty"`
-	CreatedAt                         time.Time  `json:"created_at"`
-	UpdatedAt                         *time.Time `json:"updated_at,omitempty"`
+	WantAuthnRequestsSigned           bool      `json:"want_authn_requests_signed,omitempty"`
+	AuthnRequestSigningCertificatePEM string    `json:"authn_request_signing_certificate_pem,omitempty"`
+	CreatedAt                         time.Time `json:"created_at"`
+	UpdatedAt                         time.Time `json:"updated_at"`
 }
 
 // EffectiveAudience は assertion の AudienceRestriction に用いる値を返す。未設定なら entityID。

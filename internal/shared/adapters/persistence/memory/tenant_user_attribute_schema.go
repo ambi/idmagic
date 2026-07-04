@@ -36,6 +36,9 @@ func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *sp
 	defaultTenant(&cloned.TenantID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if existing := r.byTenant[cloned.TenantID]; existing != nil && !existing.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
 	r.byTenant[cloned.TenantID] = cloned
 	return nil
 }

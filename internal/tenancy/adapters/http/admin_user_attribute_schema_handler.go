@@ -16,6 +16,7 @@ type UserAttributeSchemaResponse struct {
 	TenantID   string                  `json:"tenant_id"`
 	Attributes []spec.UserAttributeDef `json:"attributes"`
 	Builtin    []spec.UserAttributeDef `json:"builtin"`
+	CreatedAt  time.Time               `json:"created_at"`
 	UpdatedAt  time.Time               `json:"updated_at"`
 }
 
@@ -32,6 +33,7 @@ func toUserAttributeSchemaResponse(schema *spec.TenantUserAttributeSchema) UserA
 		TenantID:   schema.TenantID,
 		Attributes: attributes,
 		Builtin:    spec.BuiltinUserAttributeDefs(),
+		CreatedAt:  schema.CreatedAt,
 		UpdatedAt:  schema.UpdatedAt,
 	}
 }

@@ -60,6 +60,7 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 		SubjectID:     subjectID,
 		Visibility:    visibility,
 		CreatedAt:     adminNow(in.Now),
+		UpdatedAt:     adminNow(in.Now),
 	}
 	if err := deps.AssignmentRepo.Save(ctx, assignment); err != nil {
 		return nil, err

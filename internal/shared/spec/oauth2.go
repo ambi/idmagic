@@ -28,6 +28,7 @@ type OAuth2Client struct {
 	// authorization_code フローで consent 画面をスキップする (ADR-061)。
 	FirstParty bool      `json:"first_party"`
 	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 func (c OAuth2Client) Validate() error {

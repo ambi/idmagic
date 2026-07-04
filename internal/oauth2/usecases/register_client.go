@@ -124,6 +124,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		DpopBoundAccessTokens:              in.DpopBoundAccessTokens,
 		FapiProfile:                        fapiProfile,
 		CreatedAt:                          now,
+		UpdatedAt:                          now,
 	}
 	if in.ClientName != "" {
 		name := in.ClientName

@@ -98,6 +98,8 @@ models:
         type: SigningKeyState
       created_at:
         type: Timestamp
+      updated_at:
+        type: Timestamp
       activated_at:
         type: Timestamp
         optional: true

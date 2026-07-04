@@ -409,7 +409,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 		rp.ClaimPolicy.Rules = *req.Rules
 	}
 	now := time.Now().UTC()
-	rp.UpdatedAt = &now
+	rp.UpdatedAt = now
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err
 	}
@@ -489,7 +489,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 		sp.ClaimPolicy.Rules = *req.Rules
 	}
 	now := time.Now().UTC()
-	sp.UpdatedAt = &now
+	sp.UpdatedAt = now
 	if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
 		return err
 	}

@@ -42,6 +42,7 @@ type adminClientResponse struct {
 	DpopBoundAccessTokens              bool                         `json:"dpop_bound_access_tokens"`
 	FapiProfile                        spec.FapiProfile             `json:"fapi_profile"`
 	CreatedAt                          time.Time                    `json:"created_at"`
+	UpdatedAt                          time.Time                    `json:"updated_at"`
 }
 
 func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {
@@ -197,5 +198,6 @@ func toAdminOAuth2ClientResponse(client *spec.OAuth2Client) adminClientResponse 
 		RequirePushedAuthorizationRequests: client.RequirePushedAuthorizationRequests,
 		DpopBoundAccessTokens:              client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
 		CreatedAt: client.CreatedAt,
+		UpdatedAt: client.UpdatedAt,
 	}
 }

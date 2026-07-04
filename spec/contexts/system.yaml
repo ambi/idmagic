@@ -67,6 +67,11 @@ standards:
         relates_to:
           objectives:
             - AuditLogRetention
+invariants:
+  PersistedModelTimestamps:
+    description: "永続化される状態モデルは作成時刻を持つ。作成後に現在状態が更新されるモデルは更新時刻も持つ。作成後は不可変で、消費または削除のみされる記録モデルは更新時刻を持たない。issued_at / granted_at / occurred_at / expires_at / revoked_at / first_seen / last_seen などのドメイン時刻は作成時刻を置き換えない。イベントログは履歴・監査の真実だが、created_at / updated_at は現在状態の検索・表示・同期・運用確認のためのモデル属性である。"
+    target: PersistedStateModel
+    always: "persisted_model has created_at and (mutable_persisted_model implies has updated_at) and (immutable_record implies not has updated_at)"
 objectives:
   DatabaseResilience:
     kind: security

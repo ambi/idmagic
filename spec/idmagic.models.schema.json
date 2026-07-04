@@ -1384,7 +1384,8 @@
         },
         "updated_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "作成時は created_at と同じ値を持ち、以後管理操作ごとに更新する。"
         }
       },
       "additionalProperties": false,
@@ -1395,7 +1396,8 @@
         "email_verified",
         "mfa_enrolled",
         "roles",
-        "created_at"
+        "created_at",
+        "updated_at"
       ],
       "description": "管理 API が返すユーザー表現。password_hash は契約上含めない。"
     },
@@ -2022,6 +2024,10 @@
             "$ref": "#/$defs/SignInRule"
           }
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "updated_at": {
           "type": "string",
           "format": "date-time"
@@ -2032,6 +2038,7 @@
         "tenant_id",
         "application_id",
         "rules",
+        "created_at",
         "updated_at"
       ],
       "description": "Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。"
@@ -2701,13 +2708,23 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false,
       "required": [
         "tenant_id",
         "user_sub",
-        "application_ids"
+        "application_ids",
+        "created_at",
+        "updated_at"
       ],
       "description": "利用者ポータルでの手動並び順 (ADR-069)。tenant_id + user_sub をキーに、Application の\n表示順を application_id の順序列として持つ。user_sub は同一テナントの既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、同一テナントかつ本人に割当済み visible な Application のみに制限する。\n"
     },
@@ -3088,6 +3105,14 @@
         "count": {
           "type": "integer"
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "first_seen": {
           "type": "string",
           "format": "date-time"
@@ -3103,6 +3128,8 @@
         "key_hash",
         "window_start",
         "count",
+        "created_at",
+        "updated_at",
         "first_seen",
         "last_seen"
       ],
@@ -4305,6 +4332,14 @@
         "state": {
           "$ref": "#/$defs/ConsentState"
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "granted_at": {
           "type": "string",
           "format": "date-time"
@@ -4334,6 +4369,8 @@
         "client_id",
         "scopes",
         "state",
+        "created_at",
+        "updated_at",
         "granted_at",
         "expires_at"
       ],
@@ -6197,6 +6234,11 @@
         "created_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "作成時は created_at と同じ値を持ち、以後 client metadata の管理操作ごとに更新する。"
         }
       },
       "additionalProperties": false,
@@ -6213,7 +6255,8 @@
         "dpop_bound_access_tokens",
         "fapi_profile",
         "first_party",
-        "created_at"
+        "created_at",
+        "updated_at"
       ],
       "description": "RFC 7591 + FAPI 2.0 拡張のクライアント。"
     },
@@ -6673,6 +6716,14 @@
         "state": {
           "$ref": "#/$defs/RefreshTokenState"
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "issued_at": {
           "type": "string",
           "format": "date-time"
@@ -6700,6 +6751,8 @@
         "sub",
         "scopes",
         "state",
+        "created_at",
+        "updated_at",
         "issued_at",
         "expires_at",
         "absolute_expires_at"
@@ -7191,12 +7244,24 @@
         },
         "enabled": {
           "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "設定行を初めて作成した時刻。"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "作成時と設定更新時に保存する tenant-scoped configuration の更新時刻。"
         }
       },
       "additionalProperties": false,
       "required": [
         "tenant_id",
-        "enabled"
+        "enabled",
+        "created_at",
+        "updated_at"
       ],
       "description": "テナントごとの SCIM 2.0 Inbound Provisioning 有効化設定。"
     },
@@ -7583,6 +7648,10 @@
           "type": "string",
           "format": "date-time"
         },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "activated_at": {
           "type": "string",
           "format": "date-time",
@@ -7607,7 +7676,8 @@
         "usage",
         "public_jwk",
         "state",
-        "created_at"
+        "created_at",
+        "updated_at"
       ],
       "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。"
     },
@@ -7828,7 +7898,8 @@
         },
         "updated_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "作成時は created_at と同じ値を持ち、以後 mutable aggregate の管理操作ごとに更新する。"
         },
         "disabled_at": {
           "type": "string",
@@ -7841,7 +7912,8 @@
         "id",
         "display_name",
         "status",
-        "created_at"
+        "created_at",
+        "updated_at"
       ],
       "description": "テナント (realm) 集約。Client / User / Consent / ポリシー / ブランディングはこの境界に閉じる。`default` テナントは起動時に自動作成され、削除・無効化とも不可。live aggregate は tenant_id で既存 Tenant を参照し、履歴・イベント用途の record は監査保持のため tenant 外部キーを持たない場合がある。"
     },
@@ -7902,6 +7974,10 @@
             "$ref": "#/$defs/SignInRule"
           }
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "updated_at": {
           "type": "string",
           "format": "date-time"
@@ -7911,6 +7987,7 @@
       "required": [
         "tenant_id",
         "rules",
+        "created_at",
         "updated_at"
       ],
       "description": "テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。"
@@ -8173,6 +8250,10 @@
           },
           "description": "key が一意で組み込み属性と衝突しない定義の並び。"
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "updated_at": {
           "type": "string",
           "format": "date-time"
@@ -8182,6 +8263,7 @@
       "required": [
         "tenant_id",
         "attributes",
+        "created_at",
         "updated_at"
       ],
       "description": "tenant 単位の custom 属性定義集合。組み込み属性はコード (BuiltinUserAttributeDefs) が持ち、本集合は tenant 固有分のみ。tenant aggregate には埋め込まず独立 aggregate として持ち、tenant 削除時に cascade する。"
@@ -8206,6 +8288,10 @@
           },
           "description": "コード提供の読み取り専用カタログ (BuiltinUserAttributeDefs)。"
         },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
         "updated_at": {
           "type": "string",
           "format": "date-time"
@@ -8216,6 +8302,7 @@
         "tenant_id",
         "attributes",
         "builtin",
+        "created_at",
         "updated_at"
       ],
       "description": "`/api/admin/tenant/user_attribute_schema` の返り値。tenant 固有の custom 属性定義\n(attributes) に加え、参照用にコードが持つ組み込みカタログ (builtin) を併せて返し、\nUI が key 衝突を避けつつ全属性を一覧できるようにする。\n"
@@ -8573,7 +8660,8 @@
         },
         "updated_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "作成時は created_at と同じ値を持ち、以後 User aggregate の管理・自己変更操作ごとに更新する。"
         }
       },
       "additionalProperties": false,
@@ -8586,7 +8674,8 @@
         "mfa_enrolled",
         "roles",
         "lifecycle",
-        "created_at"
+        "created_at",
+        "updated_at"
       ],
       "description": "IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを\n型付きで持つ。それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 /\ntenant 定義 custom) は attributes に sparse に格納し、テナントが実際に使う属性\nだけが領域を消費する。\n"
     },

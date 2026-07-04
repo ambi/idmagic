@@ -34,6 +34,12 @@ models:
         type: String
       enabled:
         type: Boolean
+      created_at:
+        type: Timestamp
+        description: 設定行を初めて作成した時刻。
+      updated_at:
+        type: Timestamp
+        description: 作成時と設定更新時に保存する tenant-scoped configuration の更新時刻。
   ScimToken:
     kind: entity
     description: SCIM 2.0 API へのアクセス用 Bearer Token。

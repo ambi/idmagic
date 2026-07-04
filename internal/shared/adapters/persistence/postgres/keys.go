@@ -87,7 +87,7 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*ports.SigningKey, 
 		return nil, err
 	}
 	if _, err := s.Pool.Exec(ctx,
-		"UPDATE signing_keys SET active=FALSE,archived_at=now() WHERE kid=$1 AND tenant_id=$2",
+		"UPDATE signing_keys SET active=FALSE,archived_at=now(),updated_at=now() WHERE kid=$1 AND tenant_id=$2",
 		kid, tenantID); err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string) (*ports
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx,
-		"UPDATE signing_keys SET active=FALSE,rotated_at=now() WHERE active AND tenant_id=$1",
+		"UPDATE signing_keys SET active=FALSE,rotated_at=now(),updated_at=now() WHERE active AND tenant_id=$1",
 		tenantID); err != nil {
 		return nil, err
 	}

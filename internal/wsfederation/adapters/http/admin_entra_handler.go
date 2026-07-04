@@ -103,8 +103,10 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	status := http.StatusCreated
 	if existing != nil {
 		rp.CreatedAt = existing.CreatedAt
-		rp.UpdatedAt = &now
+		rp.UpdatedAt = now
 		status = http.StatusOK
+	} else {
+		rp.UpdatedAt = now
 	}
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err

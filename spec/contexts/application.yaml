@@ -224,6 +224,8 @@ models:
         type: UUID
       rules:
         type: "SignInRule[]"
+      created_at:
+        type: Timestamp
       updated_at:
         type: Timestamp
   TenantDefaultSignInPolicy:
@@ -237,6 +239,8 @@ models:
         default: default
       rules:
         type: "SignInRule[]"
+      created_at:
+        type: Timestamp
       updated_at:
         type: Timestamp
   AdminApplicationResponse:
@@ -620,6 +624,10 @@ models:
         type: String
       application_ids:
         type: "UUID[]"
+      created_at:
+        type: Timestamp
+      updated_at:
+        type: Timestamp
   ReorderMyApplicationsRequest:
     kind: value_object
     description: 利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible なアプリのみを含む。

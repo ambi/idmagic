@@ -13,13 +13,13 @@ import (
 // 階層・deny ルール・属性自動所属は持たない (effective_roles は union のみ)。
 // ID は不変の生成識別子 (group_<uuid>)、Name はテナント内で一意な編集可能ラベル。
 type Group struct {
-	ID          string     `json:"id"`
-	TenantID    string     `json:"tenant_id"`
-	Name        string     `json:"name"`
-	Description *string    `json:"description,omitempty"`
-	Roles       []string   `json:"roles"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenant_id"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description,omitempty"`
+	Roles       []string  `json:"roles"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (g Group) Validate() error {

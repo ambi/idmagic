@@ -13,8 +13,8 @@ type ScimRepository struct{ Pool DB }
 
 func (r *ScimRepository) GetConfig(ctx context.Context, tenantID string) (*ports.ScimConfig, error) {
 	var cfg ports.ScimConfig
-	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, enabled, last_sync_at, error_count FROM scim_configs WHERE tenant_id=$1", tenantID).
-		Scan(&cfg.TenantID, &cfg.Enabled, &cfg.LastSyncAt, &cfg.ErrorCount)
+	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, enabled, last_sync_at, error_count, created_at, updated_at FROM scim_configs WHERE tenant_id=$1", tenantID).
+		Scan(&cfg.TenantID, &cfg.Enabled, &cfg.LastSyncAt, &cfg.ErrorCount, &cfg.CreatedAt, &cfg.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &ports.ScimConfig{TenantID: tenantID, Enabled: false}, nil
 	}
@@ -26,13 +26,14 @@ func (r *ScimRepository) GetConfig(ctx context.Context, tenantID string) (*ports
 
 func (r *ScimRepository) SaveConfig(ctx context.Context, config *ports.ScimConfig) error {
 	_, err := r.Pool.Exec(ctx, `
-		INSERT INTO scim_configs (tenant_id, enabled, last_sync_at, error_count)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO scim_configs (tenant_id, enabled, last_sync_at, error_count, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (tenant_id) DO UPDATE SET
 			enabled=EXCLUDED.enabled,
 			last_sync_at=EXCLUDED.last_sync_at,
-			error_count=EXCLUDED.error_count
-	`, config.TenantID, config.Enabled, config.LastSyncAt, config.ErrorCount)
+			error_count=EXCLUDED.error_count,
+			updated_at=EXCLUDED.updated_at
+	`, config.TenantID, config.Enabled, config.LastSyncAt, config.ErrorCount, config.CreatedAt, config.UpdatedAt)
 	return err
 }
 
@@ -43,7 +44,8 @@ func (r *ScimRepository) SaveToken(ctx context.Context, token *ports.ScimToken) 
 		ON CONFLICT (id) DO UPDATE SET
 			token_hash=EXCLUDED.token_hash,
 			description=EXCLUDED.description,
-			expires_at=EXCLUDED.expires_at
+			expires_at=EXCLUDED.expires_at,
+			updated_at=now()
 	`, token.ID, token.TenantID, token.TokenHash, token.Description, token.CreatedAt, token.ExpiresAt)
 	return err
 }
@@ -88,7 +90,8 @@ func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef
 		INSERT INTO scim_user_refs (tenant_id, scim_id, user_sub)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (tenant_id, scim_id) DO UPDATE SET
-			user_sub=EXCLUDED.user_sub
+			user_sub=EXCLUDED.user_sub,
+			updated_at=now()
 	`, ref.TenantID, ref.ScimID, ref.UserSub)
 	return err
 }
@@ -129,7 +132,8 @@ func (r *ScimRepository) SaveGroupRef(ctx context.Context, ref *ports.ScimGroupR
 		INSERT INTO scim_group_refs (tenant_id, scim_id, group_id)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (tenant_id, scim_id) DO UPDATE SET
-			group_id=EXCLUDED.group_id
+			group_id=EXCLUDED.group_id,
+			updated_at=now()
 	`, ref.TenantID, ref.ScimID, ref.GroupID)
 	return err
 }

@@ -10,6 +10,8 @@ type ScimConfig struct {
 	Enabled    bool
 	LastSyncAt *time.Time
 	ErrorCount int
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type ScimToken struct {

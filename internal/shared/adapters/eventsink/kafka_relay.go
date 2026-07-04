@@ -98,7 +98,7 @@ WHERE published_at IS NULL ORDER BY id FOR UPDATE SKIP LOCKED LIMIT $1`, r.Batch
 			},
 		}
 		if err := r.Kafka.ProduceSync(ctx, record).FirstErr(); err != nil {
-			if _, updateErr := tx.Exec(ctx, `UPDATE outbox SET attempts=attempts+1,last_error=$1 WHERE id=$2`,
+			if _, updateErr := tx.Exec(ctx, `UPDATE outbox SET attempts=attempts+1,last_error=$1,updated_at=now() WHERE id=$2`,
 				truncate(err.Error(), 500), rec.ID); updateErr != nil {
 				return updateErr
 			}
@@ -108,7 +108,7 @@ WHERE published_at IS NULL ORDER BY id FOR UPDATE SKIP LOCKED LIMIT $1`, r.Batch
 	}
 	if len(published) > 0 {
 		if _, err := tx.Exec(ctx, `UPDATE outbox SET published_at=now(),published_to='kafka',
-attempts=attempts+1,last_error=NULL WHERE id=ANY($1)`, published); err != nil {
+attempts=attempts+1,last_error=NULL,updated_at=now() WHERE id=ANY($1)`, published); err != nil {
 			return err
 		}
 	}

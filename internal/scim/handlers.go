@@ -392,8 +392,10 @@ func (h *Handler) handleDeleteGroup(c *echo.Context) error {
 // Admin API for SCIM configuration and tokens
 
 type scimConfigResponse struct {
-	TenantID string `json:"tenant_id"`
-	Enabled  bool   `json:"enabled"`
+	TenantID  string    `json:"tenant_id"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type scimConfigUpdateRequest struct {
@@ -424,8 +426,10 @@ func (h *Handler) handleGetAdminConfig(c *echo.Context) error {
 	}
 
 	return support.NoStoreJSON(c, http.StatusOK, scimConfigResponse{
-		TenantID: cfg.TenantID,
-		Enabled:  cfg.Enabled,
+		TenantID:  cfg.TenantID,
+		Enabled:   cfg.Enabled,
+		CreatedAt: cfg.CreatedAt,
+		UpdatedAt: cfg.UpdatedAt,
 	})
 }
 
@@ -446,8 +450,10 @@ func (h *Handler) handleUpdateAdminConfig(c *echo.Context) error {
 	}
 
 	return support.NoStoreJSON(c, http.StatusOK, scimConfigResponse{
-		TenantID: cfg.TenantID,
-		Enabled:  cfg.Enabled,
+		TenantID:  cfg.TenantID,
+		Enabled:   cfg.Enabled,
+		CreatedAt: cfg.CreatedAt,
+		UpdatedAt: cfg.UpdatedAt,
 	})
 }
 

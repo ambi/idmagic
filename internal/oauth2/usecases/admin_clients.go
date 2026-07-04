@@ -100,6 +100,7 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 	if len(changed) == 0 {
 		return &updated, nil
 	}
+	updated.UpdatedAt = adminNow(in.Now)
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}

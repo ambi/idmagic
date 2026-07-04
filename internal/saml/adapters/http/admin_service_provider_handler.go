@@ -109,8 +109,10 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 	status := http.StatusCreated
 	if existing != nil {
 		sp.CreatedAt = existing.CreatedAt
-		sp.UpdatedAt = &now
+		sp.UpdatedAt = now
 		status = http.StatusOK
+	} else {
+		sp.UpdatedAt = now
 	}
 	if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
 		return err

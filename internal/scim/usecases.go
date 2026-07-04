@@ -117,7 +117,15 @@ func (u *Usecases) GetConfig(ctx context.Context, tenantID string) (*ports.ScimC
 }
 
 func (u *Usecases) UpdateConfig(ctx context.Context, tenantID string, enabled bool) (*ports.ScimConfig, error) {
-	cfg := &ports.ScimConfig{TenantID: tenantID, Enabled: enabled}
+	now := time.Now().UTC()
+	cfg := &ports.ScimConfig{TenantID: tenantID, Enabled: enabled, CreatedAt: now, UpdatedAt: now}
+	existing, err := u.ScimRepo.GetConfig(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil && !existing.CreatedAt.IsZero() {
+		cfg.CreatedAt = existing.CreatedAt
+	}
 	if err := u.ScimRepo.SaveConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
@@ -475,7 +483,7 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 		Description: nil,
 		Roles:       []string{},
 		CreatedAt:   now,
-		UpdatedAt:   &now,
+		UpdatedAt:   now,
 	}
 
 	if err := u.GroupRepo.Save(ctx, group); err != nil {
@@ -621,7 +629,7 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 	}
 
 	now := time.Now()
-	group.UpdatedAt = &now
+	group.UpdatedAt = now
 	if err := u.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
@@ -675,7 +683,7 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 	}
 
 	now := time.Now()
-	group.UpdatedAt = &now
+	group.UpdatedAt = now
 	if err := u.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
@@ -773,7 +781,7 @@ func (u *Usecases) toScimGroup(ctx context.Context, group *spec.Group, scimID st
 	}
 
 	var updatedStr string
-	if group.UpdatedAt != nil {
+	if !group.UpdatedAt.IsZero() {
 		updatedStr = group.UpdatedAt.Format(time.RFC3339)
 	}
 

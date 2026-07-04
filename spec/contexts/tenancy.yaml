@@ -97,7 +97,7 @@ models:
         type: Timestamp
       updated_at:
         type: Timestamp
-        optional: true
+        description: 作成時は created_at と同じ値を持ち、以後 mutable aggregate の管理操作ごとに更新する。
       disabled_at:
         type: Timestamp
         optional: true
@@ -173,6 +173,8 @@ models:
       attributes:
         type: "UserAttributeDef[]"
         description: key が一意で組み込み属性と衝突しない定義の並び。
+      created_at:
+        type: Timestamp
       updated_at:
         type: Timestamp
   PasswordPolicyDefaults:
@@ -215,6 +217,8 @@ models:
       builtin:
         type: "UserAttributeDef[]"
         description: コード提供の読み取り専用カタログ (BuiltinUserAttributeDefs)。
+      created_at:
+        type: Timestamp
       updated_at:
         type: Timestamp
   TenantUserAttributeSchemaUpdateRequest:

@@ -43,7 +43,7 @@ func seedDemoData(
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic,
 		Scope:                   "openid profile email offline_access", IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile: spec.FapiNone, CreatedAt: now,
+		FapiProfile: spec.FapiNone, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 			TokenEndpointAuthMethod: spec.AuthMethodNone,
 			Scope:                   p.scope, IDTokenSignedResponseAlg: spec.SigAlgPS256,
-			FapiProfile: spec.FapiNone, FirstParty: true, CreatedAt: now,
+			FapiProfile: spec.FapiNone, FirstParty: true, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			return err
 		}

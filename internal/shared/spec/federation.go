@@ -96,7 +96,7 @@ type WsFedRelyingParty struct {
 	ClaimPolicy  ClaimMappingPolicy      `json:"claim_policy"`
 	EntraProfile *EntraFederationProfile `json:"entra_profile,omitempty"`
 	CreatedAt    time.Time               `json:"created_at"`
-	UpdatedAt    *time.Time              `json:"updated_at,omitempty"`
+	UpdatedAt    time.Time               `json:"updated_at"`
 }
 
 // EffectiveAudience は assertion に用いる audience を返す。未設定なら wtrealm。

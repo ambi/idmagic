@@ -101,7 +101,7 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	now := normalizedNow(in.Now)
 	group := &spec.Group{
 		ID: id, TenantID: tenantID, Name: name, Description: normalizeDescription(in.Description),
-		Roles: roles, CreatedAt: now,
+		Roles: roles, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := group.Validate(); err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 		return &updated, nil
 	}
 	now := normalizedNow(in.Now)
-	updated.UpdatedAt = &now
+	updated.UpdatedAt = now
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}

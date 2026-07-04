@@ -128,7 +128,7 @@ func (r *ApplicationRepository) Delete(ctx context.Context, tenantID, applicatio
 
 func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, categoryID string) error {
 	_, err := r.Pool.Exec(ctx,
-		"UPDATE applications SET category_ids=array_remove(category_ids,$2) WHERE tenant_id=$1 AND $2=ANY(category_ids)",
+		"UPDATE applications SET category_ids=array_remove(category_ids,$2),updated_at=now() WHERE tenant_id=$1 AND $2=ANY(category_ids)",
 		tenantID, categoryID)
 	return err
 }
@@ -142,10 +142,10 @@ func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationI
 		rules  []byte
 	)
 	err := r.Pool.QueryRow(ctx, `
-SELECT tenant_id,application_id,rules,updated_at
+SELECT tenant_id,application_id,rules,created_at,updated_at
   FROM application_sign_in_policies
  WHERE tenant_id=$1 AND application_id=$2`, tenantID, applicationID).
-		Scan(&policy.TenantID, &policy.ApplicationID, &rules, &policy.UpdatedAt)
+		Scan(&policy.TenantID, &policy.ApplicationID, &rules, &policy.CreatedAt, &policy.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -171,10 +171,10 @@ func (r *SignInPolicyRepository) Save(ctx context.Context, policy *spec.AppSignI
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `
-INSERT INTO application_sign_in_policies (tenant_id,application_id,rules,updated_at)
-VALUES ($1,$2,$3,$4)
+INSERT INTO application_sign_in_policies (tenant_id,application_id,rules,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5)
 ON CONFLICT (tenant_id,application_id) DO UPDATE SET rules=EXCLUDED.rules,updated_at=EXCLUDED.updated_at`,
-		policy.TenantID, policy.ApplicationID, encoded, policy.UpdatedAt)
+		policy.TenantID, policy.ApplicationID, encoded, policy.CreatedAt, policy.UpdatedAt)
 	return err
 }
 
@@ -193,10 +193,10 @@ func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string
 		rules  []byte
 	)
 	err := r.Pool.QueryRow(ctx, `
-SELECT tenant_id,rules,updated_at
+SELECT tenant_id,rules,created_at,updated_at
   FROM tenant_default_sign_in_policies
  WHERE tenant_id=$1`, tenantID).
-		Scan(&policy.TenantID, &rules, &policy.UpdatedAt)
+		Scan(&policy.TenantID, &rules, &policy.CreatedAt, &policy.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -222,10 +222,10 @@ func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *spec.T
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `
-INSERT INTO tenant_default_sign_in_policies (tenant_id,rules,updated_at)
-VALUES ($1,$2,$3)
+INSERT INTO tenant_default_sign_in_policies (tenant_id,rules,created_at,updated_at)
+VALUES ($1,$2,$3,$4)
 ON CONFLICT (tenant_id) DO UPDATE SET rules=EXCLUDED.rules,updated_at=EXCLUDED.updated_at`,
-		policy.TenantID, encoded, policy.UpdatedAt)
+		policy.TenantID, encoded, policy.CreatedAt, policy.UpdatedAt)
 	return err
 }
 
@@ -234,22 +234,22 @@ type ApplicationIconStore struct{ Pool DB }
 
 func (s *ApplicationIconStore) Save(ctx context.Context, icon *spec.ApplicationIcon) error {
 	_, err := s.Pool.Exec(ctx, `
-INSERT INTO application_icons (tenant_id,application_id,object_key,content_type,size_bytes,data,created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7)
+INSERT INTO application_icons (tenant_id,application_id,object_key,content_type,size_bytes,data,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
 ON CONFLICT (tenant_id,application_id,object_key) DO UPDATE SET
- content_type=EXCLUDED.content_type,size_bytes=EXCLUDED.size_bytes,data=EXCLUDED.data,created_at=EXCLUDED.created_at`,
-		icon.TenantID, icon.ApplicationID, icon.ObjectKey, icon.ContentType, icon.SizeBytes, icon.Data, icon.CreatedAt)
+ content_type=EXCLUDED.content_type,size_bytes=EXCLUDED.size_bytes,data=EXCLUDED.data,updated_at=EXCLUDED.updated_at`,
+		icon.TenantID, icon.ApplicationID, icon.ObjectKey, icon.ContentType, icon.SizeBytes, icon.Data, icon.CreatedAt, icon.UpdatedAt)
 	return err
 }
 
 func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID, objectKey string) (*spec.ApplicationIcon, error) {
 	var icon spec.ApplicationIcon
 	err := s.Pool.QueryRow(ctx, `
-SELECT tenant_id,application_id,object_key,content_type,size_bytes,data,created_at
+SELECT tenant_id,application_id,object_key,content_type,size_bytes,data,created_at,updated_at
   FROM application_icons
  WHERE tenant_id=$1 AND application_id=$2 AND object_key=$3`,
 		tenantID, applicationID, objectKey).
-		Scan(&icon.TenantID, &icon.ApplicationID, &icon.ObjectKey, &icon.ContentType, &icon.SizeBytes, &icon.Data, &icon.CreatedAt)
+		Scan(&icon.TenantID, &icon.ApplicationID, &icon.ObjectKey, &icon.ContentType, &icon.SizeBytes, &icon.Data, &icon.CreatedAt, &icon.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -268,11 +268,11 @@ func (s *ApplicationIconStore) DeleteByApplication(ctx context.Context, tenantID
 // ApplicationAssignmentRepository は Application 割当を PostgreSQL に永続化する (wi-69)。
 type ApplicationAssignmentRepository struct{ Pool DB }
 
-const assignmentSelect = `SELECT tenant_id,application_id,subject_type,subject_id,visibility,created_at FROM application_assignments`
+const assignmentSelect = `SELECT tenant_id,application_id,subject_type,subject_id,visibility,created_at,updated_at FROM application_assignments`
 
 func scanAssignment(row rowScanner) (*spec.ApplicationAssignment, error) {
 	var a spec.ApplicationAssignment
-	err := row.Scan(&a.TenantID, &a.ApplicationID, &a.SubjectType, &a.SubjectID, &a.Visibility, &a.CreatedAt)
+	err := row.Scan(&a.TenantID, &a.ApplicationID, &a.SubjectType, &a.SubjectID, &a.Visibility, &a.CreatedAt, &a.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -328,11 +328,11 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 
 func (r *ApplicationAssignmentRepository) Save(ctx context.Context, a *spec.ApplicationAssignment) error {
 	_, err := r.Pool.Exec(ctx, `
-INSERT INTO application_assignments (tenant_id,application_id,subject_type,subject_id,visibility,created_at)
-VALUES ($1,$2,$3,$4,$5,$6)
+INSERT INTO application_assignments (tenant_id,application_id,subject_type,subject_id,visibility,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT (tenant_id,application_id,subject_type,subject_id) DO UPDATE SET
- visibility=EXCLUDED.visibility,created_at=EXCLUDED.created_at`,
-		a.TenantID, a.ApplicationID, a.SubjectType, a.SubjectID, a.Visibility, a.CreatedAt)
+ visibility=EXCLUDED.visibility,updated_at=EXCLUDED.updated_at`,
+		a.TenantID, a.ApplicationID, a.SubjectType, a.SubjectID, a.Visibility, a.CreatedAt, a.UpdatedAt)
 	return err
 }
 
@@ -357,9 +357,9 @@ type ApplicationOrderingRepository struct{ Pool DB }
 func (r *ApplicationOrderingRepository) Get(ctx context.Context, tenantID, userSub string) (*spec.ApplicationOrdering, error) {
 	var o spec.ApplicationOrdering
 	err := r.Pool.QueryRow(ctx,
-		`SELECT tenant_id,user_sub,application_ids,updated_at FROM application_orderings
+		`SELECT tenant_id,user_sub,application_ids,created_at,updated_at FROM application_orderings
  WHERE tenant_id=$1 AND user_sub=$2`, tenantID, userSub).
-		Scan(&o.TenantID, &o.UserSub, &o.ApplicationIDs, &o.UpdatedAt)
+		Scan(&o.TenantID, &o.UserSub, &o.ApplicationIDs, &o.CreatedAt, &o.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -375,11 +375,11 @@ func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *spec.Applic
 		ids = []string{}
 	}
 	_, err := r.Pool.Exec(ctx, `
-INSERT INTO application_orderings (tenant_id,user_sub,application_ids,updated_at)
-VALUES ($1,$2,$3,$4)
+INSERT INTO application_orderings (tenant_id,user_sub,application_ids,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5)
 ON CONFLICT (tenant_id,user_sub) DO UPDATE SET
  application_ids=EXCLUDED.application_ids,updated_at=EXCLUDED.updated_at`,
-		o.TenantID, o.UserSub, ids, o.UpdatedAt)
+		o.TenantID, o.UserSub, ids, o.CreatedAt, o.UpdatedAt)
 	return err
 }
 

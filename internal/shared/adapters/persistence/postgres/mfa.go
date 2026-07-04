@@ -41,7 +41,7 @@ func (r *MfaFactorRepository) Save(ctx context.Context, factor *spec.MfaFactor) 
 	_, err := r.Pool.Exec(ctx, `
 INSERT INTO mfa_factors (sub,type,secret,label,created_at,last_used_at)
 VALUES ($1,$2,$3,$4,$5,$6)
-ON CONFLICT (sub,type) DO UPDATE SET secret=EXCLUDED.secret,label=EXCLUDED.label,last_used_at=EXCLUDED.last_used_at`,
+ON CONFLICT (sub,type) DO UPDATE SET secret=EXCLUDED.secret,label=EXCLUDED.label,last_used_at=EXCLUDED.last_used_at,updated_at=now()`,
 		factor.Sub, factor.Type, factor.Secret, factor.Label, factor.CreatedAt, factor.LastUsedAt)
 	return err
 }

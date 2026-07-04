@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/internal/scim/ports"
 )
@@ -42,6 +43,15 @@ func (r *ScimRepository) SaveConfig(_ context.Context, config *ports.ScimConfig)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *config
+	if existing := r.configs[config.TenantID]; existing != nil && cloned.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
+	if cloned.CreatedAt.IsZero() {
+		cloned.CreatedAt = time.Now().UTC()
+	}
+	if cloned.UpdatedAt.IsZero() {
+		cloned.UpdatedAt = time.Now().UTC()
+	}
 	r.configs[config.TenantID] = &cloned
 	return nil
 }

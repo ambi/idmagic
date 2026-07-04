@@ -1,9 +1,17 @@
+-- Timestamp policy:
+-- - Every table has created_at.
+-- - Tables whose rows can be updated after creation have updated_at.
+-- - Insert-only/delete-only rows do not have updated_at.
+-- - Domain timestamps such as issued_at, granted_at, occurred_at, expires_at,
+--   revoked_at, added_at, first_seen, and last_seen keep their domain meaning;
+--   they do not replace created_at.
+
 CREATE TABLE tenants (
     id TEXT PRIMARY KEY,
     display_name TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
     CONSTRAINT tenants_id_format CHECK (
         id <> 'admin' AND id ~ '^[a-z0-9][a-z0-9-]{0,62}$'
@@ -29,6 +37,7 @@ CREATE TABLE clients (
     dpop_bound_access_tokens BOOLEAN NOT NULL DEFAULT FALSE,
     fapi_profile TEXT NOT NULL DEFAULT 'none',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     first_party BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (tenant_id, client_id),
     CONSTRAINT clients_tenant_id_fkey
@@ -66,6 +75,7 @@ CREATE TABLE mfa_factors (
     secret TEXT,
     label TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_used_at TIMESTAMPTZ,
     PRIMARY KEY (sub, type)
 );
@@ -75,6 +85,8 @@ CREATE TABLE consents (
     sub TEXT NOT NULL,
     client_id TEXT NOT NULL,
     scopes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
@@ -98,6 +110,8 @@ CREATE TABLE refresh_tokens (
     client_id TEXT NOT NULL,
     sub TEXT NOT NULL,
     scopes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
     absolute_expires_at TIMESTAMPTZ NOT NULL,
@@ -128,6 +142,7 @@ CREATE TABLE signing_keys (
     private_jwk JSONB NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     rotated_at TIMESTAMPTZ,
     archived_at TIMESTAMPTZ,
     CONSTRAINT signing_keys_tenant_id_fkey
@@ -144,6 +159,7 @@ CREATE TABLE outbox (
     topic TEXT NOT NULL,
     payload JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     published_at TIMESTAMPTZ,
     published_to TEXT,
     attempts INT NOT NULL DEFAULT 0,
@@ -165,7 +181,7 @@ CREATE INDEX password_history_sub_created_at_idx
 CREATE TABLE password_reset_tokens (
     token_hash TEXT PRIMARY KEY,
     sub TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL
 );
 
@@ -179,7 +195,7 @@ CREATE TABLE groups (
     description TEXT,
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT groups_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT groups_tenant_id_id_unique UNIQUE (tenant_id, id)
@@ -190,6 +206,7 @@ CREATE UNIQUE INDEX groups_tenant_name_idx ON groups (tenant_id, name);
 CREATE TABLE group_members (
     group_id TEXT NOT NULL,
     user_sub TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (group_id, user_sub),
     CONSTRAINT group_members_group_id_fkey
@@ -203,6 +220,7 @@ CREATE INDEX group_members_user_sub_idx ON group_members (user_sub);
 CREATE TABLE tenant_user_attribute_schemas (
     tenant_id TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
     attributes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -210,7 +228,7 @@ CREATE TABLE email_change_tokens (
     token_hash TEXT PRIMARY KEY,
     sub TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
     new_email TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL
 );
 
@@ -222,6 +240,7 @@ CREATE TABLE audit_events (
     tenant_id TEXT NOT NULL DEFAULT '',
     type TEXT NOT NULL,
     sub TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     occurred_at TIMESTAMPTZ NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb
 );
@@ -237,6 +256,8 @@ CREATE TABLE authentication_event_buckets (
     key_hash TEXT NOT NULL,
     window_start TIMESTAMPTZ NOT NULL,
     count BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     first_seen TIMESTAMPTZ NOT NULL,
     last_seen TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (tenant_id, kind, key_hash, window_start)
@@ -256,7 +277,7 @@ CREATE TABLE agents (
         CHECK (status IN ('active', 'disabled', 'killed')),
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
     killed_at TIMESTAMPTZ,
     CONSTRAINT agents_tenant_id_fkey
@@ -317,8 +338,8 @@ CREATE TABLE applications (
     launch_url TEXT NOT NULL DEFAULT '',
     bindings JSONB NOT NULL DEFAULT '[]'::jsonb,
     category_ids TEXT[] NOT NULL DEFAULT '{}',
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, application_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -330,7 +351,8 @@ CREATE TABLE application_icons (
     content_type TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     data BYTEA NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, application_id, object_key),
     FOREIGN KEY (tenant_id, application_id)
         REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
@@ -340,7 +362,8 @@ CREATE TABLE application_sign_in_policies (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     application_id UUID NOT NULL,
     rules JSONB NOT NULL DEFAULT '[]'::jsonb,
-    updated_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, application_id),
     FOREIGN KEY (tenant_id, application_id)
         REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
@@ -349,6 +372,7 @@ CREATE TABLE application_sign_in_policies (
 CREATE TABLE tenant_default_sign_in_policies (
     tenant_id TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
     rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -358,7 +382,8 @@ CREATE TABLE application_assignments (
     subject_type TEXT NOT NULL,
     subject_id TEXT NOT NULL,
     visibility TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, application_id, subject_type, subject_id),
     CHECK (subject_type IN ('user', 'group')),
     CHECK (visibility IN ('visible', 'hidden')),
@@ -381,8 +406,8 @@ CREATE TABLE saml_service_providers (
     sign_response BOOLEAN NOT NULL DEFAULT FALSE,
     want_authn_requests_signed BOOLEAN NOT NULL DEFAULT FALSE,
     authn_request_signing_certificate_pem TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, entity_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -396,8 +421,8 @@ CREATE TABLE wsfed_relying_parties (
     token_type TEXT NOT NULL DEFAULT '',
     claim_policy JSONB NOT NULL,
     entra_profile JSONB,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, wtrealm),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -406,7 +431,8 @@ CREATE TABLE application_orderings (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     user_sub TEXT NOT NULL,
     application_ids TEXT[] NOT NULL DEFAULT '{}',
-    updated_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, user_sub),
     FOREIGN KEY (tenant_id, user_sub)
         REFERENCES users (tenant_id, sub) ON DELETE CASCADE
@@ -417,8 +443,8 @@ CREATE TABLE application_categories (
     category_id UUID NOT NULL,
     name TEXT NOT NULL,
     position INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, category_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -428,6 +454,8 @@ CREATE TABLE scim_configs (
     enabled BOOLEAN NOT NULL DEFAULT FALSE,
     last_sync_at TIMESTAMPTZ,
     error_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -438,6 +466,7 @@ CREATE TABLE scim_tokens (
     token_hash TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -446,6 +475,8 @@ CREATE TABLE scim_user_refs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     scim_id TEXT NOT NULL,
     user_sub TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     FOREIGN KEY (user_sub) REFERENCES users(sub) ON DELETE CASCADE
@@ -455,6 +486,8 @@ CREATE TABLE scim_group_refs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     scim_id TEXT NOT NULL,
     group_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE

@@ -29,6 +29,7 @@ var tenantSchema = z.Struct(z.Shape{
 		z.Message("tenant status is not in enum"),
 	).Required(),
 	"CreatedAt": z.Time().Required(),
+	"UpdatedAt": z.Time().Required(),
 })
 
 var oauth2ClientSchema = z.Struct(z.Shape{
@@ -68,6 +69,7 @@ var oauth2ClientSchema = z.Struct(z.Shape{
 		z.Message("fapi_profile is not in enum"),
 	).Required(),
 	"CreatedAt": z.Time().Required(),
+	"UpdatedAt": z.Time().Required(),
 }).TestFunc(func(value any, _ z.Ctx) bool {
 	client, ok := value.(*OAuth2Client)
 	if !ok {
@@ -142,6 +144,7 @@ var groupSchema = z.Struct(z.Shape{
 	"Description": z.Ptr(z.String().Max(500)),
 	"Roles":       z.Slice(z.String().Min(1)),
 	"CreatedAt":   z.Time().Required(),
+	"UpdatedAt":   z.Time().Required(),
 })
 
 var groupMemberSchema = z.Struct(z.Shape{
@@ -166,6 +169,7 @@ var agentSchema = z.Struct(z.Shape{
 	).Required(),
 	"Roles":     z.Slice(z.String().Min(1)),
 	"CreatedAt": z.Time().Required(),
+	"UpdatedAt": z.Time().Required(),
 })
 
 var agentCredentialBindingSchema = z.Struct(z.Shape{

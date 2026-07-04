@@ -89,11 +89,18 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userSub st
 		seen[id] = struct{}{}
 		cleaned = append(cleaned, id)
 	}
+	nowAt := adminNow(now)
 	ordering := &spec.ApplicationOrdering{
 		TenantID:       tenancy.TenantID(ctx),
 		UserSub:        userSub,
 		ApplicationIDs: cleaned,
-		UpdatedAt:      adminNow(now),
+		CreatedAt:      nowAt,
+		UpdatedAt:      nowAt,
+	}
+	if existing, err := deps.OrderingRepo.Get(ctx, ordering.TenantID, userSub); err != nil {
+		return nil, err
+	} else if existing != nil && !existing.CreatedAt.IsZero() {
+		ordering.CreatedAt = existing.CreatedAt
 	}
 	if err := deps.OrderingRepo.Save(ctx, ordering); err != nil {
 		return nil, err

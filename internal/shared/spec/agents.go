@@ -23,7 +23,7 @@ type Agent struct {
 	Status      AgentStatus `json:"status"`
 	Roles       []string    `json:"roles"`
 	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   *time.Time  `json:"updated_at,omitempty"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 	DisabledAt  *time.Time  `json:"disabled_at,omitempty"`
 	KilledAt    *time.Time  `json:"killed_at,omitempty"`
 }

@@ -124,7 +124,7 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	agent := &spec.Agent{
 		ID: id, TenantID: tenantID, Name: name, Description: normalizeDescription(in.Description),
 		Kind: normalizeAgentKind(in.Kind), OwnerSub: owner, Status: spec.AgentStatusActive,
-		Roles: roles, CreatedAt: now,
+		Roles: roles, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := agent.Validate(); err != nil {
 		return nil, err
@@ -218,7 +218,7 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 		return &updated, nil
 	}
 	now := normalizedNow(in.Now)
-	updated.UpdatedAt = &now
+	updated.UpdatedAt = now
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorSub, id str
 	}
 	now = normalizedNow(now)
 	updated := *agent
-	updated.UpdatedAt = &now
+	updated.UpdatedAt = now
 	if disabled {
 		updated.Status = spec.AgentStatusDisabled
 		updated.DisabledAt = &now
@@ -293,7 +293,7 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorSub, id string, no
 	updated := *agent
 	updated.Status = spec.AgentStatusKilled
 	updated.KilledAt = &now
-	updated.UpdatedAt = &now
+	updated.UpdatedAt = now
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}

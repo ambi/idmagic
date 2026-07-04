@@ -22,9 +22,9 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 		attributes []byte
 	)
 	err := r.Pool.QueryRow(ctx,
-		`SELECT tenant_id,attributes,updated_at FROM tenant_user_attribute_schemas WHERE tenant_id=$1`,
+		`SELECT tenant_id,attributes,created_at,updated_at FROM tenant_user_attribute_schemas WHERE tenant_id=$1`,
 		tenantID,
-	).Scan(&s.TenantID, &attributes, &s.UpdatedAt)
+	).Scan(&s.TenantID, &attributes, &s.CreatedAt, &s.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -45,10 +45,10 @@ func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *spec.
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `
-INSERT INTO tenant_user_attribute_schemas (tenant_id,attributes,updated_at)
-VALUES ($1,$2,$3)
+INSERT INTO tenant_user_attribute_schemas (tenant_id,attributes,created_at,updated_at)
+VALUES ($1,$2,$3,$4)
 ON CONFLICT (tenant_id) DO UPDATE SET attributes=EXCLUDED.attributes,updated_at=EXCLUDED.updated_at`,
-		s.TenantID, attributes, s.UpdatedAt)
+		s.TenantID, attributes, s.CreatedAt, s.UpdatedAt)
 	return err
 }
 

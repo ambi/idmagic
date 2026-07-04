@@ -37,7 +37,7 @@ func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *s
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, "UPDATE refresh_tokens SET rotated=TRUE WHERE id=$1", parentID); err != nil {
+	if _, err := tx.Exec(ctx, "UPDATE refresh_tokens SET rotated=TRUE,updated_at=now() WHERE id=$1", parentID); err != nil {
 		return nil, err
 	}
 	if err := insertRefresh(ctx, tx, next); err != nil {
@@ -50,7 +50,7 @@ func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *s
 }
 
 func (s *RefreshTokenStore) RevokeFamily(ctx context.Context, familyID string) error {
-	_, err := s.Pool.Exec(ctx, "UPDATE refresh_tokens SET revoked=TRUE WHERE family_id=$1", familyID)
+	_, err := s.Pool.Exec(ctx, "UPDATE refresh_tokens SET revoked=TRUE,updated_at=now() WHERE family_id=$1", familyID)
 	return err
 }
 

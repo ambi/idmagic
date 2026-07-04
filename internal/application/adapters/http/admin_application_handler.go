@@ -57,6 +57,7 @@ type assignmentResponse struct {
 	SubjectID   string                     `json:"subject_id"`
 	Visibility  spec.AssignmentVisibility  `json:"visibility"`
 	CreatedAt   time.Time                  `json:"created_at"`
+	UpdatedAt   time.Time                  `json:"updated_at"`
 }
 
 type signInPolicyRequest struct {
@@ -461,6 +462,6 @@ func toApplicationResponse(app *spec.Application) applicationResponse {
 
 func toAssignmentResponse(a *spec.ApplicationAssignment) assignmentResponse {
 	return assignmentResponse{
-		SubjectType: a.SubjectType, SubjectID: a.SubjectID, Visibility: a.Visibility, CreatedAt: a.CreatedAt,
+		SubjectType: a.SubjectType, SubjectID: a.SubjectID, Visibility: a.Visibility, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	}
 }

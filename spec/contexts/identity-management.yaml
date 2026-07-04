@@ -221,7 +221,7 @@ models:
         type: Timestamp
       updated_at:
         type: Timestamp
-        optional: true
+        description: 作成時は created_at と同じ値を持ち、以後 User aggregate の管理・自己変更操作ごとに更新する。
   UserLifecycle:
     kind: value_object
     description: "User の運用ライフサイクル属性。status は状態機械 UserLifecycle\n(states セクション) と一致する唯一の真実で、旧 disabled_at / deleted_at は\nstatus + status_changed_at に統合した。tombstone は status == Deleted。\n"
@@ -387,7 +387,7 @@ models:
         type: Timestamp
       updated_at:
         type: Timestamp
-        optional: true
+        description: 作成時は created_at と同じ値を持ち、以後管理操作ごとに更新する。
   AdminRequiredActionRequest:
     kind: value_object
     description: SetUserRequiredAction の JSON リクエスト。action は RequiredAction enum の wire 値。

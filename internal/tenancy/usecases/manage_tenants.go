@@ -44,7 +44,7 @@ func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now t
 	}
 	now = normalizeNow(now)
 	return repo.Save(ctx, &spec.Tenant{
-		ID: spec.DefaultTenantID, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now,
+		ID: spec.DefaultTenantID, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	})
 }
 
@@ -55,7 +55,7 @@ func Create(ctx context.Context, repo tenantports.TenantRepository, id, displayN
 	}
 	tenant := &spec.Tenant{
 		ID: strings.TrimSpace(id), DisplayName: displayName, Status: spec.TenantStatusActive,
-		CreatedAt: normalizeNow(now),
+		CreatedAt: normalizeNow(now), UpdatedAt: normalizeNow(now),
 	}
 	if err := tenant.Validate(); err != nil {
 		return nil, ErrInvalidTenantID
@@ -108,7 +108,7 @@ func Update(
 		}
 	}
 	t := normalizeNow(now)
-	updated.UpdatedAt = &t
+	updated.UpdatedAt = t
 	if err := repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id stri
 	}
 	updated := *tenant
 	t := normalizeNow(now)
-	updated.UpdatedAt = &t
+	updated.UpdatedAt = t
 	if disabled {
 		updated.Status = spec.TenantStatusDisabled
 		updated.DisabledAt = &t

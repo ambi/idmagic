@@ -62,7 +62,12 @@ func cloneIcon(icon *spec.ApplicationIcon) *spec.ApplicationIcon {
 func (s *ApplicationIconStore) Save(_ context.Context, icon *spec.ApplicationIcon) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.icons[iconKey(icon.TenantID, icon.ApplicationID, icon.ObjectKey)] = cloneIcon(icon)
+	key := iconKey(icon.TenantID, icon.ApplicationID, icon.ObjectKey)
+	cloned := cloneIcon(icon)
+	if existing := s.icons[key]; existing != nil && !existing.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
+	s.icons[key] = cloned
 	return nil
 }
 
@@ -195,7 +200,12 @@ func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID 
 func (r *SignInPolicyRepository) Save(_ context.Context, policy *spec.AppSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.policies[tenantKey(policy.TenantID, policy.ApplicationID)] = cloneSignInPolicy(policy)
+	key := tenantKey(policy.TenantID, policy.ApplicationID)
+	cloned := cloneSignInPolicy(policy)
+	if existing := r.policies[key]; existing != nil && !existing.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
+	r.policies[key] = cloned
 	return nil
 }
 
@@ -238,7 +248,11 @@ func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) 
 func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *spec.TenantDefaultSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.policies[policy.TenantID] = cloneDefaultSignInPolicy(policy)
+	cloned := cloneDefaultSignInPolicy(policy)
+	if existing := r.policies[policy.TenantID]; existing != nil && !existing.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
+	r.policies[policy.TenantID] = cloned
 	return nil
 }
 
@@ -299,8 +313,12 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(_ context.Context, tena
 func (r *ApplicationAssignmentRepository) Save(_ context.Context, assignment *spec.ApplicationAssignment) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	key := assignmentKey(assignment.TenantID, assignment.ApplicationID, assignment.SubjectType, assignment.SubjectID)
 	cloned := *assignment
-	r.assignments[assignmentKey(assignment.TenantID, assignment.ApplicationID, assignment.SubjectType, assignment.SubjectID)] = &cloned
+	if existing := r.assignments[key]; existing != nil && !existing.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
+	r.assignments[key] = &cloned
 	return nil
 }
 
@@ -354,7 +372,12 @@ func (r *ApplicationOrderingRepository) Get(_ context.Context, tenantID, userSub
 func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *spec.ApplicationOrdering) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.orderings[tenantKey(ordering.TenantID, ordering.UserSub)] = cloneOrdering(ordering)
+	key := tenantKey(ordering.TenantID, ordering.UserSub)
+	cloned := cloneOrdering(ordering)
+	if existing := r.orderings[key]; existing != nil && !existing.CreatedAt.IsZero() {
+		cloned.CreatedAt = existing.CreatedAt
+	}
+	r.orderings[key] = cloned
 	return nil
 }
 

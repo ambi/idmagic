@@ -280,6 +280,10 @@ models:
         type: Timestamp
       count:
         type: Integer
+      created_at:
+        type: Timestamp
+      updated_at:
+        type: Timestamp
       first_seen:
         type: Timestamp
       last_seen:

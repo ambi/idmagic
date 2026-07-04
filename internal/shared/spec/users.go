@@ -177,6 +177,7 @@ func (d UserAttributeDef) Validate() error { return validate(userAttributeDefSch
 type TenantUserAttributeSchema struct {
 	TenantID   string             `json:"tenant_id"`
 	Attributes []UserAttributeDef `json:"attributes"`
+	CreatedAt  time.Time          `json:"created_at"`
 	UpdatedAt  time.Time          `json:"updated_at"`
 }
 

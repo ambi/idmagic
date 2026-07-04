@@ -23,7 +23,8 @@ func GetUserAttributeSchema(
 		return nil, err
 	}
 	if schema == nil {
-		return &spec.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []spec.UserAttributeDef{}}, nil
+		now := time.Now().UTC()
+		return &spec.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []spec.UserAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
 	}
 	return schema, nil
 }
@@ -40,7 +41,15 @@ func UpdateUserAttributeSchema(
 	schema := &spec.TenantUserAttributeSchema{
 		TenantID:   tenantID,
 		Attributes: defs,
+		CreatedAt:  now,
 		UpdatedAt:  now,
+	}
+	existing, err := repo.FindByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil && !existing.CreatedAt.IsZero() {
+		schema.CreatedAt = existing.CreatedAt
 	}
 	if err := schema.Validate(); err != nil {
 		return nil, errors.Join(ErrInvalidUserAttributeSchema, err)

@@ -141,6 +141,7 @@ type AppSignInPolicy struct {
 	TenantID      string       `json:"tenant_id"`
 	ApplicationID string       `json:"application_id"`
 	Rules         []SignInRule `json:"rules"`
+	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
@@ -149,6 +150,7 @@ type AppSignInPolicy struct {
 type TenantDefaultSignInPolicy struct {
 	TenantID  string       `json:"tenant_id"`
 	Rules     []SignInRule `json:"rules"`
+	CreatedAt time.Time    `json:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at"`
 }
 
@@ -186,6 +188,7 @@ type ApplicationIcon struct {
 	SizeBytes     int       `json:"size_bytes"`
 	Data          []byte    `json:"-"`
 	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // ApplicationCategory は管理者が tenant 単位で定義するポータルの分類セクション (wi-70, ADR-069)。
@@ -207,6 +210,7 @@ type ApplicationAssignment struct {
 	SubjectID     string                `json:"subject_id"`
 	Visibility    AssignmentVisibility  `json:"visibility"`
 	CreatedAt     time.Time             `json:"created_at"`
+	UpdatedAt     time.Time             `json:"updated_at"`
 }
 
 // ApplicationOrdering は利用者ポータルでの手動並び順 (wi-70, ADR-069)。
@@ -215,6 +219,7 @@ type ApplicationOrdering struct {
 	TenantID       string    `json:"tenant_id"`
 	UserSub        string    `json:"user_sub"`
 	ApplicationIDs []string  `json:"application_ids"`
+	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 

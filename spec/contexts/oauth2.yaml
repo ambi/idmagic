@@ -1294,6 +1294,9 @@ models:
         default: false
       created_at:
         type: Timestamp
+      updated_at:
+        type: Timestamp
+        description: 作成時は created_at と同じ値を持ち、以後 client metadata の管理操作ごとに更新する。
   Consent:
     kind: entity
     description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。sub と client_id は同一 tenant_id 内の既存 User と OAuth2Client を指す。
@@ -1317,6 +1320,10 @@ models:
           - unique
       state:
         type: ConsentState
+      created_at:
+        type: Timestamp
+      updated_at:
+        type: Timestamp
       granted_at:
         type: Timestamp
       expires_at:
@@ -1453,6 +1460,10 @@ models:
         type: "String[]"
       state:
         type: RefreshTokenState
+      created_at:
+        type: Timestamp
+      updated_at:
+        type: Timestamp
       issued_at:
         type: Timestamp
       expires_at:

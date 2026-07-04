@@ -115,6 +115,7 @@ export type ApplicationAssignment = {
   subject_id: string
   visibility: 'visible' | 'hidden'
   created_at: string
+  updated_at: string
 }
 
 export type RequiredAuthnStrength = 'Password' | 'Mfa'
@@ -140,6 +141,7 @@ export type AppSignInPolicy = {
   tenant_id: string
   application_id: string
   rules: SignInRule[]
+  created_at: string
   updated_at: string
 }
 
@@ -147,6 +149,7 @@ export type AppSignInPolicy = {
 export type TenantDefaultSignInPolicy = {
   tenant_id: string
   rules: SignInRule[]
+  created_at: string
   updated_at: string
 }
 
@@ -427,6 +430,7 @@ export type TenantUserAttributeSchema = {
   tenant_id: string
   attributes: UserAttributeDef[]
   builtin: UserAttributeDef[]
+  created_at: string
   updated_at: string
 }
 
@@ -529,4 +533,6 @@ export type ScimToken = {
 export type ScimConfig = {
   tenant_id: string
   enabled: boolean
+  created_at: string
+  updated_at: string
 }

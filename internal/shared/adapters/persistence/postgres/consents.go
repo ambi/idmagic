@@ -82,13 +82,13 @@ func (r *ConsentRepository) Save(ctx context.Context, c *spec.Consent) error {
 	_, err = r.Pool.Exec(ctx, `INSERT INTO consents
 (tenant_id,sub,client_id,scopes,granted_at,expires_at,revoked_at) VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT (tenant_id,sub,client_id) DO UPDATE SET scopes=EXCLUDED.scopes,
-granted_at=EXCLUDED.granted_at,expires_at=EXCLUDED.expires_at,revoked_at=EXCLUDED.revoked_at`,
+granted_at=EXCLUDED.granted_at,expires_at=EXCLUDED.expires_at,revoked_at=EXCLUDED.revoked_at,updated_at=now()`,
 		c.TenantID, c.Sub, c.ClientID, string(scopes), c.GrantedAt, c.ExpiresAt, c.RevokedAt)
 	return err
 }
 
 func (r *ConsentRepository) Revoke(ctx context.Context, tenantID, sub, clientID string) error {
-	_, err := r.Pool.Exec(ctx, `UPDATE consents SET revoked_at=now()
+	_, err := r.Pool.Exec(ctx, `UPDATE consents SET revoked_at=now(),updated_at=now()
 WHERE tenant_id=$1 AND sub=$2 AND client_id=$3 AND revoked_at IS NULL`, tenantID, sub, clientID)
 	return err
 }
