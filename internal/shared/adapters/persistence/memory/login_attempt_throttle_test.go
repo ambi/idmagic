@@ -9,9 +9,9 @@ import (
 )
 
 func TestLoginAttemptThrottleLocksAndExpires(t *testing.T) {
-	throttle := NewLoginAttemptThrottle(LoginThrottleConfigs{
-		Account: LoginThrottleConfig{MaxFailures: 3, WindowSeconds: 60, LockoutSeconds: 120},
-		IP:      LoginThrottleConfig{MaxFailures: 5, WindowSeconds: 60, LockoutSeconds: 60},
+	throttle := NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
+		Account: authnports.LoginThrottleConfig{MaxFailures: 3, WindowSeconds: 60, LockoutSeconds: 120},
+		IP:      authnports.LoginThrottleConfig{MaxFailures: 5, WindowSeconds: 60, LockoutSeconds: 60},
 	})
 	ctx := context.Background()
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -36,9 +36,9 @@ func TestLoginAttemptThrottleLocksAndExpires(t *testing.T) {
 }
 
 func TestLoginAttemptThrottleSuccessClearsAccountOnly(t *testing.T) {
-	throttle := NewLoginAttemptThrottle(LoginThrottleConfigs{
-		Account: LoginThrottleConfig{MaxFailures: 1, WindowSeconds: 60, LockoutSeconds: 120},
-		IP:      LoginThrottleConfig{MaxFailures: 1, WindowSeconds: 60, LockoutSeconds: 120},
+	throttle := NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
+		Account: authnports.LoginThrottleConfig{MaxFailures: 1, WindowSeconds: 60, LockoutSeconds: 120},
+		IP:      authnports.LoginThrottleConfig{MaxFailures: 1, WindowSeconds: 60, LockoutSeconds: 120},
 	})
 	ctx := context.Background()
 	now := time.Now().UTC()

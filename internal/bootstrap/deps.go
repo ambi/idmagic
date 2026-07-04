@@ -16,27 +16,31 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
-	ClientRepo                oauthports.OAuth2ClientRepository
-	TenantRepo                tenantports.TenantRepository
-	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
-	UserRepo                  idmports.UserRepository
-	GroupRepo                 idmports.GroupRepository
-	AgentRepo                 idmports.AgentRepository
-	MfaFactorRepo             authnports.MfaFactorRepository
-	PasswordHistoryRepo       authnports.PasswordHistoryRepository
-	PasswordResetTokenStore   authnports.PasswordResetTokenStore
-	EmailChangeTokenStore     authnports.EmailChangeTokenStore
-	ConsentRepo               oauthports.ConsentRepository
-	AuthzDetailTypeRepo       oauthports.AuthorizationDetailTypeRepository
-	RequestStore              oauthports.AuthorizationRequestStore
-	CodeStore                 oauthports.AuthorizationCodeStore
-	PARStore                  oauthports.PARStore
-	RefreshStore              oauthports.RefreshTokenStore
-	DeviceCodeStore           oauthports.DeviceCodeStore
-	DpopReplay                oauthports.DpopReplayStore
-	ClientAssertionReplay     oauthports.ClientAssertionReplayStore
-	AccessTokenDenylist       oauthports.AccessTokenDenylist
-	SessionStore              authnports.SessionStore
+	ClientRepo              oauthports.OAuth2ClientRepository
+	TenantRepo              tenantports.TenantRepository
+	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository
+	UserRepo                idmports.UserRepository
+	GroupRepo               idmports.GroupRepository
+	AgentRepo               idmports.AgentRepository
+	MfaFactorRepo           authnports.MfaFactorRepository
+	PasswordHistoryRepo     authnports.PasswordHistoryRepository
+	PasswordResetTokenStore authnports.PasswordResetTokenStore
+	EmailChangeTokenStore   authnports.EmailChangeTokenStore
+	ConsentRepo             oauthports.ConsentRepository
+	AuthzDetailTypeRepo     oauthports.AuthorizationDetailTypeRepository
+	RequestStore            oauthports.AuthorizationRequestStore
+	CodeStore               oauthports.AuthorizationCodeStore
+	PARStore                oauthports.PARStore
+	RefreshStore            oauthports.RefreshTokenStore
+	DeviceCodeStore         oauthports.DeviceCodeStore
+	DpopReplay              oauthports.DpopReplayStore
+	ClientAssertionReplay   oauthports.ClientAssertionReplayStore
+	AccessTokenDenylist     oauthports.AccessTokenDenylist
+	SessionStore            authnports.SessionStore
+	// NewLoginAttemptThrottle は SCL 由来のしきい値から throttle adapter を生成する。
+	// memory ランタイムはプロセスメモリ版、postgres ランタイムは Valkey 共有版を返す
+	// (ADR-077: 複数レプリカで閾値がクラスタ全体で一つになるよう共有ストア化する)。
+	NewLoginAttemptThrottle   func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
 	KeyStore                  oauthports.KeyStore
 	EventSink                 oauthports.EventSink
 	AuditEventRepo            oauthports.AuditEventRepository

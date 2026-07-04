@@ -153,6 +153,35 @@ SMTP_FROM=noreply@idmagic.test \
 
 Open Mailpit at <http://127.0.0.1:8025/>.
 
+### High Availability & Shared State
+
+Running more than one replica requires the `postgres` runtime with a shared
+Valkey (`PERSISTENCE=postgres`, `DATABASE_URL`, `VALKEY_URL`). All ephemeral /
+short-lived state is then kept in a store shared across replicas rather than in
+per-replica process memory:
+
+- **Valkey** holds the authorization request / authorization code / PAR / device
+  code / login session / DPoP & client-assertion replay guards / access-token
+  denylist, and the **login brute-force throttle**.
+- **PostgreSQL** owns the durable shared state: refresh tokens, audit events, and
+  auth-event aggregation buckets.
+
+The login throttle in particular *must* be shared: with per-replica counters an
+attacker's failed attempts split across `N` replicas, so the per-account /
+per-IP lockout thresholds (ADR-029) would effectively loosen up to `N×`
+cluster-wide — a silent security regression. On the shared Valkey they are
+counted cluster-wide with atomic increments, and the account / IP identifiers are
+SHA-256 hashed so no plaintext username or IP is stored (ADR-077).
+
+Because the throttle is on the critical path, its degradation is **fail-closed**:
+if the shared store is unreachable, a login attempt whose throttle state cannot be
+verified is rejected rather than let through (it never fails open into an
+un-throttled state). Run Valkey in a highly-available configuration
+(replication / failover) for multi-replica deployments so this path stays up.
+
+The `memory` runtime keeps this state in process and is therefore **single-replica
+/ test only** — do not run multiple replicas against it.
+
 ### Request Correlation (`X-Request-ID`)
 
 Every request is assigned a `request_id`. It is returned in the `X-Request-ID`

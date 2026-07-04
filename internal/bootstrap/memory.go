@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	authnports "idmagic/internal/authentication/ports"
 	oauthports "idmagic/internal/oauth2/ports"
 	"idmagic/internal/shared/adapters/crypto"
 	"idmagic/internal/shared/adapters/eventsink"
@@ -13,27 +14,30 @@ func assembleMemory() (*Dependencies, error) {
 		return nil, err
 	}
 	return &Dependencies{
-		TenantRepo:                memory.NewTenantRepository(),
-		AttrSchemaRepo:            memory.NewTenantUserAttributeSchemaRepository(),
-		ClientRepo:                memory.NewClientRepository(),
-		UserRepo:                  memory.NewUserRepository(),
-		GroupRepo:                 memory.NewGroupRepository(),
-		AgentRepo:                 memory.NewAgentRepository(),
-		MfaFactorRepo:             memory.NewMfaFactorRepository(),
-		PasswordHistoryRepo:       memory.NewPasswordHistoryRepository(),
-		PasswordResetTokenStore:   memory.NewPasswordResetTokenStore(),
-		EmailChangeTokenStore:     memory.NewEmailChangeTokenStore(),
-		ConsentRepo:               memory.NewConsentRepository(),
-		AuthzDetailTypeRepo:       memory.NewAuthorizationDetailTypeRepository(),
-		RequestStore:              memory.NewAuthorizationRequestStore(),
-		CodeStore:                 memory.NewAuthorizationCodeStore(),
-		PARStore:                  memory.NewPARStore(),
-		RefreshStore:              memory.NewRefreshTokenStore(),
-		DeviceCodeStore:           memory.NewDeviceCodeStore(),
-		DpopReplay:                memory.NewDpopReplayStore(),
-		ClientAssertionReplay:     memory.NewClientAssertionReplayStore(),
-		AccessTokenDenylist:       memory.NewAccessTokenDenylist(),
-		SessionStore:              memory.NewSessionStore(),
+		TenantRepo:              memory.NewTenantRepository(),
+		AttrSchemaRepo:          memory.NewTenantUserAttributeSchemaRepository(),
+		ClientRepo:              memory.NewClientRepository(),
+		UserRepo:                memory.NewUserRepository(),
+		GroupRepo:               memory.NewGroupRepository(),
+		AgentRepo:               memory.NewAgentRepository(),
+		MfaFactorRepo:           memory.NewMfaFactorRepository(),
+		PasswordHistoryRepo:     memory.NewPasswordHistoryRepository(),
+		PasswordResetTokenStore: memory.NewPasswordResetTokenStore(),
+		EmailChangeTokenStore:   memory.NewEmailChangeTokenStore(),
+		ConsentRepo:             memory.NewConsentRepository(),
+		AuthzDetailTypeRepo:     memory.NewAuthorizationDetailTypeRepository(),
+		RequestStore:            memory.NewAuthorizationRequestStore(),
+		CodeStore:               memory.NewAuthorizationCodeStore(),
+		PARStore:                memory.NewPARStore(),
+		RefreshStore:            memory.NewRefreshTokenStore(),
+		DeviceCodeStore:         memory.NewDeviceCodeStore(),
+		DpopReplay:              memory.NewDpopReplayStore(),
+		ClientAssertionReplay:   memory.NewClientAssertionReplayStore(),
+		AccessTokenDenylist:     memory.NewAccessTokenDenylist(),
+		SessionStore:            memory.NewSessionStore(),
+		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
+			return memory.NewLoginAttemptThrottle(configs)
+		},
 		KeyStore:                  selectKeyStore(oauthports.KeyStore(keyStore)),
 		EventSink:                 eventsink.NewConsoleSink(),
 		AuditEventRepo:            memory.NewAuditEventStore(0),

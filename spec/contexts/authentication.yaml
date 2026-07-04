@@ -1083,6 +1083,7 @@ objectives:
       breached_password_check_enabled: false
   LoginThrottlePolicy:
     kind: security
+    description: "per-account / per-IP のログイン失敗をカウントしブルートフォース / credential stuffing を絞る。閾値はクラスタ全体で一つ (counter_scope=cluster_wide) を意図しており、複数レプリカ運用ではカウンタを共有ストア (Valkey) に置いて合算する。per-replica のプロセスメモリに分散させると実効閾値が最大レプリカ数倍に緩む silent なセキュリティ劣化になるため、shared_store が無い memory adapter は単一レプリカ / テスト専用とする。カウンタ / ロックの key に載せる識別子 (username / IP) は SHA-256 で hash 化し平文を共有ストアへ残さない。共有ストアが到達不能な縮退時は fail_closed とし、閾値を保証できないログイン試行は素通しさせず拒否する (可用性より防御を優先; 複数レプリカ本番は Valkey を HA で運用する前提)。"
     policy: login_throttle
     target: SubmitBrowserLogin
     value:
@@ -1094,6 +1095,10 @@ objectives:
         max_failures: 30
         window_seconds: 900
         lockout_seconds: 900
+      counter_scope: cluster_wide
+      identifier_hash: sha256
+      shared_store_required_for_multi_replica: true
+      degraded_store_behavior: fail_closed
   AuthenticationContextPolicy:
     kind: security
     policy: authentication_context

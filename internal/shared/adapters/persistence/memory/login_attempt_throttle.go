@@ -9,17 +9,6 @@ import (
 	authnports "idmagic/internal/authentication/ports"
 )
 
-type LoginThrottleConfig struct {
-	MaxFailures    int
-	WindowSeconds  int
-	LockoutSeconds int
-}
-
-type LoginThrottleConfigs struct {
-	Account LoginThrottleConfig
-	IP      LoginThrottleConfig
-}
-
 type loginCounter struct {
 	failures  int
 	expiresAt time.Time
@@ -27,12 +16,12 @@ type loginCounter struct {
 
 type LoginAttemptThrottle struct {
 	mu       sync.Mutex
-	configs  LoginThrottleConfigs
+	configs  authnports.LoginThrottleConfigs
 	counters map[string]loginCounter
 	locks    map[string]time.Time
 }
 
-func NewLoginAttemptThrottle(configs LoginThrottleConfigs) *LoginAttemptThrottle {
+func NewLoginAttemptThrottle(configs authnports.LoginThrottleConfigs) *LoginAttemptThrottle {
 	return &LoginAttemptThrottle{
 		configs: configs, counters: map[string]loginCounter{}, locks: map[string]time.Time{},
 	}
@@ -102,7 +91,7 @@ func (t *LoginAttemptThrottle) RecordSuccess(
 	return nil
 }
 
-func (t *LoginAttemptThrottle) config(kind authnports.LoginThrottleKind) LoginThrottleConfig {
+func (t *LoginAttemptThrottle) config(kind authnports.LoginThrottleKind) authnports.LoginThrottleConfig {
 	if kind == authnports.LoginThrottleIP {
 		return t.configs.IP
 	}

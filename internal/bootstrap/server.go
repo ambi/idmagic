@@ -10,12 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	authnports "idmagic/internal/authentication/ports"
 	authusecases "idmagic/internal/authentication/usecases"
 	"idmagic/internal/shared/adapters/crypto"
 	httpadapter "idmagic/internal/shared/adapters/http/server"
 	httpsupport "idmagic/internal/shared/adapters/http/support"
 	"idmagic/internal/shared/adapters/observability"
-	"idmagic/internal/shared/adapters/persistence/memory"
 	"idmagic/internal/shared/logging"
 	"idmagic/internal/shared/spec"
 	"idmagic/internal/shared/version"
@@ -94,13 +94,13 @@ func Run() error {
 		}
 		return value
 	}
-	loginThrottle := memory.NewLoginAttemptThrottle(memory.LoginThrottleConfigs{
-		Account: memory.LoginThrottleConfig{
+	loginThrottle := deps.NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
+		Account: authnports.LoginThrottleConfig{
 			MaxFailures:    objectiveInt("per_account", "max_failures"),
 			WindowSeconds:  objectiveInt("per_account", "window_seconds"),
 			LockoutSeconds: objectiveInt("per_account", "lockout_seconds"),
 		},
-		IP: memory.LoginThrottleConfig{
+		IP: authnports.LoginThrottleConfig{
 			MaxFailures:    objectiveInt("per_ip", "max_failures"),
 			WindowSeconds:  objectiveInt("per_ip", "window_seconds"),
 			LockoutSeconds: objectiveInt("per_ip", "lockout_seconds"),

@@ -264,7 +264,7 @@ XML signing capability だけを共有する。
       <div class="eyebrow">Bounded Context · contexts/system.yaml</div>
       <h1>System</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">8</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-objectives"><span class="stat-num">9</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-system-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-system-standards">
     <h2>Standards <span class="count">2</span></h2>
@@ -358,10 +358,10 @@ XML signing capability だけを共有する。
       </article></div>
   </section>
 <section id="context-system-objectives">
-    <h2>Objectives <span class="count">8</span></h2>
+    <h2>Objectives <span class="count">9</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">security <span class="count">8</span></h3>
+      <h3 class="grp-title">security <span class="count">9</span></h3>
       <div class="cards"><article class="card" id="context-system-obj-cancellationconsistency">
     <header><h3>CancellationConsistency</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。</p>
@@ -401,6 +401,11 @@ XML signing capability だけを共有する。
     <header><h3>FrameAncestorsPolicy</h3><span class="badge badge-kind-security">security</span></header>
     <p class="desc">login / consent / account portal をはじめ IdP が返す全レスポンスは frame-ancestors 'none' (併せて X-Frame-Options: DENY) とし、iframe 埋め込みを禁止して consent / login のクリックジャッキング (同意の乗っ取り) を防ぐ。frame-ancestors の per-route 判断はアプリの知識でありプロキシへ委譲できない (secure-by-default でアプリ単体で成立させる)。SAML ACS / WS-Fed への自動 POST フォームは cross-origin へ form 送信するため、CSP form-action にのみ送信先を明示的に許可し、frame-ancestors は 'none' を維持する。</p>
     <dl class="kv"><dt>policy</dt><dd><span class="text">frame_ancestors</span></dd><dt>target</dt><dd><span class="text">HTTPBoundaryResponse</span></dd><dt>value</dt><dd><dl class="kv"><dt>frame_ancestors</dt><dd><span class="text">none</span></dd><dt>x_frame_options</dt><dd><span class="text">DENY</span></dd><dt>applies_to</dt><dd><span class="text">all_backend_responses</span></dd><dt>auto_post_form_action_allowlist</dt><dd><span class="text">destination_only</span></dd></dl></dd></dl>
+  </article>
+<article class="card" id="context-system-obj-sharedephemeralstateha">
+    <header><h3>SharedEphemeralStateHA</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">複数レプリカで水平スケールする本番構成 (PERSISTENCE=postgres) では、ephemeral / short-lived な状態を全てレプリカ間で共有するストア (Valkey) に載せ、per-replica のプロセスメモリに残さない。共有対象は authorization request / authorization code / PAR / device code / login session / DPoP・client-assertion replay / access-token denylist / login throttle。login throttle をプロセスメモリに残すと閾値がレプリカ数倍に緩むため (LoginThrottlePolicy 参照)、これも共有ストアに載せる。refresh token / audit event / auth-event bucket は Postgres が durable な共有ストアとして所有する。memory adapter は共有ストアを持たず単一レプリカ / テスト専用であり、複数レプリカ運用では Valkey (postgres ランタイム) が必須である。共有ストア到達不能時の縮退方針は状態ごとに定め、login throttle は fail_closed とする。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">shared_ephemeral_state_ha</span></dd><dt>target</dt><dd><span class="text">RuntimeTopology</span></dd><dt>value</dt><dd><dl class="kv"><dt>multi_replica_requires_shared_store</dt><dd><code>true</code></dd><dt>shared_store</dt><dd><span class="text">valkey</span></dd><dt>shared_in_valkey</dt><dd><span class="chip">authorization_request</span> <span class="chip">authorization_code</span> <span class="chip">par</span> <span class="chip">device_code</span> <span class="chip">login_session</span> <span class="chip">dpop_replay</span> <span class="chip">client_assertion_replay</span> <span class="chip">access_token_denylist</span> <span class="chip">login_throttle</span></dd><dt>durable_in_postgres</dt><dd><span class="chip">refresh_token</span> <span class="chip">audit_event</span> <span class="chip">auth_event_bucket</span></dd><dt>memory_adapter_scope</dt><dd><span class="text">single_replica_or_test</span></dd></dl></dd></dl>
   </article></div>
     </div>
   </section>
@@ -8353,8 +8358,8 @@ BreachedPasswordChecker を通過した new_password で User.password_hash を
   </article>
 <article class="card" id="context-authentication-obj-loginthrottlepolicy">
     <header><h3>LoginThrottlePolicy</h3><span class="badge badge-kind-security">security</span></header>
-
-    <dl class="kv"><dt>policy</dt><dd><span class="text">login_throttle</span></dd><dt>target</dt><dd><span class="text">SubmitBrowserLogin</span></dd><dt>value</dt><dd><dl class="kv"><dt>per_account</dt><dd><dl class="kv"><dt>max_failures</dt><dd><code>10</code></dd><dt>window_seconds</dt><dd><code>900</code></dd><dt>lockout_seconds</dt><dd><code>900</code></dd></dl></dd><dt>per_ip</dt><dd><dl class="kv"><dt>max_failures</dt><dd><code>30</code></dd><dt>window_seconds</dt><dd><code>900</code></dd><dt>lockout_seconds</dt><dd><code>900</code></dd></dl></dd></dl></dd></dl>
+    <p class="desc">per-account / per-IP のログイン失敗をカウントしブルートフォース / credential stuffing を絞る。閾値はクラスタ全体で一つ (counter_scope=cluster_wide) を意図しており、複数レプリカ運用ではカウンタを共有ストア (Valkey) に置いて合算する。per-replica のプロセスメモリに分散させると実効閾値が最大レプリカ数倍に緩む silent なセキュリティ劣化になるため、shared_store が無い memory adapter は単一レプリカ / テスト専用とする。カウンタ / ロックの key に載せる識別子 (username / IP) は SHA-256 で hash 化し平文を共有ストアへ残さない。共有ストアが到達不能な縮退時は fail_closed とし、閾値を保証できないログイン試行は素通しさせず拒否する (可用性より防御を優先; 複数レプリカ本番は Valkey を HA で運用する前提)。</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">login_throttle</span></dd><dt>target</dt><dd><span class="text">SubmitBrowserLogin</span></dd><dt>value</dt><dd><dl class="kv"><dt>per_account</dt><dd><dl class="kv"><dt>max_failures</dt><dd><code>10</code></dd><dt>window_seconds</dt><dd><code>900</code></dd><dt>lockout_seconds</dt><dd><code>900</code></dd></dl></dd><dt>per_ip</dt><dd><dl class="kv"><dt>max_failures</dt><dd><code>30</code></dd><dt>window_seconds</dt><dd><code>900</code></dd><dt>lockout_seconds</dt><dd><code>900</code></dd></dl></dd><dt>counter_scope</dt><dd><span class="text">cluster_wide</span></dd><dt>identifier_hash</dt><dd><span class="text">sha256</span></dd><dt>shared_store_required_for_multi_replica</dt><dd><code>true</code></dd><dt>degraded_store_behavior</dt><dd><span class="text">fail_closed</span></dd></dl></dd></dl>
   </article>
 <article class="card" id="context-authentication-obj-authenticationcontextpolicy">
     <header><h3>AuthenticationContextPolicy</h3><span class="badge badge-kind-security">security</span></header>
