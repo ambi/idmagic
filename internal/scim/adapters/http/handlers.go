@@ -72,6 +72,14 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 		Etag: struct {
 			Supported bool `json:"supported"`
 		}{Supported: false},
+		AuthenticationSchemes: []domain.AuthenticationScheme{
+			{
+				Type:        "oauthbearertoken",
+				Name:        "OAuth Bearer Token",
+				Description: "Authentication scheme using the OAuth Bearer Token Standard",
+				SpecUri:     "https://www.rfc-editor.org/info/rfc6750",
+			},
+		},
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")

@@ -71,6 +71,29 @@ func TestScimInboundProvisioning(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", rec.Code)
 		}
+
+		// authenticationSchemes は RFC 7643 §5 で REQUIRED。null や空を返さず、
+		// Bearer トークン方式を申告していることを確認する。
+		var config struct {
+			AuthenticationSchemes []struct {
+				Type string `json:"type"`
+			} `json:"authenticationSchemes"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &config); err != nil {
+			t.Fatalf("failed to decode ServiceProviderConfig: %v", err)
+		}
+		if len(config.AuthenticationSchemes) == 0 {
+			t.Fatal("expected authenticationSchemes to be non-empty")
+		}
+		foundBearer := false
+		for _, s := range config.AuthenticationSchemes {
+			if s.Type == "oauthbearertoken" {
+				foundBearer = true
+			}
+		}
+		if !foundBearer {
+			t.Errorf("expected an oauthbearertoken authentication scheme, got %+v", config.AuthenticationSchemes)
+		}
 	}
 
 	// 4. ユーザーのプロビジョニング (Create User)

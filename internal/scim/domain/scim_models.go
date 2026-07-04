@@ -96,12 +96,15 @@ type ServiceProviderConfig struct {
 	Etag struct {
 		Supported bool `json:"supported"`
 	} `json:"etag"`
-	AuthenticationSchemes []struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		SpecUri     string `json:"specUri,omitempty"`
-		Type        string `json:"type"`
-	} `json:"authenticationSchemes"`
+	AuthenticationSchemes []AuthenticationScheme `json:"authenticationSchemes"`
+}
+
+// AuthenticationScheme は ServiceProviderConfig が申告する認証方式 (RFC 7643 §5)。
+type AuthenticationScheme struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	SpecUri     string `json:"specUri,omitempty"`
+	Type        string `json:"type"`
 }
 
 type ResourceType struct {

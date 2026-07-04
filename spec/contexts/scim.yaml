@@ -52,7 +52,12 @@ models:
         optional: true
 interfaces:
   GetScimServiceProviderConfig:
-    description: SCIM 2.0 /ServiceProviderConfig を取得する。
+    description: |
+      SCIM 2.0 /ServiceProviderConfig を取得する。
+      レスポンスは受け付ける認証方式を authenticationSchemes で申告する。同属性は
+      RFC 7643 §5 で REQUIRED の多値属性であり、空や欠落は許されない。SCIM API は
+      Bearer スキームで提示するアクセストークンで認証するため、少なくとも
+      oauthbearertoken 方式を 1 件含める。
     input:
       tenant_id:
         type: String
