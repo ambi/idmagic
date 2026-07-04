@@ -105,7 +105,7 @@ func clientUsesRedirect(client *OAuth2Client) bool {
 }
 
 var userSchema = z.Struct(z.Shape{
-	"ID":               z.String().Required(),
+	"ID":                z.String().Required(),
 	"PreferredUsername": z.String().Min(1).Max(100).Required(),
 	"PasswordHash":      z.String().Required(),
 	"Name":              z.Ptr(z.String().Max(200)),
@@ -213,7 +213,7 @@ var mfaFactorSchema = z.Struct(z.Shape{
 }, z.Message("totp factor requires secret"))
 
 var consentSchema = z.Struct(z.Shape{
-	"UserID":      z.String().Required(),
+	"UserID":   z.String().Required(),
 	"ClientID": z.String().Required(),
 	"Scopes":   z.Slice(z.String()).Min(1).Required(),
 	"State": z.StringLike[ConsentState]().TestFunc(
@@ -250,7 +250,7 @@ var authorizationCodeRecordSchema = z.Struct(z.Shape{
 	"Code":                   z.String().Required(),
 	"AuthorizationRequestID": z.String().UUID().Required(),
 	"ClientID":               z.String().Required(),
-	"UserID":                    z.String().Required(),
+	"UserID":                 z.String().Required(),
 	"RedirectURI":            z.String().URL().Required(),
 	"CodeChallenge":          z.String().Required(),
 	"CodeChallengeMethod": z.StringLike[CodeChallengeMethod]().OneOf(
@@ -267,7 +267,7 @@ var authorizationCodeRecordSchema = z.Struct(z.Shape{
 
 var loginSessionSchema = z.Struct(z.Shape{
 	"ID":        z.String().UUID().Required(),
-	"UserID":       z.String().Required(),
+	"UserID":    z.String().Required(),
 	"AMR":       z.Slice(z.String()).Min(1).Required(),
 	"ACR":       z.String().Required(),
 	"ExpiresAt": z.Time().Required(),
@@ -284,7 +284,7 @@ var refreshTokenRecordSchema = z.Struct(z.Shape{
 	"Hash":              z.String().Required(),
 	"FamilyID":          z.String().UUID().Required(),
 	"ClientID":          z.String().Required(),
-	"UserID":               z.String().Required(),
+	"UserID":            z.String().Required(),
 	"IssuedAt":          z.Time().Required(),
 	"ExpiresAt":         z.Time().Required(),
 	"AbsoluteExpiresAt": z.Time().Required(),
