@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, type SelectOption } from '../../components/ui/select'
+import { validateReauthMaxAge, parseNetworkCIDRs } from '../../lib/validation'
 import type {
   AdminApplication,
   AppSignInPolicyView,
@@ -141,16 +142,18 @@ function DefaultPolicyCard({
   )
 }
 
-function DefaultPolicyForm({
-  csrfToken,
+export function DefaultPolicyFormPresentation({
   rule,
   onCancel,
-  onSaved,
+  onSubmit,
+  saving,
+  error: externalError,
 }: {
-  csrfToken: string
   rule?: SignInRule
   onCancel: () => void
-  onSaved: (next: TenantDefaultSignInPolicy) => void
+  onSubmit: (rules: SignInRule[]) => Promise<void>
+  saving: boolean
+  error?: string
 }) {
   const [strength, setStrength] = useState<RequiredAuthnStrength>(
     rule?.required_authn.strength ?? 'Password',
@@ -161,52 +164,41 @@ function DefaultPolicyForm({
   const [networkCIDRs, setNetworkCIDRs] = useState(
     (rule?.condition.network_allow_cidrs ?? []).join('\n'),
   )
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [validationError, setValidationError] = useState('')
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
+  const error = validationError || externalError
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSaving(true)
-    setError('')
-    try {
-      const reauthText = reauthMaxAge.trim()
-      const reauth = reauthText === '' ? undefined : Number.parseInt(reauthText, 10)
-      if (reauth !== undefined && (Number.isNaN(reauth) || reauth < 1)) {
-        setError('再認証を求めるまでの時間には 1 以上の秒数を入力してください。')
-        setSaving(false)
-        return
-      }
-      const cidrs = networkCIDRs
-        .split('\n')
-        .map((entry) => entry.trim())
-        .filter((entry) => entry !== '')
-      // デフォルトは常に適用される baseline なので、認証強度が最低でも 1 ルールとして保存する。
-      const rules: SignInRule[] = [
-        {
-          rule_id: rule?.rule_id ?? '',
-          name: DEFAULT_RULE_NAME,
-          enabled: true,
-          required_authn: { strength },
-          condition: {
-            reauth_max_age_seconds: reauth,
-            network_allow_cidrs: cidrs.length > 0 ? cidrs : undefined,
-          },
-        },
-      ]
-      const next = await updateTenantDefaultSignInPolicy(csrfToken, rules)
-      onSaved(next)
-    } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'デフォルトサインインポリシーを更新できませんでした。',
-      )
-      setSaving(false)
+    setValidationError('')
+
+    const validationResult = validateReauthMaxAge(reauthMaxAge)
+    if (!validationResult.isValid) {
+      setValidationError(validationResult.error)
+      return
     }
+
+    const cidrs = parseNetworkCIDRs(networkCIDRs)
+
+    // デフォルトは常に適用される baseline なので、認証強度が最低でも 1 ルールとして保存する。
+    const rules: SignInRule[] = [
+      {
+        rule_id: rule?.rule_id ?? '',
+        name: DEFAULT_RULE_NAME,
+        enabled: true,
+        required_authn: { strength },
+        condition: {
+          reauth_max_age_seconds: validationResult.parsed,
+          network_allow_cidrs: cidrs.length > 0 ? cidrs : undefined,
+        },
+      },
+    ]
+
+    await onSubmit(rules)
   }
 
   return (
-    <form onSubmit={handleSave} className="grid gap-4">
+    <form onSubmit={handleSubmit} className="grid gap-4">
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="grid gap-1.5">
         <Label>要求する認証強度</Label>
@@ -260,6 +252,47 @@ function DefaultPolicyForm({
         </Button>
       </div>
     </form>
+  )
+}
+
+function DefaultPolicyForm({
+  csrfToken,
+  rule,
+  onCancel,
+  onSaved,
+}: {
+  csrfToken: string
+  rule?: SignInRule
+  onCancel: () => void
+  onSaved: (next: TenantDefaultSignInPolicy) => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(rules: SignInRule[]) {
+    setSaving(true)
+    setError('')
+    try {
+      const next = await updateTenantDefaultSignInPolicy(csrfToken, rules)
+      onSaved(next)
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? cause.message
+          : 'デフォルトサインインポリシーを更新できませんでした。',
+      )
+      setSaving(false)
+    }
+  }
+
+  return (
+    <DefaultPolicyFormPresentation
+      rule={rule}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+      saving={saving}
+      error={error}
+    />
   )
 }
 
