@@ -53,6 +53,11 @@ test-go:
 test-go-race:
     GOCACHE={{go_cache}} go test -race ./...
 
+# Run Go tests with coverage.
+test-go-cover:
+    GOCACHE={{go_cache}} go test -coverprofile=coverage.out -covermode=atomic ./...
+    go tool cover -func=coverage.out
+
 # Run Go fuzz targets for a package.
 test-go-fuzz package fuzztime="30s":
     GOCACHE={{go_cache}} go test -run=Fuzz -fuzz=Fuzz -fuzztime={{fuzztime}} {{package}}
