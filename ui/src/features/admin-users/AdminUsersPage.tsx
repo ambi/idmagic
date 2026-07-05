@@ -85,12 +85,10 @@ export function AdminUsersPage({
   csrfToken,
   actorUsername,
   users: initialUsers,
-  attributeDefs,
 }: {
   csrfToken: string
   actorUsername?: string
   users: AdminUser[]
-  attributeDefs: UserAttributeDef[]
 }) {
   const [users, setUsers] = useState(initialUsers)
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
@@ -99,7 +97,6 @@ export function AdminUsersPage({
   )
   const [status, setStatus] = useState<StatusFilter>('all')
   const [showCreate, setShowCreate] = useState(false)
-  const [showUserEditor, setShowUserEditor] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [showPurge, setShowPurge] = useState(false)
   const [showDisable, setShowDisable] = useState(false)
@@ -166,15 +163,6 @@ export function AdminUsersPage({
       setShowCreate(false)
       await refresh(created.id)
     }, 'ユーザーを作成しました。')
-  }
-
-  async function handleUpdate(input: UpdateAdminUserInput) {
-    if (!selected) return
-    await run(async () => {
-      await updateAdminUser(csrfToken, selected.id, input)
-      setShowUserEditor(false)
-      await refresh(selected.id)
-    }, 'ユーザーを更新しました。')
   }
 
   async function handleDisabled(user: AdminUser) {
@@ -401,7 +389,7 @@ export function AdminUsersPage({
                   user={selected}
                   csrfToken={csrfToken}
                   busy={busy}
-                  onEdit={() => setShowUserEditor(true)}
+                  editHref={tenantURL(`/admin/users/${encodeURIComponent(selected.id)}/edit`)}
                   onDisabled={() => requestDisable(selected)}
                   onDelete={() => setShowDelete(true)}
                   onRestore={() => void handleRestore(selected)}
@@ -429,15 +417,6 @@ export function AdminUsersPage({
           busy={busy}
           onClose={() => setShowCreate(false)}
           onSubmit={handleCreate}
-        />
-      )}
-      {showUserEditor && selected && (
-        <UserEditorDialog
-          user={selected}
-          attributeDefs={attributeDefs}
-          busy={busy}
-          onSubmit={(input) => void handleUpdate(input)}
-          onClose={() => setShowUserEditor(false)}
         />
       )}
       {showDelete && selected && (
@@ -485,7 +464,6 @@ export function AdminUserDetailPage({
   schema: TenantUserAttributeSchema
 }) {
   const [user, setUser] = useState(initialUser)
-  const [showEditor, setShowEditor] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [showPurge, setShowPurge] = useState(false)
   const [showDisable, setShowDisable] = useState(false)
@@ -515,14 +493,6 @@ export function AdminUserDetailPage({
     } finally {
       setBusy(false)
     }
-  }
-
-  async function handleUpdate(input: UpdateAdminUserInput) {
-    await run(async () => {
-      await updateAdminUser(csrfToken, user.id, input)
-      setShowEditor(false)
-      await reload()
-    }, 'ユーザーを更新しました。')
   }
 
   async function handleDisabled() {
@@ -598,9 +568,11 @@ export function AdminUserDetailPage({
               <IconArrowLeft size={16} aria-hidden="true" />
               ユーザー一覧
             </a>
-            <Button type="button" disabled={busy} onClick={() => setShowEditor(true)}>
-              <IconPencil size={16} aria-hidden="true" />
-              編集
+            <Button asChild>
+              <a href={tenantURL(`/admin/users/${encodeURIComponent(user.id)}/edit`)}>
+                <IconPencil size={16} aria-hidden="true" />
+                編集
+              </a>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -796,15 +768,6 @@ export function AdminUserDetailPage({
         </div>
       </AdminShell>
 
-      {showEditor && (
-        <UserEditorDialog
-          user={user}
-          attributeDefs={attributeDefs}
-          busy={busy}
-          onSubmit={(input) => void handleUpdate(input)}
-          onClose={() => setShowEditor(false)}
-        />
-      )}
       {showDelete && (
         <DeleteUserDialog
           user={user}
@@ -875,7 +838,7 @@ function UserDetails({
   user,
   csrfToken,
   busy,
-  onEdit,
+  editHref,
   onDisabled,
   onDelete,
   onRestore,
@@ -885,7 +848,7 @@ function UserDetails({
   user: AdminUser
   csrfToken: string
   busy: boolean
-  onEdit: () => void
+  editHref: string
   onDisabled: () => void
   onDelete: () => void
   onRestore: () => void
@@ -915,7 +878,7 @@ function UserDetails({
           <AdminPaneActions
             detailHref={tenantURL(`/admin/users/${encodeURIComponent(user.id)}`)}
             busy={busy}
-            onEdit={onEdit}
+            editHref={editHref}
             actions={
               pending
                 ? [
@@ -1396,19 +1359,41 @@ function AdminAttributeEditorGroups({
   )
 }
 
-function UserEditorDialog({
+// AdminUserEditPage はユーザー編集の専用画面 (wi-126 §6)。従来モーダルだった編集
+// フォームを詳細→編集ポリシーに沿って独立画面へ移し、保存後は詳細画面へ戻す。
+// ロール変更を含む場合は保存前に確認ステップ (confirming) を同一画面で挟む。
+export function AdminUserEditPage({
+  csrfToken,
+  actorUsername,
   user,
-  attributeDefs,
-  busy,
-  onSubmit,
-  onClose,
+  schema,
 }: {
+  csrfToken: string
+  actorUsername?: string
   user: AdminUser
-  attributeDefs: UserAttributeDef[]
-  busy: boolean
-  onSubmit: (input: UpdateAdminUserInput) => void
-  onClose: () => void
+  schema: TenantUserAttributeSchema
 }) {
+  const attributeDefs = [...schema.builtin, ...schema.attributes]
+  const detailPath = tenantURL(`/admin/users/${encodeURIComponent(user.id)}`)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function persist(input: UpdateAdminUserInput) {
+    setBusy(true)
+    setError('')
+    try {
+      await updateAdminUser(csrfToken, user.id, input)
+      window.location.assign(detailPath)
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? cause.message
+          : 'ユーザーを更新できませんでした。',
+      )
+      setBusy(false)
+    }
+  }
+
   const initialUsername = user.preferred_username
   const initialName = user.name ?? ''
   const initialGivenName = user.given_name ?? ''
@@ -1468,42 +1453,37 @@ function UserEditorDialog({
     if (rolesChanged) input.roles = nextRoles
     // admin は属性バッグ全体を置換するため、ドラフトから完全な map を再構成する。
     if (attributesChanged) input.attributes = attributeMapFromDraft(attrDraft, attributeDefs)
-    onSubmit(input)
+    void persist(input)
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="user-editor-title"
+    <AdminShell
+      active="users"
+      actorUsername={actorUsername}
+      title="ユーザーを編集"
+      description={`${user.name || user.preferred_username} (@${user.preferred_username})`}
+      actions={
+        <Button asChild variant="outline">
+          <a href={detailPath}>
+            <IconArrowLeft size={16} aria-hidden="true" />
+            ユーザー詳細
+          </a>
+        </Button>
+      }
     >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
-        onClick={onClose}
-      />
-      <Card className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden shadow-2xl">
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
-              プロフィールとアクセス
-            </p>
-            <h2 id="user-editor-title" className="mt-1 text-xl font-semibold">
-              {confirming ? '変更内容を確認' : 'ユーザーを編集'}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {user.name || user.preferred_username} (@{user.preferred_username})
-            </p>
-          </div>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
-            <IconX size={18} aria-hidden="true" />
-          </Button>
+      {error && <Alert>{error}</Alert>}
+      <Card className="mx-auto w-full max-w-3xl overflow-hidden">
+        <div className="border-b border-slate-200 px-6 py-5">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
+            プロフィールとアクセス
+          </p>
+          <h2 className="mt-1 text-xl font-semibold">
+            {confirming ? '変更内容を確認' : 'ユーザーを編集'}
+          </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div>
             {confirming ? (
               <div className="p-6">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -1667,20 +1647,22 @@ function UserEditorDialog({
             )}
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={confirming ? () => setConfirming(false) : onClose}
-            >
-              {confirming ? '戻る' : 'キャンセル'}
-            </Button>
+            {confirming ? (
+              <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+                戻る
+              </Button>
+            ) : (
+              <Button asChild variant="outline">
+                <a href={detailPath}>キャンセル</a>
+              </Button>
+            )}
             <Button type="submit" disabled={busy || usernameInvalid || !changed}>
               {confirming ? '変更を確定' : rolesChanged ? '変更内容を確認' : '保存'}
             </Button>
           </div>
         </form>
       </Card>
-    </div>
+    </AdminShell>
   )
 }
 

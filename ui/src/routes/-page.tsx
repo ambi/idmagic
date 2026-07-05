@@ -26,6 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
   'admin-dashboard': `ダッシュボード | ${ADMIN}`,
   'admin-users': `ユーザー | ${ADMIN}`,
   'admin-user-detail': `ユーザー詳細 | ${ADMIN}`,
+  'admin-user-edit': `ユーザーを編集 | ${ADMIN}`,
   'admin-agents': `エージェント | ${ADMIN}`,
   'admin-agent-detail': `エージェント詳細 | ${ADMIN}`,
   'admin-applications': `アプリケーション | ${ADMIN}`,

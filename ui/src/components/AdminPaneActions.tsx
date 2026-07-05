@@ -21,16 +21,18 @@ export type PaneAction = {
 // (wi-126 §7、方針: 表示してよい)。編集や操作が無いエンティティでは省略する。
 export function AdminPaneActions({
   detailHref,
+  editHref,
   onEdit,
   busy = false,
   actions = [],
 }: {
   detailHref?: string
+  editHref?: string
   onEdit?: () => void
   busy?: boolean
   actions?: PaneAction[]
 }) {
-  const hasSecondaryAction = Boolean(onEdit) || actions.length > 0
+  const hasSecondaryAction = Boolean(editHref || onEdit) || actions.length > 0
   return (
     <div className="flex flex-wrap items-center gap-2">
       {detailHref ? (
@@ -41,7 +43,14 @@ export function AdminPaneActions({
           </a>
         </Button>
       ) : null}
-      {onEdit ? (
+      {editHref ? (
+        <Button asChild variant="outline" className="flex-1">
+          <a href={editHref}>
+            <IconPencil size={16} aria-hidden="true" />
+            編集
+          </a>
+        </Button>
+      ) : onEdit ? (
         <Button type="button" variant="outline" className="flex-1" disabled={busy} onClick={onEdit}>
           <IconPencil size={16} aria-hidden="true" />
           編集
