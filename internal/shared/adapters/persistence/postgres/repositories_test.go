@@ -245,7 +245,7 @@ func TestAgentRepositoryRoundTripAndBindings(t *testing.T) {
 
 	now := testClock()
 	agent := &spec.Agent{
-		ID:          uniqueID("agent"),
+		ID:          newUUID(t),
 		TenantID:    tenant.ID,
 		Name:        "svc-agent",
 		Kind:        spec.AgentKindAutonomous,
@@ -364,7 +364,7 @@ func TestScimRepositoryTokensAndRefs(t *testing.T) {
 
 	now := testClock()
 	token := &ports.ScimToken{
-		ID: uniqueID("scim-token"), TenantID: tenant.ID, TokenHash: uniqueID("hash"),
+		ID: newUUID(t), TenantID: tenant.ID, TokenHash: uniqueID("hash"),
 		Description: "provisioning", CreatedAt: now, ExpiresAt: new(now.Add(time.Hour)),
 	}
 	if err := repo.SaveToken(ctx, token); err != nil {

@@ -14,6 +14,21 @@ import (
 	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
+// 固定 UUID の seed id (ADR-084)。id 列は UUID 型のため、デモ/first-party の値も
+// UUID にする。再起動で重複しないよう固定し、UI (ui/src/api/oidc.ts / authFlow.ts) の
+// OIDC 設定と application binding もこの値を参照する。
+const (
+	seedUserAliceID = "00000000-0000-4000-8000-000000000001"
+	seedUserRootID  = "00000000-0000-4000-8000-000000000002"
+
+	seedGroupEngineeringID = "00000000-0000-4000-8000-000000000011"
+	seedGroupSupportID     = "00000000-0000-4000-8000-000000000012"
+
+	seedDemoClientID          = "00000000-0000-4000-8000-000000000021"
+	seedAdminConsoleClientID  = "00000000-0000-4000-8000-000000000022"
+	seedAccountPortalClientID = "00000000-0000-4000-8000-000000000023"
+)
+
 // seedDemoData は SKIP_DEMO_SEED が空のとき、デモ用クライアントとユーザーを 1 件投入する。
 // 既存データを更新する想定で Save を直接呼ぶ。
 func seedDemoData(
@@ -29,7 +44,7 @@ func seedDemoData(
 	secretHash := oauthdomain.HashClientSecret(envDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
 	now := time.Now().UTC()
 	if err := clients.Save(ctx, &spec.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: "demo-client",
+		TenantID: spec.DefaultTenantID, ClientID: seedDemoClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{
 			"http://localhost:3000/callback",
@@ -61,7 +76,7 @@ func seedDemoData(
 	email := "alice@example.com"
 	totpSecret := envDefault("DEMO_TOTP_SECRET", "")
 	if err := users.Save(ctx, &spec.User{
-		ID: "user_alice", TenantID: spec.DefaultTenantID,
+		ID: seedUserAliceID, TenantID: spec.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		Roles:     []string{"admin"},
@@ -70,7 +85,7 @@ func seedDemoData(
 	}); err != nil {
 		return err
 	}
-	if err := passwordHistory.Add(ctx, "user_alice", hash, now); err != nil {
+	if err := passwordHistory.Add(ctx, seedUserAliceID, hash, now); err != nil {
 		return err
 	}
 	// root は super-admin デモユーザー。system_admin はテナント横断の管理操作
@@ -80,7 +95,7 @@ func seedDemoData(
 	// 用意し、既定テナントに所属する。
 	rootEmail := "root@example.com"
 	if err := users.Save(ctx, &spec.User{
-		ID: "user_root", TenantID: spec.DefaultTenantID,
+		ID: seedUserRootID, TenantID: spec.DefaultTenantID,
 		PreferredUsername: "root", PasswordHash: hash,
 		Email: &rootEmail, EmailVerified: true,
 		Roles:     []string{"admin", "system_admin"},
@@ -89,7 +104,7 @@ func seedDemoData(
 	}); err != nil {
 		return err
 	}
-	if err := passwordHistory.Add(ctx, "user_root", hash, now); err != nil {
+	if err := passwordHistory.Add(ctx, seedUserRootID, hash, now); err != nil {
 		return err
 	}
 	if err := seedDemoGroups(ctx, groups, now); err != nil {
@@ -103,7 +118,7 @@ func seedDemoData(
 	}
 	label := "Demo TOTP"
 	return mfaFactors.Save(ctx, &spec.MfaFactor{
-		UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
+		UserID: seedUserAliceID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
 	})
 }
 
@@ -117,8 +132,8 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 		name     string
 		scope    string
 	}{
-		{"idmagic-admin-console", "IdMagic Admin Console", "openid profile idmagic.admin offline_access"},
-		{"idmagic-account-portal", "IdMagic Account Portal", "openid profile idmagic.account offline_access"},
+		{seedAdminConsoleClientID, "IdMagic Admin Console", "openid profile idmagic.admin offline_access"},
+		{seedAccountPortalClientID, "IdMagic Account Portal", "openid profile idmagic.account offline_access"},
 	}
 	for _, p := range portals {
 		name := p.name
@@ -162,9 +177,9 @@ func seedDemoApplications(
 		launchURL string
 		binding   spec.ProtocolBinding
 	}{
-		{"00000000-0000-4000-8000-000000000101", "IdMagic Admin Console", "/realms/default/admin", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "idmagic-admin-console"}},
-		{"00000000-0000-4000-8000-000000000102", "IdMagic Account Portal", "/realms/default/account", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "idmagic-account-portal"}},
-		{"00000000-0000-4000-8000-000000000103", "Demo Client", "", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "demo-client"}},
+		{"00000000-0000-4000-8000-000000000101", "IdMagic Admin Console", "/realms/default/admin", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: seedAdminConsoleClientID}},
+		{"00000000-0000-4000-8000-000000000102", "IdMagic Account Portal", "/realms/default/account", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: seedAccountPortalClientID}},
+		{"00000000-0000-4000-8000-000000000103", "Demo Client", "", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: seedDemoClientID}},
 		{"00000000-0000-4000-8000-000000000104", "Demo WS-Federation RP", "https://rp.example/wsfed", spec.ProtocolBinding{Type: spec.ProtocolBindingWsFed, Wtrealm: "urn:idmagic:demo-rp"}},
 	}
 	for _, s := range seeds {
@@ -181,7 +196,7 @@ func seedDemoApplications(
 		}
 		if err := assignments.Save(ctx, &spec.ApplicationAssignment{
 			TenantID: spec.DefaultTenantID, ApplicationID: s.id,
-			SubjectType: spec.AssignmentSubjectUser, SubjectID: "user_alice",
+			SubjectType: spec.AssignmentSubjectUser, SubjectID: seedUserAliceID,
 			Visibility: spec.AssignmentVisible, CreatedAt: now,
 		}); err != nil {
 			return err
@@ -224,11 +239,11 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 	supportDesc := "カスタマーサポートチーム"
 	demoGroups := []*spec.Group{
 		{
-			ID: "group_engineering", TenantID: spec.DefaultTenantID, Name: "engineering",
+			ID: seedGroupEngineeringID, TenantID: spec.DefaultTenantID, Name: "engineering",
 			Description: &engineeringDesc, Roles: []string{"catalog:read"}, CreatedAt: now,
 		},
 		{
-			ID: "group_support", TenantID: spec.DefaultTenantID, Name: "support",
+			ID: seedGroupSupportID, TenantID: spec.DefaultTenantID, Name: "support",
 			Description: &supportDesc, Roles: []string{"invoice:read"}, CreatedAt: now,
 		},
 	}
@@ -238,7 +253,7 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 		}
 	}
 	if _, err := groups.AddMember(ctx, &spec.GroupMember{
-		GroupID: "group_engineering", UserID: "user_alice", CreatedAt: now,
+		GroupID: seedGroupEngineeringID, UserID: seedUserAliceID, CreatedAt: now,
 	}); err != nil {
 		return err
 	}

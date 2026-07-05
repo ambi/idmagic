@@ -17,7 +17,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	categoryID := uniqueID("cat")
+	categoryID := newUUID(t)
 	app := &spec.Application{
 		TenantID:      tenant.ID,
 		ApplicationID: newUUID(t),

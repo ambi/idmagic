@@ -12,11 +12,12 @@ type PortalConfig = { clientId: string; scope: string }
 // バックグラウンドの refresh_token grant で更新できる (silent renew, wi-66 Stage 4)。
 const PORTALS: Record<PortalAudience, PortalConfig> = {
   admin: {
-    clientId: 'idmagic-admin-console',
+    // first-party クライアントの固定 UUID (ADR-084)。bootstrap seed と一致させる。
+    clientId: '00000000-0000-4000-8000-000000000022',
     scope: 'openid profile idmagic.admin offline_access',
   },
   account: {
-    clientId: 'idmagic-account-portal',
+    clientId: '00000000-0000-4000-8000-000000000023',
     scope: 'openid profile idmagic.account offline_access',
   },
 }

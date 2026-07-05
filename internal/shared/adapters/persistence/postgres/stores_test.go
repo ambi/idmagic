@@ -20,14 +20,14 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 
 	base := testClock()
 	first := &oauthports.AuditEventRecord{
-		ID:         uniqueID("audit"),
+		ID:         newUUID(t),
 		TenantID:   tenant.ID,
 		Type:       "UserAuthenticated",
 		OccurredAt: base,
 		Payload:    map[string]any{"userId": user.ID},
 	}
 	second := &oauthports.AuditEventRecord{
-		ID:         uniqueID("audit"),
+		ID:         newUUID(t),
 		TenantID:   tenant.ID,
 		Type:       "AuthenticationFailed",
 		OccurredAt: base.Add(time.Minute),
@@ -282,7 +282,7 @@ func TestOutboxEventSinkEmit(t *testing.T) {
 	sink := &OutboxEventSink{Pool: db}
 	ctx := context.Background()
 
-	clientID := uniqueID("client")
+	clientID := newUUID(t)
 	event := &spec.ClientRegistered{
 		At:         testClock(),
 		TenantID:   spec.DefaultTenantID,

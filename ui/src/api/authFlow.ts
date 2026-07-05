@@ -163,7 +163,8 @@ export async function startDemoAuthorization() {
   sessionStorage.setItem('idmagic-demo-code-verifier', verifier)
   const parameters = new URLSearchParams({
     response_type: 'code',
-    client_id: 'demo-client',
+    // demo-client の固定 UUID (ADR-084)。bootstrap seed と一致させる。
+    client_id: '00000000-0000-4000-8000-000000000021',
     redirect_uri: `${window.location.origin}${tenantURL('/callback')}`,
     scope: 'openid profile email offline_access',
     state,

@@ -357,9 +357,10 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 		types[i] = string(s.Type)
 		ids[i] = s.ID
 	}
-	// (subject_type, subject_id) のペアを UNNEST で突き合わせる。
+	// (subject_type, subject_id) のペアを UNNEST で突き合わせる。subject_id は UUID 列の
+	// ため、パラメータは text[] のまま列側を text にキャストして比較する (ADR-084)。
 	rows, err := r.Pool.Query(ctx, assignmentSelect+`
- WHERE tenant_id=$1 AND (subject_type,subject_id) IN (
+ WHERE tenant_id=$1 AND (subject_type,subject_id::text) IN (
    SELECT subject_type, subject_id FROM UNNEST($2::text[], $3::text[]) AS s(subject_type, subject_id)
  )`, tenantID, types, ids)
 	if err != nil {

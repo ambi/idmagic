@@ -35,6 +35,29 @@
 --   revoked_at, first_seen, and last_seen keep their domain meaning;
 --   they do not replace created_at.
 
+-- Column type policy (ADR-084):
+-- - Strings: never use unconstrained varchar. Unbounded values are TEXT; values
+--   with a spec/UI/ops limit get TEXT + CHECK(char_length) or varchar(N)
+--   (the limits themselves are decided in wi-128).
+-- - JSONB is for external-spec-derived metadata, claim/policy config, and
+--   append-only audit/outbox payloads. Values needing join/filter/FK/uniqueness
+--   or a lifecycle state machine are not kept inside JSONB (users.lifecycle is
+--   the flagged normalization candidate).
+-- - TIMESTAMPTZ stores microsecond precision as the source of truth; do not round
+--   in schema. Second-precision rounding happens only at external protocol
+--   boundaries (SCIM/SAML/WS-Fed formatting).
+-- - Ids that idmagic generates internally use UUID: users.id, clients.client_id,
+--   groups.id, agents.id, audit_events.id, scim_tokens.id, and the already-UUID
+--   refresh_tokens/applications/application_categories keys, plus every FK column
+--   that references them (user_id, owner_user_id, group_id, agent_id, client_id,
+--   subject_id). Go keeps these as string; base.go registers a text codec for the
+--   uuid OID so UUID columns read/write as string. Ids whose value is decided
+--   externally stay TEXT: entity_id, wtrealm, scim_id, kid. tenants.id stays TEXT
+--   (mutable slug in /realms/{id}/; UUID + realm split is a separate WI).
+-- - Finite value sets default to TEXT + CHECK; PostgreSQL enums are avoided due to
+--   migration friction. CHECK-less finite columns are constraint-addition
+--   candidates, added per-column with matching Go validation, not in bulk.
+
 CREATE TABLE tenants (
     id TEXT PRIMARY KEY,
     display_name TEXT NOT NULL,
@@ -49,7 +72,7 @@ CREATE TABLE tenants (
 
 CREATE TABLE clients (
     tenant_id TEXT NOT NULL DEFAULT 'default',
-    client_id TEXT PRIMARY KEY,
+    client_id UUID PRIMARY KEY,
     client_secret_hash TEXT,
     client_name TEXT,
     client_type TEXT NOT NULL CHECK (client_type IN ('public', 'confidential')),
@@ -73,7 +96,7 @@ CREATE TABLE clients (
 );
 
 CREATE TABLE users (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'default',
     preferred_username TEXT NOT NULL,
     password_hash TEXT NOT NULL,
@@ -98,7 +121,7 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
     WHERE lifecycle->>'status' <> 'deleted';
 
 CREATE TABLE mfa_factors (
-    user_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
     type TEXT NOT NULL,
     secret TEXT,
     label TEXT,
@@ -111,8 +134,8 @@ CREATE TABLE mfa_factors (
 );
 
 CREATE TABLE consents (
-    user_id TEXT NOT NULL,
-    client_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    client_id UUID NOT NULL,
     scopes JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -134,8 +157,8 @@ CREATE TABLE refresh_tokens (
     family_id UUID NOT NULL,
     parent_id UUID,
     tenant_id TEXT NOT NULL DEFAULT 'default',
-    client_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
+    client_id UUID NOT NULL,
+    user_id UUID NOT NULL,
     scopes JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -200,7 +223,7 @@ CREATE INDEX outbox_unpublished_idx ON outbox (id) WHERE published_at IS NULL;
 
 CREATE TABLE password_history (
     id BIGSERIAL PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
     encoded TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT password_history_user_id_fkey
@@ -212,7 +235,7 @@ CREATE INDEX password_history_user_id_created_at_idx
 
 CREATE TABLE password_reset_tokens (
     token_hash TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT password_reset_tokens_user_id_fkey
@@ -223,7 +246,7 @@ CREATE INDEX password_reset_tokens_user_id_idx ON password_reset_tokens (user_id
 CREATE INDEX password_reset_tokens_expires_at_idx ON password_reset_tokens (expires_at);
 
 CREATE TABLE groups (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
@@ -237,8 +260,8 @@ CREATE TABLE groups (
 );
 
 CREATE TABLE group_members (
-    group_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
+    group_id UUID NOT NULL,
+    user_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (group_id, user_id),
     CONSTRAINT group_members_group_id_fkey
@@ -260,7 +283,7 @@ CREATE TABLE tenant_user_attribute_schemas (
 
 CREATE TABLE email_change_tokens (
     token_hash TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
     new_email TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
@@ -272,10 +295,10 @@ CREATE INDEX email_change_tokens_user_id_idx ON email_change_tokens (user_id);
 CREATE INDEX email_change_tokens_expires_at_idx ON email_change_tokens (expires_at);
 
 CREATE TABLE audit_events (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT '',
     type TEXT NOT NULL,
-    user_id TEXT,
+    user_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     occurred_at TIMESTAMPTZ NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb
@@ -303,12 +326,12 @@ CREATE INDEX authentication_event_buckets_window_idx
     ON authentication_event_buckets (tenant_id, window_start DESC);
 
 CREATE TABLE agents (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
     kind TEXT NOT NULL DEFAULT 'supervised',
-    owner_user_id TEXT NOT NULL,
+    owner_user_id UUID NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'disabled', 'killed')),
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -326,8 +349,8 @@ CREATE TABLE agents (
 );
 
 CREATE TABLE agent_credential_bindings (
-    agent_id TEXT NOT NULL,
-    client_id TEXT NOT NULL,
+    agent_id UUID NOT NULL,
+    client_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (agent_id, client_id),
     CONSTRAINT agent_credential_bindings_client_id_key UNIQUE (client_id),
@@ -414,7 +437,7 @@ CREATE TABLE application_assignments (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     application_id UUID NOT NULL,
     subject_type TEXT NOT NULL,
-    subject_id TEXT NOT NULL,
+    subject_id UUID NOT NULL,
     visibility TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -465,7 +488,7 @@ CREATE TABLE wsfed_relying_parties (
 );
 
 CREATE TABLE application_orderings (
-    user_id TEXT PRIMARY KEY,
+    user_id UUID PRIMARY KEY,
     application_ids TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -486,7 +509,7 @@ CREATE TABLE application_categories (
 );
 
 CREATE TABLE scim_tokens (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'default',
     token_hash TEXT NOT NULL,
     description TEXT,
@@ -500,7 +523,7 @@ CREATE TABLE scim_tokens (
 CREATE TABLE scim_user_refs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     scim_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
@@ -513,7 +536,7 @@ CREATE TABLE scim_user_refs (
 CREATE TABLE scim_group_refs (
     tenant_id TEXT NOT NULL DEFAULT 'default',
     scim_id TEXT NOT NULL,
-    group_id TEXT NOT NULL,
+    group_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),

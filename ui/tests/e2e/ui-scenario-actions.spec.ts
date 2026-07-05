@@ -151,9 +151,10 @@ test('account connected application consent can be revoked from the browser', as
 
     await view.navigate(`${uiOrigin}/account/applications`)
     await waitForPage(view, 'account-applications')
-    await waitForText(view, 'demo-client')
+    // demo-client の固定 UUID (ADR-084)。connected-apps 画面は client_id を表示する。
+    await waitForText(view, '00000000-0000-4000-8000-000000000021')
     await clickButtonByText(view, 'アクセスを取り消す')
-    await waitForText(view, 'demo-client へのアクセスを取り消しました。')
+    await waitForText(view, '00000000-0000-4000-8000-000000000021 へのアクセスを取り消しました。')
     await waitForText(view, 'アクセスを許可したアプリはありません。')
   } finally {
     view.close()
@@ -253,7 +254,11 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     })()`)
 
     await setSelectValue(view, 'select', 'authentication')
-    await setInputValue(view, 'input[placeholder="例: user_..."]', 'user_alice')
+    await setInputValue(
+      view,
+      'input[placeholder="例: user_..."]',
+      '00000000-0000-4000-8000-000000000001',
+    )
     await clickButtonByText(view, '絞り込み')
     await waitForText(view, 'UserAuthenticated')
 
@@ -261,7 +266,7 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     const exportURL = await view.evaluate('window.__raAuditExportURL ?? ""')
     expect(String(exportURL)).toContain('/api/admin/audit_events/export')
     expect(String(exportURL)).toContain('category=authentication')
-    expect(String(exportURL)).toContain('sub=user_alice')
+    expect(String(exportURL)).toContain('sub=00000000-0000-4000-8000-000000000001')
   } finally {
     view.close()
   }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -139,6 +140,7 @@ func Open(ctx context.Context, databaseURL string, cfg DBConfig) (*pgxpool.Pool,
 	config.MaxConnLifetime = cfg.MaxConnLifetime
 
 	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		RegisterUUIDAsText(conn)
 		_, err := conn.Exec(ctx, "SET statement_timeout = '5s'; SET idle_in_transaction_session_timeout = '30s'")
 		return err
 	}
@@ -160,6 +162,18 @@ func Open(ctx context.Context, databaseURL string, cfg DBConfig) (*pgxpool.Pool,
 	}
 
 	return pool, nil
+}
+
+// RegisterUUIDAsText は uuid OID に text codec を登録し、UUID 列を Go の string として
+// read/write できるようにする (ADR-084)。内部生成 id 列は UUID 型だが Go 側では string で
+// 扱うため、接続確立時にこれを登録する。エンコードは text を渡し PostgreSQL が uuid として
+// 解釈する。接続プールを構築する全経路 (本番の Open と test harness) で呼ぶ。
+func RegisterUUIDAsText(conn *pgx.Conn) {
+	conn.TypeMap().RegisterType(&pgtype.Type{
+		Name:  "uuid",
+		OID:   pgtype.UUIDOID,
+		Codec: pgtype.TextCodec{},
+	})
 }
 
 // rowScanner は pgx.Row / pgx.Rows の共通スキャンインターフェース。

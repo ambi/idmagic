@@ -9,6 +9,7 @@ import (
 	"time"
 
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,7 +51,17 @@ func runWithEmbeddedPostgres(m *testing.M) int {
 	defer cancel()
 
 	dsn := fmt.Sprintf("postgres://postgres:postgres@localhost:%d/postgres?sslmode=disable", port)
-	pool, err := pgxpool.New(ctx, dsn)
+	poolConfig, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "postgres harness: parse config failed: %v; skipping DB tests\n", err)
+		return runSkipped(m)
+	}
+	// 本番の Open と同じく uuid 列を string で扱えるよう codec を登録する (ADR-084)。
+	poolConfig.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
+		RegisterUUIDAsText(conn)
+		return nil
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "postgres harness: connect failed: %v; skipping DB tests\n", err)
 		return runSkipped(m)

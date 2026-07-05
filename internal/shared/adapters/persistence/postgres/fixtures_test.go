@@ -35,7 +35,7 @@ func seedGroup(t *testing.T, db DB, tenantID string) *spec.Group {
 	t.Helper()
 	now := testClock()
 	group := &spec.Group{
-		ID:        uniqueID("group"),
+		ID:        newUUID(t),
 		TenantID:  tenantID,
 		Name:      uniqueID("group-name"),
 		Roles:     []string{},
@@ -70,7 +70,7 @@ func seedUser(t *testing.T, db DB, tenantID string) *spec.User {
 	t.Helper()
 	now := testClock()
 	user := &spec.User{
-		ID:                uniqueID("user"),
+		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: uniqueID("username"),
 		PasswordHash:      "hash",
@@ -112,7 +112,7 @@ func seedClient(t *testing.T, db DB, tenantID string) *spec.OAuth2Client {
 	now := testClock()
 	client := &spec.OAuth2Client{
 		TenantID:                 tenantID,
-		ClientID:                 uniqueID("client"),
+		ClientID:                 newUUID(t),
 		ClientType:               spec.ClientConfidential,
 		ClientSecretHash:         new("secret-hash"),
 		RedirectURIs:             []string{"https://client.example/cb"},

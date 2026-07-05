@@ -15,7 +15,7 @@ func TestUserRepositorySaveAndFind(t *testing.T) {
 
 	now := testClock()
 	user := &spec.User{
-		ID:                uniqueID("user"),
+		ID:                newUUID(t),
 		TenantID:          tenant.ID,
 		PreferredUsername: "alice",
 		PasswordHash:      "hash",

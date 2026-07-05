@@ -3,7 +3,7 @@ id: wi-127-postgres-column-type-policy
 title: Postgres 列型選定ポリシーの明文化と既存 schema の棚卸し
 created_at: 2026-07-05
 authors: [tn]
-status: pending
+status: completed
 risk: medium
 ---
 
@@ -101,3 +101,46 @@ SCIM id、tenant/user/group の domain id のように、UUID に限定しない
 ドキュメントで基準を固定し、既存 schema の棚卸し結果を小さな変更単位に分割する。
 UUID 化・enum 化・JSONB 正規化は、それぞれ互換性と migration friction を評価してから
 個別に進める。
+
+# Completion
+- **Completed at**: 2026-07-05
+- **Summary**: Postgres 列型選定ポリシーを ADR として明文化したうえで、レビュー判断により
+  「idmagic が内部生成する id 列を UUID 型に閉じる」方針転換を取り込み、schema・adapter・
+  seed・UI・テストを実際に整列させた。tenants.id の UUID 化と文字列長制約は follow-up に分離。
+  - `decisions/idp-ADR-084-postgres-column-type-policy.md` を追加。文字列（制約なし varchar
+    不使用）・JSONB 許容基準・TIMESTAMPTZ 精度・UUID と domain string id の境界・有限集合値
+    表現（既定 TEXT+CHECK、PG enum は原則不採用）の 5 基準と、全列の型カテゴリ別棚卸し表を掲載。
+    §4 で「内部生成 id は UUID 型、外部が値を決める id（`entity_id`/`wtrealm`/`scim_id`/`kid`）は
+    TEXT」を確定。ADR-071 / ADR-082 / ADR-083 と整合。
+  - **内部生成 id の UUID 型化**: `deploy/schema/postgres.sql` で `users.id`・`clients.client_id`・
+    `groups.id`・`agents.id`・`audit_events.id`・`scim_tokens.id` と、それらを参照する FK 列
+    （`user_id` 系・`owner_user_id`・`group_id`・`agent_id`・`client_id` 系・`subject_id`・
+    `audit_events.user_id`）を `TEXT`→`UUID` に変更。外部が値を決める id と `tenants.id`（slug）は
+    TEXT を維持。
+  - **Go は string を維持**: `internal/shared/adapters/persistence/postgres/base.go` の
+    `AfterConnect` で uuid OID に text codec を登録（`RegisterUUIDAsText`）し、UUID 列を Go の
+    `string` で read/write。test harness も同 codec を登録。id 型は全層で `string` のまま。
+  - `application_assignments.ListBySubjects` の UNNEST 比較を、param は `text[]` のまま列側を
+    `subject_id::text` にキャストして uuid=text 不一致を解消。
+  - **seed / UI の固定 UUID 化**: `internal/bootstrap/seed.go` の非 UUID id（`user_alice` /
+    `user_root` / `demo-client` / `idmagic-admin-console` / `idmagic-account-portal` /
+    `group_engineering` / `group_support`）を固定 UUID（`00000000-0000-4000-8000-...`）へ定数化。
+    application binding と UI の OIDC 設定（`ui/src/api/oidc.ts` / `authFlow.ts`）を同値に追随。
+  - Postgres roundtrip テストの id fixture / inline リテラルを UUID（`newUUID(t)`）に更新。
+  - 時刻精度マップを ADR §3 に明記（PostgreSQL マイクロ秒保存、pgx `time.Time` 精度保持、内部
+    JSON は RFC3339Nano、秒精度化は SCIM/SAML/WS-Fed/audit クエリの外部境界のみ、UI はミリ秒）。
+- **follow-up 分離**: `tenants.id` の不変 UUID + mutable `realm` 分割は
+  `wi-140-tenant-uuid-key-and-realm-identifier` を新規作成。文字列長は
+  `wi-128-string-length-limits-policy`、`users.lifecycle` 正規化・CHECK なし有限集合列の CHECK
+  付与は ADR に follow-up 記録。
+- **SCL impact**: なし（永続化層の内部方針。id の JSON 表現は従来どおり文字列で公開 contract
+  不変。`spec/scl.yaml` 変更・derived artifacts 再生成は不要）。
+- **Verification results**:
+  - `just build-go` パス
+  - `just test-go` パス（embedded-postgres が uuid 列型を強制、全 roundtrip green）
+  - `just test-go-race` パス（DATA RACE なし）
+  - `just lint-go` パス（0 issues）
+  - `just verify-ui` パス（format / lint / typecheck / unit / build）
+  - `just yaml-check-work-items` / `just check-ids` パス
+  - 手動確認: 各 TEXT / JSONB / TIMESTAMPTZ / UUID / 状態値列の判断を ADR-084 棚卸し表に記録。
+  - 手動確認: 時刻値の精度落とし箇所を ADR-084 §3 に明記。
