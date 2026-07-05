@@ -47,6 +47,25 @@ func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
 		t.Fatal("stored schema must not alias returned slice")
 	}
 
+	// 既存スキーマがある状態で再 Save 時に CreatedAt が保持されることの検証
+	createdTime := time.Now().Add(-1 * time.Hour).UTC()
+	schemaWithCreated := &spec.TenantUserAttributeSchema{
+		TenantID:  "acme",
+		CreatedAt: createdTime,
+	}
+	_ = repo.Save(ctx, schemaWithCreated)
+
+	schemaUpdate := &spec.TenantUserAttributeSchema{
+		TenantID:  "acme",
+		CreatedAt: time.Now().UTC(), // 新しい時間
+	}
+	_ = repo.Save(ctx, schemaUpdate)
+
+	gotUpdated, _ := repo.FindByTenant(ctx, "acme")
+	if !gotUpdated.CreatedAt.Equal(createdTime) {
+		t.Errorf("expected CreatedAt to be preserved as %v, got %v", createdTime, gotUpdated.CreatedAt)
+	}
+
 	if err := repo.Delete(ctx, "acme"); err != nil {
 		t.Fatalf("delete failed: %v", err)
 	}

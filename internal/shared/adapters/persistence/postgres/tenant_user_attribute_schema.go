@@ -21,7 +21,8 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 		s          spec.TenantUserAttributeSchema
 		attributes []byte
 	)
-	err := r.Pool.QueryRow(ctx,
+	err := r.Pool.QueryRow(
+		ctx,
 		`SELECT tenant_id,attributes,created_at,updated_at FROM tenant_user_attribute_schemas WHERE tenant_id=$1`,
 		tenantID,
 	).Scan(&s.TenantID, &attributes, &s.CreatedAt, &s.UpdatedAt)

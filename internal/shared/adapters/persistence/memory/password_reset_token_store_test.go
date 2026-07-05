@@ -53,4 +53,26 @@ func TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently(t *testing.T) {
 	if successes != 1 {
 		t.Fatalf("successful consumes=%d, want 1", successes)
 	}
+
+	// 存在しないトークンの Consume (nil, nil)
+	notFound, err := store.Consume(context.Background(), "non-existent-hash", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notFound != nil {
+		t.Error("expected nil for non-existing token")
+	}
+
+	// 期限切れトークンの Consume (nil, nil)
+	expiredRecord := authnports.PasswordResetTokenRecord{
+		Sub: "user-exp", TokenHash: "token-exp", CreatedAt: now, ExpiresAt: now.Add(-1 * time.Minute),
+	}
+	_ = store.Save(context.Background(), expiredRecord)
+	expired, err := store.Consume(context.Background(), "token-exp", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expired != nil {
+		t.Error("expected nil for expired token")
+	}
 }

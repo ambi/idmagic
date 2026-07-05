@@ -36,7 +36,8 @@ func RecoverMiddleware(logger logging.Logger) echo.MiddlewareFunc {
 					panic(r)
 				}
 				req := c.Request()
-				logger.Error(req.Context(), "handler panic recovered",
+				logger.Error(
+					req.Context(), "handler panic recovered",
 					"panic", fmt.Sprintf("%v", r),
 					"method", req.Method,
 					"path", req.URL.Path,

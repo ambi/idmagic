@@ -63,7 +63,8 @@ func NewCircuitBreaker(settings Settings) *CircuitBreaker {
 	}
 
 	meter := otel.Meter("resilience")
-	stateCounter, _ := meter.Int64UpDownCounter("circuit_breaker_state",
+	stateCounter, _ := meter.Int64UpDownCounter(
+		"circuit_breaker_state",
 		metric.WithDescription("Current state of the circuit breaker: 1 for open, 2 for half-open, 0 for closed"),
 	)
 

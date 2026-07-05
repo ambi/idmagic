@@ -53,7 +53,8 @@ func encodeDPoPProof(t *testing.T, key *rsa.PrivateKey, header, payload map[stri
 func TestVerifyDPoPAcceptsValidProof(t *testing.T) {
 	key, jwk := dpopTestKey(t)
 	now := time.Now().UTC()
-	proof := encodeDPoPProof(t, key,
+	proof := encodeDPoPProof(
+		t, key,
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "jti-ok", "iat": now.Unix()},
 	)
@@ -155,7 +156,8 @@ func TestVerifyDPoPDetectsReplay(t *testing.T) {
 	key, jwk := dpopTestKey(t)
 	now := time.Now().UTC()
 	store := memory.NewDpopReplayStore()
-	proof := encodeDPoPProof(t, key,
+	proof := encodeDPoPProof(
+		t, key,
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "replay-jti", "iat": now.Unix()},
 	)
@@ -173,7 +175,8 @@ func TestVerifyDPoPRejectsInvalidSignature(t *testing.T) {
 	signer, _ := dpopTestKey(t)
 	_, claimedJWK := dpopTestKey(t)
 	now := time.Now().UTC()
-	proof := encodeDPoPProof(t, signer,
+	proof := encodeDPoPProof(
+		t, signer,
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": claimedJWK},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "sig-mismatch", "iat": now.Unix()},
 	)

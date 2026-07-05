@@ -34,7 +34,8 @@ func (s *AuthEventBucketStore) Record(
 		lastSeen  time.Time
 		inserted  bool
 	)
-	err := s.Pool.QueryRow(ctx, `
+	err := s.Pool.QueryRow(
+		ctx, `
 INSERT INTO authentication_event_buckets (tenant_id,kind,key_hash,window_start,count,first_seen,last_seen)
 VALUES ($1,$2,$3,$4,1,$5,$5)
 ON CONFLICT (tenant_id,kind,key_hash,window_start)

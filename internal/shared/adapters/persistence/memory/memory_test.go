@@ -76,4 +76,38 @@ func TestReplayStoreAcceptsJTIOnce(t *testing.T) {
 	if !first || second {
 		t.Fatalf("first=%v second=%v", first, second)
 	}
+
+	// now.IsZero() のケースをテスト
+	third, err := store.RecordIfNew(context.Background(), "jti-zero-time", 60, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !third {
+		t.Error("expected true when recording with zero time")
+	}
+
+	// 期限切れクリーンアップのケースをテスト
+	_, _ = store.RecordIfNew(context.Background(), "jti-expired", 1, now)
+	// 2秒進めた時間で別のキーを登録
+	future := now.Add(2 * time.Second)
+	_, err = store.RecordIfNew(context.Background(), "jti-new", 60, future)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestClientAssertionReplayStore(t *testing.T) {
+	store := NewClientAssertionReplayStore()
+	now := time.Now()
+	first, err := store.RecordIfNew(context.Background(), "jti-client", 60, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.RecordIfNew(context.Background(), "jti-client", 60, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first || second {
+		t.Fatalf("first=%v second=%v", first, second)
+	}
 }

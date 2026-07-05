@@ -45,6 +45,10 @@ verify-go: lint-go test-go-race
 lint-go:
     GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint run ./...
 
+# Format Go backend code.
+format-go:
+    gofumpt -w .
+
 # Run Go tests.
 test-go:
     GOCACHE={{go_cache}} go test ./...
