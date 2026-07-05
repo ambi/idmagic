@@ -67,7 +67,7 @@ build-go:
     GOCACHE={{go_cache}} go build -ldflags '{{ldflags}}' ./...
 
 # Verify UI with format check, lint, typecheck, and build.
-verify-ui: format-check-ui lint-ui typecheck-ui build-ui
+verify-ui: format-check-ui lint-ui typecheck-ui test-ui-unit build-ui
 
 # Run UI format check.
 format-check-ui:
@@ -84,6 +84,10 @@ lint-ui:
 # Run UI typecheck.
 typecheck-ui:
     cd ui && bun run typecheck
+
+# Run UI unit tests.
+test-ui-unit:
+    cd ui && bun run test:unit
 
 # Build UI.
 build-ui:
