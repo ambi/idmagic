@@ -52,8 +52,8 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
   return (await request<AdminUserListResponse>('/api/admin/users')).users
 }
 
-export async function getAdminUser(sub: string): Promise<AdminUser> {
-  return request<AdminUser>(`/api/admin/users/${encodeURIComponent(sub)}`)
+export async function getAdminUser(id: string): Promise<AdminUser> {
+  return request<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}`)
 }
 
 export async function createAdminUser(
@@ -76,44 +76,44 @@ export type UpdateAdminUserInput = {
 
 export async function updateAdminUser(
   csrfToken: string,
-  sub: string,
+  id: string,
   input: UpdateAdminUserInput,
 ): Promise<AdminUser> {
   return request(
-    `/api/admin/users/${encodeURIComponent(sub)}`,
+    `/api/admin/users/${encodeURIComponent(id)}`,
     adminRequest(csrfToken, 'PATCH', input),
   )
 }
 
 export async function setAdminUserRequiredAction(
   csrfToken: string,
-  sub: string,
+  id: string,
   action: string,
 ): Promise<AdminUser> {
   return request(
-    `/api/admin/users/${encodeURIComponent(sub)}/required_actions`,
+    `/api/admin/users/${encodeURIComponent(id)}/required_actions`,
     adminRequest(csrfToken, 'POST', { action }),
   )
 }
 
 export async function clearAdminUserRequiredAction(
   csrfToken: string,
-  sub: string,
+  id: string,
   action: string,
 ): Promise<AdminUser> {
   return request(
-    `/api/admin/users/${encodeURIComponent(sub)}/required_actions/${encodeURIComponent(action)}`,
+    `/api/admin/users/${encodeURIComponent(id)}/required_actions/${encodeURIComponent(action)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }
 
 export async function setAdminUserDisabled(
   csrfToken: string,
-  sub: string,
+  id: string,
   disabled: boolean,
 ): Promise<void> {
   await request(
-    `/api/admin/users/${encodeURIComponent(sub)}/${disabled ? 'disable' : 'enable'}`,
+    `/api/admin/users/${encodeURIComponent(id)}/${disabled ? 'disable' : 'enable'}`,
     adminRequest(csrfToken, 'POST'),
   )
 }
@@ -122,20 +122,20 @@ export async function setAdminUserDisabled(
 // ?purge=true を付けて完全削除 (匿名化) に切り替える。
 export async function deleteAdminUser(
   csrfToken: string,
-  sub: string,
+  id: string,
   options?: { purge?: boolean },
 ): Promise<void> {
   const query = options?.purge ? '?purge=true' : ''
   await request(
-    `/api/admin/users/${encodeURIComponent(sub)}${query}`,
+    `/api/admin/users/${encodeURIComponent(id)}${query}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }
 
 // restoreAdminUser は削除予約中 (pending_deletion) のユーザーを復元する。
-export async function restoreAdminUser(csrfToken: string, sub: string): Promise<AdminUser> {
+export async function restoreAdminUser(csrfToken: string, id: string): Promise<AdminUser> {
   return request(
-    `/api/admin/users/${encodeURIComponent(sub)}/restore`,
+    `/api/admin/users/${encodeURIComponent(id)}/restore`,
     adminRequest(csrfToken, 'POST'),
   )
 }
@@ -224,11 +224,11 @@ export async function listAdminConsents(): Promise<AdminConsent[]> {
 
 export async function revokeAdminConsent(
   csrfToken: string,
-  sub: string,
+  userID: string,
   clientID: string,
 ): Promise<void> {
   await request(
-    `/api/admin/consents/${encodeURIComponent(sub)}/${encodeURIComponent(clientID)}`,
+    `/api/admin/consents/${encodeURIComponent(userID)}/${encodeURIComponent(clientID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }
@@ -423,10 +423,10 @@ export async function deleteAdminGroup(csrfToken: string, id: string): Promise<v
 export async function addAdminGroupMember(
   csrfToken: string,
   groupID: string,
-  userSub: string,
+  userID: string,
 ): Promise<void> {
   await request(
-    `/api/admin/groups/${encodeURIComponent(groupID)}/members/${encodeURIComponent(userSub)}`,
+    `/api/admin/groups/${encodeURIComponent(groupID)}/members/${encodeURIComponent(userID)}`,
     adminRequest(csrfToken, 'POST'),
   )
 }
@@ -434,16 +434,16 @@ export async function addAdminGroupMember(
 export async function removeAdminGroupMember(
   csrfToken: string,
   groupID: string,
-  userSub: string,
+  userID: string,
 ): Promise<void> {
   await request(
-    `/api/admin/groups/${encodeURIComponent(groupID)}/members/${encodeURIComponent(userSub)}`,
+    `/api/admin/groups/${encodeURIComponent(groupID)}/members/${encodeURIComponent(userID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }
 
-export async function getAdminUserGroups(sub: string): Promise<AdminUserGroups> {
-  return request(`/api/admin/users/${encodeURIComponent(sub)}/groups`)
+export async function getAdminUserGroups(id: string): Promise<AdminUserGroups> {
+  return request(`/api/admin/users/${encodeURIComponent(id)}/groups`)
 }
 
 export async function listAdminAgents(): Promise<AdminAgent[]> {
@@ -458,7 +458,7 @@ export type RegisterAdminAgentInput = {
   name: string
   description?: string
   kind?: AdminAgent['kind']
-  owner_sub?: string
+  owner_user_id?: string
   roles?: string[]
 }
 
@@ -466,7 +466,7 @@ export type UpdateAdminAgentInput = {
   name?: string
   description?: string
   kind?: AdminAgent['kind']
-  owner_sub?: string
+  owner_user_id?: string
   roles?: string[]
 }
 

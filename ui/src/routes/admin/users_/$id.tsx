@@ -6,11 +6,11 @@ import type { TenantUserAttributeSchema } from '../../../types'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'
 
-export const Route = createFileRoute('/admin/users_/$sub')({
+export const Route = createFileRoute('/admin/users_/$id')({
   loader: async ({ location, params }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [user, schema] = await Promise.all([
-      getAdminUser(params.sub),
+      getAdminUser(params.id),
       request<TenantUserAttributeSchema>('/api/admin/tenant/user_attribute_schema'),
     ])
     return {

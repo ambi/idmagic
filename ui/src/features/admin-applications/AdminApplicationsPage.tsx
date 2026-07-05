@@ -1971,7 +1971,7 @@ function useAssignmentData(appID: string, onError: (msg: string) => void) {
 }
 
 function useDisplayName(users: AdminUser[], groups: AdminGroup[]) {
-  const userName = useMemo(() => new Map(users.map((u) => [u.sub, u.preferred_username])), [users])
+  const userName = useMemo(() => new Map(users.map((u) => [u.id, u.preferred_username])), [users])
   const groupName = useMemo(() => new Map(groups.map((g) => [g.id, g.name])), [groups])
   return (a: ApplicationAssignment): string => {
     if (a.subject_type === 'user') return userName.get(a.subject_id) ?? a.subject_id
@@ -2043,7 +2043,7 @@ function AssignmentManager({
   const options: SelectOption[] = useMemo(() => {
     const source =
       subjectType === 'user'
-        ? users.map((u) => ({ value: u.sub, label: u.preferred_username }))
+        ? users.map((u) => ({ value: u.id, label: u.preferred_username }))
         : groups.map((g) => ({ value: g.id, label: g.name }))
     return source.filter((o) => !assignedKeys.has(`${subjectType}:${o.value}`))
   }, [subjectType, users, groups, assignedKeys])

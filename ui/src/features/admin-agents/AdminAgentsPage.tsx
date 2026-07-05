@@ -122,7 +122,7 @@ export function AdminAgentsPage({
         name: String(data.get('name') ?? ''),
         description: optionalValue(data.get('description')),
         kind: (String(data.get('kind') ?? 'autonomous') as AdminAgent['kind']) || undefined,
-        owner_sub: optionalValue(data.get('owner_sub')),
+        owner_user_id: optionalValue(data.get('owner_user_id')),
         roles: parseRoles(String(data.get('roles') ?? '')),
       })
       form.reset()
@@ -187,7 +187,7 @@ export function AdminAgentsPage({
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-600">{KIND_LABELS[agent.kind]}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-600">
-                    {agent.owner_sub || '—'}
+                    {agent.owner_user_id || '—'}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={agent.status} />
@@ -260,8 +260,8 @@ export function AdminAgentsPage({
                 </select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-owner">所有者 sub (任意)</Label>
-                <Input id="agent-owner" name="owner_sub" placeholder="user-1234" />
+                <Label htmlFor="agent-owner">所有者 (ユーザーID, 任意)</Label>
+                <Input id="agent-owner" name="owner_user_id" placeholder="user-1234" />
                 <p className="text-xs text-slate-500">省略時は操作した管理者が所有者になります。</p>
               </div>
               <div className="grid gap-1.5">
@@ -650,7 +650,7 @@ function AgentDetailCard({
             <div>
               <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">所有者</dt>
               <dd className="mt-1 truncate font-mono text-sm text-slate-700">
-                {agent.owner_sub || '—'}
+                {agent.owner_user_id || '—'}
               </dd>
             </div>
           </div>
@@ -765,7 +765,7 @@ function AgentEditorDialog({
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
   const [kind, setKind] = useState<AdminAgent['kind']>(agent.kind)
-  const [ownerSub, setOwnerSub] = useState(agent.owner_sub)
+  const [ownerSub, setOwnerSub] = useState(agent.owner_user_id)
   const [roles, setRoles] = useState(agent.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -777,7 +777,7 @@ function AgentEditorDialog({
     trimmedName !== agent.name ||
     description.trim() !== (agent.description ?? '') ||
     kind !== agent.kind ||
-    ownerSub.trim() !== agent.owner_sub ||
+    ownerSub.trim() !== agent.owner_user_id ||
     nextRoles.join(',') !== agent.roles.join(',')
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -791,7 +791,7 @@ function AgentEditorDialog({
         description:
           description.trim() !== (agent.description ?? '') ? description.trim() : undefined,
         kind: kind !== agent.kind ? kind : undefined,
-        owner_sub: ownerSub.trim() !== agent.owner_sub ? ownerSub.trim() : undefined,
+        owner_user_id: ownerSub.trim() !== agent.owner_user_id ? ownerSub.trim() : undefined,
         roles: nextRoles.join(',') !== agent.roles.join(',') ? nextRoles : undefined,
       })
       onSaved(agent.id)

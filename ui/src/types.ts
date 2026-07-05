@@ -6,7 +6,7 @@ export type ConsentDetailView = {
 }
 
 export type AdminUser = {
-  sub: string
+  id: string
   preferred_username: string
   name?: string
   given_name?: string
@@ -278,7 +278,7 @@ export type WsFedRelyingParty = {
 }
 
 export type AdminConsent = {
-  sub: string
+  user_id: string
   client_id: string
   scopes: string[]
   state: 'granted' | 'revoked' | 'expired'
@@ -326,7 +326,7 @@ export type AdminGroup = {
 }
 
 export type AdminGroupMember = {
-  user_sub: string
+  user_id: string
   preferred_username: string
   created_at: string
 }
@@ -344,7 +344,7 @@ export type AdminAgent = {
   name: string
   description?: string
   kind: 'autonomous' | 'supervised'
-  owner_sub: string
+  owner_user_id: string
   status: 'active' | 'disabled' | 'killed'
   roles: string[]
   client_ids: string[]

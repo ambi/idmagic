@@ -440,8 +440,8 @@ function GroupDetailCard({
     setMembers(detail.members)
   }
 
-  const memberSubs = new Set(members.map((m) => m.user_sub))
-  const addableUsers = allUsers.filter((u) => !memberSubs.has(u.sub))
+  const memberUserIds = new Set(members.map((m) => m.user_id))
+  const addableUsers = allUsers.filter((u) => !memberUserIds.has(u.id))
 
   return (
     <>
@@ -552,7 +552,7 @@ function GroupDetailCard({
           <ul className="mt-3 grid gap-2">
             {members.map((member) => (
               <li
-                key={member.user_sub}
+                key={member.user_id}
                 className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
               >
                 <a
@@ -569,7 +569,7 @@ function GroupDetailCard({
                   disabled={localBusy || !!group.scim_source}
                   onClick={() =>
                     withLocal(async () => {
-                      await removeAdminGroupMember(csrfToken, group.id, member.user_sub)
+                      await removeAdminGroupMember(csrfToken, group.id, member.user_id)
                       await reloadMembers()
                     })
                   }
@@ -594,7 +594,7 @@ function GroupDetailCard({
             >
               <option value="">ユーザーを選択…</option>
               {addableUsers.map((user) => (
-                <option key={user.sub} value={user.sub}>
+                <option key={user.id} value={user.id}>
                   {user.preferred_username}
                 </option>
               ))}

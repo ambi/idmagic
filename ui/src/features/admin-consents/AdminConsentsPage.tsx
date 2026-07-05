@@ -29,7 +29,7 @@ export function AdminConsentsPage({
     const needle = query.trim().toLowerCase()
     if (!needle) return consents
     return consents.filter((c) =>
-      [c.sub, c.client_id, c.state, ...c.scopes].some((value) =>
+      [c.user_id, c.client_id, c.state, ...c.scopes].some((value) =>
         value.toLowerCase().includes(needle),
       ),
     )
@@ -39,7 +39,7 @@ export function AdminConsentsPage({
     const next = await listAdminConsents()
     setConsents(next)
     const match = preferred
-      ? next.find((c) => c.sub === preferred.sub && c.client_id === preferred.client_id)
+      ? next.find((c) => c.user_id === preferred.user_id && c.client_id === preferred.client_id)
       : null
     setSelected(match ?? next[0] ?? null)
   }
@@ -64,7 +64,7 @@ export function AdminConsentsPage({
 
   async function handleRevoke(target: AdminConsent) {
     await run(async () => {
-      await revokeAdminConsent(csrfToken, target.sub, target.client_id)
+      await revokeAdminConsent(csrfToken, target.user_id, target.client_id)
       await refresh(target)
     }, '同意を取り消しました。')
     setConfirmTarget(null)
@@ -120,15 +120,15 @@ export function AdminConsentsPage({
               ) : null}
               {filtered.map((c) => (
                 <tr
-                  key={`${c.sub}:${c.client_id}`}
+                  key={`${c.user_id}:${c.client_id}`}
                   onClick={() => setSelected(c)}
                   className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selected?.sub === c.sub && selected.client_id === c.client_id
+                    selected?.user_id === c.user_id && selected.client_id === c.client_id
                       ? 'bg-blue-50/60'
                       : ''
                   }`}
                 >
-                  <td className="px-4 py-3 font-mono text-xs">{c.sub}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{c.user_id}</td>
                   <td className="px-4 py-3 font-mono text-xs">{c.client_id}</td>
                   <td className="px-4 py-3">
                     <StateBadge state={c.state} />
@@ -160,8 +160,8 @@ export function AdminConsentsPage({
           <h2 className="text-sm font-semibold text-slate-700">詳細</h2>
           {selected ? (
             <dl className="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-y-3 text-sm">
-              <dt className="text-slate-500">ユーザー (sub)</dt>
-              <dd className="font-mono text-xs">{selected.sub}</dd>
+              <dt className="text-slate-500">ユーザー (ID)</dt>
+              <dd className="font-mono text-xs">{selected.user_id}</dd>
               <dt className="text-slate-500">アプリケーション</dt>
               <dd className="font-mono text-xs">{selected.client_id}</dd>
               <dt className="text-slate-500">スコープ</dt>
@@ -203,7 +203,7 @@ export function AdminConsentsPage({
       {confirmTarget ? (
         <ConfirmDialog
           title="同意を取り消す"
-          message={`${confirmTarget.sub} の ${confirmTarget.client_id} への同意を取り消します。再認可するまでアクセストークンは発行されません。`}
+          message={`${confirmTarget.user_id} の ${confirmTarget.client_id} への同意を取り消します。再認可するまでアクセストークンは発行されません。`}
           confirmLabel="取り消す"
           onCancel={() => setConfirmTarget(null)}
           onConfirm={() => handleRevoke(confirmTarget)}

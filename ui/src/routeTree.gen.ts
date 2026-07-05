@@ -45,7 +45,7 @@ import { Route as AccountDataRouteImport } from './routes/account/data'
 import { Route as AccountAppsRouteImport } from './routes/account/apps'
 import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
-import { Route as AdminUsersSubRouteImport } from './routes/admin/users_/$sub'
+import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
@@ -237,9 +237,9 @@ const AccountActivityRoute = AccountActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AccountRouteRoute,
 } as any)
-const AdminUsersSubRoute = AdminUsersSubRouteImport.update({
-  id: '/users_/$sub',
-  path: '/users/$sub',
+const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
+  id: '/users_/$id',
+  path: '/users/$id',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminTenantAttributesRoute = AdminTenantAttributesRouteImport.update({
@@ -335,7 +335,7 @@ export interface FileRoutesByFullPath {
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
-  '/admin/users/$sub': typeof AdminUsersSubRoute
+  '/admin/users/$id': typeof AdminUsersIdRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
 }
@@ -379,7 +379,7 @@ export interface FileRoutesByTo {
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
-  '/admin/users/$sub': typeof AdminUsersSubRoute
+  '/admin/users/$id': typeof AdminUsersIdRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
 }
@@ -428,7 +428,7 @@ export interface FileRoutesById {
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRoute
   '/admin/roles_/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
-  '/admin/users_/$sub': typeof AdminUsersSubRoute
+  '/admin/users_/$id': typeof AdminUsersIdRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
 }
@@ -478,7 +478,7 @@ export interface FileRouteTypes {
     | '/admin/groups/$groupId'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
-    | '/admin/users/$sub'
+    | '/admin/users/$id'
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/'
   fileRoutesByTo: FileRoutesByTo
@@ -522,7 +522,7 @@ export interface FileRouteTypes {
     | '/admin/groups/$groupId'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
-    | '/admin/users/$sub'
+    | '/admin/users/$id'
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId'
   id:
@@ -570,7 +570,7 @@ export interface FileRouteTypes {
     | '/admin/groups_/$groupId'
     | '/admin/roles_/$name'
     | '/admin/tenant/attributes'
-    | '/admin/users_/$sub'
+    | '/admin/users_/$id'
     | '/admin/applications_/$applicationId/edit'
     | '/admin/applications_/$applicationId/'
   fileRoutesById: FileRoutesById
@@ -844,11 +844,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountActivityRouteImport
       parentRoute: typeof AccountRouteRoute
     }
-    '/admin/users_/$sub': {
-      id: '/admin/users_/$sub'
-      path: '/users/$sub'
-      fullPath: '/admin/users/$sub'
-      preLoaderRoute: typeof AdminUsersSubRouteImport
+    '/admin/users_/$id': {
+      id: '/admin/users_/$id'
+      path: '/users/$id'
+      fullPath: '/admin/users/$id'
+      preLoaderRoute: typeof AdminUsersIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/tenant/attributes': {
@@ -984,7 +984,7 @@ interface AdminRouteRouteChildren {
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRoute
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
-  AdminUsersSubRoute: typeof AdminUsersSubRoute
+  AdminUsersIdRoute: typeof AdminUsersIdRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1007,7 +1007,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGroupsGroupIdRoute: AdminGroupsGroupIdRoute,
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
-  AdminUsersSubRoute: AdminUsersSubRoute,
+  AdminUsersIdRoute: AdminUsersIdRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

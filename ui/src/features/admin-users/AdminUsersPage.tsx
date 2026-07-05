@@ -92,7 +92,7 @@ export function AdminUsersPage({
   attributeDefs: UserAttributeDef[]
 }) {
   const [users, setUsers] = useState(initialUsers)
-  const [selectedSub, setSelectedSub] = useState(initialUsers[0]?.sub ?? '')
+  const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
   const [query, setQuery] = useState(
     () => new URLSearchParams(window.location.search).get('role') ?? '',
   )
@@ -106,7 +106,7 @@ export function AdminUsersPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const selected = users.find((user) => user.sub === selectedSub)
+  const selected = users.find((user) => user.id === selectedUserId)
   const activeCount = users.filter((user) => userLifecycleStatus(user) === 'active').length
   const adminCount = users.filter((user) => user.roles.includes('admin')).length
   const mfaCount = users.filter((user) => user.mfa_enrolled).length
@@ -116,18 +116,18 @@ export function AdminUsersPage({
       const matchesStatus = status === 'all' || userLifecycleStatus(user) === status
       const matchesQuery =
         !needle ||
-        [user.preferred_username, user.name, user.email, user.sub, ...user.roles]
+        [user.preferred_username, user.name, user.email, user.id, ...user.roles]
           .filter(Boolean)
           .some((value) => value?.toLowerCase().includes(needle))
       return matchesStatus && matchesQuery
     })
   }, [query, status, users])
 
-  async function refresh(preferredSub = selectedSub) {
+  async function refresh(preferredUserId = selectedUserId) {
     const next = await listAdminUsers()
     setUsers(next)
-    const nextSelected = next.find((user) => user.sub === preferredSub) ?? next[0]
-    setSelectedSub(nextSelected?.sub ?? '')
+    const nextSelected = next.find((user) => user.id === preferredUserId) ?? next[0]
+    setSelectedUserId(nextSelected?.id ?? '')
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -163,16 +163,16 @@ export function AdminUsersPage({
       })
       form.reset()
       setShowCreate(false)
-      await refresh(created.sub)
+      await refresh(created.id)
     }, 'ユーザーを作成しました。')
   }
 
   async function handleUpdate(input: UpdateAdminUserInput) {
     if (!selected) return
     await run(async () => {
-      await updateAdminUser(csrfToken, selected.sub, input)
+      await updateAdminUser(csrfToken, selected.id, input)
       setShowUserEditor(false)
-      await refresh(selected.sub)
+      await refresh(selected.id)
     }, 'ユーザーを更新しました。')
   }
 
@@ -180,9 +180,9 @@ export function AdminUsersPage({
     const disabled = !user.disabled_at
     await run(
       async () => {
-        await setAdminUserDisabled(csrfToken, user.sub, disabled)
+        await setAdminUserDisabled(csrfToken, user.id, disabled)
         setShowDisable(false)
-        await refresh(user.sub)
+        await refresh(user.id)
       },
       disabled ? 'ユーザーを無効化しました。' : 'ユーザーを再有効化しました。',
     )
@@ -202,11 +202,11 @@ export function AdminUsersPage({
     await run(
       async () => {
         if (present) {
-          await clearAdminUserRequiredAction(csrfToken, user.sub, action)
+          await clearAdminUserRequiredAction(csrfToken, user.id, action)
         } else {
-          await setAdminUserRequiredAction(csrfToken, user.sub, action)
+          await setAdminUserRequiredAction(csrfToken, user.id, action)
         }
-        await refresh(user.sub)
+        await refresh(user.id)
       },
       present ? '強制アクションを解除しました。' : '強制アクションを付与しました。',
     )
@@ -214,15 +214,15 @@ export function AdminUsersPage({
 
   async function handleDelete(user: AdminUser) {
     await run(async () => {
-      await deleteAdminUser(csrfToken, user.sub)
+      await deleteAdminUser(csrfToken, user.id)
       setShowDelete(false)
-      await refresh(user.sub)
+      await refresh(user.id)
     }, 'ユーザーの削除を予約しました。30 日以内なら復元できます。')
   }
 
   async function handlePurge(user: AdminUser) {
     await run(async () => {
-      await deleteAdminUser(csrfToken, user.sub, { purge: true })
+      await deleteAdminUser(csrfToken, user.id, { purge: true })
       setShowPurge(false)
       await refresh()
     }, 'ユーザーを完全に削除しました。')
@@ -230,13 +230,13 @@ export function AdminUsersPage({
 
   async function handleRestore(user: AdminUser) {
     await run(async () => {
-      await restoreAdminUser(csrfToken, user.sub)
-      await refresh(user.sub)
+      await restoreAdminUser(csrfToken, user.id)
+      await refresh(user.id)
     }, 'ユーザーを復元しました。')
   }
 
   function selectUser(user: AdminUser) {
-    setSelectedSub(user.sub)
+    setSelectedUserId(user.id)
   }
 
   return (
@@ -344,11 +344,11 @@ export function AdminUsersPage({
                 <tbody className="divide-y divide-slate-100">
                   {filteredUsers.map((user) => (
                     <tr
-                      key={user.sub}
+                      key={user.id}
                       onClick={() => selectUser(user)}
                       className={cn(
                         'cursor-pointer bg-white transition-colors hover:bg-slate-50',
-                        selectedSub === user.sub && 'bg-blue-50/60 hover:bg-blue-50/80',
+                        selectedUserId === user.id && 'bg-blue-50/60 hover:bg-blue-50/80',
                       )}
                     >
                       <td className="px-5 py-4">
@@ -503,7 +503,7 @@ export function AdminUserDetailPage({
   const attributeDefs = [...schema.builtin, ...schema.attributes]
 
   async function reload() {
-    setUser(await getAdminUser(user.sub))
+    setUser(await getAdminUser(user.id))
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -526,7 +526,7 @@ export function AdminUserDetailPage({
 
   async function handleUpdate(input: UpdateAdminUserInput) {
     await run(async () => {
-      await updateAdminUser(csrfToken, user.sub, input)
+      await updateAdminUser(csrfToken, user.id, input)
       setShowEditor(false)
       await reload()
     }, 'ユーザーを更新しました。')
@@ -536,7 +536,7 @@ export function AdminUserDetailPage({
     const disabled = !user.disabled_at
     await run(
       async () => {
-        await setAdminUserDisabled(csrfToken, user.sub, disabled)
+        await setAdminUserDisabled(csrfToken, user.id, disabled)
         setShowDisable(false)
         await reload()
       },
@@ -555,7 +555,7 @@ export function AdminUserDetailPage({
 
   async function handleDelete() {
     await run(async () => {
-      await deleteAdminUser(csrfToken, user.sub)
+      await deleteAdminUser(csrfToken, user.id)
       setShowDelete(false)
       await reload()
     }, 'ユーザーの削除を予約しました。30 日以内なら復元できます。')
@@ -563,14 +563,14 @@ export function AdminUserDetailPage({
 
   async function handlePurge() {
     await run(async () => {
-      await deleteAdminUser(csrfToken, user.sub, { purge: true })
+      await deleteAdminUser(csrfToken, user.id, { purge: true })
       window.location.assign(tenantURL('/admin/users'))
     }, 'ユーザーを完全に削除しました。')
   }
 
   async function handleRestore() {
     await run(async () => {
-      await restoreAdminUser(csrfToken, user.sub)
+      await restoreAdminUser(csrfToken, user.id)
       await reload()
     }, 'ユーザーを復元しました。')
   }
@@ -579,9 +579,9 @@ export function AdminUserDetailPage({
     await run(
       async () => {
         if (present) {
-          await clearAdminUserRequiredAction(csrfToken, user.sub, action)
+          await clearAdminUserRequiredAction(csrfToken, user.id, action)
         } else {
-          await setAdminUserRequiredAction(csrfToken, user.sub, action)
+          await setAdminUserRequiredAction(csrfToken, user.id, action)
         }
         await reload()
       },
@@ -715,7 +715,7 @@ export function AdminUserDetailPage({
                   label="認証方式"
                   value={user.mfa_enrolled ? 'Password + MFA' : 'Password'}
                 />
-                <DetailRow icon={IconUser} label="Subject ID" value={user.sub} mono />
+                <DetailRow icon={IconUser} label="ユーザーID" value={user.id} mono />
               </dl>
               {user.scim_source && (
                 <div className="mt-4 border-t border-slate-100 pt-4 flex items-center gap-2 text-xs text-blue-700">
@@ -928,7 +928,7 @@ function UserDetails({
 
         <div className="mt-4">
           <AdminPaneActions
-            detailHref={tenantURL(`/admin/users/${encodeURIComponent(user.sub)}`)}
+            detailHref={tenantURL(`/admin/users/${encodeURIComponent(user.id)}`)}
             busy={busy}
             onEdit={onEdit}
             menu={
@@ -999,7 +999,7 @@ function UserDetails({
                 user.password_changed_at ? formatDateTime(user.password_changed_at) : '記録なし'
               }
             />
-            <DetailRow icon={IconUser} label="Subject ID" value={user.sub} mono />
+            <DetailRow icon={IconUser} label="Subject ID" value={user.id} mono />
           </dl>
         </section>
 
@@ -1082,11 +1082,11 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState('')
-  const { sub } = user
+  const { id } = user
 
   const load = useCallback(async () => {
     try {
-      const [groups, all] = await Promise.all([getAdminUserGroups(sub), listAdminGroups()])
+      const [groups, all] = await Promise.all([getAdminUserGroups(id), listAdminGroups()])
       setData(groups)
       setAllGroups(all)
       setError('')
@@ -1095,7 +1095,7 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
         err instanceof AuthenticationAPIError ? err.message : 'グループの取得に失敗しました。',
       )
     }
-  }, [sub])
+  }, [id])
 
   useEffect(() => {
     setData(null)
@@ -1107,7 +1107,7 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
     if (!selectedGroup) return
     setAdding(true)
     try {
-      await addAdminGroupMember(csrfToken, selectedGroup, user.sub)
+      await addAdminGroupMember(csrfToken, selectedGroup, user.id)
       setSelectedGroup('')
       await load()
     } catch (err) {
