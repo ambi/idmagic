@@ -45,17 +45,23 @@ import { Route as AccountDataRouteImport } from './routes/account/data'
 import { Route as AccountAppsRouteImport } from './routes/account/apps'
 import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
+import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
+import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
 import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
+import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
+import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
 import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
+import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
+import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
 
@@ -240,6 +246,16 @@ const AccountActivityRoute = AccountActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AccountRouteRoute,
 } as any)
+const AccountProfileIndexRoute = AccountProfileIndexRouteImport.update({
+  id: '/profile_/',
+  path: '/profile/',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AdminUsersNewRoute = AdminUsersNewRouteImport.update({
+  id: '/users_/new',
+  path: '/users/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
   id: '/users_/$id',
   path: '/users/$id',
@@ -253,6 +269,11 @@ const AdminTenantAttributesRoute = AdminTenantAttributesRouteImport.update({
 const AdminRolesNameRoute = AdminRolesNameRouteImport.update({
   id: '/roles_/$name',
   path: '/roles/$name',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminGroupsNewRoute = AdminGroupsNewRouteImport.update({
+  id: '/groups_/new',
+  path: '/groups/new',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminGroupsGroupIdRoute = AdminGroupsGroupIdRouteImport.update({
@@ -276,6 +297,11 @@ const AdminAgentsAgentIdRoute = AdminAgentsAgentIdRouteImport.update({
   path: '/agents/$agentId',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AccountProfileEditRoute = AccountProfileEditRouteImport.update({
+  id: '/profile_/edit',
+  path: '/profile/edit',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
 const AccountEmailVerifyRoute = AccountEmailVerifyRouteImport.update({
   id: '/email/verify',
   path: '/email/verify',
@@ -285,6 +311,11 @@ const AdminUsersIdIndexRoute = AdminUsersIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminUsersIdRoute,
+} as any)
+const AdminGroupsGroupIdIndexRoute = AdminGroupsGroupIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminGroupsGroupIdRoute,
 } as any)
 const AdminApplicationsApplicationIdIndexRoute =
   AdminApplicationsApplicationIdIndexRouteImport.update({
@@ -296,6 +327,11 @@ const AdminUsersIdEditRoute = AdminUsersIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
   getParentRoute: () => AdminUsersIdRoute,
+} as any)
+const AdminGroupsGroupIdEditRoute = AdminGroupsGroupIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AdminGroupsGroupIdRoute,
 } as any)
 const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
   id: '/federation/entra_/new',
@@ -347,17 +383,23 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/system/': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
+  '/account/profile/edit': typeof AccountProfileEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/federation/entra': typeof AdminFederationEntraRoute
-  '/admin/groups/$groupId': typeof AdminGroupsGroupIdRoute
+  '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
+  '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/$id': typeof AdminUsersIdRouteWithChildren
+  '/admin/users/new': typeof AdminUsersNewRoute
+  '/account/profile/': typeof AccountProfileIndexRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
+  '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
+  '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -376,7 +418,7 @@ export interface FileRoutesByTo {
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
   '/account/password': typeof AccountPasswordRoute
-  '/account/profile': typeof AccountProfileRoute
+  '/account/profile': typeof AccountProfileIndexRoute
   '/account/security': typeof AccountSecurityRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/applications': typeof AdminApplicationsRoute
@@ -395,15 +437,19 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/system': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
+  '/account/profile/edit': typeof AccountProfileEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
-  '/admin/groups/$groupId': typeof AdminGroupsGroupIdRoute
+  '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
+  '/admin/users/new': typeof AdminUsersNewRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
+  '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
+  '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
 }
 export interface FileRoutesById {
@@ -445,17 +491,23 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/system/': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
+  '/account/profile_/edit': typeof AccountProfileEditRoute
   '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRoute
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/federation/entra': typeof AdminFederationEntraRoute
-  '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRoute
+  '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
+  '/admin/groups_/new': typeof AdminGroupsNewRoute
   '/admin/roles_/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users_/$id': typeof AdminUsersIdRouteWithChildren
+  '/admin/users_/new': typeof AdminUsersNewRoute
+  '/account/profile_/': typeof AccountProfileIndexRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
+  '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
+  '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -498,17 +550,23 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/system/'
     | '/account/email/verify'
+    | '/account/profile/edit'
     | '/admin/agents/$agentId'
     | '/admin/applications/$applicationId'
     | '/admin/federation/entra'
     | '/admin/groups/$groupId'
+    | '/admin/groups/new'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
     | '/admin/users/$id'
+    | '/admin/users/new'
+    | '/account/profile/'
     | '/admin/applications/$applicationId/edit'
     | '/admin/federation/entra/new'
+    | '/admin/groups/$groupId/edit'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId/'
+    | '/admin/groups/$groupId/'
     | '/admin/users/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -546,15 +604,19 @@ export interface FileRouteTypes {
     | '/admin'
     | '/system'
     | '/account/email/verify'
+    | '/account/profile/edit'
     | '/admin/agents/$agentId'
     | '/admin/federation/entra'
-    | '/admin/groups/$groupId'
+    | '/admin/groups/new'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
+    | '/admin/users/new'
     | '/admin/applications/$applicationId/edit'
     | '/admin/federation/entra/new'
+    | '/admin/groups/$groupId/edit'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId'
+    | '/admin/groups/$groupId'
     | '/admin/users/$id'
   id:
     | '__root__'
@@ -595,17 +657,23 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/system/'
     | '/account/email/verify'
+    | '/account/profile_/edit'
     | '/admin/agents_/$agentId'
     | '/admin/applications_/$applicationId'
     | '/admin/federation/entra'
     | '/admin/groups_/$groupId'
+    | '/admin/groups_/new'
     | '/admin/roles_/$name'
     | '/admin/tenant/attributes'
     | '/admin/users_/$id'
+    | '/admin/users_/new'
+    | '/account/profile_/'
     | '/admin/applications_/$applicationId/edit'
     | '/admin/federation/entra_/new'
+    | '/admin/groups_/$groupId/edit'
     | '/admin/users_/$id/edit'
     | '/admin/applications_/$applicationId/'
+    | '/admin/groups_/$groupId/'
     | '/admin/users_/$id/'
   fileRoutesById: FileRoutesById
 }
@@ -878,6 +946,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountActivityRouteImport
       parentRoute: typeof AccountRouteRoute
     }
+    '/account/profile_/': {
+      id: '/account/profile_/'
+      path: '/profile'
+      fullPath: '/account/profile/'
+      preLoaderRoute: typeof AccountProfileIndexRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/admin/users_/new': {
+      id: '/admin/users_/new'
+      path: '/users/new'
+      fullPath: '/admin/users/new'
+      preLoaderRoute: typeof AdminUsersNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/users_/$id': {
       id: '/admin/users_/$id'
       path: '/users/$id'
@@ -897,6 +979,13 @@ declare module '@tanstack/react-router' {
       path: '/roles/$name'
       fullPath: '/admin/roles/$name'
       preLoaderRoute: typeof AdminRolesNameRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/groups_/new': {
+      id: '/admin/groups_/new'
+      path: '/groups/new'
+      fullPath: '/admin/groups/new'
+      preLoaderRoute: typeof AdminGroupsNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/groups_/$groupId': {
@@ -927,6 +1016,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAgentsAgentIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/account/profile_/edit': {
+      id: '/account/profile_/edit'
+      path: '/profile/edit'
+      fullPath: '/account/profile/edit'
+      preLoaderRoute: typeof AccountProfileEditRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/account/email/verify': {
       id: '/account/email/verify'
       path: '/email/verify'
@@ -941,6 +1037,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersIdIndexRouteImport
       parentRoute: typeof AdminUsersIdRoute
     }
+    '/admin/groups_/$groupId/': {
+      id: '/admin/groups_/$groupId/'
+      path: '/'
+      fullPath: '/admin/groups/$groupId/'
+      preLoaderRoute: typeof AdminGroupsGroupIdIndexRouteImport
+      parentRoute: typeof AdminGroupsGroupIdRoute
+    }
     '/admin/applications_/$applicationId/': {
       id: '/admin/applications_/$applicationId/'
       path: '/'
@@ -954,6 +1057,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/$id/edit'
       preLoaderRoute: typeof AdminUsersIdEditRouteImport
       parentRoute: typeof AdminUsersIdRoute
+    }
+    '/admin/groups_/$groupId/edit': {
+      id: '/admin/groups_/$groupId/edit'
+      path: '/edit'
+      fullPath: '/admin/groups/$groupId/edit'
+      preLoaderRoute: typeof AdminGroupsGroupIdEditRouteImport
+      parentRoute: typeof AdminGroupsGroupIdRoute
     }
     '/admin/federation/entra_/new': {
       id: '/admin/federation/entra_/new'
@@ -983,6 +1093,8 @@ interface AccountRouteRouteChildren {
   AccountSecurityRoute: typeof AccountSecurityRoute
   AccountIndexRoute: typeof AccountIndexRoute
   AccountEmailVerifyRoute: typeof AccountEmailVerifyRoute
+  AccountProfileEditRoute: typeof AccountProfileEditRoute
+  AccountProfileIndexRoute: typeof AccountProfileIndexRoute
 }
 
 const AccountRouteRouteChildren: AccountRouteRouteChildren = {
@@ -996,6 +1108,8 @@ const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountSecurityRoute: AccountSecurityRoute,
   AccountIndexRoute: AccountIndexRoute,
   AccountEmailVerifyRoute: AccountEmailVerifyRoute,
+  AccountProfileEditRoute: AccountProfileEditRoute,
+  AccountProfileIndexRoute: AccountProfileIndexRoute,
 }
 
 const AccountRouteRouteWithChildren = AccountRouteRoute._addFileChildren(
@@ -1019,6 +1133,19 @@ const AdminApplicationsApplicationIdRouteWithChildren =
   AdminApplicationsApplicationIdRoute._addFileChildren(
     AdminApplicationsApplicationIdRouteChildren,
   )
+
+interface AdminGroupsGroupIdRouteChildren {
+  AdminGroupsGroupIdEditRoute: typeof AdminGroupsGroupIdEditRoute
+  AdminGroupsGroupIdIndexRoute: typeof AdminGroupsGroupIdIndexRoute
+}
+
+const AdminGroupsGroupIdRouteChildren: AdminGroupsGroupIdRouteChildren = {
+  AdminGroupsGroupIdEditRoute: AdminGroupsGroupIdEditRoute,
+  AdminGroupsGroupIdIndexRoute: AdminGroupsGroupIdIndexRoute,
+}
+
+const AdminGroupsGroupIdRouteWithChildren =
+  AdminGroupsGroupIdRoute._addFileChildren(AdminGroupsGroupIdRouteChildren)
 
 interface AdminUsersIdRouteChildren {
   AdminUsersIdEditRoute: typeof AdminUsersIdEditRoute
@@ -1050,10 +1177,12 @@ interface AdminRouteRouteChildren {
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRoute
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
-  AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRoute
+  AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
+  AdminGroupsNewRoute: typeof AdminGroupsNewRoute
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
   AdminUsersIdRoute: typeof AdminUsersIdRouteWithChildren
+  AdminUsersNewRoute: typeof AdminUsersNewRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
 }
 
@@ -1074,10 +1203,12 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminApplicationsApplicationIdRoute:
     AdminApplicationsApplicationIdRouteWithChildren,
   AdminFederationEntraRoute: AdminFederationEntraRoute,
-  AdminGroupsGroupIdRoute: AdminGroupsGroupIdRoute,
+  AdminGroupsGroupIdRoute: AdminGroupsGroupIdRouteWithChildren,
+  AdminGroupsNewRoute: AdminGroupsNewRoute,
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
   AdminUsersIdRoute: AdminUsersIdRouteWithChildren,
+  AdminUsersNewRoute: AdminUsersNewRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
 }
 

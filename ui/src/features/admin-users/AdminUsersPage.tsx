@@ -96,7 +96,6 @@ export function AdminUsersPage({
     () => new URLSearchParams(window.location.search).get('role') ?? '',
   )
   const [status, setStatus] = useState<StatusFilter>('all')
-  const [showCreate, setShowCreate] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [showPurge, setShowPurge] = useState(false)
   const [showDisable, setShowDisable] = useState(false)
@@ -144,25 +143,6 @@ export function AdminUsersPage({
     } finally {
       setBusy(false)
     }
-  }
-
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = event.currentTarget
-    const data = new FormData(form)
-    await run(async () => {
-      const created = await createAdminUser(csrfToken, {
-        preferred_username: String(data.get('preferred_username') ?? ''),
-        password: String(data.get('password') ?? ''),
-        name: optionalValue(data.get('name')),
-        email: optionalValue(data.get('email')),
-        email_verified: data.get('email_verified') === 'on',
-        roles: parseRoles(String(data.get('roles') ?? '')),
-      })
-      form.reset()
-      setShowCreate(false)
-      await refresh(created.id)
-    }, 'ユーザーを作成しました。')
   }
 
   async function handleDisabled(user: AdminUser) {
@@ -236,9 +216,11 @@ export function AdminUsersPage({
         title="ユーザー"
         description="組織のID、アクセスロール、アカウント状態を一元管理します。"
         actions={
-          <Button onClick={() => setShowCreate(true)}>
-            <IconUserPlus size={17} aria-hidden="true" />
-            ユーザーを追加
+          <Button asChild>
+            <a href={tenantURL('/admin/users/new')}>
+              <IconUserPlus size={17} aria-hidden="true" />
+              ユーザーを追加
+            </a>
           </Button>
         }
       >
@@ -412,13 +394,6 @@ export function AdminUsersPage({
         </Card>
       </AdminShell>
 
-      {showCreate && (
-        <CreateUserDialog
-          busy={busy}
-          onClose={() => setShowCreate(false)}
-          onSubmit={handleCreate}
-        />
-      )}
       {showDelete && selected && (
         <DeleteUserDialog
           user={selected}
@@ -1882,87 +1857,128 @@ function DisableUserDialog({
   )
 }
 
-function CreateUserDialog({
-  busy,
-  onClose,
-  onSubmit,
+export function AdminUserCreatePage({
+  csrfToken,
+  actorUsername,
 }: {
-  busy: boolean
-  onClose: () => void
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  csrfToken: string
+  actorUsername?: string
 }) {
+  const listPath = tenantURL('/admin/users')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    const username = String(data.get('preferred_username') ?? '').trim()
+    const password = String(data.get('password') ?? '')
+
+    if (!username || !password) return
+
+    setBusy(true)
+    setError('')
+
+    try {
+      const created = await createAdminUser(csrfToken, {
+        preferred_username: username,
+        password: password,
+        name: optionalValue(data.get('name')),
+        email: optionalValue(data.get('email')),
+        email_verified: data.get('email_verified') === 'on',
+        roles: parseRoles(String(data.get('roles') ?? '')),
+      })
+      window.location.assign(tenantURL(`/admin/users/${encodeURIComponent(created.id)}`))
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? cause.message
+          : 'ユーザーを追加できませんでした。',
+      )
+      setBusy(false)
+    }
+  }
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-end bg-slate-950/25 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-user-title"
+    <AdminShell
+      active="users"
+      actorUsername={actorUsername}
+      title="ユーザーを追加"
+      description="新しい組織アカウントを作成します。"
     >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
-        onClick={onClose}
-      />
-      <div className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">ユーザー</p>
-            <h2 id="create-user-title" className="mt-1 text-xl font-semibold">
-              ユーザーを追加
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">新しい組織アカウントを作成します。</p>
-          </div>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
-            <IconX size={18} aria-hidden="true" />
-          </Button>
-        </div>
-        <form className="flex flex-1 flex-col overflow-y-auto" onSubmit={onSubmit}>
-          <div className="flex flex-col gap-5 p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <Field id="preferred_username" label="ユーザー名" required />
-              <Field id="name" label="表示名" />
-            </div>
-            <Field id="email" label="メールアドレス" type="email" />
-            <Field
-              id="password"
-              label="初期パスワード"
-              type="password"
-              required
-              minLength={12}
-              description="12文字以上。一般的なパスワードやユーザー名を含む値は使用できません。"
-            />
-            <Field
-              id="roles"
-              label="初期ロール"
-              placeholder="support, admin"
-              description="権限を付与しない場合は空欄にします。"
-            />
-            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-              <input
-                name="email_verified"
-                type="checkbox"
-                className="mt-0.5 size-4 rounded border-slate-300"
-              />
-              <span>
-                <span className="block font-semibold text-slate-900">メール確認済みとして作成</span>
-                <span className="mt-0.5 block text-xs leading-5 text-slate-500">
-                  組織側でメールアドレスの所有確認が完了している場合のみ選択します。
-                </span>
-              </span>
-            </label>
-          </div>
-          <div className="mt-auto flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
-            </Button>
-            <Button type="submit" disabled={busy}>
-              <IconUserPlus size={16} aria-hidden="true" />
-              作成
-            </Button>
-          </div>
-        </form>
+      <div className="flex items-center gap-3">
+        <a
+          href={listPath}
+          className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+          aria-label="ユーザー一覧に戻る"
+        >
+          <IconArrowLeft size={18} aria-hidden="true" />
+        </a>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">ユーザーを追加</h1>
       </div>
-    </div>
+
+      <div className="mt-6 max-w-2xl">
+        <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-6 p-6">
+              {error && <Alert>{error}</Alert>}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field id="preferred_username" label="ユーザー名" required />
+                <Field id="name" label="表示名" />
+              </div>
+
+              <Field id="email" label="メールアドレス" type="email" />
+
+              <Field
+                id="password"
+                label="初期パスワード"
+                type="password"
+                required
+                minLength={12}
+                description="12文字以上。一般的なパスワードやユーザー名を含む値は使用できません。"
+              />
+
+              <Field
+                id="roles"
+                label="初期ロール"
+                placeholder="support, admin"
+                description="権限を付与しない場合は空欄にします。複数ある場合はカンマ区切りで入力します。"
+              />
+
+              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 cursor-pointer">
+                <input
+                  name="email_verified"
+                  type="checkbox"
+                  className="mt-0.5 size-4 rounded border-slate-300"
+                />
+                <span>
+                  <span className="block font-semibold text-slate-900">
+                    メール確認済みとして作成
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                    組織側でメールアドレスの所有確認が完了している場合のみ選択します。
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
+              <a
+                href={listPath}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+              >
+                キャンセル
+              </a>
+              <Button type="submit" disabled={busy}>
+                <IconUserPlus size={16} aria-hidden="true" />
+                作成
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </AdminShell>
   )
 }

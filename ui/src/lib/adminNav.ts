@@ -105,7 +105,7 @@ export function adminNavItems(active: AdminNavKey): AdminNavItem[] {
     },
     {
       key: 'audit-events',
-      label: '監査ログ',
+      label: '監査イベント',
       icon: IconActivity,
       href: tenantURL('/admin/audit_events'),
       active: active === 'audit-events',

@@ -76,3 +76,19 @@ The OIDC login guard (`ensureLoggedIn`) runs inside the loader, so it applies to
 load and in-app navigation. Auth-flow transitions (login/consent/callback and the OIDC redirects)
 remain full-page navigations by nature. The rendered page kind is asserted to the DOM via
 `<meta name="idmagic:page">` for E2E.
+
+## UI navigation and consistency policy
+
+The admin console and account portal follow a set of strict UI consistency and navigation guidelines (ADR-086, wi-126):
+
+1. **Detail-then-Edit Navigation Policy**
+   - For resource creation or editing, the UI must separate the read-only view (detail) from the write/edit view.
+   - The user is first presented with a read-only detail view of the resource configuration, with an explicit "Edit" button that navigates to a dedicated edit route (e.g., `/admin/users/$id/edit` or `/account/profile/edit`).
+   - Modals should not be used for primary resource creation or editing; they must use dedicated routed pages to ensure predictable browser "Back" button behavior and deep-linking capabilities.
+2. **List-View Action Unification**
+   - Action buttons (Detail, Edit, Delete, etc.) in table list views must be visible directly in each row rather than hidden under dropdown/kebab menus.
+   - Destructive actions (such as deletion) must use red-toned buttons (`variant="outline" tone="danger"`).
+3. **Dynamic Page Titles**
+   - Every page must have a dynamic and context-aware browser tab title (e.g., "ユーザー | IdMagic 管理コンソール") defined via the `PAGE_TITLES` map in `src/routes/-page.tsx` and evaluated by the `PageMarker` component.
+4. **Terminology Unification**
+   - The UI must use the term "監査イベント" (Audit Event) instead of "監査ログ" (Audit Log) to maintain consistency with the underlying SCL definition (`AuditEvent`/`audit_events`).

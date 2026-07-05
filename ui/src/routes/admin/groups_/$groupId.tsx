@@ -1,27 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { getAdminGroup } from '../../../api/admin'
-import { AdminGroupDetailPage } from '../../../features/admin-groups/AdminGroupsPage'
-import { requirePortalAccount } from '../../-guards'
-import { PageMarker } from '../../-page'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 
+// $groupId は詳細 (index) と編集 (edit) を束ねるレイアウトルート。
 export const Route = createFileRoute('/admin/groups_/$groupId')({
-  loader: async ({ location, params }) => {
-    const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const { group } = await getAdminGroup(params.groupId)
-    return {
-      csrfToken: account.csrf_token,
-      actorUsername: account.preferred_username,
-      group,
-    }
-  },
-  component: AdminGroupDetailRoute,
+  component: Outlet,
 })
-
-function AdminGroupDetailRoute() {
-  const data = Route.useLoaderData()
-  return (
-    <PageMarker kind="admin-group-detail">
-      <AdminGroupDetailPage {...data} />
-    </PageMarker>
-  )
-}

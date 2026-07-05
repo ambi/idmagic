@@ -109,7 +109,7 @@ export function AdminAuditEventsPage({
       setError(
         cause instanceof AuthenticationAPIError
           ? cause.message
-          : '監査ログを取得できませんでした。',
+          : '監査イベントを取得できませんでした。',
       )
     } finally {
       setBusy(false)
@@ -124,7 +124,7 @@ export function AdminAuditEventsPage({
     <AdminShell
       active="audit-events"
       actorUsername={actorUsername}
-      title="監査ログ"
+      title="監査イベント"
       description="テナント内で起きた重要な操作の記録。コンプライアンスや調査の起点として利用します。"
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}

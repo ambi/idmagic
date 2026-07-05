@@ -62,60 +62,18 @@ function textToValue(def: UserAttributeDef, text: string): AttributeValue | unde
 }
 
 export function AccountProfilePage({
-  csrfToken,
-  profile: initial,
+  profile,
   isAdmin,
 }: {
   csrfToken: string
   profile: AccountProfile
   isAdmin: boolean
 }) {
-  const [profile, setProfile] = useState(initial)
-  const [name, setName] = useState(initial.name ?? '')
-  const [givenName, setGivenName] = useState(initial.given_name ?? '')
-  const [familyName, setFamilyName] = useState(initial.family_name ?? '')
-  const [attributes, setAttributes] = useState<AttributeDraft>(draftFromProfile(initial))
-  const [saving, setSaving] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSaving(true)
-    setError('')
-    setNotice('')
-    try {
-      const nextAttributes: AccountProfile['attributes'] = {}
-      for (const def of profile.editable_attributes) {
-        const value = textToValue(def, attributes[def.key] ?? '')
-        if (value) {
-          nextAttributes[def.key] = value
-        }
-      }
-      const next = await updateAccountProfile(csrfToken, {
-        name: name.trim() || undefined,
-        given_name: givenName.trim() || undefined,
-        family_name: familyName.trim() || undefined,
-        attributes: nextAttributes,
-      })
-      setProfile(next)
-      setName(next.name ?? '')
-      setGivenName(next.given_name ?? '')
-      setFamilyName(next.family_name ?? '')
-      setAttributes(draftFromProfile(next))
-      setEditing(false)
-      setNotice('プロフィールを更新しました。')
-    } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'プロフィールを更新できませんでした。',
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
+  const [notice, setNotice] = useState(() => {
+    return new URLSearchParams(window.location.search).get('notice') === 'success'
+      ? 'プロフィールを更新しました。'
+      : ''
+  })
 
   return (
     <AccountShell
@@ -126,108 +84,194 @@ export function AccountProfilePage({
       description="登録されているプロフィール情報を確認できます。"
     >
       <div className="grid gap-6">
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-semibold text-slate-900">プロフィール</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                変更が必要な場合だけ編集モードに切り替えてください。
-              </p>
+              <p className="mt-1 text-sm text-slate-600">登録されているアカウント基本情報です。</p>
             </div>
-            {!editing ? (
-              <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-                編集
-              </Button>
-            ) : null}
+            <Button asChild variant="outline">
+              <a href="/account/profile/edit">編集</a>
+            </Button>
           </div>
 
-          {!editing ? (
-            <>
-              <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                <ReadField label="表示名" value={profile.name ?? '未設定'} />
-                <ReadField label="名" value={profile.given_name ?? '未設定'} />
-                <ReadField label="姓" value={profile.family_name ?? '未設定'} />
-                <ReadField label="メール" value={profile.email ?? '未設定'} />
-                <ReadField
-                  label="メール確認"
-                  value={profile.email_verified ? '確認済み' : '未確認'}
-                />
-                <ReadField label="MFA" value={profile.mfa_enrolled ? '登録済み' : '未登録'} />
-                <ReadField label="状態" value={profile.status} />
-              </dl>
-              <div className="mt-5 grid gap-4">
-                <ProfileAttributeGroups
-                  defs={profile.readable_attributes}
-                  values={profile.attributes}
-                />
-              </div>
-            </>
-          ) : (
-            <form onSubmit={handleSave} className="mt-5 grid gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="name">表示名</Label>
-                <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="given-name">名 (given_name)</Label>
-                  <Input
-                    id="given-name"
-                    value={givenName}
-                    onChange={(event) => setGivenName(event.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="family-name">姓 (family_name)</Label>
-                  <Input
-                    id="family-name"
-                    value={familyName}
-                    onChange={(event) => setFamilyName(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <EditableAttributeGroups
-                defs={profile.editable_attributes}
-                values={attributes}
-                onChange={(key, next) => setAttributes((current) => ({ ...current, [key]: next }))}
-              />
-
-              <div className="flex items-center gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? '保存中…' : '保存'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={saving}
-                  onClick={() => {
-                    setName(profile.name ?? '')
-                    setGivenName(profile.given_name ?? '')
-                    setFamilyName(profile.family_name ?? '')
-                    setAttributes(draftFromProfile(profile))
-                    setEditing(false)
-                  }}
+          <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+            <ReadField label="表示名" value={profile.name ?? '未設定'} />
+            <ReadField label="名" value={profile.given_name ?? '未設定'} />
+            <ReadField label="姓" value={profile.family_name ?? '未設定'} />
+            <ReadField
+              label="メール"
+              value={profile.email ?? '未設定'}
+              action={
+                <a
+                  href="/account/emails"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                 >
-                  キャンセル
-                </Button>
-              </div>
-            </form>
-          )}
+                  変更する
+                </a>
+              }
+            />
+            <ReadField label="メール確認" value={profile.email_verified ? '確認済み' : '未確認'} />
+            <ReadField label="MFA" value={profile.mfa_enrolled ? '登録済み' : '未登録'} />
+            <ReadField label="状態" value={profile.status} />
+          </dl>
+          <div className="mt-5 grid gap-4">
+            <ProfileAttributeGroups
+              defs={profile.readable_attributes}
+              values={profile.attributes}
+            />
+          </div>
         </Card>
       </div>
     </AccountShell>
   )
 }
 
-function ReadField({ label, value }: { label: string; value: string }) {
+export function AccountProfileEditPage({
+  csrfToken,
+  profile,
+  isAdmin,
+}: {
+  csrfToken: string
+  profile: AccountProfile
+  isAdmin: boolean
+}) {
+  const [name, setName] = useState(profile.name ?? '')
+  const [givenName, setGivenName] = useState(profile.given_name ?? '')
+  const [familyName, setFamilyName] = useState(profile.family_name ?? '')
+  const [attributes, setAttributes] = useState<AttributeDraft>(draftFromProfile(profile))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const nextAttributes: AccountProfile['attributes'] = {}
+      for (const def of profile.editable_attributes) {
+        const value = textToValue(def, attributes[def.key] ?? '')
+        if (value) {
+          nextAttributes[def.key] = value
+        }
+      }
+      await updateAccountProfile(csrfToken, {
+        name: name.trim() || undefined,
+        given_name: givenName.trim() || undefined,
+        family_name: familyName.trim() || undefined,
+        attributes: nextAttributes,
+      })
+      window.location.assign('/account/profile?notice=success')
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? cause.message
+          : 'プロフィールを更新できませんでした。',
+      )
+      setSaving(false)
+    }
+  }
+
   return (
-    <div className="rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2.5">
+    <AccountShell
+      active="profile"
+      username={profile.preferred_username}
+      isAdmin={isAdmin}
+      title="プロフィールを編集"
+      description="プロフィール情報を更新します。"
+    >
+      <div className="grid gap-6">
+        {error ? <Alert variant="destructive">{error}</Alert> : null}
+
+        <Card className="p-5">
+          <div className="flex items-center gap-3">
+            <a
+              href="/account/profile"
+              className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+              aria-label="アカウント情報に戻る"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <title>戻る</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+            </a>
+            <h2 className="text-base font-semibold text-slate-900">プロフィールの編集</h2>
+          </div>
+
+          <form onSubmit={handleSave} className="mt-5 grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="name">表示名</Label>
+              <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="given-name">名 (given_name)</Label>
+                <Input
+                  id="given-name"
+                  value={givenName}
+                  onChange={(event) => setGivenName(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="family-name">姓 (family_name)</Label>
+                <Input
+                  id="family-name"
+                  value={familyName}
+                  onChange={(event) => setFamilyName(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <EditableAttributeGroups
+              defs={profile.editable_attributes}
+              values={attributes}
+              onChange={(key, next) => setAttributes((current) => ({ ...current, [key]: next }))}
+            />
+
+            <div className="flex items-center gap-2">
+              <Button type="submit" disabled={saving}>
+                {saving ? '保存中…' : '保存'}
+              </Button>
+              <Button type="button" variant="ghost" disabled={saving} asChild>
+                <a href="/account/profile">キャンセル</a>
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </AccountShell>
+  )
+}
+
+function ReadField({
+  label,
+  value,
+  action,
+}: {
+  label: string
+  value: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="relative rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2.5">
       <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-slate-900">{value}</dd>
+      <dd className="mt-0.5 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-slate-900">{value}</span>
+        {action}
+      </dd>
     </div>
   )
 }
