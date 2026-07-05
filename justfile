@@ -107,6 +107,10 @@ check-ids:
 scl-render:
     {{ra_cmd}} render
 
+# Start the local dev stack (Go API + React UI together with live reload).
+dev:
+    ./dev.sh
+
 # Start the Go API for local UI development.
 dev-api:
     ADDR=:8081 ISSUER=http://localhost:5173 go run ./cmd/idmagic
@@ -118,3 +122,7 @@ dev-ui:
 # Start the Docker Compose development stack.
 dev-compose:
     docker compose -f deploy/docker/docker-compose.dev.yaml up --build
+
+# Run the OAuth2 / OIDC demo against a running server (default http://localhost:8080).
+demo:
+    ./demo.sh
