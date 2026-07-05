@@ -15,7 +15,7 @@ export const Route = createFileRoute('/admin/audit_events')({
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       actorRoles: account.roles ?? [],
-      actorTenantID: account.tenant_id ?? '',
+      actorRealm: account.realm ?? '',
       events: events.events,
     }
   },

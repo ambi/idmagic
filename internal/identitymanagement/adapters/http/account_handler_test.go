@@ -181,8 +181,12 @@ func (f *fakeAuthnResolver) Resolve(_ context.Context, _ authdomain.Headers) (*a
 }
 
 func activeTenant(id, displayName string) *spec.Tenant {
+	realm := id
+	if id == spec.DefaultTenantID {
+		realm = spec.DefaultRealm
+	}
 	return &spec.Tenant{
-		ID: id, DisplayName: displayName, Status: spec.TenantStatusActive,
+		ID: id, Realm: realm, DisplayName: displayName, Status: spec.TenantStatusActive,
 		CreatedAt: time.Now().UTC(),
 	}
 }

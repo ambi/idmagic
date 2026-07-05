@@ -17,7 +17,7 @@ func newGroupDeps(t *testing.T) (idmusecases.AdminGroupDeps, *[]spec.DomainEvent
 	userRepo := memory.NewUserRepository()
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&spec.User{
-		ID: "user_alice", TenantID: "default", PreferredUsername: "alice",
+		ID: "user_alice", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&spec.User{

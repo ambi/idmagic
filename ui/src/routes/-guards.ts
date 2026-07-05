@@ -12,6 +12,7 @@ export type AccountContextResponse = {
   sub: string
   preferred_username?: string
   tenant_id?: string
+  realm?: string
   roles?: string[]
 }
 

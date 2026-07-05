@@ -16,6 +16,7 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	tenant := &spec.Tenant{
 		ID:          "11111111-1111-1111-1111-111111111111",
+		Realm:       "acme",
 		DisplayName: "Acme",
 		Status:      spec.TenantStatusActive,
 		CreatedAt:   now,
@@ -32,8 +33,17 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 	if got == nil {
 		t.Fatal("tenant not found after save")
 	}
-	if got.DisplayName != "Acme" || got.Status != spec.TenantStatusActive {
+	if got.DisplayName != "Acme" || got.Status != spec.TenantStatusActive || got.Realm != "acme" {
 		t.Fatalf("unexpected tenant: %+v", got)
+	}
+
+	// FindByRealm は不変 UUID キーではなく URL slug で解決する (ADR-085)。
+	byRealm, err := repo.FindByRealm(ctx, "acme")
+	if err != nil {
+		t.Fatalf("find by realm: %v", err)
+	}
+	if byRealm == nil || byRealm.ID != tenant.ID {
+		t.Fatalf("find by realm mismatch: %+v", byRealm)
 	}
 
 	// Update via upsert.

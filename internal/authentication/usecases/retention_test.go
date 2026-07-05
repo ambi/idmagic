@@ -18,8 +18,8 @@ func daysAgo(now time.Time, d int) time.Time {
 func seedAudit(t *testing.T, store *memory.AuditEventStore, id, eventType string, at time.Time) {
 	t.Helper()
 	if err := store.Append(context.Background(), &oauthports.AuditEventRecord{
-		ID: id, TenantID: "default", Type: eventType, OccurredAt: at,
-		Payload: map[string]any{"tenantId": "default"},
+		ID: id, TenantID: spec.DefaultTenantID, Type: eventType, OccurredAt: at,
+		Payload: map[string]any{"tenantId": spec.DefaultTenantID},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -109,10 +109,10 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := memory.NewAuthEventBucketStore()
 	// 91 日前の窓と直近の窓を作る。
-	if _, err := store.Record(ctx, "failed_login", "default", "old-key", daysAgo(now, 91)); err != nil {
+	if _, err := store.Record(ctx, "failed_login", spec.DefaultTenantID, "old-key", daysAgo(now, 91)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Record(ctx, "failed_login", "default", "fresh-key", now); err != nil {
+	if _, err := store.Record(ctx, "failed_login", spec.DefaultTenantID, "fresh-key", now); err != nil {
 		t.Fatal(err)
 	}
 	res, err := usecases.RunRetentionSweep(ctx, nil, store, usecases.DefaultRetentionPolicy(), now)
@@ -122,7 +122,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	if res.Buckets != 1 {
 		t.Fatalf("deleted buckets=%d, want 1", res.Buckets)
 	}
-	buckets, err := store.List(ctx, "default", 0)
+	buckets, err := store.List(ctx, spec.DefaultTenantID, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

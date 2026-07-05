@@ -55,7 +55,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	var tokenStr string
 	{
 		// トークン生成
-		tokStr, _, err := usecasesInst.GenerateToken(ctx, "default", "Okta Integration", 30)
+		tokStr, _, err := usecasesInst.GenerateToken(ctx, spec.DefaultTenantID, "Okta Integration", 30)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,7 +134,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 		scimUserID = createdUser["id"].(string)
 
 		// 内部ユーザーが作成されているか検証
-		ref, err := scimRepo.FindUserRefByScimID(ctx, "default", scimUserID)
+		ref, err := scimRepo.FindUserRefByScimID(ctx, spec.DefaultTenantID, scimUserID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -182,7 +182,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 		}
 
-		ref, _ := scimRepo.FindUserRefByScimID(ctx, "default", scimUserID)
+		ref, _ := scimRepo.FindUserRefByScimID(ctx, spec.DefaultTenantID, scimUserID)
 		u, _ := userRepo.FindBySub(ctx, ref.UserID)
 		if u.Lifecycle.Status != spec.UserStatusDisabled {
 			t.Fatalf("expected status disabled, got %s", u.Lifecycle.Status)
@@ -199,7 +199,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 			t.Fatalf("expected 204, got %d", rec.Code)
 		}
 
-		ref, _ := scimRepo.FindUserRefByScimID(ctx, "default", scimUserID)
+		ref, _ := scimRepo.FindUserRefByScimID(ctx, spec.DefaultTenantID, scimUserID)
 		u, _ := userRepo.FindBySub(ctx, ref.UserID)
 		if u == nil {
 			t.Fatal("user should still be accessible by sub for admin purposes")
@@ -238,15 +238,15 @@ func TestScimGroupSync(t *testing.T) {
 	e := echo.New()
 	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
 
-	tokenStr, _, _ := usecasesInst.GenerateToken(ctx, "default", "Integration", 30)
+	tokenStr, _, _ := usecasesInst.GenerateToken(ctx, spec.DefaultTenantID, "Integration", 30)
 
 	// 1. テストユーザー作成
 	user1Sub := "user_1"
 	user2Sub := "user_2"
-	_ = userRepo.Save(ctx, &spec.User{ID: user1Sub, TenantID: "default", PreferredUsername: "user1"})
-	_ = userRepo.Save(ctx, &spec.User{ID: user2Sub, TenantID: "default", PreferredUsername: "user2"})
-	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: "default", ScimID: "scim_u1", UserID: user1Sub})
-	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: "default", ScimID: "scim_u2", UserID: user2Sub})
+	_ = userRepo.Save(ctx, &spec.User{ID: user1Sub, TenantID: spec.DefaultTenantID, PreferredUsername: "user1"})
+	_ = userRepo.Save(ctx, &spec.User{ID: user2Sub, TenantID: spec.DefaultTenantID, PreferredUsername: "user2"})
+	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: spec.DefaultTenantID, ScimID: "scim_u1", UserID: user1Sub})
+	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: spec.DefaultTenantID, ScimID: "scim_u2", UserID: user2Sub})
 
 	// 2. グループ同期 (Create Group)
 	var scimGroupID string
@@ -275,8 +275,8 @@ func TestScimGroupSync(t *testing.T) {
 		_ = json.Unmarshal(rec.Body.Bytes(), &createdGroup)
 		scimGroupID = createdGroup["id"].(string)
 
-		ref, _ := scimRepo.FindGroupRefByScimID(ctx, "default", scimGroupID)
-		members, _ := groupRepo.ListMembersByGroup(ctx, "default", ref.GroupID)
+		ref, _ := scimRepo.FindGroupRefByScimID(ctx, spec.DefaultTenantID, scimGroupID)
+		members, _ := groupRepo.ListMembersByGroup(ctx, spec.DefaultTenantID, ref.GroupID)
 		if len(members) != 1 || members[0].UserID != user1Sub {
 			t.Fatalf("expected member user1, got %v", members)
 		}
@@ -316,8 +316,8 @@ func TestScimGroupSync(t *testing.T) {
 			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 		}
 
-		ref, _ := scimRepo.FindGroupRefByScimID(ctx, "default", scimGroupID)
-		members, _ := groupRepo.ListMembersByGroup(ctx, "default", ref.GroupID)
+		ref, _ := scimRepo.FindGroupRefByScimID(ctx, spec.DefaultTenantID, scimGroupID)
+		members, _ := groupRepo.ListMembersByGroup(ctx, spec.DefaultTenantID, ref.GroupID)
 		if len(members) != 1 || members[0].UserID != user2Sub {
 			t.Fatalf("expected member user2, got %v", members)
 		}

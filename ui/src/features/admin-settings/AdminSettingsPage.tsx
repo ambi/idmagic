@@ -16,7 +16,7 @@ import { Label } from '../../components/ui/label'
 import { cn } from '../../lib/utils'
 import type { AdminSettings, ScimToken } from '../../types'
 
-const DEFAULT_TENANT_ID = 'default'
+const DEFAULT_REALM = 'default'
 
 type TabKey = 'general' | 'password-policy' | 'email' | 'scim'
 
@@ -60,19 +60,18 @@ export function AdminSettingsPage({
   csrfToken,
   actorUsername,
   actorRoles,
-  actorTenantID,
+  actorRealm,
   settings: initial,
 }: {
   csrfToken: string
   actorUsername?: string
   actorRoles: string[]
-  actorTenantID: string
+  actorRealm: string
   settings: AdminSettings
 }) {
   const [settings, setSettings] = useState(initial)
   const [active, setActive] = useState<TabKey>('general')
-  const isSystemAdminOnDefault =
-    actorRoles.includes('system_admin') && actorTenantID === DEFAULT_TENANT_ID
+  const isSystemAdminOnDefault = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
 
   return (
     <AdminShell
@@ -137,9 +136,7 @@ export function AdminSettingsPage({
               onSaved={(next) => setSettings(next)}
             />
           ) : null}
-          {active === 'scim' ? (
-            <ScimTab csrfToken={csrfToken} tenantID={settings.tenant_id} />
-          ) : null}
+          {active === 'scim' ? <ScimTab csrfToken={csrfToken} tenantID={settings.realm} /> : null}
           {active === 'email' ? (
             <Card className="p-6">
               <h2 className="text-base font-semibold text-slate-900">メール送信</h2>

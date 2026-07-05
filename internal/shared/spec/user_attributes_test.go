@@ -109,7 +109,7 @@ func TestBuiltinUserAttributeDefsCoverOIDCAndOrg(t *testing.T) {
 
 func sampleSchema() TenantUserAttributeSchema {
 	return TenantUserAttributeSchema{
-		TenantID: "default",
+		TenantID: DefaultTenantID,
 		Attributes: []UserAttributeDef{
 			{Key: "region", Type: AttributeTypeString, Required: true, Visibility: AttrVisibilityClaimExposed, ClaimName: new("region"), PII: false},
 			{Key: "tags", Type: AttributeTypeStringArray, MultiValued: true, Visibility: AttrVisibilityAdminReadable, PII: true},

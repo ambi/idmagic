@@ -10,7 +10,7 @@ import (
 // actions は集合包含、creditorAccount は enum、instructedAmount は上限 (単調減少)。
 func paymentType() spec.AuthorizationDetailType {
 	return spec.AuthorizationDetailType{
-		TenantID: "default",
+		TenantID: spec.DefaultTenantID,
 		Type:     "payment_initiation",
 		State:    spec.DetailTypeEnabled,
 		Schema: spec.AuthorizationDetailsSchema{

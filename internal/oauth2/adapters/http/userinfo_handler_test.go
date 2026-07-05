@@ -203,7 +203,7 @@ type singleTenantRepo struct {
 func newSingleTenantRepo() *singleTenantRepo {
 	now := time.Now().UTC()
 	return &singleTenantRepo{tenant: &spec.Tenant{
-		ID: "acme", Status: spec.TenantStatusActive, CreatedAt: now,
+		ID: "acme", Realm: "acme", Status: spec.TenantStatusActive, CreatedAt: now,
 	}}
 }
 
@@ -212,7 +212,17 @@ func (r *singleTenantRepo) FindByID(_ context.Context, id string) (*spec.Tenant,
 		return r.tenant, nil
 	}
 	if id == spec.DefaultTenantID {
-		return &spec.Tenant{ID: spec.DefaultTenantID, Status: spec.TenantStatusActive}, nil
+		return &spec.Tenant{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, Status: spec.TenantStatusActive}, nil
+	}
+	return nil, nil
+}
+
+func (r *singleTenantRepo) FindByRealm(_ context.Context, realm string) (*spec.Tenant, error) {
+	if r.tenant.Realm == realm {
+		return r.tenant, nil
+	}
+	if realm == spec.DefaultRealm {
+		return &spec.Tenant{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, Status: spec.TenantStatusActive}, nil
 	}
 	return nil, nil
 }

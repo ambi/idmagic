@@ -17,11 +17,12 @@ var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 var attrKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
 var tenantSchema = z.Struct(z.Shape{
-	"ID": z.String().Min(1).Max(63).TestFunc(
+	"ID": z.String().Min(1).Required(),
+	"Realm": z.String().Min(1).Max(63).TestFunc(
 		func(value *string, _ z.Ctx) bool {
 			return value != nil && tenantIDPattern.MatchString(*value) && *value != "admin"
 		},
-		z.Message("tenant id must be a URL-safe slug and must not be admin"),
+		z.Message("tenant realm must be a URL-safe slug and must not be admin"),
 	).Required(),
 	"DisplayName": z.String().Min(1).Max(200).Required(),
 	"Status": z.StringLike[TenantStatus]().TestFunc(

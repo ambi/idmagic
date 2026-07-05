@@ -4,10 +4,17 @@ package spec
 
 import "time"
 
-const DefaultTenantID = "default"
+// DefaultTenantID は既定テナントの不変 UUID 代理キー (ADR-085)。tenant_id FK・
+// 内部のテナント参照はこの値を用いる。DefaultRealm は URL `/realms/{realm}/` 等の
+// 公開語彙に現れる既定 realm slug。
+const (
+	DefaultTenantID = "00000000-0000-4000-8000-000000000000"
+	DefaultRealm    = "default"
+)
 
 type Tenant struct {
 	ID                     string                  `json:"id"`
+	Realm                  string                  `json:"realm"`
 	DisplayName            string                  `json:"display_name"`
 	Status                 TenantStatus            `json:"status"`
 	PasswordPolicyOverride *PasswordPolicyOverride `json:"password_policy_override,omitempty"`

@@ -206,7 +206,7 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	now := time.Now().UTC()
 
 	validAgent := Agent{
-		ID: "agent_1", TenantID: "default", Name: "bot", Kind: AgentKindAutonomous,
+		ID: "agent_1", TenantID: DefaultTenantID, Name: "bot", Kind: AgentKindAutonomous,
 		OwnerUserID: "user_1", Status: AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
 	badAgent := validAgent
@@ -226,16 +226,16 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	validLoginReq := LoginRequest{RequestID: mustUUID(t), Username: "alice", Password: "pw"}
 	badLoginReq := LoginRequest{RequestID: "not-a-uuid", Username: "alice", Password: "pw"}
 
-	validGroup := Group{ID: "group_1", TenantID: "default", Name: "eng", CreatedAt: now, UpdatedAt: now}
+	validGroup := Group{ID: "group_1", TenantID: DefaultTenantID, Name: "eng", CreatedAt: now, UpdatedAt: now}
 	badGroup := validGroup
 	badGroup.Name = ""
 
 	validMember := GroupMember{GroupID: "group_1", UserID: "user_1", CreatedAt: now}
 	badMember := GroupMember{UserID: "user_1", CreatedAt: now}
 
-	validTenant := Tenant{ID: "acme", DisplayName: "Acme", Status: TenantStatusActive, CreatedAt: now, UpdatedAt: now}
+	validTenant := Tenant{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 	badTenant := validTenant
-	badTenant.ID = "admin" // admin は予約語で拒否される。
+	badTenant.Realm = "admin" // admin は予約語で realm として拒否される。
 
 	validClient := OAuth2Client{
 		ClientID: "demo", ClientType: ClientConfidential,
@@ -253,7 +253,7 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	badConsent.Scopes = nil
 
 	validDetailType := AuthorizationDetailType{
-		TenantID: "default", Type: "payment", DisplayTemplate: "{{.amount}}", State: DetailTypeEnabled,
+		TenantID: DefaultTenantID, Type: "payment", DisplayTemplate: "{{.amount}}", State: DetailTypeEnabled,
 		Schema:    AuthorizationDetailsSchema{Rules: []AuthorizationDetailFieldRule{{Name: "amount", Semantics: DetailFieldExact}}},
 		CreatedAt: now, UpdatedAt: now,
 	}

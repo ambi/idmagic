@@ -320,6 +320,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	now := testClock()
 	defaultTenant := &spec.Tenant{
 		ID:          spec.DefaultTenantID,
+		Realm:       spec.DefaultRealm,
 		DisplayName: "Default",
 		Status:      spec.TenantStatusActive,
 		CreatedAt:   now,

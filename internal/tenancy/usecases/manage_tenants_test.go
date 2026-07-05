@@ -39,14 +39,14 @@ func TestTenantLifecycle(t *testing.T) {
 	if tenant.Status != spec.TenantStatusActive {
 		t.Fatalf("status = %s", tenant.Status)
 	}
-	tenant, err = SetDisabled(context.Background(), repo, "acme", true, time.Now().UTC())
+	tenant, err = SetDisabled(context.Background(), repo, tenant.ID, true, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tenant.Status != spec.TenantStatusDisabled || tenant.DisabledAt == nil {
 		t.Fatalf("disabled tenant = %#v", tenant)
 	}
-	tenant, err = SetDisabled(context.Background(), repo, "acme", false, time.Now().UTC())
+	tenant, err = SetDisabled(context.Background(), repo, tenant.ID, false, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,14 +57,15 @@ func TestTenantLifecycle(t *testing.T) {
 
 func TestUpdateAppliesDisplayNameAndPolicyOverride(t *testing.T) {
 	repo := memory.NewTenantRepository()
-	if _, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC()); err != nil {
+	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())
+	if err != nil {
 		t.Fatal(err)
 	}
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 	newName := "Acme Inc."
 	minLen := 16
 	historyDepth := 10
-	updated, err := Update(context.Background(), repo, "acme", UpdateInput{
+	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
 		DisplayName: &newName,
 		PasswordPolicyOverride: &spec.PasswordPolicyOverride{
 			MinLength: &minLen, HistoryDepth: &historyDepth,
@@ -99,10 +100,11 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := memory.NewTenantRepository()
-			if _, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC()); err != nil {
+			created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())
+			if err != nil {
 				t.Fatal(err)
 			}
-			_, err := Update(context.Background(), repo, "acme", UpdateInput{
+			_, err = Update(context.Background(), repo, created.ID, UpdateInput{
 				PasswordPolicyOverride: &tc.override,
 			}, floor, time.Now().UTC())
 			if !errors.Is(err, ErrPolicyOverrideWeaker) {
@@ -114,19 +116,20 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 
 func TestUpdatePreservesUnsetFields(t *testing.T) {
 	repo := memory.NewTenantRepository()
-	if _, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC()); err != nil {
+	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())
+	if err != nil {
 		t.Fatal(err)
 	}
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 	minLen := 16
-	if _, err := Update(context.Background(), repo, "acme", UpdateInput{
+	if _, err := Update(context.Background(), repo, created.ID, UpdateInput{
 		PasswordPolicyOverride: &spec.PasswordPolicyOverride{MinLength: &minLen},
 	}, floor, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// 後続の display_name 単独更新で override が消えないこと。
 	newName := "Acme Renamed"
-	updated, err := Update(context.Background(), repo, "acme", UpdateInput{
+	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
 		DisplayName: &newName,
 	}, floor, time.Now().UTC())
 	if err != nil {
@@ -144,19 +147,20 @@ func TestUpdatePreservesUnsetFields(t *testing.T) {
 
 func TestUpdateClearsOverrideWhenAllFieldsZero(t *testing.T) {
 	repo := memory.NewTenantRepository()
-	if _, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC()); err != nil {
+	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())
+	if err != nil {
 		t.Fatal(err)
 	}
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 	// まず override を設定。
 	minLen := 20
-	if _, err := Update(context.Background(), repo, "acme", UpdateInput{
+	if _, err := Update(context.Background(), repo, created.ID, UpdateInput{
 		PasswordPolicyOverride: &spec.PasswordPolicyOverride{MinLength: &minLen},
 	}, floor, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// 空 override で送ると global default 継承に戻る。
-	updated, err := Update(context.Background(), repo, "acme", UpdateInput{
+	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
 		PasswordPolicyOverride: &spec.PasswordPolicyOverride{},
 	}, floor, time.Now().UTC())
 	if err != nil {

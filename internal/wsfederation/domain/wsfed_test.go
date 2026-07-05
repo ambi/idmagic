@@ -8,7 +8,7 @@ import (
 
 func sampleRP() spec.WsFedRelyingParty {
 	return spec.WsFedRelyingParty{
-		TenantID:  "default",
+		TenantID:  spec.DefaultTenantID,
 		Wtrealm:   "urn:federation:MicrosoftOnline",
 		ReplyURLs: []string{"https://login.microsoftonline.com/login.srf", "https://account.activedirectory.windowsazure.com/"},
 	}

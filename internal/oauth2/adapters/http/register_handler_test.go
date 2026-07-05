@@ -33,6 +33,7 @@ func newRegisterServer() registerFixture {
 	}
 	_ = deps.TenantRepo.Save(context.Background(), &spec.Tenant{
 		ID:     spec.DefaultTenantID,
+		Realm:  spec.DefaultRealm,
 		Status: spec.TenantStatusActive,
 	})
 

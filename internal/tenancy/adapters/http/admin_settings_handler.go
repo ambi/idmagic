@@ -31,6 +31,7 @@ func (d Deps) requireTenantAdmin(c *echo.Context) (*spec.User, error) {
 
 type AdminSettingsResponse struct {
 	TenantID               string                       `json:"tenant_id"`
+	Realm                  string                       `json:"realm"`
 	DisplayName            string                       `json:"display_name"`
 	PasswordPolicyOverride *spec.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	PasswordPolicyDefaults passwordPolicyDefaults       `json:"password_policy_defaults"`
@@ -100,6 +101,7 @@ func (d Deps) toAdminSettingsResponse(t *spec.Tenant) AdminSettingsResponse {
 	floor := d.tenantPolicyFloor()
 	return AdminSettingsResponse{
 		TenantID:               t.ID,
+		Realm:                  t.Realm,
 		DisplayName:            t.DisplayName,
 		PasswordPolicyOverride: t.PasswordPolicyOverride,
 		PasswordPolicyDefaults: passwordPolicyDefaults{

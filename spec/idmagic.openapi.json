@@ -9866,7 +9866,12 @@
         "type": "object",
         "properties": {
           "tenant_id": {
-            "type": "string"
+            "type": "string",
+            "description": "テナントの不変 UUID キー。"
+          },
+          "realm": {
+            "type": "string",
+            "description": "URL `/realms/{realm}/` に現れる slug。SCIM エンドポイント URL 等の組み立てに使う。"
           },
           "display_name": {
             "type": "string"
@@ -9881,10 +9886,11 @@
         "additionalProperties": false,
         "required": [
           "tenant_id",
+          "realm",
           "display_name",
           "password_policy_defaults"
         ],
-        "description": "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id / display_name / password_policy_override に加え、UI 表示と weaker\npolicy gating に使う objectives 標準値を併せて返す。\n"
+        "description": "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う objectives 標準値を併せて返す。\n"
       },
       "AdminUserCreateRequest": {
         "type": "object",
@@ -16445,9 +16451,14 @@
           "id": {
             "type": "string",
             "minLength": 1,
+            "description": "不変の UUID 代理キー。テナント生成時に採番し以後不変。全テーブルの tenant_id FK・spec.DefaultTenantID・内部のテナント参照はこの値を用いる。"
+          },
+          "realm": {
+            "type": "string",
+            "minLength": 1,
             "maxLength": 63,
             "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
-            "description": "URL-safe slug。予約語 admin は禁止。"
+            "description": "URL `/realms/{realm}/`・OIDC issuer 等の公開語彙に現れる mutable な一意識別子 (旧 id の slug)。予約語 admin は禁止。一意制約の範囲で変更可能 (rename)。"
           },
           "display_name": {
             "type": "string",
@@ -16480,6 +16491,7 @@
         "additionalProperties": false,
         "required": [
           "id",
+          "realm",
           "display_name",
           "status",
           "created_at",
@@ -16490,7 +16502,7 @@
       "TenantCreateRequest": {
         "type": "object",
         "properties": {
-          "id": {
+          "realm": {
             "type": "string",
             "minLength": 1,
             "maxLength": 63,
@@ -16504,10 +16516,10 @@
         },
         "additionalProperties": false,
         "required": [
-          "id",
+          "realm",
           "display_name"
         ],
-        "description": "管理者が新規テナントを登録する JSON リクエスト。`id` は URL-safe slug。"
+        "description": "管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。"
       },
       "TenantCreated": {
         "type": "object",
@@ -16727,7 +16739,12 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "テナントの不変 UUID キー。"
+          },
+          "realm": {
+            "type": "string",
+            "description": "URL `/realms/{realm}/` に現れる slug 識別子。"
           },
           "display_name": {
             "type": "string"
@@ -16754,6 +16771,7 @@
         "additionalProperties": false,
         "required": [
           "id",
+          "realm",
           "display_name",
           "status",
           "created_at"

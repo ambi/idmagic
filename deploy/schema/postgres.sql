@@ -52,26 +52,33 @@
 --   that references them (user_id, owner_user_id, group_id, agent_id, client_id,
 --   subject_id). Go keeps these as string; base.go registers a text codec for the
 --   uuid OID so UUID columns read/write as string. Ids whose value is decided
---   externally stay TEXT: entity_id, wtrealm, scim_id, kid. tenants.id stays TEXT
---   (mutable slug in /realms/{id}/; UUID + realm split is a separate WI).
+--   externally stay TEXT: entity_id, wtrealm, scim_id, kid. tenants.id is a UUID
+--   surrogate key; the mutable URL slug lives in tenants.realm (ADR-085). Non-FK
+--   tenant_id columns (audit_events, authentication_event_buckets) stay TEXT and
+--   hold the UUID as string (audit_events also carries a '' tenantless sentinel).
 -- - Finite value sets default to TEXT + CHECK; PostgreSQL enums are avoided due to
 --   migration friction. CHECK-less finite columns are constraint-addition
 --   candidates, added per-column with matching Go validation, not in bulk.
 
+-- tenants (ADR-085): id is an immutable UUID surrogate key referenced by every
+-- tenant_id FK; realm is the mutable URL slug shown in /realms/{realm}/ and the
+-- OIDC issuer, unique and renameable.
 CREATE TABLE tenants (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
+    realm TEXT NOT NULL,
     display_name TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
-    CONSTRAINT tenants_id_format CHECK (
-        id <> 'admin' AND id ~ '^[a-z0-9][a-z0-9-]{0,62}$'
+    CONSTRAINT tenants_realm_unique UNIQUE (realm),
+    CONSTRAINT tenants_realm_format CHECK (
+        realm <> 'admin' AND realm ~ '^[a-z0-9][a-z0-9-]{0,62}$'
     )
 );
 
 CREATE TABLE clients (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     client_id UUID PRIMARY KEY,
     client_secret_hash TEXT,
     client_name TEXT,
@@ -97,7 +104,7 @@ CREATE TABLE clients (
 
 CREATE TABLE users (
     id UUID PRIMARY KEY,
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     preferred_username TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     name TEXT,
@@ -156,7 +163,7 @@ CREATE TABLE refresh_tokens (
     hash TEXT NOT NULL,
     family_id UUID NOT NULL,
     parent_id UUID,
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     client_id UUID NOT NULL,
     user_id UUID NOT NULL,
     scopes JSONB NOT NULL,
@@ -187,7 +194,7 @@ CREATE INDEX refresh_tokens_tenant_client_idx ON refresh_tokens (tenant_id, clie
 
 CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     alg TEXT NOT NULL,
     provider TEXT NOT NULL DEFAULT 'Postgres',
     key_usage TEXT NOT NULL DEFAULT 'Signing',
@@ -247,7 +254,7 @@ CREATE INDEX password_reset_tokens_expires_at_idx ON password_reset_tokens (expi
 
 CREATE TABLE groups (
     id UUID PRIMARY KEY,
-    tenant_id TEXT NOT NULL,
+    tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -273,7 +280,7 @@ CREATE TABLE group_members (
 CREATE INDEX group_members_user_id_idx ON group_members (user_id);
 
 CREATE TABLE tenant_user_attribute_schemas (
-    tenant_id TEXT PRIMARY KEY,
+    tenant_id UUID PRIMARY KEY,
     attributes JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -296,7 +303,7 @@ CREATE INDEX email_change_tokens_expires_at_idx ON email_change_tokens (expires_
 
 CREATE TABLE audit_events (
     id UUID PRIMARY KEY,
-    tenant_id TEXT NOT NULL DEFAULT '',
+    tenant_id TEXT NOT NULL,
     type TEXT NOT NULL,
     user_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -327,7 +334,7 @@ CREATE INDEX authentication_event_buckets_window_idx
 
 CREATE TABLE agents (
     id UUID PRIMARY KEY,
-    tenant_id TEXT NOT NULL,
+    tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
     kind TEXT NOT NULL DEFAULT 'supervised',
@@ -365,7 +372,7 @@ CREATE INDEX agent_credential_bindings_client_idx
     ON agent_credential_bindings (client_id);
 
 CREATE TABLE authorization_detail_types (
-    tenant_id TEXT NOT NULL,
+    tenant_id UUID NOT NULL,
     type TEXT NOT NULL,
     description TEXT,
     schema JSONB NOT NULL DEFAULT jsonb_build_object('rules', jsonb_build_array()),
@@ -380,7 +387,7 @@ CREATE TABLE authorization_detail_types (
 );
 
 CREATE TABLE applications (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     application_id UUID NOT NULL,
     name TEXT NOT NULL,
     kind TEXT NOT NULL,
@@ -398,7 +405,7 @@ CREATE TABLE applications (
 );
 
 CREATE TABLE application_icons (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     application_id UUID NOT NULL,
     object_key TEXT NOT NULL,
     content_type TEXT NOT NULL,
@@ -413,7 +420,7 @@ CREATE TABLE application_icons (
 );
 
 CREATE TABLE application_sign_in_policies (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     application_id UUID NOT NULL,
     rules JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -425,7 +432,7 @@ CREATE TABLE application_sign_in_policies (
 );
 
 CREATE TABLE tenant_default_sign_in_policies (
-    tenant_id TEXT PRIMARY KEY,
+    tenant_id UUID PRIMARY KEY,
     rules JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -434,7 +441,7 @@ CREATE TABLE tenant_default_sign_in_policies (
 );
 
 CREATE TABLE application_assignments (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     application_id UUID NOT NULL,
     subject_type TEXT NOT NULL,
     subject_id UUID NOT NULL,
@@ -453,7 +460,7 @@ CREATE INDEX application_assignments_subject_idx
     ON application_assignments (tenant_id, subject_type, subject_id);
 
 CREATE TABLE saml_service_providers (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     entity_id TEXT NOT NULL,
     display_name TEXT NOT NULL DEFAULT '',
     acs_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -472,7 +479,7 @@ CREATE TABLE saml_service_providers (
 );
 
 CREATE TABLE wsfed_relying_parties (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     wtrealm TEXT NOT NULL,
     display_name TEXT NOT NULL DEFAULT '',
     reply_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -497,7 +504,7 @@ CREATE TABLE application_orderings (
 );
 
 CREATE TABLE application_categories (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     category_id UUID NOT NULL,
     name TEXT NOT NULL,
     position INTEGER NOT NULL DEFAULT 0,
@@ -510,7 +517,7 @@ CREATE TABLE application_categories (
 
 CREATE TABLE scim_tokens (
     id UUID PRIMARY KEY,
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     token_hash TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -521,7 +528,7 @@ CREATE TABLE scim_tokens (
 );
 
 CREATE TABLE scim_user_refs (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     scim_id TEXT NOT NULL,
     user_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -534,7 +541,7 @@ CREATE TABLE scim_user_refs (
 );
 
 CREATE TABLE scim_group_refs (
-    tenant_id TEXT NOT NULL DEFAULT 'default',
+    tenant_id UUID NOT NULL,
     scim_id TEXT NOT NULL,
     group_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

@@ -15,7 +15,7 @@ import (
 )
 
 type tenantCreateRequest struct {
-	ID          string `json:"id"`
+	Realm       string `json:"realm"`
 	DisplayName string `json:"display_name"`
 }
 
@@ -39,7 +39,7 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 	if _, err := d.requireSystemAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	tenant, err := d.TenantRepo.FindByID(c.Request().Context(), c.Param("tenant_id"))
+	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), c.Param("tenant_id"))
 	if err != nil {
 		return err
 	}
@@ -47,6 +47,19 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "テナントが存在しません")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, tenant)
+}
+
+// resolveTenantByRealm は admin API path の realm slug を UUID キーのテナントへ解決する
+// (ADR-085)。usecase は UUID キーで扱うため、handler で realm→UUID を写像する。
+func (d Deps) resolveTenantByRealm(c *echo.Context, realm string) (*spec.Tenant, error) {
+	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), realm)
+	if err != nil {
+		return nil, err
+	}
+	if tenant == nil {
+		return nil, tenantusecases.ErrTenantNotFound
+	}
+	return tenant, nil
 }
 
 func (d Deps) handleCreateTenant(c *echo.Context) error {
@@ -63,7 +76,7 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 	}
 	now := time.Now().UTC()
 	tenant, err := tenantusecases.Create(
-		c.Request().Context(), d.TenantRepo, input.ID, input.DisplayName, now,
+		c.Request().Context(), d.TenantRepo, input.Realm, input.DisplayName, now,
 	)
 	if err != nil {
 		return d.writeTenantError(c, err)
@@ -86,9 +99,13 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
+	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
+	if err != nil {
+		return d.writeTenantError(c, err)
+	}
 	now := time.Now().UTC()
 	tenant, err := tenantusecases.Update(
-		c.Request().Context(), d.TenantRepo, c.Param("tenant_id"),
+		c.Request().Context(), d.TenantRepo, target.ID,
 		tenantusecases.UpdateInput{
 			DisplayName:            input.DisplayName,
 			PasswordPolicyOverride: input.PasswordPolicyOverride,
@@ -152,9 +169,13 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
+	if err != nil {
+		return d.writeTenantError(c, err)
+	}
 	now := time.Now().UTC()
 	tenant, err := tenantusecases.SetDisabled(
-		c.Request().Context(), d.TenantRepo, c.Param("tenant_id"), disabled, now,
+		c.Request().Context(), d.TenantRepo, target.ID, disabled, now,
 	)
 	if err != nil {
 		return d.writeTenantError(c, err)

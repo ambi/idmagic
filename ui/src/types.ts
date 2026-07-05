@@ -356,6 +356,7 @@ export type AdminAgent = {
 
 export type AdminTenant = {
   id: string
+  realm: string
   display_name: string
   status: 'active' | 'disabled'
   password_policy_override?: {
@@ -390,6 +391,7 @@ export type AdminRole = {
 
 export type AdminSettings = {
   tenant_id: string
+  realm: string
   display_name: string
   password_policy_override?: {
     min_length?: number

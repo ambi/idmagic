@@ -14,7 +14,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import type { AdminAuditEvent } from '../../types'
 
-const DEFAULT_TENANT_ID = 'default'
+const DEFAULT_REALM = 'default'
 
 type EventKind = 'success' | 'fail' | 'aggregated'
 
@@ -64,12 +64,12 @@ const KIND_LABEL: Record<EventKind, string> = {
 export function AdminAuditEventsPage({
   actorUsername,
   actorRoles,
-  actorTenantID,
+  actorRealm,
   events: initial,
 }: {
   actorUsername?: string
   actorRoles: string[]
-  actorTenantID: string
+  actorRealm: string
   events: AdminAuditEvent[]
 }) {
   const [events, setEvents] = useState(initial)
@@ -83,7 +83,7 @@ export function AdminAuditEventsPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const canCrossTenant = actorRoles.includes('system_admin') && actorTenantID === DEFAULT_TENANT_ID
+  const canCrossTenant = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
 
   function buildQuery(): AdminAuditEventQuery {
     const parsedLimit = limit.trim() ? Number.parseInt(limit, 10) : undefined

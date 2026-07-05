@@ -21,7 +21,7 @@ export function AdminKeysPage({
   csrfToken: string
   actorUsername?: string
   actorRoles: string[]
-  actorTenantID: string
+  actorRealm: string
   keys: AdminKey[]
 }) {
   const [keys, setKeys] = useState(initial)

@@ -32,6 +32,18 @@ func (r *TenantRepository) FindByID(_ context.Context, id string) (*spec.Tenant,
 	return nil, nil
 }
 
+func (r *TenantRepository) FindByRealm(_ context.Context, realm string) (*spec.Tenant, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, tenant := range r.tenants {
+		if tenant.Realm == realm {
+			cloned := *tenant
+			return &cloned, nil
+		}
+	}
+	return nil, nil
+}
+
 func (r *TenantRepository) FindAll(_ context.Context) ([]*spec.Tenant, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

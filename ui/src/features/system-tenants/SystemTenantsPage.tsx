@@ -62,7 +62,7 @@ export function SystemTenantsPage({
     const data = new FormData(form)
     await run(async () => {
       const created = await createAdminTenant(csrfToken, {
-        id: String(data.get('id') ?? ''),
+        realm: String(data.get('realm') ?? ''),
         display_name: String(data.get('display_name') ?? ''),
       })
       form.reset()
@@ -75,7 +75,7 @@ export function SystemTenantsPage({
     const disabled = target.status === 'active'
     await run(
       async () => {
-        await setAdminTenantDisabled(csrfToken, target.id, disabled)
+        await setAdminTenantDisabled(csrfToken, target.realm, disabled)
         await refresh(target.id)
       },
       disabled ? 'テナントを無効化しました。' : 'テナントを再有効化しました。',
@@ -114,7 +114,7 @@ export function SystemTenantsPage({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">Realm</th>
                 <th className="px-4 py-3">表示名</th>
                 <th className="px-4 py-3">状態</th>
                 <th className="px-4 py-3" />
@@ -129,13 +129,13 @@ export function SystemTenantsPage({
                     selected?.id === t.id ? 'bg-blue-50/60' : ''
                   }`}
                 >
-                  <td className="px-4 py-3 font-mono text-xs">{t.id}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{t.realm}</td>
                   <td className="px-4 py-3">{t.display_name}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={t.status} />
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {t.id !== 'default' ? (
+                    {t.realm !== 'default' ? (
                       <Button
                         variant="ghost"
                         className={
@@ -178,10 +178,10 @@ export function SystemTenantsPage({
             <h2 className="text-base font-semibold text-slate-900">新規テナント</h2>
             <form onSubmit={handleCreate} className="mt-4 grid gap-4">
               <div className="grid gap-1.5">
-                <Label htmlFor="tenant-id">ID</Label>
+                <Label htmlFor="tenant-realm">Realm</Label>
                 <Input
-                  id="tenant-id"
-                  name="id"
+                  id="tenant-realm"
+                  name="realm"
                   required
                   pattern="^[a-z0-9][a-z0-9-]{0,62}$"
                   placeholder="acme"
@@ -235,6 +235,8 @@ function TenantDetailCard({
     <Card className="p-5">
       <h2 className="text-sm font-semibold text-slate-700">詳細</h2>
       <dl className="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-y-3 text-sm">
+        <dt className="text-slate-500">Realm</dt>
+        <dd className="font-mono text-xs">{tenant.realm}</dd>
         <dt className="text-slate-500">ID</dt>
         <dd className="font-mono text-xs">{tenant.id}</dd>
         <dt className="text-slate-500">表示名</dt>
@@ -291,7 +293,7 @@ function TenantEditor({
       if (maxLength.trim()) policy.max_length = Number.parseInt(maxLength, 10)
       if (historyDepth.trim()) policy.history_depth = Number.parseInt(historyDepth, 10)
       const hasPolicy = Object.keys(policy).length > 0
-      await updateAdminTenant(csrfToken, tenant.id, {
+      await updateAdminTenant(csrfToken, tenant.realm, {
         display_name: displayName !== tenant.display_name ? displayName : undefined,
         password_policy_override: hasPolicy ? policy : undefined,
       })

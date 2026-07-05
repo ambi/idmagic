@@ -30,7 +30,7 @@ func (r *fixedAuthnResolver) Resolve(
 func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 	tenants := memory.NewTenantRepository()
 	if err := tenants.Save(context.Background(), &spec.Tenant{
-		ID: "acme", DisplayName: "Acme", Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
+		ID: "acme", Realm: "acme", DisplayName: "Acme", Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -58,8 +58,8 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 	tenants := memory.NewTenantRepository()
 	now := time.Now().UTC()
 	for _, tenant := range []*spec.Tenant{
-		{ID: spec.DefaultTenantID, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now},
-		{ID: "acme", DisplayName: "Acme", Status: spec.TenantStatusDisabled, CreatedAt: now, DisabledAt: &now},
+		{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now},
+		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: spec.TenantStatusDisabled, CreatedAt: now, DisabledAt: &now},
 	} {
 		if err := tenants.Save(context.Background(), tenant); err != nil {
 			t.Fatal(err)
@@ -91,7 +91,7 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	tenants := memory.NewTenantRepository()
 	if err := tenants.Save(context.Background(), &spec.Tenant{
-		ID: spec.DefaultTenantID, DisplayName: "Default",
+		ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default",
 		Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
@@ -130,8 +130,8 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 	tenants := memory.NewTenantRepository()
 	now := time.Now().UTC()
 	for _, tenant := range []*spec.Tenant{
-		{ID: spec.DefaultTenantID, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now},
-		{ID: "acme", DisplayName: "Acme", Status: spec.TenantStatusActive, CreatedAt: now},
+		{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now},
+		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: spec.TenantStatusActive, CreatedAt: now},
 	} {
 		if err := tenants.Save(context.Background(), tenant); err != nil {
 			t.Fatal(err)

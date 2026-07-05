@@ -16,7 +16,7 @@ glossary:
       - term: Client
         reason: Tenant は境界、Client は境界内のアプリケーション。Tenant は人間/組織を表し、Client はそのテナント所属のアプリ。
   DefaultTenant:
-    definition: "起動時に自動作成される `id == \"default\"` のテナント。単一テナント運用時の互換と、未 prefix HTTP リクエストの解決先を兼ねる。"
+    definition: "起動時に自動作成される `realm == \"default\"` のテナント。id は固定 UUID の代理キー。単一テナント運用時の互換と、未 prefix HTTP リクエストの解決先を兼ねる。"
     aliases:
       - default tenant
       - デフォルトテナント
@@ -76,9 +76,14 @@ models:
         type: String
         constraints:
           - non_empty
+        description: "不変の UUID 代理キー。テナント生成時に採番し以後不変。全テーブルの tenant_id FK・spec.DefaultTenantID・内部のテナント参照はこの値を用いる。"
+      realm:
+        type: String
+        constraints:
+          - non_empty
           - max_length: 63
           - pattern: "^[a-z0-9][a-z0-9-]{0,62}$"
-        description: URL-safe slug。予約語 admin は禁止。
+        description: "URL `/realms/{realm}/`・OIDC issuer 等の公開語彙に現れる mutable な一意識別子 (旧 id の slug)。予約語 admin は禁止。一意制約の範囲で変更可能 (rename)。"
       display_name:
         type: String
         constraints:
@@ -192,10 +197,14 @@ models:
         description: objectives.PasswordPolicy.history_depth。
   AdminSettingsResponse:
     kind: value_object
-    description: "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id / display_name / password_policy_override に加え、UI 表示と weaker\npolicy gating に使う objectives 標準値を併せて返す。\n"
+    description: "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う objectives 標準値を併せて返す。\n"
     fields:
       tenant_id:
         type: String
+        description: テナントの不変 UUID キー。
+      realm:
+        type: String
+        description: URL `/realms/{realm}/` に現れる slug。SCIM エンドポイント URL 等の組み立てに使う。
       display_name:
         type: String
         annotations:
@@ -230,9 +239,9 @@ models:
         description: 新しい custom 定義一覧。空配列で全削除。
   TenantCreateRequest:
     kind: value_object
-    description: "管理者が新規テナントを登録する JSON リクエスト。`id` は URL-safe slug。"
+    description: "管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。"
     fields:
-      id:
+      realm:
         type: String
         constraints:
           - non_empty
@@ -267,6 +276,10 @@ models:
     fields:
       id:
         type: String
+        description: テナントの不変 UUID キー。
+      realm:
+        type: String
+        description: URL `/realms/{realm}/` に現れる slug 識別子。
       display_name:
         type: String
         annotations:
@@ -360,7 +373,7 @@ states:
         to: Active
 interfaces:
   ResolveTenant:
-    description: "HTTP リクエストの path から所属テナントを解決する内部インターフェース。\n`/realms/{tenant_id}/...` の prefix が無い場合は `default` テナントに解決する。\n不在テナントは 404 tenant_not_found、disabled テナントは OAuth/OIDC の\nprotocol route では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。\n"
+    description: "HTTP リクエストの path の realm slug から所属テナントを解決する内部インターフェース。\n`/realms/{realm}/...` の realm を UUID キーのテナントへ写像し、prefix が無い場合は\n`default` realm のテナントに解決する。issuer / URL prefix は解決した realm から組み立て、\n公開語彙を realm に保つ。不在テナントは 404 tenant_not_found、disabled テナントは\nOAuth/OIDC の protocol route では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。\n"
     input:
       path:
         type: String

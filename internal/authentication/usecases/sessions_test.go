@@ -14,7 +14,7 @@ import (
 func seedSession(t *testing.T, store *memory.SessionStore, id, sub string, authTime time.Time) {
 	t.Helper()
 	if err := store.Save(context.Background(), &spec.LoginSession{
-		ID: id, TenantID: "default", UserID: sub, AuthTime: authTime.Unix(),
+		ID: id, TenantID: spec.DefaultTenantID, UserID: sub, AuthTime: authTime.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: authTime.Add(time.Hour),
 	}); err != nil {

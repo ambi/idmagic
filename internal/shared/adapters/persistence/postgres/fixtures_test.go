@@ -53,7 +53,8 @@ func seedTenant(t *testing.T, db DB) *spec.Tenant {
 	t.Helper()
 	now := testClock()
 	tenant := &spec.Tenant{
-		ID:          uniqueID("tenant"),
+		ID:          newUUID(t),
+		Realm:       uniqueID("tenant"),
 		DisplayName: "Test Tenant",
 		Status:      spec.TenantStatusActive,
 		CreatedAt:   now,

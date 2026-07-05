@@ -44,23 +44,30 @@ func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now t
 	}
 	now = normalizeNow(now)
 	return repo.Save(ctx, &spec.Tenant{
-		ID: spec.DefaultTenantID, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+		ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default",
+		Status: spec.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	})
 }
 
-func Create(ctx context.Context, repo tenantports.TenantRepository, id, displayName string, now time.Time) (*spec.Tenant, error) {
+// Create は admin が指定した realm (URL slug) で新規テナントを作成する。不変 UUID キー
+// (id) はサーバが採番する (ADR-085)。realm の重複は ErrTenantConflict。
+func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displayName string, now time.Time) (*spec.Tenant, error) {
 	displayName = strings.TrimSpace(displayName)
 	if displayName == "" {
 		return nil, ErrDisplayNameEmpty
 	}
+	id, err := spec.NewUUIDv4()
+	if err != nil {
+		return nil, err
+	}
 	tenant := &spec.Tenant{
-		ID: strings.TrimSpace(id), DisplayName: displayName, Status: spec.TenantStatusActive,
+		ID: id, Realm: strings.TrimSpace(realm), DisplayName: displayName, Status: spec.TenantStatusActive,
 		CreatedAt: normalizeNow(now), UpdatedAt: normalizeNow(now),
 	}
 	if err := tenant.Validate(); err != nil {
 		return nil, ErrInvalidTenantID
 	}
-	existing, err := repo.FindByID(ctx, tenant.ID)
+	existing, err := repo.FindByRealm(ctx, tenant.Realm)
 	if err != nil {
 		return nil, err
 	}

@@ -338,7 +338,7 @@ export async function listAdminTenants(): Promise<AdminTenant[]> {
 }
 
 export type CreateAdminTenantInput = {
-  id: string
+  realm: string
   display_name: string
 }
 

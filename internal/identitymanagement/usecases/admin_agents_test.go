@@ -19,18 +19,18 @@ func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent
 	userRepo := memory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	_ = clientRepo.Save(context.Background(), &spec.OAuth2Client{
-		TenantID: "default", ClientID: "svc_client", ClientType: spec.ClientConfidential,
+		TenantID: spec.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{"https://app.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
 		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: spec.FapiNone, CreatedAt: now,
 	})
 	userRepo.Seed(&spec.User{
-		ID: "operator", TenantID: "default", PreferredUsername: "operator",
+		ID: "operator", TenantID: spec.DefaultTenantID, PreferredUsername: "operator",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&spec.User{
-		ID: "user_new", TenantID: "default", PreferredUsername: "user-new",
+		ID: "user_new", TenantID: spec.DefaultTenantID, PreferredUsername: "user-new",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 	events := &[]spec.DomainEvent{}
@@ -51,7 +51,7 @@ func agentEventTypes(events []spec.DomainEvent) []string {
 	return out
 }
 
-// defaultTenantCtx は tenancy.TenantID が "default" を返す素の context。
+// defaultTenantCtx は tenancy.TenantID が spec.DefaultTenantID を返す素の context。
 func defaultTenantCtx() context.Context {
 	return context.Background()
 }
@@ -244,7 +244,7 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
 	}
 
-	found, err := deps.AgentRepo.FindByClientID(ctx, "default", "svc_client")
+	found, err := deps.AgentRepo.FindByClientID(ctx, spec.DefaultTenantID, "svc_client")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 	if err := idmusecases.UnbindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
 		t.Fatal(err)
 	}
-	found, err = deps.AgentRepo.FindByClientID(ctx, "default", "svc_client")
+	found, err = deps.AgentRepo.FindByClientID(ctx, spec.DefaultTenantID, "svc_client")
 	if err != nil {
 		t.Fatal(err)
 	}

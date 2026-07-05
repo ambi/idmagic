@@ -11,6 +11,7 @@ import (
 
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
+	"github.com/ambi/idmagic/internal/tenancy"
 )
 
 type accountContextResponse struct {
@@ -18,6 +19,7 @@ type accountContextResponse struct {
 	ID                string   `json:"id"`
 	PreferredUsername string   `json:"preferred_username,omitempty"`
 	TenantID          string   `json:"tenant_id,omitempty"`
+	Realm             string   `json:"realm,omitempty"`
 	Roles             []string `json:"roles,omitempty"`
 }
 
@@ -39,6 +41,11 @@ func (d Deps) handleAccountContext(c *echo.Context) error {
 		return err
 	}
 	resp := accountContextResponse{CSRFToken: csrf, ID: authn.UserID}
+	// realm はリクエストが解決した現在テナントの公開 slug (ADR-085)。UI の system console
+	// gating (realm == "default") に使う。
+	if t := tenancy.Tenant(c.Request().Context()); t != nil {
+		resp.Realm = t.Realm
+	}
 	if d.UserRepo != nil {
 		if user, _ := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID); user != nil {
 			resp.PreferredUsername = user.PreferredUsername

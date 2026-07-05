@@ -15,7 +15,7 @@ export const Route = createFileRoute('/admin/keys')({
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       actorRoles: account.roles ?? [],
-      actorTenantID: account.tenant_id ?? '',
+      actorRealm: account.realm ?? '',
       keys: keys.keys,
     }
   },

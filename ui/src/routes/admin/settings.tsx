@@ -13,7 +13,7 @@ export const Route = createFileRoute('/admin/settings')({
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       actorRoles: account.roles ?? [],
-      actorTenantID: account.tenant_id ?? '',
+      actorRealm: account.realm ?? '',
       settings,
     }
   },

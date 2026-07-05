@@ -107,7 +107,7 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	e, groupRepo := newAdminGroupHandler(t)
 	ctx := httptest.NewRequest(http.MethodGet, "/", http.NoBody).Context()
-	group := &spec.Group{ID: "group_admins", TenantID: "default", Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
+	group := &spec.Group{ID: "group_admins", TenantID: spec.DefaultTenantID, Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
 	if err := groupRepo.Save(ctx, group); err != nil {
 		t.Fatal(err)
 	}

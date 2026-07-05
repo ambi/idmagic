@@ -91,7 +91,7 @@ func Register(e *echo.Echo, d Deps) {
 		AuthnResolver:     d.AuthnResolver,
 	}
 
-	controlPlane := e.Group("/realms/"+spec.DefaultTenantID, d.ResolveControlPlaneTenant)
+	controlPlane := e.Group("/realms/"+spec.DefaultRealm, d.ResolveControlPlaneTenant)
 	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,

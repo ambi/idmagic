@@ -12,40 +12,45 @@ import (
 
 func (d Deps) ResolveDefaultTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		return d.resolveTenant(c, next, spec.DefaultTenantID, "", true)
+		return d.resolveTenant(c, next, spec.DefaultRealm, true)
 	}
 }
 
 func (d Deps) ResolvePathTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		tenantID := c.Param("tenant_id")
-		return d.resolveTenant(c, next, tenantID, "/realms/"+tenantID, false)
+		return d.resolveTenant(c, next, c.Param("tenant_id"), false)
 	}
 }
 
-// ResolveControlPlaneTenant は固定で default テナントを resolve し、URL prefix
+// ResolveControlPlaneTenant は固定で default realm のテナントを resolve し、URL prefix
 // /realms/default を ctx に載せる (cookie path 整合のため)。/realms/default/admin/tenants
 // 等の control-plane 経路で使う。
 func (d Deps) ResolveControlPlaneTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		return d.resolveTenant(c, next, spec.DefaultTenantID, "/realms/"+spec.DefaultTenantID, false)
+		return d.resolveTenant(c, next, spec.DefaultRealm, false)
 	}
 }
 
-func (d Deps) resolveTenant(c *echo.Context, next echo.HandlerFunc, tenantID, urlPrefix string, bare bool) error {
+// resolveTenant は URL の realm slug からテナントを解決し、issuer / URL prefix を realm
+// 語彙で組み立てて ctx に載せる (ADR-085)。内部キーは tenant.ID (UUID)。
+func (d Deps) resolveTenant(c *echo.Context, next echo.HandlerFunc, realm string, bare bool) error {
+	urlPrefix := ""
+	if !bare {
+		urlPrefix = "/realms/" + realm
+	}
 	if d.TenantRepo == nil {
-		if tenantID != spec.DefaultTenantID {
+		if realm != spec.DefaultRealm {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "tenant_not_found"})
 		}
-		tenant := &spec.Tenant{ID: spec.DefaultTenantID, Status: spec.TenantStatusActive}
-		issuer := tenantIssuer(d.Issuer, tenant.ID)
+		tenant := &spec.Tenant{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, Status: spec.TenantStatusActive}
+		issuer := tenantIssuer(d.Issuer, tenant.Realm)
 		if bare && d.LegacyBareIssuer {
 			issuer = strings.TrimSuffix(d.Issuer, "/")
 		}
 		c.SetRequest(c.Request().WithContext(tenancy.WithTenant(c.Request().Context(), tenant, issuer, urlPrefix)))
 		return next(c)
 	}
-	tenant, err := d.TenantRepo.FindByID(c.Request().Context(), tenantID)
+	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), realm)
 	if err != nil {
 		return err
 	}
@@ -55,7 +60,7 @@ func (d Deps) resolveTenant(c *echo.Context, next echo.HandlerFunc, tenantID, ur
 	if tenant.Status != spec.TenantStatusActive || tenant.DisabledAt != nil {
 		return c.JSON(http.StatusBadRequest, OAuthErrorBody("invalid_request", "tenant is unavailable"))
 	}
-	issuer := tenantIssuer(d.Issuer, tenant.ID)
+	issuer := tenantIssuer(d.Issuer, tenant.Realm)
 	if bare && d.LegacyBareIssuer {
 		issuer = strings.TrimSuffix(d.Issuer, "/")
 	}
@@ -63,8 +68,8 @@ func (d Deps) resolveTenant(c *echo.Context, next echo.HandlerFunc, tenantID, ur
 	return next(c)
 }
 
-func tenantIssuer(base, tenantID string) string {
-	return strings.TrimSuffix(base, "/") + "/realms/" + tenantID
+func tenantIssuer(base, realm string) string {
+	return strings.TrimSuffix(base, "/") + "/realms/" + realm
 }
 
 func RequestTenantID(c *echo.Context) string {

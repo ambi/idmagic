@@ -640,7 +640,7 @@ XML signing capability だけを共有する。
 <article class="vocab-entry" id="context-tenancy-glossary-defaulttenant">
       <div class="vocab-name"><code class="name">DefaultTenant</code></div>
       <div class="vocab-body">
-        <p class="def">起動時に自動作成される `id == &quot;default&quot;` のテナント。単一テナント運用時の互換と、未 prefix HTTP リクエストの解決先を兼ねる。</p>
+        <p class="def">起動時に自動作成される `realm == &quot;default&quot;` のテナント。id は固定 UUID の代理キー。単一テナント運用時の互換と、未 prefix HTTP リクエストの解決先を兼ねる。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">default tenant</span> <span class="chip chip-alias">デフォルトテナント</span></div>
 
 
@@ -707,8 +707,14 @@ XML signing capability だけを共有する。
     <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td>不変の UUID 代理キー。テナント生成時に採番し以後不変。全テーブルの tenant_id FK・spec.DefaultTenantID・内部のテナント参照はこの値を用いる。</td>
+  </tr><tr>
+    <td><code class="name">realm</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 63</span> <span class="chip chip-constraint">pattern: ^[a-z0-9][a-z0-9-]{0,62}$</span></td>
-    <td>URL-safe slug。予約語 admin は禁止。</td>
+    <td>URL `/realms/{realm}/`・OIDC issuer 等の公開語彙に現れる mutable な一意識別子 (旧 id の slug)。予約語 admin は禁止。一意制約の範囲で変更可能 (rename)。</td>
   </tr><tr>
     <td><code class="name">display_name</code></td>
     <td><code class="type">String</code></td>
@@ -917,8 +923,8 @@ objectives.PasswordPolicy をテナント解決ポートで差し替えるため
 <article class="card" id="context-tenancy-model-adminsettingsresponse">
     <header><h3>AdminSettingsResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
     <p class="desc">`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、
-tenant_id / display_name / password_policy_override に加え、UI 表示と weaker
-policy gating に使う objectives 標準値を併せて返す。
+tenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、
+UI 表示と weaker policy gating に使う objectives 標準値を併せて返す。
 </p>
 
     <table class="fields">
@@ -928,7 +934,13 @@ policy gating に使う objectives 標準値を併せて返す。
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td></td>
+    <td>テナントの不変 UUID キー。</td>
+  </tr><tr>
+    <td><code class="name">realm</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>URL `/realms/{realm}/` に現れる slug。SCIM エンドポイント URL 等の組み立てに使う。</td>
   </tr><tr>
     <td><code class="name">display_name</code></td>
     <td><code class="type">String</code></td>
@@ -1009,12 +1021,12 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </article>
 <article class="card" id="context-tenancy-model-tenantcreaterequest">
     <header><h3>TenantCreateRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">管理者が新規テナントを登録する JSON リクエスト。`id` は URL-safe slug。</p>
+    <p class="desc">管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">id</code></td>
+    <td><code class="name">realm</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 63</span> <span class="chip chip-constraint">pattern: ^[a-z0-9][a-z0-9-]{0,62}$</span></td>
@@ -1060,7 +1072,13 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td></td>
+    <td>テナントの不変 UUID キー。</td>
+  </tr><tr>
+    <td><code class="name">realm</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>URL `/realms/{realm}/` に現れる slug 識別子。</td>
   </tr><tr>
     <td><code class="name">display_name</code></td>
     <td><code class="type">String</code></td>
@@ -1293,10 +1311,11 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="context-tenancy-iface-resolvetenant">
     <header><h3>ResolveTenant</h3></header>
-    <p class="desc">HTTP リクエストの path から所属テナントを解決する内部インターフェース。
-`/realms/{tenant_id}/...` の prefix が無い場合は `default` テナントに解決する。
-不在テナントは 404 tenant_not_found、disabled テナントは OAuth/OIDC の
-protocol route では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。
+    <p class="desc">HTTP リクエストの path の realm slug から所属テナントを解決する内部インターフェース。
+`/realms/{realm}/...` の realm を UUID キーのテナントへ写像し、prefix が無い場合は
+`default` realm のテナントに解決する。issuer / URL prefix は解決した realm から組み立て、
+公開語彙を realm に保つ。不在テナントは 404 tenant_not_found、disabled テナントは
+OAuth/OIDC の protocol route では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。
 </p>
 
     <div class="io">

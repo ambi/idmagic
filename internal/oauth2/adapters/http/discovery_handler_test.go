@@ -49,7 +49,7 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 	tenants := memory.NewTenantRepository()
 	for _, id := range []string{"tenant-a", "tenant-b"} {
 		if err := tenants.Save(context.Background(), &spec.Tenant{
-			ID: id, DisplayName: id, Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
+			ID: id, Realm: id, DisplayName: id, Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
 		}); err != nil {
 			t.Fatal(err)
 		}

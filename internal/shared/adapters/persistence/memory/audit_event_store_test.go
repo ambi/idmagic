@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, userID string) *ports.AuditEventRecord {
@@ -25,7 +26,7 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	for i, ev := range []*ports.AuditEventRecord{
 		newAuditEvent(t, "acme", "UserAuthenticated", base, "alice"),
 		newAuditEvent(t, "acme", "AccessTokenIssued", base.Add(2*time.Second), "alice"),
-		newAuditEvent(t, "default", "UserAuthenticated", base.Add(3*time.Second), "bob"),
+		newAuditEvent(t, spec.DefaultTenantID, "UserAuthenticated", base.Add(3*time.Second), "bob"),
 		newAuditEvent(t, "acme", "UserAuthenticated", base.Add(4*time.Second), "carol"),
 	} {
 		if err := store.Append(context.Background(), ev); err != nil {
