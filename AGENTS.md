@@ -14,6 +14,7 @@ Develop according to Regenerative Architecture.
 - Expect the `ra` CLI to discover the standard repository layout without a registry file.
 - Regenerate derived artifacts after SCL changes.
 - Keep scl.yaml free of Work Item, ADR, and commit ids.
+- If bounded contexts, global directory structures, or core architecture rules are added or modified, synchronize the map and details in [ARCHITECTURE.md](file:///Users/tn/src/idmagic/ARCHITECTURE.md).
 
 ## Commands via just
 
