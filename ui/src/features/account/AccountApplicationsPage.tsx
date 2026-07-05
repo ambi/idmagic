@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AuthenticationAPIError, revokeAccountConsent } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import type { AccountConsent } from '../../types'
@@ -60,7 +61,7 @@ export function AccountApplicationsPage({
       title="接続済みアプリ"
       description="あなたのアカウントへのアクセスを許可したアプリケーションです。不要なものは取り消せます。"
     >
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
       {consents.length === 0 ? (

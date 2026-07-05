@@ -29,6 +29,7 @@ import {
 import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import {
@@ -156,7 +157,7 @@ export function AdminAgentsPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
         <Card className="overflow-hidden">
@@ -590,15 +591,14 @@ function AgentDetailCard({
                 detailHref={detailHref}
                 busy={busy || localBusy}
                 onEdit={killed ? undefined : () => setEditing(true)}
-                menu={
-                  <DropdownMenuItem
-                    className="text-red-700"
-                    onSelect={() => setConfirmDelete(true)}
-                  >
-                    <IconTrash size={17} aria-hidden="true" />
-                    エージェントを削除
-                  </DropdownMenuItem>
-                }
+                actions={[
+                  {
+                    label: 'エージェントを削除',
+                    icon: IconTrash,
+                    onClick: () => setConfirmDelete(true),
+                    tone: 'danger',
+                  },
+                ]}
               />
             </div>
           ) : null}

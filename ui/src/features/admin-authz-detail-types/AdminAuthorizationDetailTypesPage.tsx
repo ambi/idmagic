@@ -9,6 +9,7 @@ import {
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -140,7 +141,7 @@ export function AdminAuthorizationDetailTypesPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
 
       {showForm ? (
         <Card className="p-4">

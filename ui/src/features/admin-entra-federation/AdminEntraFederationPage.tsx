@@ -9,6 +9,7 @@ import {
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -103,7 +104,7 @@ export function AdminEntraFederationPage({
       description="検証済みドメインを Microsoft Entra から本 IdP へ federation します。ドメインごとに UPN / ImmutableID / persistent NameID の claim preset を持つ relying party を作成します。"
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <Card className="grid gap-4 p-4">
         <div>

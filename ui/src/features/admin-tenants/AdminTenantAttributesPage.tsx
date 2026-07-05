@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AuthenticationAPIError, updateTenantUserAttributeSchema } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -121,7 +122,7 @@ export function AdminTenantAttributesPage({
     >
       <div className="grid gap-6">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {notice ? <Alert variant="success">{notice}</Alert> : null}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <Card className="overflow-hidden">
           <div className="border-b border-slate-200 p-5">

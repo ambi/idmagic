@@ -9,6 +9,7 @@ import {
 } from '../../api'
 import { SystemShell } from '../../components/SystemShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -107,7 +108,7 @@ export function SystemTenantsPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <Card className="overflow-hidden">

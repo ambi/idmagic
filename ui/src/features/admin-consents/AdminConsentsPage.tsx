@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { AuthenticationAPIError, listAdminConsents, revokeAdminConsent } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -78,7 +79,7 @@ export function AdminConsentsPage({
       description="ユーザーがアプリケーションに与えた scope の付与状況。取り消しは即時に反映されます。"
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <Card className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
         <Input

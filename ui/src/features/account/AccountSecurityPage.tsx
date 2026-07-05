@@ -17,6 +17,7 @@ import {
 import { AccountShell } from '../../components/AccountShell'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -109,7 +110,7 @@ export function AccountSecurityPage({
       title="セキュリティ"
       description="パスワードと二段階認証 (認証アプリ) を管理します。"
     >
-      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
       <Card className="flex flex-col gap-4 p-5">

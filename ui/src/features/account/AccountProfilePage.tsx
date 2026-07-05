@@ -3,6 +3,7 @@ import { AuthenticationAPIError, updateAccountProfile } from '../../api'
 import { attributeGroupKey, attributeGroupTitle, attributeLabel } from '../../lib/utils'
 import { AccountShell } from '../../components/AccountShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -126,7 +127,7 @@ export function AccountProfilePage({
     >
       <div className="grid gap-6">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {notice ? <Alert variant="success">{notice}</Alert> : null}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">

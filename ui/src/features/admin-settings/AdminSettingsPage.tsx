@@ -9,6 +9,7 @@ import {
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -213,7 +214,7 @@ function GeneralTab({
       </header>
       <div className="mt-5 grid gap-4">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {notice ? <Alert variant="success">{notice}</Alert> : null}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
         {!editing ? (
           <dl className="grid gap-3 sm:grid-cols-2">
             <ReadSetting label="テナント ID" value={settings.tenant_id} mono />
@@ -357,7 +358,7 @@ function PasswordPolicyTab({
       </header>
       <div className="mt-5 grid gap-4">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {notice ? <Alert variant="success">{notice}</Alert> : null}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
         {!editing ? (
           <dl className="grid gap-3 sm:grid-cols-3">
             <ReadSetting
@@ -566,7 +567,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
 
       <div className="mt-6 grid gap-6">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {notice ? <Alert variant="success">{notice}</Alert> : null}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <h3 className="text-sm font-semibold text-slate-900">接続情報</h3>

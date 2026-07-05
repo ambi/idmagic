@@ -42,6 +42,7 @@ import {
 import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
+import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -266,15 +267,7 @@ export function AdminUsersPage({
         </section>
 
         {error && <Alert>{error}</Alert>}
-        {notice && (
-          <div
-            role="status"
-            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-          >
-            <IconCheck size={18} aria-hidden="true" />
-            {notice}
-          </div>
-        )}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <Card className="overflow-hidden shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -660,15 +653,7 @@ export function AdminUserDetailPage({
         }
       >
         {error && <Alert>{error}</Alert>}
-        {notice && (
-          <div
-            role="status"
-            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-          >
-            <IconCheck size={18} aria-hidden="true" />
-            {notice}
-          </div>
-        )}
+        <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <div className="flex items-center gap-3">
           <UserAvatar user={user} large />
@@ -931,39 +916,31 @@ function UserDetails({
             detailHref={tenantURL(`/admin/users/${encodeURIComponent(user.id)}`)}
             busy={busy}
             onEdit={onEdit}
-            menu={
-              pending ? (
-                <>
-                  <DropdownMenuItem onSelect={onRestore}>
-                    <IconRefresh size={17} aria-hidden="true" />
-                    アカウントを復元
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-                  <DropdownMenuItem className="text-red-700" onSelect={onPurge}>
-                    <IconTrash size={17} aria-hidden="true" />
-                    完全に削除する
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuItem
-                    className={user.disabled_at ? undefined : 'text-red-700'}
-                    onSelect={onDisabled}
-                  >
-                    {user.disabled_at ? (
-                      <IconCheck size={17} aria-hidden="true" />
-                    ) : (
-                      <IconBan size={17} aria-hidden="true" />
-                    )}
-                    {user.disabled_at ? 'アカウントを再有効化' : 'アカウントを無効化'}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-                  <DropdownMenuItem className="text-red-700" onSelect={onDelete}>
-                    <IconTrash size={17} aria-hidden="true" />
-                    アカウントを削除
-                  </DropdownMenuItem>
-                </>
-              )
+            actions={
+              pending
+                ? [
+                    { label: 'アカウントを復元', icon: IconRefresh, onClick: onRestore },
+                    {
+                      label: '完全に削除する',
+                      icon: IconTrash,
+                      onClick: onPurge,
+                      tone: 'danger',
+                    },
+                  ]
+                : [
+                    {
+                      label: user.disabled_at ? 'アカウントを再有効化' : 'アカウントを無効化',
+                      icon: user.disabled_at ? IconCheck : IconBan,
+                      onClick: onDisabled,
+                      tone: user.disabled_at ? 'default' : 'danger',
+                    },
+                    {
+                      label: 'アカウントを削除',
+                      icon: IconTrash,
+                      onClick: onDelete,
+                      tone: 'danger',
+                    },
+                  ]
             }
           />
         </div>
