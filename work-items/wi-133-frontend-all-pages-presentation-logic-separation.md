@@ -16,6 +16,7 @@ risk: medium
 - 各画面から API 呼び出しや状態管理（Container）を分離し、Props を介して疎結合にする。
 - 各画面の入力バリデーションロジックを pure な関数（`ui/src/lib/validation.ts` など）へユーティリティ化して切り出す。
 - 切り出したすべての Presentation コンポーネントおよびユーティリティに対する Vitest/React Testing Library 単体テストを追加し、テストカバレッジを向上させる。
+- 今後新規追加される画面においても、このコンテナ・プレゼンタ分離パターンを原則として適用することを、[ui/ARCHITECTURE.md](file:///Users/tn/src/idmagic/ui/ARCHITECTURE.md) などの開発ドキュメントにガイドラインとして明記し、開発ルール化する。
 
 # Out of Scope
 - 各画面の挙動やスタイルの変更（UI の見た目や動作仕様は一切変更しない）。
