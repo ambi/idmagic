@@ -10,6 +10,7 @@ coverage.out
 ui/node_modules/
 ui/dist/
 node_modules/
+ui/coverage/
 
 # Env / secrets
 .env
