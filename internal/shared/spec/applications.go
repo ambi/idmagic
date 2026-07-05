@@ -214,9 +214,8 @@ type ApplicationAssignment struct {
 }
 
 // ApplicationOrdering は利用者ポータルでの手動並び順 (wi-70, ADR-069)。
-// tenant_id + user_sub をキーに、Application の表示順を application_id の順序列で持つ。
+// user_id (global unique) をキーに、Application の表示順を application_id の順序列で持つ。
 type ApplicationOrdering struct {
-	TenantID       string    `json:"tenant_id"`
 	UserID         string    `json:"user_id"`
 	ApplicationIDs []string  `json:"application_ids"`
 	CreatedAt      time.Time `json:"created_at"`

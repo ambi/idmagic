@@ -91,13 +91,12 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID str
 	}
 	nowAt := adminNow(now)
 	ordering := &spec.ApplicationOrdering{
-		TenantID:       tenancy.TenantID(ctx),
 		UserID:         userID,
 		ApplicationIDs: cleaned,
 		CreatedAt:      nowAt,
 		UpdatedAt:      nowAt,
 	}
-	if existing, err := deps.OrderingRepo.Get(ctx, ordering.TenantID, userID); err != nil {
+	if existing, err := deps.OrderingRepo.Get(ctx, tenancy.TenantID(ctx), userID); err != nil {
 		return nil, err
 	} else if existing != nil && !existing.CreatedAt.IsZero() {
 		ordering.CreatedAt = existing.CreatedAt

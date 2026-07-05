@@ -84,6 +84,28 @@ func seedUser(t *testing.T, db DB, tenantID string) *spec.User {
 	return user
 }
 
+// seedApplication は指定テナントに Application を作成して返す。application_id は UUID 列の
+// ため UUID を生成する。icon / assignment / sign-in policy は本 Application を FK 親に持つ。
+func seedApplication(t *testing.T, db DB, tenantID string) *spec.Application {
+	t.Helper()
+	now := testClock()
+	app := &spec.Application{
+		TenantID:      tenantID,
+		ApplicationID: newUUID(t),
+		Name:          uniqueID("app-name"),
+		Kind:          spec.ApplicationFederated,
+		Status:        spec.ApplicationActive,
+		Bindings:      []spec.ProtocolBinding{},
+		CategoryIDs:   []string{},
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := (&ApplicationRepository{Pool: db}).Save(context.Background(), app); err != nil {
+		t.Fatalf("seed application: %v", err)
+	}
+	return app
+}
+
 // seedClient は指定テナントに OAuth2 クライアントを作成して返す。
 func seedClient(t *testing.T, db DB, tenantID string) *spec.OAuth2Client {
 	t.Helper()

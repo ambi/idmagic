@@ -621,13 +621,10 @@ models:
         type: "PortalApplicationCategory[]"
   ApplicationOrdering:
     kind: entity
-    description: "利用者ポータルでの手動並び順 (ADR-069)。tenant_id + user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は同一テナントの既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、同一テナントかつ本人に割当済み visible な Application のみに制限する。\n"
+    description: "利用者ポータルでの手動並び順 (ADR-069)。user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は global unique な既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、本人に割当済み visible な Application のみに制限する。\n"
     identity:
-      - tenant_id
       - user_id
     fields:
-      tenant_id:
-        type: String
       user_id:
         type: String
       application_ids:
@@ -1343,9 +1340,9 @@ invariants:
     target: Application
     always: icon_served implies request.tenant_id == icon.tenant_id
   ApplicationReferencesStayTenantLocal:
-    description: "Application / ApplicationCategory / ApplicationAssignment / ApplicationOrdering は既存 Tenant に属し、割当 subject と ordering user は同一 tenant_id 内の live User または Group だけを指す。category_ids と protocol binding は配列 / JSONB 参照なので保存 use case が同一テナントの存在性を検証する。\n反例: tenant A の ApplicationAssignment が tenant B の User / Group を subject_id に持つ。\n"
+    description: "Application / ApplicationCategory / ApplicationAssignment は既存 Tenant に属し、割当 subject は同一 tenant_id 内の live User または Group だけを指す。ApplicationOrdering の user は global unique な既存 live User を指す。category_ids と protocol binding は配列 / JSONB 参照なので保存 use case が同一テナントの存在性を検証する。\n反例: tenant A の ApplicationAssignment が tenant B の User / Group を subject_id に持つ。\n"
     target: Application
-    always: "application.tenant_id in Tenants && assignment.subject in Subjects(assignment.tenant_id) && ordering.user_id in Users(ordering.tenant_id)"
+    always: "application.tenant_id in Tenants && assignment.subject in Subjects(assignment.tenant_id) && ordering.user_id in Users"
 permissions:
   AdminApplicationsManage:
     description: 所属テナント内の Application 一覧・取得・作成・更新・削除・binding 接続/解除・アイコンアップロード/削除。

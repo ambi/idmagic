@@ -393,15 +393,17 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Contex
 }
 
 // ApplicationOrderingRepository は利用者ごとのポータル手動並び順を PostgreSQL に永続化する
-// (wi-70, ADR-069)。application_ids は順序を保つ text[] で格納し、tenant 境界に閉じる。
+// (wi-70, ADR-069)。application_ids は順序を保つ text[] で格納する。user_id は global unique
+// なため tenant_id 列は持たず、行は user_id で一意に識別する (ADR-082)。tenantID 引数は port
+// 契約の互換のために残すが SQL では用いない。
 type ApplicationOrderingRepository struct{ Pool DB }
 
-func (r *ApplicationOrderingRepository) Get(ctx context.Context, tenantID, userID string) (*spec.ApplicationOrdering, error) {
+func (r *ApplicationOrderingRepository) Get(ctx context.Context, _ /*tenantID*/, userID string) (*spec.ApplicationOrdering, error) {
 	var o spec.ApplicationOrdering
 	err := r.Pool.QueryRow(ctx,
-		`SELECT tenant_id,user_id,application_ids,created_at,updated_at FROM application_orderings
- WHERE tenant_id=$1 AND user_id=$2`, tenantID, userID).
-		Scan(&o.TenantID, &o.UserID, &o.ApplicationIDs, &o.CreatedAt, &o.UpdatedAt)
+		`SELECT user_id,application_ids,created_at,updated_at FROM application_orderings
+ WHERE user_id=$1`, userID).
+		Scan(&o.UserID, &o.ApplicationIDs, &o.CreatedAt, &o.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -417,11 +419,11 @@ func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *spec.Applic
 		ids = []string{}
 	}
 	_, err := r.Pool.Exec(ctx, `
-INSERT INTO application_orderings (tenant_id,user_id,application_ids,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5)
-ON CONFLICT (tenant_id,user_id) DO UPDATE SET
+INSERT INTO application_orderings (user_id,application_ids,created_at,updated_at)
+VALUES ($1,$2,$3,$4)
+ON CONFLICT (user_id) DO UPDATE SET
  application_ids=EXCLUDED.application_ids,updated_at=EXCLUDED.updated_at`,
-		o.TenantID, o.UserID, ids, o.CreatedAt, o.UpdatedAt)
+		o.UserID, ids, o.CreatedAt, o.UpdatedAt)
 	return err
 }
 

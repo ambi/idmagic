@@ -23,6 +23,8 @@
    `PRIMARY KEY (client_id)` とし、`tenant_id` 列はテナント所属を示す属性カラム（単なる参照制約）に降格する。
 3. **子テーブルの複合外部キー制約（Composite FK）を廃止する。**
    `consents` や `refresh_tokens` から、`client_id` 参照のために持っていた `tenant_id` との複合制約を廃止し、単純な `FOREIGN KEY (client_id) REFERENCES clients(client_id)` に変更する。これに伴い、`consents` や `refresh_tokens` の複合主キー構成も簡素化する。
+4. **`user_id` だけに従属する子テーブルからも `tenant_id` を排除する。**
+   `users.id` は idp-ADR-082 でグローバルユニークになったため、`user_id` を親に持つ子は tenant を親から辿れる。検索・保持・監査で `tenant_id` を必要としない子は `tenant_id` 列と複合キーを持たず、`user_id`（グローバルユニーク）だけで行を識別する。対象は `application_orderings`（PK `user_id`）と、既に本方針に従う `mfa_factors` / `password_history` / `password_reset_tokens` / `email_change_tokens` / `group_members`。port の署名は互換のため `tenantID` 引数を残してよいが、SQL では用いない（`consents` と同じ扱い）。`refresh_tokens` はテナント別トークン検索の index のために `tenant_id` を保持する例外。
 
 ## 却下した代替案
 
@@ -36,6 +38,8 @@
 - **Postgres スキーマ (`postgres.sql`)**:
   - `clients` の主キーを `client_id` 単一に変更。
   - `consents` や `refresh_tokens` から複合 FK を排除し、単一の `client_id` 参照にする。
+  - `application_orderings` は `tenant_id` 列を持たず PK を `user_id` 単一とし、FK は
+    `users(id)` への単純参照とする。ファイル冒頭の tenant_id key policy コメントも本方針に更新する。
 - **Go コードの実装**:
   - `OAuth2ClientRepository.FindByID` などの引数から `tenant_id` を除外し、グローバルな `client_id` だけで検索可能にする。
   - 各種ユースケースやハンドラー of /api/admin/clients などの引数・ロジックの簡素化。

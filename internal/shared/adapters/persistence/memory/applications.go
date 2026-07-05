@@ -371,7 +371,7 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(_ context.Context,
 
 type ApplicationOrderingRepository struct {
 	mu        sync.RWMutex
-	orderings map[string]*spec.ApplicationOrdering // key: tenantKey(tenant_id, user_sub)
+	orderings map[string]*spec.ApplicationOrdering // key: user_id (global unique)
 }
 
 func NewApplicationOrderingRepository() *ApplicationOrderingRepository {
@@ -384,10 +384,10 @@ func cloneOrdering(o *spec.ApplicationOrdering) *spec.ApplicationOrdering {
 	return &cloned
 }
 
-func (r *ApplicationOrderingRepository) Get(_ context.Context, tenantID, userID string) (*spec.ApplicationOrdering, error) {
+func (r *ApplicationOrderingRepository) Get(_ context.Context, _ /*tenantID*/, userID string) (*spec.ApplicationOrdering, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	o := r.orderings[tenantKey(tenantID, userID)]
+	o := r.orderings[userID]
 	if o == nil {
 		return nil, nil
 	}
@@ -397,7 +397,7 @@ func (r *ApplicationOrderingRepository) Get(_ context.Context, tenantID, userID 
 func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *spec.ApplicationOrdering) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := tenantKey(ordering.TenantID, ordering.UserID)
+	key := ordering.UserID
 	cloned := cloneOrdering(ordering)
 	if existing := r.orderings[key]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt

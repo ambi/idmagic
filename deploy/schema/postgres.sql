@@ -6,17 +6,24 @@
 -- - A User's own identifier is `id`; a reference to a User from another table is
 --   `user_id` (an owner reference is `owner_user_id`).
 
--- tenant_id key policy (ADR-082): keep tenant_id on a table only when it serves
--- search, a constraint, retention, or audit; do not add it just because tenant
--- is reachable through a parent. Four cases:
--- - tenant-owned aggregate / tenant-scoped config: tenant_id is part of the PK or
---   a unique key (users, groups, clients, applications).
--- - child of a tenant-scoped natural key: carry tenant_id and use a composite FK
---   so the DB rejects tenant mismatches (consents, refresh_tokens,
---   application_orderings, agents.owner_user_id, scim_user_refs, scim_group_refs).
--- - child of a globally unique parent: rely on the global key and omit tenant_id
---   unless per-tenant search/retention is required (mfa_factors, password_history,
---   password_reset_tokens, email_change_tokens, group_members).
+-- tenant_id key policy (ADR-082, simplified by ADR-083): users.id and
+-- clients.client_id are system-generated globally unique identifiers, so child
+-- rows reference them by their global key and tenant-scoped composite foreign keys
+-- are no longer used. Keep tenant_id on a table only when it serves search, a
+-- constraint/uniqueness, retention, or audit; do not add it just because tenant is
+-- reachable through a globally unique parent. Cases:
+-- - tenant-owned aggregate / tenant-scoped config: carry tenant_id, often as part
+--   of the PK or a unique key (users, groups, clients, applications, agents,
+--   signing_keys, application_categories, saml_service_providers,
+--   wsfed_relying_parties, *_sign_in_policies).
+-- - external tenant-scoped natural key: tenant_id is part of the PK because the
+--   external id is only unique within a tenant (scim_user_refs, scim_group_refs on
+--   (tenant_id, scim_id)).
+-- - child of a globally unique parent: rely on the global key (user_id / client_id)
+--   and omit tenant_id unless per-tenant search/retention needs it. Omitted:
+--   consents, application_orderings, mfa_factors, password_history,
+--   password_reset_tokens, email_change_tokens, group_members. Kept for per-tenant
+--   search: refresh_tokens (tenant token indexes).
 -- - append-only / audit / outbox / throttling: decide by emit-time tenant, query
 --   boundary, and retention (audit_events, authentication_event_buckets, outbox).
 

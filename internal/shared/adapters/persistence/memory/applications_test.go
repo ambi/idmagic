@@ -302,7 +302,7 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 	repo := NewApplicationOrderingRepository()
 
 	ordering := &spec.ApplicationOrdering{
-		TenantID: "acme", UserID: "u1", ApplicationIDs: []string{"app-1", "app-2"},
+		UserID: "u1", ApplicationIDs: []string{"app-1", "app-2"},
 	}
 	if err := repo.Save(ctx, ordering); err != nil {
 		t.Fatal(err)
