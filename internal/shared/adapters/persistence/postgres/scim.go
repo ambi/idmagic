@@ -61,10 +61,10 @@ func (r *ScimRepository) DeleteToken(ctx context.Context, tenantID, id string) e
 
 func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef) error {
 	_, err := r.Pool.Exec(ctx, `
-		INSERT INTO scim_user_refs (tenant_id, scim_id, user_sub)
+		INSERT INTO scim_user_refs (tenant_id, scim_id, user_id)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (tenant_id, scim_id) DO UPDATE SET
-			user_sub=EXCLUDED.user_sub,
+			user_id=EXCLUDED.user_id,
 			updated_at=now()
 	`, ref.TenantID, ref.ScimID, ref.UserID)
 	return err
@@ -72,7 +72,7 @@ func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef
 
 func (r *ScimRepository) FindUserRefByScimID(ctx context.Context, tenantID, scimID string) (*ports.ScimUserRef, error) {
 	var ref ports.ScimUserRef
-	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_sub FROM scim_user_refs WHERE tenant_id=$1 AND scim_id=$2", tenantID, scimID).
+	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_id FROM scim_user_refs WHERE tenant_id=$1 AND scim_id=$2", tenantID, scimID).
 		Scan(&ref.TenantID, &ref.ScimID, &ref.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -85,7 +85,7 @@ func (r *ScimRepository) FindUserRefByScimID(ctx context.Context, tenantID, scim
 
 func (r *ScimRepository) FindUserRefByUserID(ctx context.Context, tenantID, userID string) (*ports.ScimUserRef, error) {
 	var ref ports.ScimUserRef
-	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_sub FROM scim_user_refs WHERE tenant_id=$1 AND user_sub=$2", tenantID, userID).
+	err := r.Pool.QueryRow(ctx, "SELECT tenant_id, scim_id, user_id FROM scim_user_refs WHERE tenant_id=$1 AND user_id=$2", tenantID, userID).
 		Scan(&ref.TenantID, &ref.ScimID, &ref.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

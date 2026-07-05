@@ -17,8 +17,8 @@ type ConsentRepository struct{ Pool DB }
 func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*spec.Consent, error) {
 	var c spec.Consent
 	var scopes []byte
-	err := r.Pool.QueryRow(ctx, `SELECT sub,client_id,scopes,granted_at,expires_at,revoked_at
-FROM consents WHERE sub=$1 AND client_id=$2`, sub, clientID).
+	err := r.Pool.QueryRow(ctx, `SELECT user_id,client_id,scopes,granted_at,expires_at,revoked_at
+FROM consents WHERE user_id=$1 AND client_id=$2`, sub, clientID).
 		Scan(&c.UserID, &c.ClientID, &scopes, &c.GrantedAt, &c.ExpiresAt, &c.RevokedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -41,9 +41,9 @@ FROM consents WHERE sub=$1 AND client_id=$2`, sub, clientID).
 }
 
 func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*spec.Consent, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT c.sub,c.client_id,c.scopes,c.granted_at,c.expires_at,c.revoked_at
-FROM consents c JOIN users u ON c.sub=u.id
-WHERE u.tenant_id=$1 ORDER BY c.sub,c.client_id`, tenantID)
+	rows, err := r.Pool.Query(ctx, `SELECT c.user_id,c.client_id,c.scopes,c.granted_at,c.expires_at,c.revoked_at
+FROM consents c JOIN users u ON c.user_id=u.id
+WHERE u.tenant_id=$1 ORDER BY c.user_id,c.client_id`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +81,8 @@ func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *spec.C
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `INSERT INTO consents
-(sub,client_id,scopes,granted_at,expires_at,revoked_at) VALUES ($1,$2,$3,$4,$5,$6)
-ON CONFLICT (sub,client_id) DO UPDATE SET scopes=EXCLUDED.scopes,
+(user_id,client_id,scopes,granted_at,expires_at,revoked_at) VALUES ($1,$2,$3,$4,$5,$6)
+ON CONFLICT (user_id,client_id) DO UPDATE SET scopes=EXCLUDED.scopes,
 granted_at=EXCLUDED.granted_at,expires_at=EXCLUDED.expires_at,revoked_at=EXCLUDED.revoked_at,updated_at=now()`,
 		c.UserID, c.ClientID, string(scopes), c.GrantedAt, c.ExpiresAt, c.RevokedAt)
 	return err
@@ -90,11 +90,11 @@ granted_at=EXCLUDED.granted_at,expires_at=EXCLUDED.expires_at,revoked_at=EXCLUDE
 
 func (r *ConsentRepository) Revoke(ctx context.Context, tenantID, sub, clientID string) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE consents SET revoked_at=now(),updated_at=now()
-WHERE sub=$1 AND client_id=$2 AND revoked_at IS NULL`, sub, clientID)
+WHERE user_id=$1 AND client_id=$2 AND revoked_at IS NULL`, sub, clientID)
 	return err
 }
 
 func (r *ConsentRepository) DeleteAllForSub(ctx context.Context, sub string) error {
-	_, err := r.Pool.Exec(ctx, "DELETE FROM consents WHERE sub=$1", sub)
+	_, err := r.Pool.Exec(ctx, "DELETE FROM consents WHERE user_id=$1", sub)
 	return err
 }

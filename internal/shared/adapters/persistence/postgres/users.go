@@ -18,11 +18,11 @@ type UserRepository struct{ Pool DB }
 const notDeleted = " AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')"
 
 func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*spec.User, error) {
-	return scanUser(r.Pool.QueryRow(ctx, userSelect+" WHERE sub=$1"+notDeleted, sub))
+	return scanUser(r.Pool.QueryRow(ctx, userSelect+" WHERE id=$1"+notDeleted, sub))
 }
 
 func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub string) (*spec.User, error) {
-	return scanUser(r.Pool.QueryRow(ctx, userSelect+" WHERE sub=$1", sub))
+	return scanUser(r.Pool.QueryRow(ctx, userSelect+" WHERE id=$1", sub))
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username string) (*spec.User, error) {
@@ -66,10 +66,10 @@ func (r *UserRepository) Save(ctx context.Context, u *spec.User) error {
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `
-INSERT INTO users (sub,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+INSERT INTO users (id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
  email_verified,mfa_enrolled,roles,lifecycle,attributes,created_at,updated_at)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-ON CONFLICT (sub) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
+ON CONFLICT (id) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
  password_hash=EXCLUDED.password_hash,name=EXCLUDED.name,given_name=EXCLUDED.given_name,
  family_name=EXCLUDED.family_name,email=EXCLUDED.email,email_verified=EXCLUDED.email_verified,
  mfa_enrolled=EXCLUDED.mfa_enrolled,roles=EXCLUDED.roles,lifecycle=EXCLUDED.lifecycle,
@@ -79,7 +79,7 @@ ON CONFLICT (sub) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
 	return err
 }
 
-const userSelect = `SELECT sub,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+const userSelect = `SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,roles,lifecycle,attributes,created_at,updated_at FROM users`
 
 func scanUser(row rowScanner) (*spec.User, error) {

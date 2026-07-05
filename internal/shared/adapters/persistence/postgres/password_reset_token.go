@@ -22,11 +22,11 @@ func (s *PasswordResetTokenStore) Save(
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, "DELETE FROM password_reset_tokens WHERE sub=$1", record.Sub); err != nil {
+	if _, err := tx.Exec(ctx, "DELETE FROM password_reset_tokens WHERE user_id=$1", record.Sub); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO password_reset_tokens
-(token_hash,sub,created_at,expires_at) VALUES ($1,$2,$3,$4)`,
+(token_hash,user_id,created_at,expires_at) VALUES ($1,$2,$3,$4)`,
 		record.TokenHash, record.Sub, record.CreatedAt, record.ExpiresAt); err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (s *PasswordResetTokenStore) Consume(
 	var record authnports.PasswordResetTokenRecord
 	err := s.Pool.QueryRow(ctx, `DELETE FROM password_reset_tokens
 WHERE token_hash=$1
-RETURNING sub,token_hash,created_at,expires_at`, tokenHash).
+RETURNING user_id,token_hash,created_at,expires_at`, tokenHash).
 		Scan(&record.Sub, &record.TokenHash, &record.CreatedAt, &record.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

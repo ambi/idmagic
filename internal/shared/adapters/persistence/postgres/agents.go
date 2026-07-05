@@ -14,7 +14,7 @@ import (
 // ON DELETE CASCADE FK を持つため、DeleteAgent の cascade は DB 側でも保証される。
 type AgentRepository struct{ Pool DB }
 
-const agentSelect = `SELECT id,tenant_id,name,description,kind,owner_sub,status,roles,
+const agentSelect = `SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at FROM agents`
 
 func scanAgent(row rowScanner) (*spec.Agent, error) {
@@ -60,11 +60,11 @@ func (r *AgentRepository) Save(ctx context.Context, agent *spec.Agent) error {
 		roles = []string{}
 	}
 	_, err := r.Pool.Exec(ctx, `
-INSERT INTO agents (id,tenant_id,name,description,kind,owner_sub,status,roles,
+INSERT INTO agents (id,tenant_id,name,description,kind,owner_user_id,status,roles,
  created_at,updated_at,disabled_at,killed_at)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,
- kind=EXCLUDED.kind,owner_sub=EXCLUDED.owner_sub,status=EXCLUDED.status,roles=EXCLUDED.roles,
+ kind=EXCLUDED.kind,owner_user_id=EXCLUDED.owner_user_id,status=EXCLUDED.status,roles=EXCLUDED.roles,
  updated_at=EXCLUDED.updated_at,disabled_at=EXCLUDED.disabled_at,killed_at=EXCLUDED.killed_at`,
 		agent.ID, agent.TenantID, agent.Name, agent.Description, agent.Kind, agent.OwnerUserID,
 		agent.Status, roles, agent.CreatedAt, agent.UpdatedAt, agent.DisabledAt, agent.KilledAt)
@@ -123,6 +123,6 @@ WHERE agent_id=$2 AND client_id=$3
 func (r *AgentRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*spec.Agent, error) {
 	return scanAgent(r.Pool.QueryRow(ctx, agentSelect+`
 WHERE tenant_id=$1 AND id IN (
-  SELECT agent_id FROM agent_credential_bindings WHERE tenant_id=$1 AND client_id=$2
+  SELECT agent_id FROM agent_credential_bindings WHERE client_id=$2
 ) LIMIT 1`, tenantID, clientID))
 }

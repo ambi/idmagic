@@ -73,9 +73,9 @@ func (r *GroupRepository) Delete(ctx context.Context, tenantID, id string) error
 
 func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*spec.GroupMember, error) {
 	rows, err := r.Pool.Query(ctx, `
-SELECT gm.group_id,gm.user_sub,gm.created_at
+SELECT gm.group_id,gm.user_id,gm.created_at
 FROM group_members gm JOIN groups g ON g.id=gm.group_id
-WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_sub`, tenantID, groupID)
+WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_id`, tenantID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID
 	rows, err := r.Pool.Query(ctx, `
 SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.created_at,g.updated_at
 FROM groups g JOIN group_members gm ON gm.group_id=g.id
-WHERE g.tenant_id=$1 AND gm.user_sub=$2 ORDER BY g.name`, tenantID, userID)
+WHERE g.tenant_id=$1 AND gm.user_id=$2 ORDER BY g.name`, tenantID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +121,8 @@ WHERE g.tenant_id=$1 AND gm.group_id=$2`, tenantID, groupID).Scan(&count)
 
 func (r *GroupRepository) AddMember(ctx context.Context, member *spec.GroupMember) (bool, error) {
 	tag, err := r.Pool.Exec(ctx, `
-INSERT INTO group_members (group_id,user_sub,created_at) VALUES ($1,$2,$3)
-ON CONFLICT (group_id,user_sub) DO NOTHING`,
+INSERT INTO group_members (group_id,user_id,created_at) VALUES ($1,$2,$3)
+ON CONFLICT (group_id,user_id) DO NOTHING`,
 		member.GroupID, member.UserID, member.CreatedAt)
 	if err != nil {
 		return false, err
@@ -133,7 +133,7 @@ ON CONFLICT (group_id,user_sub) DO NOTHING`,
 func (r *GroupRepository) RemoveMember(ctx context.Context, tenantID, groupID, userID string) (bool, error) {
 	tag, err := r.Pool.Exec(ctx, `
 DELETE FROM group_members
-WHERE group_id=$2 AND user_sub=$3
+WHERE group_id=$2 AND user_id=$3
   AND group_id IN (SELECT id FROM groups WHERE tenant_id=$1 AND id=$2)`,
 		tenantID, groupID, userID)
 	if err != nil {

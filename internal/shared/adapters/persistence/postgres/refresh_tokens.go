@@ -55,11 +55,11 @@ func (s *RefreshTokenStore) RevokeFamily(ctx context.Context, familyID string) e
 }
 
 func (s *RefreshTokenStore) DeleteAllForSub(ctx context.Context, sub string) error {
-	_, err := s.Pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE sub=$1", sub)
+	_, err := s.Pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE user_id=$1", sub)
 	return err
 }
 
-const refreshSelect = `SELECT id::text,tenant_id,hash,family_id::text,parent_id::text,client_id,sub,scopes,
+const refreshSelect = `SELECT id::text,tenant_id,hash,family_id::text,parent_id::text,client_id,user_id,scopes,
 issued_at,expires_at,absolute_expires_at,revoked,rotated,sender_constraint FROM refresh_tokens`
 
 func scanRefresh(row rowScanner) (*spec.RefreshTokenRecord, error) {
@@ -100,7 +100,7 @@ func insertRefresh(ctx context.Context, db interface {
 		return err
 	}
 	_, err = db.Exec(ctx, `INSERT INTO refresh_tokens
-(id,tenant_id,hash,family_id,parent_id,client_id,sub,scopes,issued_at,expires_at,absolute_expires_at,
+(id,tenant_id,hash,family_id,parent_id,client_id,user_id,scopes,issued_at,expires_at,absolute_expires_at,
 revoked,rotated,sender_constraint) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NULLIF($14,'null')::jsonb)`,
 		rec.ID, rec.TenantID, rec.Hash, rec.FamilyID, rec.ParentID, rec.ClientID, rec.UserID, string(scopes),
 		rec.IssuedAt, rec.ExpiresAt, rec.AbsoluteExpiresAt, rec.Revoked, rec.Rotated, string(constraint))

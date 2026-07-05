@@ -42,7 +42,7 @@ INSERT INTO clients (
  id_token_signed_response_alg,require_pushed_authorization_requests,dpop_bound_access_tokens,
  fapi_profile,first_party,created_at,updated_at
 ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12,'null')::jsonb,$13,$14,$15,$16,$17,$18,$19,$20)
-ON CONFLICT (tenant_id,client_id) DO UPDATE SET
+ON CONFLICT (client_id) DO UPDATE SET
  client_secret_hash=COALESCE(EXCLUDED.client_secret_hash,clients.client_secret_hash),
  client_name=EXCLUDED.client_name,client_type=EXCLUDED.client_type,
  redirect_uris=EXCLUDED.redirect_uris,grant_types=EXCLUDED.grant_types,

@@ -13,7 +13,7 @@ import (
 type MfaFactorRepository struct{ Pool DB }
 
 func (r *MfaFactorRepository) ListBySub(ctx context.Context, sub string) ([]*spec.MfaFactor, error) {
-	rows, err := r.Pool.Query(ctx, mfaFactorSelect+" WHERE sub=$1 ORDER BY created_at", sub)
+	rows, err := r.Pool.Query(ctx, mfaFactorSelect+" WHERE user_id=$1 ORDER BY created_at", sub)
 	if err != nil {
 		return nil, err
 	}
@@ -34,29 +34,29 @@ func (r *MfaFactorRepository) Find(
 	sub string,
 	factorType spec.MfaFactorType,
 ) (*spec.MfaFactor, error) {
-	return scanMfaFactor(r.Pool.QueryRow(ctx, mfaFactorSelect+" WHERE sub=$1 AND type=$2", sub, factorType))
+	return scanMfaFactor(r.Pool.QueryRow(ctx, mfaFactorSelect+" WHERE user_id=$1 AND type=$2", sub, factorType))
 }
 
 func (r *MfaFactorRepository) Save(ctx context.Context, factor *spec.MfaFactor) error {
 	_, err := r.Pool.Exec(ctx, `
-INSERT INTO mfa_factors (sub,type,secret,label,created_at,last_used_at)
+INSERT INTO mfa_factors (user_id,type,secret,label,created_at,last_used_at)
 VALUES ($1,$2,$3,$4,$5,$6)
-ON CONFLICT (sub,type) DO UPDATE SET secret=EXCLUDED.secret,label=EXCLUDED.label,last_used_at=EXCLUDED.last_used_at,updated_at=now()`,
+ON CONFLICT (user_id,type) DO UPDATE SET secret=EXCLUDED.secret,label=EXCLUDED.label,last_used_at=EXCLUDED.last_used_at,updated_at=now()`,
 		factor.UserID, factor.Type, factor.Secret, factor.Label, factor.CreatedAt, factor.LastUsedAt)
 	return err
 }
 
 func (r *MfaFactorRepository) Delete(ctx context.Context, sub string, factorType spec.MfaFactorType) error {
-	_, err := r.Pool.Exec(ctx, "DELETE FROM mfa_factors WHERE sub=$1 AND type=$2", sub, factorType)
+	_, err := r.Pool.Exec(ctx, "DELETE FROM mfa_factors WHERE user_id=$1 AND type=$2", sub, factorType)
 	return err
 }
 
 func (r *MfaFactorRepository) DeleteAllForSub(ctx context.Context, sub string) error {
-	_, err := r.Pool.Exec(ctx, "DELETE FROM mfa_factors WHERE sub=$1", sub)
+	_, err := r.Pool.Exec(ctx, "DELETE FROM mfa_factors WHERE user_id=$1", sub)
 	return err
 }
 
-const mfaFactorSelect = `SELECT sub,type,secret,label,created_at,last_used_at FROM mfa_factors`
+const mfaFactorSelect = `SELECT user_id,type,secret,label,created_at,last_used_at FROM mfa_factors`
 
 func scanMfaFactor(row rowScanner) (*spec.MfaFactor, error) {
 	var factor spec.MfaFactor
