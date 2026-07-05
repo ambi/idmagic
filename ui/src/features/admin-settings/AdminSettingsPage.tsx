@@ -498,6 +498,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
   const [tokenDesc, setTokenDesc] = useState('')
   const [tokenExpiry, setTokenExpiry] = useState('7')
   const [generatedToken, setGeneratedToken] = useState('')
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -529,6 +530,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
       })
       setGeneratedToken(res.token)
       setTokenDesc('')
+      setCreating(false)
       const tList = await listScimTokens()
       setTokens(tList)
       setNotice('SCIM アクセストークンを発行しました。')
@@ -599,7 +601,14 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
         </div>
 
         <div className="grid gap-4">
-          <h3 className="text-sm font-semibold text-slate-900">SCIM アクセストークン</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-slate-900">SCIM アクセストークン</h3>
+            {!creating ? (
+              <Button type="button" variant="outline" onClick={() => setCreating(true)}>
+                トークンを発行
+              </Button>
+            ) : null}
+          </div>
 
           {generatedToken ? (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
@@ -631,7 +640,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
 
           {tokens.length === 0 ? (
             <p className="text-sm text-slate-500">
-              有効なアクセストークンがありません。下のフォームから作成してください。
+              有効なアクセストークンがありません。「トークンを発行」から作成してください。
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -669,37 +678,50 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
             </div>
           )}
 
-          <form
-            onSubmit={handleCreateToken}
-            className="mt-4 rounded-lg border border-slate-200 p-4"
-          >
-            <h4 className="text-sm font-semibold text-slate-900">新規アクセストークンの作成</h4>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="token-desc">トークンの説明</Label>
-                <Input
-                  id="token-desc"
-                  placeholder="例: Okta-SCIM-Integration"
-                  value={tokenDesc}
-                  onChange={(e) => setTokenDesc(e.target.value)}
-                />
+          {creating ? (
+            <form
+              onSubmit={handleCreateToken}
+              className="mt-4 rounded-lg border border-slate-200 p-4"
+            >
+              <h4 className="text-sm font-semibold text-slate-900">新規アクセストークンの作成</h4>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="token-desc">トークンの説明</Label>
+                  <Input
+                    id="token-desc"
+                    placeholder="例: Okta-SCIM-Integration"
+                    value={tokenDesc}
+                    onChange={(e) => setTokenDesc(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="token-expiry">有効期間 (日数)</Label>
+                  <Input
+                    id="token-expiry"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={tokenExpiry}
+                    onChange={(e) => setTokenExpiry(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="token-expiry">有効期間 (日数)</Label>
-                <Input
-                  id="token-expiry"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={tokenExpiry}
-                  onChange={(e) => setTokenExpiry(e.target.value)}
-                />
+              <div className="mt-4 flex items-center gap-2">
+                <Button type="submit">トークンを発行</Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setTokenDesc('')
+                    setError('')
+                    setCreating(false)
+                  }}
+                >
+                  キャンセル
+                </Button>
               </div>
-            </div>
-            <div className="mt-4">
-              <Button type="submit">トークンを発行</Button>
-            </div>
-          </form>
+            </form>
+          ) : null}
         </div>
       </div>
     </Card>

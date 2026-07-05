@@ -54,6 +54,7 @@ import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/adm
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
+import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
 
 const TotpRoute = TotpRouteImport.update({
@@ -284,6 +285,11 @@ const AdminApplicationsApplicationIdIndexRoute =
     path: '/',
     getParentRoute: () => AdminApplicationsApplicationIdRoute,
   } as any)
+const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
+  id: '/federation/entra_/new',
+  path: '/federation/entra/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminApplicationsApplicationIdEditRoute =
   AdminApplicationsApplicationIdEditRouteImport.update({
     id: '/edit',
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/$id': typeof AdminUsersIdRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
+  '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -381,6 +388,7 @@ export interface FileRoutesByTo {
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/$id': typeof AdminUsersIdRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
+  '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
 }
 export interface FileRoutesById {
@@ -430,6 +438,7 @@ export interface FileRoutesById {
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users_/$id': typeof AdminUsersIdRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
+  '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/admin/tenant/attributes'
     | '/admin/users/$id'
     | '/admin/applications/$applicationId/edit'
+    | '/admin/federation/entra/new'
     | '/admin/applications/$applicationId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -524,6 +534,7 @@ export interface FileRouteTypes {
     | '/admin/tenant/attributes'
     | '/admin/users/$id'
     | '/admin/applications/$applicationId/edit'
+    | '/admin/federation/entra/new'
     | '/admin/applications/$applicationId'
   id:
     | '__root__'
@@ -572,6 +583,7 @@ export interface FileRouteTypes {
     | '/admin/tenant/attributes'
     | '/admin/users_/$id'
     | '/admin/applications_/$applicationId/edit'
+    | '/admin/federation/entra_/new'
     | '/admin/applications_/$applicationId/'
   fileRoutesById: FileRoutesById
 }
@@ -907,6 +919,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminApplicationsApplicationIdIndexRouteImport
       parentRoute: typeof AdminApplicationsApplicationIdRoute
     }
+    '/admin/federation/entra_/new': {
+      id: '/admin/federation/entra_/new'
+      path: '/federation/entra/new'
+      fullPath: '/admin/federation/entra/new'
+      preLoaderRoute: typeof AdminFederationEntraNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/applications_/$applicationId/edit': {
       id: '/admin/applications_/$applicationId/edit'
       path: '/edit'
@@ -985,6 +1004,7 @@ interface AdminRouteRouteChildren {
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
   AdminUsersIdRoute: typeof AdminUsersIdRoute
+  AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1008,6 +1028,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
   AdminUsersIdRoute: AdminUsersIdRoute,
+  AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

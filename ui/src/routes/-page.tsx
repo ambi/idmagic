@@ -42,6 +42,7 @@ const PAGE_TITLES: Record<string, string> = {
   'admin-settings': `設定 | ${ADMIN}`,
   'admin-sign-in-policy': `サインインポリシー | ${ADMIN}`,
   'admin-entra-federation': `Entra ID 連携 | ${ADMIN}`,
+  'admin-entra-federation-add': `ドメインフェデレーションを追加 | ${ADMIN}`,
   'admin-tenant-attributes': `テナント属性 | ${ADMIN}`,
   // マイページ
   'account-home': `アカウント情報 | ${ACCOUNT}`,
