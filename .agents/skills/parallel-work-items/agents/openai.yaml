@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parallel Work Items"
+  short_description: "Set up and coordinate parallel git worktrees for RA work items."
+  default_prompt: "Set up parallel worktrees for these work items and tell me the implementation commands."

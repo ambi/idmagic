@@ -6,7 +6,7 @@
 
 set shell := ["zsh", "-cu"]
 
-ra_cmd := env_var_or_default("RA_CMD", "bun run .ra/regenerative-architecture/tools/ra/src/main.ts")
+ra_cmd := env_var_or_default("RA_CMD", "bun run tools/ra/src/main.ts")
 go_cache := env_var_or_default("GOCACHE", "/tmp/idmagic-go-cache")
 golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
 git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
@@ -18,15 +18,13 @@ ldflags := "-X github.com/ambi/idmagic/internal/shared/version.Version=" + versi
 default:
     @just --list
 
-# Install local dependencies and setup RA submodule.
+# Install local dependencies and setup RA.
 setup: setup-ra install-ui
 
-# Setup RA submodule, install tools dependencies, and link agent skills.
+# Setup RA tools dependencies and link agent skills.
 setup-ra:
-    git submodule update --init --recursive
-    cd .ra/regenerative-architecture/tools && bun install
-    mkdir -p .agents
-    ln -sfn ../.ra/regenerative-architecture/.agents/skills .agents/skills
+    cd tools && bun install
+    mkdir -p .agents/skills
     mkdir -p .claude
     ln -sfn ../.agents/skills .claude/skills
 

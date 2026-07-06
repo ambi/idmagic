@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://regenerative-architecture/schemas/work-item.json",
+  "title": "Work Item",
+  "description": "CHANGE_RECORD_FORMAT.md §1 を正本とするワークアイテムのスキーマ（同文書からの派生物）。<bounded-context>/work-items/<id>.yaml に置き、完了時は completion を同じファイルに追記する。",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "created_at",
+    "authors",
+    "status",
+    "motivation",
+    "scope",
+    "out_of_scope",
+    "verification",
+    "risk",
+    "risk_notes"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "enum": ["completed", "cancelled"] } },
+        "required": ["status"]
+      },
+      "then": { "required": ["completion"] }
+    }
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "ディレクトリ名と一致する安定識別子。",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "created_at": {
+      "description": "起票日。YYYY-MM-DD または RFC3339。",
+      "oneOf": [{ "type": "string", "format": "date" }, { "type": "string", "format": "date-time" }]
+    },
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "in_progress", "completed", "cancelled"]
+    },
+    "motivation": {
+      "description": "根拠。なぜこの変更が必要か。",
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "description": "対象範囲。free-form (object / array / string)。",
+      "anyOf": [{ "type": "object" }, { "type": "array" }, { "type": "string", "minLength": 1 }]
+    },
+    "out_of_scope": {
+      "description": "範囲外。",
+      "type": "array"
+    },
+    "plan": {
+      "description": "中規模以上の work-item における実装前の技術方針、設計選択、未決定事項。",
+      "type": "string",
+      "minLength": 1
+    },
+    "tasks": {
+      "description": "途中再開できる粒度の進捗チェックリスト。Markdown checkbox を含む文字列。",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "- \\[[ xX]\\] T[0-9]{3}"
+    },
+    "initial_context": {
+      "description": "AI が作業開始時に読むべき最小文脈。SCL 要素、ADR、実装、テスト、読まない範囲を記録する。",
+      "type": "object",
+      "properties": {
+        "features": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "scl": { "type": "object" },
+        "decisions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "source": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "tests": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "stop_before_reading": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "affected_guarantees": {
+      "description": "影響する保証義務 (SCL assurance の文脈)。",
+      "type": "array"
+    },
+    "verification": {
+      "description": "検証コマンド / 手動手順のリスト。",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          {
+            "type": "object",
+            "required": ["cmd"],
+            "properties": {
+              "cmd": { "type": "string", "minLength": 1 },
+              "in": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        ]
+      }
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "risk_notes": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_state": {
+      "description": "推奨形式。Refactor 系で「整合後の状態」を宣言する場合に使う。"
+    },
+    "completion": {
+      "description": "完了または中止の判断記録。status が completed/cancelled になった時点で追記する。",
+      "type": "object",
+      "required": ["completed_at", "summary"],
+      "properties": {
+        "completed_at": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "summary": {
+          "description": "意味上の差分の要約。",
+          "type": "string",
+          "minLength": 1
+        },
+        "verification": {
+          "description": "検証結果。",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              {
+                "type": "object",
+                "required": ["cmd"],
+                "properties": {
+                  "cmd": { "type": "string", "minLength": 1 },
+                  "in": { "type": "string" },
+                  "result": {}
+                }
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "description": "検証証跡。大容量ログやバイナリは埋め込まず、artifact 参照とハッシュを記録する。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "kind", "result"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]*$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "test",
+                  "property_test",
+                  "model_check",
+                  "contract_test",
+                  "mutation_test",
+                  "static_analysis",
+                  "scan",
+                  "runtime_observation",
+                  "manual_inspection",
+                  "build",
+                  "lint",
+                  "typecheck",
+                  "other"
+                ]
+              },
+              "command": { "type": "string", "minLength": 1 },
+              "procedure": { "type": "string", "minLength": 1 },
+              "environment": { "type": "string", "minLength": 1 },
+              "producer": {
+                "type": "string",
+                "enum": ["generator", "independent", "human", "ci", "local"]
+              },
+              "executed_at": {
+                "oneOf": [
+                  { "type": "string", "format": "date" },
+                  { "type": "string", "format": "date-time" }
+                ]
+              },
+              "target_revision": { "type": "string", "minLength": 1 },
+              "result": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["passed", "failed", "not_run", "exception_approved"]
+                  },
+                  { "type": "string", "minLength": 1 }
+                ]
+              },
+              "summary": { "type": "string", "minLength": 1 },
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["summary"],
+                  "properties": {
+                    "summary": { "type": "string", "minLength": 1 },
+                    "path": { "type": "string", "minLength": 1 },
+                    "uri": { "type": "string", "minLength": 1 },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-fA-F0-9]{64}$"
+                    },
+                    "content_type": { "type": "string", "minLength": 1 },
+                    "size_bytes": { "type": "integer", "minimum": 0 }
+                  },
+                  "anyOf": [{ "required": ["path"] }, { "required": ["uri"] }]
+                }
+              }
+            },
+            "anyOf": [
+              { "required": ["command"] },
+              { "required": ["procedure"] },
+              { "required": ["artifacts"] }
+            ]
+          }
+        },
+        "affected_guarantees_state": {
+          "description": "保証義務の状態。",
+          "type": "array"
+        },
+        "remaining_guarantees_state": {
+          "description": "保証義務の状態 (旧表記)。`affected_guarantees_state` を推奨。",
+          "type": "array"
+        },
+        "residual_risk": {
+          "description": "残リスク。",
+          "type": "array"
+        },
+        "semantic_diff": {
+          "description": "意味上の差分の詳細。"
+        },
+        "traceability": {
+          "description": "仕様 ⇄ 実装 / テストへの対応関係。"
+        },
+        "human_decisions": {
+          "description": "人間の判断。"
+        },
+        "approver_note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://regenerative-architecture/schemas/architecture.json",
+  "title": "Architecture",
+  "description": "ARCHITECTURE_FORMAT.md を正本とする Architecture（構成）のスキーマ（同文書からの派生物）。ARCHITECTURE.md の Frontmatter（構造）と本文（叙述）を検証する。",
+  "type": "object",
+  "required": ["context", "updated_at", "overview", "structure", "structural_decisions"],
+  "properties": {
+    "context": {
+      "description": "このマップが記述するコンテキスト接頭辞。横断はルートで repo。CHANGE_RECORD_FORMAT.md §1.1.1 の表と一致する。",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "updated_at": {
+      "description": "最終更新日。YYYY-MM-DD または RFC3339。",
+      "oneOf": [{ "type": "string", "format": "date" }, { "type": "string", "format": "date-time" }]
+    },
+    "contexts": {
+      "description": "境界づけられたコンテキストの台帳。接頭辞 → オブジェクト。",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/Context" }
+    },
+    "modules": {
+      "description": "モジュール／パッケージ台帳。id → オブジェクト。",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/Module" }
+    },
+    "overview": {
+      "description": "本文 ## Overview。構成の全体像。",
+      "type": "string",
+      "minLength": 1
+    },
+    "structure": {
+      "description": "本文 ## Structure。ディレクトリ構造と依存の向き。",
+      "type": "string",
+      "minLength": 1
+    },
+    "stack": {
+      "description": "本文 ## Stack。採用技術。",
+      "type": "string",
+      "minLength": 1
+    },
+    "structural_decisions": {
+      "description": "本文 ## Structural Decisions。主要な構造判断と根拠 ADR。",
+      "type": "string",
+      "minLength": 1
+    },
+    "cross_cutting_concerns": {
+      "description": "本文 ## Cross-cutting Concerns。層をまたぐ方針。",
+      "type": "string",
+      "minLength": 1
+    },
+    "diagrams": {
+      "description": "本文 ## Diagrams。コンテキスト図・依存図。",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "Module": {
+      "type": "object",
+      "required": ["path", "responsibility"],
+      "properties": {
+        "path": {
+          "description": "モジュールの実体があるディレクトリ／ファイル。ARCHITECTURE.md の位置からの相対パス。横断検査で実在を確認する。",
+          "type": "string",
+          "minLength": 1
+        },
+        "responsibility": {
+          "description": "そのモジュールが負う責務を一文で。",
+          "type": "string",
+          "minLength": 1
+        },
+        "realizes": {
+          "description": "そのモジュールが実現する SCL 要素の参照（例 interfaces.DiscoverWorkspace）。横断検査で解決を確認する。",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z_]+\\.[A-Za-z0-9_]+$" }
+        }
+      }
+    },
+    "Context": {
+      "type": "object",
+      "required": ["root"],
+      "properties": {
+        "root": {
+          "description": "そのコンテキストのルートディレクトリ。",
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "description": "そのコンテキストの一文説明。",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

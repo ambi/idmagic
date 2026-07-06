@@ -1,0 +1,396 @@
+# scl-to-html — Specification Core Language (SCL) Document
+#
+# 「RA ドキュメント (SCL / CONCEPTION / ADR / work items) を 1 枚の HTML に
+# 束ねるツール」自身を 1 つの RA として記述したもの。Layer 1 (仕様核)。
+# 実装 (Layer 3) は本ファイルから派生する。
+#
+# 語彙規約: 型・インターフェース = PascalCase、フィールド = snake_case。
+
+system: scl-to-html
+spec_version: "2.0"
+
+# =================================================================
+# 1. glossary
+# =================================================================
+
+glossary:
+
+  SclDocument:
+    definition: 入力となる SCL 形式の YAML 文書。
+    aliases: [scl]
+
+  DecisionDoc:
+    definition: |
+      CONCEPTION*.md または ADR-NNN-*.md のいずれかに当てはまる
+      markdown 文書。Decisions タブで表示される。
+    aliases: [decision, adr, conception]
+
+  ChangeEntry:
+    definition: |
+      work-items/<id>.md 1 件分のレコード（完了・中止は work-items/done/<id>.md）。
+      Plan / Tasks / 完了情報は work_item に含める。Work Items タブの 1 カード。
+
+  HtmlDocument:
+    definition: |
+      入力一式から派生する単一の HTML 文書。外部リソース (ネットワーク /
+      別ファイル) に一切依存しない。
+
+  Tab:
+    definition: |
+      HtmlDocument 内の論理的ビュー。Overview / SCL / Decisions / Work Items
+      の 4 種。URL ハッシュ #tab=<name> でルーティングされる。
+
+  Section:
+    definition: |
+      SCL の論理単位。standards / context_map / glossary / models /
+      interfaces / states / invariants / scenarios / permissions /
+      objectives / user_experience の 11 種。
+
+  CrossReference:
+    definition: |
+      ある宣言が他の宣言を名前で参照する関係。interfaces.errors /
+      interfaces.emits、scenarios の自然文ステップに引用された既知の名前、
+      context_map.depends_on などが該当する。
+    aliases: [xref]
+
+  DiagramView:
+    definition: |
+      context_map、states、user_experience から派生する SVG 図表示。
+      node / edge は SCL の宣言から決定的に生成され、手書き図を正本にしない。
+
+  Render:
+    definition: 入力 (SCL + DecisionDoc[] + ChangeEntry[] + 任意の ArchitectureDoc) を HtmlDocument に変換する射影。決定的で副作用を持たない。
+
+# =================================================================
+# 2. models
+# =================================================================
+
+models:
+
+  TabKind:
+    kind: enum
+    values: [overview, scl, architecture, decisions, work_items]
+
+  SectionKind:
+    kind: enum
+    values:
+      - standards
+      - context_map
+      - glossary
+      - models
+      - interfaces
+      - states
+      - invariants
+      - scenarios
+      - permissions
+      - objectives
+      - user_experience
+
+  DecisionKind:
+    kind: enum
+    values: [conception, adr]
+
+  SclDocument:
+    kind: value_object
+    description: 本ツールが解釈する SCL 文書の最小構造。各 Section の中身は SCL 自身が再帰的に定義する。
+    fields:
+      system:          { type: String, constraints: [non_empty] }
+      spec_version:    { type: String, constraints: [non_empty] }
+      annotations:     { type: Map, optional: true }
+      standards:       { type: Map, optional: true }
+      context_map:      { type: Map, optional: true }
+      glossary:      { type: Map, optional: true }
+      models:          { type: Map, optional: true }
+      interfaces:      { type: Map, optional: true }
+      states:          { type: Map, optional: true }
+      invariants:      { type: Map, optional: true }
+      scenarios:       { type: Map, optional: true }
+      permissions:     { type: Map, optional: true }
+      objectives:      { type: Map, optional: true }
+      user_experience: { type: Map, optional: true }
+
+  DecisionDoc:
+    kind: value_object
+    description: CONCEPTION / ADR の 1 文書。
+    fields:
+      id:       { type: String, constraints: [non_empty], description: "ページ内アンカー (kebab-case)" }
+      title:    { type: String, constraints: [non_empty], description: "最初の H1 から抽出。無ければファイル名" }
+      kind:     { type: DecisionKind }
+      filename: { type: String, constraints: [non_empty] }
+      body:     { type: String, description: "H1 を除去した markdown 本文" }
+      number:   { type: Integer, optional: true, description: "ADR 番号 (ADR の場合のみ)" }
+
+  ChangeEntry:
+    kind: value_object
+    description: 1 つの work item ファイル分のレコード。
+    fields:
+      id:                { type: String, constraints: [non_empty], description: "ファイル名 (拡張子なし)" }
+      work_item:         { type: Map, description: "work-items/<id>.md 由来。plan / tasks / completion もここに含む。" }
+
+  HtmlDocument:
+    kind: value_object
+    description: Render の出力。
+    fields:
+      content: { type: String, constraints: [non_empty] }
+
+  DiagramView:
+    kind: value_object
+    description: SCL の関係構造から派生する図表示。SVG と閲覧操作は HtmlDocument に埋め込まれる。
+    fields:
+      kind: { type: String, description: "context_map / state_machine / ux_transition" }
+      nodes: { type: "DiagramNode[]" }
+      edges: { type: "DiagramEdge[]" }
+
+  ArchitectureDoc:
+    kind: value_object
+    description: 第2層の現状射影マップ (ARCHITECTURE.md)。機械検証する Frontmatter (contexts / modules) と本文節 (叙述) を持つ。
+    fields:
+      context:              { type: String, optional: true, description: "コンテキスト接頭辞" }
+      updated_at:           { type: String, optional: true }
+      contexts:             { type: Map, optional: true, description: "コンテキスト台帳 (root / summary)" }
+      modules:              { type: Map, optional: true, description: "モジュール台帳 (path / responsibility / realizes)" }
+      overview:             { type: String, optional: true, description: "本文 ## Overview" }
+      structure:            { type: String, optional: true, description: "本文 ## Structure (ディレクトリ構造と依存の向き)" }
+      stack:                { type: String, optional: true, description: "本文 ## Stack" }
+      structural_decisions: { type: String, optional: true, description: "本文 ## Structural Decisions" }
+      cross_cutting_concerns: { type: String, optional: true, description: "本文 ## Cross-cutting Concerns" }
+      diagrams:             { type: String, optional: true, description: "本文 ## Diagrams" }
+
+  SiteInput:
+    kind: value_object
+    description: Render に渡される 1 回分の入力。
+    fields:
+      scl:       { type: SclDocument }
+      decisions: { type: "DecisionDoc[]" }
+      work_items: { type: "ChangeEntry[]" }
+      architecture: { type: ArchitectureDoc, optional: true, description: "ARCHITECTURE.md 由来。無ければ Architecture タブを出さない。" }
+      title:     { type: String, optional: true, description: "省略時は scl.system" }
+
+# =================================================================
+# 3. interfaces
+# =================================================================
+
+interfaces:
+
+  Render:
+    description: |
+      入力 SiteInput を読み込み、自己完結した HtmlDocument を返す。
+      ファイル読み込みは行わない。
+    steps:
+      - "{input} を HTML に変換する"
+    input:
+      input: { type: SiteInput }
+    output:
+      html: { type: HtmlDocument }
+    idempotent: true
+    read_only: true
+
+  LoadSite:
+    description: |
+      CLI 引数で指定されたパスから SCL / DecisionDoc[] / ChangeEntry[] を
+      読み込んで SiteInput を返す。
+    input:
+      scl_path:         { type: Path, description: "SCL YAML パス" }
+      decisions_dir:    { type: Path, optional: true, description: "CONCEPTION*.md + ADR-*.md のディレクトリ" }
+      work_items_dir:   { type: Path, optional: true, description: "work-items/*.md と work-items/done/*.md を読むディレクトリ" }
+      architecture_path: { type: Path, optional: true, description: "ARCHITECTURE.md パス" }
+    output:
+      input: { type: SiteInput }
+    read_only: true
+
+  RenderCli:
+    description: |
+      LoadSite と Render を直列に呼ぶ CLI 起動。--out が指定されたファイルに、
+      無ければ標準出力に HtmlDocument を書き出す。
+    bindings:
+      - kind: cli
+        command: scl-to-html
+        flags:
+          - { name: scl,       required: true }
+          - { name: decisions, required: false }
+          - { name: work-items, required: false }
+          - { name: architecture, required: false }
+          - { name: title,     required: false }
+          - { name: out,       required: false }
+        stdout: HtmlDocument          # --out 省略時はここに書き出す
+        exit_codes:
+          success: 0
+          usage_error: 2
+
+# =================================================================
+# 4. invariants
+# =================================================================
+
+invariants:
+
+  presence_preserved:
+    description: 入力 SCL に存在するセクションは出力に対応する <section id="..."> を持つ。
+    target: Render
+    always: "∀ S ∈ keys(scl) ∩ SectionKind : html contains '<section id=\"S\">'"
+    severity: must
+
+  absence_preserved:
+    description: 入力 SCL に存在しないセクションは出力にも現れない。
+    target: Render
+    never: "html contains '<section id=\"S\">' where S ∉ keys(scl)"
+    severity: must
+
+  all_decisions_addressable:
+    description: 入力された DecisionDoc 各件は HtmlDocument 内に 1 つの安定アンカーを持つ。
+    target: Render
+    always: "∀ d ∈ decisions : html contains 'id=\"' + d.id + '\"'"
+    severity: must
+
+  all_work_items_addressable:
+    description: 入力された ChangeEntry 各件は HtmlDocument 内に 1 つの安定アンカーを持つ。
+    target: Render
+    always: "∀ w ∈ work_items : html contains 'id=\"' + slug(w.id) + '\"'"
+    severity: must
+
+  user_text_escaped:
+    description: 入力 SCL / DecisionDoc / ChangeEntry 由来の文字列は HTML として安全にエスケープされる。
+    target: Render
+    never: "html contains unescaped '<' '>' '&' or '\"' originating from input string values"
+    severity: must
+
+  markdown_html_disabled:
+    description: |
+      markdown 文書中の生 HTML は描画されない (markdown-it の html: false)。
+      ADR / CONCEPTION から script 等を注入できないことを保証する。
+    target: Render
+    never: "html contains executable scripts originating from DecisionDoc bodies"
+    severity: must
+
+  deterministic:
+    description: 同一入力からは常に同一の HtmlDocument を返す。時刻・乱数・環境変数に依存しない。
+    target: Render
+    always: "Render(x) ≡ Render(x)"
+    severity: must
+
+  self_contained:
+    description: HtmlDocument は単一ファイルで表示でき、外部資産 (ネットワーク / 別ファイル / sidecar) に依存しない。
+    target: Render
+    always: "rendering HtmlDocument requires no external network resource or sidecar file"
+    severity: must
+
+  no_js_degraded_mode:
+    description: |
+      JavaScript を無効化しても、4 タブのすべての内容が縦に並んで読める。
+      タブ切り替えは強化機能であり、内容の表示そのものは JS に依存しない。
+    target: Render
+    always: "with JS disabled, every Tab body is visible in the rendered HtmlDocument"
+    severity: must
+
+  navigable_to_each_section:
+    description: 閲覧者は HtmlDocument 上の任意の地点から、入力 SCL に存在する各 Section に直接遷移できる。
+    target: Render
+    always: "from any point in HtmlDocument, the reader can reach each present Section without leaving the document"
+    severity: must
+
+  cross_references_are_navigable:
+    description: CrossReference は閲覧者がひとつの操作で参照先定義へ遷移できる形で描画される。
+    target: Render
+    always: "∀ CrossReference c : c is presented as a control that navigates the reader to the definition of c"
+    severity: must
+
+  reading_position_is_indicated:
+    description: 閲覧者が長い HtmlDocument 上を移動するとき、現在読まれている Section がナビゲーション側で視覚的に区別される。
+    target: Render
+    always: "the Section currently in view is visually distinguished within the active Tab's TOC"
+    severity: must
+
+  color_scheme_adapts_to_reader:
+    description: HtmlDocument の配色は、閲覧者の環境が示すライト/ダーク設定に追随する。
+    target: Render
+    always: "HtmlDocument's visual presentation follows the reader's light/dark preference"
+    severity: must
+
+  diagram_views_are_derived:
+    description: Context Map、状態遷移、UX 遷移の図は SCL から派生し、外部資産や手書き図に依存しない。
+    target: Render
+    always: "if scl.context_map or scl.states or scl.user_experience.transitions exists, html contains DiagramView derived only from those SCL sections"
+    severity: must
+
+# =================================================================
+# 5. scenarios
+# =================================================================
+
+scenarios:
+
+  最小の SCL でも HTML になり、無いセクションは出力されない:
+    steps:
+      - glossary だけを持つ最小の SCL を用意する
+      - "それを Render に渡す"
+      - 出力に glossary セクションが含まれる
+      - 出力に models セクションは現れない
+
+  ユーザ文字列の HTML 特殊文字はエスケープされる:
+    steps:
+      - 'definition に特殊文字 "<script>" を含む SCL を用意する'
+      - "それを Render に渡す"
+      - 出力では特殊文字がエスケープされている
+      - 出力に生の script タグは現れない
+
+  CONCEPTION + ADR がディレクトリにあれば Decisions タブに並ぶ:
+    steps:
+      - CONCEPTION.md と ADR-001-*.md を含むディレクトリを用意する
+      - "そのディレクトリを LoadSite で読み込み Render に渡す"
+      - 出力に Decisions タブが現れる
+      - 出力に CONCEPTION 由来の見出しと ADR-001 のアンカーが含まれる
+
+  completion 付きの WorkItem は Work Items タブに 1 つのカードとして並ぶ:
+    steps:
+      - completion を持つ work-items/<id>.md を用意する
+      - "そのディレクトリを LoadSite で読み込み Render に渡す"
+      - 出力に Work Items タブが現れる
+      - 出力に work item の id をアンカーに持つカードが 1 つ含まれる
+      - 出力に completion の summary が含まれる
+
+  Plan と Tasks を持つ WorkItem は進捗付きで表示される:
+    steps:
+      - "# Plan と # Tasks を持つ work-items/<id>.md を用意する"
+      - "そのディレクトリを LoadSite で読み込み Render に渡す"
+      - 出力に Plan block が含まれる
+      - 出力に Tasks block と完了済み task 数 / 全 task 数が含まれる
+
+  done/ サブディレクトリのクローズ済み work item も同じタブに並ぶ:
+    steps:
+      - work-items/ 直下に未完了の work item を置く
+      - work-items/done/ に完了済みの work item を置く
+      - "そのディレクトリを LoadSite で読み込み Render に渡す"
+      - 出力に両方の work item の id をアンカーに持つカードが含まれる
+
+  Context Map・状態遷移・UX 遷移は図として確認できる:
+    steps:
+      - context_map、states.transitions、user_experience.transitions を持つ SCL を用意する
+      - "それを Render に渡す"
+      - 出力に context dependency diagram が含まれる
+      - 出力に state transition diagram が含まれる
+      - 出力に screen transition diagram が含まれる
+      - 各 diagram の node / edge は対応する SCL 要素の詳細カードへ遷移できる
+
+  --scl だけ与えれば Decisions / Work Items タブは空表示で生成できる:
+    steps:
+      - SCL のみ指定して LoadSite を呼ぶ
+      - "decisions と work_items は空配列になる"
+      - Render は失敗せず、Decisions / Work Items タブには placeholder が出る
+
+# =================================================================
+# 6. objectives
+# =================================================================
+
+objectives:
+
+  fast_render:
+    kind: slo
+    metric: latency_p95
+    target: "<500ms"
+    interface: Render
+    description: 数 MiB クラスの SCL + 数十件の ADR + 数十件の work items を p95 500ms 以内で変換する。
+
+  read_only:
+    kind: security
+    policy: read_only_operation
+    target: Render
+    value: true
+    description: Render と LoadSite は副作用を持たない。プロセス外の状態 (ファイル / ネットワーク / 環境) を変更しない。

@@ -1,0 +1,36 @@
+{
+  "name": "@regenerative-architecture/cli",
+  "bin": {
+    "ra": "ra/src/main.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "scl-to-html": "bun run scl-to-html/src/main.ts",
+    "ra": "bun run ra/src/main.ts",
+    "scl-render:workspace": "bun run ra/src/render-workspace.ts",
+    "scl-to-html:self": "bun run scl-to-html/src/main.ts --scl scl-to-html/spec/scl.yaml --title scl-to-html --out scl-to-html/spec/scl-to-html.html",
+    "scl-to-jsonschema": "bun run scl-to-jsonschema/src/main.ts",
+    "scl-to-openapi": "bun run scl-to-openapi/src/main.ts",
+    "yaml-check": "bun run yaml-check/src/main.ts",
+    "yaml-check:workspace": "bun run ra/src/yaml-check-workspace.ts",
+    "yaml-check:all": "bun run yaml-check:workspace",
+    "yaml-check:workspace-work-items": "bun run yaml-check:workspace --work-items --ids",
+    "yaml-check:workspace-scl": "bun run yaml-check:workspace --scl",
+    "check-ids:workspace": "bun run yaml-check:workspace --ids"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "@types/bun": "latest",
+    "@types/markdown-it": "^14.1.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "markdown-it": "^14.2.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

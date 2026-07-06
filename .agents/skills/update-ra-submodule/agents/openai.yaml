@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update RA Submodule"
+  short_description: "Update an RA submodule and reconcile SCL-driven changes."
+  default_prompt: "Update the RA submodule in this repository, then reconcile any required scl.yaml or derived artifact changes."
