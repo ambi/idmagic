@@ -9,7 +9,7 @@ User-facing messages must be Japanese.
 Develop according to Regenerative Architecture.
 
 - Keep feature and behavior changes SCL-first: update `spec/scl.yaml` before implementation.
-- Treat RA/SCL meta-documents (located in `.ra/regenerative-architecture/`) as section-addressable references, not required reading.
+- Treat RA/SCL meta-documents ([REGENERATIVE_ARCHITECTURE.md](file:///Users/tn/src/idmagic/REGENERATIVE_ARCHITECTURE.md), [SPECIFICATION_CORE_LANGUAGE.md](file:///Users/tn/src/idmagic/SPECIFICATION_CORE_LANGUAGE.md)) as section-addressable references, not required reading.
 - Use RA/SCL skills for work items, SCL changes, ADRs, rendering, implementation, and commits.
 - Expect the `ra` CLI to discover the standard repository layout without a registry file.
 - Regenerate derived artifacts after SCL changes.
@@ -43,5 +43,5 @@ checks and to any command written into a Work Item's `verification` list.
 spec/scl.yaml      Specification Core Language source
 decisions/         Architecture Decision Records
 work-items/        Work Items, with completed records in work-items/done/
-.ra/               GitHub-backed RA/SCL core submodule
+tools/             Embedded RA/SCL tools and packages
 ```

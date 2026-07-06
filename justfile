@@ -1,8 +1,6 @@
 # App repository command map for humans and AI agents.
 #
-# This app repo consumes RA/SCL tools from the GitHub-backed core repository
-# mounted at .ra-scl/regenerative-architecture. Override RA_SCL_CORE only when
-# deliberately testing a local core checkout.
+# This app repo consumes RA/SCL tools from the embedded tools/ directory.
 
 set shell := ["zsh", "-cu"]
 
