@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
@@ -291,8 +292,20 @@ func newAdminUserHandler(
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
+		AgentRepo:             memory.NewAgentRepository(),
+		GroupRepo:             memory.NewGroupRepository(),
+		ClientRepo:            memory.NewClientRepository(),
+		ConsentRepo:           memory.NewConsentRepository(),
+		EmailChangeTokenStore: memory.NewEmailChangeTokenStore(),
+		EmailSender:           mockEmailSender{},
 	})
 	return e, repo
+}
+
+type mockEmailSender struct{}
+
+func (m mockEmailSender) SendEmail(ctx context.Context, message authnports.EmailMessage) bool {
+	return true
 }
 
 func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {

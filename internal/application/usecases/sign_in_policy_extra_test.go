@@ -190,3 +190,222 @@ func TestEvaluateSignInPolicyDecisions(t *testing.T) {
 		t.Fatalf("reauth exceeded decision = %v", got.Decision)
 	}
 }
+
+func TestSignInPolicySettingsFromRulesAndClientIP(t *testing.T) {
+	ctx := tenantContext()
+	policyDeps, appDeps := newPolicyDeps()
+	app := seedApp(ctx, t, appDeps, "Payroll")
+	policyDeps.AppRepo = appDeps.Repo
+
+	// settingsFromRules: no enabled rules
+	weaker := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Name: "MFA", Enabled: false}}},
+		&spec.AppSignInPolicy{ApplicationID: app.ApplicationID, Rules: []spec.SignInRule{{Name: "MFA", Enabled: false}}},
+	)
+	if weaker {
+		t.Fatalf("should not be weaker because no enabled rules")
+	}
+
+	// evaluateSignInPolicy error cases
+	// clientIP parse error
+	policy := &spec.AppSignInPolicy{
+		ApplicationID: app.ApplicationID,
+		Rules: []spec.SignInRule{{
+			Name: "Network Limit", Enabled: true,
+			Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"192.168.1.0/24"}},
+		}},
+	}
+	eval := appusecases.EvaluateSignInPolicy(
+		policy,
+		&authdomain.AuthenticationContext{AuthTime: time.Now().Unix(), ACR: "urn:pwd"},
+		"invalid-ip",
+		time.Now(),
+	)
+	if eval.Decision != appusecases.PolicyDeny {
+		t.Fatalf("expected PolicyDeny for invalid IP, got %v", eval.Decision)
+	}
+
+	// invalid CIDR format in rule
+	policyBadCIDR := &spec.AppSignInPolicy{
+		ApplicationID: app.ApplicationID,
+		Rules: []spec.SignInRule{{
+			Name: "Network Limit", Enabled: true,
+			Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"invalid-cidr"}},
+		}},
+	}
+	eval2 := appusecases.EvaluateSignInPolicy(
+		policyBadCIDR,
+		&authdomain.AuthenticationContext{AuthTime: time.Now().Unix(), ACR: "urn:pwd"},
+		"192.168.1.1",
+		time.Now(),
+	)
+	if eval2.Decision != appusecases.PolicyDeny {
+		t.Fatalf("expected PolicyDeny for invalid CIDR entry, got %v", eval2.Decision)
+	}
+}
+
+func TestEnsureApplicationExistsErrors(t *testing.T) {
+	ctx := tenantContext()
+	policyDeps, _ := newPolicyDeps()
+
+	// repo is nil
+	policyDeps.AppRepo = nil
+	_, err := appusecases.GetSignInPolicy(ctx, policyDeps, "some-app")
+	if !errors.Is(err, appusecases.ErrApplicationNotFound) {
+		t.Fatalf("expected ErrApplicationNotFound when Repo is nil, got %v", err)
+	}
+}
+
+func TestValidateSignInPolicyRulesExtraErrors(t *testing.T) {
+	// 1. Duplicate RuleID
+	dupRule := spec.SignInRule{
+		RuleID: "rule-1", Name: "Rule 1", Enabled: true,
+	}
+	dupRule2 := spec.SignInRule{
+		RuleID: "rule-1", Name: "Rule 2", Enabled: true,
+	}
+	err := appusecases.ValidateSignInPolicyRules([]spec.SignInRule{dupRule, dupRule2})
+	if !errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
+		t.Fatalf("expected ErrInvalidSignInPolicy for duplicate RuleID, got %v", err)
+	}
+
+	// 2. Invalid Strength
+	badStrength := spec.SignInRule{
+		Name: "Rule 1", Enabled: true,
+		RequiredAuthn: spec.RequiredAuthnLevel{Strength: "SuperStrong"},
+	}
+	err = appusecases.ValidateSignInPolicyRules([]spec.SignInRule{badStrength})
+	if !errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
+		t.Fatalf("expected ErrInvalidSignInPolicy for invalid strength, got %v", err)
+	}
+
+	// 3. ReauthMaxAgeSeconds <= 0
+	badReauth := 0
+	badReauthRule := spec.SignInRule{
+		Name: "Rule 1", Enabled: true,
+		Condition: spec.AccessCondition{ReauthMaxAgeSeconds: &badReauth},
+	}
+	err = appusecases.ValidateSignInPolicyRules([]spec.SignInRule{badReauthRule})
+	if !errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
+		t.Fatalf("expected ErrInvalidSignInPolicy for non-positive reauth max age, got %v", err)
+	}
+
+	// 4. normalizeCIDRs with empty entry
+	emptyCIDRRule := spec.SignInRule{
+		Name: "Rule 1", Enabled: true,
+		Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"", "192.168.1.0/24"}},
+	}
+	err = appusecases.ValidateSignInPolicyRules([]spec.SignInRule{emptyCIDRRule})
+	if err != nil {
+		t.Fatalf("expected no error for empty CIDR entry, got %v", err)
+	}
+}
+
+func TestUpdateDefaultSignInPolicyUpdatesExisting(t *testing.T) {
+	ctx := tenantContext()
+	policyDeps, _ := newPolicyDeps()
+
+	// 1回目
+	_, err := appusecases.UpdateDefaultSignInPolicy(ctx, policyDeps, appusecases.UpdateDefaultSignInPolicyInput{
+		ActorUserID: "admin", Rules: []spec.SignInRule{mfaRule()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 2回目 (existing が存在)
+	_, err = appusecases.UpdateDefaultSignInPolicy(ctx, policyDeps, appusecases.UpdateDefaultSignInPolicyInput{
+		ActorUserID: "admin", Rules: []spec.SignInRule{mfaRule()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetDefaultSignInPolicyNullRules(t *testing.T) {
+	ctx := tenantContext()
+	policyDeps, _ := newPolicyDeps()
+
+	// Rules が nil の policy を seed
+	policy := &spec.TenantDefaultSignInPolicy{
+		TenantID: "acme",
+		Rules:    nil,
+	}
+	_ = policyDeps.DefaultRepo.Save(ctx, policy)
+
+	got, err := appusecases.GetDefaultSignInPolicy(ctx, policyDeps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Rules == nil {
+		t.Fatalf("rules should be normalized to empty slice, got nil")
+	}
+}
+
+func TestAppPolicyWeakerThanDefaultExtraWeaker(t *testing.T) {
+	maxAgeDef := 3600
+	maxAgeAppWeaker := 7200
+	maxAgeAppStronger := 1800
+
+	// 1. Reauth: Def settings has maxAge, App has none -> weaker: true
+	weaker1 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{ReauthMaxAgeSeconds: &maxAgeDef}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{ReauthMaxAgeSeconds: nil}}}},
+	)
+	if !weaker1 {
+		t.Fatalf("expected weaker due to missing reauth max age in app")
+	}
+
+	// 2. Reauth: App maxAge is larger than Def -> weaker: true
+	weaker2 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{ReauthMaxAgeSeconds: &maxAgeDef}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{ReauthMaxAgeSeconds: &maxAgeAppWeaker}}}},
+	)
+	if !weaker2 {
+		t.Fatalf("expected weaker due to larger reauth max age in app")
+	}
+
+	// 3. Reauth: App maxAge is smaller than Def -> weaker: false
+	weaker3 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{ReauthMaxAgeSeconds: &maxAgeDef}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{ReauthMaxAgeSeconds: &maxAgeAppStronger}}}},
+	)
+	if weaker3 {
+		t.Fatalf("expected not weaker since app reauth is stronger")
+	}
+
+	// 4. Network: Def has CIDR restrictions, App has none -> weaker: true
+	weaker4 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8"}}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{NetworkAllowCIDRs: nil}}}},
+	)
+	if !weaker4 {
+		t.Fatalf("expected weaker due to missing network restrictions in app")
+	}
+
+	// 5. Network: App has CIDR restrictions, Def has none -> weaker: false
+	weaker5 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{NetworkAllowCIDRs: nil}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8"}}}}},
+	)
+	if weaker5 {
+		t.Fatalf("expected not weaker since default has no network restrictions")
+	}
+
+	// 6. MFA: Def requires MFA, App does not -> weaker: true
+	weaker6 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnPassword}}}},
+	)
+	if !weaker6 {
+		t.Fatalf("expected weaker due to app missing MFA under MFA default")
+	}
+
+	// 7. Network: App allows CIDR outside Def -> weaker: true
+	weaker7 := appusecases.AppPolicyWeakerThanDefault(
+		&spec.TenantDefaultSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8"}}}}},
+		&spec.AppSignInPolicy{Rules: []spec.SignInRule{{Enabled: true, Condition: spec.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8", "192.168.1.0/24"}}}}},
+	)
+	if !weaker7 {
+		t.Fatalf("expected weaker because app allows extra CIDR outside default")
+	}
+}

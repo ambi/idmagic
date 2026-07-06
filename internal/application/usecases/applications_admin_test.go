@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/ports"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/internal/shared/spec"
@@ -283,5 +284,312 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ApplicationID)
 	if len(list) != 0 {
 		t.Fatalf("unassign left %d assignments", len(list))
+	}
+}
+
+func TestAttachBindingValidationErrors(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+	app := seedApp(ctx, t, deps, "CRM")
+
+	// ValidateBinding: client_id required for OIDC
+	_, err := appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: ""},
+	})
+	if err == nil {
+		t.Fatalf("expected validation error for empty clientID")
+	}
+
+	// ValidateBinding: wtrealm required for WS-Fed
+	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingWsFed, Wtrealm: ""},
+	})
+	if err == nil {
+		t.Fatalf("expected validation error for empty wtrealm")
+	}
+
+	// ValidateBinding: entity_id required for SAML
+	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingSAML, EntityID: ""},
+	})
+	if err == nil {
+		t.Fatalf("expected validation error for empty entity_id")
+	}
+
+	// ValidateBinding: invalid type
+	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		Binding: spec.ProtocolBinding{Type: "invalid-type"},
+	})
+	if err == nil {
+		t.Fatalf("expected validation error for invalid binding type")
+	}
+
+	// App not found
+	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
+		ActorUserID: "admin", ApplicationID: "ghost",
+		Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "c1"},
+	})
+	if !errors.Is(err, appusecases.ErrApplicationNotFound) {
+		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
+	}
+}
+
+func TestDeleteApplicationErrors(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+
+	// Delete non-existent app
+	err := appusecases.DeleteApplication(ctx, deps, "admin", "ghost", time.Time{})
+	if !errors.Is(err, appusecases.ErrApplicationNotFound) {
+		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
+	}
+}
+
+func TestCreateApplicationWithNilEmit(t *testing.T) {
+	ctx := tenantContext()
+	deps := appusecases.ApplicationDeps{
+		Repo: memory.NewApplicationRepository(),
+		Emit: nil,
+	}
+	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "No Emit App", Kind: spec.ApplicationWeblink, LaunchURL: "https://example.com",
+	})
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+}
+
+func TestCreateApplicationWithEmit(t *testing.T) {
+	ctx := tenantContext()
+	var emitted bool
+	deps := appusecases.ApplicationDeps{
+		Repo: memory.NewApplicationRepository(),
+		Emit: func(event spec.DomainEvent) {
+			emitted = true
+		},
+	}
+	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "Emit App", Kind: spec.ApplicationWeblink, LaunchURL: "https://example.com",
+	})
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if !emitted {
+		t.Fatalf("expected event to be emitted")
+	}
+}
+
+func TestUpdateApplicationValidationErrors(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+	app := seedApp(ctx, t, deps, "CRM")
+
+	// Update to empty name (validation error)
+	emptyName := "  "
+	_, err := appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, Name: &emptyName,
+	})
+	if err == nil {
+		t.Fatalf("expected validation error for empty name")
+	}
+}
+
+func TestUploadApplicationIconWithEmptyObjectKey(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+	app := seedApp(ctx, t, deps, "CRM")
+
+	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
+	updated, err := appusecases.UploadApplicationIcon(ctx, deps, appusecases.UploadApplicationIconInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, ObjectKey: "", Data: png, IconURL: "https://example.com/icon.png",
+	})
+	if err != nil {
+		t.Fatalf("failed to upload icon: %v", err)
+	}
+	if updated.IconObjectKey == "" {
+		t.Fatalf("expected generated UUID for empty ObjectKey")
+	}
+}
+
+func TestApplicationIconUsecasesNilStoreErrors(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+	deps.IconStore = nil // Set to nil to test the error paths
+	app := seedApp(ctx, t, deps, "CRM")
+
+	// Upload icon with nil store
+	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
+	_, err := appusecases.UploadApplicationIcon(ctx, deps, appusecases.UploadApplicationIconInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, Data: png,
+	})
+	if err == nil || err.Error() != "application icon store is not configured" {
+		t.Fatalf("expected store not configured error, got %v", err)
+	}
+
+	// Delete icon with nil store
+	_, err = appusecases.DeleteApplicationIcon(ctx, deps, "admin", app.ApplicationID, time.Time{})
+	if err == nil || err.Error() != "application icon store is not configured" {
+		t.Fatalf("expected store not configured error, got %v", err)
+	}
+}
+
+func TestListMyApplicationsFiltering(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+
+	// 1. Service App (should be excluded)
+	serviceApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "Service App", Kind: spec.ApplicationService,
+	})
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+		ActorUserID: "admin", ApplicationID: serviceApp.ApplicationID, SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+	})
+
+	// 2. Disabled App (should be excluded)
+	disabledApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "Disabled App", Kind: spec.ApplicationFederated,
+	})
+	disabled := spec.ApplicationDisabled
+	_, _ = appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
+		ActorUserID: "admin", ApplicationID: disabledApp.ApplicationID, Status: &disabled,
+	})
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+		ActorUserID: "admin", ApplicationID: disabledApp.ApplicationID, SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+	})
+
+	// 3. Normal App with multiple assignments (should be deduped)
+	normalApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "Normal App", Kind: spec.ApplicationFederated,
+	})
+	// assign to user "alice"
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+		ActorUserID: "admin", ApplicationID: normalApp.ApplicationID, SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+	})
+	// assign to group "alice-group"
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+		ActorUserID: "admin", ApplicationID: normalApp.ApplicationID, SubjectType: spec.AssignmentSubjectGroup, SubjectID: "alice-group",
+	})
+	subjectsWithGroup := []ports.SubjectRef{
+		{Type: spec.AssignmentSubjectUser, ID: "alice"},
+		{Type: spec.AssignmentSubjectGroup, ID: "alice-group"},
+	}
+
+	apps, err := appusecases.ListMyApplications(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, subjectsWithGroup)
+	if err != nil {
+		t.Fatalf("ListMyApplications: %v", err)
+	}
+
+	// Should only contain normalApp (1 item)
+	if len(apps) != 1 || apps[0].ApplicationID != normalApp.ApplicationID {
+		t.Fatalf("expected only 1 normal app, got: %d apps", len(apps))
+	}
+}
+
+type errorAppRepo struct {
+	ports.ApplicationRepository
+}
+
+func (e errorAppRepo) FindByID(ctx context.Context, tenantID, id string) (*spec.Application, error) {
+	return nil, errors.New("database error")
+}
+
+func (e errorAppRepo) Save(ctx context.Context, app *spec.Application) error {
+	return errors.New("database error")
+}
+
+func (e errorAppRepo) Delete(ctx context.Context, tenantID, id string) error {
+	return errors.New("database error")
+}
+
+type errorAssignmentRepo struct {
+	ports.AssignmentRepository
+}
+
+func (e errorAssignmentRepo) ListBySubjects(ctx context.Context, tenantID string, subjects []ports.SubjectRef) ([]*spec.ApplicationAssignment, error) {
+	return nil, errors.New("database error")
+}
+
+func (e errorAssignmentRepo) ListByApplication(ctx context.Context, tenantID, appID string) ([]*spec.ApplicationAssignment, error) {
+	return nil, errors.New("database error")
+}
+
+func (e errorAssignmentRepo) DeleteByApplication(ctx context.Context, tenantID, appID string) error {
+	return errors.New("database error")
+}
+
+func (e errorAssignmentRepo) Save(ctx context.Context, a *spec.ApplicationAssignment) error {
+	return errors.New("database error")
+}
+
+func TestUsecaseDatabaseErrors(t *testing.T) {
+	ctx := tenantContext()
+	errRepo := errorAppRepo{}
+	errAssignRepo := errorAssignmentRepo{}
+
+	// 1. CreateApplication save error
+	_, err := appusecases.CreateApplication(ctx, appusecases.ApplicationDeps{Repo: errRepo}, appusecases.CreateApplicationInput{
+		Name: "Test App", Kind: spec.ApplicationWeblink, LaunchURL: "https://example.com",
+	})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 2. UpdateApplication find error
+	name := "New Name"
+	_, err = appusecases.UpdateApplication(ctx, appusecases.ApplicationDeps{Repo: errRepo}, appusecases.UpdateApplicationInput{
+		ApplicationID: "app-1", Name: &name,
+	})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 3. DeleteApplication find error
+	err = appusecases.DeleteApplication(ctx, appusecases.ApplicationDeps{Repo: errRepo}, "admin", "app-1", time.Time{})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 4. AttachBinding find error
+	_, err = appusecases.AttachBinding(ctx, appusecases.ApplicationDeps{Repo: errRepo}, appusecases.AttachBindingInput{
+		ApplicationID: "app-1", Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "c1"},
+	})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 5. DetachBinding find error
+	err = appusecases.DetachBinding(ctx, appusecases.ApplicationDeps{Repo: errRepo}, "admin", "app-1", spec.ProtocolBindingOIDC, time.Time{})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 6. AssignApplication find error
+	_, err = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, appusecases.AssignApplicationInput{
+		ApplicationID: "app-1", SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+	})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 7. ListAssignments find error
+	_, err = appusecases.ListAssignments(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, "app-1")
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 8. IsSubjectAssigned list error
+	_, err = appusecases.IsSubjectAssigned(ctx, errAssignRepo, "acme", "app-1", []ports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: "alice"}})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
+	}
+
+	// 9. ListMyApplications list error
+	_, err = appusecases.ListMyApplications(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, []ports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: "alice"}})
+	if err == nil || err.Error() != "database error" {
+		t.Fatalf("expected database error, got %v", err)
 	}
 }

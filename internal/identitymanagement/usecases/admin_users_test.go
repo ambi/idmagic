@@ -74,6 +74,61 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	}
 }
 
+func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
+	ctx := context.Background()
+	userRepo := memory.NewUserRepository()
+	deps := idmusecases.AdminUserDeps{
+		UserRepo: userRepo, PasswordHasher: crypto.NewArgon2idPasswordHasher(),
+		PasswordHistoryRepo: memory.NewPasswordHistoryRepository(),
+	}
+	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
+	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
+		ActorUserID: "admin", PreferredUsername: "charlie", Password: "initial-password-9182", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
+		ActorUserID: "admin", PreferredUsername: "taken", Password: "initial-password-9182", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	givenName := "Charlie"
+	familyName := "Example"
+	email := "charlie@example.com"
+	verified := true
+	updated, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
+		ActorUserID: "admin", Sub: user.ID,
+		GivenName: &givenName, FamilyName: &familyName, Email: &email, EmailVerified: &verified,
+		Now: now.Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.GivenName == nil || *updated.GivenName != givenName || updated.FamilyName == nil || *updated.FamilyName != familyName ||
+		updated.Email == nil || *updated.Email != email || !updated.EmailVerified {
+		t.Fatalf("updated user=%+v", updated)
+	}
+
+	noChange, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
+		ActorUserID: "admin", Sub: user.ID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if noChange.ID != user.ID {
+		t.Fatalf("no-op returned %+v", noChange)
+	}
+
+	taken := "taken"
+	if _, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
+		ActorUserID: "admin", Sub: user.ID, PreferredUsername: &taken,
+	}); !errors.Is(err, idmusecases.ErrUsernameConflict) {
+		t.Fatalf("expected ErrUsernameConflict, got %v", err)
+	}
+}
+
 func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 	repo := memory.NewUserRepository()
 	now := time.Now().UTC()

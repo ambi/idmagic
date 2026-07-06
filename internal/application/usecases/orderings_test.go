@@ -110,3 +110,39 @@ func TestSaveMyApplicationOrderRejectsUnassigned(t *testing.T) {
 		t.Fatalf("expected ErrUnassignedInOrder, got %v", err)
 	}
 }
+
+func TestSaveMyApplicationOrderUpdatesExisting(t *testing.T) {
+	ctx := tenantContext()
+	deps := newOrderingDeps()
+	subjects := []ports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: "alice"}}
+
+	app, _ := appusecases.CreateApplication(ctx,
+		appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
+		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "App", Kind: spec.ApplicationFederated})
+	_, _ = appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
+		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+	})
+
+	// 1回目
+	_, err := appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{app.ApplicationID}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 2回目 (existing に値が入る)
+	_, err = appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{app.ApplicationID}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetMyApplicationOrderNilRepo(t *testing.T) {
+	ctx := tenantContext()
+	order, err := appusecases.GetMyApplicationOrder(ctx, nil, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(order) != 0 {
+		t.Fatalf("expected empty order for nil repo, got %v", order)
+	}
+}

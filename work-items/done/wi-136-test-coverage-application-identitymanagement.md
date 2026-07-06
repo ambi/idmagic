@@ -3,7 +3,7 @@ id: wi-136-test-coverage-application-identitymanagement
 title: application / identitymanagement の HTTP ハンドラおよびユースケースのユニットテスト追加
 created_at: 2026-07-05
 authors: [tn]
-status: pending
+status: completed
 risk: low
 ---
 
@@ -51,3 +51,30 @@ wi-129 のサブタスク C。Go バックエンドの `application` および `
 # Risk Notes
 
 既存テストとの整合を確認し、テスト用モック／スタブの設計を統一する。
+
+# Plan
+
+- application HTTP ハンドラと usecase の既存境界を変えず、正常系・異常系の追加テストでカバレッジを引き上げる
+- identitymanagement HTTP ハンドラと usecase の admin / self-service 経路を追加テストで補強する
+- `just test-go-cover` で対象 4 パッケージの閾値達成を確認し、`just verify-go` を最終ゲートにする
+
+# Tasks
+
+- [x] T001 application HTTP ハンドラの管理 API lifecycle / validation テストを追加
+- [x] T002 application usecase の binding / category / ordering / sign-in policy edge case テストを追加
+- [x] T003 identitymanagement HTTP ハンドラの user / group / agent / account profile / email change テストを追加
+- [x] T004 identitymanagement usecase の admin user / group / agent / account profile edge case テストを追加
+- [x] T005 `just test-go-cover` で対象 4 パッケージのカバレッジ閾値達成を確認
+
+# Completion
+
+- **Completed At**: 2026-07-07
+- **Summary**:
+  Added Go unit tests for application and identitymanagement HTTP handlers / usecases, covering lifecycle, validation, bindings, categories, ordering, sign-in policy, icon handling, admin users, groups, agents, account profile, email change, attribute definition filters, membership, credential binding, and repository error paths.
+- **Verification Results**:
+  - `just test-go` - 成功
+  - `just test-go-cover` - 成功
+    - `internal/application/adapters/http`: 76.3%
+    - `internal/application/usecases`: 90.0%
+    - `internal/identitymanagement/adapters/http`: 75.6%
+    - `internal/identitymanagement/usecases`: 81.5%

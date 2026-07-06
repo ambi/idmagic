@@ -100,3 +100,28 @@ func TestGetUserProfileShowsReadOnlyOrganizationAttributes(t *testing.T) {
 		t.Fatalf("self_readable organization attribute missing: %+v", self)
 	}
 }
+
+func TestAccountProfileAttributeDefFilters(t *testing.T) {
+	defs := []spec.UserAttributeDef{
+		{Key: "nickname", Visibility: spec.AttrVisibilityClaimExposed, EditableByUser: true},
+		{Key: "department", Visibility: spec.AttrVisibilitySelfReadable, EditableByUser: false},
+		{Key: "payroll_id", Visibility: spec.AttrVisibilityAdminReadable, EditableByUser: false},
+		{Key: "secret_note", Visibility: spec.AttrVisibilityPrivate, EditableByUser: false},
+	}
+
+	readable := idmusecases.SelfReadableAttributeDefs(defs)
+	if len(readable) != 2 || readable[0].Key != "nickname" || readable[1].Key != "department" {
+		t.Fatalf("readable defs = %+v", readable)
+	}
+	editable := idmusecases.EditableAttributeDefs(defs)
+	if len(editable) != 1 || editable[0].Key != "nickname" {
+		t.Fatalf("editable defs = %+v", editable)
+	}
+}
+
+func TestGetUserProfileRejectsMissingSelf(t *testing.T) {
+	ctx, deps, _ := accountTestDeps(t)
+	if _, _, err := idmusecases.GetUserProfile(ctx, deps, "ghost"); !errors.Is(err, idmusecases.ErrUserNotFound) {
+		t.Fatalf("expected ErrUserNotFound, got %v", err)
+	}
+}

@@ -44,6 +44,8 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		ApplicationCategoryRepo:   memory.NewApplicationCategoryRepository(),
 		DefaultSignInPolicyRepo:   memory.NewDefaultSignInPolicyRepository(),
 		SamlSPRepo:                memory.NewSamlServiceProviderRepository(),
+		ClientRepo:                memory.NewClientRepository(),
+		WsFedRPRepo:               memory.NewWsFedRelyingPartyRepository(),
 		AuthnResolver:             authusecases.DemoHeaderResolver{},
 	})
 	return e
