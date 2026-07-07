@@ -2160,12 +2160,20 @@ models:
         type: "AdminOAuth2ClientResponse[]"
   AdminConsentResponse:
     kind: value_object
-    description: 管理 API が返す所属テナント内の Consent 表現。
+    description: 管理 API が返す所属テナント内の Consent 表現。client_id / user_id は UUID
+      のため、表示用に解決済みの可読名 (client_name / preferred_username) を併記する。
     fields:
       user_id:
         type: String
+      preferred_username:
+        type: String
+        optional: true
+        description: user_id を解決した表示名。該当 User が見つからない場合は省略する。
       client_id:
         type: String
+      client_name:
+        type: String
+        description: "client_id を解決した表示名。OAuth2Client.client_name → Application\nカタログ名の順で解決し、いずれも無ければ client_id をそのまま返す。\n"
       scopes:
         type: "String[]"
       state:
@@ -2185,10 +2193,13 @@ models:
         type: "AdminConsentResponse[]"
   AccountConsentResponse:
     kind: value_object
-    description: "end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。\n自分の sub に固定されるため sub / tenant_id は出さない。client_id・付与 scope・\n付与/失効日時のみを表示用に返す。\n"
+    description: "end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。\n自分の sub に固定されるため sub / tenant_id は出さない。client_id・表示名・付与 scope・\n付与/失効日時を表示用に返す。\n"
     fields:
       client_id:
         type: String
+      client_name:
+        type: String
+        description: "client_id を解決した表示名。OAuth2Client.client_name → Application\nカタログ名の順で解決し、いずれも無ければ client_id をそのまま返す。\n"
       scopes:
         type: "String[]"
       state:
@@ -2484,6 +2495,7 @@ models:
       client_name:
         type: String
         optional: true
+        description: "同意画面に表示する client の可読名。OAuth2Client.client_name →\nApplication カタログ名 → client_id の順で解決する (client_id は UUID のため生表示を避ける)。\n"
       scopes:
         type: "String[]"
         optional: true

@@ -220,10 +220,11 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	if client == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
 	}
-	name := client.ClientID
-	if client.ClientName != nil {
-		name = *client.ClientName
-	}
+	// 表示名は client_name → Application カタログ名 → client_id の順で解決する (wi-141)。
+	// ADR-084 で client_id を UUID 化したため、同意画面での UUID 生表示を避ける。
+	name := d.ClientDisplayNameResolver.Resolve(
+		c.Request().Context(), support.RequestTenantID(c), req.ClientID,
+	)
 	return support.NoStoreJSON(c, http.StatusOK, transactionResponse{
 		Kind: "consent", CSRFToken: csrf, ClientName: name, Scopes: strings.Fields(req.Scope),
 		AuthorizationDetails: d.renderConsentDetails(c, req.AuthorizationDetails),

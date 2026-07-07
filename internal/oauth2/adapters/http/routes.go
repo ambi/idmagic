@@ -28,6 +28,7 @@ type Deps struct {
 	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
 	ClientRepo                 oauthports.OAuth2ClientRepository
 	ConsentRepo                oauthports.ConsentRepository
+	ClientDisplayNameResolver  *support.ClientDisplayNameResolver
 	KeyStore                   oauthports.KeyStore
 	TenantRepo                 tenantports.TenantRepository
 	PARStore                   oauthports.PARStore

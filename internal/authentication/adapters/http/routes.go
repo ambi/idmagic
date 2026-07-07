@@ -21,18 +21,19 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 
-	AuditEventRepo          oauthports.AuditEventRepository
-	UserRepo                idmports.UserRepository
-	PasswordHasher          authnports.PasswordHasher
-	PasswordHistoryRepo     authnports.PasswordHistoryRepository
-	ConsentRepo             oauthports.ConsentRepository
-	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository
-	MfaFactorRepo           authnports.MfaFactorRepository
-	AuthEventBucketStore    authnports.AuthEventBucketStore
-	TenantRepo              tenantports.TenantRepository
-	PasswordResetTokenStore authnports.PasswordResetTokenStore
-	EmailSender             authnports.EmailSender
-	BreachedPasswordChecker authnports.BreachedPasswordChecker
+	AuditEventRepo            oauthports.AuditEventRepository
+	UserRepo                  idmports.UserRepository
+	PasswordHasher            authnports.PasswordHasher
+	PasswordHistoryRepo       authnports.PasswordHistoryRepository
+	ConsentRepo               oauthports.ConsentRepository
+	ClientDisplayNameResolver *support.ClientDisplayNameResolver
+	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
+	MfaFactorRepo             authnports.MfaFactorRepository
+	AuthEventBucketStore      authnports.AuthEventBucketStore
+	TenantRepo                tenantports.TenantRepository
+	PasswordResetTokenStore   authnports.PasswordResetTokenStore
+	EmailSender               authnports.EmailSender
+	BreachedPasswordChecker   authnports.BreachedPasswordChecker
 }
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの

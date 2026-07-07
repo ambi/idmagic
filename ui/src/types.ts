@@ -279,7 +279,9 @@ export type WsFedRelyingParty = {
 
 export type AdminConsent = {
   user_id: string
+  preferred_username?: string
   client_id: string
+  client_name: string
   scopes: string[]
   state: 'granted' | 'revoked' | 'expired'
   granted_at: string
@@ -469,6 +471,7 @@ export type AccountSummary = {
 
 export type AccountConsent = {
   client_id: string
+  client_name: string
   scopes: string[]
   state: string
   granted_at: string

@@ -63,6 +63,14 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	if len(list.Consents) != 1 || list.Consents[0].UserID != "alice" {
 		t.Fatalf("cross-tenant consent leaked: %+v", list.Consents)
 	}
+	// client_name は解決名なし (client repo 未配線) のため client_id へフォールバックし、
+	// user_id は seed 済み User の preferred_username へ解決される (wi-141)。
+	if list.Consents[0].ClientName != "portal" {
+		t.Fatalf("client_name fallback expected client_id, got %q", list.Consents[0].ClientName)
+	}
+	if list.Consents[0].PreferredUsername != "alice-name" {
+		t.Fatalf("preferred_username=%q", list.Consents[0].PreferredUsername)
+	}
 
 	getRequest := httptest.NewRequest(
 		http.MethodGet, "/api/admin/consents/alice/portal", http.NoBody,
@@ -125,7 +133,10 @@ func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 }
 
 type adminConsentBody struct {
-	UserID string `json:"user_id"`
+	UserID            string `json:"user_id"`
+	PreferredUsername string `json:"preferred_username"`
+	ClientID          string `json:"client_id"`
+	ClientName        string `json:"client_name"`
 }
 
 func newAdminConsentHandler() (*echo.Echo, *memory.ConsentRepository, *[]spec.DomainEvent) {
@@ -138,6 +149,10 @@ func newAdminConsentHandler() (*echo.Echo, *memory.ConsentRepository, *[]spec.Do
 	})
 	users.Seed(&spec.User{
 		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
+		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
+	})
+	users.Seed(&spec.User{
+		ID: "alice", TenantID: spec.DefaultTenantID, PreferredUsername: "alice-name",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	events := []spec.DomainEvent{}

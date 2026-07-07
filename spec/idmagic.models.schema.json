@@ -179,6 +179,10 @@
         "client_id": {
           "type": "string"
         },
+        "client_name": {
+          "type": "string",
+          "description": "client_id を解決した表示名。OAuth2Client.client_name → Application\nカタログ名の順で解決し、いずれも無ければ client_id をそのまま返す。\n"
+        },
         "scopes": {
           "type": "array",
           "items": {
@@ -200,12 +204,13 @@
       "additionalProperties": false,
       "required": [
         "client_id",
+        "client_name",
         "scopes",
         "state",
         "granted_at",
         "expires_at"
       ],
-      "description": "end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。\n自分の sub に固定されるため sub / tenant_id は出さない。client_id・付与 scope・\n付与/失効日時のみを表示用に返す。\n"
+      "description": "end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。\n自分の sub に固定されるため sub / tenant_id は出さない。client_id・表示名・付与 scope・\n付与/失効日時を表示用に返す。\n"
     },
     "AccountDataExport": {
       "type": "object",
@@ -843,8 +848,16 @@
         "user_id": {
           "type": "string"
         },
+        "preferred_username": {
+          "type": "string",
+          "description": "user_id を解決した表示名。該当 User が見つからない場合は省略する。"
+        },
         "client_id": {
           "type": "string"
+        },
+        "client_name": {
+          "type": "string",
+          "description": "client_id を解決した表示名。OAuth2Client.client_name → Application\nカタログ名の順で解決し、いずれも無ければ client_id をそのまま返す。\n"
         },
         "scopes": {
           "type": "array",
@@ -872,12 +885,13 @@
       "required": [
         "user_id",
         "client_id",
+        "client_name",
         "scopes",
         "state",
         "granted_at",
         "expires_at"
       ],
-      "description": "管理 API が返す所属テナント内の Consent 表現。"
+      "description": "管理 API が返す所属テナント内の Consent 表現。client_id / user_id は UUID のため、表示用に解決済みの可読名 (client_name / preferred_username) を併記する。"
     },
     "AdminKeyListResponse": {
       "type": "object",
@@ -4137,7 +4151,8 @@
           "type": "string"
         },
         "client_name": {
-          "type": "string"
+          "type": "string",
+          "description": "同意画面に表示する client の可読名。OAuth2Client.client_name →\nApplication カタログ名 → client_id の順で解決する (client_id は UUID のため生表示を避ける)。\n"
         },
         "scopes": {
           "type": "array",

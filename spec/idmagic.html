@@ -12106,7 +12106,7 @@ return_to を保って再認可し直す。
   </article>
 <article class="card" id="context-oauth2-model-adminconsentresponse">
     <header><h3>AdminConsentResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">管理 API が返す所属テナント内の Consent 表現。</p>
+    <p class="desc">管理 API が返す所属テナント内の Consent 表現。client_id / user_id は UUID のため、表示用に解決済みの可読名 (client_name / preferred_username) を併記する。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -12117,11 +12117,25 @@ return_to を保って再認可し直す。
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
+    <td><code class="name">preferred_username</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>user_id を解決した表示名。該当 User が見つからない場合は省略する。</td>
+  </tr><tr>
     <td><code class="name">client_id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">client_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>client_id を解決した表示名。OAuth2Client.client_name → Application
+カタログ名の順で解決し、いずれも無ければ client_id をそのまま返す。
+</td>
   </tr><tr>
     <td><code class="name">scopes</code></td>
     <td><code class="type">String[]</code></td>
@@ -12173,8 +12187,8 @@ return_to を保って再認可し直す。
 <article class="card" id="context-oauth2-model-accountconsentresponse">
     <header><h3>AccountConsentResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
     <p class="desc">end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。
-自分の sub に固定されるため sub / tenant_id は出さない。client_id・付与 scope・
-付与/失効日時のみを表示用に返す。
+自分の sub に固定されるため sub / tenant_id は出さない。client_id・表示名・付与 scope・
+付与/失効日時を表示用に返す。
 </p>
 
     <table class="fields">
@@ -12185,6 +12199,14 @@ return_to を保って再認可し直す。
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">client_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>client_id を解決した表示名。OAuth2Client.client_name → Application
+カタログ名の順で解決し、いずれも無ければ client_id をそのまま返す。
+</td>
   </tr><tr>
     <td><code class="name">scopes</code></td>
     <td><code class="type">String[]</code></td>
@@ -12827,7 +12849,9 @@ return_to を保って再認可し直す。
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td></td>
+    <td>同意画面に表示する client の可読名。OAuth2Client.client_name →
+Application カタログ名 → client_id の順で解決する (client_id は UUID のため生表示を避ける)。
+</td>
   </tr><tr>
     <td><code class="name">scopes</code></td>
     <td><code class="type">String[]</code></td>

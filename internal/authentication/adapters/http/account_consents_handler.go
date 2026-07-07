@@ -15,16 +15,18 @@ import (
 )
 
 type accountConsentResponse struct {
-	ClientID  string            `json:"client_id"`
-	Scopes    []string          `json:"scopes"`
-	State     spec.ConsentState `json:"state"`
-	GrantedAt time.Time         `json:"granted_at"`
-	ExpiresAt time.Time         `json:"expires_at"`
+	ClientID   string            `json:"client_id"`
+	ClientName string            `json:"client_name"`
+	Scopes     []string          `json:"scopes"`
+	State      spec.ConsentState `json:"state"`
+	GrantedAt  time.Time         `json:"granted_at"`
+	ExpiresAt  time.Time         `json:"expires_at"`
 }
 
-func toAccountConsentResponse(consent *spec.Consent) accountConsentResponse {
+func toAccountConsentResponse(consent *spec.Consent, clientName string) accountConsentResponse {
 	return accountConsentResponse{
-		ClientID: consent.ClientID, Scopes: slices.Clone(consent.Scopes), State: consent.State,
+		ClientID: consent.ClientID, ClientName: clientName,
+		Scopes: slices.Clone(consent.Scopes), State: consent.State,
 		GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt,
 	}
 }
@@ -34,13 +36,19 @@ func (d Deps) handleListAccountConsents(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	consents, err := oauthusecases.ListConsentsForSub(c.Request().Context(), d.ConsentDeps(), sub)
+	ctx := c.Request().Context()
+	consents, err := oauthusecases.ListConsentsForSub(ctx, d.ConsentDeps(), sub)
 	if err != nil {
 		return err
 	}
+	clientIDs := make([]string, len(consents))
+	for i, consent := range consents {
+		clientIDs[i] = consent.ClientID
+	}
+	names := d.ClientDisplayNameResolver.ResolveAll(ctx, support.RequestTenantID(c), clientIDs)
 	response := make([]accountConsentResponse, len(consents))
 	for i, consent := range consents {
-		response[i] = toAccountConsentResponse(consent)
+		response[i] = toAccountConsentResponse(consent, names[consent.ClientID])
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"consents": response})
 }

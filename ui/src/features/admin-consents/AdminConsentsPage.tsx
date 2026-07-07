@@ -30,9 +30,14 @@ export function AdminConsentsPage({
     const needle = query.trim().toLowerCase()
     if (!needle) return consents
     return consents.filter((c) =>
-      [c.user_id, c.client_id, c.state, ...c.scopes].some((value) =>
-        value.toLowerCase().includes(needle),
-      ),
+      [
+        c.user_id,
+        c.preferred_username ?? '',
+        c.client_id,
+        c.client_name,
+        c.state,
+        ...c.scopes,
+      ].some((value) => value.toLowerCase().includes(needle)),
     )
   }, [consents, query])
 
@@ -83,7 +88,7 @@ export function AdminConsentsPage({
 
       <Card className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
         <Input
-          placeholder="sub / client_id / scope で絞り込み"
+          placeholder="ユーザー / アプリ / scope で絞り込み"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-md"
@@ -104,8 +109,8 @@ export function AdminConsentsPage({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">ユーザー (sub)</th>
-                <th className="px-4 py-3">Client ID</th>
+                <th className="px-4 py-3">ユーザー</th>
+                <th className="px-4 py-3">アプリケーション</th>
                 <th className="px-4 py-3">状態</th>
                 <th className="px-4 py-3">付与</th>
                 <th className="px-4 py-3" />
@@ -129,8 +134,12 @@ export function AdminConsentsPage({
                       : ''
                   }`}
                 >
-                  <td className="px-4 py-3 font-mono text-xs">{c.user_id}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{c.client_id}</td>
+                  <td className="px-4 py-3">
+                    <NameWithId name={c.preferred_username ?? c.user_id} id={c.user_id} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <NameWithId name={c.client_name} id={c.client_id} />
+                  </td>
                   <td className="px-4 py-3">
                     <StateBadge state={c.state} />
                   </td>
@@ -161,10 +170,17 @@ export function AdminConsentsPage({
           <h2 className="text-sm font-semibold text-slate-700">詳細</h2>
           {selected ? (
             <dl className="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-y-3 text-sm">
-              <dt className="text-slate-500">ユーザー (ID)</dt>
-              <dd className="font-mono text-xs">{selected.user_id}</dd>
+              <dt className="text-slate-500">ユーザー</dt>
+              <dd>
+                <NameWithId
+                  name={selected.preferred_username ?? selected.user_id}
+                  id={selected.user_id}
+                />
+              </dd>
               <dt className="text-slate-500">アプリケーション</dt>
-              <dd className="font-mono text-xs">{selected.client_id}</dd>
+              <dd>
+                <NameWithId name={selected.client_name} id={selected.client_id} />
+              </dd>
               <dt className="text-slate-500">スコープ</dt>
               <dd className="flex flex-wrap gap-1">
                 {selected.scopes.length === 0 ? (
@@ -204,7 +220,7 @@ export function AdminConsentsPage({
       {confirmTarget ? (
         <ConfirmDialog
           title="同意を取り消す"
-          message={`${confirmTarget.user_id} の ${confirmTarget.client_id} への同意を取り消します。再認可するまでアクセストークンは発行されません。`}
+          message={`${confirmTarget.preferred_username ?? confirmTarget.user_id} の ${confirmTarget.client_name} への同意を取り消します。再認可するまでアクセストークンは発行されません。`}
           confirmLabel="取り消す"
           onCancel={() => setConfirmTarget(null)}
           onConfirm={() => handleRevoke(confirmTarget)}
@@ -212,6 +228,23 @@ export function AdminConsentsPage({
         />
       ) : null}
     </AdminShell>
+  )
+}
+
+// 可読名を主表示にし、UUID (client_id / user_id) は補助表記に留める (wi-141)。
+// name が id と一致する場合 (解決名なしのフォールバック) は id 行を重複表示しない。
+function NameWithId({ name, id }: { name: string; id: string }) {
+  return (
+    <div className="min-w-0">
+      <span className="block truncate text-sm text-slate-800" title={id}>
+        {name}
+      </span>
+      {name === id ? null : (
+        <span className="block truncate font-mono text-[11px] text-slate-400" title={id}>
+          {id}
+        </span>
+      )}
+    </div>
   )
 }
 

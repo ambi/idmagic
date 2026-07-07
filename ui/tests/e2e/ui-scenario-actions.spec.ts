@@ -151,10 +151,11 @@ test('account connected application consent can be revoked from the browser', as
 
     await view.navigate(`${uiOrigin}/account/applications`)
     await waitForPage(view, 'account-applications')
-    // demo-client の固定 UUID (ADR-084)。connected-apps 画面は client_id を表示する。
-    await waitForText(view, '00000000-0000-4000-8000-000000000021')
+    // demo-client は client_name を持たないため、Application カタログ名 "Demo Client" へ
+    // 解決される (wi-141)。UUID (ADR-084) は補助表記に留まる。
+    await waitForText(view, 'Demo Client')
     await clickButtonByText(view, 'アクセスを取り消す')
-    await waitForText(view, '00000000-0000-4000-8000-000000000021 へのアクセスを取り消しました。')
+    await waitForText(view, 'Demo Client へのアクセスを取り消しました。')
     await waitForText(view, 'アクセスを許可したアプリはありません。')
   } finally {
     view.close()

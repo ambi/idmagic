@@ -131,6 +131,11 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		GateTrustedForwardedHops:    d.TrustedForwardedHops,
 	}
 
+	clientDisplayNames := &support.ClientDisplayNameResolver{
+		ClientRepo:      d.ClientRepo,
+		ApplicationRepo: d.ApplicationRepo,
+	}
+
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
 		Deps:                       d.Deps,
 		Authenticator:              authenticator,
@@ -139,6 +144,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AuthzDetailTypeRepo:        d.AuthzDetailTypeRepo,
 		ClientRepo:                 d.ClientRepo,
 		ConsentRepo:                d.ConsentRepo,
+		ClientDisplayNameResolver:  clientDisplayNames,
 		KeyStore:                   d.KeyStore,
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.PARStore,
@@ -164,20 +170,21 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	})
 
 	authhttp.RegisterRoutes(g, authhttp.Deps{
-		Deps:                    d.Deps,
-		Authenticator:           authenticator,
-		AuditEventRepo:          d.AuditEventRepo,
-		UserRepo:                d.UserRepo,
-		PasswordHasher:          d.PasswordHasher,
-		PasswordHistoryRepo:     d.PasswordHistoryRepo,
-		ConsentRepo:             d.ConsentRepo,
-		AttrSchemaRepo:          d.AttrSchemaRepo,
-		MfaFactorRepo:           d.MfaFactorRepo,
-		AuthEventBucketStore:    d.AuthEventBucketStore,
-		TenantRepo:              d.TenantRepo,
-		PasswordResetTokenStore: d.PasswordResetTokenStore,
-		EmailSender:             d.EmailSender,
-		BreachedPasswordChecker: d.BreachedPasswordChecker,
+		Deps:                      d.Deps,
+		Authenticator:             authenticator,
+		AuditEventRepo:            d.AuditEventRepo,
+		UserRepo:                  d.UserRepo,
+		PasswordHasher:            d.PasswordHasher,
+		PasswordHistoryRepo:       d.PasswordHistoryRepo,
+		ConsentRepo:               d.ConsentRepo,
+		ClientDisplayNameResolver: clientDisplayNames,
+		AttrSchemaRepo:            d.AttrSchemaRepo,
+		MfaFactorRepo:             d.MfaFactorRepo,
+		AuthEventBucketStore:      d.AuthEventBucketStore,
+		TenantRepo:                d.TenantRepo,
+		PasswordResetTokenStore:   d.PasswordResetTokenStore,
+		EmailSender:               d.EmailSender,
+		BreachedPasswordChecker:   d.BreachedPasswordChecker,
 	})
 
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{

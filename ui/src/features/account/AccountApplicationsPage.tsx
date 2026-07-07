@@ -32,15 +32,16 @@ export function AccountApplicationsPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  async function handleRevoke(clientId: string) {
+  async function handleRevoke(consent: AccountConsent) {
+    const clientId = consent.client_id
     setPending(clientId)
     setError('')
     setNotice('')
     try {
       await revokeAccountConsent(csrfToken, clientId)
-      setConsents((current) => current.filter((consent) => consent.client_id !== clientId))
+      setConsents((current) => current.filter((c) => c.client_id !== clientId))
       setNotice(
-        `${clientId} へのアクセスを取り消しました。次回このアプリを使うときは、改めて許可を求められます。`,
+        `${consent.client_name} へのアクセスを取り消しました。次回このアプリを使うときは、改めて許可を求められます。`,
       )
     } catch (cause) {
       setError(
@@ -74,11 +75,14 @@ export function AccountApplicationsPage({
           {consents.map((consent) => (
             <Card key={consent.client_id} className="flex flex-wrap items-start gap-4 p-5">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-sm font-bold text-blue-700">
-                {consent.client_id.slice(0, 2).toUpperCase()}
+                {consent.client_name.slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-sm font-semibold text-slate-900">
-                  {consent.client_id}
+                <p
+                  className="truncate text-sm font-semibold text-slate-900"
+                  title={consent.client_id}
+                >
+                  {consent.client_name}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {formatDate(consent.granted_at)} に許可
@@ -99,7 +103,7 @@ export function AccountApplicationsPage({
                 variant="outline"
                 className="text-red-700 hover:bg-red-50"
                 disabled={pending === consent.client_id}
-                onClick={() => handleRevoke(consent.client_id)}
+                onClick={() => handleRevoke(consent)}
               >
                 <IconTrash size={16} aria-hidden="true" />
                 {pending === consent.client_id ? '取り消し中…' : 'アクセスを取り消す'}
