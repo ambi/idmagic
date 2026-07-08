@@ -10,6 +10,7 @@ import (
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	"github.com/ambi/idmagic/internal/saml/adapters/samlresponse"
 	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	samlusecases "github.com/ambi/idmagic/internal/saml/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/spec"
 	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
@@ -51,8 +52,8 @@ func (d Deps) handleSamlSSOPost(c *echo.Context) error {
 	return d.processAuthnRequest(c, xml, relayState, samldomain.BindingPOST)
 }
 
-// processAuthnRequest は復号済み AuthnRequest を解析・検証し、SAMLResponse を発行する。
-// 未認証時のログイン往復をまたいで要求を保つため、redirect binding に符号化した resume URL を渡す。
+// processAuthnRequest は復号済み AuthnRequest を解析し、未認証時のログイン往復をまたいで要求を
+// 保つ resume URL を組み立ててから発行判断へ渡す。
 func (d Deps) processAuthnRequest(c *echo.Context, xml []byte, relayState string, binding samldomain.Binding) error {
 	req, err := samldomain.ParseAuthnRequest(xml)
 	if err != nil {
@@ -83,101 +84,66 @@ func (d Deps) handleIdPInitiated(c *echo.Context, relayState string) error {
 	return d.issueForRequest(c, req, relayState, c.Request().URL.RequestURI(), nil, "")
 }
 
-// issueForRequest は要求を SP に解決・検証し、認証ゲートを適用して SAMLResponse を発行する。
+// issueForRequest は wire から usecase 入力を組み立て、発行判断の outcome を HTTP に写す。
 func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, relayState, resumeURL string, xml []byte, binding samldomain.Binding) error {
-	ctx := c.Request().Context()
-	tenantID := support.RequestTenantID(c)
-
 	if d.SamlSPRepo == nil {
 		return c.String(http.StatusBadRequest, "SAML is not available")
 	}
-	sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, req.Issuer)
-	if err != nil {
-		return err
-	}
-	if sp == nil {
-		return d.rejectSSO(c, req.Issuer, "unknown service provider", nil)
-	}
-	if binding != "" {
-		if err := samldomain.ValidateRequestSignature(binding, xml, c.Request().URL.RawQuery, *sp); err != nil {
-			return d.rejectSSO(c, req.Issuer, err.Error(), nil)
-		}
-	}
-	expectedDestination := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/") + support.TenantRoute(c, "/saml/sso")
-	validated, err := samldomain.ValidateSignIn(req, *sp, expectedDestination)
-	if err != nil {
-		return d.rejectSSO(c, req.Issuer, err.Error(), nil)
-	}
-
+	ctx := c.Request().Context()
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
-	if authn == nil || authn.UserID == "" || authn.AuthenticationPending {
-		return c.Redirect(http.StatusSeeOther, loginRedirect(c, resumeURL))
-	}
-	now := time.Now().UTC()
-	if samldomain.RequiresFreshAuth(req.ForceAuthn, time.Unix(authn.AuthTime, 0).UTC(), now) {
-		return c.Redirect(http.StatusSeeOther, loginRedirect(c, resumeURL))
-	}
-	user, err := d.UserRepo.FindBySub(ctx, authn.UserID)
+	expectedDestination := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/") + support.TenantRoute(c, "/saml/sso")
+
+	outcome, err := d.signInService().Issue(ctx, samlusecases.SignInInput{
+		TenantID:            support.RequestTenantID(c),
+		Request:             req,
+		Binding:             binding,
+		RawXML:              xml,
+		RawQuery:            c.Request().URL.RawQuery,
+		ExpectedDestination: expectedDestination,
+		Authn:               authn,
+		ClientIP:            d.ClientIP(c.Request()),
+	})
 	if err != nil {
 		return err
 	}
-	if user == nil || !user.IsActive() {
+	switch outcome.Kind {
+	case samlusecases.SignInNeedLogin:
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c, resumeURL))
+	case samlusecases.SignInRejected:
+		return c.String(http.StatusBadRequest, outcome.Message)
+	case samlusecases.SignInForbidden:
+		return c.String(http.StatusForbidden, outcome.Message)
+	default:
+		return d.issueResponse(c, outcome, relayState)
 	}
+}
 
-	// 割当ゲート: SP が Application binding に属する場合、未割当 subject には発行しない (fail-closed)。
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingSAML, sp.EntityID, authn.UserID, authn, d.ClientIP(c.Request()))
+// issueResponse は発行データから SAMLResponse を組み立て・署名し、自動 POST フォームで返す。
+func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relayState string) error {
+	assertion, err := d.buildAssertion(c, o.SP, o.Validated, o.ClaimResult, o.Authn, o.Now)
 	if err != nil {
-		return err
+		return d.rejectSSO(c, o.SP.EntityID, "assertion build failed", err)
 	}
-	if !decision.Allowed {
-		reason := decision.Reason
-		if decision.StepUpRequired {
-			reason = "step-up required by application sign-in policy"
-			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.UserID})
-		} else if reason == "" {
-			reason = "subject not assigned to application"
-		}
-		if decision.ApplicationID != "" {
-			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingSAML), Subject: authn.UserID, Reason: reason})
-		}
-		d.emit(&spec.SamlSignInRejected{At: now, TenantID: tenantID, EntityID: sp.EntityID, Reason: reason})
-		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインインポリシーを満たしていません")
-	}
-
-	result, err := feddomain.IssueClaims(sp.ClaimPolicy, feddomain.ResolveUserAttributes(*user))
-	if err != nil {
-		return d.rejectSSO(c, sp.EntityID, "claim issuance failed", err)
-	}
-	if validated.NameIDFormat != "" {
-		result.NameIDFormat = validated.NameIDFormat
-	}
-
-	assertion, err := d.buildAssertion(c, *sp, validated, result, authn, now)
-	if err != nil {
-		return d.rejectSSO(c, sp.EntityID, "assertion build failed", err)
-	}
-
 	responseXML, err := samlresponse.BuildResponse(samlresponse.ResponseInput{
 		Issuer:       support.RequestIssuer(c, d.Issuer),
-		Destination:  validated.ACSURL,
-		InResponseTo: validated.InResponseTo,
-		IssueInstant: now,
+		Destination:  o.Validated.ACSURL,
+		InResponseTo: o.Validated.InResponseTo,
+		IssueInstant: o.Now,
 		Assertion:    assertion,
-		SignResponse: sp.SignResponse,
+		SignResponse: o.SP.SignResponse,
 	}, d.FederationSigner)
 	if err != nil {
-		return d.rejectSSO(c, sp.EntityID, "response build failed", err)
+		return d.rejectSSO(c, o.SP.EntityID, "response build failed", err)
 	}
 	// 自動 POST は cross-origin の ACS へ form 送信し固定の submit script を含む。
 	// 当該レスポンスの CSP に form-action=ACS と script hash を許可する (ADR-076)。
-	support.SetAutoPostFormCSP(c, validated.ACSURL)
-	formHTML, err := samlresponse.EncodePostForm(responseXML, validated.ACSURL, relayState)
+	support.SetAutoPostFormCSP(c, o.Validated.ACSURL)
+	formHTML, err := samlresponse.EncodePostForm(responseXML, o.Validated.ACSURL, relayState)
 	if err != nil {
-		return d.rejectSSO(c, sp.EntityID, "form render failed", err)
+		return d.rejectSSO(c, o.SP.EntityID, "form render failed", err)
 	}
 
-	d.emit(&spec.SamlSignInIssued{At: now, TenantID: tenantID, EntityID: sp.EntityID, UserID: authn.UserID})
+	d.emit(&spec.SamlSignInIssued{At: o.Now, TenantID: support.RequestTenantID(c), EntityID: o.SP.EntityID, UserID: o.Authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }

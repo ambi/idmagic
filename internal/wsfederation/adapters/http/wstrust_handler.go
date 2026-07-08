@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/internal/wsfederation/adapters/wstrust"
 	feddomain "github.com/ambi/idmagic/internal/wsfederation/domain"
+	wsfedusecases "github.com/ambi/idmagic/internal/wsfederation/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -54,24 +55,17 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		return c.String(http.StatusUnauthorized, "invalid credentials")
 	}
 
-	attrs, err := feddomain.ApplyEntraProfile(feddomain.ResolveUserAttributes(*user), rp.EntraProfile)
-	if err != nil {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "entra profile failed"})
-		return c.String(http.StatusInternalServerError, "entra profile failed")
+	decision := wsfedusecases.WsTrustService{}.IssueToken(wsfedusecases.TokenRequest{
+		RP:                 *rp,
+		User:               *user,
+		RequestedTokenType: rst.TokenType,
+	})
+	if decision.RejectReason != "" {
+		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
+		return c.String(decision.RejectStatus, decision.RejectReason)
 	}
-	result, err := feddomain.IssueClaims(rp.ClaimPolicy, attrs)
-	if err != nil {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "claim issuance failed"})
-		return c.String(http.StatusInternalServerError, "claim issuance failed")
-	}
-	tokenType := rp.EffectiveTokenType()
-	if strings.TrimSpace(rst.TokenType) != "" {
-		if rst.TokenType != string(spec.TokenTypeSAML11) && rst.TokenType != string(spec.TokenTypeSAML20) {
-			d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unsupported token type"})
-			return c.String(http.StatusBadRequest, "unsupported token type")
-		}
-		tokenType = spec.WsFedTokenType(rst.TokenType)
-	}
+	result := decision.ClaimResult
+	tokenType := decision.TokenType
 	signed, _, err := samltoken.BuildSignedAssertion(samltoken.AssertionInput{
 		Version:      samlVersion(tokenType),
 		Issuer:       support.RequestIssuer(c, d.Issuer),

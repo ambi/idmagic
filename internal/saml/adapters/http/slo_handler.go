@@ -9,6 +9,7 @@ import (
 
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	samldomain "github.com/ambi/idmagic/internal/saml/domain"
+	samlusecases "github.com/ambi/idmagic/internal/saml/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/spec"
 
@@ -34,7 +35,7 @@ func (d Deps) handleSamlSLO(c *echo.Context) error {
 	d.clearSessionCookie(c)
 	d.emit(&spec.SamlLogout{At: time.Now().UTC(), TenantID: tenantID, EntityID: entityID})
 
-	if target := d.resolveLogoutRedirect(c, tenantID, entityID, relayState); target != "" {
+	if target := d.logoutService().ResolveRedirect(ctx, tenantID, entityID, relayState); target != "" {
 		return c.Redirect(http.StatusSeeOther, target)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -43,6 +44,7 @@ func (d Deps) handleSamlSLO(c *echo.Context) error {
 
 func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayState string) error {
 	now := time.Now().UTC()
+	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 	binding := samldomain.BindingRedirect
 	var (
@@ -65,23 +67,28 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 	if d.SamlSPRepo == nil {
 		return c.String(http.StatusBadRequest, "SAML is not available")
 	}
-	sp, err := d.SamlSPRepo.FindByEntityID(c.Request().Context(), tenantID, req.Issuer)
+	expectedDestination := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/") + support.TenantRoute(c, "/saml/slo")
+	decision, err := d.logoutService().ValidateLogoutRequest(ctx, samlusecases.LogoutRequestInput{
+		TenantID:            tenantID,
+		Request:             req,
+		Binding:             binding,
+		RawXML:              xml,
+		RawQuery:            c.Request().URL.RawQuery,
+		ExpectedDestination: expectedDestination,
+	})
 	if err != nil {
 		return err
 	}
-	if sp == nil || sp.SLOURL == "" {
+	if decision.EmitLogout {
 		d.emit(&spec.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
-		return c.String(http.StatusBadRequest, "unknown service provider")
 	}
-	if err := samldomain.ValidateRequestSignature(binding, xml, c.Request().URL.RawQuery, *sp); err != nil {
-		return c.String(http.StatusBadRequest, err.Error())
+	if decision.BadRequest != "" {
+		return c.String(http.StatusBadRequest, decision.BadRequest)
 	}
-	expectedDestination := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/") + support.TenantRoute(c, "/saml/slo")
-	if req.Destination != "" && req.Destination != expectedDestination {
-		return c.String(http.StatusBadRequest, "Destination does not match SLO endpoint")
-	}
+	sp := decision.SP
+
 	if d.SessionManager != nil {
-		_ = d.SessionManager.Revoke(c.Request().Context(), c.Request().Header.Get("Cookie"))
+		_ = d.SessionManager.Revoke(ctx, c.Request().Header.Get("Cookie"))
 	}
 	d.clearSessionCookie(c)
 	d.emit(&spec.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
@@ -127,23 +134,6 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp spec.SamlServiceProvider, 
 		return nil, err
 	}
 	return []byte(b.String()), nil
-}
-
-// resolveLogoutRedirect は entityID で SP を解決し、登録済み SingleLogoutService URL を返す。
-// SP / SLO URL が無ければ空文字を返し、リダイレクトしない。
-func (d Deps) resolveLogoutRedirect(c *echo.Context, tenantID, entityID, relayState string) string {
-	if entityID == "" || d.SamlSPRepo == nil {
-		return ""
-	}
-	sp, err := d.SamlSPRepo.FindByEntityID(c.Request().Context(), tenantID, entityID)
-	if err != nil || sp == nil || sp.SLOURL == "" {
-		return ""
-	}
-	target := sp.SLOURL
-	if relayState != "" {
-		target += "?RelayState=" + relayState
-	}
-	return target
 }
 
 func (d Deps) clearSessionCookie(c *echo.Context) {

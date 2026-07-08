@@ -1,10 +1,8 @@
 package http
 
 import (
-	"context"
 	"net/http"
 	"net/url"
-	"slices"
 	"time"
 
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
@@ -14,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/internal/wsfederation/adapters/wsfed"
 	feddomain "github.com/ambi/idmagic/internal/wsfederation/domain"
+	wsfedusecases "github.com/ambi/idmagic/internal/wsfederation/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -42,110 +41,54 @@ func (d Deps) handleWsFed(c *echo.Context) error {
 	}
 }
 
-// handleWsFedSignIn は passive sign-in を処理する。未認証ならログイン UI に return_to つきで
-// 誘導し、認証済みなら relying party の claim policy で claim を発行し、署名済み SAML assertion を
-// RSTR に包んで自動 POST する。
+// handleWsFedSignIn は wire から usecase 入力を組み立て、発行判断の outcome を HTTP に写す。
 func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInRequest) error {
 	ctx := c.Request().Context()
-	tenantID := support.RequestTenantID(c)
-
-	if req.Wtrealm == "" {
-		d.emit(&spec.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Reason: "wtrealm is required"})
-		return c.String(http.StatusBadRequest, "wtrealm is required")
-	}
-
-	rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, req.Wtrealm)
-	if err != nil {
-		return err
-	}
-	if rp == nil {
-		d.emit(&spec.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: "unknown relying party"})
-		return c.String(http.StatusBadRequest, "unknown relying party")
-	}
-
-	validated, err := feddomain.ValidateSignIn(req, *rp)
-	if err != nil {
-		d.emit(&spec.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: err.Error()})
-		return c.String(http.StatusBadRequest, err.Error())
-	}
-
-	// セッション解決。未認証ならログインへ誘導し、認証後に同じ URL へ戻す。
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
-	if authn == nil || authn.UserID == "" || authn.AuthenticationPending {
-		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
-	}
 
-	user, err := d.UserRepo.FindBySub(ctx, authn.UserID)
+	outcome, err := d.signInService().Issue(ctx, wsfedusecases.SignInInput{
+		TenantID: support.RequestTenantID(c),
+		Request:  req,
+		Authn:    authn,
+		ClientIP: d.ClientIP(c.Request()),
+	})
 	if err != nil {
 		return err
 	}
-	if user == nil || !user.IsActive() {
+	switch outcome.Kind {
+	case wsfedusecases.SignInNeedLogin:
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
+	case wsfedusecases.SignInRejected:
+		return c.String(outcome.Status, outcome.Message)
+	case wsfedusecases.SignInForbidden:
+		return c.String(http.StatusForbidden, outcome.Message)
+	default:
+		return d.issuePassiveForm(c, outcome)
 	}
+}
 
-	now := time.Now().UTC()
+// issuePassiveForm は発行データから署名済み SAML assertion を RSTR に包み、自動 POST で返す。
+func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) error {
+	tenantID := support.RequestTenantID(c)
+	rp := o.Validated.RelyingParty
 
-	// 割当ゲート (wi-69): RP が Application binding に属する場合、未割当 subject には
-	// assertion を発行しない (fail-closed, AssignmentGatesProtocol)。
-	decision, err := d.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingWsFed, rp.Wtrealm, authn.UserID, authn, d.ClientIP(c.Request()))
-	if err != nil {
-		return err
-	}
-	if !decision.Allowed {
-		reason := decision.Reason
-		if decision.StepUpRequired {
-			reason = "step-up required by application sign-in policy"
-			d.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.UserID})
-		} else if reason == "" {
-			reason = "subject not assigned to application"
-		}
-		if decision.ApplicationID != "" {
-			d.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.UserID, Reason: reason})
-		}
-		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
-		return c.String(http.StatusForbidden, "この利用者はアプリケーションのサインインポリシーを満たしていません")
-	}
-
-	// wfresh: 認証が古すぎれば再認証のためログインへ誘導する。
-	if feddomain.RequiresFreshAuth(req.Wfresh, time.Unix(authn.AuthTime, 0), now) {
-		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
-	}
-	// wauth: 要求された認証方式を尊重する。満たせない方式 (統合 Windows 等) は拒否する。
-	authnMethod, err := feddomain.ResolveAuthnMethod(req.Wauth, authn.AMR)
-	if err != nil {
-		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: err.Error()})
-		return c.String(http.StatusBadRequest, err.Error())
-	}
-
-	attrs, err := feddomain.ApplyEntraProfile(feddomain.ResolveUserAttributes(*user), rp.EntraProfile)
-	if err != nil {
-		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "entra profile failed"})
-		return c.String(http.StatusInternalServerError, "entra profile failed")
-	}
-	result, err := feddomain.IssueClaims(rp.ClaimPolicy, attrs)
-	if err != nil {
-		d.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "claim issuance failed"})
-		return c.String(http.StatusInternalServerError, "claim issuance failed")
-	}
-
-	tokenType := rp.EffectiveTokenType()
 	signed, _, err := samltoken.BuildSignedAssertion(samltoken.AssertionInput{
-		Version:      samlVersion(tokenType),
+		Version:      samlVersion(o.TokenType),
 		Issuer:       support.RequestIssuer(c, d.Issuer),
 		Audience:     rp.EffectiveAudience(),
-		Recipient:    validated.ReplyURL,
-		IssueInstant: now,
-		NotBefore:    now.Add(-1 * time.Minute),
-		NotOnOrAfter: now.Add(assertionLifetime),
-		AuthnInstant: time.Unix(authn.AuthTime, 0).UTC(),
-		AuthnMethod:  authnMethod,
-		Result:       result,
+		Recipient:    o.Validated.ReplyURL,
+		IssueInstant: o.Now,
+		NotBefore:    o.Now.Add(-1 * time.Minute),
+		NotOnOrAfter: o.Now.Add(assertionLifetime),
+		AuthnInstant: time.Unix(o.Authn.AuthTime, 0).UTC(),
+		AuthnMethod:  o.AuthnMethod,
+		Result:       o.ClaimResult,
 	}, d.FederationSigner)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "assertion build failed")
 	}
 
-	rstr, err := wsfed.BuildRSTR(signed, rp.Wtrealm, string(tokenType), now, now.Add(assertionLifetime))
+	rstr, err := wsfed.BuildRSTR(signed, rp.Wtrealm, string(o.TokenType), o.Now, o.Now.Add(assertionLifetime))
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "rstr build failed")
 	}
@@ -155,13 +98,13 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 	}
 	// 自動 POST は cross-origin の ReplyURL へ form 送信し固定の submit script を含む。
 	// 当該レスポンスの CSP に form-action=ReplyURL と script hash を許可する (ADR-076)。
-	support.SetAutoPostFormCSP(c, validated.ReplyURL)
-	formHTML, err := wsfed.RenderPassiveForm(validated.ReplyURL, wresult, validated.Wctx)
+	support.SetAutoPostFormCSP(c, o.Validated.ReplyURL)
+	formHTML, err := wsfed.RenderPassiveForm(o.Validated.ReplyURL, wresult, o.Validated.Wctx)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "form render failed")
 	}
 
-	d.emit(&spec.WsFedSignInIssued{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: authn.UserID})
+	d.emit(&spec.WsFedSignInIssued{At: o.Now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: o.Authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }
@@ -179,28 +122,12 @@ func (d Deps) handleWsFedSignOut(c *echo.Context, req feddomain.WsFedSignInReque
 	d.emit(&spec.WsFedSignOut{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm})
 
 	if req.Wa == feddomain.WaSignOut {
-		if target := d.resolveSignOutReply(ctx, tenantID, req); target != "" {
+		if target := d.signOutService().ResolveReply(ctx, tenantID, req); target != "" {
 			return c.Redirect(http.StatusSeeOther, target)
 		}
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.String(http.StatusOK, "signed out")
-}
-
-// resolveSignOutReply は wreply を、wtrealm で解決した RP の許可集合に対して検証する。
-// 検証を通らない (または wtrealm/wreply 不在) なら空文字を返し、リダイレクトしない (open redirect 防止)。
-func (d Deps) resolveSignOutReply(ctx context.Context, tenantID string, req feddomain.WsFedSignInRequest) string {
-	if req.Wtrealm == "" || req.Wreply == "" {
-		return ""
-	}
-	rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, req.Wtrealm)
-	if err != nil || rp == nil {
-		return ""
-	}
-	if slices.Contains(rp.ReplyURLs, req.Wreply) {
-		return req.Wreply
-	}
-	return ""
 }
 
 func (d Deps) emit(event spec.DomainEvent) {
