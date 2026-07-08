@@ -423,7 +423,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 				Next: support.TenantRoute(c, "/totp") + "?return_to=" + url.QueryEscape(input.ReturnTo),
 			})
 		}
-		d.emitAuthenticationSuccess(c, authTime, user.TenantID, user.ID, authn)
+		d.emitAuthenticationSuccess(authTime, user.TenantID, user.ID, authn)
 		gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
 		if err != nil {
 			return err
@@ -475,7 +475,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/totp")})
 		}
 	}
-	d.emitAuthenticationSuccess(c, authTime, user.TenantID, user.ID, authn)
+	d.emitAuthenticationSuccess(authTime, user.TenantID, user.ID, authn)
 	// full authentication 完了。last_login_at 記録 + required action gate。
 	gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
 	if err != nil {
@@ -540,7 +540,6 @@ func (d Deps) enforceDefaultSignInPolicy(
 }
 
 func (d Deps) emitAuthenticationSuccess(
-	c *echo.Context,
 	at time.Time,
 	tenantID, userID string,
 	authn *authdomain.AuthenticationContext,
@@ -831,13 +830,6 @@ func (d Deps) issueCodeURL(
 	query.Set("iss", iss)
 	u.RawQuery = query.Encode()
 	return u.String(), nil
-}
-
-func stringValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }
 
 func authorizationErrorURL(req *spec.AuthorizationRequest, iss, code, description string) string {
