@@ -26,6 +26,7 @@ import (
 	samltoken "github.com/ambi/idmagic/internal/wsfederation/adapters/samltoken"
 	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
 
+	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -77,6 +78,12 @@ type Deps struct {
 	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
 	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+
+	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
+	WebAuthnRP             *gowebauthn.WebAuthn
+	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore   authnports.WebAuthnSessionStore
+	RecoveryCodeRepo       authnports.RecoveryCodeRepository
 }
 
 func Register(e *echo.Echo, d Deps) {
@@ -167,6 +174,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AuthEventBucketStore:       d.AuthEventBucketStore,
 		Authorizer:                 d.Authorizer,
 		SentinelPasswordHash:       d.SentinelPasswordHash,
+		WebAuthnRP:                 d.WebAuthnRP,
+		WebAuthnCredentialRepo:     d.WebAuthnCredentialRepo,
+		WebAuthnSessionStore:       d.WebAuthnSessionStore,
+		RecoveryCodeRepo:           d.RecoveryCodeRepo,
 	})
 
 	authhttp.RegisterRoutes(g, authhttp.Deps{
@@ -185,6 +196,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordResetTokenStore:   d.PasswordResetTokenStore,
 		EmailSender:               d.EmailSender,
 		BreachedPasswordChecker:   d.BreachedPasswordChecker,
+		WebAuthnRP:                d.WebAuthnRP,
+		WebAuthnCredentialRepo:    d.WebAuthnCredentialRepo,
+		WebAuthnSessionStore:      d.WebAuthnSessionStore,
+		RecoveryCodeRepo:          d.RecoveryCodeRepo,
 	})
 
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{

@@ -125,6 +125,26 @@ func (m MfaFactorType) Valid() bool {
 	return false
 }
 
+// WebAuthnTransport は authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4)。
+type WebAuthnTransport string
+
+const (
+	WebAuthnTransportUSB      WebAuthnTransport = "usb"
+	WebAuthnTransportNFC      WebAuthnTransport = "nfc"
+	WebAuthnTransportBLE      WebAuthnTransport = "ble"
+	WebAuthnTransportInternal WebAuthnTransport = "internal"
+	WebAuthnTransportHybrid   WebAuthnTransport = "hybrid"
+)
+
+func (t WebAuthnTransport) Valid() bool {
+	switch t {
+	case WebAuthnTransportUSB, WebAuthnTransportNFC, WebAuthnTransportBLE,
+		WebAuthnTransportInternal, WebAuthnTransportHybrid:
+		return true
+	}
+	return false
+}
+
 // ===============================================================
 // 状態機械 (SCL state_machines)
 // ===============================================================

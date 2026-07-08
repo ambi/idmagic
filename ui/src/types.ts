@@ -499,10 +499,26 @@ export type AccountMfaFactor = {
   last_used_at?: string
 }
 
+export type WebAuthnCredentialSummary = {
+  credential_id: string
+  label?: string
+  transports: string[]
+  created_at: string
+  last_used_at?: string
+}
+
+export type RecoveryCodeStatus = {
+  generated_at?: string
+  total: number
+  remaining: number
+}
+
 export type AccountSecurity = {
   password_changed_at?: string
   totp_enrolled: boolean
   factors: AccountMfaFactor[]
+  webauthn_credentials: WebAuthnCredentialSummary[]
+  recovery_codes: RecoveryCodeStatus
 }
 
 export type TotpEnrollmentStart = {

@@ -70,6 +70,8 @@ export function useStepUpGuard(csrfToken: string) {
 const methodLabels: Record<StepUpMethod, string> = {
   password: 'パスワード',
   totp: '認証アプリ',
+  webauthn: 'パスキー',
+  recovery_code: 'リカバリコード',
 }
 
 interface StepUpDialogProps {
@@ -102,6 +104,9 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
   }
 
   const isTotp = method === 'totp'
+  const isRecovery = method === 'recovery_code'
+  const isWebAuthn = method === 'webauthn'
+  const isCode = isTotp || isRecovery
 
   return (
     <div
@@ -152,27 +157,39 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
             </div>
           ) : null}
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="step-up-credential">
-              {isTotp ? '認証アプリの 6 桁コード' : '現在のパスワード'}
-            </Label>
-            <Input
-              id="step-up-credential"
-              autoFocus
-              type={isTotp ? 'text' : 'password'}
-              inputMode={isTotp ? 'numeric' : undefined}
-              autoComplete={isTotp ? 'one-time-code' : 'current-password'}
-              pattern={isTotp ? '[0-9]{6}' : undefined}
-              maxLength={isTotp ? 6 : undefined}
-              required
-              placeholder={isTotp ? '123456' : '現在のパスワードを入力'}
-              value={credential}
-              className={isTotp ? 'font-mono tracking-[0.3em]' : undefined}
-              onChange={(event) =>
-                setCredential(isTotp ? event.target.value.replace(/\D/g, '') : event.target.value)
-              }
-            />
-          </div>
+          {isWebAuthn ? (
+            <p className="text-sm text-slate-600">
+              登録済みのパスキー (指紋・顔認証・セキュリティキー) で本人確認します。
+            </p>
+          ) : (
+            <div className="grid gap-1.5">
+              <Label htmlFor="step-up-credential">
+                {isTotp
+                  ? '認証アプリの 6 桁コード'
+                  : isRecovery
+                    ? 'リカバリコード'
+                    : '現在のパスワード'}
+              </Label>
+              <Input
+                id="step-up-credential"
+                autoFocus
+                type={isCode ? 'text' : 'password'}
+                inputMode={isTotp ? 'numeric' : undefined}
+                autoComplete={isCode ? 'one-time-code' : 'current-password'}
+                pattern={isTotp ? '[0-9]{6}' : undefined}
+                maxLength={isTotp ? 6 : undefined}
+                required
+                placeholder={
+                  isTotp ? '123456' : isRecovery ? 'xxxxxxxxxx' : '現在のパスワードを入力'
+                }
+                value={credential}
+                className={isCode ? 'font-mono tracking-[0.2em]' : undefined}
+                onChange={(event) =>
+                  setCredential(isTotp ? event.target.value.replace(/\D/g, '') : event.target.value)
+                }
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>
@@ -181,10 +198,12 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
             <Button
               type="submit"
               disabled={
-                busy || credential.trim() === '' || (isTotp && credential.trim().length !== 6)
+                busy ||
+                (!isWebAuthn && credential.trim() === '') ||
+                (isTotp && credential.trim().length !== 6)
               }
             >
-              {busy ? '確認中…' : '再認証して続行'}
+              {busy ? '確認中…' : isWebAuthn ? 'パスキーで認証' : '再認証して続行'}
             </Button>
           </div>
         </form>

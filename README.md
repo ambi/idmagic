@@ -34,7 +34,7 @@ and a foundation for identity platform experiments.
 Run the API and UI together in local memory mode:
 
 ```bash
-./dev.sh
+just dev
 ```
 
 Open <http://localhost:5173/> and choose the local demo authentication entry.
@@ -54,12 +54,14 @@ If you prefer separate terminals:
 
 ```bash
 # Terminal 1: Go API
-ADDR=:8081 ISSUER=http://localhost:5173 go run ./cmd/idmagic
+WEBAUTHN_RP_ID=localhost \
+WEBAUTHN_RP_ORIGINS=http://localhost:5173 \
+ADDR=:8081 \
+ISSUER=http://localhost:5173 \
+just dev-api
 
 # Terminal 2: React UI
-cd ui
-bun install
-bun run dev
+just dev-ui
 ```
 
 ## Docker Development Stack
@@ -69,7 +71,7 @@ Collector, the Go API, the UI gateway, and the outbox relay. Caddy exposes the
 combined app at <http://localhost:8080/>.
 
 ```bash
-docker compose -f deploy/docker/docker-compose.dev.yaml up --build
+just dev-compose
 ```
 
 Re-apply only the declarative PostgreSQL schema:
@@ -97,17 +99,12 @@ just dev-ui
 just dev-compose
 ```
 
-Useful direct checks:
+Useful checks:
 
 ```bash
-go test ./...
-go test -race ./...
-
-cd ui
-bun run lint
-bun run typecheck
-bun run build
-bun run test:e2e
+just verify-go
+just verify-ui
+just test-ui-e2e
 ```
 
 ## Configuration
@@ -136,7 +133,19 @@ adapters are selected with environment variables:
 | `HSTS_INCLUDE_SUBDOMAINS` | `true`, `false` | add `includeSubDomains` to HSTS |
 | `CSP_REPORT_ONLY` | `false`, `true` | send CSP as `Content-Security-Policy-Report-Only` for staged rollout |
 | `CSP_REPORT_URI` | URL/path | CSP `report-uri` for violation collection |
+| `WEBAUTHN_RP_ID` | domain, e.g. `localhost` | WebAuthn relying-party ID; WebAuthn/passkeys are disabled when unset |
+| `WEBAUTHN_RP_ORIGINS` | comma-separated origins | Allowed browser origins for WebAuthn ceremonies, e.g. `http://localhost:5173` |
+| `WEBAUTHN_RP_DISPLAY_NAME` | display name | WebAuthn relying-party display name shown by authenticators |
 | `SKIP_DEMO_SEED` | `true` | disable demo seed data |
+
+### WebAuthn / Passkeys
+
+WebAuthn binds passkeys to the browser origin and relying-party ID. For local
+development, `localhost` is allowed by browsers over plain HTTP; non-local
+deployments must use HTTPS and set `WEBAUTHN_RP_ID` to the registrable domain
+that users visit. `WEBAUTHN_RP_ORIGINS` must include every public origin used by
+the UI, such as `https://login.example.com`. The Docker development stack sets
+`WEBAUTHN_RP_ID=localhost` and `WEBAUTHN_RP_ORIGINS=http://localhost:8080`.
 
 For SMTP testing, Mailpit works well:
 

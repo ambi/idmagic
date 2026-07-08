@@ -11,6 +11,7 @@ type TransactionResponse = {
   client_name?: string
   scopes?: string[]
   authorization_details?: ConsentDetailView[]
+  second_factor_methods?: string[]
 }
 
 export type BrowserFlowPage =
@@ -23,6 +24,7 @@ export type BrowserFlowPage =
       kind: 'totp'
       csrfToken: string
       returnTo?: string
+      secondFactorMethods: string[]
     }
   | {
       kind: 'consent'
@@ -59,7 +61,12 @@ export async function loadBrowserFlowData(path: string, search: string): Promise
     if (path !== '/totp') {
       window.history.replaceState(null, '', tenantURL('/totp'))
     }
-    return { kind: 'totp', csrfToken: data.csrf_token, returnTo }
+    return {
+      kind: 'totp',
+      csrfToken: data.csrf_token,
+      returnTo,
+      secondFactorMethods: data.second_factor_methods ?? ['totp'],
+    }
   }
   if (path !== '/login') {
     window.history.replaceState(null, '', tenantURL('/login'))

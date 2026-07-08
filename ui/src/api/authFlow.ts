@@ -1,5 +1,6 @@
 import type { BrowserFlowResponse } from '../types'
 import { AuthenticationAPIError, base64URL, request, tenantURL, type APIError } from './core'
+import { getPasskeyAssertion } from './webauthn'
 
 export async function login(
   csrfToken: string,
@@ -37,6 +38,50 @@ export async function submitTOTP(
   returnTo?: string,
 ): Promise<BrowserFlowResponse> {
   return request('/api/auth/totp', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify({ code, return_to: returnTo }),
+  })
+}
+
+// loginWithPasskey は login 第二要素の WebAuthn フロー: challenge 取得 →
+// navigator.credentials.get → assertion 検証 (wi-26 / ADR-087)。
+export async function loginWithPasskey(
+  csrfToken: string,
+  returnTo?: string,
+): Promise<BrowserFlowResponse> {
+  const challengeResponse = await fetch(tenantURL('/api/auth/webauthn/challenge'), {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (!challengeResponse.ok) {
+    const body = (await challengeResponse.json().catch(() => ({}))) as APIError
+    throw new AuthenticationAPIError(
+      body.message ?? 'パスキー認証を開始できませんでした。',
+      body.error,
+    )
+  }
+  const assertion = await getPasskeyAssertion(
+    (await challengeResponse.json()) as { publicKey: never },
+  )
+  return request('/api/auth/webauthn', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ assertion, return_to: returnTo }),
+  })
+}
+
+export async function submitRecoveryCode(
+  csrfToken: string,
+  code: string,
+  returnTo?: string,
+): Promise<BrowserFlowResponse> {
+  return request('/api/auth/recovery-code', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

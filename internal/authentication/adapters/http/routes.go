@@ -13,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 
+	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -34,6 +35,13 @@ type Deps struct {
 	PasswordResetTokenStore   authnports.PasswordResetTokenStore
 	EmailSender               authnports.EmailSender
 	BreachedPasswordChecker   authnports.BreachedPasswordChecker
+
+	// WebAuthn / Passkey と backup recovery code の self-service 管理 (wi-26)。
+	// WebAuthnRP が nil の場合 WebAuthn 登録は無効。
+	WebAuthnRP             *gowebauthn.WebAuthn
+	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore   authnports.WebAuthnSessionStore
+	RecoveryCodeRepo       authnports.RecoveryCodeRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの
@@ -44,10 +52,16 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/account/consents/:client_id/revoke", d.handleRevokeAccountConsent)
 	g.POST("/api/account/step_up/start", d.handleStartStepUp)
 	g.POST("/api/account/step_up/complete", d.handleCompleteStepUp)
+	g.POST("/api/account/step_up/webauthn/challenge", d.handleStepUpWebAuthnChallenge)
 	g.GET("/api/account/security", d.handleGetAccountSecurity)
 	g.POST("/api/account/mfa/totp/enroll/start", d.handleStartTotpEnrollment)
 	g.POST("/api/account/mfa/totp/enroll/confirm", d.handleConfirmTotpEnrollment)
 	g.POST("/api/account/mfa/totp/remove", d.handleRemoveTotpFactor)
+	g.POST("/api/account/mfa/webauthn/register/start", d.handleStartWebAuthnRegistration)
+	g.POST("/api/account/mfa/webauthn/register/finish", d.handleFinishWebAuthnRegistration)
+	g.POST("/api/account/mfa/webauthn/remove", d.handleRemoveWebAuthnCredential)
+	g.POST("/api/account/mfa/recovery-codes/generate", d.handleGenerateRecoveryCodes)
+	g.POST("/api/account/mfa/recovery-codes/revoke", d.handleRevokeRecoveryCodes)
 	g.GET("/api/account/signin_activity", d.handleListSignInActivity)
 	g.GET("/api/account/sessions", d.handleListAccountSessions)
 	g.POST("/api/account/sessions/:id/revoke", d.handleRevokeAccountSession)

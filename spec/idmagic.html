@@ -5953,11 +5953,11 @@ tombstone 化する。actor.id == resource.id かつ admin / system_admin role �
       <div class="eyebrow">Bounded Context · contexts/authentication.yaml</div>
       <h1>Authentication</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">3</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">47</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">17</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-invariants"><span class="stat-num">1</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">19</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">7</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-user_experience"><span class="stat-num">7</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">3</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">63</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">25</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-invariants"><span class="stat-num">1</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">19</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">9</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-user_experience"><span class="stat-num">7</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-authentication-standards">
     <h2>Standards <span class="count">3</span></h2>
-    <p class="lead">適用する外部標準と規範要件。5 requirements。採用方針であり実装状態ではない。</p>
+    <p class="lead">適用する外部標準と規範要件。6 requirements。採用方針であり実装状態ではない。</p>
     <div class="cards"><article class="card standard" id="context-authentication-std-rfc6238">
         <header><h3>RFC6238</h3><span class="badge badge-version">RFC 6238</span></header>
         <p class="desc"><strong>TOTP Time-Based One-Time Password Algorithm</strong> — 時刻ベースワンタイムパスワードによる第二要素認証。</p>
@@ -6024,13 +6024,23 @@ tombstone 化する。actor.id == resource.id かつ admin / system_admin role �
         <div class="requirements"><article class="requirement" id="context-authentication-req-webauthn3-authentication">
             <header>
               <code class="name">WEBAUTHN3-AUTHENTICATION</code>
-              <span class="badge badge-adoption-optional">optional</span>
+              <span class="badge badge-adoption-required">required</span>
               <span class="badge badge-strength">MAY</span>
               <span class="chip chip-hint">§5</span>
             </header>
             <p>WebAuthn factor利用時はoriginとRelying Partyにscopeされた公開鍵Credentialを検証する。</p>
 
-            <div class="reference-row"><span class="reference-label">models</span><a class="chip chip-ref" href="#context-authentication-model-mfafactor">MfaFactor</a> <a class="chip chip-ref" href="#context-authentication-model-mfafactortype">MfaFactorType</a> <a class="chip chip-ref" href="#context-authentication-model-authenticationcontext">AuthenticationContext</a></div>
+            <div class="reference-row"><span class="reference-label">models</span><a class="chip chip-ref" href="#context-authentication-model-webauthncredential">WebAuthnCredential</a> <a class="chip chip-ref" href="#context-authentication-model-mfafactortype">MfaFactorType</a> <a class="chip chip-ref" href="#context-authentication-model-authenticationcontext">AuthenticationContext</a></div>
+          </article><article class="requirement" id="context-authentication-req-webauthn3-registration">
+            <header>
+              <code class="name">WEBAUTHN3-REGISTRATION</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§7.1</span>
+            </header>
+            <p>WebAuthn credential登録時はattestationのchallenge / RP ID / originを検証し、COSE公開鍵とsign countを保存する。</p>
+
+            <div class="reference-row"><span class="reference-label">models</span><a class="chip chip-ref" href="#context-authentication-model-webauthncredential">WebAuthnCredential</a></div>
           </article></div>
       </article></div>
   </section>
@@ -6057,10 +6067,10 @@ tombstone 化する。actor.id == resource.id かつ admin / system_admin role �
     </article></div>
   </section>
 <section id="context-authentication-models">
-    <h2>Models <span class="count">47</span></h2>
+    <h2>Models <span class="count">63</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">entity <span class="count">3</span></h3>
+      <h3 class="grp-title">entity <span class="count">5</span></h3>
       <div class="cards"><article class="card" id="context-authentication-model-mfafactor">
     <header><h3>MfaFactor</h3><span class="badge badge-kind-entity">entity</span></header>
     <p class="desc">ユーザーが登録した第二要素 (MFA) 1 件。Totp の場合 secret は base32 で保存し、認証時に RFC 6238 (T0=0, STEP=30s, 6-digit) で評価する。User.mfa_enrolled の真値はこの集合の非空性と同義。</p>
@@ -6157,6 +6167,121 @@ tombstone 化する。actor.id == resource.id かつ admin / system_admin role �
   </tr></tbody>
   </table>
   </article>
+<article class="card" id="context-authentication-model-webauthncredential">
+    <header><h3>WebAuthnCredential</h3><span class="badge badge-kind-entity">entity</span></header>
+    <p class="desc">ユーザーが登録した WebAuthn / Passkey credential 1 件。1 ユーザーが複数持てるため
+MfaFactor とは別集合とし、credential_id で一意識別する。public_key は COSE 公開鍵、
+sign_count は clone 検出のための署名カウンタ。origin / RP に束縛された所持要素として
+phishing-resistant MFA / step-up に使う。
+</p>
+    <dl class="kv"><dt>identity</dt><dd><code>credential_id</code></dd></dl>
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">credential_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>authenticator が返す credential ID (base64url)。RP 内で一意。</td>
+  </tr><tr>
+    <td><code class="name">user_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>所有者ユーザの sub。</td>
+  </tr><tr>
+    <td><code class="name">public_key</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td>COSE 形式の公開鍵 (base64url)。</td>
+  </tr><tr>
+    <td><code class="name">sign_count</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>直近 assertion の署名カウンタ。逆行は clone の疑いとして検出する。</td>
+  </tr><tr>
+    <td><code class="name">transports</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>authenticator が申告した transport のヒント (usb / nfc / ble / internal / hybrid)。</td>
+  </tr><tr>
+    <td><code class="name">aaguid</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>authenticator の AAGUID (base64url)。機種識別のヒント。</td>
+  </tr><tr>
+    <td><code class="name">label</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>ユーザが付ける表示名 (例 &quot;MacBook Touch ID&quot;)。</td>
+  </tr><tr>
+    <td><code class="name">backup_eligible</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>credential が複数デバイス間で同期可能か (WebAuthn BE flag)。</td>
+  </tr><tr>
+    <td><code class="name">backup_state</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>credential が現在 backup 済みか (WebAuthn BS flag)。</td>
+  </tr><tr>
+    <td><code class="name">created_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">last_used_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-recoverycode">
+    <header><h3>RecoveryCode</h3><span class="badge badge-kind-entity">entity</span></header>
+    <p class="desc">TOTP / WebAuthn 喪失時の backup recovery code 1 件。平文は生成時に一度だけ表示し、
+DB には code_hash (SHA-256 hex) のみ保存する。consumed_at が非 null なら使用済みで
+再利用不可。1 ユーザーの有効な code 集合を 1 set として扱い、再生成で全置換する。
+</p>
+    <dl class="kv"><dt>identity</dt><dd><code>user_id, code_hash</code></dd></dl>
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">user_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">code_hash</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td>recovery code 平文の SHA-256 hex。平文は保存しない。</td>
+  </tr><tr>
+    <td><code class="name">generated_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">consumed_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
 <article class="card" id="context-authentication-model-passwordresettokenrecord">
     <header><h3>PasswordResetTokenRecord</h3><span class="badge badge-kind-entity">entity</span></header>
     <p class="desc">パスワードリセット用の単発消費トークン。
@@ -6202,7 +6327,7 @@ token は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">18</span></h3>
+      <h3 class="grp-title">value object <span class="count">27</span></h3>
       <div class="cards"><article class="card" id="context-authentication-model-authenticationcontext">
     <header><h3>AuthenticationContext</h3><span class="badge badge-kind-value_object">value object</span></header>
     <p class="desc">Authentication bounded context が OAuth2/OIDC bounded context に渡す認証結果。OAuth2/OIDC は password、UserRepository、session cookie の詳細を参照しない。</p>
@@ -6280,8 +6405,8 @@ token は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ
 <article class="card" id="context-authentication-model-accountsecurityresponse">
     <header><h3>AccountSecurityResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
     <p class="desc">`/api/account/security` の返り値 (end-user account portal のセキュリティ概要)。
-パスワード変更日時と MFA (TOTP) の登録状態をまとめる。step-up auth は本
-ステージでは未導入。
+パスワード変更日時と MFA (TOTP / WebAuthn) の登録状態、backup recovery code の残数を
+まとめる。
 </p>
 
     <table class="fields">
@@ -6301,6 +6426,18 @@ token は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ
   </tr><tr>
     <td><code class="name">factors</code></td>
     <td><code class="type">AccountMfaFactor[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">webauthn_credentials</code></td>
+    <td><code class="type">WebAuthnCredentialSummary[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">recovery_codes</code></td>
+    <td><code class="type">RecoveryCodeStatus</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -6379,6 +6516,220 @@ otpauth_uri は QR / 手動登録のために提示する。secret は確認 (Co
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-webauthncredentialsummary">
+    <header><h3>WebAuthnCredentialSummary</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">self-service セキュリティ画面で提示する WebAuthn credential 1 件の射影。
+公開鍵や sign_count は返さず、識別と表示に必要な属性のみ。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">credential_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">label</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">transports</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">created_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">last_used_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-recoverycodestatus">
+    <header><h3>RecoveryCodeStatus</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">self-service セキュリティ画面で提示する recovery code の状態。個々のコードは返さず、
+生成時刻と総数・残数のみ。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">generated_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">total</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">remaining</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-webauthnregistrationoptions">
+    <header><h3>WebAuthnRegistrationOptions</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">StartWebAuthnRegistration の返り値。navigator.credentials.create に渡す
+PublicKeyCredentialCreationOptions を JSON でそのまま返す。challenge は短命で
+サーバー側セッションに束縛する。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">public_key</code></td>
+    <td><code class="type">JSON</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td>PublicKeyCredentialCreationOptions (WebAuthn Level 3)。</td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-webauthnregistrationrequest">
+    <header><h3>WebAuthnRegistrationRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">FinishWebAuthnRegistration の入力。navigator.credentials.create が返した
+attestation を JSON で送り返し、任意で表示ラベルを付ける。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">attestation</code></td>
+    <td><code class="type">JSON</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td>PublicKeyCredential (attestation response, WebAuthn Level 3)。</td>
+  </tr><tr>
+    <td><code class="name">label</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-webauthnassertionoptions">
+    <header><h3>WebAuthnAssertionOptions</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">StartBrowserWebAuthn の返り値。navigator.credentials.get に渡す
+PublicKeyCredentialRequestOptions を JSON でそのまま返す。challenge は pending login
+session に束縛する。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">public_key</code></td>
+    <td><code class="type">JSON</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td>PublicKeyCredentialRequestOptions (WebAuthn Level 3)。</td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-browserwebauthnrequest">
+    <header><h3>BrowserWebAuthnRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">SubmitBrowserWebAuthn の入力。navigator.credentials.get が返した assertion を
+JSON で送り返す。pending login session cookie が sub を、X-CSRF-Token が CSRF を解決する。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">assertion</code></td>
+    <td><code class="type">JSON</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td>PublicKeyCredential (assertion response, WebAuthn Level 3)。</td>
+  </tr><tr>
+    <td><code class="name">return_to</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-browserrecoverycoderequest">
+    <header><h3>BrowserRecoveryCodeRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">SubmitBrowserRecoveryCode の入力。第二要素として recovery code を 1 つ消費する。
+code は audit / log に残さない。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">code</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">return_to</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-webauthncredentialremoverequest">
+    <header><h3>WebAuthnCredentialRemoveRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">RemoveWebAuthnCredential の入力。解除対象の credential を credential_id で指定する。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">credential_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-recoverycodesresponse">
+    <header><h3>RecoveryCodesResponse</h3><span class="badge badge-kind-value_object">value object</span></header>
+    <p class="desc">GenerateRecoveryCodes の返り値。平文の recovery code 一覧を一度だけ返す。
+以降は残数 (RecoveryCodeStatus) のみ取得でき、codes は保存・再表示しない。
+</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">codes</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">generated_at</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
     <td></td>
   </tr></tbody>
   </table>
@@ -6692,12 +7043,19 @@ modal に出す選択肢)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">3</span></h3>
+      <h3 class="grp-title">enum <span class="count">4</span></h3>
       <div class="cards"><article class="card" id="context-authentication-model-mfafactortype">
     <header><h3>MfaFactorType</h3><span class="badge badge-kind-enum">enum</span></header>
     <p class="desc">第二要素 (MFA) の種別 (RFC 8176 amr 値の本アプリ向けサブセット)。Totp は RFC 6238、Webauthn は WebAuthn Level 3、Hwk / Swk は将来拡張のための予約。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">Totp</span> <span class="chip chip-enum">Webauthn</span> <span class="chip chip-enum">Hwk</span> <span class="chip chip-enum">Swk</span></div>
+  </article>
+<article class="card" id="context-authentication-model-webauthntransport">
+    <header><h3>WebAuthnTransport</h3><span class="badge badge-kind-enum">enum</span></header>
+    <p class="desc">WebAuthn authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4 AuthenticatorTransport)。
+</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">Usb</span> <span class="chip chip-enum">Nfc</span> <span class="chip chip-enum">Ble</span> <span class="chip chip-enum">Internal</span> <span class="chip chip-enum">Hybrid</span></div>
   </article>
 <article class="card" id="context-authentication-model-sessionendreason">
     <header><h3>SessionEndReason</h3><span class="badge badge-kind-enum">enum</span></header>
@@ -6710,15 +7068,15 @@ modal に出す選択肢)。
   </article>
 <article class="card" id="context-authentication-model-stepupmethod">
     <header><h3>StepUpMethod</h3><span class="badge badge-kind-enum">enum</span></header>
-    <p class="desc">step-up 再認証に使える factor。password は常時、totp は enrolled 時のみ
-利用できる。
+    <p class="desc">step-up 再認証に使える factor。password は常時、totp / webauthn は enrolled 時のみ、
+recovery_code は有効な残数がある時のみ利用できる。
 </p>
 
-    <div class="enum-vals"><span class="chip chip-enum">password</span> <span class="chip chip-enum">totp</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">password</span> <span class="chip chip-enum">totp</span> <span class="chip chip-enum">webauthn</span> <span class="chip chip-enum">recovery_code</span></div>
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">23</span></h3>
+      <h3 class="grp-title">event <span class="count">27</span></h3>
       <div class="cards"><article class="card" id="context-authentication-model-userauthenticated">
     <header><h3>UserAuthenticated</h3><span class="badge badge-kind-event">event</span></header>
     <p class="desc">ResourceOwner の認証が成功した。amr は実際に経由した認証手段の一覧 (OIDC Core §2)。</p>
@@ -7603,6 +7961,128 @@ SIEM 側からは観測できる。to は SHA-256 hash で記録する。
   </tr></tbody>
   </table>
   </article>
+<article class="card" id="context-authentication-model-webauthncredentialregistered">
+    <header><h3>WebAuthnCredentialRegistered</h3><span class="badge badge-kind-event">event</span></header>
+    <p class="desc">本人が self-service で WebAuthn / Passkey credential を登録した。公開鍵や
+credential_id は audit に流さず、種別のみ残す。最初の 1 件で User.mfa_enrolled を true にする。
+</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>対象 user の所属テナント ID。</td>
+  </tr><tr>
+    <td><code class="name">userId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-webauthncredentialremoved">
+    <header><h3>WebAuthnCredentialRemoved</h3><span class="badge badge-kind-event">event</span></header>
+    <p class="desc">本人が self-service で WebAuthn / Passkey credential を解除した (step-up 済み)。
+残る第二要素が無くなった場合は User.mfa_enrolled を false に戻す。
+</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>対象 user の所属テナント ID。</td>
+  </tr><tr>
+    <td><code class="name">userId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-recoverycodesgenerated">
+    <header><h3>RecoveryCodesGenerated</h3><span class="badge badge-kind-event">event</span></header>
+    <p class="desc">本人が backup recovery code を生成 / 再生成した (step-up 済み)。平文や hash は
+audit に流さず、発行件数のみ残す。再生成は既存 set を全置換する。
+</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>対象 user の所属テナント ID。</td>
+  </tr><tr>
+    <td><code class="name">userId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">count</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>発行した recovery code の件数。</td>
+  </tr></tbody>
+  </table>
+  </article>
+<article class="card" id="context-authentication-model-recoverycodesrevoked">
+    <header><h3>RecoveryCodesRevoked</h3><span class="badge badge-kind-event">event</span></header>
+    <p class="desc">本人が backup recovery code を明示的に失効した (step-up 済み)。以降 recovery code は
+第二要素として使えない。
+</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">Timestamp</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>対象 user の所属テナント ID。</td>
+  </tr><tr>
+    <td><code class="name">userId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+  </article>
 <article class="card" id="context-authentication-model-sessionended">
     <header><h3>SessionEnded</h3><span class="badge badge-kind-event">event</span></header>
     <p class="desc">LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、
@@ -7730,7 +8210,7 @@ token はセッションに 1:1 で紐づかないため本スライスでは失
     </div>
   </section>
 <section id="context-authentication-interfaces">
-    <h2>Interfaces <span class="count">17</span></h2>
+    <h2>Interfaces <span class="count">25</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="context-authentication-iface-submitbrowserlogin">
     <header><h3>SubmitBrowserLogin</h3></header>
@@ -7944,6 +8424,221 @@ actor.id に固定し、解除時に User.mfa_enrolled を false に戻す。
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/account/mfa/totp/remove</code> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-startwebauthnregistration">
+    <header><h3>StartWebAuthnRegistration</h3></header>
+    <p class="desc">認証済みユーザーが WebAuthn / Passkey 登録を開始する (self-service)。
+PublicKeyCredentialCreationOptions を返し、challenge をサーバー側セッションに束縛する。
+永続化はまだ行わない。
+</p>
+
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">options</code></td>
+    <td><code class="type">WebAuthnRegistrationOptions</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/account/mfa/webauthn/register/start</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-finishwebauthnregistration">
+    <header><h3>FinishWebAuthnRegistration</h3></header>
+    <p class="desc">attestation を検証して WebAuthn credential を永続化する (self-service)。actor.id に
+固定し、最初の 1 件で User.mfa_enrolled を true にする。RP ID / origin / challenge を検証する。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">WebAuthnRegistrationRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-authentication-model-webauthncredentialregistered">WebAuthnCredentialRegistered</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/account/mfa/webauthn/register/finish</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-removewebauthncredential">
+    <header><h3>RemoveWebAuthnCredential</h3></header>
+    <p class="desc">指定した WebAuthn credential を解除する (self-service, step-up 必須)。actor.id に固定し、
+残る第二要素が無くなれば User.mfa_enrolled を false に戻す。
+</p>
+
+    <dl class="kv"><dt>annotations</dt><dd><span class="chip chip-annotation">step up: required</span></dd></dl>
+<div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">WebAuthnCredentialRemoveRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-authentication-model-webauthncredentialremoved">WebAuthnCredentialRemoved</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/account/mfa/webauthn/remove</code> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-startbrowserwebauthn">
+    <header><h3>StartBrowserWebAuthn</h3></header>
+    <p class="desc">SPA JSON API から WebAuthn assertion challenge を発行する。pending login session が
+sub を解決し、PublicKeyCredentialRequestOptions を返す。challenge はそのセッションに束縛する。
+</p>
+
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">options</code></td>
+    <td><code class="type">WebAuthnAssertionOptions</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/auth/webauthn/challenge</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-submitbrowserwebauthn">
+    <header><h3>SubmitBrowserWebAuthn</h3></header>
+    <p class="desc">SPA JSON API から WebAuthn assertion を検証する。成功すれば LoginSession を認証完了
+状態に昇格させ、後続フロー (consent / authorization code 発行) に進む。sign_count 逆行は
+clone として拒否する。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">BrowserWebAuthnRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">BrowserFlowResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-authentication-model-userauthenticated">UserAuthenticated</a> <a class="chip chip-event-ref" href="#context-authentication-model-authenticationfailed">AuthenticationFailed</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/auth/webauthn</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-submitbrowserrecoverycode">
+    <header><h3>SubmitBrowserRecoveryCode</h3></header>
+    <p class="desc">SPA JSON API から backup recovery code を第二要素として検証する。成功すれば
+LoginSession を認証完了状態に昇格させ、消費した code は再利用不可にする。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">BrowserRecoveryCodeRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">BrowserFlowResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-authentication-model-userauthenticated">UserAuthenticated</a> <a class="chip chip-event-ref" href="#context-authentication-model-authenticationfailed">AuthenticationFailed</a> <a class="chip chip-event-ref" href="#context-authentication-model-backupcodeconsumed">BackupCodeConsumed</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/auth/recovery-code</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-generaterecoverycodes">
+    <header><h3>GenerateRecoveryCodes</h3></header>
+    <p class="desc">認証済みユーザーが backup recovery code を生成 / 再生成する (self-service, step-up 必須)。
+平文を一度だけ返し、DB には hash のみ保存する。既存 set は全置換する。
+</p>
+
+    <dl class="kv"><dt>annotations</dt><dd><span class="chip chip-annotation">step up: required</span></dd></dl>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">codes</code></td>
+    <td><code class="type">RecoveryCodesResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-authentication-model-recoverycodesgenerated">RecoveryCodesGenerated</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/account/mfa/recovery-codes/generate</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="context-authentication-iface-revokerecoverycodes">
+    <header><h3>RevokeRecoveryCodes</h3></header>
+    <p class="desc">認証済みユーザーが backup recovery code を明示的に失効する (self-service, step-up 必須)。
+actor.id に固定し、有効な code をすべて削除する。
+</p>
+
+    <dl class="kv"><dt>annotations</dt><dd><span class="chip chip-annotation">step up: required</span></dd></dl>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#context-authentication-model-invalidrequesterror">InvalidRequestError</a> <a class="chip chip-error-ref" href="#context-authentication-model-accessdeniederror">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#context-authentication-model-recoverycodesrevoked">RecoveryCodesRevoked</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/account/mfa/recovery-codes/revoke</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="context-authentication-iface-listmysigninactivity">
@@ -8472,7 +9167,7 @@ return_to を保って再認可し直す。
   </article></div>
   </section>
 <section id="context-authentication-objectives">
-    <h2>Objectives <span class="count">7</span></h2>
+    <h2>Objectives <span class="count">9</span></h2>
 
     <div class="group">
       <h3 class="grp-title">lifetime <span class="count">1</span></h3>
@@ -8483,7 +9178,7 @@ return_to を保って再認可し直す。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">security <span class="count">5</span></h3>
+      <h3 class="grp-title">security <span class="count">7</span></h3>
       <div class="cards"><article class="card" id="context-authentication-obj-passwordpolicy">
     <header><h3>PasswordPolicy</h3><span class="badge badge-kind-security">security</span></header>
 
@@ -8497,12 +9192,32 @@ return_to を保って再認可し直す。
 <article class="card" id="context-authentication-obj-authenticationcontextpolicy">
     <header><h3>AuthenticationContextPolicy</h3><span class="badge badge-kind-security">security</span></header>
 
-    <dl class="kv"><dt>policy</dt><dd><span class="text">authentication_context</span></dd><dt>target</dt><dd><span class="text">LoginSession</span></dd><dt>value</dt><dd><dl class="kv"><dt>values</dt><dd><ul class="vlist"><li><dl class="kv"><dt>urn</dt><dd><span class="text">urn:idmagic:acr:pwd</span></dd><dt>description</dt><dd><span class="text">Password 単独認証 (amr ⊇ [pwd])。</span></dd></dl></li><li><dl class="kv"><dt>urn</dt><dd><span class="text">urn:idmagic:acr:mfa</span></dd><dt>description</dt><dd><span class="text">Password + 第二要素 (amr に otp / webauthn / hwk / swk のいずれかを含む)。</span></dd></dl></li></ul></dd><dt>mfa_amr_values</dt><dd><span class="chip">otp</span> <span class="chip">webauthn</span> <span class="chip">hwk</span> <span class="chip">swk</span></dd></dl></dd><dt>reference</dt><dd><span class="text">OIDC Core §2 / RFC 8176</span></dd></dl>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">authentication_context</span></dd><dt>target</dt><dd><span class="text">LoginSession</span></dd><dt>value</dt><dd><dl class="kv"><dt>values</dt><dd><ul class="vlist"><li><dl class="kv"><dt>urn</dt><dd><span class="text">urn:idmagic:acr:pwd</span></dd><dt>description</dt><dd><span class="text">Password 単独認証 (amr ⊇ [pwd])。</span></dd></dl></li><li><dl class="kv"><dt>urn</dt><dd><span class="text">urn:idmagic:acr:mfa</span></dd><dt>description</dt><dd><span class="text">Password + 第二要素 (amr に otp / webauthn / hwk / swk / rc のいずれかを含む)。</span></dd></dl></li></ul></dd><dt>mfa_amr_values</dt><dd><span class="chip">otp</span> <span class="chip">webauthn</span> <span class="chip">hwk</span> <span class="chip">swk</span> <span class="chip">rc</span></dd></dl></dd><dt>reference</dt><dd><span class="text">OIDC Core §2 / RFC 8176</span></dd><dt>note</dt><dd><span class="text">otp / webauthn / hwk / swk は RFC 8176 の登録値。rc は backup recovery code 消費を
+表す本アプリ固有 (非 IANA) の amr 値で、TOTP / WebAuthn 喪失時の第二要素成立を示す。
+</span></dd></dl>
   </article>
 <article class="card" id="context-authentication-obj-totppolicy">
     <header><h3>TotpPolicy</h3><span class="badge badge-kind-security">security</span></header>
 
     <dl class="kv"><dt>policy</dt><dd><span class="text">totp_parameters</span></dd><dt>target</dt><dd><span class="text">MfaFactor</span></dd><dt>value</dt><dd><dl class="kv"><dt>algorithm</dt><dd><span class="text">SHA1</span></dd><dt>step_seconds</dt><dd><code>30</code></dd><dt>digits</dt><dd><code>6</code></dd><dt>window</dt><dd><code>1</code></dd><dt>secret_bytes</dt><dd><code>20</code></dd></dl></dd><dt>reference</dt><dd><span class="text">RFC 6238 §4 / RFC 4226 §4</span></dd></dl>
+  </article>
+<article class="card" id="context-authentication-obj-webauthnpolicy">
+    <header><h3>WebAuthnPolicy</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">WebAuthn ceremony の検証パラメータ。RP ID / origin は deployment config (環境変数)
+由来で、challenge / origin / RP ID / user handle をサーバー側で検証する。attestation は
+プライバシ優先で none とし、enterprise attestation の厳格 enforcement は行わない。sign_count は
+逆行を clone の疑いとして拒否する。resident key (discoverable credential) は要求せず、
+password + 第二要素 / step-up 用途に限る (passwordless は対象外)。
+</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">webauthn_parameters</span></dd><dt>target</dt><dd><span class="text">WebAuthnCredential</span></dd><dt>value</dt><dd><dl class="kv"><dt>rp_id_source</dt><dd><span class="text">deployment_config</span></dd><dt>rp_origins_source</dt><dd><span class="text">deployment_config</span></dd><dt>user_verification</dt><dd><span class="text">preferred</span></dd><dt>attestation</dt><dd><span class="text">none</span></dd><dt>resident_key</dt><dd><span class="text">discouraged</span></dd><dt>sign_count_regression</dt><dd><span class="text">reject</span></dd><dt>challenge_bytes</dt><dd><code>32</code></dd><dt>timeout_seconds</dt><dd><code>120</code></dd></dl></dd><dt>reference</dt><dd><span class="text">WebAuthn Level 3 §5 / §7 / §13</span></dd></dl>
+  </article>
+<article class="card" id="context-authentication-obj-recoverycodepolicy">
+    <header><h3>RecoveryCodePolicy</h3><span class="badge badge-kind-security">security</span></header>
+    <p class="desc">backup recovery code の生成・保存・消費パラメータ。平文は生成時に一度だけ表示し、
+DB には SHA-256 hex のみ保存する (単独では第二要素にならない backup 専用)。再生成は
+既存 set を全置換する。
+</p>
+    <dl class="kv"><dt>policy</dt><dd><span class="text">recovery_code_parameters</span></dd><dt>target</dt><dd><span class="text">RecoveryCode</span></dd><dt>value</dt><dd><dl class="kv"><dt>count</dt><dd><code>10</code></dd><dt>code_length</dt><dd><code>10</code></dd><dt>alphabet</dt><dd><span class="text">23456789abcdefghijkmnpqrstuvwxyz</span></dd><dt>hash</dt><dd><span class="text">sha256</span></dd><dt>single_use</dt><dd><code>true</code></dd><dt>regenerate_replaces_all</dt><dd><code>true</code></dd></dl></dd><dt>reference</dt><dd><span class="text">NIST SP 800-63B §5.1.2 (Look-up Secrets)</span></dd></dl>
   </article>
 <article class="card" id="context-authentication-obj-loginsessionsecurity">
     <header><h3>LoginSessionSecurity</h3><span class="badge badge-kind-security">security</span></header>

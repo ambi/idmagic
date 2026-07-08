@@ -150,6 +150,9 @@ var stepUpGatedEndpoints = []struct {
 	{"totp_remove", "/realms/default/api/account/mfa/totp/remove"},
 	{"email_change", "/realms/default/api/account/email/change_request"},
 	{"revoke_others", "/realms/default/api/account/sessions/revoke_others"},
+	{"webauthn_remove", "/realms/default/api/account/mfa/webauthn/remove"},
+	{"recovery_codes_generate", "/realms/default/api/account/mfa/recovery-codes/generate"},
+	{"recovery_codes_revoke", "/realms/default/api/account/mfa/recovery-codes/revoke"},
 }
 
 // TestStepUpAnnotatedInterfacesMatchGatedHandlers は ADR-043 の対象表を機械照合する:

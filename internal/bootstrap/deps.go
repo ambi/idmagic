@@ -3,15 +3,19 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"strings"
 
 	appports "github.com/ambi/idmagic/internal/application/ports"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
+	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
 	samlports "github.com/ambi/idmagic/internal/saml/ports"
 	scimports "github.com/ambi/idmagic/internal/scim/ports"
 	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 	wsfederationports "github.com/ambi/idmagic/internal/wsfederation/ports"
+
+	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
@@ -39,6 +43,12 @@ type Dependencies struct {
 	ClientAssertionReplay   oauthports.ClientAssertionReplayStore
 	AccessTokenDenylist     oauthports.AccessTokenDenylist
 	SessionStore            authnports.SessionStore
+	// WebAuthn / Passkey と backup recovery code (wi-26 / ADR-087)。WebAuthnRP は env config
+	// 由来で、未設定なら nil (WebAuthn 無効)。session store / repo は永続層に応じて差し替える。
+	WebAuthnRP             *gowebauthn.WebAuthn
+	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore   authnports.WebAuthnSessionStore
+	RecoveryCodeRepo       authnports.RecoveryCodeRepository
 	// NewLoginAttemptThrottle は SCL 由来のしきい値から throttle adapter を生成する。
 	// memory ランタイムはプロセスメモリ版、postgres_valkey ランタイムは Valkey 共有版を返す
 	// (ADR-077: 複数レプリカで閾値がクラスタ全体で一つになるよう共有ストア化する)。
@@ -80,12 +90,55 @@ func loadRuntimeConfig() RuntimeConfig {
 
 // assemble は PERSISTENCE 環境変数に応じて memory/postgres_valkey いずれかの構成を組み立てる。
 func assemble(ctx context.Context) (*Dependencies, error) {
+	var deps *Dependencies
+	var err error
 	switch envDefault("PERSISTENCE", "memory") {
 	case "memory":
-		return assembleMemory()
+		deps, err = assembleMemory()
 	case "postgres_valkey":
-		return assemblePostgresValkey(ctx)
+		deps, err = assemblePostgresValkey(ctx)
 	default:
 		return nil, errors.New("PERSISTENCE must be memory or postgres_valkey")
 	}
+	if err != nil {
+		return nil, err
+	}
+	// WebAuthn RP は永続層に依らず env config から構築する (wi-26 / ADR-087)。
+	rp, err := loadWebAuthnRP()
+	if err != nil {
+		return nil, err
+	}
+	deps.WebAuthnRP = rp
+	return deps, nil
+}
+
+// loadWebAuthnRP は WEBAUTHN_RP_ID / WEBAUTHN_RP_ORIGINS / WEBAUTHN_RP_DISPLAY_NAME から RP を
+// 構築する。RP_ID 未設定なら WebAuthn は無効 (nil) とし、RP_ID 設定時に origin が無ければ
+// 起動を失敗させる (誤設定の silent 無効化を防ぐ起動時検証)。
+func loadWebAuthnRP() (*gowebauthn.WebAuthn, error) {
+	rpID := strings.TrimSpace(envDefault("WEBAUTHN_RP_ID", ""))
+	if rpID == "" {
+		return nil, nil //nolint:nilnil // RP_ID 未設定は WebAuthn 無効を表す正当な状態 (エラーではない)。
+	}
+	origins := splitAndTrim(envDefault("WEBAUTHN_RP_ORIGINS", ""))
+	if len(origins) == 0 {
+		return nil, errors.New("WEBAUTHN_RP_ORIGINS must be set when WEBAUTHN_RP_ID is set")
+	}
+	return authusecases.NewWebAuthn(authusecases.WebAuthnConfig{
+		RPID:          rpID,
+		RPDisplayName: envDefault("WEBAUTHN_RP_DISPLAY_NAME", "idmagic"),
+		RPOrigins:     origins,
+	})
+}
+
+// splitAndTrim はカンマ区切り文字列を空要素を除いてトリムして分割する。
+func splitAndTrim(value string) []string {
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }

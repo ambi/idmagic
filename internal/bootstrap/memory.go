@@ -38,6 +38,9 @@ func assembleMemory() (*Dependencies, error) {
 		ClientAssertionReplay:   memory.NewClientAssertionReplayStore(),
 		AccessTokenDenylist:     memory.NewAccessTokenDenylist(),
 		SessionStore:            memory.NewSessionStore(),
+		WebAuthnCredentialRepo:  memory.NewWebAuthnCredentialRepository(),
+		WebAuthnSessionStore:    memory.NewWebAuthnSessionStore(),
+		RecoveryCodeRepo:        memory.NewRecoveryCodeRepository(),
 		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 			return memory.NewLoginAttemptThrottle(configs)
 		},

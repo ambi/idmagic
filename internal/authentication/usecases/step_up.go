@@ -25,8 +25,10 @@ const StepUpRecencySeconds = 300
 type StepUpMethod string
 
 const (
-	StepUpMethodPassword StepUpMethod = "password"
-	StepUpMethodTOTP     StepUpMethod = "totp"
+	StepUpMethodPassword     StepUpMethod = "password"
+	StepUpMethodTOTP         StepUpMethod = "totp"
+	StepUpMethodWebAuthn     StepUpMethod = "webauthn"
+	StepUpMethodRecoveryCode StepUpMethod = "recovery_code"
 )
 
 var (
@@ -64,12 +66,43 @@ func AvailableStepUpMethods(user *spec.User) []StepUpMethod {
 }
 
 // StepUpDeps は CompleteStepUp の依存。SessionManager は step_up_at の刻印に使う。
+// WebAuthn / RecoveryCodeRepo は passkey / recovery code による step-up (wi-26) に使い、
+// nil の場合その method は提示・受理しない。
 type StepUpDeps struct {
-	UserRepo       idmports.UserRepository
-	PasswordHasher authnports.PasswordHasher
-	MfaFactorRepo  authnports.MfaFactorRepository
-	SessionManager *SessionManager
-	Emit           func(spec.DomainEvent)
+	UserRepo         idmports.UserRepository
+	PasswordHasher   authnports.PasswordHasher
+	MfaFactorRepo    authnports.MfaFactorRepository
+	WebAuthn         WebAuthnDeps
+	RecoveryCodeRepo authnports.RecoveryCodeRepository
+	SessionManager   *SessionManager
+	Emit             func(spec.DomainEvent)
+}
+
+// stepUpMethods は sub が step-up に使える method を repo の実状から正確に算出する。password は
+// 常に利用可能、totp / webauthn は enrolled 時、recovery_code は有効な残数がある時のみ。
+func stepUpMethods(ctx context.Context, deps StepUpDeps, sub string) []StepUpMethod {
+	methods := []StepUpMethod{StepUpMethodPassword}
+	if deps.MfaFactorRepo != nil {
+		if f, err := deps.MfaFactorRepo.Find(ctx, sub, spec.MfaFactorTOTP); err == nil && f != nil && f.Secret != nil && *f.Secret != "" {
+			methods = append(methods, StepUpMethodTOTP)
+		}
+	}
+	if deps.WebAuthn.RP != nil && deps.WebAuthn.CredentialRepo != nil {
+		if creds, err := deps.WebAuthn.CredentialRepo.ListBySub(ctx, sub); err == nil && len(creds) > 0 {
+			methods = append(methods, StepUpMethodWebAuthn)
+		}
+	}
+	if deps.RecoveryCodeRepo != nil {
+		if codes, err := deps.RecoveryCodeRepo.ListBySub(ctx, sub); err == nil {
+			for _, code := range codes {
+				if code.ConsumedAt == nil {
+					methods = append(methods, StepUpMethodRecoveryCode)
+					break
+				}
+			}
+		}
+	}
+	return methods
 }
 
 // StepUpStart は利用可能な method を返し StepUpRequested を emit する。
@@ -90,16 +123,17 @@ func StepUpStart(
 			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), UserID: sub, SessionID: sessionID,
 		})
 	}
-	return AvailableStepUpMethods(user), nil
+	return stepUpMethods(ctx, deps, sub), nil
 }
 
-// CompleteStepUpInput は再認証の検証材料。method に応じて Password か Code を使う。
+// CompleteStepUpInput は再認証の検証材料。method に応じて Password / Code / Assertion を使う。
 type CompleteStepUpInput struct {
 	Sub       string
 	SessionID string
 	Method    StepUpMethod
 	Password  string
 	Code      string
+	Assertion []byte // method=webauthn のとき navigator.credentials.get の結果 JSON。
 	Now       time.Time
 }
 
@@ -138,6 +172,22 @@ func CompleteStepUp(ctx context.Context, deps StepUpDeps, in CompleteStepUpInput
 			return verr
 		}
 		if result == nil || !result.OK {
+			return ErrStepUpFailed
+		}
+	case StepUpMethodWebAuthn:
+		if deps.WebAuthn.RP == nil {
+			return ErrStepUpUnsupportedMethod
+		}
+		// challenge は step-up challenge endpoint で session id をキーに発行済み。
+		if _, verr := FinishWebAuthnAssertion(ctx, deps.WebAuthn, in.SessionID, in.Sub, in.Assertion, now); verr != nil {
+			return ErrStepUpFailed
+		}
+	case StepUpMethodRecoveryCode:
+		if deps.RecoveryCodeRepo == nil {
+			return ErrStepUpUnsupportedMethod
+		}
+		recoveryDeps := RecoveryCodesDeps{UserRepo: deps.UserRepo, RecoveryCodeRepo: deps.RecoveryCodeRepo, Emit: deps.Emit}
+		if _, verr := ConsumeRecoveryCode(ctx, recoveryDeps, in.Sub, in.Code, now); verr != nil {
 			return ErrStepUpFailed
 		}
 	default:

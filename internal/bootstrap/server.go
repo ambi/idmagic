@@ -221,6 +221,10 @@ func Run() error {
 		ApplicationCategoryRepo:     deps.ApplicationCategoryRepo,
 		ApplicationSignInPolicyRepo: deps.ApplicationSignInPolicyRepo,
 		DefaultSignInPolicyRepo:     deps.DefaultSignInPolicyRepo,
+		WebAuthnRP:                  deps.WebAuthnRP,
+		WebAuthnCredentialRepo:      deps.WebAuthnCredentialRepo,
+		WebAuthnSessionStore:        deps.WebAuthnSessionStore,
+		RecoveryCodeRepo:            deps.RecoveryCodeRepo,
 	})
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))

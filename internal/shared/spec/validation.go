@@ -213,6 +213,19 @@ var mfaFactorSchema = z.Struct(z.Shape{
 		factor.Secret != nil && *factor.Secret != "")
 }, z.Message("totp factor requires secret"))
 
+var webAuthnCredentialSchema = z.Struct(z.Shape{
+	"CredentialID": z.String().Required(),
+	"UserID":       z.String().Required(),
+	"PublicKey":    z.String().Required(),
+	"CreatedAt":    z.Time().Required(),
+})
+
+var recoveryCodeSchema = z.Struct(z.Shape{
+	"UserID":      z.String().Required(),
+	"CodeHash":    z.String().Required(),
+	"GeneratedAt": z.Time().Required(),
+})
+
 var consentSchema = z.Struct(z.Shape{
 	"UserID":   z.String().Required(),
 	"ClientID": z.String().Required(),

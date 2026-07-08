@@ -41,8 +41,11 @@ const totpFactorLabel = "Authenticator app"
 type AccountMfaDeps struct {
 	UserRepo      idmports.UserRepository
 	MfaFactorRepo authnports.MfaFactorRepository
-	Emit          func(spec.DomainEvent)
-	Issuer        string
+	// CredentialRepo は TOTP 解除後の mfa_enrolled 再計算で WebAuthn の残存を見るために使う
+	// (wi-26)。nil の場合は WebAuthn を考慮しない (TOTP のみの旧経路との後方互換)。
+	CredentialRepo authnports.WebAuthnCredentialRepository
+	Emit           func(spec.DomainEvent)
+	Issuer         string
 }
 
 // TOTPEnrollmentStart は StartTOTPEnrollment の戻り値。secret はクライアントが confirm まで
@@ -164,9 +167,8 @@ func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFac
 	if err := deps.MfaFactorRepo.Delete(ctx, in.Sub, spec.MfaFactorTOTP); err != nil {
 		return err
 	}
-	user.MfaEnrolled = false
-	user.UpdatedAt = now
-	if err := deps.UserRepo.Save(ctx, user); err != nil {
+	// 残存する第二要素 (WebAuthn) に応じて mfa_enrolled を再計算する (wi-26)。
+	if err := syncMfaEnrolled(ctx, deps.UserRepo, deps.MfaFactorRepo, deps.CredentialRepo, user, now); err != nil {
 		return err
 	}
 	if deps.Emit != nil {

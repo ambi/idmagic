@@ -2,15 +2,23 @@ import {
   IconArrowRight,
   IconCircleCheck,
   IconDeviceMobile,
+  IconFingerprint,
   IconKey,
+  IconLifebuoy,
   IconShieldLock,
+  IconTrash,
 } from '@tabler/icons-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { type FormEvent, useState } from 'react'
 import {
   AuthenticationAPIError,
   confirmTotpEnrollment,
+  generateRecoveryCodes,
+  isWebAuthnSupported,
+  registerPasskey,
+  removePasskey,
   removeTotpFactor,
+  revokeRecoveryCodes,
   startTotpEnrollment,
   tenantURL,
 } from '../../api'
@@ -22,7 +30,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import type { AccountSecurity, TotpEnrollmentStart } from '../../types'
+import type {
+  AccountSecurity,
+  RecoveryCodeStatus,
+  TotpEnrollmentStart,
+  WebAuthnCredentialSummary,
+} from '../../types'
 
 function formatDateTime(value?: string): string {
   if (!value) return '記録なし'
@@ -51,7 +64,87 @@ export function AccountSecurityPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [passkeys, setPasskeys] = useState<WebAuthnCredentialSummary[]>(
+    security.webauthn_credentials ?? [],
+  )
+  const [passkeyLabel, setPasskeyLabel] = useState('')
+  const [recovery, setRecovery] = useState<RecoveryCodeStatus>(
+    security.recovery_codes ?? { total: 0, remaining: 0 },
+  )
+  const [generatedCodes, setGeneratedCodes] = useState<string[] | null>(null)
   const { guard, dialog } = useStepUpGuard(csrfToken)
+
+  async function handleRegisterPasskey() {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await registerPasskey(csrfToken, passkeyLabel)
+      setPasskeyLabel('')
+      // 登録直後は最新一覧を取得するためページを再読み込みする (loader が再取得する)。
+      window.location.reload()
+    } catch (cause) {
+      if (cause instanceof DOMException) {
+        setError('パスキーの登録がキャンセルされました。')
+      } else {
+        setError(errorMessage(cause, 'パスキーを登録できませんでした。'))
+      }
+      setBusy(false)
+    }
+  }
+
+  async function handleRemovePasskey(credentialId: string) {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await guard(() => removePasskey(csrfToken, credentialId))
+      setPasskeys((current) => current.filter((c) => c.credential_id !== credentialId))
+      setNotice('パスキーを解除しました。')
+    } catch (cause) {
+      if (cause instanceof StepUpCancelledError) return
+      setError(errorMessage(cause, 'パスキーを解除できませんでした。'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleGenerateRecovery() {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await guard(() => generateRecoveryCodes(csrfToken))
+      setGeneratedCodes(result.codes)
+      setRecovery({
+        generated_at: result.generated_at,
+        total: result.codes.length,
+        remaining: result.codes.length,
+      })
+    } catch (cause) {
+      if (cause instanceof StepUpCancelledError) return
+      setError(errorMessage(cause, 'リカバリコードを生成できませんでした。'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRevokeRecovery() {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await guard(() => revokeRecoveryCodes(csrfToken))
+      setGeneratedCodes(null)
+      setRecovery({ total: 0, remaining: 0 })
+      setNotice('リカバリコードを失効しました。')
+    } catch (cause) {
+      if (cause instanceof StepUpCancelledError) return
+      setError(errorMessage(cause, 'リカバリコードを失効できませんでした。'))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleStart() {
     setBusy(true)
@@ -268,10 +361,140 @@ export function AccountSecurityPage({
         ) : null}
       </Card>
 
+      <Card className="flex flex-col gap-4 p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <IconFingerprint size={20} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900">パスキー (WebAuthn)</p>
+            <p className="mt-1 text-sm text-slate-600">
+              指紋・顔認証・セキュリティキーで、フィッシングに強い二段階認証を行います。複数の
+              端末を登録できます。
+            </p>
+          </div>
+        </div>
+
+        {passkeys.length > 0 ? (
+          <ul className="flex flex-col gap-2 border-t border-slate-100 pt-4">
+            {passkeys.map((passkey) => (
+              <li
+                key={passkey.credential_id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3.5 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-800">
+                    {passkey.label ?? 'パスキー'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    登録: {formatDateTime(passkey.created_at)}
+                    {passkey.last_used_at
+                      ? ` / 最終利用: ${formatDateTime(passkey.last_used_at)}`
+                      : ''}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 shrink-0 px-2 text-red-600 hover:bg-red-50"
+                  disabled={busy}
+                  onClick={() => handleRemovePasskey(passkey.credential_id)}
+                >
+                  <IconTrash size={16} aria-hidden="true" />
+                  解除
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="border-t border-slate-100 pt-4 text-sm text-slate-500">
+            登録済みのパスキーはありません。
+          </p>
+        )}
+
+        {isWebAuthnSupported() ? (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="passkey-label">パスキーの名前 (任意)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="passkey-label"
+                placeholder="例: MacBook Touch ID"
+                maxLength={64}
+                value={passkeyLabel}
+                disabled={busy}
+                onChange={(event) => setPasskeyLabel(event.target.value)}
+              />
+              <Button
+                type="button"
+                className="shrink-0"
+                onClick={handleRegisterPasskey}
+                disabled={busy}
+              >
+                {busy ? '登録中…' : 'パスキーを登録'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">このブラウザはパスキーに対応していません。</p>
+        )}
+      </Card>
+
+      <Card className="flex flex-col gap-4 p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <IconLifebuoy size={20} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900">リカバリコード</p>
+            <p className="mt-1 text-sm text-slate-600">
+              認証アプリやパスキーを使えないときに、二段階目の本人確認に使う一度きりのコードです。
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+              残り {recovery.remaining} / {recovery.total} 個
+            </span>
+          </div>
+        </div>
+
+        {generatedCodes ? (
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+            <Alert>
+              これらのコードは今だけ表示されます。安全な場所に保存してください。各コードは 1 回だけ
+              使えます。
+            </Alert>
+            <ul className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-800">
+              {generatedCodes.map((code) => (
+                <li key={code} className="tracking-wider">
+                  {code}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+          <Button type="button" onClick={handleGenerateRecovery} disabled={busy}>
+            {busy
+              ? '処理中…'
+              : recovery.total > 0
+                ? 'リカバリコードを再生成'
+                : 'リカバリコードを生成'}
+          </Button>
+          {recovery.total > 0 ? (
+            <Button type="button" variant="outline" onClick={handleRevokeRecovery} disabled={busy}>
+              すべて失効
+            </Button>
+          ) : null}
+        </div>
+        {recovery.total > 0 ? (
+          <p className="text-xs text-slate-500">再生成すると既存のコードはすべて無効になります。</p>
+        ) : null}
+      </Card>
+
       <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
         <IconShieldLock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
         <p>
-          二段階認証を有効にすると、パスワードが漏れても認証アプリがなければサインインできません。
+          二段階認証を有効にすると、パスワードが漏れても認証アプリやパスキーがなければサインイン
+          できません。
         </p>
       </div>
       {dialog}

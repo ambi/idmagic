@@ -140,6 +140,39 @@ CREATE TABLE mfa_factors (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- WebAuthn / Passkey credential (wi-26 / ADR-087)。1 ユーザーが複数持てるため credential_id を
+-- 主キーとし、mfa_factors とは別テーブルとする。public_key は COSE 公開鍵 (base64url)。
+CREATE TABLE webauthn_credentials (
+    credential_id TEXT PRIMARY KEY,
+    user_id UUID NOT NULL,
+    public_key TEXT NOT NULL,
+    sign_count BIGINT NOT NULL DEFAULT 0,
+    transports TEXT[] NOT NULL DEFAULT '{}',
+    aaguid TEXT,
+    label TEXT,
+    backup_eligible BOOLEAN NOT NULL DEFAULT false,
+    backup_state BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at TIMESTAMPTZ,
+    CONSTRAINT webauthn_credentials_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX webauthn_credentials_user_id_idx ON webauthn_credentials (user_id);
+
+-- backup recovery code (wi-26 / ADR-087)。平文は保存せず code_hash (SHA-256 hex) のみ。
+-- consumed_at が非 NULL なら使用済みで再利用不可。再生成は user 単位で全置換する。
+CREATE TABLE recovery_codes (
+    user_id UUID NOT NULL,
+    code_hash TEXT NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    consumed_at TIMESTAMPTZ,
+    PRIMARY KEY (user_id, code_hash),
+    CONSTRAINT recovery_codes_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE consents (
     user_id UUID NOT NULL,
     client_id UUID NOT NULL,

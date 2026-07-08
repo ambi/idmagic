@@ -23,10 +23,26 @@ type accountMfaFactorResponse struct {
 	LastUsedAt *time.Time         `json:"last_used_at,omitempty"`
 }
 
+type webAuthnCredentialSummaryResponse struct {
+	CredentialID string     `json:"credential_id"`
+	Label        *string    `json:"label,omitempty"`
+	Transports   []string   `json:"transports"`
+	CreatedAt    time.Time  `json:"created_at"`
+	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
+}
+
+type recoveryCodeStatusResponse struct {
+	GeneratedAt *time.Time `json:"generated_at,omitempty"`
+	Total       int        `json:"total"`
+	Remaining   int        `json:"remaining"`
+}
+
 type accountSecurityResponse struct {
-	PasswordChangedAt *time.Time                 `json:"password_changed_at,omitempty"`
-	TotpEnrolled      bool                       `json:"totp_enrolled"`
-	Factors           []accountMfaFactorResponse `json:"factors"`
+	PasswordChangedAt   *time.Time                          `json:"password_changed_at,omitempty"`
+	TotpEnrolled        bool                                `json:"totp_enrolled"`
+	Factors             []accountMfaFactorResponse          `json:"factors"`
+	WebAuthnCredentials []webAuthnCredentialSummaryResponse `json:"webauthn_credentials"`
+	RecoveryCodes       recoveryCodeStatusResponse          `json:"recovery_codes"`
 }
 
 type totpEnrollmentStartResponse struct {
@@ -75,10 +91,39 @@ func (d Deps) handleGetAccountSecurity(c *echo.Context) error {
 			CreatedAt: factor.CreatedAt, LastUsedAt: factor.LastUsedAt,
 		})
 	}
+	credentials := []webAuthnCredentialSummaryResponse{}
+	if d.WebAuthnCredentialRepo != nil {
+		stored, err := d.WebAuthnCredentialRepo.ListBySub(c.Request().Context(), sub)
+		if err != nil {
+			return err
+		}
+		for _, cred := range stored {
+			transports := cred.Transports
+			if transports == nil {
+				transports = []string{}
+			}
+			credentials = append(credentials, webAuthnCredentialSummaryResponse{
+				CredentialID: cred.CredentialID, Label: cred.Label, Transports: transports,
+				CreatedAt: cred.CreatedAt, LastUsedAt: cred.LastUsedAt,
+			})
+		}
+	}
+	recovery := recoveryCodeStatusResponse{}
+	if d.RecoveryCodeRepo != nil {
+		status, err := authusecases.RecoveryCodeStatusFor(c.Request().Context(), d.RecoveryCodeRepo, sub)
+		if err != nil {
+			return err
+		}
+		recovery = recoveryCodeStatusResponse{
+			GeneratedAt: status.GeneratedAt, Total: status.Total, Remaining: status.Remaining,
+		}
+	}
 	return support.NoStoreJSON(c, http.StatusOK, accountSecurityResponse{
-		PasswordChangedAt: user.Lifecycle.PasswordChangedAt,
-		TotpEnrolled:      totpEnrolled,
-		Factors:           responses,
+		PasswordChangedAt:   user.Lifecycle.PasswordChangedAt,
+		TotpEnrolled:        totpEnrolled,
+		Factors:             responses,
+		WebAuthnCredentials: credentials,
+		RecoveryCodes:       recovery,
 	})
 }
 
@@ -155,6 +200,18 @@ func writeAccountMfaError(c *echo.Context, err error) (handled bool, result erro
 		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_totp", "認証コードを確認してください。")
 	case errors.Is(err, authusecases.ErrInvalidTOTPSecret):
 		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "登録手続きをやり直してください。")
+	case errors.Is(err, authusecases.ErrWebAuthnNotConfigured):
+		return true, support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "パスキー認証は利用できません")
+	case errors.Is(err, authusecases.ErrWebAuthnChallengeMissing):
+		return true, support.WriteBrowserError(c, http.StatusBadRequest, "webauthn_challenge_expired", "パスキー登録をやり直してください。")
+	case errors.Is(err, authusecases.ErrWebAuthnCredentialCloned):
+		return true, support.WriteBrowserError(c, http.StatusUnauthorized, "webauthn_cloned", "このパスキーは利用できません。")
+	case errors.Is(err, authusecases.ErrWebAuthnVerification):
+		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_webauthn", "パスキーの検証に失敗しました。")
+	case errors.Is(err, authusecases.ErrWebAuthnCredentialNotFound):
+		return true, support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_found", "対象のパスキーが見つかりません。")
+	case errors.Is(err, authusecases.ErrRecoveryCodeInvalid):
+		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_recovery_code", "リカバリコードを確認してください。")
 	default:
 		return false, nil
 	}

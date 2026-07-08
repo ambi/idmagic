@@ -62,13 +62,21 @@ standards:
       - id: WEBAUTHN3-AUTHENTICATION
         section: §5
         strength: MAY
-        adoption: optional
+        adoption: required
         statement: WebAuthn factor利用時はoriginとRelying Partyにscopeされた公開鍵Credentialを検証する。
         relates_to:
           models:
-            - MfaFactor
+            - WebAuthnCredential
             - MfaFactorType
             - AuthenticationContext
+      - id: WEBAUTHN3-REGISTRATION
+        section: §7.1
+        strength: MUST
+        adoption: required
+        statement: WebAuthn credential登録時はattestationのchallenge / RP ID / originを検証し、COSE公開鍵とsign countを保存する。
+        relates_to:
+          models:
+            - WebAuthnCredential
 glossary:
   Totp:
     definition: RFC 6238 に基づく time-based one-time password。
@@ -170,7 +178,7 @@ models:
         optional: true
   AccountSecurityResponse:
     kind: value_object
-    description: "`/api/account/security` の返り値 (end-user account portal のセキュリティ概要)。\nパスワード変更日時と MFA (TOTP) の登録状態をまとめる。step-up auth は本\nステージでは未導入。\n"
+    description: "`/api/account/security` の返り値 (end-user account portal のセキュリティ概要)。\nパスワード変更日時と MFA (TOTP / WebAuthn) の登録状態、backup recovery code の残数を\nまとめる。\n"
     fields:
       password_changed_at:
         type: Timestamp
@@ -179,6 +187,10 @@ models:
         type: Boolean
       factors:
         type: "AccountMfaFactor[]"
+      webauthn_credentials:
+        type: "WebAuthnCredentialSummary[]"
+      recovery_codes:
+        type: RecoveryCodeStatus
   TOTPEnrollmentStart:
     kind: value_object
     description: "TOTP 登録開始の返り値 (self-service)。secret はクライアントが確認まで保持し、\notpauth_uri は QR / 手動登録のために提示する。secret は確認 (ConfirmTotpEnrollment) で\n送り返されるまで永続化しない。\n"
@@ -219,6 +231,174 @@ models:
         type: String
         constraints:
           - non_empty
+  WebAuthnTransport:
+    kind: enum
+    description: "WebAuthn authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4 AuthenticatorTransport)。\n"
+    values:
+      - Usb
+      - Nfc
+      - Ble
+      - Internal
+      - Hybrid
+  WebAuthnCredential:
+    kind: entity
+    description: "ユーザーが登録した WebAuthn / Passkey credential 1 件。1 ユーザーが複数持てるため\nMfaFactor とは別集合とし、credential_id で一意識別する。public_key は COSE 公開鍵、\nsign_count は clone 検出のための署名カウンタ。origin / RP に束縛された所持要素として\nphishing-resistant MFA / step-up に使う。\n"
+    identity:
+      - credential_id
+    fields:
+      credential_id:
+        type: String
+        description: authenticator が返す credential ID (base64url)。RP 内で一意。
+      user_id:
+        type: String
+        description: 所有者ユーザの sub。
+      public_key:
+        type: String
+        description: COSE 形式の公開鍵 (base64url)。
+        annotations:
+          sensitive: true
+      sign_count:
+        type: Integer
+        description: 直近 assertion の署名カウンタ。逆行は clone の疑いとして検出する。
+      transports:
+        type: "String[]"
+        description: authenticator が申告した transport のヒント (usb / nfc / ble / internal / hybrid)。
+      aaguid:
+        type: String
+        optional: true
+        description: authenticator の AAGUID (base64url)。機種識別のヒント。
+      label:
+        type: String
+        optional: true
+        description: "ユーザが付ける表示名 (例 \"MacBook Touch ID\")。"
+      backup_eligible:
+        type: Boolean
+        description: credential が複数デバイス間で同期可能か (WebAuthn BE flag)。
+      backup_state:
+        type: Boolean
+        description: credential が現在 backup 済みか (WebAuthn BS flag)。
+      created_at:
+        type: Timestamp
+      last_used_at:
+        type: Timestamp
+        optional: true
+  WebAuthnCredentialSummary:
+    kind: value_object
+    description: "self-service セキュリティ画面で提示する WebAuthn credential 1 件の射影。\n公開鍵や sign_count は返さず、識別と表示に必要な属性のみ。\n"
+    fields:
+      credential_id:
+        type: String
+      label:
+        type: String
+        optional: true
+      transports:
+        type: "String[]"
+      created_at:
+        type: Timestamp
+      last_used_at:
+        type: Timestamp
+        optional: true
+  RecoveryCode:
+    kind: entity
+    description: "TOTP / WebAuthn 喪失時の backup recovery code 1 件。平文は生成時に一度だけ表示し、\nDB には code_hash (SHA-256 hex) のみ保存する。consumed_at が非 null なら使用済みで\n再利用不可。1 ユーザーの有効な code 集合を 1 set として扱い、再生成で全置換する。\n"
+    identity:
+      - user_id
+      - code_hash
+    fields:
+      user_id:
+        type: String
+      code_hash:
+        type: String
+        description: recovery code 平文の SHA-256 hex。平文は保存しない。
+        annotations:
+          sensitive: true
+      generated_at:
+        type: Timestamp
+      consumed_at:
+        type: Timestamp
+        optional: true
+  RecoveryCodeStatus:
+    kind: value_object
+    description: "self-service セキュリティ画面で提示する recovery code の状態。個々のコードは返さず、\n生成時刻と総数・残数のみ。\n"
+    fields:
+      generated_at:
+        type: Timestamp
+        optional: true
+      total:
+        type: Integer
+      remaining:
+        type: Integer
+  WebAuthnRegistrationOptions:
+    kind: value_object
+    description: "StartWebAuthnRegistration の返り値。navigator.credentials.create に渡す\nPublicKeyCredentialCreationOptions を JSON でそのまま返す。challenge は短命で\nサーバー側セッションに束縛する。\n"
+    fields:
+      public_key:
+        type: JSON
+        description: PublicKeyCredentialCreationOptions (WebAuthn Level 3)。
+        annotations:
+          sensitive: true
+  WebAuthnRegistrationRequest:
+    kind: value_object
+    description: "FinishWebAuthnRegistration の入力。navigator.credentials.create が返した\nattestation を JSON で送り返し、任意で表示ラベルを付ける。\n"
+    fields:
+      attestation:
+        type: JSON
+        description: PublicKeyCredential (attestation response, WebAuthn Level 3)。
+        annotations:
+          sensitive: true
+      label:
+        type: String
+        optional: true
+  WebAuthnAssertionOptions:
+    kind: value_object
+    description: "StartBrowserWebAuthn の返り値。navigator.credentials.get に渡す\nPublicKeyCredentialRequestOptions を JSON でそのまま返す。challenge は pending login\nsession に束縛する。\n"
+    fields:
+      public_key:
+        type: JSON
+        description: PublicKeyCredentialRequestOptions (WebAuthn Level 3)。
+        annotations:
+          sensitive: true
+  BrowserWebAuthnRequest:
+    kind: value_object
+    description: "SubmitBrowserWebAuthn の入力。navigator.credentials.get が返した assertion を\nJSON で送り返す。pending login session cookie が sub を、X-CSRF-Token が CSRF を解決する。\n"
+    fields:
+      assertion:
+        type: JSON
+        description: PublicKeyCredential (assertion response, WebAuthn Level 3)。
+        annotations:
+          sensitive: true
+      return_to:
+        type: String
+        optional: true
+  BrowserRecoveryCodeRequest:
+    kind: value_object
+    description: "SubmitBrowserRecoveryCode の入力。第二要素として recovery code を 1 つ消費する。\ncode は audit / log に残さない。\n"
+    fields:
+      code:
+        type: String
+        annotations:
+          sensitive: true
+      return_to:
+        type: String
+        optional: true
+  WebAuthnCredentialRemoveRequest:
+    kind: value_object
+    description: "RemoveWebAuthnCredential の入力。解除対象の credential を credential_id で指定する。\n"
+    fields:
+      credential_id:
+        type: String
+        constraints:
+          - non_empty
+  RecoveryCodesResponse:
+    kind: value_object
+    description: "GenerateRecoveryCodes の返り値。平文の recovery code 一覧を一度だけ返す。\n以降は残数 (RecoveryCodeStatus) のみ取得でき、codes は保存・再表示しない。\n"
+    fields:
+      codes:
+        type: "String[]"
+        annotations:
+          sensitive: true
+      generated_at:
+        type: Timestamp
   UserSignInActivity:
     kind: value_object
     description: "ユーザー本人のサインイン履歴 1 件の射影。本スライスは既存の監査\nイベントストア (UserAuthenticated) から導出するため、保持する属性は発生時刻と\n認証手段 (amr) のみ。IP / UA / sessionId / clientId の付加は後続で\nイベント側を拡張してから足す。\n"
@@ -296,10 +476,12 @@ models:
         type: "AuthenticationEventBucket[]"
   StepUpMethod:
     kind: enum
-    description: "step-up 再認証に使える factor。password は常時、totp は enrolled 時のみ\n利用できる。\n"
+    description: "step-up 再認証に使える factor。password は常時、totp / webauthn は enrolled 時のみ、\nrecovery_code は有効な残数がある時のみ利用できる。\n"
     values:
       - password
       - totp
+      - webauthn
+      - recovery_code
   StepUpStartResponse:
     kind: value_object
     description: "StartStepUpAuthentication の返り値。利用可能な再認証 method の一覧 (UI が再認証\nmodal に出す選択肢)。\n"
@@ -761,6 +943,53 @@ models:
         type: String
       factorType:
         type: MfaFactorType
+  WebAuthnCredentialRegistered:
+    kind: event
+    description: "本人が self-service で WebAuthn / Passkey credential を登録した。公開鍵や\ncredential_id は audit に流さず、種別のみ残す。最初の 1 件で User.mfa_enrolled を true にする。\n"
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+        description: 対象 user の所属テナント ID。
+      userId:
+        type: String
+  WebAuthnCredentialRemoved:
+    kind: event
+    description: "本人が self-service で WebAuthn / Passkey credential を解除した (step-up 済み)。\n残る第二要素が無くなった場合は User.mfa_enrolled を false に戻す。\n"
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+        description: 対象 user の所属テナント ID。
+      userId:
+        type: String
+  RecoveryCodesGenerated:
+    kind: event
+    description: "本人が backup recovery code を生成 / 再生成した (step-up 済み)。平文や hash は\naudit に流さず、発行件数のみ残す。再生成は既存 set を全置換する。\n"
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+        description: 対象 user の所属テナント ID。
+      userId:
+        type: String
+      count:
+        type: Integer
+        description: 発行した recovery code の件数。
+  RecoveryCodesRevoked:
+    kind: event
+    description: "本人が backup recovery code を明示的に失効した (step-up 済み)。以降 recovery code は\n第二要素として使えない。\n"
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+        description: 対象 user の所属テナント ID。
+      userId:
+        type: String
   SessionEnded:
     kind: event
     description: "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
@@ -932,6 +1161,129 @@ interfaces:
         method: POST
         path: /api/account/mfa/totp/remove
         request_form: body
+  StartWebAuthnRegistration:
+    description: "認証済みユーザーが WebAuthn / Passkey 登録を開始する (self-service)。\nPublicKeyCredentialCreationOptions を返し、challenge をサーバー側セッションに束縛する。\n永続化はまだ行わない。\n"
+    output:
+      options:
+        type: WebAuthnRegistrationOptions
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/account/mfa/webauthn/register/start
+  FinishWebAuthnRegistration:
+    description: "attestation を検証して WebAuthn credential を永続化する (self-service)。actor.id に\n固定し、最初の 1 件で User.mfa_enrolled を true にする。RP ID / origin / challenge を検証する。\n"
+    input:
+      request:
+        type: WebAuthnRegistrationRequest
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WebAuthnCredentialRegistered
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/account/mfa/webauthn/register/finish
+  RemoveWebAuthnCredential:
+    description: "指定した WebAuthn credential を解除する (self-service, step-up 必須)。actor.id に固定し、\n残る第二要素が無くなれば User.mfa_enrolled を false に戻す。\n"
+    input:
+      request:
+        type: WebAuthnCredentialRemoveRequest
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WebAuthnCredentialRemoved
+    annotations:
+      step_up: required
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/account/mfa/webauthn/remove
+        request_form: body
+  StartBrowserWebAuthn:
+    description: "SPA JSON API から WebAuthn assertion challenge を発行する。pending login session が\nsub を解決し、PublicKeyCredentialRequestOptions を返す。challenge はそのセッションに束縛する。\n"
+    output:
+      options:
+        type: WebAuthnAssertionOptions
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/auth/webauthn/challenge
+  SubmitBrowserWebAuthn:
+    description: "SPA JSON API から WebAuthn assertion を検証する。成功すれば LoginSession を認証完了\n状態に昇格させ、後続フロー (consent / authorization code 発行) に進む。sign_count 逆行は\nclone として拒否する。\n"
+    input:
+      request:
+        type: BrowserWebAuthnRequest
+    output:
+      response:
+        type: BrowserFlowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - UserAuthenticated
+      - AuthenticationFailed
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/auth/webauthn
+        request_body: json
+  SubmitBrowserRecoveryCode:
+    description: "SPA JSON API から backup recovery code を第二要素として検証する。成功すれば\nLoginSession を認証完了状態に昇格させ、消費した code は再利用不可にする。\n"
+    input:
+      request:
+        type: BrowserRecoveryCodeRequest
+    output:
+      response:
+        type: BrowserFlowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - UserAuthenticated
+      - AuthenticationFailed
+      - BackupCodeConsumed
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/auth/recovery-code
+        request_body: json
+  GenerateRecoveryCodes:
+    description: "認証済みユーザーが backup recovery code を生成 / 再生成する (self-service, step-up 必須)。\n平文を一度だけ返し、DB には hash のみ保存する。既存 set は全置換する。\n"
+    output:
+      codes:
+        type: RecoveryCodesResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - RecoveryCodesGenerated
+    annotations:
+      step_up: required
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/account/mfa/recovery-codes/generate
+  RevokeRecoveryCodes:
+    description: "認証済みユーザーが backup recovery code を明示的に失効する (self-service, step-up 必須)。\nactor.id に固定し、有効な code をすべて削除する。\n"
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - RecoveryCodesRevoked
+    annotations:
+      step_up: required
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/account/mfa/recovery-codes/revoke
   ListMySignInActivity:
     description: "認証済みユーザーが自身の直近サインイン履歴を取得する (self-service)。対象は\nactor.id に固定。既存の監査イベントストア (UserAuthenticated) から発生時刻の降順で\n最大 limit 件を返す。limit 既定 10 / 上限 50。\n"
     output:
@@ -1112,13 +1464,15 @@ objectives:
         - urn: urn:idmagic:acr:pwd
           description: "Password 単独認証 (amr ⊇ [pwd])。"
         - urn: urn:idmagic:acr:mfa
-          description: Password + 第二要素 (amr に otp / webauthn / hwk / swk のいずれかを含む)。
+          description: Password + 第二要素 (amr に otp / webauthn / hwk / swk / rc のいずれかを含む)。
       mfa_amr_values:
         - otp
         - webauthn
         - hwk
         - swk
+        - rc
     reference: OIDC Core §2 / RFC 8176
+    note: "otp / webauthn / hwk / swk は RFC 8176 の登録値。rc は backup recovery code 消費を\n表す本アプリ固有 (非 IANA) の amr 値で、TOTP / WebAuthn 喪失時の第二要素成立を示す。\n"
   TotpPolicy:
     kind: security
     policy: totp_parameters
@@ -1130,6 +1484,34 @@ objectives:
       window: 1
       secret_bytes: 20
     reference: RFC 6238 §4 / RFC 4226 §4
+  WebAuthnPolicy:
+    kind: security
+    policy: webauthn_parameters
+    target: WebAuthnCredential
+    description: "WebAuthn ceremony の検証パラメータ。RP ID / origin は deployment config (環境変数)\n由来で、challenge / origin / RP ID / user handle をサーバー側で検証する。attestation は\nプライバシ優先で none とし、enterprise attestation の厳格 enforcement は行わない。sign_count は\n逆行を clone の疑いとして拒否する。resident key (discoverable credential) は要求せず、\npassword + 第二要素 / step-up 用途に限る (passwordless は対象外)。\n"
+    value:
+      rp_id_source: deployment_config
+      rp_origins_source: deployment_config
+      user_verification: preferred
+      attestation: none
+      resident_key: discouraged
+      sign_count_regression: reject
+      challenge_bytes: 32
+      timeout_seconds: 120
+    reference: WebAuthn Level 3 §5 / §7 / §13
+  RecoveryCodePolicy:
+    kind: security
+    policy: recovery_code_parameters
+    target: RecoveryCode
+    description: "backup recovery code の生成・保存・消費パラメータ。平文は生成時に一度だけ表示し、\nDB には SHA-256 hex のみ保存する (単独では第二要素にならない backup 専用)。再生成は\n既存 set を全置換する。\n"
+    value:
+      count: 10
+      code_length: 10
+      alphabet: "23456789abcdefghijkmnpqrstuvwxyz"
+      hash: sha256
+      single_use: true
+      regenerate_replaces_all: true
+    reference: NIST SP 800-63B §5.1.2 (Look-up Secrets)
   PasswordResetTokenLifetime:
     kind: lifetime
     target: PasswordResetTokenRecord

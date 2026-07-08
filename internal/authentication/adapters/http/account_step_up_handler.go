@@ -5,6 +5,7 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -21,19 +22,42 @@ type StepUpStartResponse struct {
 }
 
 type stepUpCompleteRequest struct {
-	Method   string `json:"method"`
-	Password string `json:"password"`
-	Code     string `json:"code"`
+	Method    string          `json:"method"`
+	Password  string          `json:"password"`
+	Code      string          `json:"code"`
+	Assertion json.RawMessage `json:"assertion,omitempty"`
 }
 
 func (d Deps) stepUpDeps() authusecases.StepUpDeps {
 	return authusecases.StepUpDeps{
-		UserRepo:       d.UserRepo,
-		PasswordHasher: d.PasswordHasher,
-		MfaFactorRepo:  d.MfaFactorRepo,
-		SessionManager: d.SessionManager,
-		Emit:           d.Emit,
+		UserRepo:         d.UserRepo,
+		PasswordHasher:   d.PasswordHasher,
+		MfaFactorRepo:    d.MfaFactorRepo,
+		WebAuthn:         d.webAuthnAccountDeps(),
+		RecoveryCodeRepo: d.RecoveryCodeRepo,
+		SessionManager:   d.SessionManager,
+		Emit:             d.Emit,
 	}
+}
+
+// handleStepUpWebAuthnChallenge は step-up 再認証用の WebAuthn assertion challenge を発行する。
+// challenge は現在の認証済み session id をキーに保存し、complete で method=webauthn として検証する。
+func (d Deps) handleStepUpWebAuthnChallenge(c *echo.Context) error {
+	if d.WebAuthnRP == nil {
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "パスキー認証は利用できません")
+	}
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	authn, err := d.requireAuthenticatedAuthn(c)
+	if err != nil {
+		return d.writeAccountError(c, err)
+	}
+	assertion, err := authusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnAccountDeps(), authn.SessionID, authn.UserID)
+	if err != nil {
+		return d.writeAccountError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, assertion)
 }
 
 // requireStepUpSub は認証済みセッションを解決し、step-up gate を通過した sub を返す
@@ -96,6 +120,7 @@ func (d Deps) handleCompleteStepUp(c *echo.Context) error {
 		Method:    authusecases.StepUpMethod(input.Method),
 		Password:  input.Password,
 		Code:      input.Code,
+		Assertion: []byte(input.Assertion),
 		Now:       time.Now().UTC(),
 	}); err != nil {
 		return d.writeStepUpError(c, err)

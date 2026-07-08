@@ -312,6 +312,50 @@ type MfaFactorRemoved struct {
 func (e *MfaFactorRemoved) EventType() string     { return "MfaFactorRemoved" }
 func (e *MfaFactorRemoved) OccurredAt() time.Time { return e.At }
 
+// WebAuthnCredentialRegistered は本人が self-service で WebAuthn / Passkey credential を
+// 登録した (wi-26)。公開鍵や credential_id は audit に流さず、種別だけを残す。
+type WebAuthnCredentialRegistered struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	UserID   string    `json:"userId"`
+}
+
+func (e *WebAuthnCredentialRegistered) EventType() string     { return "WebAuthnCredentialRegistered" }
+func (e *WebAuthnCredentialRegistered) OccurredAt() time.Time { return e.At }
+
+// WebAuthnCredentialRemoved は本人が self-service で WebAuthn / Passkey credential を
+// 解除した (wi-26, step-up 済み)。
+type WebAuthnCredentialRemoved struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	UserID   string    `json:"userId"`
+}
+
+func (e *WebAuthnCredentialRemoved) EventType() string     { return "WebAuthnCredentialRemoved" }
+func (e *WebAuthnCredentialRemoved) OccurredAt() time.Time { return e.At }
+
+// RecoveryCodesGenerated は本人が backup recovery code を生成 / 再生成した (wi-26, step-up
+// 済み)。平文や hash は audit に流さず、発行件数のみ残す。
+type RecoveryCodesGenerated struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	UserID   string    `json:"userId"`
+	Count    int       `json:"count"`
+}
+
+func (e *RecoveryCodesGenerated) EventType() string     { return "RecoveryCodesGenerated" }
+func (e *RecoveryCodesGenerated) OccurredAt() time.Time { return e.At }
+
+// RecoveryCodesRevoked は本人が backup recovery code を明示的に失効した (wi-26, step-up 済み)。
+type RecoveryCodesRevoked struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	UserID   string    `json:"userId"`
+}
+
+func (e *RecoveryCodesRevoked) EventType() string     { return "RecoveryCodesRevoked" }
+func (e *RecoveryCodesRevoked) OccurredAt() time.Time { return e.At }
+
 type UserCreated struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`

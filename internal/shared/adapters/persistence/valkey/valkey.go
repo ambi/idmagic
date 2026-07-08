@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/internal/shared/spec"
 	"github.com/ambi/idmagic/internal/tenancy"
 
+	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -137,6 +138,37 @@ func ttlUntil(expiresAt time.Time) time.Duration {
 
 func tenantKey(ctx context.Context, suffix string) string {
 	return "tenant:" + tenancy.TenantID(ctx) + ":" + suffix
+}
+
+// WebAuthnSessionStore は WebAuthn ceremony の challenge を短命に保持する (wi-26 / ADR-087)。
+// Take は GetDel で取得と同時に削除し、challenge の再利用 (replay) を防ぐ。
+type WebAuthnSessionStore struct{ Client *goredis.Client }
+
+func (s *WebAuthnSessionStore) Save(
+	ctx context.Context,
+	key string,
+	data gowebauthn.SessionData,
+	expiresAt time.Time,
+) error {
+	return setJSON(ctx, s.Client, tenantKey(ctx, "webauthn_session:"+key), data, ttlUntil(expiresAt))
+}
+
+func (s *WebAuthnSessionStore) Take(
+	ctx context.Context,
+	key string,
+) (*gowebauthn.SessionData, error) {
+	payload, err := s.Client.GetDel(ctx, tenantKey(ctx, "webauthn_session:"+key)).Bytes()
+	if errors.Is(err, goredis.Nil) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var data gowebauthn.SessionData
+	if err := json.Unmarshal(payload, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 type AuthorizationRequestStore struct{ Client *goredis.Client }

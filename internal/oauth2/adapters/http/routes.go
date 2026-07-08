@@ -15,6 +15,7 @@ import (
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	tenantports "github.com/ambi/idmagic/internal/tenancy/ports"
 
+	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -51,6 +52,13 @@ type Deps struct {
 	AuthEventBucketStore       authnports.AuthEventBucketStore
 	Authorizer                 oauthports.Authorizer
 	SentinelPasswordHash       string
+
+	// WebAuthn / recovery code を第二要素 (login step) として使うための依存 (wi-26)。
+	// WebAuthnRP が nil の場合 WebAuthn login は無効。
+	WebAuthnRP             *gowebauthn.WebAuthn
+	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore   authnports.WebAuthnSessionStore
+	RecoveryCodeRepo       authnports.RecoveryCodeRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに oauth2 コンテキストのエンドポイントを
@@ -63,6 +71,9 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/auth/login", d.handleLoginAPI)
 	g.POST("/api/auth/consent", d.handleConsentAPI)
 	g.POST("/api/auth/totp", d.handleTOTPAPI)
+	g.POST("/api/auth/webauthn/challenge", d.handleWebAuthnChallengeAPI)
+	g.POST("/api/auth/webauthn", d.handleWebAuthnAPI)
+	g.POST("/api/auth/recovery-code", d.handleRecoveryCodeAPI)
 	g.GET("/api/auth/device", d.handleDeviceContext)
 	g.POST("/api/auth/device", d.handleDeviceAPI)
 	g.POST("/token", d.handleToken)

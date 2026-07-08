@@ -107,6 +107,9 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		ClientAssertionReplay:   &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
 		AccessTokenDenylist:     &valkeystore.AccessTokenDenylist{Client: valkeyClient},
 		SessionStore:            &valkeystore.SessionStore{Client: valkeyClient},
+		WebAuthnCredentialRepo:  &postgres.WebAuthnCredentialRepository{Pool: resilientDB},
+		WebAuthnSessionStore:    &valkeystore.WebAuthnSessionStore{Client: valkeyClient},
+		RecoveryCodeRepo:        &postgres.RecoveryCodeRepository{Pool: resilientDB},
 		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 			return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
 		},

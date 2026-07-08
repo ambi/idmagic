@@ -42,6 +42,9 @@ type transactionResponse struct {
 	ClientName           string              `json:"client_name,omitempty"`
 	Scopes               []string            `json:"scopes,omitempty"`
 	AuthorizationDetails []consentDetailView `json:"authorization_details,omitempty"`
+	// SecondFactorMethods は kind=totp (第二要素待ち) のときに利用できる method 一覧
+	// (totp / webauthn / recovery_code)。UI が第二要素選択画面の選択肢に使う (wi-26)。
+	SecondFactorMethods []string `json:"second_factor_methods,omitempty"`
 }
 
 // consentDetailView は同意画面に提示する authorization_details の人間可読表現 (ADR-050)。
@@ -189,7 +192,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 			}
 			authn, _ := d.ResolveAuthentication(c)
 			if authn != nil && authn.AuthenticationPending {
-				return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "totp", CSRFToken: csrf})
+				return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
 			}
 			return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "login", CSRFToken: csrf})
 		}
@@ -202,13 +205,13 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	if req.UserID == nil {
 		authn, _ := d.ResolveAuthentication(c)
 		if authn != nil && authn.AuthenticationPending {
-			return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "totp", CSRFToken: csrf})
+			return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
 		}
 		return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "login", CSRFToken: csrf})
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn != nil && authn.AuthenticationPending {
-		return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "totp", CSRFToken: csrf})
+		return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
 	}
 	if authn == nil || authn.UserID != *req.UserID {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションが一致しません")
@@ -502,50 +505,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "TOTPコードを確認してください。")
 	}
-	completed, err := d.SessionManager.CompleteFactor(c.Request().Context(), authn.SessionID, []string{"otp"})
-	if err != nil {
-		return err
-	}
-	if completed == nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
-	}
-	d.setSessionCookie(c, completed.SessionID)
-	if d.Emit != nil {
-		d.Emit(&spec.UserAuthenticated{At: time.Now().UTC(), UserID: completed.UserID, AMR: completed.AMR})
-	}
-	// full authentication 完了 (pwd + otp)。last_login_at 記録 + required action gate。
-	if user, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID); err != nil {
-		return err
-	} else if user != nil {
-		gateNext, err := d.recordLoginAndRequiredAction(c, user, time.Now().UTC())
-		if err != nil {
-			return err
-		}
-		if gateNext != "" {
-			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: gateNext})
-		}
-	}
-	if directAdminLogin {
-		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: input.ReturnTo})
-	}
-	if err := d.RequestStore.AttachAuthentication(
-		c.Request().Context(), req.ID, completed.UserID, completed.AuthTime, completed.AMR, completed.ACR,
-	); err != nil {
-		return writeOAuthError(c, err)
-	}
-	req.UserID, req.AuthTime, req.AMR, req.ACR = &completed.UserID, &completed.AuthTime, completed.AMR, &completed.ACR
-	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
-	if err != nil || client == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
-	}
-	next, err := d.completeAfterAuthn(c, req, client, completed)
-	if err != nil {
-		return err
-	}
-	if next.RedirectTo != "" {
-		d.clearTransactionCookie(c)
-	}
-	return writeAuthorizationNext(c, next)
+	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo)
 }
 
 func (d Deps) handleConsentAPI(c *echo.Context) error {

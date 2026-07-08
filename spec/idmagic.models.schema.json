@@ -371,14 +371,25 @@
           "items": {
             "$ref": "#/$defs/AccountMfaFactor"
           }
+        },
+        "webauthn_credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WebAuthnCredentialSummary"
+          }
+        },
+        "recovery_codes": {
+          "$ref": "#/$defs/RecoveryCodeStatus"
         }
       },
       "additionalProperties": false,
       "required": [
         "totp_enrolled",
-        "factors"
+        "factors",
+        "webauthn_credentials",
+        "recovery_codes"
       ],
-      "description": "`/api/account/security` の返り値 (end-user account portal のセキュリティ概要)。\nパスワード変更日時と MFA (TOTP) の登録状態をまとめる。step-up auth は本\nステージでは未導入。\n"
+      "description": "`/api/account/security` の返り値 (end-user account portal のセキュリティ概要)。\nパスワード変更日時と MFA (TOTP / WebAuthn) の登録状態、backup recovery code の残数を\nまとめる。\n"
     },
     "AccountSession": {
       "type": "object",
@@ -4105,6 +4116,22 @@
       ],
       "description": "SPA が POST /api/auth/forgot_password に送る JSON。未認証経路。anti-enumeration のため email 存在有無に関わらず常に 204 を返す。"
     },
+    "BrowserRecoveryCodeRequest": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "return_to": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "description": "SubmitBrowserRecoveryCode の入力。第二要素として recovery code を 1 つ消費する。\ncode は audit / log に残さない。\n"
+    },
     "BrowserResetPasswordRequest": {
       "type": "object",
       "properties": {
@@ -4167,6 +4194,22 @@
         "csrf_token"
       ],
       "description": "SPA が現在の browser authorization transaction を描画するための no-store JSON。"
+    },
+    "BrowserWebAuthnRequest": {
+      "type": "object",
+      "properties": {
+        "assertion": {
+          "description": "PublicKeyCredential (assertion response, WebAuthn Level 3)。"
+        },
+        "return_to": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "assertion"
+      ],
+      "description": "SubmitBrowserWebAuthn の入力。navigator.credentials.get が返した assertion を\nJSON で送り返す。pending login session cookie が sub を、X-CSRF-Token が CSRF を解決する。\n"
     },
     "ClaimMappingPolicy": {
       "type": "object",
@@ -6662,6 +6705,126 @@
       ],
       "description": "Application に接続する protocol binding の種別。"
     },
+    "RecoveryCode": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string"
+        },
+        "code_hash": {
+          "type": "string",
+          "description": "recovery code 平文の SHA-256 hex。平文は保存しない。"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "consumed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "user_id",
+        "code_hash",
+        "generated_at"
+      ],
+      "description": "TOTP / WebAuthn 喪失時の backup recovery code 1 件。平文は生成時に一度だけ表示し、\nDB には code_hash (SHA-256 hex) のみ保存する。consumed_at が非 null なら使用済みで\n再利用不可。1 ユーザーの有効な code 集合を 1 set として扱い、再生成で全置換する。\n"
+    },
+    "RecoveryCodeStatus": {
+      "type": "object",
+      "properties": {
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "remaining": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "remaining"
+      ],
+      "description": "self-service セキュリティ画面で提示する recovery code の状態。個々のコードは返さず、\n生成時刻と総数・残数のみ。\n"
+    },
+    "RecoveryCodesGenerated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "対象 user の所属テナント ID。"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "description": "発行した recovery code の件数。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId",
+        "count"
+      ],
+      "description": "本人が backup recovery code を生成 / 再生成した (step-up 済み)。平文や hash は\naudit に流さず、発行件数のみ残す。再生成は既存 set を全置換する。\n"
+    },
+    "RecoveryCodesResponse": {
+      "type": "object",
+      "properties": {
+        "codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "codes",
+        "generated_at"
+      ],
+      "description": "GenerateRecoveryCodes の返り値。平文の recovery code 一覧を一度だけ返す。\n以降は残数 (RecoveryCodeStatus) のみ取得でき、codes は保存・再表示しない。\n"
+    },
+    "RecoveryCodesRevoked": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "対象 user の所属テナント ID。"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId"
+      ],
+      "description": "本人が backup recovery code を明示的に失効した (step-up 済み)。以降 recovery code は\n第二要素として使えない。\n"
+    },
     "RefreshTokenIssued": {
       "type": "object",
       "properties": {
@@ -7773,9 +7936,11 @@
       "type": "string",
       "enum": [
         "password",
-        "totp"
+        "totp",
+        "webauthn",
+        "recovery_code"
       ],
-      "description": "step-up 再認証に使える factor。password は常時、totp は enrolled 時のみ\n利用できる。\n"
+      "description": "step-up 再認証に使える factor。password は常時、totp / webauthn は enrolled 時のみ、\nrecovery_code は有効な残数がある時のみ利用できる。\n"
     },
     "StepUpRequested": {
       "type": "object",
@@ -9203,6 +9368,215 @@
         "changedFields"
       ],
       "description": "管理者がユーザーのプロフィールまたは roles を更新した。"
+    },
+    "WebAuthnAssertionOptions": {
+      "type": "object",
+      "properties": {
+        "public_key": {
+          "description": "PublicKeyCredentialRequestOptions (WebAuthn Level 3)。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "public_key"
+      ],
+      "description": "StartBrowserWebAuthn の返り値。navigator.credentials.get に渡す\nPublicKeyCredentialRequestOptions を JSON でそのまま返す。challenge は pending login\nsession に束縛する。\n"
+    },
+    "WebAuthnCredential": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string",
+          "description": "authenticator が返す credential ID (base64url)。RP 内で一意。"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "所有者ユーザの sub。"
+        },
+        "public_key": {
+          "type": "string",
+          "description": "COSE 形式の公開鍵 (base64url)。"
+        },
+        "sign_count": {
+          "type": "integer",
+          "description": "直近 assertion の署名カウンタ。逆行は clone の疑いとして検出する。"
+        },
+        "transports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "authenticator が申告した transport のヒント (usb / nfc / ble / internal / hybrid)。"
+        },
+        "aaguid": {
+          "type": "string",
+          "description": "authenticator の AAGUID (base64url)。機種識別のヒント。"
+        },
+        "label": {
+          "type": "string",
+          "description": "ユーザが付ける表示名 (例 \"MacBook Touch ID\")。"
+        },
+        "backup_eligible": {
+          "type": "boolean",
+          "description": "credential が複数デバイス間で同期可能か (WebAuthn BE flag)。"
+        },
+        "backup_state": {
+          "type": "boolean",
+          "description": "credential が現在 backup 済みか (WebAuthn BS flag)。"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_used_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id",
+        "user_id",
+        "public_key",
+        "sign_count",
+        "transports",
+        "backup_eligible",
+        "backup_state",
+        "created_at"
+      ],
+      "description": "ユーザーが登録した WebAuthn / Passkey credential 1 件。1 ユーザーが複数持てるため\nMfaFactor とは別集合とし、credential_id で一意識別する。public_key は COSE 公開鍵、\nsign_count は clone 検出のための署名カウンタ。origin / RP に束縛された所持要素として\nphishing-resistant MFA / step-up に使う。\n"
+    },
+    "WebAuthnCredentialRegistered": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "対象 user の所属テナント ID。"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId"
+      ],
+      "description": "本人が self-service で WebAuthn / Passkey credential を登録した。公開鍵や\ncredential_id は audit に流さず、種別のみ残す。最初の 1 件で User.mfa_enrolled を true にする。\n"
+    },
+    "WebAuthnCredentialRemoveRequest": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id"
+      ],
+      "description": "RemoveWebAuthnCredential の入力。解除対象の credential を credential_id で指定する。\n"
+    },
+    "WebAuthnCredentialRemoved": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "対象 user の所属テナント ID。"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId"
+      ],
+      "description": "本人が self-service で WebAuthn / Passkey credential を解除した (step-up 済み)。\n残る第二要素が無くなった場合は User.mfa_enrolled を false に戻す。\n"
+    },
+    "WebAuthnCredentialSummary": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "transports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_used_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id",
+        "transports",
+        "created_at"
+      ],
+      "description": "self-service セキュリティ画面で提示する WebAuthn credential 1 件の射影。\n公開鍵や sign_count は返さず、識別と表示に必要な属性のみ。\n"
+    },
+    "WebAuthnRegistrationOptions": {
+      "type": "object",
+      "properties": {
+        "public_key": {
+          "description": "PublicKeyCredentialCreationOptions (WebAuthn Level 3)。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "public_key"
+      ],
+      "description": "StartWebAuthnRegistration の返り値。navigator.credentials.create に渡す\nPublicKeyCredentialCreationOptions を JSON でそのまま返す。challenge は短命で\nサーバー側セッションに束縛する。\n"
+    },
+    "WebAuthnRegistrationRequest": {
+      "type": "object",
+      "properties": {
+        "attestation": {
+          "description": "PublicKeyCredential (attestation response, WebAuthn Level 3)。"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "attestation"
+      ],
+      "description": "FinishWebAuthnRegistration の入力。navigator.credentials.create が返した\nattestation を JSON で送り返し、任意で表示ラベルを付ける。\n"
+    },
+    "WebAuthnTransport": {
+      "type": "string",
+      "enum": [
+        "Usb",
+        "Nfc",
+        "Ble",
+        "Internal",
+        "Hybrid"
+      ],
+      "description": "WebAuthn authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4 AuthenticatorTransport)。\n"
     },
     "WsFedRelyingParty": {
       "type": "object",

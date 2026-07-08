@@ -10,6 +10,7 @@ import type {
   TotpEnrollmentStart,
 } from '../types'
 import { adminRequest, AuthenticationAPIError, request, tenantURL, type APIError } from './core'
+import { createPasskey, getPasskeyAssertion } from './webauthn'
 
 export type UpdateAccountProfileInput = {
   name?: string
@@ -117,10 +118,28 @@ export async function revokeOtherAccountSessions(csrfToken: string): Promise<voi
 
 // step-up 再認証 (ADR-043 / wi-43)。高 sensitivity 操作が 403 step_up_required を返したら、
 // start で利用可能な factor を取得し、complete で password / TOTP を提示して再認証する。
-export type StepUpMethod = 'password' | 'totp'
+export type StepUpMethod = 'password' | 'totp' | 'webauthn' | 'recovery_code'
 
 export function isStepUpRequired(cause: unknown): boolean {
   return cause instanceof AuthenticationAPIError && cause.code === 'step_up_required'
+}
+
+// step-up 再認証用の WebAuthn assertion challenge を取得し、パスキーで署名した結果を返す。
+async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
+  const response = await fetch(tenantURL('/api/account/step_up/webauthn/challenge'), {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as APIError
+    throw new AuthenticationAPIError(
+      body.message ?? 'パスキー認証を開始できませんでした。',
+      body.error,
+    )
+  }
+  return getPasskeyAssertion((await response.json()) as { publicKey: never })
 }
 
 export async function startStepUp(csrfToken: string): Promise<StepUpMethod[]> {
@@ -142,8 +161,16 @@ export async function completeStepUp(
   method: StepUpMethod,
   credential: string,
 ): Promise<void> {
-  const payload =
-    method === 'password' ? { method, password: credential } : { method, code: credential }
+  let payload: Record<string, unknown>
+  if (method === 'password') {
+    payload = { method, password: credential }
+  } else if (method === 'webauthn') {
+    // パスキーは challenge 応答型のため、credential 文字列ではなく assertion を送る。
+    payload = { method, assertion: await stepUpWebAuthnAssertion(csrfToken) }
+  } else {
+    // totp / recovery_code はコード入力型。
+    payload = { method, code: credential }
+  }
   const response = await fetch(tenantURL('/api/account/step_up/complete'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
@@ -199,6 +226,83 @@ export async function removeTotpFactor(csrfToken: string, code: string): Promise
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
   throw new AuthenticationAPIError(body.message ?? '認証アプリを解除できませんでした。', body.error)
+}
+
+// registerPasskey は登録 challenge を取得し、navigator.credentials.create で作成した
+// パスキーを attestation としてサーバーに登録する (wi-26 / ADR-087)。
+export async function registerPasskey(csrfToken: string, label?: string): Promise<void> {
+  const startResponse = await fetch(tenantURL('/api/account/mfa/webauthn/register/start'), {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (!startResponse.ok) {
+    const body = (await startResponse.json().catch(() => ({}))) as APIError
+    throw new AuthenticationAPIError(
+      body.message ?? 'パスキー登録を開始できませんでした。',
+      body.error,
+    )
+  }
+  const attestation = await createPasskey((await startResponse.json()) as { publicKey: never })
+  const finishResponse = await fetch(tenantURL('/api/account/mfa/webauthn/register/finish'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ attestation, label: label?.trim() ? label.trim() : undefined }),
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (finishResponse.status === 204) return
+  const body = (await finishResponse.json().catch(() => ({}))) as APIError
+  throw new AuthenticationAPIError(body.message ?? 'パスキーを登録できませんでした。', body.error)
+}
+
+export async function removePasskey(csrfToken: string, credentialId: string): Promise<void> {
+  const response = await fetch(tenantURL('/api/account/mfa/webauthn/remove'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ credential_id: credentialId }),
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (response.status === 204) return
+  const body = (await response.json().catch(() => ({}))) as APIError
+  throw new AuthenticationAPIError(body.message ?? 'パスキーを解除できませんでした。', body.error)
+}
+
+export type RecoveryCodesResult = {
+  codes: string[]
+  generated_at: string
+}
+
+export async function generateRecoveryCodes(csrfToken: string): Promise<RecoveryCodesResult> {
+  const response = await fetch(tenantURL('/api/account/mfa/recovery-codes/generate'), {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (response.ok) return (await response.json()) as RecoveryCodesResult
+  const body = (await response.json().catch(() => ({}))) as APIError
+  throw new AuthenticationAPIError(
+    body.message ?? 'リカバリコードを生成できませんでした。',
+    body.error,
+  )
+}
+
+export async function revokeRecoveryCodes(csrfToken: string): Promise<void> {
+  const response = await fetch(tenantURL('/api/account/mfa/recovery-codes/revoke'), {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (response.status === 204) return
+  const body = (await response.json().catch(() => ({}))) as APIError
+  throw new AuthenticationAPIError(
+    body.message ?? 'リカバリコードを失効できませんでした。',
+    body.error,
+  )
 }
 
 export async function confirmEmailChange(csrfToken: string, token: string): Promise<void> {

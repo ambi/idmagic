@@ -62,6 +62,9 @@ services:
     environment:
       ADDR: :8081
       ISSUER: http://localhost:8080
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_ORIGINS: http://localhost:8080
+      WEBAUTHN_RP_DISPLAY_NAME: IdMagic Local
       PERSISTENCE: postgres_valkey
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
       VALKEY_URL: valkey://valkey:6379/0
