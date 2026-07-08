@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
@@ -148,20 +149,29 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 					return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 				}
 				if needsStepUp && d.canUseTOTP(c, authn.UserID) {
-					pending, err := d.SessionManager.CreateWithPending(
-						c.Request().Context(),
-						authn.UserID,
-						authn.AMR,
-						time.Now().UTC(),
-						true,
-					)
+					pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
 					if err != nil {
 						return err
+					}
+					if pending == nil {
+						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 					}
 					d.setSessionCookie(c, pending.SessionID)
 					return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/totp"))
 				}
 				return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))
+			}
+			if out.Client.FirstParty {
+				redirected, err := d.enforceDefaultSignInPolicy(c, authn, in.Prompt != "none")
+				if err != nil {
+					return err
+				}
+				if redirected {
+					if in.Prompt == "none" {
+						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
+					}
+					return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/totp"))
+				}
 			}
 			next, err := d.completeAfterAuthn(c, out.Request, out.Client, authn)
 			if err != nil {
@@ -395,47 +405,84 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	}
 
 	authTime := time.Now().UTC()
-	authn, err := d.SessionManager.CreateWithPending(
+	authn, err := d.SessionManager.Create(
 		c.Request().Context(),
 		user.ID,
 		[]string{"pwd"},
 		authTime,
-		user.MfaEnrolled,
 	)
 	if err != nil {
 		return err
 	}
 	d.setSessionCookie(c, authn.SessionID)
-	if d.Emit != nil {
-		d.Emit(&spec.UserAuthenticated{At: authTime, TenantID: user.TenantID, UserID: user.ID, AMR: []string{"pwd"}})
-	}
-	if user.MfaEnrolled {
-		next := support.TenantRoute(c, "/totp")
-		if directAdminLogin {
-			next += "?return_to=" + url.QueryEscape(input.ReturnTo)
+	if directAdminLogin {
+		if redirected, err := d.enforceDefaultSignInPolicy(c, authn, true); err != nil {
+			return err
+		} else if redirected {
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
+				Next: support.TenantRoute(c, "/totp") + "?return_to=" + url.QueryEscape(input.ReturnTo),
+			})
 		}
-		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: next})
+		d.emitAuthenticationSuccess(c, authTime, user.TenantID, user.ID, authn)
+		gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
+		if err != nil {
+			return err
+		}
+		if gateNext != "" {
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: gateNext})
+		}
+		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: input.ReturnTo})
 	}
-	// full authentication 完了 (pwd-only)。last_login_at 記録 + required action gate。
+	req.UserID, req.AuthTime, req.AMR, req.ACR = &user.ID, &authn.AuthTime, authn.AMR, &authn.ACR
+	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
+	if err != nil || client == nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
+	}
+	if !client.FirstParty {
+		decision, err := d.EvaluateApplicationAccess(
+			c.Request().Context(), support.RequestTenantID(c), spec.ProtocolBindingOIDC, req.ClientID,
+			authn.UserID, authn, d.ClientIP(c.Request()),
+		)
+		if err != nil {
+			return err
+		}
+		if decision.StepUpRequired {
+			if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
+				return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
+					RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "アプリケーションのサインインポリシーを満たせません"),
+				})
+			}
+			pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+			if err != nil {
+				return err
+			}
+			if pending == nil {
+				return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
+			}
+			d.setSessionCookie(c, pending.SessionID)
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/totp")})
+		}
+		if !decision.Allowed {
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
+				RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "この利用者はアプリケーションにアクセスできません"),
+			})
+		}
+	}
+	if client.FirstParty {
+		if redirected, err := d.enforceDefaultSignInPolicy(c, authn, true); err != nil {
+			return err
+		} else if redirected {
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/totp")})
+		}
+	}
+	d.emitAuthenticationSuccess(c, authTime, user.TenantID, user.ID, authn)
+	// full authentication 完了。last_login_at 記録 + required action gate。
 	gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
 	if err != nil {
 		return err
 	}
 	if gateNext != "" {
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: gateNext})
-	}
-	if directAdminLogin {
-		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: input.ReturnTo})
-	}
-	if err := d.RequestStore.AttachAuthentication(
-		c.Request().Context(), req.ID, user.ID, authn.AuthTime, authn.AMR, authn.ACR,
-	); err != nil {
-		return writeOAuthError(c, err)
-	}
-	req.UserID, req.AuthTime = &user.ID, &authn.AuthTime
-	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
-	if err != nil || client == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
 	}
 	next, err := d.completeAfterAuthn(c, req, client, authn)
 	if err != nil {
@@ -445,6 +492,66 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		d.clearTransactionCookie(c)
 	}
 	return writeAuthorizationNext(c, next)
+}
+
+func (d Deps) enforceDefaultSignInPolicy(
+	c *echo.Context,
+	authn *authdomain.AuthenticationContext,
+	allowChallenge bool,
+) (bool, error) {
+	if d.DefaultSignInPolicyRepo == nil {
+		return false, nil
+	}
+	policy, err := d.DefaultSignInPolicyRepo.Get(c.Request().Context(), support.RequestTenantID(c))
+	if err != nil {
+		return false, err
+	}
+	if policy == nil || len(policy.Rules) == 0 {
+		return false, nil
+	}
+	evaluation := appusecases.EvaluateSignInPolicy(
+		&spec.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
+		authn,
+		d.ClientIP(c.Request()),
+		time.Now().UTC(),
+	)
+	switch evaluation.Decision {
+	case appusecases.PolicyAllow:
+		return false, nil
+	case appusecases.PolicyStepUpRequired:
+		if !allowChallenge {
+			return true, nil
+		}
+		if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
+			return false, support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "MFA必須ですが、利用できる第二要素がありません")
+		}
+		pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+		if err != nil {
+			return false, err
+		}
+		if pending == nil {
+			return false, support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
+		}
+		d.setSessionCookie(c, pending.SessionID)
+		return true, nil
+	default:
+		return false, support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "サインインポリシーを満たせません")
+	}
+}
+
+func (d Deps) emitAuthenticationSuccess(
+	c *echo.Context,
+	at time.Time,
+	tenantID, userID string,
+	authn *authdomain.AuthenticationContext,
+) {
+	if d.Emit == nil {
+		return
+	}
+	d.Emit(&spec.UserAuthenticated{
+		At: at, TenantID: tenantID, UserID: userID,
+		AMR: authn.AMR, SessionID: authn.SessionID, ACR: authn.ACR,
+	})
 }
 
 // recordLoginAndRequiredAction は full authentication 完了時に last_login_at を
@@ -664,10 +771,13 @@ func (d Deps) issueCodeURL(
 					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.UserID,
 				})
 			}
-			if d.canUseTOTP(c, authn.UserID) { //nolint:contextcheck // HTTP request context is required for factor lookup.
-				pending, err := d.SessionManager.CreateWithPending(ctx, authn.UserID, authn.AMR, time.Now().UTC(), true)
+			if len(d.secondFactorMethods(c, authn.UserID)) > 0 { //nolint:contextcheck // HTTP request context is required for factor lookup.
+				pending, err := d.SessionManager.RequireFactor(ctx, authn.SessionID)
 				if err != nil {
 					return "", err
+				}
+				if pending == nil {
+					return authorizationErrorURL(req, iss, "login_required", "既存セッションが認証要件を満たしません"), nil
 				}
 				d.setSessionCookie(c, pending.SessionID)    //nolint:contextcheck // Cookie path is derived from the Echo request.
 				return support.TenantRoute(c, "/totp"), nil //nolint:contextcheck // Redirect URL is derived from the Echo request.
@@ -695,8 +805,8 @@ func (d Deps) issueCodeURL(
 		RequestID: req.ID,
 		Sub:       authn.UserID,
 		AuthTime:  authTime,
-		AMR:       req.AMR,
-		ACR:       stringValue(req.ACR),
+		AMR:       authn.AMR,
+		ACR:       authn.ACR,
 	})
 	if err != nil {
 		var oauthErr *usecases.OAuthError

@@ -20,6 +20,8 @@ function formatDateTime(value: string): string {
 const amrLabels: Record<string, string> = {
   pwd: 'パスワード',
   otp: '認証アプリ (TOTP)',
+  webauthn: 'パスキー',
+  rc: 'リカバリコード',
   mfa: '多要素認証',
   hwk: 'ハードウェアキー',
   swk: 'ソフトウェアキー',

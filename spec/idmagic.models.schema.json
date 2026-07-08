@@ -5887,7 +5887,7 @@
         "authentication_pending",
         "expires_at"
       ],
-      "description": "ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は追加 factor 検証を待っている中間状態で、/authorize 完了経路はそのセッションを未認証扱いとし対応する factor challenge に誘導する。"
+      "description": "ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true はサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加 factor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize 完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。"
     },
     "LoginThrottled": {
       "type": "object",
@@ -9266,7 +9266,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "RFC 8176 / AuthenticationContextPolicy の技術値。UI は pwd=パスワード、otp=認証アプリ、webauthn=パスキー、rc=リカバリコードなど、利用者向けの認証方式名に変換して表示する。"
         }
       },
       "additionalProperties": false,

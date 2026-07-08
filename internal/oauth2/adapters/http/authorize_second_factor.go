@@ -198,7 +198,10 @@ func (d Deps) finishSecondFactor(
 	}
 	d.setSessionCookie(c, completed.SessionID)
 	if d.Emit != nil {
-		d.Emit(&spec.UserAuthenticated{At: time.Now().UTC(), UserID: completed.UserID, AMR: completed.AMR})
+		d.Emit(&spec.UserAuthenticated{
+			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), UserID: completed.UserID,
+			AMR: completed.AMR, SessionID: completed.SessionID, ACR: completed.ACR,
+		})
 	}
 	// full authentication 完了 (pwd + 第二要素)。last_login_at 記録 + required action gate。
 	if user, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID); err != nil {

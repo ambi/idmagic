@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -108,6 +109,11 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 
 func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	t.Helper()
+	return newServerWithTOTPPolicy(t, totpSecret, false)
+}
+
+func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *httptest.Server {
+	t.Helper()
 
 	clientRepo := memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
@@ -115,6 +121,10 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	passwordHistoryRepo := memory.NewPasswordHistoryRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
 	codeStore := memory.NewAuthorizationCodeStore()
+	applicationRepo := memory.NewApplicationRepository()
+	assignmentRepo := memory.NewApplicationAssignmentRepository()
+	signInPolicyRepo := memory.NewSignInPolicyRepository()
+	defaultSignInPolicyRepo := memory.NewDefaultSignInPolicyRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
@@ -154,6 +164,32 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 			t.Fatalf("seed mfa factor: %v", err)
 		}
 	}
+	if requireMFA {
+		if err := applicationRepo.Save(context.Background(), &spec.Application{
+			TenantID: spec.DefaultTenantID, ApplicationID: "app-demo", Name: "Demo App",
+			Kind: spec.ApplicationFederated, Status: spec.ApplicationActive,
+			Bindings:  []spec.ProtocolBinding{{Type: spec.ProtocolBindingOIDC, ClientID: demoClientID}},
+			CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatalf("seed application: %v", err)
+		}
+		if err := assignmentRepo.Save(context.Background(), &spec.ApplicationAssignment{
+			TenantID: spec.DefaultTenantID, ApplicationID: "app-demo",
+			SubjectType: spec.AssignmentSubjectUser, SubjectID: "user_alice",
+			Visibility: spec.AssignmentVisible, CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatalf("seed assignment: %v", err)
+		}
+		if err := defaultSignInPolicyRepo.Save(context.Background(), &spec.TenantDefaultSignInPolicy{
+			TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+			Rules: []spec.SignInRule{{
+				RuleID: "default", Name: "Require MFA", Enabled: true,
+				RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+			}},
+		}); err != nil {
+			t.Fatalf("seed sign-in policy: %v", err)
+		}
+	}
 
 	keyStore, err := crypto.NewInMemoryKeyStore()
 	if err != nil {
@@ -176,6 +212,8 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
+		ApplicationRepo: applicationRepo, ApplicationAssignmentRepo: assignmentRepo,
+		ApplicationSignInPolicyRepo: signInPolicyRepo, DefaultSignInPolicyRepo: defaultSignInPolicyRepo,
 	})
 	return httptest.NewServer(e)
 }
@@ -269,13 +307,38 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 	}
 }
 
-func TestBrowserAuthorizationFlowRequiresTOTPWhenEnrolled(t *testing.T) {
+func TestBrowserAuthorizationFlowSkipsTOTPWhenPolicyAllowsPassword(t *testing.T) {
 	secret := totpTestSecret
 	srv := newServerWithTOTP(t, secret)
 	defer srv.Close()
 	client := browserClient(t)
 
 	resp := startAuthorization(t, client, srv.URL, "verifier-for-totp-test-12345678901234567890", "state")
+	resp.Body.Close()
+	transaction := getJSON[struct {
+		Kind      string `json:"kind"`
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/api/auth/transaction")
+	if transaction.Kind != "login" {
+		t.Fatalf("transaction kind=%q, want login", transaction.Kind)
+	}
+
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+		"username": demoUsername,
+		"password": demoPassword,
+	})
+	if loginResult["next"] != "/consent" {
+		t.Fatalf("login next=%q, want /consent", loginResult["next"])
+	}
+}
+
+func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T) {
+	secret := totpTestSecret
+	srv := newServerWithTOTPPolicy(t, secret, true)
+	defer srv.Close()
+	client := browserClient(t)
+
+	resp := startAuthorization(t, client, srv.URL, "verifier-for-totp-policy-test-1234567890123456", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
@@ -449,7 +512,7 @@ func TestDirectAdminLoginRejectsUnsafeReturnTo(t *testing.T) {
 	}
 }
 
-func TestDirectAdminLoginWithTOTPReturnsToRequestedPage(t *testing.T) {
+func TestDirectAdminLoginWithEnrolledTOTPReturnsToRequestedPage(t *testing.T) {
 	srv := newServerWithTOTP(t, totpTestSecret)
 	defer srv.Close()
 	client := browserClient(t)
@@ -469,8 +532,33 @@ func TestDirectAdminLoginWithTOTPReturnsToRequestedPage(t *testing.T) {
 			"return_to": returnTo,
 		},
 	)
+	if loginResult["redirect_to"] != returnTo {
+		t.Fatalf("redirect_to=%q, want %q", loginResult["redirect_to"], returnTo)
+	}
+}
+
+func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) {
+	srv := newServerWithTOTPPolicy(t, totpTestSecret, true)
+	defer srv.Close()
+	client := browserClient(t)
+	returnTo := "/admin/keys"
+
+	transaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
+	loginResult := postJSON[map[string]string](
+		t,
+		client,
+		srv.URL+"/api/auth/login",
+		transaction.CSRFToken,
+		map[string]string{
+			"username":  demoUsername,
+			"password":  demoPassword,
+			"return_to": returnTo,
+		},
+	)
 	if loginResult["next"] != "/totp?return_to=%2Fadmin%2Fkeys" {
-		t.Fatalf("next=%q", loginResult["next"])
+		t.Fatalf("next=%q, want /totp with return_to", loginResult["next"])
 	}
 
 	totpTransaction := getJSON[struct {
@@ -493,6 +581,20 @@ func TestDirectAdminLoginWithTOTPReturnsToRequestedPage(t *testing.T) {
 	)
 	if totpResult["redirect_to"] != returnTo {
 		t.Fatalf("redirect_to=%q, want %q", totpResult["redirect_to"], returnTo)
+	}
+	sessions := getJSON[struct {
+		Sessions []struct {
+			Current bool     `json:"current"`
+			AMR     []string `json:"amr"`
+		} `json:"sessions"`
+	}](t, client, srv.URL+"/api/account/sessions")
+	if len(sessions.Sessions) != 1 {
+		t.Fatalf("sessions=%+v, want exactly one completed MFA session", sessions.Sessions)
+	}
+	if !sessions.Sessions[0].Current ||
+		!slices.Contains(sessions.Sessions[0].AMR, "pwd") ||
+		!slices.Contains(sessions.Sessions[0].AMR, "otp") {
+		t.Fatalf("session=%+v, want current pwd+otp session", sessions.Sessions[0])
 	}
 }
 

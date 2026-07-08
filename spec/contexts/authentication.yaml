@@ -125,7 +125,7 @@ models:
         optional: true
   LoginSession:
     kind: entity
-    description: ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は追加 factor 検証を待っている中間状態で、/authorize 完了経路はそのセッションを未認証扱いとし対応する factor challenge に誘導する。
+    description: ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true はサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加 factor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize 完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。
     identity: id
     fields:
       id:
@@ -407,6 +407,7 @@ models:
         type: Timestamp
       amr:
         type: "String[]"
+        description: RFC 8176 / AuthenticationContextPolicy の技術値。UI は pwd=パスワード、otp=認証アプリ、webauthn=パスキー、rc=リカバリコードなど、利用者向けの認証方式名に変換して表示する。
   UserSignInActivityResponse:
     kind: value_object
     description: "ListMySignInActivity / ListUserSignInActivity の返り値。発生時刻の降順 (新しい順) で\n直近 N 件を返す。\n"
@@ -1758,6 +1759,30 @@ scenarios:
     main_success:
       - "ユーザー \"alice\" が自分のサインイン履歴を取得する"
       - 応答に自分のサインインイベントだけが含まれる
+      - 第二要素を使ったサインインは、pwd と第二要素の amr を含む完了後の UserAuthenticated として表示される
+    extensions:
+      - at: 1
+        condition: 認証手段に WebAuthn が含まれる
+        steps:
+          - UI は webauthn という技術名ではなく「パスキー」と表示する
+  MFA 登録済みユーザーでもポリシーが要求しない限り第二要素を求められない:
+    goal: MFA factor 登録状態とサインイン時の必須要件を分離し、ポリシーがパスワードのみなら登録済み factor を追加要求しない。
+    primary_actor: ResourceOwner
+    scope: Authentication
+    level: user_goal
+    preconditions:
+      - "ユーザー \"alice\" は TOTP または WebAuthn credential を登録済みである"
+      - 対象 Application の実効サインインポリシーは Password である
+    main_success:
+      - "ユーザー \"alice\" がユーザー名とパスワードを送信する"
+      - LoginSession は authentication_pending=false で作られる
+      - 認可フローは第二要素画面に進まず、同意または認可コード発行へ進む
+    extensions:
+      - at: 1
+        condition: 対象 Application の実効サインインポリシーが Mfa である
+        steps:
+          - LoginSession は authentication_pending=true へ切り替わる
+          - 利用可能な第二要素 (TOTP / パスキー / リカバリコード) の選択画面へ進む
   ユーザーは自分のアカウントデータをエクスポートできる:
     goal: ユーザーが自分の profile と consents を含むアカウントデータをエクスポートする。
     primary_actor: ResourceOwner
