@@ -30,6 +30,10 @@ fi
 echo "Starting idmagic API at http://localhost:8081"
 (
   cd "$ROOT_DIR"
+  : "${WEBAUTHN_RP_ID:=localhost}"
+  : "${WEBAUTHN_RP_ORIGINS:=http://localhost:5173}"
+  : "${WEBAUTHN_RP_DISPLAY_NAME:=IdMagic Local}"
+  export WEBAUTHN_RP_ID WEBAUTHN_RP_ORIGINS WEBAUTHN_RP_DISPLAY_NAME
   ADDR=:8081 \
     ISSUER=http://localhost:5173 \
     PERSISTENCE=memory \

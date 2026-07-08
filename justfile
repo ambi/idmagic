@@ -122,7 +122,7 @@ dev:
 
 # Start the Go API for local UI development.
 dev-api:
-    ADDR=:8081 ISSUER=http://localhost:5173 go run ./cmd/idmagic
+    ADDR=:8081 ISSUER=http://localhost:5173 WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-localhost}" WEBAUTHN_RP_ORIGINS="${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}" WEBAUTHN_RP_DISPLAY_NAME="${WEBAUTHN_RP_DISPLAY_NAME:-IdMagic Local}" go run ./cmd/idmagic
 
 # Start the React UI dev server.
 dev-ui:
