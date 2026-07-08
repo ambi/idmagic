@@ -7,7 +7,7 @@
   "required": ["context", "updated_at", "overview", "structure", "structural_decisions"],
   "properties": {
     "context": {
-      "description": "このマップが記述するコンテキスト接頭辞。横断はルートで repo。CHANGE_RECORD_FORMAT.md §1.1.1 の表と一致する。",
+      "description": "このマップが記述するコンテキスト接頭辞。横断はルートで repo。実際の ADR・ワークアイテム配置および SCL の context map と一致する。",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },

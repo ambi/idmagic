@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Guard against duplicate change-record ids (CHANGE_RECORD_FORMAT.md §1.1.2).
+ * Guard against duplicate work-item and ADR ids (WORK_ITEM_FORMAT.md / ADR_FORMAT.md).
  *
  *   check-ids --work-items <dir>... --decisions <dir>...
  *
