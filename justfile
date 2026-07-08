@@ -43,7 +43,7 @@ lint-go:
 
 # Format Go backend code.
 format-go:
-    gofumpt -w .
+     GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint fmt ./...
 
 # Run Go tests.
 test-go:
