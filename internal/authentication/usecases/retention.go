@@ -23,6 +23,9 @@ type RetentionPolicy struct {
 	AggregatedDays int
 	MfaDays        int
 	SessionDays    int
+	// FailureUsernamePlaintextDays は AuthenticationFailed.username の平文保持日数。
+	// 期限超過後はイベント自体を消さず payload.username だけ null 化する。
+	FailureUsernamePlaintextDays int
 	// MaxDays は global cap (0 = 上限なし)。各種類はこれを超えて保持しない。
 	MaxDays int
 }
@@ -30,12 +33,13 @@ type RetentionPolicy struct {
 // DefaultRetentionPolicy は ADR-045 の既定値。
 func DefaultRetentionPolicy() RetentionPolicy {
 	return RetentionPolicy{
-		SuccessDays:    365,
-		FailDays:       30,
-		AggregatedDays: 90,
-		MfaDays:        90,
-		SessionDays:    90,
-		MaxDays:        0,
+		SuccessDays:                  365,
+		FailDays:                     30,
+		AggregatedDays:               90,
+		MfaDays:                      90,
+		SessionDays:                  90,
+		FailureUsernamePlaintextDays: 7,
+		MaxDays:                      0,
 	}
 }
 
@@ -128,10 +132,15 @@ type AuthEventBucketPurger interface {
 	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
 }
 
+type AuthenticationFailureUsernameRedactor interface {
+	RedactAuthenticationFailureUsernames(ctx context.Context, before time.Time) (int64, error)
+}
+
 // RetentionSweepResult は 1 回の sweep で削除した件数。
 type RetentionSweepResult struct {
-	AuditEvents int64
-	Buckets     int64
+	AuditEvents       int64
+	Buckets           int64
+	RedactedUsernames int64
 }
 
 // RunRetentionSweep は監査イベントと bucket を保持期間に従って一括削除する。store が nil の
@@ -146,6 +155,15 @@ func RunRetentionSweep(
 	var result RetentionSweepResult
 	now = now.UTC()
 	if audit != nil {
+		if redactor, ok := audit.(AuthenticationFailureUsernameRedactor); ok &&
+			policy.FailureUsernamePlaintextDays > 0 {
+			before := now.Add(-time.Duration(policy.FailureUsernamePlaintextDays) * 24 * time.Hour)
+			redacted, err := redactor.RedactAuthenticationFailureUsernames(ctx, before)
+			if err != nil {
+				return result, err
+			}
+			result.RedactedUsernames = redacted
+		}
 		deleted, err := audit.DeleteOlderThan(ctx, policy.AuditCutoff(now))
 		if err != nil {
 			return result, err

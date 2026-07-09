@@ -423,7 +423,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 				Next: support.TenantRoute(c, "/totp") + "?return_to=" + url.QueryEscape(input.ReturnTo),
 			})
 		}
-		d.emitAuthenticationSuccess(authTime, user.TenantID, user.ID, authn)
+		d.emitAuthenticationSuccess(c, authTime, user, authn, "")
 		gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
 		if err != nil {
 			return err
@@ -475,7 +475,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/totp")})
 		}
 	}
-	d.emitAuthenticationSuccess(authTime, user.TenantID, user.ID, authn)
+	d.emitAuthenticationSuccess(c, authTime, user, authn, req.ClientID)
 	// full authentication 完了。last_login_at 記録 + required action gate。
 	gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
 	if err != nil {
@@ -540,16 +540,21 @@ func (d Deps) enforceDefaultSignInPolicy(
 }
 
 func (d Deps) emitAuthenticationSuccess(
+	c *echo.Context,
 	at time.Time,
-	tenantID, userID string,
+	user *spec.User,
 	authn *authdomain.AuthenticationContext,
+	clientID string,
 ) {
-	if d.Emit == nil {
+	if d.Emit == nil || user == nil {
 		return
 	}
+	attrs := d.authenticationEventAttributes(c, user.PreferredUsername)
 	d.Emit(&spec.UserAuthenticated{
-		At: at, TenantID: tenantID, UserID: userID,
-		AMR: authn.AMR, SessionID: authn.SessionID, ACR: authn.ACR,
+		At: at, TenantID: user.TenantID, UserID: user.ID,
+		AMR: authn.AMR, SessionID: authn.SessionID, ClientID: clientID, ACR: authn.ACR,
+		UsernameHash: attrs.UsernameHash, IPTruncated: attrs.IPTruncated, IPHash: attrs.IPHash,
+		UAHash: attrs.UAHash,
 	})
 }
 
@@ -985,10 +990,28 @@ func (d Deps) clearSessionCookie(c *echo.Context) {
 
 func (d Deps) emitAuthenticationFailure(c *echo.Context, username, reason string) {
 	if d.Emit != nil {
+		attrs := d.authenticationEventAttributes(c, username)
 		d.Emit(&spec.AuthenticationFailed{
 			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), Username: username, Reason: reason,
+			UsernameHash: attrs.UsernameHash, IPTruncated: attrs.IPTruncated, IPHash: attrs.IPHash,
+			UAHash: attrs.UAHash,
 		})
 	}
+}
+
+func (d Deps) authenticationEventAttributes(c *echo.Context, username string) usecases.AuthenticationEventAttributes {
+	var salt []byte
+	if d.TenantSaltStore != nil {
+		if s, err := d.TenantSaltStore.GetSalt(c.Request().Context()); err == nil {
+			salt = s
+		}
+	}
+	return usecases.BuildAuthenticationEventAttributes(
+		salt,
+		username,
+		extractClientIP(c.Request(), d.TrustedForwardedHops),
+		c.Request().UserAgent(),
+	)
 }
 
 func (d Deps) acquireLoginThrottle(

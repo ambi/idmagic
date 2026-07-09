@@ -78,6 +78,51 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	}
 }
 
+func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := memory.NewAuditEventStore(0)
+	oldFailure := &oauthports.AuditEventRecord{
+		ID: "fail-8", TenantID: spec.DefaultTenantID,
+		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
+		Payload: map[string]any{
+			"tenantId":     spec.DefaultTenantID,
+			"username":     "alice",
+			"usernameHash": "hash-alice",
+		},
+	}
+	freshFailure := &oauthports.AuditEventRecord{
+		ID: "fail-6", TenantID: spec.DefaultTenantID,
+		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 6),
+		Payload: map[string]any{"tenantId": spec.DefaultTenantID, "username": "bob"},
+	}
+	if err := store.Append(ctx, oldFailure); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Append(ctx, freshFailure); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := usecases.RunRetentionSweep(ctx, store, nil, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RedactedUsernames != 1 {
+		t.Fatalf("redacted usernames=%d, want 1", res.RedactedUsernames)
+	}
+	oldGot, _ := store.FindByID(ctx, "fail-8")
+	if oldGot.Payload["username"] != nil {
+		t.Fatalf("old failure username should be null, got %#v", oldGot.Payload["username"])
+	}
+	if oldGot.Payload["usernameHash"] != "hash-alice" {
+		t.Fatalf("usernameHash should remain, got %#v", oldGot.Payload["usernameHash"])
+	}
+	freshGot, _ := store.FindByID(ctx, "fail-6")
+	if freshGot.Payload["username"] != "bob" {
+		t.Fatalf("fresh failure username should remain, got %#v", freshGot.Payload["username"])
+	}
+}
+
 func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)

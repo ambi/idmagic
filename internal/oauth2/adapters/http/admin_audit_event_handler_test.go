@@ -268,6 +268,28 @@ func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 	}
 }
 
+func TestAdminAuditEventsTransformsPIIFilters(t *testing.T) {
+	user := auditUser("user_admin", "acme", []string{"admin"})
+	now := time.Now().UTC()
+	ev := auditEvent("acme", "AuthenticationFailed", "", now)
+	ev.Payload["usernameHash"] = spec.SaltedHash(nil, spec.NormalizeUsername("Alice"))
+	ev.Payload["ipTruncated"] = "203.0.113.0/24"
+	ev.SearchAttributes = oauthusecases.ExtractSearchAttributes(ev)
+	e := newAuditAdminServer(t, user, []*oauthports.AuditEventRecord{ev})
+
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=actor.username:eq:Alice&filter=client.ip:eq:203.0.113.42")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if len(body.Events) != 1 || body.Events[0].Type != "AuthenticationFailed" {
+		t.Fatalf("PII filter mismatch: %+v", body.Events)
+	}
+}
+
 func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	e := newAuditAdminServer(t, user, nil)

@@ -2262,7 +2262,7 @@ models:
       filter:
         type: "AuditEventFilterExpression[]"
         optional: true
-        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。username / IP はここで actor.username / client.ip として表現し、専用 query param にはしない。"
+        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。username / IP はここで actor.username / client.ip として表現し、専用 query param にはしない。actor.username は lowercased username を tenant salt 付き hash に変換して照合し、client.ip は IPv4 /24・IPv6 /48 に丸めて照合する。"
   AuditEventFilterOperator:
     kind: enum
     description: "監査イベント検索 filter 式で使える比較演算子。registry の属性ごとに許可 operator が宣言される。eq は完全一致、in は値集合のいずれか一致、contains は部分一致 (q 用)、time_range は occurred_at の期間指定。"
@@ -2280,7 +2280,7 @@ models:
       - ip_truncate
   AuditEventSearchAttribute:
     kind: value_object
-    description: "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist と PII 変換方針を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\n"
+    description: "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist と PII 変換方針を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nactor.username / client.ip は admin 検索ビルダーに表示できる PII-safe 属性で、sidecar には平文を保存しない。\n"
     fields:
       field:
         type: String
@@ -3737,7 +3737,7 @@ interfaces:
         successful_status_codes:
           - "204"
   ListAdminAuditEvents:
-    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / sub による絞り込みを提供する。\n認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、category\n(authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nsystem_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に閉じる。\n"
+    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / sub による絞り込みを提供する。\n認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、category\n(authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nactor.username / client.ip filter は管理者が平文で入力し、サーバが tenant salt 付き hash または\nIP 丸めに変換して sidecar の transform 済み値と照合する。system_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に閉じる。\n"
     input:
       query:
         type: AuditEventQuery
@@ -3863,6 +3863,15 @@ invariants:
     description: クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。
     assuming: event == ClientAuthenticationFailed
     always: "error == InvalidClient && size(error_description) == size(error_description_constant)"
+  AuditPIISearchAttributesAreTransformed:
+    description: "認証イベントの username / IP 相関検索属性は sidecar に平文を保存しない。actor.username は tenant salt 付き hash、client.ip は IPv4 /24・IPv6 /48 に丸めた値だけを保存し、検索時も同じ変換を通す。\n反例: 監査検索 index から username / IP の平文が漏洩する、または tenant 間で同一 username を相関できる。\n"
+    target: AuditEventSearchAttribute
+    assuming: "field in [actor.username, client.ip]"
+    always: "raw_storable == false && stored_value == transform(plaintext, tenant_salt)"
+  AuthenticationFailurePlainUsernameTtl:
+    description: "AuthenticationFailed.username の平文は失敗調査用に短期保持し、発生から 7 日を超えた sweep 後は null 化される。usernameHash は保持され、相関検索には hash を使う。\n反例: 失敗イベントの平文 username が長期監査ログに残る。\n"
+    target: AuthenticationFailed
+    always: "occurred_at < now() - 7d => payload.username == null"
   TokenAndConsentReferencesStayTenantLocal:
     description: "Consent と RefreshTokenRecord は同一 tenant_id 内の User と OAuth2Client だけを参照する。RefreshTokenRecord.parent_id は同じ family_id の既存 RefreshTokenRecord を指す。\n反例: tenant A の refresh token が tenant B の client_id または sub を持つ。\n"
     target: RefreshTokenRecord
@@ -4225,6 +4234,37 @@ scenarios:
         steps:
           - "認可コードの交換はエラー \"InvalidGrantError\""
           - 認可コードの状態は Expired になる
+  管理者は username と IP で認証監査イベントを相関検索できる:
+    goal: 管理者が credential stuffing 調査のため、平文 username / IP 入力から PII-safe な監査検索を行う。
+    primary_actor: Admin
+    scope: OAuth2
+    level: user_goal
+    preconditions:
+      - tenant 内で username "Alice" のログイン失敗が発生している
+      - 失敗リクエストの client IP は "203.0.113.9" である
+      - 監査イベント sidecar には actor.username / client.ip の transform 済み検索属性が保存されている
+    success_guarantees:
+      - 管理者は actor.username に "alice" または "Alice" を指定して同じ失敗イベントを検索できる
+      - 管理者は client.ip に "203.0.113.42" を指定して同じ /24 の失敗イベントを検索できる
+      - sidecar には username / IP の平文は保存されない
+    main_success:
+      - 管理者が監査ログ画面で field "actor.username" operator "eq" value "Alice" を指定する
+      - サーバは tenant salt と username 正規化を使い value を hash に変換する
+      - 検索結果に username "Alice" の AuthenticationFailed が含まれる
+      - 管理者が field "client.ip" operator "eq" value "203.0.113.42" を追加する
+      - サーバは IP を "203.0.113.0/24" に丸めて照合する
+      - 同じ /24 から発生した認証イベントだけが残る
+    extensions:
+      - at: 4
+        condition: client.ip value が IP アドレスとして不正である
+        steps:
+          - "エラー \"InvalidRequestError\""
+          - SQL / JSONPath は実行されない
+      - at: 1
+        condition: 管理者が registry に無い field を指定する
+        steps:
+          - "エラー \"InvalidRequestError\""
+          - 検索は実行されない
   リフレッシュトークンをローテーションして新しいトークンを得る:
     goal: Client が refresh token をローテーションして新しい access/refresh token を得る。
     primary_actor: OAuth2Client

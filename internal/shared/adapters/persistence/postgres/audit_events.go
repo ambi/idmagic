@@ -11,10 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 const (
@@ -218,4 +220,21 @@ func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports
 		deleted += tag.RowsAffected()
 	}
 	return deleted, nil
+}
+
+// RedactAuthenticationFailureUsernames は ADR-046 の短期平文 username 保持を実装する。
+// 失敗イベント自体と usernameHash は残し、payload.username だけ JSON null にする。
+func (r *AuditEventRepository) RedactAuthenticationFailureUsernames(ctx context.Context, before time.Time) (int64, error) {
+	tag, err := r.Pool.Exec(ctx, `
+UPDATE audit_events
+SET payload = jsonb_set(payload, '{username}', 'null'::jsonb, true)
+WHERE type = $1
+  AND occurred_at < $2
+  AND payload ? 'username'
+  AND payload->>'username' IS NOT NULL`,
+		(&spec.AuthenticationFailed{}).EventType(), before.UTC())
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }

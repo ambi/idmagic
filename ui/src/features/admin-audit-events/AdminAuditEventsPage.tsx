@@ -1,4 +1,4 @@
-import { IconDownload, IconRefresh, IconSearch } from '@tabler/icons-react'
+import { IconDownload, IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import {
   type AdminAuditEventQuery,
@@ -17,6 +17,31 @@ import type { AdminAuditEvent } from '../../types'
 const DEFAULT_REALM = 'default'
 
 type EventKind = 'success' | 'fail' | 'aggregated'
+type AuditFilterField =
+  | 'actor.username'
+  | 'client.ip'
+  | 'event.type'
+  | 'outcome'
+  | 'target.id'
+  | 'session.id'
+  | 'transaction.id'
+
+type AuditFilterRow = {
+  id: number
+  field: AuditFilterField
+  value: string
+}
+
+const AUDIT_FILTER_FIELDS: Array<{ value: AuditFilterField; label: string; placeholder: string }> =
+  [
+    { value: 'actor.username', label: 'ユーザー名', placeholder: '例: alice' },
+    { value: 'client.ip', label: 'IP アドレス', placeholder: '例: 203.0.113.42' },
+    { value: 'event.type', label: 'イベント種別', placeholder: '例: AuthenticationFailed' },
+    { value: 'outcome', label: '結果', placeholder: 'success / failure' },
+    { value: 'target.id', label: '対象ユーザー', placeholder: '例: user_...' },
+    { value: 'session.id', label: 'セッション', placeholder: '例: sess_...' },
+    { value: 'transaction.id', label: 'トランザクション', placeholder: '例: tx_...' },
+  ]
 
 const FAIL_TYPES = new Set([
   'AuthenticationFailed',
@@ -79,6 +104,9 @@ export function AdminAuditEventsPage({
   const [after, setAfter] = useState('')
   const [before, setBefore] = useState('')
   const [limit, setLimit] = useState('100')
+  const [filters, setFilters] = useState<AuditFilterRow[]>([
+    { id: 1, field: 'actor.username', value: '' },
+  ])
   const [allTenants, setAllTenants] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -94,7 +122,29 @@ export function AdminAuditEventsPage({
       before: before.trim() ? new Date(before).toISOString() : undefined,
       limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
       allTenants: canCrossTenant && allTenants,
+      filter: filters
+        .map((filter) => {
+          const value = filter.value.trim()
+          return value ? `${filter.field}:eq:${value}` : ''
+        })
+        .filter(Boolean),
     }
+  }
+
+  function addFilter() {
+    setFilters((current) => [...current, { id: Date.now(), field: 'actor.username', value: '' }])
+  }
+
+  function updateFilter(id: number, patch: Partial<Omit<AuditFilterRow, 'id'>>) {
+    setFilters((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  }
+
+  function removeFilter(id: number) {
+    setFilters((current) =>
+      current.length === 1
+        ? [{ ...current[0], value: '' }]
+        : current.filter((row) => row.id !== id),
+    )
   }
 
   async function handleQuery(event: FormEvent<HTMLFormElement>) {
@@ -183,6 +233,61 @@ export function AdminAuditEventsPage({
               onChange={(e) => setLimit(e.target.value)}
             />
           </Field>
+          <div className="grid gap-3 lg:col-span-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                検索属性
+              </Label>
+              <Button type="button" variant="ghost" onClick={addFilter} disabled={busy}>
+                <IconPlus size={16} aria-hidden="true" />
+                条件
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              {filters.map((filter) => {
+                const selectedField =
+                  AUDIT_FILTER_FIELDS.find((field) => field.value === filter.field) ??
+                  AUDIT_FILTER_FIELDS[0]
+                return (
+                  <div
+                    key={filter.id}
+                    className="grid gap-2 rounded-md border border-slate-200 p-2 sm:grid-cols-[190px_minmax(0,1fr)_40px]"
+                  >
+                    <select
+                      value={filter.field}
+                      onChange={(e) =>
+                        updateFilter(filter.id, {
+                          field: e.target.value as AuditFilterField,
+                        })
+                      }
+                      className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                    >
+                      {AUDIT_FILTER_FIELDS.map((field) => (
+                        <option key={field.value} value={field.value}>
+                          {field.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      value={filter.value}
+                      onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                      placeholder={selectedField.placeholder}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-9 w-9 px-0"
+                      onClick={() => removeFilter(filter.id)}
+                      disabled={busy}
+                      aria-label="検索条件を削除"
+                    >
+                      <IconTrash size={16} aria-hidden="true" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
           <div className="flex items-end gap-2 lg:col-span-3">
             <Button type="submit" disabled={busy}>
               <IconSearch size={16} aria-hidden="true" />

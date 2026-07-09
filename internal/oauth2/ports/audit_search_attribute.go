@@ -69,9 +69,7 @@ type AuditFilterExpression struct {
 
 // AuditSearchRegistry は許可される検索属性の allowlist。
 //
-// wi-145 では非 PII raw id 属性を抽出器が sidecar に載せる。PII 属性 (actor.username /
-// client.ip) は宣言のみで、emit 経路からの hash / 丸め抽出と UI 露出は
-// wi-46 (authentication-event-attribute-emit-and-correlation-search) で接続する。
+// 非 PII raw id 属性と、emit payload 上で transform 済みの PII-safe 属性を sidecar に載せる。
 var AuditSearchRegistry = map[string]AuditSearchAttribute{
 	"event.type": {
 		Field:            "event.type",
@@ -100,7 +98,7 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		Transform:        TransformHash,
 		TenantSaltReq:    true,
 		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
-		UIVisible:        false, // wi-46 で emit 接続後に true にする。
+		UIVisible:        true,
 	},
 	"target.id": {
 		Field:            "target.id",
@@ -121,7 +119,7 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		RawStorable:      false,
 		Transform:        TransformIPTruncate,
 		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
-		UIVisible:        false, // wi-46 で emit 接続後に true にする。
+		UIVisible:        true,
 	},
 	"session.id": {
 		Field:            "session.id",

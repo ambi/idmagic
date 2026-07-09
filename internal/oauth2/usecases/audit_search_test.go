@@ -105,30 +105,27 @@ func TestExtractSearchAttributes(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "UserAuthenticated",
 		Payload: map[string]any{
-			"userId":    "user-1",
-			"clientId":  "client-1",
-			"sessionId": "sess-1",
+			"userId":       "user-1",
+			"clientId":     "client-1",
+			"sessionId":    "sess-1",
+			"usernameHash": "hash-alice",
+			"ipTruncated":  "203.0.113.0/24",
 		},
 	}
 	attrs := ExtractSearchAttributes(rec)
 	want := map[string]string{
-		"event.type": "UserAuthenticated",
-		"outcome":    "success",
-		"actor.id":   "user-1",
-		"client.id":  "client-1",
-		"session.id": "sess-1",
+		"event.type":     "UserAuthenticated",
+		"outcome":        "success",
+		"actor.id":       "user-1",
+		"client.id":      "client-1",
+		"session.id":     "sess-1",
+		"actor.username": "hash-alice",
+		"client.ip":      "203.0.113.0/24",
 	}
 	for k, v := range want {
 		if attrs[k] != v {
 			t.Errorf("attr %q = %q, want %q", k, attrs[k], v)
 		}
-	}
-	// PII 属性 (actor.username / client.ip) は 46a では抽出しない。
-	if _, ok := attrs["actor.username"]; ok {
-		t.Error("actor.username must not be extracted in wi-145")
-	}
-	if _, ok := attrs["client.ip"]; ok {
-		t.Error("client.ip must not be extracted in wi-145")
 	}
 }
 
@@ -146,5 +143,36 @@ func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
 		if v == "someone" {
 			t.Fatalf("plaintext username leaked into search attribute %q", k)
 		}
+	}
+}
+
+func TestBuildAuthenticationEventAttributes(t *testing.T) {
+	salt := []byte("tenant-a")
+	got := BuildAuthenticationEventAttributes(salt, " Alice ", "203.0.113.9", "UA/1")
+	if got.UsernameHash != spec.SaltedHash(salt, "alice") {
+		t.Fatalf("username hash = %q", got.UsernameHash)
+	}
+	if got.IPTruncated != "203.0.113.0/24" {
+		t.Fatalf("ip truncated = %q", got.IPTruncated)
+	}
+	if got.IPHash != spec.SaltedHash(salt, "203.0.113.9") {
+		t.Fatalf("ip hash = %q", got.IPHash)
+	}
+	if got.UAHash != spec.SaltedHash(salt, "UA/1") {
+		t.Fatalf("ua hash = %q", got.UAHash)
+	}
+}
+
+func TestBuildAuthenticationEventAttributesSeparatesTenants(t *testing.T) {
+	a := BuildAuthenticationEventAttributes([]byte("tenant-a"), "alice", "203.0.113.9", "")
+	b := BuildAuthenticationEventAttributes([]byte("tenant-b"), "alice", "203.0.113.9", "")
+	if a.UsernameHash == b.UsernameHash {
+		t.Fatal("username hash must differ by tenant salt")
+	}
+	if a.IPHash == b.IPHash {
+		t.Fatal("ip hash must differ by tenant salt")
+	}
+	if a.IPTruncated != b.IPTruncated {
+		t.Fatal("ip truncation should not depend on tenant salt")
 	}
 }

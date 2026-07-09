@@ -256,17 +256,21 @@ export type AdminAuditEventQuery = {
   before?: string
   limit?: number
   allTenants?: boolean
+  filter?: string[]
 }
 
 function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   const params = new URLSearchParams()
   if (query.type) params.set('type', query.type)
   if (query.category) params.set('category', query.category)
-  if (query.sub) params.set('sub', query.sub)
+  if (query.sub) params.set('user_id', query.sub)
   if (query.after) params.set('after', query.after)
   if (query.before) params.set('before', query.before)
   if (query.limit !== undefined) params.set('limit', String(query.limit))
   if (query.allTenants) params.set('all_tenants', 'true')
+  for (const filter of query.filter ?? []) {
+    if (filter) params.append('filter', filter)
+  }
   return params
 }
 

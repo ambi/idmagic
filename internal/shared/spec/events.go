@@ -30,6 +30,7 @@ type UserAuthenticated struct {
 	AMR      []string  `json:"amr"`
 	// wi-44 / ADR-041: 産業標準の optional 属性 (後方互換: 既存 payload は破壊しない)。
 	// IP / device は ADR-046 の PII ポリシーに従い truncated / hash で持つ。
+	UsernameHash          string `json:"usernameHash,omitempty"`
 	SessionID             string `json:"sessionId,omitempty"`
 	ClientID              string `json:"clientId,omitempty"`
 	ACR                   string `json:"acr,omitempty"`

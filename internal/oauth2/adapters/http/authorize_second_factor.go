@@ -197,16 +197,19 @@ func (d Deps) finishSecondFactor(
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
 	}
 	d.setSessionCookie(c, completed.SessionID)
-	if d.Emit != nil {
-		d.Emit(&spec.UserAuthenticated{
-			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), UserID: completed.UserID,
-			AMR: completed.AMR, SessionID: completed.SessionID, ACR: completed.ACR,
-		})
-	}
-	// full authentication 完了 (pwd + 第二要素)。last_login_at 記録 + required action gate。
-	if user, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID); err != nil {
+	var user *spec.User
+	found, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID)
+	if err != nil {
 		return err
-	} else if user != nil {
+	}
+	user = found
+	clientID := ""
+	if req != nil {
+		clientID = req.ClientID
+	}
+	d.emitAuthenticationSuccess(c, time.Now().UTC(), user, completed, clientID)
+	// full authentication 完了 (pwd + 第二要素)。last_login_at 記録 + required action gate。
+	if user != nil {
 		gateNext, err := d.recordLoginAndRequiredAction(c, user, time.Now().UTC())
 		if err != nil {
 			return err

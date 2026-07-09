@@ -62,3 +62,18 @@ func TestAllowsOperator(t *testing.T) {
 		t.Error("actor.username (PII) must not allow contains")
 	}
 }
+
+func TestPIIAttributesAreVisibleButNotRawStorable(t *testing.T) {
+	for _, field := range []string{"actor.username", "client.ip"} {
+		attr, ok := LookupSearchAttribute(field)
+		if !ok {
+			t.Fatalf("%s missing", field)
+		}
+		if !attr.UIVisible {
+			t.Fatalf("%s should be available in the admin search builder", field)
+		}
+		if attr.RawStorable {
+			t.Fatalf("%s must not store plaintext in the sidecar", field)
+		}
+	}
+}

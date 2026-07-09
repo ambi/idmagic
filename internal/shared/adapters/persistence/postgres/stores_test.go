@@ -101,6 +101,63 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 	}
 }
 
+func TestAuditEventRepositoryRedactsAuthenticationFailureUsername(t *testing.T) {
+	db := requireDB(t)
+	tenant := seedTenant(t, db)
+	repo := &AuditEventRepository{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+	oldFailure := &oauthports.AuditEventRecord{
+		ID:         newUUID(t),
+		TenantID:   tenant.ID,
+		Type:       (&spec.AuthenticationFailed{}).EventType(),
+		OccurredAt: now.Add(-8 * 24 * time.Hour),
+		Payload: map[string]any{
+			"tenantId":     tenant.ID,
+			"username":     "alice",
+			"usernameHash": "hash-alice",
+		},
+	}
+	freshFailure := &oauthports.AuditEventRecord{
+		ID:         newUUID(t),
+		TenantID:   tenant.ID,
+		Type:       (&spec.AuthenticationFailed{}).EventType(),
+		OccurredAt: now.Add(-6 * 24 * time.Hour),
+		Payload:    map[string]any{"tenantId": tenant.ID, "username": "bob"},
+	}
+	if err := repo.Append(ctx, oldFailure); err != nil {
+		t.Fatalf("append old: %v", err)
+	}
+	if err := repo.Append(ctx, freshFailure); err != nil {
+		t.Fatalf("append fresh: %v", err)
+	}
+
+	redacted, err := repo.RedactAuthenticationFailureUsernames(ctx, now.Add(-7*24*time.Hour))
+	if err != nil {
+		t.Fatalf("redact: %v", err)
+	}
+	if redacted != 1 {
+		t.Fatalf("redacted=%d, want 1", redacted)
+	}
+	oldGot, err := repo.FindByID(ctx, oldFailure.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oldGot.Payload["username"] != nil {
+		t.Fatalf("old username should be null, got %#v", oldGot.Payload["username"])
+	}
+	if oldGot.Payload["usernameHash"] != "hash-alice" {
+		t.Fatalf("usernameHash should remain, got %#v", oldGot.Payload["usernameHash"])
+	}
+	freshGot, err := repo.FindByID(ctx, freshFailure.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if freshGot.Payload["username"] != "bob" {
+		t.Fatalf("fresh username should remain, got %#v", freshGot.Payload["username"])
+	}
+}
+
 func TestAuthEventBucketStoreRecordListAndSweep(t *testing.T) {
 	db := requireDB(t)
 	tenant := seedTenant(t, db)
