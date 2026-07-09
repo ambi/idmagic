@@ -49,6 +49,18 @@ export async function loadSclBundle(path: string): Promise<SclBundle> {
 const ADR_FILENAME_RE = /^(?:[a-z0-9]+-)?ADR-(\d{1,4})-.+\.md$/i
 const CONCEPTION_FILENAME_RE = /^CONCEPTION(?:_[A-Z]+)?\.md$/
 
+// Section names recognized as work-item body headings (WORK_ITEM_FORMAT.md).
+const KNOWN_WORK_ITEM_SECTION_HEADINGS = new Set([
+  'motivation',
+  'scope',
+  'out of scope',
+  'plan',
+  'tasks',
+  'verification',
+  'risk notes',
+  'completion',
+])
+
 export async function loadDecisions(dir: string): Promise<DecisionDoc[]> {
   const names = await readdir(dir)
   const wanted = names
@@ -176,6 +188,20 @@ function parseMarkdownWorkItem(id: string, text: string): WorkItem | null {
           wi[key] = val
         }
       }
+    }
+  }
+
+  // title is not authored in frontmatter in the current format: it is the
+  // body's first heading, unless that heading is actually a known section
+  // name (an older, title-less document that starts straight with
+  // `# Motivation`) — in which case leave title unset so callers fall back
+  // to the id.
+  if (typeof wi.title !== 'string' || wi.title.length === 0) {
+    const firstHeading = bodyText.match(/^#{1,2}\s+(.+)$/m)
+    const headingText = firstHeading?.[1]?.trim()
+    if (headingText && !KNOWN_WORK_ITEM_SECTION_HEADINGS.has(headingText.toLowerCase())) {
+      wi.title = headingText
+      bodyText = bodyText.replace(firstHeading[0], '')
     }
   }
 

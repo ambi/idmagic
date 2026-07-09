@@ -22,7 +22,7 @@ description: Create or synchronize an ARCHITECTURE.md — the second-layer curre
 
 1. **配置先を決める**（`ARCHITECTURE_FORMAT.md §1`）
    - リポジトリ横断はルートの `ARCHITECTURE.md`（`context: repo`）。特定コンテキストはその配下
-     （例 `<app>/ARCHITECTURE.md`、`context: <app>`）。接頭辞は `CHANGE_RECORD_FORMAT.md §1.1.1`。
+     （例 `<app>/ARCHITECTURE.md`、`context: <app>`）。
    - 追記型ログではないので版を分けたファイルを増やさない。1 コンテキスト 1 ファイルを更新し続ける。
 2. **Frontmatter（機械検証する構造）を現状に合わせる**（`§2`）
    - 必須は `context` と `updated_at`。`contexts` と `modules` を実態に一致させる。frontmatter には

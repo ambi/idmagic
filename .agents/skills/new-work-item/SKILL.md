@@ -5,17 +5,17 @@ description: Create a new Regenerative Architecture work item under work-items/ 
 
 # 新規ワークアイテムの作成
 
-正本書式は `CHANGE_RECORD_FORMAT.md §1`。**既存ファイルを開いて書式を逆算しない**——
-本 Skill と §1 の記法に従う。既存ファイルは「似た題材の中身」を見たいときだけ開く。
+正本書式は `WORK_ITEM_FORMAT.md`。**既存ファイルを開いて書式を逆算しない**——
+本 Skill と同文書の記法に従う。既存ファイルは「似た題材の中身」を見たいときだけ開く。
 
 ## 手順
 
 1. **id を採番する**
-   - そのコンテキストの既存最大連番を確認（接頭辞ごとに別空間）:
+   - 既存最大連番を確認（プレフィクスなしの単一名前空間）:
      `ls <app>/work-items <app>/work-items/done 2>/dev/null` または
      `ls work-items work-items/done 2>/dev/null`
-   - `<id>` = `<接頭辞>-wi-<連番>-<kebab-title>`。ファイル名は `work-items/<id>.md`。
-   - 連番は正本ではない。並行採番で被っても `check-ids` が検出するので、被ったら採り直す（§1.1.2）。
+   - `<id>` = `wi-<連番>-<kebab-title>`。ファイル名は `work-items/<id>.md`。
+   - 連番は正本ではない。並行採番で被っても `check-ids` が検出するので、被ったら採り直す。
 2. **未着手・進行中は `work-items/` 直下に置く**。完了・中止になったら `done/` サブディレクトリへ移す（id は変えない）。
 3. 機能変更なら **触れる SCL セクションを `## Scope` に列挙する**。判定は SCL-first の網羅表に従う（`scl-change` Skill / `SPECIFICATION_CORE_LANGUAGE.md §3` 冒頭）。
 4. 中規模以上なら `## Plan` と `## Tasks` を追加する。複数 scenario、RA 3 層以上、DB migration / 認可 / 外部契約 / 破壊的変更、1 セッションで終わる確信がない作業、複数サブシステム検証は中規模以上として扱う。
@@ -66,6 +66,6 @@ created_at: 2026-01-01  # YYYY-MM-DD
   - `just verify` - passed
 ```
 
-## 完了時（§1.3）
+## 完了時
 
 `status` を `completed` / `cancelled` にする時点で同じファイルに `completion` を追記し、`work-items/done/` へ移す。`completion` は最低でも `completed_at` / `summary` / `verification` と `affected_guarantees_state` を持つ。証跡は `completion.evidence` に手順・実行環境・実行主体・対象ソース版・結果・保存先・要約値を記録し、大容量ログ・バイナリ・機密は埋め込まず `evidence[].artifacts` に保管先とハッシュだけ残す。

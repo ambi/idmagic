@@ -5,14 +5,13 @@
  *   check-ids --work-items <dir>... --decisions <dir>...
  *
  * For each `--work-items` directory it scans the directory and its `done/`
- * subdirectory (both share one id namespace) and checks every work item has a
- * string `id` equal to its filename stem. For each `--decisions` directory it
- * scans the ADR markdown files. Within each namespace, an id used by more than
- * one record fails the run. CONCEPTION*.md and other non-ADR files are ignored.
+ * subdirectory (both share one id namespace, the filename stem). For each
+ * `--decisions` directory it scans the ADR markdown files. Within each
+ * namespace, an id used by more than one record fails the run. CONCEPTION*.md
+ * and other non-ADR files are ignored.
  *
  * Pure logic lives in `./record-ids.ts`; this file is the CLI shell only.
- * Exits non-zero when any duplicate, id/filename mismatch, or malformed ADR
- * filename is found.
+ * Exits non-zero when any duplicate or malformed ADR filename is found.
  */
 
 import { readdir } from 'node:fs/promises'
@@ -41,32 +40,6 @@ async function listFiles(dir: string, ext: string): Promise<string[]> {
   }
 }
 
-import { readFile } from 'node:fs/promises'
-
-async function parseYaml(path: string): Promise<unknown> {
-  const text = await readFile(path, 'utf8')
-  const match = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n/)
-  if (!match || match[1] === undefined) return {}
-  const yamlText = match[1]
-  const data: Record<string, string> = {}
-  for (const line of yamlText.split('\n')) {
-    const clean = line.trim()
-    const colonIdx = clean.indexOf(':')
-    if (colonIdx > 0) {
-      const key = clean.slice(0, colonIdx).trim()
-      let val = clean.slice(colonIdx + 1).trim()
-      if (
-        (val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))
-      ) {
-        val = val.slice(1, -1)
-      }
-      data[key] = val
-    }
-  }
-  return data
-}
-
 /** A directory holds ADRs when a file matches `*ADR-N*.md`; CONCEPTION files
  *  and plain markdown are skipped so they are never treated as records. */
 const ADR_CANDIDATE_RE = /ADR-\d/i
@@ -82,7 +55,7 @@ async function collectWorkItems(
   const refs: RecordRef[] = []
   const findings: IdFinding[] = []
   for (const path of files) {
-    const result = workItemRef(path, namespace, await parseYaml(path))
+    const result = workItemRef(path, namespace)
     if (result.ref) refs.push(result.ref)
     findings.push(...result.findings)
   }

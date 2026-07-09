@@ -5,7 +5,7 @@ description: Create a new Architecture Decision Record (ADR) following the canon
 
 # 新規 ADR（決定記録）の作成
 
-正本書式は `CHANGE_RECORD_FORMAT.md §2`。**既存ファイルを開いて書式を逆算しない**。
+正本書式は `ADR_FORMAT.md`。**既存ファイルを開いて書式を逆算しない**。
 ADR は SCL から派生し SCL に反映される決定記録。
 
 ## 手順

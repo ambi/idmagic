@@ -85,7 +85,22 @@ async function expandTargets(patterns: string[]): Promise<string[]> {
 
 import { extname } from 'node:path'
 
-function parseFrontmatterAndMarkdown(text: string): Record<string, unknown> {
+// Section names recognized as body headings (WORK_ITEM_FORMAT.md). The first
+// heading in the body is the record's title *unless* it is one of these —
+// that signals an older, title-less document (body starts straight with
+// `# Motivation` etc.) and the id/title must come from elsewhere.
+const KNOWN_SECTION_HEADINGS = new Set([
+  'motivation',
+  'scope',
+  'out of scope',
+  'plan',
+  'tasks',
+  'verification',
+  'risk notes',
+  'completion',
+])
+
+function parseFrontmatterAndMarkdown(path: string, text: string): Record<string, unknown> {
   const match = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n([\s\S]*)$/)
   const data: Record<string, unknown> = {}
   let bodyText = text
@@ -121,6 +136,24 @@ function parseFrontmatterAndMarkdown(text: string): Record<string, unknown> {
           data[key] = val
         }
       }
+    }
+  }
+
+  // id is not authored in frontmatter (WORK_ITEM_FORMAT.md): it is always the
+  // filename stem.
+  if (typeof data.id !== 'string' || data.id.length === 0) {
+    data.id = basename(path).replace(/\.md$/, '')
+  }
+
+  // title is not authored in frontmatter either: it is the body's first
+  // heading, unless that heading is actually a known section name (an older,
+  // title-less document that starts straight with `# Motivation`).
+  if (typeof data.title !== 'string' || data.title.length === 0) {
+    const firstHeading = bodyText.match(/^#{1,2}\s+(.+)$/m)
+    const headingText = firstHeading?.[1]?.trim()
+    if (headingText && !KNOWN_SECTION_HEADINGS.has(headingText.toLowerCase())) {
+      data.title = headingText
+      bodyText = bodyText.replace(firstHeading[0], '')
     }
   }
 
@@ -214,7 +247,7 @@ async function parseYaml(path: string, text: string): Promise<ParseResult> {
       const data =
         basename(path) === 'ARCHITECTURE.md'
           ? parseArchitectureDoc(text)
-          : parseFrontmatterAndMarkdown(text)
+          : parseFrontmatterAndMarkdown(path, text)
       return { ok: true, data }
     } catch (e) {
       return {

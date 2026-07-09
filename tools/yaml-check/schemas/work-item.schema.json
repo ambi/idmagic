@@ -29,10 +29,14 @@
   "properties": {
     "id": {
       "type": "string",
-      "description": "ディレクトリ名と一致する安定識別子。",
+      "description": "ファイル名 (拡張子を除く) から導出される安定識別子。frontmatter には書かない。",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
-    "title": { "type": "string", "minLength": 1 },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "本文冒頭の H1 見出しから導出される。frontmatter には書かない。"
+    },
     "created_at": {
       "description": "起票日。YYYY-MM-DD または RFC3339。",
       "oneOf": [{ "type": "string", "format": "date" }, { "type": "string", "format": "date-time" }]
