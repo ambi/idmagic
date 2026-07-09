@@ -28,6 +28,32 @@ func envInt(key string, fallback int) int {
 	return parsed
 }
 
+func envInt32(key string, fallback int32) int32 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseInt(value, 10, 32)
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return int32(parsed)
+}
+
+func envCircuitBreakerMinRequests(key string) uint32 {
+	const fallback uint32 = 10
+
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		return fallback
+	}
+	return uint32(parsed)
+}
+
 func envDuration(key string, fallback time.Duration) time.Duration {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {

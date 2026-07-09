@@ -22,8 +22,8 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 
 	// 1. レジリエンス構成のパラメータ構築
 	dbCfg := postgres.DBConfig{
-		MaxConns:        int32(envInt("DB_MAX_CONNS", 20)), //nolint:gosec // Safe conversion for pool limit
-		MinConns:        int32(envInt("DB_MIN_CONNS", 2)),  //nolint:gosec // Safe conversion for pool limit
+		MaxConns:        envInt32("DB_MAX_CONNS", 20),
+		MinConns:        envInt32("DB_MIN_CONNS", 2),
 		MaxConnIdleTime: envDuration("DB_MAX_CONN_IDLE_TIME", 30*time.Second),
 		MaxConnLifetime: envDuration("DB_MAX_CONN_LIFETIME", 1*time.Hour),
 		ConnectTimeout:  envDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
@@ -42,14 +42,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		Name:             "postgres",
 		FailureThreshold: envFloat("DB_BREAKER_FAILURE_THRESHOLD", 0.5),
 		Cooldown:         envDuration("DB_BREAKER_COOLDOWN", 30*time.Second),
-		MinRequests:      uint32(envInt("DB_BREAKER_MIN_REQUESTS", 10)), //nolint:gosec // Safe conversion for breaker limit
+		MinRequests:      envCircuitBreakerMinRequests("DB_BREAKER_MIN_REQUESTS"),
 	})
 
 	valkeyBreaker := resilience.NewCircuitBreaker(resilience.Settings{ //nolint:contextcheck // Global breaker doesn't rely on request context
 		Name:             "valkey",
 		FailureThreshold: envFloat("VALKEY_BREAKER_FAILURE_THRESHOLD", 0.5),
 		Cooldown:         envDuration("VALKEY_BREAKER_COOLDOWN", 15*time.Second),
-		MinRequests:      uint32(envInt("VALKEY_BREAKER_MIN_REQUESTS", 10)), //nolint:gosec // Safe conversion for breaker limit
+		MinRequests:      envCircuitBreakerMinRequests("VALKEY_BREAKER_MIN_REQUESTS"),
 	})
 
 	// 3. 接続オープン
