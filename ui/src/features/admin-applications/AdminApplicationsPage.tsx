@@ -15,7 +15,7 @@ import {
   IconWorldShare,
   IconX,
 } from '@tabler/icons-react'
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import {
   assignApplication,
   AuthenticationAPIError,
@@ -48,7 +48,11 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, type SelectOption } from '../../components/ui/select'
-import { isApplicationIconFile, safeApplicationIconURL } from '../../lib/applicationIcon'
+import {
+  MAX_APPLICATION_ICON_BYTES,
+  safeApplicationIconURL,
+  validateApplicationIconFile,
+} from '../../lib/applicationIcon'
 import type {
   AdminApplication,
   AdminApplicationDetail,
@@ -1021,6 +1025,7 @@ export function AdminApplicationEditPage({
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreviewURL, setIconPreviewURL] = useState('')
   const [removeIcon, setRemoveIcon] = useState(false)
+  const iconSelectionToken = useRef(0)
   const [launchURL, setLaunchURL] = useState(app.launch_url ?? '')
   const [status, setStatus] = useState<ApplicationStatus>(app.status)
   const [redirects, setRedirects] = useState((detail.oidc?.redirect_uris ?? []).join('\n'))
@@ -1080,11 +1085,24 @@ export function AdminApplicationEditPage({
 
   const nameInvalid = name.trim() === ''
 
-  function selectIconFile(file: File | null) {
-    if (file && !isApplicationIconFile(file)) {
+  async function selectIconFile(file: File | null) {
+    const token = ++iconSelectionToken.current
+    if (!file) {
+      setError('')
       setIconFile(null)
       setRemoveIcon(false)
-      setError('アイコン画像は PNG / JPEG / WebP / GIF を選択してください。')
+      return
+    }
+    const validationError = await validateApplicationIconFile(file)
+    if (token !== iconSelectionToken.current) return
+    if (validationError) {
+      setIconFile(null)
+      setRemoveIcon(false)
+      setError(
+        validationError === 'too-large'
+          ? 'アイコン画像は 256 KiB 以下にしてください。'
+          : 'アイコン画像は PNG / JPEG / WebP / GIF を選択してください。',
+      )
       return
     }
     setError('')
@@ -1123,7 +1141,7 @@ export function AdminApplicationEditPage({
         await deleteApplicationIcon(csrfToken, app.application_id)
       }
       if (iconFile) {
-        if (iconFile.size > 256 * 1024) {
+        if (iconFile.size > MAX_APPLICATION_ICON_BYTES) {
           setError('アイコン画像は 256 KiB 以下にしてください。')
           setSaving(false)
           return
@@ -1320,7 +1338,7 @@ export function AdminApplicationEditPage({
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault()
-                    selectIconFile(event.dataTransfer.files?.[0] ?? null)
+                    void selectIconFile(event.dataTransfer.files?.[0] ?? null)
                   }}
                 >
                   {iconPreview ? (
@@ -1340,7 +1358,7 @@ export function AdminApplicationEditPage({
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/gif"
                       onChange={(e) => {
-                        selectIconFile(e.target.files?.[0] ?? null)
+                        void selectIconFile(e.target.files?.[0] ?? null)
                       }}
                     />
                     {app.icon_object_key || iconFile ? (
