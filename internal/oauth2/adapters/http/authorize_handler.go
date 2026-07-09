@@ -1031,7 +1031,7 @@ func (d Deps) recordLoginFailure(c *echo.Context, username, clientIP string) (bo
 		if !result.Locked {
 			continue
 		}
-		keyHash := hashThrottleKey(attempt.key)
+		keyHash := d.correlationHash(c, attempt.key)
 		if d.Emit != nil {
 			d.Emit(&spec.LoginThrottled{
 				At: now, TenantID: support.RequestTenantID(c), Kind: string(attempt.kind),
@@ -1044,6 +1044,19 @@ func (d Deps) recordLoginFailure(c *echo.Context, username, clientIP string) (bo
 		}
 	}
 	return aggregated, nil
+}
+
+// correlationHash は throttle / bucket の emit keyHash を tenant salt 付きで計算する
+// (wi-145 / ADR-046)。username / IP の相関検索属性と同じ単一ヘルパ (spec.SaltedHash) を共有し、
+// tenant salt により cross-tenant で相関を集約しない。salt store が無い構成 (一部テスト) では
+// unsalted SHA-256 にフォールバックする。
+func (d Deps) correlationHash(c *echo.Context, value string) string {
+	if d.TenantSaltStore != nil {
+		if salt, err := d.TenantSaltStore.GetSalt(c.Request().Context()); err == nil {
+			return spec.SaltedHash(salt, value)
+		}
+	}
+	return hashThrottleKey(value)
 }
 
 func hashThrottleKey(key string) string {

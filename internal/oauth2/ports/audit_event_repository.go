@@ -21,6 +21,10 @@ type AuditEventRecord struct {
 	Type       string
 	OccurredAt time.Time
 	Payload    map[string]any
+	// SearchAttributes は sidecar 検索属性 (attr_name -> transform 済み値)。抽出器が生成し、
+	// PostgreSQL では audit_event_search_attributes に、memory store では並行 map に保持する。
+	// attr_name は AuditSearchRegistry の Field。PII 属性は hash / 丸め済みで、平文は入らない。
+	SearchAttributes map[string]string
 }
 
 // AuditEventQuery は ListAdminAuditEvents のフィルタ。SCL `AuditEventQuery` の双子。
@@ -37,6 +41,11 @@ type AuditEventQuery struct {
 	After  time.Time
 	Before time.Time
 	Limit  int
+	// Q は raw 保存された text 属性への部分一致フリーテキスト (wi-145)。PII 属性は対象外。
+	Q string
+	// Filters は registry allowlist の field/operator による構造化検索式の連言 (AND)。
+	// PII 属性の値は呼び出し側 (handler) で tenant salt を使い transform 済み。
+	Filters []AuditFilterExpression
 }
 
 type AuditEventRepository interface {

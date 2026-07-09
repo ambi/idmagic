@@ -20,6 +20,7 @@ import (
 	"github.com/ambi/idmagic/internal/shared/logging"
 	"github.com/ambi/idmagic/internal/shared/spec"
 	"github.com/ambi/idmagic/internal/shared/version"
+	"github.com/ambi/idmagic/internal/tenancy"
 	tenantusecases "github.com/ambi/idmagic/internal/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -152,7 +153,11 @@ func Run() error {
 		}
 		if deps.AuditEventRepo != nil {
 			if rec, err := newAuditEventRecord(event); err == nil {
-				_ = deps.AuditEventRepo.Append(eventCtx, rec)
+				appendCtx := eventCtx
+				if rec.TenantID != "" {
+					appendCtx = tenancy.WithTenant(eventCtx, &spec.Tenant{ID: rec.TenantID}, "", "")
+				}
+				_ = deps.AuditEventRepo.Append(appendCtx, rec)
 			}
 		}
 	}
@@ -195,6 +200,7 @@ func Run() error {
 		TokenIssuer:                 tokenSigner,
 		TokenIntrospector:           tokenSigner,
 		AuditEventRepo:              deps.AuditEventRepo,
+		TenantSaltStore:             deps.TenantSaltStore,
 		AuthEventBucketStore:        deps.AuthEventBucketStore,
 		Authorizer:                  authorizer,
 		JWKResolver:                 jwkResolver,

@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
 	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
@@ -42,5 +43,6 @@ func newAuditEventRecord(e spec.DomainEvent) (*oauthports.AuditEventRecord, erro
 	if rec.Payload == nil {
 		return nil, fmt.Errorf("audit event %s: empty payload", e.EventType())
 	}
+	rec.SearchAttributes = oauthusecases.ExtractSearchAttributes(rec)
 	return rec, nil
 }

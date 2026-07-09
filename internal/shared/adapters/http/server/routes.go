@@ -49,6 +49,7 @@ type Deps struct {
 	ClientAssertionReplayStore  oauthports.ClientAssertionReplayStore
 	AccessTokenDenylist         oauthports.AccessTokenDenylist
 	KeyStore                    oauthports.KeyStore
+	TenantSaltStore             oauthports.TenantSaltStore
 	TokenIssuer                 oauthports.TokenIssuer
 	TokenIntrospector           oauthports.TokenIntrospector
 	AuditEventRepo              oauthports.AuditEventRepository
@@ -153,6 +154,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ConsentRepo:                d.ConsentRepo,
 		ClientDisplayNameResolver:  clientDisplayNames,
 		KeyStore:                   d.KeyStore,
+		TenantSaltStore:            d.TenantSaltStore,
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.PARStore,
 		RequestStore:               d.RequestStore,

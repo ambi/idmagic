@@ -25,6 +25,11 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 		Type:       "UserAuthenticated",
 		OccurredAt: base,
 		Payload:    map[string]any{"userId": user.ID},
+		SearchAttributes: map[string]string{
+			"event.type": "UserAuthenticated",
+			"actor.id":   user.ID,
+			"outcome":    "success",
+		},
 	}
 	second := &oauthports.AuditEventRecord{
 		ID:         newUUID(t),
@@ -32,6 +37,11 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 		Type:       "AuthenticationFailed",
 		OccurredAt: base.Add(time.Minute),
 		Payload:    map[string]any{"userId": user.ID},
+		SearchAttributes: map[string]string{
+			"event.type": "AuthenticationFailed",
+			"actor.id":   user.ID,
+			"outcome":    "failure",
+		},
 	}
 	if err := repo.Append(ctx, first); err != nil {
 		t.Fatalf("append first: %v", err)
@@ -68,6 +78,21 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 	})
 	if err != nil || len(byWindow) != 1 || byWindow[0].ID != second.ID {
 		t.Fatalf("list by window: %v %+v", err, byWindow)
+	}
+
+	byFilter, err := repo.List(ctx, oauthports.AuditEventQuery{
+		TenantID: tenant.ID,
+		Filters: []oauthports.AuditFilterExpression{{
+			Field: "outcome", Operator: oauthports.OpEq, Values: []string{"failure"},
+		}},
+	})
+	if err != nil || len(byFilter) != 1 || byFilter[0].ID != second.ID {
+		t.Fatalf("list by filter: %v %+v", err, byFilter)
+	}
+
+	byQ, err := repo.List(ctx, oauthports.AuditEventQuery{TenantID: tenant.ID, Q: "auth"})
+	if err != nil || len(byQ) != 2 {
+		t.Fatalf("list by q: %v len=%d", err, len(byQ))
 	}
 
 	found, err := repo.FindByID(ctx, first.ID)

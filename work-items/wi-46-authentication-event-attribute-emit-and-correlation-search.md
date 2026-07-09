@@ -5,69 +5,71 @@ risk: medium
 created_at: 2026-06-21
 ---
 
-# 汎用イベントログ検索基盤を導入し、初期検索属性としてユーザー名 / IP を載せる
+# 認証イベントに username / IP を PII-safe な検索属性として emit し、相関検索 UI を載せる
 
 ## Motivation
 [[wi-44-authentication-event-store-and-search]] は `UserAuthenticated` /
 `AuthenticationFailed` に産業標準の属性 (usernameHash / ipTruncated / ipHash /
 uaHash / countryCode / deviceFingerprintHash / riskScore) を後方互換で
-**フィールドとして用意した**が、実際の emit 経路 (ブラウザログイン /
-失敗記録) はまだこれらに値を設定しておらず、ADR-046 の hash / truncation も
-実装されていない (フィールド確保のみ)。
+**フィールドとして用意した**が、実際の emit 経路 (ブラウザログイン / 失敗記録) はまだ
+これらに値を設定しておらず、ADR-046 の hash / truncation も実装されていない。
 
-そのため wi-44 では「ユーザー名 / IP での絞り込み」を一旦見送った。しかし、
-ここで `username` / `ip` を `AuditEventQuery` の個別フィールドとして増やすと、
-今後 `actor.id`、`target.id`、`client.id`、`session.id`、`transaction.id`、
-`outcome`、`risk.level`、`application.id` などを足すたびに API / port /
-store / UI が横並びで肥大化する。
+汎用イベントログ検索基盤 (検索属性 registry / filter 式 / sidecar ストア / tenant salt store /
+相関ハッシュ統一) は [[wi-145-generic-audit-event-search-foundation]] で先に用意する。本 WI は
+その基盤の上に、**最初の PII-safe 検索属性として username / IP を載せる**。emit 経路で
+usernameHash / ipTruncated / ipHash / uaHash を tenant salt 付きで抽出し、admin が平文で入力した
+ユーザー名 / IP をサーバ側で hash / 丸めに変換して相関検索できるようにする。これにより
+credential stuffing の相関調査を実現する。ADR-046 の PII 列を新規に扱うため、本 WI の差分は
+レビュアー 2 名以上で確認する。
 
-Okta System Log、Microsoft Entra audit / sign-in logs、Keycloak events などの
-主要 IdP は、イベント種別・期間・actor・target・client IP・outcome・session /
-transaction / correlation ID などを、個別の画面項目だけでなく構造化された検索軸として
-扱う。本 WI は ADR-046 を単発の username / IP 検索ではなく、汎用イベントログ検索基盤に
-落とす。検索可能属性の registry / envelope / filter 式を先に定義し、その最初の属性として
-username / IP を PII-safe に載せる。これにより credential stuffing の相関調査を実現しつつ、
-将来の監査・脅威調査・運用調査の検索軸を同じ仕組みに追加できるようにする。
+## Dependencies
+- [[wi-145-generic-audit-event-search-foundation]] (registry / filter / sidecar / salt store /
+  相関ハッシュ統一)。本 WI は 145 完了後に着手する。
 
 ## Scope
 - **decision**:
-  - イベントログ検索を `AuditEventQuery.username` / `AuditEventQuery.ip` のような 個別フィールド増殖ではなく、検索可能属性 registry と filter 式で扱う方針にする。 初期 registry には event.type / category / outcome / actor.id / actor.username / target.id / client.id / client.ip / session.id / transaction.id / correlation.id / request.id を含め、実装スライスでは username / IP を最初の PII-safe 属性として載せる。
-  - ADR-046 の実装化。tenant salt の生成・保管 (per-tenant、secret 扱い) と、 username (lowercased) / IP の SHA-256、IPv4 /24・IPv6 /48 への丸めを 検索属性抽出の単一ヘルパに集約する。throttle の keyHash (ADR-029) と bucket の keyHash は同じ correlation helper を共有する。
-  - 平文 username は失敗イベント限定で 7 日保持し sweep で null 化する (ADR-045 / ADR-046)。成功イベントは sub / actor.id を持つため平文を保管しない。
+  - 平文 username は失敗イベント限定で 7 日保持し sweep で null 化する (ADR-045 / ADR-046)。
+    成功イベントは sub / actor.id を持つため平文を保管しない。
+  - username (lowercased) / IP の SHA-256、IPv4 /24・IPv6 /48 への丸めを wi-145 の単一 correlation
+    helper (`SaltedHash` / `TruncateIP`) に集約したまま、emit 経路と検索変換で共有する。
 - **scl**:
-  - `AuditEventQuery` を、期間・limit・category/type に加えて `q` と `filter` (allowlist された field/operator/value の構造化式) を受ける形に拡張する。 username / ip は `filter` の field として表現し、専用トップレベル query param にはしない。
-  - 検索可能属性を表す `AuditEventSearchAttribute` / `AuditEventFilterExpression` を SCL に追加する。属性ごとに raw 保存可否、hash/truncation、tenant salt 要否、 許可 operator、UI 表示可否を宣言できるようにする。
-  - 監査イベント envelope を見直し、event_type / category / outcome / actor / target / client / session / transaction / correlation / request のような 汎用検索軸を payload から抽出可能な first-class 概念として定義する。
+  - wi-145 で追加した `AuditEventSearchAttribute` registry に `actor.username` / `client.ip` を
+    PII-safe (hash / ip_truncate、tenant salt 要) 属性として UI 表示可能で宣言する。
+    `UserAuthenticated` / `AuthenticationFailed` の PII 属性 (usernameHash / ipTruncated / ipHash /
+    uaHash) が emit 値を持つことを仕様に反映する。
 - **go**:
-  - `AuditEventQuery` / handler / repository を、個別フィールドではなく parsed filter AST と検索属性照合で動く形にする。最初に対応する operator は `eq` / `in` / `contains` (q 用) / 時刻範囲に限定し、field は registry の allowlist のみ許可する。
-  - `AuditEventSearchAttribute` 抽出器を追加し、DomainEvent から envelope column と search attributes を生成する。PostgreSQL では高頻度 envelope column と `audit_event_search_attributes` に保存し、memory store も同じ port 契約で照合する。
-  - emit ヘルパ: ブラウザログイン成功 (`UserAuthenticated`) / 失敗 (`AuthenticationFailed`) で actor / client / outcome と、usernameHash / ipTruncated / ipHash / uaHash を検索属性として抽出する。IP は `extractClientIP` 由来を /24・/48 で丸め、hash は tenant salt 付き SHA-256。失敗イベントは 平文 username も 7 日分だけ載せる。
-  - tenant salt store (生成 / 取得) を追加し、既存の secret 保管方針に従う。
+  - emit ヘルパ: ブラウザログイン成功 (`UserAuthenticated`) / 失敗 (`AuthenticationFailed`) で
+    actor / client / outcome と usernameHash / ipTruncated / ipHash / uaHash を抽出する。IP は
+    `extractClientIP` 由来を /24・/48 で丸め、hash は tenant salt 付き SHA-256。失敗イベントは
+    平文 username も 7 日分だけ載せる。
+  - `ExtractSearchAttributes` に `actor.username` / `client.ip` の PII 属性抽出を接続する。
+  - 失敗イベント平文 username の 7 日 null 化を retention sweep (ADR-045) に追加する。
 - **ui**:
-  - 監査ログ検索を固定入力欄の追加ではなく、検索ビルダーとして拡張する。初期プリセットとして 「ユーザー名」「IP アドレス」「イベント種別」「結果」「対象ユーザー」「セッション / トランザクション」を選べるようにし、username / IP は平文入力をサーバ側で hash / 丸めに変換して検索する。
+  - 監査ログ検索を検索ビルダーに拡張する。初期プリセットとして「ユーザー名」「IP アドレス」
+    「イベント種別」「結果」「対象ユーザー」「セッション / トランザクション」を選べるようにし、
+    username / IP は平文入力をサーバ側で hash / 丸めに変換して検索する。
 
 ## Out of Scope
+- 汎用検索基盤 (registry / filter / sidecar / salt store / 相関ハッシュ統一)。
+  [[wi-145-generic-audit-event-search-foundation]] で実装済み前提。
 - GeoIP 連携による country_code 解決 (当面 "" のまま。別 WI)。
 - device fingerprint の収集と deviceFingerprintHash の算出。
 - risk_score の算出 (フィールド確保のみ)。
 - impersonation 機能本体と本人通知 (wi-44 / ADR-041 の通り別 WI)。
-- 任意の SQL / JSONPath / OData / SCIM filter 全体を外部公開すること。本 WI では registry で許可した安全な field/operator のみ扱う。
-- SIEM / data lake への大規模分析クエリ基盤。管理画面の bounded な運用検索に閉じる。
 
 ## Verification
 - `just test-go`
-  - reason: filter parser / validator、registry allowlist、search attribute 抽出、memory / PostgreSQL store の同一検索結果、hash / 丸めの単一ヘルパの正しさ、tenant salt の 分離 (同一ユーザー名でも tenant が違えば hash が異なる)、平文入力 → サーバ hash / 丸め化での検索一致、失敗イベント平文 username の 7 日 null 化。
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
-- 手動: 誤パスワードでログイン失敗 → 監査ログ検索ビルダーで `actor.username` に同じユーザー名 (平文) を入力すると当該失敗イベントが相関ヒットする。 `client.ip` でも同様に絞り込める。イベント種別・結果・期間フィルタと併用できる。
+  - reason: search attribute 抽出、hash / 丸めの単一ヘルパの正しさ、tenant salt の分離
+    (同一ユーザー名でも tenant が違えば hash が異なる)、平文入力 → サーバ hash / 丸め化での検索一致、
+    失敗イベント平文 username の 7 日 null 化。
+- `just lint-go` / `just build-go`
+- `just typecheck-ui` / `just lint-ui` / `just build-ui`
+- 手動: 誤パスワードでログイン失敗 → 監査ログ検索ビルダーで `actor.username` に同じユーザー名
+  (平文) を入力すると当該失敗イベントが相関ヒットする。`client.ip` でも同様に絞り込める。
+  イベント種別・結果・期間フィルタと併用できる。
 
 ## Risk Notes
-汎用 filter は便利だが、任意クエリ実行や PII フィールドへの不用意な検索を許すと
-監査基盤自体が情報漏洩面になる。field/operator は registry allowlist に限定し、
-hash / truncation を誤ると個人情報が監査ログに平文で流れるため (ADR-046)、属性抽出と
-検索変換は同一の単一ヘルパを使う。PII 検索属性を増やす変更はレビュアー 2 名以上で確認する。
-tenant salt の取り違えは cross-tenant 相関の漏洩につながるため、salt の取得は必ず
-対象 tenant に紐づけて行う。
+hash / truncation を誤ると個人情報が監査ログに平文で流れるため (ADR-046)、属性抽出と検索変換は
+wi-145 の同一の単一ヘルパを使う。PII 検索属性を増やす本変更はレビュアー 2 名以上で確認する。
+tenant salt の取り違えは cross-tenant 相関の漏洩につながるため、salt の取得は必ず対象 tenant に
+紐づけて行う。

@@ -1,0 +1,150 @@
+package usecases
+
+import (
+	"testing"
+
+	"github.com/ambi/idmagic/internal/oauth2/ports"
+	"github.com/ambi/idmagic/internal/shared/spec"
+)
+
+func TestParseAuditFilterAcceptsAllowlisted(t *testing.T) {
+	exprs, err := ParseAuditFilter([]RawFilter{
+		{Field: "event.type", Operator: "eq", Values: []string{"UserAuthenticated"}},
+		{Field: "actor.id", Operator: "in", Values: []string{"u1", "u2"}},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(exprs) != 2 {
+		t.Fatalf("expected 2 expressions, got %d", len(exprs))
+	}
+}
+
+func TestParseAuditFilterRejects(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  RawFilter
+	}{
+		{"unknown field", RawFilter{Field: "payload.password", Operator: "eq", Values: []string{"x"}}},
+		{"operator not allowed", RawFilter{Field: "actor.username", Operator: "contains", Values: []string{"x"}}},
+		{"unknown operator", RawFilter{Field: "actor.id", Operator: "regex", Values: []string{"x"}}},
+		{"eq wrong cardinality", RawFilter{Field: "actor.id", Operator: "eq", Values: []string{"a", "b"}}},
+		{"in empty", RawFilter{Field: "actor.id", Operator: "in", Values: nil}},
+		{"empty value", RawFilter{Field: "actor.id", Operator: "eq", Values: []string{""}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := ParseAuditFilter([]RawFilter{tc.raw}); err == nil {
+				t.Fatalf("expected error for %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestTransformFilterValuesHashesUsername(t *testing.T) {
+	salt := []byte("tenant-salt")
+	exprs, err := ParseAuditFilter([]RawFilter{
+		{Field: "actor.username", Operator: "eq", Values: []string{"Alice"}},
+	})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got, err := TransformFilterValues(exprs, salt)
+	if err != nil {
+		t.Fatalf("transform: %v", err)
+	}
+	// username は lowercased で salted hash され、平文は残らない。
+	want := spec.SaltedHash(salt, spec.NormalizeUsername("Alice"))
+	if got[0].Values[0] != want {
+		t.Fatalf("username not hashed as expected: got %q want %q", got[0].Values[0], want)
+	}
+	if got[0].Values[0] == "Alice" || got[0].Values[0] == "alice" {
+		t.Fatal("plaintext username leaked into filter value")
+	}
+}
+
+func TestTransformFilterValuesTruncatesIP(t *testing.T) {
+	exprs, err := ParseAuditFilter([]RawFilter{
+		{Field: "client.ip", Operator: "eq", Values: []string{"203.0.113.9"}},
+	})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got, err := TransformFilterValues(exprs, nil)
+	if err != nil {
+		t.Fatalf("transform: %v", err)
+	}
+	if got[0].Values[0] != "203.0.113.0/24" {
+		t.Fatalf("ip not truncated: %q", got[0].Values[0])
+	}
+}
+
+func TestTransformFilterValuesRejectsBadIP(t *testing.T) {
+	exprs, _ := ParseAuditFilter([]RawFilter{
+		{Field: "client.ip", Operator: "eq", Values: []string{"not-an-ip"}},
+	})
+	if _, err := TransformFilterValues(exprs, nil); err == nil {
+		t.Fatal("expected error for malformed IP")
+	}
+}
+
+func TestTransformFilterValuesLeavesRawAttributes(t *testing.T) {
+	exprs, _ := ParseAuditFilter([]RawFilter{
+		{Field: "actor.id", Operator: "eq", Values: []string{"user-123"}},
+	})
+	got, err := TransformFilterValues(exprs, []byte("salt"))
+	if err != nil {
+		t.Fatalf("transform: %v", err)
+	}
+	if got[0].Values[0] != "user-123" {
+		t.Fatalf("raw attribute value should be unchanged, got %q", got[0].Values[0])
+	}
+}
+
+func TestExtractSearchAttributes(t *testing.T) {
+	rec := &ports.AuditEventRecord{
+		Type: "UserAuthenticated",
+		Payload: map[string]any{
+			"userId":    "user-1",
+			"clientId":  "client-1",
+			"sessionId": "sess-1",
+		},
+	}
+	attrs := ExtractSearchAttributes(rec)
+	want := map[string]string{
+		"event.type": "UserAuthenticated",
+		"outcome":    "success",
+		"actor.id":   "user-1",
+		"client.id":  "client-1",
+		"session.id": "sess-1",
+	}
+	for k, v := range want {
+		if attrs[k] != v {
+			t.Errorf("attr %q = %q, want %q", k, attrs[k], v)
+		}
+	}
+	// PII 属性 (actor.username / client.ip) は 46a では抽出しない。
+	if _, ok := attrs["actor.username"]; ok {
+		t.Error("actor.username must not be extracted in wi-145")
+	}
+	if _, ok := attrs["client.ip"]; ok {
+		t.Error("client.ip must not be extracted in wi-145")
+	}
+}
+
+func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
+	rec := &ports.AuditEventRecord{
+		Type:    "AuthenticationFailed",
+		Payload: map[string]any{"username": "someone"},
+	}
+	attrs := ExtractSearchAttributes(rec)
+	if attrs["outcome"] != "failure" {
+		t.Fatalf("outcome = %q, want failure", attrs["outcome"])
+	}
+	// 平文 username は sidecar 検索属性に載らない (payload 側にのみ残す)。
+	for k, v := range attrs {
+		if v == "someone" {
+			t.Fatalf("plaintext username leaked into search attribute %q", k)
+		}
+	}
+}

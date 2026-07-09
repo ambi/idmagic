@@ -365,6 +365,32 @@ CREATE TABLE authentication_event_buckets (
 CREATE INDEX authentication_event_buckets_window_idx
     ON authentication_event_buckets (tenant_id, window_start DESC);
 
+-- 相関 salt (wi-145 / ADR-046)。username / IP の相関ハッシュ (SaltedHash) と
+-- throttle / bucket の keyHash に使う per-tenant secret。tenant salt により
+-- cross-tenant で相関を集約しない。初回取得時に generate-on-first-use する。
+CREATE TABLE tenant_correlation_salts (
+    tenant_id TEXT PRIMARY KEY,
+    salt BYTEA NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 監査イベントの sidecar 検索属性 (wi-145)。1 行 = (event, attr_name, transform 済み値)。
+-- attr_name は AuditSearchRegistry の Field。PII 属性は hash / 丸め済みで平文は入らない
+-- (平文は audit_events.payload 側にのみ、失敗イベント限定で短期保持される)。
+-- audit_events の削除に追随するよう ON DELETE CASCADE。
+CREATE TABLE audit_event_search_attributes (
+    event_id UUID NOT NULL REFERENCES audit_events(id) ON DELETE CASCADE,
+    tenant_id TEXT NOT NULL,
+    attr_name TEXT NOT NULL,
+    attr_value TEXT NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (event_id, attr_name)
+);
+
+-- eq / in の等値照合を (tenant, attr_name, attr_value) で index し、occurred_at で降順走査する。
+CREATE INDEX audit_event_search_attributes_lookup_idx
+    ON audit_event_search_attributes (tenant_id, attr_name, attr_value, occurred_at DESC);
+
 CREATE TABLE agents (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,

@@ -17,6 +17,7 @@ import (
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	oauth2http "github.com/ambi/idmagic/internal/oauth2/adapters/http"
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
 	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
@@ -62,11 +63,13 @@ func auditUser(sub, tenantID string, roles []string) *spec.User {
 }
 
 func auditEvent(tenantID, typ, sub string, occurredAt time.Time) *oauthports.AuditEventRecord {
-	return &oauthports.AuditEventRecord{
+	rec := &oauthports.AuditEventRecord{
 		ID:       tenantID + ":" + typ + ":" + sub + ":" + occurredAt.Format(time.RFC3339Nano),
 		TenantID: tenantID, Type: typ, OccurredAt: occurredAt,
 		Payload: map[string]any{"userId": sub, "tenantId": tenantID, "type": typ},
 	}
+	rec.SearchAttributes = oauthusecases.ExtractSearchAttributes(rec)
+	return rec
 }
 
 func getAdminAuditEvents(e *echo.Echo, path string) *httptest.ResponseRecorder {
@@ -229,6 +232,49 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=bogus")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("unknown category must be 400, got %d", rec.Code)
+	}
+}
+
+func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
+	user := auditUser("user_admin", "acme", []string{"admin"})
+	now := time.Now().UTC()
+	events := []*oauthports.AuditEventRecord{
+		auditEvent("acme", "UserAuthenticated", "alice", now),
+		auditEvent("acme", "AuthenticationFailed", "bob", now.Add(-time.Second)),
+		auditEvent("acme", "AccessTokenIssued", "alice", now.Add(-2*time.Second)),
+	}
+	e := newAuditAdminServer(t, user, events)
+
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=outcome:eq:failure")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if len(body.Events) != 1 || body.Events[0].Type != "AuthenticationFailed" {
+		t.Fatalf("filter outcome mismatch: %+v", body.Events)
+	}
+
+	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?q=access")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("q status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	body.Events = nil
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if len(body.Events) != 1 || body.Events[0].Type != "AccessTokenIssued" {
+		t.Fatalf("q mismatch: %+v", body.Events)
+	}
+}
+
+func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
+	user := auditUser("user_admin", "acme", []string{"admin"})
+	e := newAuditAdminServer(t, user, nil)
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=payload.any:eq:value")
+	if rec.Code != http.StatusBadRequest ||
+		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_request"`)) {
+		t.Fatalf("unknown filter must be 400 invalid_request, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

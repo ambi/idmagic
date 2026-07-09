@@ -51,6 +51,7 @@ type Deps struct {
 	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
 	AuthEventBucketStore       authnports.AuthEventBucketStore
 	Authorizer                 oauthports.Authorizer
+	TenantSaltStore            oauthports.TenantSaltStore
 	SentinelPasswordHash       string
 
 	// WebAuthn / recovery code を第二要素 (login step) として使うための依存 (wi-26)。

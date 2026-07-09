@@ -54,6 +54,7 @@ type Dependencies struct {
 	// (ADR-077: 複数レプリカで閾値がクラスタ全体で一つになるよう共有ストア化する)。
 	NewLoginAttemptThrottle     func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
 	KeyStore                    oauthports.KeyStore
+	TenantSaltStore             oauthports.TenantSaltStore
 	EventSink                   oauthports.EventSink
 	AuditEventRepo              oauthports.AuditEventRepository
 	AuthEventBucketStore        authnports.AuthEventBucketStore

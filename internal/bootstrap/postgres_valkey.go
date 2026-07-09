@@ -114,6 +114,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
 		},
 		KeyStore:                    selectKeyStore(keyStore),
+		TenantSaltStore:             postgres.NewTenantSaltStore(resilientDB),
 		EventSink:                   sink,
 		AuditEventRepo:              &postgres.AuditEventRepository{Pool: resilientDB},
 		AuthEventBucketStore:        &postgres.AuthEventBucketStore{Pool: resilientDB},

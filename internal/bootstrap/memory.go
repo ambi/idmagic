@@ -45,6 +45,7 @@ func assembleMemory() (*Dependencies, error) {
 			return memory.NewLoginAttemptThrottle(configs)
 		},
 		KeyStore:                    selectKeyStore(oauthports.KeyStore(keyStore)),
+		TenantSaltStore:             crypto.NewInMemoryTenantSaltStore(),
 		EventSink:                   eventsink.NewConsoleSink(),
 		AuditEventRepo:              memory.NewAuditEventStore(0),
 		AuthEventBucketStore:        memory.NewAuthEventBucketStore(),

@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/spec"
 
@@ -133,7 +135,7 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	if d.AuditEventRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
 	}
-	query, err := parseAuditEventQuery(c, actor)
+	query, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -175,7 +177,7 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	query, err := parseAuditEventQuery(c, actor)
+	query, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -199,7 +201,7 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 // admin / system_admin のどちらでも通る。所属テナントの拘束は問わない (実際の
 // テナント絞り込みは List のクエリ生成時に行う)。
 
-func parseAuditEventQuery(c *echo.Context, actor *spec.User) (oauthports.AuditEventQuery, error) {
+func (d Deps) parseAuditEventQuery(c *echo.Context, actor *spec.User) (oauthports.AuditEventQuery, error) {
 	q := oauthports.AuditEventQuery{
 		TenantID:   actor.TenantID,
 		AllTenants: false,
@@ -246,7 +248,49 @@ func parseAuditEventQuery(c *echo.Context, actor *spec.User) (oauthports.AuditEv
 		}
 		q.Limit = limit
 	}
+	// wi-145: q フリーテキストと filter 式 (registry allowlist)。
+	if freeText := c.QueryParam("q"); freeText != "" {
+		q.Q = freeText
+	}
+	filters, err := d.parseAuditFilters(c)
+	if err != nil {
+		return oauthports.AuditEventQuery{}, err
+	}
+	q.Filters = filters
 	return q, nil
+}
+
+// parseAuditFilters は繰り返し filter=field:op:value[,value2] クエリを parse / validate し、
+// PII 属性の平文値を tenant salt でサーバ側 transform する (wi-145)。field/operator は
+// registry allowlist のみ許可。IPv6 の値に含まれる ":" を壊さないよう先頭 2 個の ":" で切る。
+func (d Deps) parseAuditFilters(c *echo.Context) ([]oauthports.AuditFilterExpression, error) {
+	raw := c.Request().URL.Query()["filter"]
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	parsed := make([]oauthusecases.RawFilter, 0, len(raw))
+	for _, token := range raw {
+		parts := strings.SplitN(token, ":", 3)
+		if len(parts) != 3 {
+			return nil, errors.New("filter は field:operator:value 形式で指定してください")
+		}
+		parsed = append(parsed, oauthusecases.RawFilter{
+			Field:    parts[0],
+			Operator: parts[1],
+			Values:   strings.Split(parts[2], ","),
+		})
+	}
+	exprs, err := oauthusecases.ParseAuditFilter(parsed)
+	if err != nil {
+		return nil, err
+	}
+	var salt []byte
+	if d.TenantSaltStore != nil {
+		if s, serr := d.TenantSaltStore.GetSalt(c.Request().Context()); serr == nil {
+			salt = s
+		}
+	}
+	return oauthusecases.TransformFilterValues(exprs, salt)
 }
 
 // auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。
