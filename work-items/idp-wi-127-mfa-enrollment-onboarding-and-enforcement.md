@@ -2,7 +2,7 @@
 id: idp-wi-127-mfa-enrollment-onboarding-and-enforcement
 title: "MFA 必須化時の登録オンボーディングと強制を分離する"
 created_at: 2026-07-09
-authors: ["codex"]
+authors: ["tn"]
 status: pending
 risk: high
 ---
