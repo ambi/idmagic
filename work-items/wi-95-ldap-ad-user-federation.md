@@ -1,0 +1,56 @@
+---
+status: pending
+authors: ["tn"]
+risk: high
+created_at: 2026-07-03
+---
+
+# LDAP / Active Directory を user storage として federation する
+
+## Motivation
+エンタープライズ利用では、既存の LDAP / Active Directory をユーザソースとして
+そのまま使いたい要求が強い。Keycloak はこれを LDAP / AD user federation として
+標準提供し、idmagic には無い (自前ストアのみ)。
+
+本 WI は外部 LDAP / AD を **read 方向で federation** し、bind による認証委譲と
+ユーザ属性の import (JIT) を行う provider を導入する。protocol federation
+([[wi-30-inbound-federation-and-identity-broker]]) が OIDC/SAML の上流 IdP を扱う
+のに対し、本 WI は **directory / storage federation** を扱う点で棲み分ける。
+
+## Scope
+- **decision**:
+  - 新規 ADR: read-only か write-back か (初期 read-only)、認証は bind 委譲か password import か (初期 bind 委譲)、同期方式 (on-demand / JIT import)、 [[wi-30-inbound-federation-and-identity-broker]] (protocol federation) との 棲み分け、接続情報 (bind DN / password) の安全な保管方針を記録する。
+- **scl**:
+  - §3.2 models: LdapFederationProvider を追加する。
+  - §3.3 interfaces: provider 設定 CRUD、接続テスト、bind 認証委譲を追加する。
+  - §3.4 states/events: LdapProviderConfigured / LdapUserImported を追加する。
+  - §3.5 invariants: LDAP 障害時は fail-closed、import 属性は tenant の属性 schema に整合させることを明示する。
+- **go**:
+  - LDAP client アダプタ (bind 認証委譲・属性 mapping・JIT user 生成) を追加し、 接続情報を暗号化保管する。
+- **http**:
+  - admin の LDAP provider 設定 / 接続テストエンドポイントを追加する。
+- **ui**:
+  - Admin federation に LDAP provider 設定画面を追加する。
+- **documentation**:
+  - README に LDAP / AD federation の設定と制約を追記する。
+
+## Out of Scope
+- write-back / 双方向同期。
+- Kerberos / SPNEGO SSO ([[wi-65-kerberos-spnego-inbound-silent-sso]])。
+- グループの完全同期 (初期は最小の属性 import に留める)。
+- outbound provisioning (SCIM は [[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]])。
+
+## Verification
+- `just test-go`
+- `just lint-go`
+- `just build-go`
+- `just typecheck-ui`
+- `just lint-ui`
+- `just build-ui`
+- 手動 (テスト用 LDAP): provider を設定 → 接続テスト成功 → LDAP ユーザで bind ログイン → 属性が JIT import される。LDAP 停止時にログインが fail-closed になることを確認する。
+
+## Risk Notes
+外部システム連携で、接続情報の機微・ネットワーク到達性・LDAP 実装差異が
+リスク。bind password を暗号化保管し、障害時 fail-closed とし、テスト用 LDAP
+(例: コンテナ) に対する統合テストで bind 委譲と JIT import を検証する。初期は
+read-only + bind 委譲に絞って面を小さく保つ。

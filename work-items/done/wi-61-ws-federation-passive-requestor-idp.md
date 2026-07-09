@@ -1,0 +1,108 @@
+---
+status: completed
+authors: ["tn"]
+risk: high
+created_at: 2026-06-24
+---
+
+# WS-Federation Passive Requestor Profile の IP-STS としてブラウザ SSO に対応する
+
+## Motivation
+Microsoft 系のエンタープライズ連携 (Microsoft 365 / Entra ID、SharePoint、
+オンプレ AD FS 連携アプリ) は今も WS-Federation Passive Requestor Profile を
+最低ラインの SSO 入口として要求する。Okta・OneLogin の「Microsoft Office 365」
+連携も、PingFederate の WS-Federation IdP アダプタも、まず passive プロファイル
+(ブラウザリダイレクトと signed token) を IdP/IP-STS として提供する。
+
+本 WI は idmagic を WS-Federation の IP-STS として振る舞えるようにし、AD FS の
+`/adfs/ls/` 相当のブラウザ sign-in / sign-out を実装する。`wa=wsignin1.0` で
+受理し、`wtrealm` で識別した relying party 向けに署名済み RSTR (Request Security
+Token Response) に包んだ SAML assertion を返す。これは最終ゴールである Entra
+との domain federation ([[wi-64-entra-domain-federation-m365-sso]]) の passive
+ログオン経路 (PassiveLogOnUri) になる。能動的 (rich client / device 登録) 経路は
+WS-Trust STS ([[wi-62-ws-trust-active-sts]]) が担い、両者は共通の federation
+metadata と claim mapping ([[wi-63-federation-metadata-and-claims-mapping]]) を
+使う。assertion 生成・XML 署名の基盤は SAML 2.0 IdP ([[wi-29-saml2-idp]]) と共有する。
+
+本 WI はフォーム認証 (idmagic のログイン UI) で完結し、Kerberos には依存しない。
+ドメイン参加 PC をフォーム無しで通す無音サインイン (WIA / Negotiate バリアント) は
+[[wi-65-kerberos-spnego-inbound-silent-sso]] が本 WI の passive
+エンドポイントの上に追加する。依存の向きは wi-65 → 本 WI。本 WI では認証方式を
+差し替え可能にする拡張点を設けるところまでとする。
+
+## Scope
+- **decision**:
+  - 新規 ADR: WS-Federation passive の対応範囲を確定する。初期対応は Web (passive) Requestor Profile、`wsignin1.0` / `wsignout1.0` / `wsignoutcleanup1.0`、 RSTR に包む SAML 1.1 assertion (Entra 互換) を既定とし SAML 2.0 assertion を 任意対応、署名は RSTR (assertion) に対して付与、`wtrealm` による RP 識別と `wreply` / `wctx` / `wfresh` / `wauth` / `whr` の検証・尊重規則を定める。SAML 2.0 IdP との assertion / 署名基盤の共有方針も明記する。
+- **scl**:
+  - 新規 model: WsFedRelyingParty / WsFedSignInRequest / WsFedSignInResponse。 RSTR・SAML assertion は SAML 2.0 IdP の assertion model を再利用または拡張する。
+  - 新規 interface: WsFederationSignIn / WsFederationSignOut。
+  - 新規 event: WsFedSignInIssued / WsFedSignInRejected / WsFedSignOut。
+  - client metadata に WS-Federation RP 種別 (wtrealm / wreply / token type / NameID format) を追加する。
+- **go**:
+  - passive エンドポイント (`wa=wsignin1.0`) を realm 配下に公開し、未ログイン時は idmagic のログイン UI に誘導してから RSTR を発行する。認証方式は差し替え可能にし、 WIA/Negotiate を後から足せる拡張点を設ける (実装は wi-65)。
+  - `wtrealm` を登録済み RP に解決し、`wreply` を RP metadata の許可 URI に限定する (open redirect 防止、fail-closed)。`wfresh` による再認証要求と `wauth` で要求された 認証方式 (auth method URI) を尊重する。
+  - RSTR / assertion の XML 署名・canonicalization は実績ある library を使い自前実装しない (SAML 2.0 IdP と共有)。
+  - sign-out (`wsignout1.0` / `wsignoutcleanup1.0`) で RP への logout 通知とローカルセッション破棄を行う。
+- **http**:
+  - `/{realm}/wsfed` (passive) と federation metadata への広告。
+- **ui**:
+  - admin clients に WS-Federation RP 種別と wtrealm / wreply / claim mapping の編集を追加する。
+- **documentation**:
+  - README に WS-Federation 対応範囲、passive エンドポイント URL、RP 設定例を書く。
+
+## Out of Scope
+- WS-Trust active (RST/RSTR over SOAP) は [[wi-62-ws-trust-active-sts]] で扱う。
+- WIA / Negotiate による無音サインインバリアントは [[wi-65-kerberos-spnego-inbound-silent-sso]] が追加する。 本 WI はフォーム認証と拡張点まで。
+- federation metadata 公開と claim 発行ルールは [[wi-63-federation-metadata-and-claims-mapping]] で扱う。
+- Entra / Microsoft 365 への実接続検証は [[wi-64-entra-domain-federation-m365-sso]] で扱う。
+- encrypted assertion の初期必須化。必要なら追加 WI とする。
+
+## Verification
+- `go test ./...` (in: idmagic)
+  - reason: wtrealm 解決・wreply 許可判定・wfresh 再認証・RSTR 署名・sign-out の境界。
+- `golangci-lint run ./...` (in: idmagic)
+- `go build ./...` (in: idmagic)
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui build`
+- 手動: test RP から `wa=wsignin1.0` で passive sign-in を開始し、RSTR の署名・wtrealm・ NameID と claim が正しいこと、未登録 wreply が拒否されることを確認する。
+
+## Risk Notes
+WS-Federation は XML signature wrapping と open redirect (`wreply`) が主要リスク。
+署名検証・canonicalization は library に委ね、`wtrealm` / `wreply` は登録済み RP
+metadata に対して fail-closed で検証する。SAML 2.0 IdP の assertion / 署名基盤を
+先に整えるか並行させ、XML 処理の重複実装を避ける。
+
+## Completion
+- **Completed At**: 2026-06-26
+- **Summary**:
+  WsFederation bounded context (ADR-064) と宣言的 claim 発行 (ADR-059) に沿って、WS-Federation passive requestor
+  profile の IP-STS を実装した。`/{realm}/wsfed` で `wa=wsignin1.0` /
+  `wsignout1.0` / `wsignoutcleanup1.0` を受理する。未認証は既存ログイン UI へ
+  return_to つきで誘導し、認証済みなら RP の宣言的 claim policy で claim を発行し、
+  goxmldsig (ADR-060) で署名した SAML assertion を WS-Trust RSTR に包んで自動 POST
+  する。token は既定で SAML 1.1 (Entra / AD FS の WS-Fed 互換)、RP 設定で SAML 2.0
+  も選択可。`wfresh` を尊重して古い認証は再認証へ誘導し (ログイン往復を吸収する短い
+  猶予つき)、`wauth` を尊重して満たせる password 系は反映、満たせない統合 Windows
+  認証等は fail-closed で拒否する (無音サインインは wi-65)。relying party は
+  `/api/admin/wsfed/relying-parties` と管理 UI 「WS-Federation 連携先」で CRUD でき、
+  許可 wreply 閉集合・audience・token type・claim mapping を編集する。
+- **Verification Results**:
+  - `go build ./...` (in: idmagic)
+    - result: ok
+  - `go test ./...` (in: idmagic)
+    - result: ok
+  - `golangci-lint run ./...` (in: idmagic)
+    - result: 0 issues
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui build`
+    - result: ok
+  - 手動: 実サーバで未認証→login→/wsfed 復帰、SAML 1.1 既定 (MajorVersion 1.1 / am:password / claim namespace 分割)、wauth=windows→400、wauth=Password→200、wfresh の往復ループ無しを curl で確認
+- **Affected Guarantees State**:
+  - XML signature: assertion は goxmldsig で enveloped 署名し、改竄は検証失敗 (round-trip test)
+  - redirect safety: wreply は RP の許可集合と完全一致のみ。sign-in / sign-out とも open redirect を拒否
+  - RP 識別: 未登録 wtrealm は 400 で拒否し WsFedSignInRejected を発行
+  - tenant isolation: RP リポジトリとエンドポイントは realm ごとに分離
+  - audit: WsFedSignInIssued / WsFedSignInRejected / WsFedSignOut を発行
+  - freshness: wfresh が示す最大経過時間より古い認証は再認証へ誘導
+  - auth method: wauth が満たせない方式 (統合 Windows 等) は fail-closed で拒否

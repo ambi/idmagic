@@ -1,17 +1,17 @@
 ---
-id: wi-131-testing-governance-and-ci-enforcement
-title: テスト徹底のためのガバナンス構築と CI カバレッジ強制
-created_at: 2026-07-05
-authors: [tn]
 status: pending
+authors: [tn]
 risk: medium
+created_at: 2026-07-05
 ---
 
-# Motivation
+# テスト徹底のためのガバナンス構築と CI カバレッジ強制
+
+## Motivation
 現在、Go バックエンドのカバレッジが 42% 程度であり、React フロントエンドに単体テストが用意されていない現状は、「開発においてテストが徹底されていない」ガバナンス上の問題を示している。
 テストの網羅度を今後の機能追加時にも維持・向上させるため、CIにおいてカバレッジ測定を自動化し、一定の閾値（カバレッジ目標）を下回った場合にビルドを失敗させる（fail-closed）ルールをシステム的に強制する仕組みを構築する。
 
-# Scope
+## Scope
 - **CIへのカバレッジ計測ステップの統合**:
   - GitHub Actions ワークフロー (`.github/workflows/idmagic-ci.yaml`) において、Goバックエンドテストの際に `-coverprofile` を生成し、カバレッジを測定する。
   - フロントエンドの CI 実行フローに `Vitest` による単体テストおよびカバレッジ測定を追加する。
@@ -24,15 +24,15 @@ risk: medium
   - `just verify` コマンドで、ローカルでもテストカバレッジの最低目標が満たされているか自動で簡易検証できるようにする。
   - 開発者がローカルでカバレッジを視覚的に確認しやすいよう、HTML形式でのカバレッジ出力レシピ (`just cover-go-html`) などを `justfile` に追加する。
 
-# Out of Scope
+## Out of Scope
 - 個別のバックエンド/フロントエンドのテストコードの実装自体（これは `wi-129` や `wi-130` で段階的に実装する）。
 - 静的コード解析（linter）のルール自体の厳格化。
 
-# Verification
+## Verification
 - `just verify` がローカルで正常に実行され、カバレッジが検証されること。
 - `AGENTS.md` や `GEMINI.md` にテストポリシーに関する記載が正しく追加されていること。
 - カバレッジ不足のコードを意図的に作成した際、CI が適切に失敗すること。
 
-# Risk Notes
+## Risk Notes
 カバレッジの強制により、意味のないアサーションを伴うダミーテストが記述される可能性がある。レビューポリシーにおいて、アサーションの質を確認することを推奨する。
 CI上でのテスト実行時間の増加に配慮し、可能な限り並列実行やキャッシュ（GOCACHE / Bun cache）を活用する。

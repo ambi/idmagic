@@ -1,41 +1,41 @@
 ---
-id: wi-123-unify-postgres-sql-style
-title: PostgreSQL スキーマの SQL 記述スタイル統一
-created_at: 2026-07-05
-authors: [Antigravity]
 status: completed
+authors: [Antigravity]
 risk: low
+created_at: 2026-07-05
 ---
 
-# Motivation
+# PostgreSQL スキーマの SQL 記述スタイル統一
+
+## Motivation
 `deploy/schema/postgres.sql` において、PRIMARY KEY、外部キー制約、UNIQUE制約の記述スタイルに揺らぎがあるため、可読性および保守性の向上のためにスタイルを統一する。
 
-# Scope
+## Scope
 - `deploy/schema/postgres.sql` 内のテーブル定義について、スタイルを統一する。
   - **PRIMARY KEY**: 複合キーでない場合、カラム定義 of `PRIMARY KEY` と記述する。
   - **外部キー制約 (FOREIGN KEY)**: すべて `CONSTRAINT <テーブル名>_<カラム名>_fkey FOREIGN KEY (<カラム名>) REFERENCES <対象テーブル>(<対象カラム>) ON DELETE <アクション>` または複合キー用の `CONSTRAINT` として別行で明示的に定義する。
   - **UNIQUE制約**: 部分一意インデックス（`WHERE`句を持つもの）を除き、すべて `CONSTRAINT <テーブル名>_<カラム名群>_key UNIQUE (<カラム名群>)` として CREATE TABLE 内で定義する。
 
-# Out of Scope
+## Out of Scope
 - データベース構造そのものの変更（カラム追加・削除、型変更、制約の緩和・強化など）
 - テーブルの分割やマージ
 
-# Initial Context
+## Initial Context
 - `deploy/schema/postgres.sql`
 
-# Affected Guarantees
+## Affected Guarantees
 - schema-syntax-and-referential-integrity
 
-# Verification
+## Verification
 - `just yaml-check-work-items`
 - `just check-ids`
 - `just verify-go`
 - `just verify-ui`
 
-# Risk Notes
+## Risk Notes
 SQLのスタイル変更（記述場所の統一）のみであり、スキーマ構造自体は変更しない。ただし外部キー制約名などが自動生成から明示的指定に変わるため、既存のインフラに対してマイグレーション等を適用する際の制約名競合や、自動生成される制約名の変更が発生する可能性がある。
 
-# Completion
+## Completion
 - **Completed At**: 2026-07-05
 - **Summary**:
   `deploy/schema/postgres.sql` において、データベーススキーマの記述スタイルを統一した。

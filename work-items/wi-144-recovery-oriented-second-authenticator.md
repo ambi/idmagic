@@ -1,10 +1,8 @@
 ---
-id: wi-144-recovery-oriented-second-authenticator
-title: "復旧目的の 2 個目認証器登録を推奨し手段冗長化でロックアウトを予防する"
-created_at: 2026-07-09
-authors: ["tn"]
 status: pending
+authors: ["tn"]
 risk: medium
+created_at: 2026-07-09
 ---
 
 # 復旧目的の 2 個目認証器登録を推奨し手段冗長化でロックアウトを予防する
@@ -12,14 +10,14 @@ risk: medium
 ## Motivation
 
 TOTP / WebAuthn 喪失時の復旧を backup recovery code **単独**に依存させると、コード紛失で
-復旧経路が絶たれる（[idp-ADR-088](file:///Users/tn/src/idmagic/decisions/idp-ADR-088-layered-account-recovery.md)）。
+復旧経路が絶たれる（[ADR-088](file:///Users/tn/src/idmagic/decisions/ADR-088-layered-account-recovery.md)）。
 Google / Entra ID（combined registration）が示すとおり、最も費用対効果の高い予防策は
 **手段の冗長化**——認証器を 2 個以上登録させ、1 台紛失をロックアウトにしないことである。
 
 idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき、同期 passkey を示す
 `backup_eligible` / `backup_state` も保存済みで、この層に自然に乗る。ADR-088 の第 1 層として、
 2 個目認証器（2 個目の passkey、または TOTP + passkey）の登録を推奨・任意強制できる仕組みを
-仕様化する。MFA 登録オンボーディング（[idp-wi-127](file:///Users/tn/src/idmagic/work-items/idp-wi-127-mfa-enrollment-onboarding-and-enforcement.md)）と連携し、初回登録直後に 2 個目を促す。
+仕様化する。MFA 登録オンボーディング（[wi-127](file:///Users/tn/src/idmagic/work-items/wi-127-mfa-enrollment-onboarding-and-enforcement.md)）と連携し、初回登録直後に 2 個目を促す。
 
 ## Scope
 

@@ -1,16 +1,16 @@
 ---
-id: wi-134-memory-persistence-adapter-roundtrip-tests
-title: memory 永続化アダプタの全ストアに対する往復（Roundtrip）テストの追加
-created_at: 2026-07-05
-authors: [tn]
 status: completed
+authors: [tn]
 risk: low
+created_at: 2026-07-05
 ---
 
-# Motivation
+# memory 永続化アダプタの全ストアに対する往復（Roundtrip）テストの追加
+
+## Motivation
 `wi-129` (Go バックエンドのテスト網羅度向上) の一環として、インメモリで動作する永続化アダプタ（`memory` パッケージ）内の全ストア（リポジトリおよびストア）について、作成・取得・更新・削除などの往復（Roundtrip）操作が正しく機能することを検証するテストコードを追加し、カバレッジを向上させるとともに、アダプタ実装の不具合を早期に検知できるようにする。
 
-# Scope
+## Scope
 - `internal/shared/adapters/persistence/memory` パッケージ内のすべてのリポジトリ / ストアを対象としたテストの追加・拡充。
 - 特に以下の、現在テストが不足しているか存在しないストアに対する往復テストの実装：
   - `access_token_denylist.go`
@@ -34,18 +34,18 @@ risk: low
   - `tenants.go`
   - `users.go`
 
-# Out of Scope
+## Out of Scope
 - PostgreSQL アダプタ（`postgres`）のテスト環境整備とテスト追加（タスク A の範囲外、後のタスクで実施）。
 - `memory` パッケージ以外のカバレッジ改善。
 
-# Verification
+## Verification
 - `just verify-go`
 - `go test -v ./internal/shared/adapters/persistence/memory/...` がすべて通ること。
 
-# Risk Notes
+## Risk Notes
 - 特になし。シンプルなメモリ内データ構造（マップやリスト）に対するテストであるため、外部依存（DBやネットワークなど）がなく、テスト実行は高速かつ安定しているはず。
 
-# Completion
+## Completion
 - **Completed At**: 2026-07-05
 - **Summary**:
   memory 永続化アダプタの全ストア（リポジトリおよびストア）に対して、作成、取得、更新、削除等の往復（Roundtrip）操作が正常に行えることを検証するテストを網羅的に追加・拡充した。

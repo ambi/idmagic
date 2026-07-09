@@ -1,0 +1,113 @@
+---
+status: completed
+authors: ["tn"]
+risk: low
+created_at: 2026-06-16
+---
+
+# 管理画面のシェル外観を 6 ページで揃える (breadcrumb / sidebar / 概要のリネーム)
+
+## Motivation
+管理画面を一周すると、ページごとに見た目と情報構造が揃っておらず、
+「同じアプリの同じレベルの画面」に見えない箇所が複数ある。
+
+1. **breadcrumb が 2 ページだけにある + 文言が違う**。
+   AdminUsersPage の上に "Directory > Users"、AdminClientsPage の上に
+   "Identity management > Applications" の breadcrumb があるが、
+   - 6 ページ中 2 ページにしかない
+   - "Directory" と "Identity management" が同じ階層を別の言葉で表す
+   - リンクになっておらず純粋に装飾
+   状態。そもそも sidebar nav と機能的に重複しているので、
+   breadcrumb を残すなら統一・リンク化し、残さないなら撤去する。
+
+2. **AdminClientsPage 専用に sidebar 下の Security posture ブロックが
+   出る**。AdminUsersPage の sidebar には "管理操作はセッション、RBAC、
+   CSRF検証で保護されています。" の Security posture 説明があるが、
+   これは `AdminUsersPage.tsx` のインラインで書かれていて他の admin
+   ページ (AdminShell 経由) には出ない。同じ shell に見えるのに
+   1 ページだけ余分なブロックが出るのは認知ノイズ。
+
+3. **"概要" がページ名として弱い**。`/admin` の sidebar 項目とページ
+   タイトルを "概要" にしているが、業界標準 (Okta / Google Admin /
+   Microsoft 365 admin) は "ホーム" or "ダッシュボード"。 "概要" は
+   「これから何かの説明が来そう」な接続詞的なラベルで、ナビゲーション
+   の起点としては弱い。
+
+4. **AdminUsersPage / AdminClientsPage と他 4 ページのレイアウトが
+   違う**。前者 2 ページは独自に `<div className="min-h-screen ...">`
+   から組み立てているのに対し、後者 4 ページは `AdminShell` を介して
+   描画する。結果、ヘッダ間の余白・タイトル位置・本文最大幅
+   (`max-w-[1500px]` vs `max-w-[1200px]`) が異なり、ページ切り替えで
+   ジャンプが起きる。
+
+## Scope
+- **ui**:
+  - components:
+    - AdminShell.tsx に breadcrumb の slot を追加するか、shell が sidebar nav の active 項目から自動的に breadcrumb を組み立てる ようにする。表現は "Identity management > ユーザー" 等、 sidebar セクション + 現ページ名で揃える。上位ノードは sidebar が同等の動線を提供するため、breadcrumb はリンクにしなくても可 とするが、最低限「現ページがどのセクションに属するか」だけは 示す。
+    - AdminUsersPage / AdminClientsPage の独自インラインヘッダ・ sidebar (Brand / nav / Security posture / logout) を撤去し、 AdminShell に統一する。残るページ固有部分 (メトリクスカード、 テーブル、編集ダイアログ等) は `children` として shell に 差し込む形に揃える。
+    - AdminShell の `actions` slot (現在 AdminConsents / AdminKeys / AdminTenants が使う) を、6 ページすべてで同じ位置に primary action を置けるように見直す。AdminUsers は "ユーザーを 追加"、AdminClients は "クライアントを追加"、それ以外は空 or refresh 系を置く。
+    - sidebar 下に出ていた "Security posture" ブロックは廃止する。 必要なら設定ページ (wi-17) や about modal に振り分ける。
+  - pages:
+    - AdminDashboardPage のタイトル "概要" を **"ダッシュボード"** に改名する (個人的好みではなく、"ホーム" だと top-level の landing ページに見え、admin 内のコンテキストが弱まるため)。 sidebar の表示も "ダッシュボード" に揃える。AdminNavKey の `dashboard` という key 名は変更しない (URL `/admin` も変更 しない)。
+    - AdminUsersPage / AdminClientsPage のページタイトル直上の breadcrumb 風文言 ("Directory > Users" / "Identity management > Applications") を撤去し、新しい AdminShell の breadcrumb 機構 に統一する。
+  - routing:
+    - 変更なし。
+  - navigation:
+    - `adminNav.ts` の "概要" の label を "ダッシュボード" に変更。
+- **api**:
+  - 変更なし。
+- **documentation**:
+  - idmagic/ui/README.md に "AdminShell が breadcrumb 含めて ページ shell を統一する" の 1 行を追加してもよい (任意)。
+
+## Out of Scope
+- breadcrumb の上位ノードをクリッカブルなリンクにする話 (sidebar が 同等の動線なので、上位ノードはテキストだけで十分という判断)。 必要になったら別 WI。
+- settings ページの追加 (wi-17 で別途)。
+- 未認証時のリダイレクト挙動 (wi-18 で別途)。
+- end user 側 (`/account/*`) のシェル統一。
+- mobile / narrow viewport 向け shell の最適化。
+- dark mode 対応 / theme 切替。
+- sidebar の section 化 ("Identity management" / "Audit & security" / "Settings" にグルーピング) は本 WI のスコープ外、必要なら別 WI。
+
+## Verification
+- `bun --cwd idmagic/ui typecheck`
+- `bun --cwd idmagic/ui lint`
+- `bun --cwd idmagic/ui build`
+- `go test ./internal/adapters/http/...` (in: idmagic)
+  - reason: backend に変更が無いため、handler テスト群が回帰しない ことを確認する程度。
+- 手動 1: 6 admin ページを順番に開き、ヘッダ・sidebar・本文余白が 同一であることを目視確認。
+- 手動 2: 各ページのタイトル直上に "Identity management > ユーザー" 形式の breadcrumb が同位置に出る。
+- 手動 3: sidebar 下の Security posture ブロックが消えている。
+- 手動 4: sidebar に "ダッシュボード" と表示され、`/admin` で active 状態になる。
+
+## Risk Notes
+UI のみの polish。挙動変更は無いが、shell を 2 ページで再実装した
+状態を統合するため、レイアウト regression を起こさないように
+目視確認の手数が増える。
+
+AdminUsersPage / AdminClientsPage は他ページより本文幅が広く
+(max-w-[1500px])、shell 統合で 1200px に狭まると見え方が変わる。
+shell 側で max-w を per-page で受け取れるよう slot を持たせるか、
+全体を 1500px に揃えるかを WI の最初の commit で決める。
+
+## Completion
+- **Completed At**: 2026-06-16
+- **Summary**:
+  AdminUsersPage と AdminClientsPage の独自 header / sidebar / breadcrumb を
+  削除し、全管理ページを AdminShell に統一した。AdminShell は active nav
+  から breadcrumb を生成し、aria-current、actions、1500px の本文幅を
+  一括管理する。sidebar の Security posture ブロックは廃止した。
+  `/admin` の表示名は「概要」から「ダッシュボード」に変更した。
+- **Verification Results**:
+  - `bun --cwd idmagic/ui typecheck`
+    - result: ok
+  - `bun --cwd idmagic/ui lint`
+    - result: ok (40 files)
+  - `bun --cwd idmagic/ui build`
+    - result: ok (6284 modules)
+  - `GOCACHE=/tmp/idmagic-cache go test -race ./...` (in: idmagic)
+    - result: ok
+  - 手動目視確認は未実施。実ブラウザでのページ切替時の視覚的ジャンプは残リスク。
+- **Affected Guarantees State**:
+  - admin RBAC / API endpoint / CSRF 境界は変更なし
+  - breadcrumb は nav + ol 構造、active sidebar は aria-current=page
+  - Security posture のページ固有表示は残っていない

@@ -1,13 +1,13 @@
 ---
-id: wi-127-postgres-column-type-policy
-title: Postgres 列型選定ポリシーの明文化と既存 schema の棚卸し
-created_at: 2026-07-05
-authors: [tn]
 status: completed
+authors: [tn]
 risk: medium
+created_at: 2026-07-05
 ---
 
-# Motivation
+# Postgres 列型選定ポリシーの明文化と既存 schema の棚卸し
+
+## Motivation
 `deploy/schema/postgres.sql` は、認証・認可・管理 UI・アプリケーションカタログ・
 フェデレーションなど複数の bounded context の永続化を横断している。一方で、列型の
 選定基準が明文化されていないため、`TEXT` / `JSONB` / `TIMESTAMPTZ` / `UUID` /
@@ -35,7 +35,7 @@ SCIM id、tenant/user/group の domain id のように、UUID に限定しない
 この WI では、列型を一括で置き換えるのではなく、Postgres 永続化の型ポリシーを先に決め、
 既存 schema を棚卸しして、必要な schema / adapter / API 変更だけを段階的に適用する。
 
-# Scope
+## Scope
 - **decision / documentation**:
   - Postgres 列型選定ポリシーを ADR または永続化設計ドキュメントとして明文化する。
   - `TEXT` と `varchar(n)` / `CHECK (char_length(...))` の使い分け基準を決める。方針案:
@@ -72,7 +72,7 @@ SCIM id、tenant/user/group の domain id のように、UUID に限定しない
   - 永続化の型選定が SCL の保証・非機能要件・公開 contract に影響する場合のみ、
     `spec/scl.yaml` を SCL-first で最小限更新し、derived artifacts を再生成する。
 
-# Out of Scope
+## Out of Scope
 - 全 `TEXT` 列を機械的に `varchar` へ置き換えること。
 - 名前・説明・URL・メール・外部識別子など、各文字列値の具体的な最大文字数をこの WI で
   決めること。最大文字数の業務ルール化と SQL 反映判断は
@@ -83,7 +83,7 @@ SCIM id、tenant/user/group の domain id のように、UUID に限定しない
 - `JSONB` を完全に排除すること。監査イベント、outbox、外部仕様由来の claim / metadata /
   policy 表現では、正当な利用を残す。
 
-# Verification
+## Verification
 - `just yaml-check-work-items`
 - `just check-ids`
 - `just yaml-check`（SCL を変更した場合）
@@ -95,19 +95,19 @@ SCIM id、tenant/user/group の domain id のように、UUID に限定しない
 - 手動確認: 時刻値を保存・取得する主要フローで、PostgreSQL、Go、HTTP JSON、UI 表示の
   どこで精度を落とすか、または落とさないかが明確になっている。
 
-# Risk Notes
+## Risk Notes
 列型変更は migration、既存データ、外部 API、テスト fixture、UI 型へ波及しやすい。
 特に ID 型と状態値表現は一度公開 contract に出ると戻しづらい。実装時は、まず ADR /
 ドキュメントで基準を固定し、既存 schema の棚卸し結果を小さな変更単位に分割する。
 UUID 化・enum 化・JSONB 正規化は、それぞれ互換性と migration friction を評価してから
 個別に進める。
 
-# Completion
+## Completion
 - **Completed at**: 2026-07-05
 - **Summary**: Postgres 列型選定ポリシーを ADR として明文化したうえで、レビュー判断により
   「idmagic が内部生成する id 列を UUID 型に閉じる」方針転換を取り込み、schema・adapter・
   seed・UI・テストを実際に整列させた。tenants.id の UUID 化と文字列長制約は follow-up に分離。
-  - `decisions/idp-ADR-084-postgres-column-type-policy.md` を追加。文字列（制約なし varchar
+  - `decisions/ADR-084-postgres-column-type-policy.md` を追加。文字列（制約なし varchar
     不使用）・JSONB 許容基準・TIMESTAMPTZ 精度・UUID と domain string id の境界・有限集合値
     表現（既定 TEXT+CHECK、PG enum は原則不採用）の 5 基準と、全列の型カテゴリ別棚卸し表を掲載。
     §4 で「内部生成 id は UUID 型、外部が値を決める id（`entity_id`/`wtrealm`/`scim_id`/`kid`）は

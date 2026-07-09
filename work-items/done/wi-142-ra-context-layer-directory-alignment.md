@@ -1,10 +1,8 @@
 ---
-id: wi-142-ra-context-layer-directory-alignment
-title: saml / wsfederation のオーケストレーションを usecases 層へ抽出し層×コンテキスト格子に揃える
-created_at: 2026-07-08
-authors: [tn]
 status: completed
+authors: [tn]
 risk: medium
+created_at: 2026-07-08
 ---
 
 # saml / wsfederation のオーケストレーションを usecases 層へ抽出し層×コンテキスト格子に揃える

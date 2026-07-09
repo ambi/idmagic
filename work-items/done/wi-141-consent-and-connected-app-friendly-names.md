@@ -1,14 +1,14 @@
 ---
-id: wi-141-consent-and-connected-app-friendly-names
-title: 同意・連携済みアプリ画面で client_id を人間可読名で表示する
-created_at: 2026-07-05
-authors: [tn]
 status: completed
+authors: [tn]
 risk: low
+created_at: 2026-07-05
 ---
 
-# Motivation
-[idp-ADR-084](../decisions/idp-ADR-084-postgres-column-type-policy.md)（wi-127）で
+# 同意・連携済みアプリ画面で client_id を人間可読名で表示する
+
+## Motivation
+[ADR-084](../decisions/ADR-084-postgres-column-type-policy.md)（wi-127）で
 `clients.client_id` を UUID 型に閉じた結果、client_id をそのまま生表示している画面では、
 エンドユーザー / 管理者に `demo-client` のような可読名の代わりに
 `00000000-0000-4000-8000-000000000021` のような UUID が見えるようになった。機能は正常だが
@@ -24,7 +24,7 @@ UX が劣化している。
 同意 API 応答（`admin_consent_handler.go` / account consents）は現状 `client_id` のみを持ち、
 `client_name` やカタログ上のアプリ名を含まない。
 
-# Scope
+## Scope
 - **implementation**:
   - 同意 / 連携済みアプリの応答に、client_id を解決した表示名（OAuth2Client の
     `client_name`、無ければ Application カタログの名前、いずれも無ければ client_id に
@@ -41,11 +41,11 @@ UX が劣化している。
   - フォールバック順（client_name → app 名 → client_id）の単体テストと、e2e の該当アサーション
     （現状は UUID を待つ `ui-scenario-actions.spec.ts`）を可読名待ちに戻す。
 
-# Out of Scope
+## Out of Scope
 - client_id を UUID から可読値へ戻すこと（ADR-084 の方針は維持し、表示層のみで解決する）。
 - 同意・カタログのデータモデル自体の再設計。
 
-# Verification
+## Verification
 - `just yaml-check-work-items`
 - `just check-ids`
 - `just yaml-check`（SCL を変更した場合）
@@ -53,11 +53,11 @@ UX が劣化している。
 - 手動確認: 連携済みアプリ / 管理同意画面で client が可読名で表示され、UUID は補助表記に
   留まる。表示名が無い client では client_id にフォールバックする。
 
-# Risk Notes
+## Risk Notes
 表示層と応答の拡張が中心で波及は小さい。ただし表示名の解決順（client_name / catalog / fallback）
 を一貫させないと画面ごとに表示が食い違うため、解決ロジックは 1 箇所に集約する。
 
-# Plan
+## Plan
 解決ロジックを共有 `support` パッケージの 1 箇所（`ClientDisplayNameResolver`）に集約する。
 既存の `support.ApplicationGate`（Application コンテキストを OAuth2/Authentication へ橋渡しする
 narrow adapter）と同じ構図で、composition root で一度だけ組み立て、OAuth2 admin consents /
@@ -72,7 +72,7 @@ Authentication account consents 両ハンドラへ注入する。解決順は cl
 - UI: 主表示を可読名・UUID を補助（tooltip / secondary）へ。取消メッセージも可読名。
 - test: フォールバック順の単体テスト、handler テスト更新、e2e を可読名待ちへ。
 
-# Tasks
+## Tasks
 - [x] T001 SCL: `AdminConsentResponse`/`AccountConsentResponse` に表示名フィールド追加 + `just yaml-check` + `just scl-render`
 - [x] T002 resolver: `ClientDisplayNameResolver` 実装 + 単体テスト（フォールバック順）
 - [x] T003 handlers: admin/account consent 応答 enrich + composition root 配線
@@ -80,7 +80,7 @@ Authentication account consents 両ハンドラへ注入する。解決順は cl
 - [x] T005 test: handler テスト更新、e2e を可読名待ちへ戻す
 - [x] T006 検証: `just verify` / `just yaml-check` / `just check-ids` グリーン、完了記録・done 移動・commit
 
-# Completion
+## Completion
 - **Completed At**: 2026-07-07
 - **Summary**:
   client_id → 表示名の解決ロジックを `internal/shared/adapters/http/support/client_display_name.go`

@@ -1,0 +1,43 @@
+---
+status: pending
+authors: ["tn"]
+risk: high
+created_at: 2026-07-04
+---
+
+# PostgreSQL・Valkey・署名鍵のバックアップ／リストアと DR runbook（RPO/RTO 目標付き）を整備する
+
+## Motivation
+WI-11（運用資産）はバックアップ・リストア自動化、DR、マルチリージョンを
+明示的に out of scope としており、他のどの WI もこれを扱っていない。しかし
+IdP はダウンすると全依存システムの認証が止まる単一障害点であり、
+「復旧できるか」「どこまで戻るか（RPO）」「どれだけで戻せるか（RTO）」が
+未定義のままではプロダクションレディとは言えない。特に tenant-scoped signing key を
+失うと発行済みトークンの検証系全体が壊れるため、鍵の退避と復旧は最優先。
+
+Keycloak は本番運用ガイドで DB バックアップ／リストアとダウングレード不可の
+スキーマ整合を明記し、realm 単位のエクスポートも提供する。idmagic も
+永続層（PostgreSQL の構造 + データ）、揮発層（Valkey に載る session/PAR/code の
+復旧不能性の割り切り）、鍵素材（KeyStore / Vault Transit 参照）ごとに
+バックアップ対象・整合順序・リストア手順を runbook として持つべきである。
+
+## Scope
+- **decision**: 新規 ADR: バックアップ対象の分類（永続 = PostgreSQL、揮発 = Valkey、鍵 = KeyStore/Vault）、 各層の RPO/RTO 目標、リストア時の整合順序、鍵と DB の版整合（鍵ローテーション中の 復旧）方針を定義する。Valkey 揮発データは復旧対象外とする割り切りを明記する。
+- **documentation**: PostgreSQL の論理／物理バックアップ手順（pg_dump / PITR いずれかを選択）と、 deploy/schema/postgres.sql の宣言的スキーマとの整合手順を runbook 化する。, Vault Transit / envelope encryption（WI-97 と整合）配下の鍵素材の退避・復旧手順を書く。 平文鍵をバックアップに残さない前提を明記する。, リストア後の検証チェックリスト（JWKS 継続性、既発行トークン検証、tenant 疎通）を作る。, 障害シナリオ別 DR 手順（DB 喪失 / リージョン喪失 / 鍵喪失 / 誤削除）を runbook にまとめる。
+- **tooling**: バックアップ取得・リストアを再現するスクリプト（またはジョブ定義）を deploy 配下に置き、 ローカル docker compose で restore drill を実行できるようにする。
+
+## Out of Scope
+- マルチリージョンのアクティブ／アクティブ構成。
+- 特定クラウドのマネージドバックアップ製品への依存実装。
+- アプリケーションロジック・HTTP API の変更。
+- 自動フェイルオーバーのオーケストレーション。
+
+## Verification
+- 手動: docker compose 上で PostgreSQL をバックアップ → 破棄 → リストアし、 tenant / user / client / 監査が復元され JWKS が継続することを確認する。
+- 手動: 鍵素材の退避・復旧手順で、既発行トークンの検証が復旧後も通ることを確認する。
+- 手動: runbook の各 DR シナリオを机上またはドリルで一度たどり、抜けを潰す。
+
+## Risk Notes
+誤ったリストア手順は tenant 混在や鍵不整合という不可逆な事故を生む。
+まず restore drill を CI/ローカルで反復可能にし、手順が実際に通ることを
+継続検証してから本番手順として確定する。鍵と DB の版整合を最優先で検証する。
