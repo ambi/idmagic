@@ -48,6 +48,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, type SelectOption } from '../../components/ui/select'
+import { isApplicationIconFile, safeApplicationIconURL } from '../../lib/applicationIcon'
 import type {
   AdminApplication,
   AdminApplicationDetail,
@@ -225,8 +226,9 @@ function initials(name: string): string {
 
 function AppIcon({ app, size = 'md' }: { app: AdminApplication; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'size-9 text-xs' : 'size-11 text-sm'
-  if (app.icon_url) {
-    return <img src={app.icon_url} alt="" className={`${dim} rounded-lg object-cover`} />
+  const iconURL = safeApplicationIconURL(app.icon_url)
+  if (iconURL) {
+    return <img src={iconURL} alt="" className={`${dim} rounded-lg object-cover`} />
   }
   return (
     <span
@@ -1017,7 +1019,7 @@ export function AdminApplicationEditPage({
   const app = detail.application
   const [name, setName] = useState(app.name)
   const [iconFile, setIconFile] = useState<File | null>(null)
-  const [iconPreview, setIconPreview] = useState(app.icon_url ?? '')
+  const [iconPreviewURL, setIconPreviewURL] = useState('')
   const [removeIcon, setRemoveIcon] = useState(false)
   const [launchURL, setLaunchURL] = useState(app.launch_url ?? '')
   const [status, setStatus] = useState<ApplicationStatus>(app.status)
@@ -1079,19 +1081,28 @@ export function AdminApplicationEditPage({
   const nameInvalid = name.trim() === ''
 
   function selectIconFile(file: File | null) {
+    if (file && !isApplicationIconFile(file)) {
+      setIconFile(null)
+      setRemoveIcon(false)
+      setError('アイコン画像は PNG / JPEG / WebP / GIF を選択してください。')
+      return
+    }
+    setError('')
     setIconFile(file)
     setRemoveIcon(false)
   }
 
   useEffect(() => {
     if (!iconFile) {
-      setIconPreview(removeIcon ? '' : (app.icon_url ?? ''))
+      setIconPreviewURL('')
       return
     }
     const url = URL.createObjectURL(iconFile)
-    setIconPreview(url)
+    setIconPreviewURL(url)
     return () => URL.revokeObjectURL(url)
-  }, [app.icon_url, iconFile, removeIcon])
+  }, [iconFile])
+
+  const iconPreview = iconPreviewURL || (removeIcon ? '' : safeApplicationIconURL(app.icon_url))
 
   async function submit(event: FormEvent) {
     event.preventDefault()

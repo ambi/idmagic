@@ -1603,7 +1603,7 @@ user_experience:
     - id: UX-APPLICATION-ICON-UPLOAD
       category: usability
       adoption: required
-      statement: AdminApplicationsはアイコンを URL 入力ではなくファイル選択またはドラッグ&ドロップで受け取り、アップロード後のプレビューを保存済み配信 URL で表示する。不正形式・過大サイズは同じ画面で拒否理由を表示する。
+      statement: AdminApplicationsはアイコンを URL 入力ではなくファイル選択またはドラッグ&ドロップで受け取り、ローカルプレビューとアップロード後のプレビューはいずれも PNG / JPEG / WebP / GIF または保存済み内部配信 URL のみを表示する。不正形式・過大サイズは同じ画面で拒否理由を表示する。
       screens:
         - AdminApplications
       interfaces:

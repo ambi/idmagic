@@ -23,6 +23,7 @@ import { reorderMyApplications } from '../../api/account'
 import { AuthenticationAPIError } from '../../api/core'
 import { AccountShell } from '../../components/AccountShell'
 import { Card } from '../../components/ui/card'
+import { safeApplicationIconURL } from '../../lib/applicationIcon'
 import type { MyApplication, PortalCategory } from '../../types'
 
 function initials(name: string): string {
@@ -30,14 +31,10 @@ function initials(name: string): string {
 }
 
 function AppIcon({ app }: { app: MyApplication }) {
-  if (app.icon_url) {
+  const iconURL = safeApplicationIconURL(app.icon_url)
+  if (iconURL) {
     return (
-      <img
-        src={app.icon_url}
-        alt=""
-        className="size-12 rounded-xl object-cover"
-        aria-hidden="true"
-      />
+      <img src={iconURL} alt="" className="size-12 rounded-xl object-cover" aria-hidden="true" />
     )
   }
   return (
