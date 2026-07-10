@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 const maxJWKSBytes = 1 << 20
@@ -78,7 +78,7 @@ func ValidateJWKSURI(raw string) error {
 	return nil
 }
 
-func (r *JWKResolver) Resolve(ctx context.Context, client *spec.OAuth2Client) ([]map[string]any, error) {
+func (r *JWKResolver) Resolve(ctx context.Context, client *oauthdomain.OAuth2Client) ([]map[string]any, error) {
 	if keys, err := InlineJWKs(client.JWKS); err == nil {
 		return keys, nil
 	}

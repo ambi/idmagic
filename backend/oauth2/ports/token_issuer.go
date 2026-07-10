@@ -3,11 +3,13 @@ package ports
 import (
 	"context"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type AccessTokenInput struct {
-	Client           *spec.OAuth2Client
+	Client           *domain.OAuth2Client
 	Sub              string
 	Scopes           []string
 	SenderConstraint *spec.SenderConstraint
@@ -31,7 +33,7 @@ type AccessTokenInput struct {
 }
 
 type IDTokenInput struct {
-	Client    *spec.OAuth2Client
+	Client    *domain.OAuth2Client
 	User      *spec.User
 	Scopes    []string
 	Nonce     *string

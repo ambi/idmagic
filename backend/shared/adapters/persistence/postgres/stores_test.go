@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -207,15 +209,15 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	detailType := &spec.AuthorizationDetailType{
+	detailType := &oauthdomain.AuthorizationDetailType{
 		TenantID:        tenant.ID,
 		Type:            "payment_initiation",
 		Description:     "Payment initiation details",
 		DisplayTemplate: "Pay {{.amount}}",
-		State:           spec.DetailTypeEnabled,
-		Schema: spec.AuthorizationDetailsSchema{
-			Rules: []spec.AuthorizationDetailFieldRule{
-				{Name: "currency", Semantics: spec.DetailFieldEnum, Allowed: []string{"USD", "JPY"}},
+		State:           oauthdomain.DetailTypeEnabled,
+		Schema: oauthdomain.AuthorizationDetailsSchema{
+			Rules: []oauthdomain.AuthorizationDetailFieldRule{
+				{Name: "currency", Semantics: oauthdomain.DetailFieldEnum, Allowed: []string{"USD", "JPY"}},
 			},
 		},
 		CreatedAt: now,
@@ -229,10 +231,10 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find by type: %v %+v", err, got)
 	}
-	if got.DisplayTemplate != "Pay {{.amount}}" || got.State != spec.DetailTypeEnabled {
+	if got.DisplayTemplate != "Pay {{.amount}}" || got.State != oauthdomain.DetailTypeEnabled {
 		t.Fatalf("unexpected detail type: %+v", got)
 	}
-	if len(got.Schema.Rules) != 1 || got.Schema.Rules[0].Semantics != spec.DetailFieldEnum {
+	if len(got.Schema.Rules) != 1 || got.Schema.Rules[0].Semantics != oauthdomain.DetailFieldEnum {
 		t.Fatalf("schema not round-tripped: %+v", got.Schema)
 	}
 
@@ -366,7 +368,7 @@ func TestOutboxEventSinkEmit(t *testing.T) {
 	ctx := context.Background()
 
 	clientID := newUUID(t)
-	event := &spec.ClientRegistered{
+	event := &oauthdomain.ClientRegistered{
 		At:         testClock(),
 		TenantID:   spec.DefaultTenantID,
 		ClientID:   clientID,

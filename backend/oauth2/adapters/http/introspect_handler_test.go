@@ -30,14 +30,14 @@ const (
 func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.Echo {
 	clientRepo := memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(introSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: introClientID, ClientSecretHash: &secretHash,
 		ClientType:   spec.ClientConfidential,
 		RedirectURIs: []string{"https://rs.example/cb"}, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic, Scope: "api",
-		FapiProfile: spec.FapiNone, CreatedAt: time.Now().UTC(),
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "api",
+		FapiProfile: domain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 	e := echo.New()
 	deps := httpadapter.Deps{

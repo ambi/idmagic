@@ -23,17 +23,17 @@ func newDeviceFixture() deviceFixture {
 	deviceStore := memory.NewDeviceCodeStore()
 	refreshStore := memory.NewRefreshTokenStore()
 	now := time.Now().UTC()
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: "device-client", ClientType: spec.ClientPublic,
 		RedirectURIs: []string{"https://device.example/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantDeviceCode, spec.GrantRefreshToken},
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
-		TokenEndpointAuthMethod:  spec.AuthMethodNone,
+		TokenEndpointAuthMethod:  domain.AuthMethodNone,
 		Scope:                    "openid profile",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
 	userRepo.Seed(&spec.User{

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -18,12 +20,12 @@ func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent
 	clientRepo := memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
-	_ = clientRepo.Save(context.Background(), &spec.OAuth2Client{
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{"https://app.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: spec.FapiNone, CreatedAt: now,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
 	userRepo.Seed(&spec.User{
 		ID: "operator", TenantID: spec.DefaultTenantID, PreferredUsername: "operator",

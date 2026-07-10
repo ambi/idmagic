@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -22,21 +24,21 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	now := time.Now().UTC()
 	data := []struct {
 		tenantID string
-		consent  spec.Consent
+		consent  oauthdomain.Consent
 	}{
 		{
 			tenantID: spec.DefaultTenantID,
-			consent: spec.Consent{
+			consent: oauthdomain.Consent{
 				UserID: "alice", ClientID: "portal",
-				Scopes: []string{"openid", "profile"}, State: spec.ConsentGranted,
+				Scopes: []string{"openid", "profile"}, State: oauthdomain.ConsentGranted,
 				GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
 			},
 		},
 		{
 			tenantID: "acme",
-			consent: spec.Consent{
+			consent: oauthdomain.Consent{
 				UserID: "alice", ClientID: "portal",
-				Scopes: []string{"openid"}, State: spec.ConsentGranted,
+				Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 				GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
 			},
 		},
@@ -93,13 +95,13 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if revoked == nil || revoked.State != spec.ConsentRevoked || revoked.RevokedAt == nil {
+	if revoked == nil || revoked.State != oauthdomain.ConsentRevoked || revoked.RevokedAt == nil {
 		t.Fatalf("consent not revoked: %+v", revoked)
 	}
 	if len(*events) != 1 || (*events)[0].EventType() != "ConsentRevoked" {
 		t.Fatalf("events=%v", *events)
 	}
-	event, ok := (*events)[0].(*spec.ConsentRevokedEvent)
+	event, ok := (*events)[0].(*oauthdomain.ConsentRevokedEvent)
 	if !ok || event.ActorUserID != "admin" {
 		t.Fatalf("event=%+v", (*events)[0])
 	}
@@ -108,9 +110,9 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 	e, consents, _ := newAdminConsentHandler()
 	now := time.Now().UTC()
-	if err := consents.Save(context.Background(), "acme", &spec.Consent{
+	if err := consents.Save(context.Background(), "acme", &oauthdomain.Consent{
 		UserID: "alice", ClientID: "portal", Scopes: []string{"openid"},
-		State: spec.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -94,10 +96,10 @@ func SeedGroup(t *testing.T, db sharedpg.DB, tenantID string) *spec.Group {
 }
 
 // SeedClient は指定テナントに OAuth2 クライアントを作成して返す。
-func SeedClient(t *testing.T, db sharedpg.DB, tenantID string) *spec.OAuth2Client {
+func SeedClient(t *testing.T, db sharedpg.DB, tenantID string) *oauthdomain.OAuth2Client {
 	t.Helper()
 	now := TestClock()
-	client := &spec.OAuth2Client{
+	client := &oauthdomain.OAuth2Client{
 		TenantID:                 tenantID,
 		ClientID:                 NewUUID(t),
 		ClientType:               spec.ClientConfidential,
@@ -105,10 +107,10 @@ func SeedClient(t *testing.T, db sharedpg.DB, tenantID string) *spec.OAuth2Clien
 		RedirectURIs:             []string{"https://client.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid offline_access",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}

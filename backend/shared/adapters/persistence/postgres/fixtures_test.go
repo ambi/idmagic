@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -86,10 +88,10 @@ func seedUser(t *testing.T, db DB, tenantID string) *spec.User {
 }
 
 // seedClient は指定テナントに OAuth2 クライアントを作成して返す。
-func seedClient(t *testing.T, db DB, tenantID string) *spec.OAuth2Client {
+func seedClient(t *testing.T, db DB, tenantID string) *oauthdomain.OAuth2Client {
 	t.Helper()
 	now := testClock()
-	client := &spec.OAuth2Client{
+	client := &oauthdomain.OAuth2Client{
 		TenantID:                 tenantID,
 		ClientID:                 newUUID(t),
 		ClientType:               spec.ClientConfidential,
@@ -97,10 +99,10 @@ func seedClient(t *testing.T, db DB, tenantID string) *spec.OAuth2Client {
 		RedirectURIs:             []string{"https://client.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid offline_access",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}

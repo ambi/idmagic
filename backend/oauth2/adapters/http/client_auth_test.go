@@ -26,23 +26,23 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func clientAuthServer(method spec.TokenEndpointAuthMethod) *echo.Echo {
+func clientAuthServer(method domain.TokenEndpointAuthMethod) *echo.Echo {
 	repo := memory.NewClientRepository()
 	var secretHash *string
-	if method == spec.AuthMethodClientSecretBasic || method == spec.AuthMethodClientSecretPost {
+	if method == domain.AuthMethodClientSecretBasic || method == domain.AuthMethodClientSecretPost {
 		hash := domain.HashClientSecret("secret")
 		secretHash = &hash
 	}
 	clientType := spec.ClientConfidential
-	if method == spec.AuthMethodNone {
+	if method == domain.AuthMethodNone {
 		clientType = spec.ClientPublic
 	}
 	var subjectDN *string
-	if method == spec.AuthMethodTlsClientAuth {
+	if method == domain.AuthMethodTlsClientAuth {
 		value := "CN=client"
 		subjectDN = &value
 	}
-	repo.Seed(&spec.OAuth2Client{
+	repo.Seed(&domain.OAuth2Client{
 		ClientID: "client", ClientSecretHash: secretHash, ClientType: clientType,
 		RedirectURIs: []string{"https://client.example/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantClientCredentials},
@@ -53,7 +53,7 @@ func clientAuthServer(method spec.TokenEndpointAuthMethod) *echo.Echo {
 		TlsClientAuthSubjectDN:   subjectDN,
 		Scope:                    "api",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now(),
 	})
 	deps := Deps{Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo}
@@ -73,7 +73,7 @@ func clientAuthServer(method spec.TokenEndpointAuthMethod) *echo.Echo {
 
 func TestTLSClientAuthentication(t *testing.T) {
 	header := clientCertificateHeader(t, "client")
-	e := clientAuthServer(spec.AuthMethodTlsClientAuth)
+	e := clientAuthServer(domain.AuthMethodTlsClientAuth)
 	form := url.Values{"client_id": {"client"}}
 	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -107,7 +107,7 @@ func clientCertificateHeader(t *testing.T, commonName string) string {
 
 func TestClientAuthenticationMethods(t *testing.T) {
 	t.Run("basic succeeds only when declared", func(t *testing.T) {
-		e := clientAuthServer(spec.AuthMethodClientSecretBasic)
+		e := clientAuthServer(domain.AuthMethodClientSecretBasic)
 		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(url.Values{}.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.SetBasicAuth("client", "secret")
@@ -117,7 +117,7 @@ func TestClientAuthenticationMethods(t *testing.T) {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
 
-		e = clientAuthServer(spec.AuthMethodClientSecretPost)
+		e = clientAuthServer(domain.AuthMethodClientSecretPost)
 		rec = httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 		if rec.Code == http.StatusOK {
@@ -127,11 +127,11 @@ func TestClientAuthenticationMethods(t *testing.T) {
 
 	t.Run("post and none succeed when declared", func(t *testing.T) {
 		for _, tc := range []struct {
-			method spec.TokenEndpointAuthMethod
+			method domain.TokenEndpointAuthMethod
 			form   url.Values
 		}{
-			{spec.AuthMethodClientSecretPost, url.Values{"client_id": {"client"}, "client_secret": {"secret"}}},
-			{spec.AuthMethodNone, url.Values{"client_id": {"client"}}},
+			{domain.AuthMethodClientSecretPost, url.Values{"client_id": {"client"}, "client_secret": {"secret"}}},
+			{domain.AuthMethodNone, url.Values{"client_id": {"client"}}},
 		} {
 			e := clientAuthServer(tc.method)
 			req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(tc.form.Encode()))
@@ -145,7 +145,7 @@ func TestClientAuthenticationMethods(t *testing.T) {
 	})
 
 	t.Run("mixed methods are rejected", func(t *testing.T) {
-		e := clientAuthServer(spec.AuthMethodClientSecretBasic)
+		e := clientAuthServer(domain.AuthMethodClientSecretBasic)
 		form := url.Values{"client_id": {"client"}, "client_secret": {"secret"}}
 		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -159,7 +159,7 @@ func TestClientAuthenticationMethods(t *testing.T) {
 }
 
 func TestClientAuthenticationFailuresAreUniform(t *testing.T) {
-	e := clientAuthServer(spec.AuthMethodClientSecretBasic)
+	e := clientAuthServer(domain.AuthMethodClientSecretBasic)
 	request := func(clientID, secret string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
 		req.SetBasicAuth(clientID, secret)
@@ -180,7 +180,7 @@ func TestClientAuthenticationFailuresAreUniform(t *testing.T) {
 		}
 	}
 
-	postServer := clientAuthServer(spec.AuthMethodClientSecretPost)
+	postServer := clientAuthServer(domain.AuthMethodClientSecretPost)
 	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
 	req.SetBasicAuth("client", "secret")
 	rec := httptest.NewRecorder()
@@ -202,18 +202,18 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		"e":   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.PublicKey.E)).Bytes()),
 	}
 	repo := memory.NewClientRepository()
-	repo.Seed(&spec.OAuth2Client{
+	repo.Seed(&domain.OAuth2Client{
 		ClientID: "private-client", ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{"https://client.example/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
-		TokenEndpointAuthMethod:  spec.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,
 		Scope:                    "api",
 		JWKS:                     map[string]any{"keys": []any{jwk}},
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now(),
 	})
 	deps := Deps{

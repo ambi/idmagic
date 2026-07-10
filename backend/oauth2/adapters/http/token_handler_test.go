@@ -31,7 +31,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 
 	// confidential client
 	secretHash := domain.HashClientSecret("secret-conf")
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID:                spec.DefaultTenantID,
 		ClientID:                "client-conf",
 		ClientSecretHash:        &secretHash,
@@ -39,23 +39,23 @@ func newTokenServer(t *testing.T) tokenFixture {
 		RedirectURIs:            []string{"https://app.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretPost,
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
 		Scope:                   "openid profile",
-		FapiProfile:             spec.FapiNone,
+		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 
 	// public client
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID:                spec.DefaultTenantID,
 		ClientID:                "client-pub",
 		ClientType:              spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodNone,
+		TokenEndpointAuthMethod: domain.AuthMethodNone,
 		Scope:                   "openid profile",
-		FapiProfile:             spec.FapiNone,
+		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -51,7 +53,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	consent := &spec.Consent{
+	consent := &oauthdomain.Consent{
 		UserID:   user.ID,
 		ClientID: client.ClientID,
 		Scopes:   []string{"openid", "profile"},
@@ -67,7 +69,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
-	if got.State != spec.ConsentGranted || len(got.Scopes) != 2 {
+	if got.State != oauthdomain.ConsentGranted || len(got.Scopes) != 2 {
 		t.Fatalf("unexpected consent: %+v", got)
 	}
 
@@ -80,7 +82,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("revoke: %v", err)
 	}
 	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
-	if err != nil || got == nil || got.State != spec.ConsentRevoked {
+	if err != nil || got == nil || got.State != oauthdomain.ConsentRevoked {
 		t.Fatalf("expected revoked: %v %+v", err, got)
 	}
 

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -109,13 +111,13 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 	e, clients, _ := newAdminOAuth2ClientHandler(t)
 	now := time.Now().UTC()
-	clients.Seed(&spec.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: "acme", ClientID: "portal", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://portal.example/callback"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodNone, IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile: spec.FapiNone, CreatedAt: now,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
 	request := httptest.NewRequest(http.MethodGet, "/api/admin/clients/portal", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")

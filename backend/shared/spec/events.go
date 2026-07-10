@@ -13,16 +13,6 @@ type DomainEvent interface {
 	OccurredAt() time.Time
 }
 
-type ClientRegistered struct {
-	At         time.Time  `json:"-"`
-	TenantID   string     `json:"tenantId"`
-	ClientID   string     `json:"clientId"`
-	ClientType ClientType `json:"clientType"`
-}
-
-func (e *ClientRegistered) EventType() string     { return "ClientRegistered" }
-func (e *ClientRegistered) OccurredAt() time.Time { return e.At }
-
 type UserAuthenticated struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
@@ -596,59 +586,6 @@ type AgentCredentialUnbound struct {
 
 func (e *AgentCredentialUnbound) EventType() string     { return "AgentCredentialUnbound" }
 func (e *AgentCredentialUnbound) OccurredAt() time.Time { return e.At }
-
-type AdminOAuth2ClientCreated struct {
-	At          time.Time `json:"-"`
-	TenantID    string    `json:"tenantId"`
-	ActorUserID string    `json:"actorUserId"`
-	ClientID    string    `json:"clientId"`
-}
-
-func (e *AdminOAuth2ClientCreated) EventType() string     { return "AdminOAuth2ClientCreated" }
-func (e *AdminOAuth2ClientCreated) OccurredAt() time.Time { return e.At }
-
-type AdminOAuth2ClientUpdated struct {
-	At            time.Time `json:"-"`
-	TenantID      string    `json:"tenantId"`
-	ActorUserID   string    `json:"actorUserId"`
-	ClientID      string    `json:"clientId"`
-	ChangedFields []string  `json:"changedFields"`
-}
-
-func (e *AdminOAuth2ClientUpdated) EventType() string     { return "AdminOAuth2ClientUpdated" }
-func (e *AdminOAuth2ClientUpdated) OccurredAt() time.Time { return e.At }
-
-type AdminOAuth2ClientDeleted struct {
-	At          time.Time `json:"-"`
-	TenantID    string    `json:"tenantId"`
-	ActorUserID string    `json:"actorUserId"`
-	ClientID    string    `json:"clientId"`
-}
-
-func (e *AdminOAuth2ClientDeleted) EventType() string     { return "AdminOAuth2ClientDeleted" }
-func (e *AdminOAuth2ClientDeleted) OccurredAt() time.Time { return e.At }
-
-type ConsentGrantedEvent struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	UserID   string    `json:"userId"`
-	ClientID string    `json:"clientId"`
-	Scopes   []string  `json:"scopes"`
-}
-
-func (e *ConsentGrantedEvent) EventType() string     { return "ConsentGranted" }
-func (e *ConsentGrantedEvent) OccurredAt() time.Time { return e.At }
-
-type ConsentRevokedEvent struct {
-	At          time.Time `json:"-"`
-	TenantID    string    `json:"tenantId"`
-	ActorUserID string    `json:"actorUserId,omitempty"`
-	UserID      string    `json:"userId"`
-	ClientID    string    `json:"clientId"`
-}
-
-func (e *ConsentRevokedEvent) EventType() string     { return "ConsentRevoked" }
-func (e *ConsentRevokedEvent) OccurredAt() time.Time { return e.At }
 
 // AuthorizationDetailsRequested はクライアントが authorization_details を要求し、
 // 登録 type 適合検証を通過したことを表す (RFC 9396 / ADR-050)。

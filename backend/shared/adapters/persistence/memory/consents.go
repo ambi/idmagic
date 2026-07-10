@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // =====================================================================
@@ -15,7 +15,7 @@ import (
 // =====================================================================
 
 type memConsent struct {
-	spec.Consent
+	oauthdomain.Consent
 	TenantID string
 }
 
@@ -28,7 +28,7 @@ func NewConsentRepository() *ConsentRepository {
 	return &ConsentRepository{consents: map[string]*memConsent{}}
 }
 
-func (r *ConsentRepository) Find(_ context.Context, tenantID, sub, clientID string) (*spec.Consent, error) {
+func (r *ConsentRepository) Find(_ context.Context, tenantID, sub, clientID string) (*oauthdomain.Consent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	mc := r.consents[consentKey(tenantID, sub, clientID)]
@@ -40,10 +40,10 @@ func (r *ConsentRepository) Find(_ context.Context, tenantID, sub, clientID stri
 	return &cloned, nil
 }
 
-func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*spec.Consent, error) {
+func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*oauthdomain.Consent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.Consent, 0)
+	out := make([]*oauthdomain.Consent, 0)
 	for _, mc := range r.consents {
 		if mc.TenantID != tenantID {
 			continue
@@ -52,7 +52,7 @@ func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*spec
 		cloned.Scopes = slices.Clone(mc.Scopes)
 		out = append(out, &cloned)
 	}
-	slices.SortFunc(out, func(a, b *spec.Consent) int {
+	slices.SortFunc(out, func(a, b *oauthdomain.Consent) int {
 		if a.UserID != b.UserID {
 			return strings.Compare(a.UserID, b.UserID)
 		}
@@ -61,7 +61,7 @@ func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*spec
 	return out, nil
 }
 
-func (r *ConsentRepository) Save(_ context.Context, tenantID string, c *spec.Consent) error {
+func (r *ConsentRepository) Save(_ context.Context, tenantID string, c *oauthdomain.Consent) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *c
@@ -81,7 +81,7 @@ func (r *ConsentRepository) Revoke(_ context.Context, tenantID, sub, clientID st
 		return nil
 	}
 	now := time.Now().UTC()
-	mc.State = spec.ConsentRevoked
+	mc.State = oauthdomain.ConsentRevoked
 	mc.RevokedAt = &now
 	return nil
 }

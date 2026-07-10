@@ -8,21 +8,22 @@ import (
 	"strings"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
 type authorizationDetailTypeRequest struct {
-	Type            string                            `json:"type"`
-	Description     string                            `json:"description"`
-	Schema          spec.AuthorizationDetailsSchema   `json:"schema"`
-	DisplayTemplate string                            `json:"display_template"`
-	State           spec.AuthorizationDetailTypeState `json:"state"`
+	Type            string                                   `json:"type"`
+	Description     string                                   `json:"description"`
+	Schema          oauthdomain.AuthorizationDetailsSchema   `json:"schema"`
+	DisplayTemplate string                                   `json:"display_template"`
+	State           oauthdomain.AuthorizationDetailTypeState `json:"state"`
 }
 
-func toAuthorizationDetailTypeResponse(t *spec.AuthorizationDetailType) map[string]any {
+func toAuthorizationDetailTypeResponse(t *oauthdomain.AuthorizationDetailType) map[string]any {
 	return map[string]any{
 		"tenant_id":        t.TenantID,
 		"type":             t.Type,
@@ -43,7 +44,7 @@ func (d Deps) handleListAuthorizationDetailTypes(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	slices.SortFunc(types, func(a, b *spec.AuthorizationDetailType) int { return strings.Compare(a.Type, b.Type) })
+	slices.SortFunc(types, func(a, b *oauthdomain.AuthorizationDetailType) int { return strings.Compare(a.Type, b.Type) })
 	out := make([]map[string]any, len(types))
 	for i, t := range types {
 		out[i] = toAuthorizationDetailTypeResponse(t)
@@ -90,9 +91,9 @@ func (d Deps) handleCreateAuthorizationDetailType(c *echo.Context) error {
 	now := time.Now().UTC()
 	state := req.State
 	if state == "" {
-		state = spec.DetailTypeEnabled
+		state = oauthdomain.DetailTypeEnabled
 	}
-	t := &spec.AuthorizationDetailType{
+	t := &oauthdomain.AuthorizationDetailType{
 		TenantID: tenantID, Type: req.Type, Description: req.Description,
 		Schema: req.Schema, DisplayTemplate: req.DisplayTemplate, State: state,
 		CreatedAt: now, UpdatedAt: now,
@@ -151,7 +152,7 @@ func (d Deps) handleDeleteAuthorizationDetailType(c *echo.Context) error {
 
 // saveValidatedType は登録 type を schema 検証してから保存する。display_template が
 // 参照するフィールドが schema 規則に存在するかも軽く確認する (fail-closed 寄り)。
-func (d Deps) saveValidatedType(c *echo.Context, t *spec.AuthorizationDetailType) error {
+func (d Deps) saveValidatedType(c *echo.Context, t *oauthdomain.AuthorizationDetailType) error {
 	if err := t.Validate(); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_type", err.Error())
 	}

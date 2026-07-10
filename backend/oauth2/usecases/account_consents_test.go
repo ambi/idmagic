@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -19,10 +21,10 @@ func accountConsentCtx() context.Context {
 	)
 }
 
-func saveConsent(t *testing.T, repo *memory.ConsentRepository, sub, client string, state spec.ConsentState) {
+func saveConsent(t *testing.T, repo *memory.ConsentRepository, sub, client string, state domain.ConsentState) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := repo.Save(accountConsentCtx(), spec.DefaultTenantID, &spec.Consent{
+	if err := repo.Save(accountConsentCtx(), spec.DefaultTenantID, &domain.Consent{
 		UserID: sub, ClientID: client, Scopes: []string{"openid"},
 		State: state, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
@@ -33,9 +35,9 @@ func saveConsent(t *testing.T, repo *memory.ConsentRepository, sub, client strin
 func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 	ctx := accountConsentCtx()
 	repo := memory.NewConsentRepository()
-	saveConsent(t, repo, "user-alice", "app-1", spec.ConsentGranted)
-	saveConsent(t, repo, "user-alice", "app-2", spec.ConsentRevoked)
-	saveConsent(t, repo, "user-bob", "app-3", spec.ConsentGranted)
+	saveConsent(t, repo, "user-alice", "app-1", domain.ConsentGranted)
+	saveConsent(t, repo, "user-alice", "app-2", domain.ConsentRevoked)
+	saveConsent(t, repo, "user-bob", "app-3", domain.ConsentGranted)
 
 	got, err := usecases.ListConsentsForSub(ctx, usecases.ConsentDeps{ConsentRepo: repo}, "user-alice")
 	if err != nil {
@@ -49,7 +51,7 @@ func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 func TestRevokeConsentSelfMarksRevokedAndEmits(t *testing.T) {
 	ctx := accountConsentCtx()
 	repo := memory.NewConsentRepository()
-	saveConsent(t, repo, "user-alice", "app-1", spec.ConsentGranted)
+	saveConsent(t, repo, "user-alice", "app-1", domain.ConsentGranted)
 
 	var events []spec.DomainEvent
 	deps := usecases.ConsentDeps{ConsentRepo: repo, Emit: func(e spec.DomainEvent) { events = append(events, e) }}

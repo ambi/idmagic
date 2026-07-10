@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"sort"
 	"strings"
 
@@ -32,78 +31,6 @@ var tenantSchema = z.Struct(z.Shape{
 	"CreatedAt": z.Time().Required(),
 	"UpdatedAt": z.Time().Required(),
 })
-
-var oauth2ClientSchema = z.Struct(z.Shape{
-	"ClientID": z.String().Min(1).Max(128).Required(),
-	"ClientName": z.Ptr(
-		z.String().Min(1).Max(200),
-	),
-	"ClientType": z.StringLike[ClientType]().TestFunc(
-		func(value *ClientType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("client_type is not in enum"),
-	).Required(),
-	"RedirectURIs": z.Slice(
-		z.String().URL(),
-	),
-	"GrantTypes": z.Slice(
-		z.StringLike[GrantType]().TestFunc(
-			func(value *GrantType, _ z.Ctx) bool { return value.Valid() },
-			z.Message("grant_type is not in enum"),
-		),
-	).Min(1).Required(),
-	"ResponseTypes": z.Slice(
-		z.StringLike[ResponseType]().TestFunc(
-			func(value *ResponseType, _ z.Ctx) bool { return value.Valid() },
-			z.Message("response_type is not in enum"),
-		),
-	),
-	"TokenEndpointAuthMethod": z.StringLike[TokenEndpointAuthMethod]().TestFunc(
-		func(value *TokenEndpointAuthMethod, _ z.Ctx) bool { return value.Valid() },
-		z.Message("token_endpoint_auth_method is not in enum"),
-	).Required(),
-	"IDTokenSignedResponseAlg": z.StringLike[SignatureAlgorithm]().TestFunc(
-		func(value *SignatureAlgorithm, _ z.Ctx) bool { return value.Valid() },
-		z.Message("id_token_signed_response_alg is not in enum"),
-	).Required(),
-	"FapiProfile": z.StringLike[FapiProfile]().TestFunc(
-		func(value *FapiProfile, _ z.Ctx) bool { return value.Valid() },
-		z.Message("fapi_profile is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	client, ok := value.(*OAuth2Client)
-	if !ok {
-		return false
-	}
-	switch client.TokenEndpointAuthMethod {
-	case AuthMethodPrivateKeyJwt:
-		return hasJWKs(client.JWKS) || client.JwksURI != nil && *client.JwksURI != ""
-	case AuthMethodTlsClientAuth:
-		return client.TlsClientAuthSubjectDN != nil && *client.TlsClientAuthSubjectDN != ""
-	default:
-		return true
-	}
-}, z.Message("client authentication method requires matching credentials")).
-	TestFunc(func(value any, _ z.Ctx) bool {
-		client, ok := value.(*OAuth2Client)
-		if !ok {
-			return false
-		}
-		// redirect 系グラント (authorization_code) は redirect_uri を必須とする
-		// (RFC 6749 §3.1.2)。client_credentials のみの M2M クライアントは redirect を持たない。
-		if clientUsesRedirect(client) {
-			return len(client.RedirectURIs) > 0
-		}
-		return true
-	}, z.Message("redirect_uris is required for redirect-based grants"))
-
-// clientUsesRedirect は client が redirect 系グラント (authorization_code) または
-// code response_type を使うかを返す。これらは redirect_uri を必要とする。
-func clientUsesRedirect(client *OAuth2Client) bool {
-	return slices.Contains(client.GrantTypes, GrantAuthorizationCode) ||
-		slices.Contains(client.ResponseTypes, ResponseTypeCode)
-}
 
 var userSchema = z.Struct(z.Shape{
 	"ID":                z.String().Required(),
@@ -179,27 +106,6 @@ var agentCredentialBindingSchema = z.Struct(z.Shape{
 	"CreatedAt": z.Time().Required(),
 })
 
-var authorizationDetailTypeSchema = z.Struct(z.Shape{
-	"TenantID":        z.String().Min(1).Required(),
-	"Type":            z.String().Min(1).Required(),
-	"DisplayTemplate": z.String().Min(1).Required(),
-	"State": z.StringLike[AuthorizationDetailTypeState]().TestFunc(
-		func(value *AuthorizationDetailTypeState, _ z.Ctx) bool { return value.Valid() },
-		z.Message("authorization detail type state is not in enum"),
-	).Required(),
-	"Schema": z.Struct(z.Shape{
-		"Rules": z.Slice(z.Struct(z.Shape{
-			"Name": z.String().Min(1).Required(),
-			"Semantics": z.StringLike[AuthorizationDetailFieldSemantics]().TestFunc(
-				func(value *AuthorizationDetailFieldSemantics, _ z.Ctx) bool { return value.Valid() },
-				z.Message("authorization detail field semantics is not in enum"),
-			).Required(),
-		})).Min(1).Required(),
-	}),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
-
 var mfaFactorSchema = z.Struct(z.Shape{
 	"UserID": z.String().Required(),
 	"Type": z.StringLike[MfaFactorType]().TestFunc(
@@ -224,18 +130,6 @@ var recoveryCodeSchema = z.Struct(z.Shape{
 	"UserID":      z.String().Required(),
 	"CodeHash":    z.String().Required(),
 	"GeneratedAt": z.Time().Required(),
-})
-
-var consentSchema = z.Struct(z.Shape{
-	"UserID":   z.String().Required(),
-	"ClientID": z.String().Required(),
-	"Scopes":   z.Slice(z.String()).Min(1).Required(),
-	"State": z.StringLike[ConsentState]().TestFunc(
-		func(value *ConsentState, _ z.Ctx) bool { return value.Valid() },
-		z.Message("state is not in enum"),
-	).Required(),
-	"GrantedAt": z.Time().Required(),
-	"ExpiresAt": z.Time().Required(),
 })
 
 var authorizationRequestSchema = z.Struct(z.Shape{
@@ -326,6 +220,18 @@ var deviceAuthorizationSchema = z.Struct(z.Shape{
 
 func validate(schema *z.StructSchema, value any) error {
 	return zogError(schema.Validate(value))
+}
+
+// Validate は zog スキーマによるフィールド検証を行う。per-context domain パッケージが
+// 自身のスキーマを検証するための汎用ラッパー (ADR-093)。
+func Validate(schema *z.StructSchema, value any) error {
+	return validate(schema, value)
+}
+
+// ZogError は zog の検証結果をメッセージ結合済みの error へ変換する。per-context domain
+// パッケージが自身の Validate() 実装から呼び出す汎用ラッパー (ADR-093)。
+func ZogError(issues z.ZogIssueList) error {
+	return zogError(issues)
 }
 
 func zogError(issues z.ZogIssueList) error {

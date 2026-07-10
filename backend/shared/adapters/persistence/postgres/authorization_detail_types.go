@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/jackc/pgx/v5"
 )
 
 // AuthorizationDetailTypeRepository は RFC 9396 authorization_details の type 定義
@@ -18,8 +18,8 @@ type AuthorizationDetailTypeRepository struct{ Pool DB }
 const authorizationDetailTypeSelect = `SELECT tenant_id,type,description,schema,display_template,
 state,created_at,updated_at FROM authorization_detail_types`
 
-func scanAuthorizationDetailType(row RowScanner) (*spec.AuthorizationDetailType, error) {
-	var t spec.AuthorizationDetailType
+func scanAuthorizationDetailType(row RowScanner) (*oauthdomain.AuthorizationDetailType, error) {
+	var t oauthdomain.AuthorizationDetailType
 	var schema []byte
 	err := row.Scan(&t.TenantID, &t.Type, &t.Description, &schema, &t.DisplayTemplate,
 		&t.State, &t.CreatedAt, &t.UpdatedAt)
@@ -37,13 +37,13 @@ func scanAuthorizationDetailType(row RowScanner) (*spec.AuthorizationDetailType,
 	return &t, t.Validate()
 }
 
-func (r *AuthorizationDetailTypeRepository) ListByTenant(ctx context.Context, tenantID string) ([]*spec.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) ListByTenant(ctx context.Context, tenantID string) ([]*oauthdomain.AuthorizationDetailType, error) {
 	rows, err := r.Pool.Query(ctx, authorizationDetailTypeSelect+" WHERE tenant_id=$1 ORDER BY type", tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []*spec.AuthorizationDetailType{}
+	out := []*oauthdomain.AuthorizationDetailType{}
 	for rows.Next() {
 		t, err := scanAuthorizationDetailType(rows)
 		if err != nil {
@@ -54,12 +54,12 @@ func (r *AuthorizationDetailTypeRepository) ListByTenant(ctx context.Context, te
 	return out, rows.Err()
 }
 
-func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tenantID, detailType string) (*spec.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tenantID, detailType string) (*oauthdomain.AuthorizationDetailType, error) {
 	return scanAuthorizationDetailType(r.Pool.QueryRow(ctx,
 		authorizationDetailTypeSelect+" WHERE tenant_id=$1 AND type=$2", tenantID, detailType))
 }
 
-func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *spec.AuthorizationDetailType) error {
+func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *oauthdomain.AuthorizationDetailType) error {
 	schema, err := json.Marshal(t.Schema)
 	if err != nil {
 		return err

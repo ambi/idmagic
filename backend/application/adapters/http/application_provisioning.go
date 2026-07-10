@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
@@ -34,11 +36,11 @@ type createApplicationRequest struct {
 	// OIDC
 	RedirectURIs []string `json:"redirect_uris"`
 	// OIDC / service の生成 client 設定。auth 方式は作成時に確定し以後不変。
-	Scope                   string                       `json:"scope"`
-	ClientType              spec.ClientType              `json:"client_type"`
-	TokenEndpointAuthMethod spec.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	JwksURI                 string                       `json:"jwks_uri"`
-	TLSClientAuthSubjectDN  string                       `json:"tls_client_auth_subject_dn"`
+	Scope                   string                              `json:"scope"`
+	ClientType              spec.ClientType                     `json:"client_type"`
+	TokenEndpointAuthMethod oauthdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
+	JwksURI                 string                              `json:"jwks_uri"`
+	TLSClientAuthSubjectDN  string                              `json:"tls_client_auth_subject_dn"`
 	// WS-Federation
 	Wtrealm      string   `json:"wtrealm"`
 	ReplyURLs    []string `json:"reply_urls"`
@@ -57,16 +59,16 @@ type createApplicationRequest struct {
 // advanced 項目を含めてアプリ編集画面に集約する (wi-76, ADR-066)。
 // ClientType / TokenEndpointAuthMethod / FapiProfile は更新契約上の不変項目で表示専用。
 type oidcConfig struct {
-	ClientID                string                       `json:"client_id"`
-	ClientType              spec.ClientType              `json:"client_type"`
-	RedirectURIs            []string                     `json:"redirect_uris"`
-	GrantTypes              []spec.GrantType             `json:"grant_types"`
-	ResponseTypes           []spec.ResponseType          `json:"response_types"`
-	TokenEndpointAuthMethod spec.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	Scope                   string                       `json:"scope"`
-	RequirePAR              bool                         `json:"require_pushed_authorization_requests"`
-	DpopBoundAccessTokens   bool                         `json:"dpop_bound_access_tokens"`
-	FapiProfile             spec.FapiProfile             `json:"fapi_profile"`
+	ClientID                string                              `json:"client_id"`
+	ClientType              spec.ClientType                     `json:"client_type"`
+	RedirectURIs            []string                            `json:"redirect_uris"`
+	GrantTypes              []spec.GrantType                    `json:"grant_types"`
+	ResponseTypes           []spec.ResponseType                 `json:"response_types"`
+	TokenEndpointAuthMethod oauthdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
+	Scope                   string                              `json:"scope"`
+	RequirePAR              bool                                `json:"require_pushed_authorization_requests"`
+	DpopBoundAccessTokens   bool                                `json:"dpop_bound_access_tokens"`
+	FapiProfile             oauthdomain.FapiProfile             `json:"fapi_profile"`
 }
 
 type wsfedConfig struct {
@@ -169,7 +171,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			Registration: oauthusecases.RegisterClientInput{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,
 				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
-				TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic, Scope: nonEmpty(req.Scope, defaultServiceScope),
+				TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: nonEmpty(req.Scope, defaultServiceScope),
 			},
 			Now: now,
 		})

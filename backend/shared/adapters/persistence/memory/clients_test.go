@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -15,7 +17,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 	t.Run("Save and FindByID", func(t *testing.T) {
 		name := "My Application"
 		secret := "secret-hash"
-		client := &spec.OAuth2Client{
+		client := &oauthdomain.OAuth2Client{
 			TenantID:                "tenant-1",
 			ClientID:                "client-1",
 			ClientSecretHash:        &secret,
@@ -23,7 +25,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 			ClientType:              spec.ClientConfidential,
 			RedirectURIs:            []string{"https://example.com/callback"},
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
-			TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 			CreatedAt:               time.Now(),
 		}
 
@@ -57,7 +59,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 	})
 
 	t.Run("Seed", func(t *testing.T) {
-		client := &spec.OAuth2Client{
+		client := &oauthdomain.OAuth2Client{
 			TenantID: "tenant-1",
 			ClientID: "client-seeded",
 		}
@@ -75,7 +77,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 
 	t.Run("FindAll", func(t *testing.T) {
 		// すでに client-1, client-seeded が tenant-1 に存在する
-		clientOther := &spec.OAuth2Client{
+		clientOther := &oauthdomain.OAuth2Client{
 			TenantID: "tenant-other",
 			ClientID: "client-other",
 		}

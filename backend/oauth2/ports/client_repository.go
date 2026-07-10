@@ -4,20 +4,20 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 type OAuth2ClientRepository interface {
-	FindByID(ctx context.Context, tenantID, clientID string) (*spec.OAuth2Client, error)
-	Save(ctx context.Context, c *spec.OAuth2Client) error
+	FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error)
+	Save(ctx context.Context, c *domain.OAuth2Client) error
 	Delete(ctx context.Context, tenantID, clientID string) error
-	FindAll(ctx context.Context, tenantID string) ([]*spec.OAuth2Client, error)
+	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)
 }
 
 type ConsentRepository interface {
-	Find(ctx context.Context, tenantID, sub, clientID string) (*spec.Consent, error)
-	FindAll(ctx context.Context, tenantID string) ([]*spec.Consent, error)
-	Save(ctx context.Context, tenantID string, c *spec.Consent) error
+	Find(ctx context.Context, tenantID, sub, clientID string) (*domain.Consent, error)
+	FindAll(ctx context.Context, tenantID string) ([]*domain.Consent, error)
+	Save(ctx context.Context, tenantID string, c *domain.Consent) error
 	Revoke(ctx context.Context, tenantID, sub, clientID string) error
 	// DeleteAllForSub は ADR-036 の anonymize cascade から呼ばれる。
 	// 対象 sub の Consent を物理削除する。

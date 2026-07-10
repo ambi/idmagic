@@ -15,7 +15,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 	result, err := RegisterClient(context.Background(), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
 	}, time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +36,7 @@ func TestRegisterPrivateKeyJWTRequiresInlineJWKS(t *testing.T) {
 	_, err := RegisterClient(context.Background(), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
-		TokenEndpointAuthMethod: spec.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
 	}, time.Now())
 	if err == nil {
 		t.Fatal("expected missing jwks rejection")

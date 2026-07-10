@@ -6,16 +6,16 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/jackc/pgx/v5"
 )
 
 // ConsentRepository (OAuth2)
 type ConsentRepository struct{ Pool DB }
 
-func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*spec.Consent, error) {
-	var c spec.Consent
+func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*oauthdomain.Consent, error) {
+	var c oauthdomain.Consent
 	var scopes []byte
 	err := r.Pool.QueryRow(ctx, `SELECT user_id,client_id,scopes,granted_at,expires_at,revoked_at
 FROM consents WHERE user_id=$1 AND client_id=$2`, sub, clientID).
@@ -31,16 +31,16 @@ FROM consents WHERE user_id=$1 AND client_id=$2`, sub, clientID).
 	}
 	switch {
 	case c.RevokedAt != nil:
-		c.State = spec.ConsentRevoked
+		c.State = oauthdomain.ConsentRevoked
 	case !time.Now().Before(c.ExpiresAt):
-		c.State = spec.ConsentExpired
+		c.State = oauthdomain.ConsentExpired
 	default:
-		c.State = spec.ConsentGranted
+		c.State = oauthdomain.ConsentGranted
 	}
 	return &c, nil
 }
 
-func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*spec.Consent, error) {
+func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*oauthdomain.Consent, error) {
 	rows, err := r.Pool.Query(ctx, `SELECT c.user_id,c.client_id,c.scopes,c.granted_at,c.expires_at,c.revoked_at
 FROM consents c JOIN users u ON c.user_id=u.id
 WHERE u.tenant_id=$1 ORDER BY c.user_id,c.client_id`, tenantID)
@@ -48,10 +48,10 @@ WHERE u.tenant_id=$1 ORDER BY c.user_id,c.client_id`, tenantID)
 		return nil, err
 	}
 	defer rows.Close()
-	var consents []*spec.Consent
+	var consents []*oauthdomain.Consent
 	now := time.Now()
 	for rows.Next() {
-		var consent spec.Consent
+		var consent oauthdomain.Consent
 		var scopes []byte
 		if err := rows.Scan(
 			&consent.UserID, &consent.ClientID, &scopes,
@@ -64,18 +64,18 @@ WHERE u.tenant_id=$1 ORDER BY c.user_id,c.client_id`, tenantID)
 		}
 		switch {
 		case consent.RevokedAt != nil:
-			consent.State = spec.ConsentRevoked
+			consent.State = oauthdomain.ConsentRevoked
 		case !now.Before(consent.ExpiresAt):
-			consent.State = spec.ConsentExpired
+			consent.State = oauthdomain.ConsentExpired
 		default:
-			consent.State = spec.ConsentGranted
+			consent.State = oauthdomain.ConsentGranted
 		}
 		consents = append(consents, &consent)
 	}
 	return consents, rows.Err()
 }
 
-func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *spec.Consent) error {
+func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *oauthdomain.Consent) error {
 	scopes, err := json.Marshal(c.Scopes)
 	if err != nil {
 		return err

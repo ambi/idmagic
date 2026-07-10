@@ -647,16 +647,16 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	scopes := strings.Fields(req.Scope)
 	if d.ConsentRepo != nil {
 		now := time.Now().UTC()
-		if err := d.ConsentRepo.Save(ctx, support.RequestTenantID(c), &spec.Consent{
+		if err := d.ConsentRepo.Save(ctx, support.RequestTenantID(c), &oauthdomain.Consent{
 			UserID: authn.UserID, ClientID: req.ClientID,
-			Scopes: scopes, State: spec.ConsentGranted,
+			Scopes: scopes, State: oauthdomain.ConsentGranted,
 			GrantedAt: now, ExpiresAt: now.Add(365 * 24 * time.Hour),
 			AuthorizationDetails: req.AuthorizationDetails,
 		}); err != nil {
 			return err
 		}
 		if d.Emit != nil {
-			d.Emit(&spec.ConsentGrantedEvent{At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID, Scopes: scopes})
+			d.Emit(&oauthdomain.ConsentGrantedEvent{At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID, Scopes: scopes})
 			if len(req.AuthorizationDetails) > 0 {
 				d.Emit(&spec.AuthorizationDetailsConsented{
 					At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID,
@@ -681,7 +681,7 @@ type authorizationNext struct {
 func (d Deps) completeAfterAuthn(
 	c *echo.Context,
 	req *spec.AuthorizationRequest,
-	client *spec.OAuth2Client,
+	client *oauthdomain.OAuth2Client,
 	authn *authdomain.AuthenticationContext,
 ) (authorizationNext, error) {
 	if authn.AuthenticationPending {
@@ -694,7 +694,7 @@ func (d Deps) completeAfterAuthn(
 			c.Request().Context(), support.RequestTenantID(c), authn.UserID, client.ClientID,
 		)
 		covered := consent != nil &&
-			consent.State == spec.ConsentGranted &&
+			consent.State == oauthdomain.ConsentGranted &&
 			consent.RevokedAt == nil &&
 			time.Now().Before(consent.ExpiresAt)
 		if covered {

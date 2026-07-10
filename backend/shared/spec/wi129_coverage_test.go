@@ -34,13 +34,6 @@ func TestEnumValid(t *testing.T) {
 		{"response code", ResponseTypeCode, true},
 		{"response bad", ResponseType("token"), false},
 
-		{"authmethod basic", AuthMethodClientSecretBasic, true},
-		{"authmethod post", AuthMethodClientSecretPost, true},
-		{"authmethod private key jwt", AuthMethodPrivateKeyJwt, true},
-		{"authmethod tls", AuthMethodTlsClientAuth, true},
-		{"authmethod none", AuthMethodNone, true},
-		{"authmethod bad", TokenEndpointAuthMethod("x"), false},
-
 		{"sig ps256", SigAlgPS256, true},
 		{"sig es256", SigAlgES256, true},
 		{"sig bad", SignatureAlgorithm("RS256"), false},
@@ -52,10 +45,6 @@ func TestEnumValid(t *testing.T) {
 
 		{"keyusage signing", KeyUsageSigning, true},
 		{"keyusage bad", KeyUsage("enc"), false},
-
-		{"fapi none", FapiNone, true},
-		{"fapi v2", FapiSecurityProfileV2, true},
-		{"fapi bad", FapiProfile("x"), false},
 
 		{"cc method s256", CodeChallengeMethodS256, true},
 		{"cc method bad", CodeChallengeMethod("plain"), false},
@@ -74,21 +63,6 @@ func TestEnumValid(t *testing.T) {
 		{"authcode redeemed", AuthCodeRecordRedeemed, true},
 		{"authcode expired", AuthCodeRecordExpired, true},
 		{"authcode bad", AuthorizationCodeRecordState("x"), false},
-
-		{"consent granted", ConsentGranted, true},
-		{"consent revoked", ConsentRevoked, true},
-		{"consent expired", ConsentExpired, true},
-		{"consent bad", ConsentState("x"), false},
-
-		{"detail field set", DetailFieldSet, true},
-		{"detail field at_most", DetailFieldAtMost, true},
-		{"detail field enum", DetailFieldEnum, true},
-		{"detail field exact", DetailFieldExact, true},
-		{"detail field bad", AuthorizationDetailFieldSemantics("x"), false},
-
-		{"detail type enabled", DetailTypeEnabled, true},
-		{"detail type disabled", DetailTypeDisabled, true},
-		{"detail type bad", AuthorizationDetailTypeState("x"), false},
 
 		{"session logout", SessionEndLogout, true},
 		{"session idle", SessionEndIdle, true},
@@ -211,29 +185,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	badTenant := validTenant
 	badTenant.Realm = "admin" // admin は予約語で realm として拒否される。
 
-	validClient := OAuth2Client{
-		ClientID: "demo", ClientType: ClientConfidential,
-		RedirectURIs: []string{"https://app.example.com/cb"},
-		GrantTypes:   []GrantType{GrantAuthorizationCode}, ResponseTypes: []ResponseType{ResponseTypeCode},
-		TokenEndpointAuthMethod: AuthMethodClientSecretBasic, IDTokenSignedResponseAlg: SigAlgPS256,
-		FapiProfile: FapiNone, CreatedAt: now, UpdatedAt: now,
-	}
-	// authorization_code グラントだが redirect_uris が無いので失敗する。
-	badClient := validClient
-	badClient.RedirectURIs = nil
-
-	validConsent := Consent{UserID: "user_1", ClientID: "demo", Scopes: []string{"openid"}, State: ConsentGranted, GrantedAt: now, ExpiresAt: now}
-	badConsent := validConsent
-	badConsent.Scopes = nil
-
-	validDetailType := AuthorizationDetailType{
-		TenantID: DefaultTenantID, Type: "payment", DisplayTemplate: "{{.amount}}", State: DetailTypeEnabled,
-		Schema:    AuthorizationDetailsSchema{Rules: []AuthorizationDetailFieldRule{{Name: "amount", Semantics: DetailFieldExact}}},
-		CreatedAt: now, UpdatedAt: now,
-	}
-	badDetailType := validDetailType
-	badDetailType.Schema = AuthorizationDetailsSchema{Rules: nil}
-
 	validAuthReq := AuthorizationRequest{
 		ID: mustUUID(t), State: AuthFlowReceived, ClientID: "demo",
 		RedirectURI: "https://app.example.com/cb", ResponseType: ResponseTypeCode,
@@ -288,12 +239,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 		{"member bad", badMember, true},
 		{"tenant ok", validTenant, false},
 		{"tenant bad", badTenant, true},
-		{"client ok", validClient, false},
-		{"client bad", badClient, true},
-		{"consent ok", validConsent, false},
-		{"consent bad", badConsent, true},
-		{"detail type ok", validDetailType, false},
-		{"detail type bad", badDetailType, true},
 		{"auth req ok", validAuthReq, false},
 		{"auth req bad", badAuthReq, true},
 		{"code record ok", validCodeRec, false},

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -38,7 +40,7 @@ type AuthorizeRequestInput struct {
 
 type AuthorizeRequestOutput struct {
 	Request *spec.AuthorizationRequest
-	Client  *spec.OAuth2Client
+	Client  *domain.OAuth2Client
 }
 
 type AuthorizeDeps struct {

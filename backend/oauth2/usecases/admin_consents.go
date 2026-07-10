@@ -9,6 +9,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -21,7 +23,7 @@ type ConsentDeps struct {
 	Emit        func(spec.DomainEvent)
 }
 
-func ListConsents(ctx context.Context, deps ConsentDeps) ([]*spec.Consent, error) {
+func ListConsents(ctx context.Context, deps ConsentDeps) ([]*domain.Consent, error) {
 	return deps.ConsentRepo.FindAll(ctx, tenancy.TenantID(ctx))
 }
 
@@ -29,7 +31,7 @@ func GetConsent(
 	ctx context.Context,
 	deps ConsentDeps,
 	sub, clientID string,
-) (*spec.Consent, error) {
+) (*domain.Consent, error) {
 	consent, err := deps.ConsentRepo.Find(ctx, tenancy.TenantID(ctx), sub, clientID)
 	if err != nil {
 		return nil, err
@@ -52,7 +54,7 @@ func RevokeConsent(
 	if err := deps.ConsentRepo.Revoke(ctx, tenancy.TenantID(ctx), sub, clientID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.ConsentRevokedEvent{
+	emit(deps.Emit, &domain.ConsentRevokedEvent{
 		At: adminNow(now), TenantID: tenancy.TenantID(ctx), ActorUserID: actorUserID, UserID: sub, ClientID: clientID,
 	})
 	return nil

@@ -18,18 +18,18 @@ type RegisterClientInput struct {
 	RedirectURIs            []string
 	GrantTypes              []spec.GrantType
 	ResponseTypes           []spec.ResponseType
-	TokenEndpointAuthMethod spec.TokenEndpointAuthMethod
+	TokenEndpointAuthMethod domain.TokenEndpointAuthMethod
 	Scope                   string
 	JWKS                    map[string]any
 	JwksURI                 *string
 	TlsClientAuthSubjectDN  *string
 	RequirePAR              bool
 	DpopBoundAccessTokens   bool
-	FapiProfile             spec.FapiProfile
+	FapiProfile             domain.FapiProfile
 }
 
 type RegisterClientResult struct {
-	Client       *spec.OAuth2Client
+	Client       *domain.OAuth2Client
 	ClientSecret string // 平文。出力後は再表示されない (RFC 7591 §3.2.1)
 }
 
@@ -59,21 +59,21 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	if in.TokenEndpointAuthMethod == "" {
 		if in.ClientType == spec.ClientPublic {
-			in.TokenEndpointAuthMethod = spec.AuthMethodNone
+			in.TokenEndpointAuthMethod = domain.AuthMethodNone
 		} else {
-			in.TokenEndpointAuthMethod = spec.AuthMethodClientSecretBasic
+			in.TokenEndpointAuthMethod = domain.AuthMethodClientSecretBasic
 		}
 	}
-	if in.TokenEndpointAuthMethod == spec.AuthMethodPrivateKeyJwt {
-		candidate := spec.OAuth2Client{
+	if in.TokenEndpointAuthMethod == domain.AuthMethodPrivateKeyJwt {
+		candidate := domain.OAuth2Client{
 			TenantID: spec.DefaultTenantID, ClientID: "validation", ClientType: in.ClientType,
 			RedirectURIs:             []string{"https://validation.invalid/callback"},
 			GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
-			TokenEndpointAuthMethod:  spec.AuthMethodPrivateKeyJwt,
+			TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,
 			JWKS:                     in.JWKS,
 			JwksURI:                  in.JwksURI,
 			IDTokenSignedResponseAlg: spec.SigAlgPS256,
-			FapiProfile:              spec.FapiNone,
+			FapiProfile:              domain.FapiNone,
 			CreatedAt:                now,
 		}
 		if err := candidate.Validate(); err != nil {
@@ -87,8 +87,8 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	clientID := "c_" + id
 	var secret string
 	var secretHash *string
-	usesSecret := in.TokenEndpointAuthMethod == spec.AuthMethodClientSecretBasic ||
-		in.TokenEndpointAuthMethod == spec.AuthMethodClientSecretPost
+	usesSecret := in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretBasic ||
+		in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretPost
 	if in.ClientType == spec.ClientConfidential && usesSecret {
 		s, err := generateOpaqueToken(32)
 		if err != nil {
@@ -100,13 +100,13 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	fapiProfile := in.FapiProfile
 	if fapiProfile == "" {
-		fapiProfile = spec.FapiNone
+		fapiProfile = domain.FapiNone
 	}
 	scope := in.Scope
 	if scope == "" {
 		scope = "openid profile email"
 	}
-	c := &spec.OAuth2Client{
+	c := &domain.OAuth2Client{
 		TenantID:                           tenancy.TenantID(ctx),
 		ClientID:                           clientID,
 		ClientSecretHash:                   secretHash,
@@ -136,6 +136,6 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	if err := deps.ClientRepo.Save(ctx, c); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.ClientRegistered{At: now, TenantID: tenancy.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
+	emit(deps.Emit, &domain.ClientRegistered{At: now, TenantID: tenancy.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
 	return &RegisterClientResult{Client: c, ClientSecret: secret}, nil
 }

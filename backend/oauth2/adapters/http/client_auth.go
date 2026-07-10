@@ -13,7 +13,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -59,7 +58,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		clientID := c.Request().PostFormValue("client_id")
 		tenantID := support.RequestTenantID(c)
 		client, err := d.ClientRepo.FindByID(c.Request().Context(), tenantID, clientID)
-		if err != nil || client == nil || client.TokenEndpointAuthMethod != spec.AuthMethodPrivateKeyJwt {
+		if err != nil || client == nil || client.TokenEndpointAuthMethod != oauthdomain.AuthMethodPrivateKeyJwt {
 			return authedClient{}, invalidClientError()
 		}
 		resolver := d.JWKResolver
@@ -92,7 +91,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		clientID := c.Request().PostFormValue("client_id")
 		client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), clientID)
 		if err != nil || client == nil ||
-			client.TokenEndpointAuthMethod != spec.AuthMethodTlsClientAuth ||
+			client.TokenEndpointAuthMethod != oauthdomain.AuthMethodTlsClientAuth ||
 			client.TlsClientAuthSubjectDN == nil {
 			return authedClient{}, invalidClientError()
 		}
@@ -105,7 +104,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 
 	// 3. client_secret_basic / client_secret_post
 	var clientID, secret string
-	method := spec.AuthMethodNone
+	method := oauthdomain.AuthMethodNone
 	switch {
 	case hasBasic:
 		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(basicAuth, "Basic "))
@@ -124,23 +123,23 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		if err != nil {
 			return authedClient{}, usecases.NewOAuthError("invalid_client", "client_secret の形式不正")
 		}
-		method = spec.AuthMethodClientSecretBasic
+		method = oauthdomain.AuthMethodClientSecretBasic
 	case hasSecret:
 		clientID = c.Request().PostFormValue("client_id")
 		secret = c.Request().PostFormValue("client_secret")
-		method = spec.AuthMethodClientSecretPost
+		method = oauthdomain.AuthMethodClientSecretPost
 	default:
 		clientID = c.Request().PostFormValue("client_id")
 	}
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), clientID)
 	if err != nil || client == nil {
-		if method != spec.AuthMethodNone {
+		if method != oauthdomain.AuthMethodNone {
 			oauthdomain.VerifyClientSecret(secret, dummyClientSecretHash)
 		}
 		return authedClient{}, invalidClientError()
 	}
 	if client.TokenEndpointAuthMethod != method {
-		if method != spec.AuthMethodNone {
+		if method != oauthdomain.AuthMethodNone {
 			hash := dummyClientSecretHash
 			if client.ClientSecretHash != nil {
 				hash = *client.ClientSecretHash
@@ -149,7 +148,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		}
 		return authedClient{}, invalidClientError()
 	}
-	if method == spec.AuthMethodNone {
+	if method == oauthdomain.AuthMethodNone {
 		return authedClient{ID: clientID}, nil
 	}
 	if client.ClientSecretHash == nil || !oauthdomain.VerifyClientSecret(secret, *client.ClientSecretHash) {

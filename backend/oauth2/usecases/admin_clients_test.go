@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -48,7 +49,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*spec.AdminOAuth2ClientCreated)
+		ev, ok := emitted[0].(*domain.AdminOAuth2ClientCreated)
 		if !ok {
 			t.Fatalf("expected AdminOAuth2ClientCreated event, got %T", emitted[0])
 		}
@@ -109,7 +110,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*spec.AdminOAuth2ClientUpdated)
+		ev, ok := emitted[0].(*domain.AdminOAuth2ClientUpdated)
 		if !ok {
 			t.Fatalf("expected AdminOAuth2ClientUpdated event, got %T", emitted[0])
 		}
@@ -172,7 +173,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*spec.AdminOAuth2ClientDeleted)
+		ev, ok := emitted[0].(*domain.AdminOAuth2ClientDeleted)
 		if !ok {
 			t.Fatalf("expected AdminOAuth2ClientDeleted event, got %T", emitted[0])
 		}

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -81,10 +83,10 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	e := h.echo
 	csrf, cookie := adminCSRF(t, e)
 	clientName := "Agent Client"
-	_ = h.clients.Save(context.Background(), &spec.OAuth2Client{
+	_ = h.clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
 		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
 	})
 
@@ -297,16 +299,16 @@ func TestAccountDataExport(t *testing.T) {
 
 	// Seed client and consent
 	clientName := "Client One"
-	client := &spec.OAuth2Client{
+	client := &oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
 	}
 	h.clients.Seed(client)
 
 	now := time.Now().UTC()
-	consent := &spec.Consent{
+	consent := &oauthdomain.Consent{
 		UserID: "regular", ClientID: "client-1",
 		Scopes: []string{"openid", "profile"}, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
-		State: spec.ConsentGranted,
+		State: oauthdomain.ConsentGranted,
 	}
 	_ = h.consents.Save(context.Background(), spec.DefaultTenantID, consent)
 

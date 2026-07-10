@@ -1,76 +1,16 @@
 package spec
 
-// OAuth2 bounded context の双子定義。client / consent / authorization request /
-// code / refresh / PAR / device / token claims と Rich Authorization Requests。
+// OAuth2 bounded context の双子定義のうち、client / consent / 認可詳細タイプ定義
+// （OAuth2Client / Consent / AuthorizationDetailType 系）は internal/oauth2/domain へ
+// 移設済み（wi-173, ADR-089）。本ファイルには authorization request / code / refresh /
+// PAR / device / token claims（wi-181 で移設予定）と、それらが参照する実行時
+// AuthorizationDetail（複数 context 予定の型から参照されるため shared に残置）が残る。
 
 import "time"
 
-type OAuth2Client struct {
-	TenantID                           string                  `json:"tenant_id"`
-	ClientID                           string                  `json:"client_id"`
-	ClientSecretHash                   *string                 `json:"client_secret_hash,omitempty"`
-	ClientName                         *string                 `json:"client_name,omitempty"`
-	ClientType                         ClientType              `json:"client_type"`
-	RedirectURIs                       []string                `json:"redirect_uris"`
-	GrantTypes                         []GrantType             `json:"grant_types"`
-	ResponseTypes                      []ResponseType          `json:"response_types"`
-	TokenEndpointAuthMethod            TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	Scope                              string                  `json:"scope"`
-	JWKS                               map[string]any          `json:"jwks,omitempty"`
-	JwksURI                            *string                 `json:"jwks_uri,omitempty"`
-	TlsClientAuthSubjectDN             *string                 `json:"tls_client_auth_subject_dn,omitempty"`
-	IDTokenSignedResponseAlg           SignatureAlgorithm      `json:"id_token_signed_response_alg"`
-	RequirePushedAuthorizationRequests bool                    `json:"require_pushed_authorization_requests"`
-	DpopBoundAccessTokens              bool                    `json:"dpop_bound_access_tokens"`
-	FapiProfile                        FapiProfile             `json:"fapi_profile"`
-	// FirstParty は IdP 自身が所有する信頼済みクライアント (管理コンソール /
-	// アカウントポータル) を表す。resource owner が IdP 利用者自身であるため、
-	// authorization_code フローで consent 画面をスキップする (ADR-061)。
-	FirstParty bool      `json:"first_party"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-func (c OAuth2Client) Validate() error {
-	return validate(oauth2ClientSchema, &c)
-}
-
-func hasJWKs(jwks map[string]any) bool {
-	switch keys := jwks["keys"].(type) {
-	case []any:
-		return len(keys) > 0
-	case []map[string]any:
-		return len(keys) > 0
-	default:
-		return false
-	}
-}
-
-// ===============================================================
-// コンセント
-// ===============================================================
-
-type Consent struct {
-	UserID               string                `json:"user_id"`
-	ClientID             string                `json:"client_id"`
-	Scopes               []string              `json:"scopes"`
-	State                ConsentState          `json:"state"`
-	GrantedAt            time.Time             `json:"granted_at"`
-	ExpiresAt            time.Time             `json:"expires_at"`
-	RevokedAt            *time.Time            `json:"revoked_at,omitempty"`
-	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
-}
-
-func (c Consent) Validate() error {
-	return validate(consentSchema, &c)
-}
-
-// ===============================================================
-// Rich Authorization Requests (RFC 9396 / ADR-050)
-// ===============================================================
-
 // AuthorizationDetail は RFC 9396 authorization_details の 1 要素。type で識別される
 // 構造化された細粒度権限を表し、登録済み AuthorizationDetailType に対し fail-closed に検証する。
+// AuthorizationDetailType 自体は internal/oauth2/domain へ移設済み (wi-173)。
 type AuthorizationDetail struct {
 	Type       string         `json:"type"`
 	Locations  []string       `json:"locations,omitempty"`
@@ -79,37 +19,6 @@ type AuthorizationDetail struct {
 	Identifier string         `json:"identifier,omitempty"`
 	Privileges []string       `json:"privileges,omitempty"`
 	Fields     map[string]any `json:"fields,omitempty"`
-}
-
-// AuthorizationDetailFieldRule は登録スキーマの 1 フィールド規則。ダウンスコープ半順序と
-// 許可値を定義する。
-type AuthorizationDetailFieldRule struct {
-	Name      string                            `json:"name"`
-	Semantics AuthorizationDetailFieldSemantics `json:"semantics"`
-	Required  bool                              `json:"required"`
-	Allowed   []string                          `json:"allowed,omitempty"`
-}
-
-// AuthorizationDetailsSchema はある type の構造的スキーマ。受理するフィールドと
-// 各フィールドの半順序を列挙する。
-type AuthorizationDetailsSchema struct {
-	Rules []AuthorizationDetailFieldRule `json:"rules"`
-}
-
-// AuthorizationDetailType はテナントが登録する authorization_details の type 定義 (ADR-050)。
-type AuthorizationDetailType struct {
-	TenantID        string                       `json:"tenant_id"`
-	Type            string                       `json:"type"`
-	Description     string                       `json:"description,omitempty"`
-	Schema          AuthorizationDetailsSchema   `json:"schema"`
-	DisplayTemplate string                       `json:"display_template"`
-	State           AuthorizationDetailTypeState `json:"state"`
-	CreatedAt       time.Time                    `json:"created_at"`
-	UpdatedAt       time.Time                    `json:"updated_at"`
-}
-
-func (t AuthorizationDetailType) Validate() error {
-	return validate(authorizationDetailTypeSchema, &t)
 }
 
 // ===============================================================

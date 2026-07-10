@@ -106,18 +106,18 @@ func fieldNumber(d spec.AuthorizationDetail, name string) (value float64, ok boo
 
 // ValidateAgainstType は detail が登録済み type t のスキーマに適合するかを検証する。
 // 不適合・未登録フィールド・必須欠落・許可外値・無効値はすべてエラー (fail-closed)。
-func ValidateAgainstType(d spec.AuthorizationDetail, t spec.AuthorizationDetailType) error {
+func ValidateAgainstType(d spec.AuthorizationDetail, t AuthorizationDetailType) error {
 	if d.Type == "" {
 		return fmt.Errorf("authorization detail type is required")
 	}
 	if d.Type != t.Type {
 		return fmt.Errorf("authorization detail type %q does not match registered type %q", d.Type, t.Type)
 	}
-	if t.State != spec.DetailTypeEnabled {
+	if t.State != DetailTypeEnabled {
 		return fmt.Errorf("authorization detail type %q is not enabled", t.Type)
 	}
 
-	ruleByName := make(map[string]spec.AuthorizationDetailFieldRule, len(t.Schema.Rules))
+	ruleByName := make(map[string]AuthorizationDetailFieldRule, len(t.Schema.Rules))
 	for _, rule := range t.Schema.Rules {
 		ruleByName[rule.Name] = rule
 	}
@@ -145,14 +145,14 @@ func ValidateAgainstType(d spec.AuthorizationDetail, t spec.AuthorizationDetailT
 	return nil
 }
 
-func validateFieldValue(d spec.AuthorizationDetail, rule spec.AuthorizationDetailFieldRule, typeName string) error {
+func validateFieldValue(d spec.AuthorizationDetail, rule AuthorizationDetailFieldRule, typeName string) error {
 	switch rule.Semantics {
-	case spec.DetailFieldSet, spec.DetailFieldEnum:
+	case DetailFieldSet, DetailFieldEnum:
 		values, ok := fieldStrings(d, rule.Name)
 		if !ok {
 			return fmt.Errorf("authorization detail field %q must be a string or string array", rule.Name)
 		}
-		if rule.Semantics == spec.DetailFieldEnum && len(values) != 1 {
+		if rule.Semantics == DetailFieldEnum && len(values) != 1 {
 			return fmt.Errorf("authorization detail field %q must be a single value", rule.Name)
 		}
 		if len(rule.Allowed) > 0 {
@@ -162,11 +162,11 @@ func validateFieldValue(d spec.AuthorizationDetail, rule spec.AuthorizationDetai
 				}
 			}
 		}
-	case spec.DetailFieldAtMost:
+	case DetailFieldAtMost:
 		if _, ok := fieldNumber(d, rule.Name); !ok {
 			return fmt.Errorf("authorization detail field %q must be a number", rule.Name)
 		}
-	case spec.DetailFieldExact:
+	case DetailFieldExact:
 		if _, ok := fieldStrings(d, rule.Name); !ok {
 			return fmt.Errorf("authorization detail field %q must be a scalar value", rule.Name)
 		}
@@ -177,9 +177,9 @@ func validateFieldValue(d spec.AuthorizationDetail, rule spec.AuthorizationDetai
 }
 
 // detailFieldSubset は 1 フィールドについて requested が granted の部分集合かを判定する。
-func detailFieldSubset(requested, granted spec.AuthorizationDetail, rule spec.AuthorizationDetailFieldRule) bool {
+func detailFieldSubset(requested, granted spec.AuthorizationDetail, rule AuthorizationDetailFieldRule) bool {
 	switch rule.Semantics {
-	case spec.DetailFieldSet, spec.DetailFieldEnum:
+	case DetailFieldSet, DetailFieldEnum:
 		reqValues, reqOK := fieldStrings(requested, rule.Name)
 		grantValues, grantOK := fieldStrings(granted, rule.Name)
 		if !reqOK {
@@ -194,7 +194,7 @@ func detailFieldSubset(requested, granted spec.AuthorizationDetail, rule spec.Au
 			}
 		}
 		return true
-	case spec.DetailFieldAtMost:
+	case DetailFieldAtMost:
 		reqNum, reqOK := fieldNumber(requested, rule.Name)
 		grantNum, grantOK := fieldNumber(granted, rule.Name)
 		if !reqOK {
@@ -204,7 +204,7 @@ func detailFieldSubset(requested, granted spec.AuthorizationDetail, rule spec.Au
 			return false
 		}
 		return reqNum <= grantNum
-	case spec.DetailFieldExact:
+	case DetailFieldExact:
 		reqValues, reqOK := fieldStrings(requested, rule.Name)
 		grantValues, grantOK := fieldStrings(granted, rule.Name)
 		if !reqOK {
@@ -220,7 +220,7 @@ func detailFieldSubset(requested, granted spec.AuthorizationDetail, rule spec.Au
 }
 
 // detailSubsetOf は requested detail が granted detail の部分集合かを type の半順序で判定する。
-func detailSubsetOf(requested, granted spec.AuthorizationDetail, t spec.AuthorizationDetailType) bool {
+func detailSubsetOf(requested, granted spec.AuthorizationDetail, t AuthorizationDetailType) bool {
 	if requested.Type != granted.Type || requested.Type != t.Type {
 		return false
 	}
@@ -235,7 +235,7 @@ func detailSubsetOf(requested, granted spec.AuthorizationDetail, t spec.Authoriz
 // DetailsSubsetOf は要求 detail 群 requested が、基準 detail 群 granted の部分集合かを
 // 検証する。各 requested detail は、同じ type の granted detail のいずれかに包含されねば
 // ならない (fail-closed)。types は要求に現れる type の登録定義。
-func DetailsSubsetOf(requested, granted []spec.AuthorizationDetail, types map[string]spec.AuthorizationDetailType) error {
+func DetailsSubsetOf(requested, granted []spec.AuthorizationDetail, types map[string]AuthorizationDetailType) error {
 	for _, req := range requested {
 		t, registered := types[req.Type]
 		if !registered {

@@ -5,24 +5,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func newAuthorizeDeps(requirePAR bool) AuthorizeDeps {
 	repo := memory.NewClientRepository()
-	repo.Seed(&spec.OAuth2Client{
+	repo.Seed(&domain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientPublic,
 		RedirectURIs: []string{"https://client.example/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
-		TokenEndpointAuthMethod:            spec.AuthMethodNone,
+		TokenEndpointAuthMethod:            domain.AuthMethodNone,
 		Scope:                              "openid profile",
 		IDTokenSignedResponseAlg:           spec.SigAlgPS256,
 		RequirePushedAuthorizationRequests: requirePAR,
-		FapiProfile:                        spec.FapiNone,
+		FapiProfile:                        domain.FapiNone,
 		CreatedAt:                          time.Now(),
 	})
 	return AuthorizeDeps{

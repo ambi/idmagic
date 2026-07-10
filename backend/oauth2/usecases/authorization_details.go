@@ -64,8 +64,8 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 
 // LoadAuthorizationDetailTypes は details に現れる type の登録定義を map で返す
 // (DetailsSubsetOf のダウンスコープ判定用)。未登録 type は map に現れない。
-func LoadAuthorizationDetailTypes(ctx context.Context, repo ports.AuthorizationDetailTypeRepository, details []spec.AuthorizationDetail) (map[string]spec.AuthorizationDetailType, error) {
-	out := map[string]spec.AuthorizationDetailType{}
+func LoadAuthorizationDetailTypes(ctx context.Context, repo ports.AuthorizationDetailTypeRepository, details []spec.AuthorizationDetail) (map[string]domain.AuthorizationDetailType, error) {
+	out := map[string]domain.AuthorizationDetailType{}
 	if repo == nil {
 		return out, nil
 	}

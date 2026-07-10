@@ -31,14 +31,14 @@ func newTokenExchangeServer(t *testing.T) string {
 	t.Helper()
 	clientRepo := memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(exchClientSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: exchClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		GrantTypes: []spec.GrantType{
 			spec.GrantClientCredentials, spec.GrantTokenExchange,
 		},
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
 		Scope:                   "read write",
-		FapiProfile:             spec.FapiNone,
+		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 	keyStore, err := crypto.NewInMemoryKeyStore()

@@ -34,16 +34,16 @@ func newPARTestServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	clientRepo := memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{parRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
 		Scope:                   "openid profile",
-		FapiProfile:             spec.FapiNone,
+		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 	e := echo.New()
@@ -143,13 +143,13 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	e := echo.New()
 	clientRepo := memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{parRedirectURI},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},
-		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: spec.FapiNone,
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic, Scope: "openid",
+		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: domain.FapiNone,
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "openid",
 		CreatedAt: time.Now().UTC(),
 	})
 	httpadapter.Register(e, httpadapter.Deps{
@@ -168,13 +168,13 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing.T) {
 	clientRepo := memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{parRedirectURI},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},
-		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: spec.FapiNone,
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic, Scope: "openid",
+		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: domain.FapiNone,
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "openid",
 		CreatedAt: time.Now().UTC(),
 	})
 	store := &ctxCheckingPARStore{PARStore: memory.NewPARStore()}

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -29,14 +31,14 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 		ClientName:              req.ClientName,
 		ClientType:              spec.ClientType(req.ClientType),
 		RedirectURIs:            req.RedirectURIs,
-		TokenEndpointAuthMethod: spec.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
+		TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
 		Scope:                   req.Scope,
 		JWKS:                    req.JWKS,
 		JwksURI:                 req.JwksURI,
 		TlsClientAuthSubjectDN:  req.TlsClientAuthSubjectDN,
 		RequirePAR:              req.RequirePAR,
 		DpopBoundAccessTokens:   req.DpopBoundAccessTokens,
-		FapiProfile:             spec.FapiProfile(req.FapiProfile),
+		FapiProfile:             oauthdomain.FapiProfile(req.FapiProfile),
 	}
 	for _, g := range req.GrantTypes {
 		in.GrantTypes = append(in.GrantTypes, spec.GrantType(g))

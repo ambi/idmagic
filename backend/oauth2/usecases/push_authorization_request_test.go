@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -30,7 +32,7 @@ func TestPushAuthorizationRequest(t *testing.T) {
 	now := time.Now().UTC()
 
 	// テスト用クライアントを登録
-	client := &spec.OAuth2Client{
+	client := &domain.OAuth2Client{
 		TenantID:      spec.DefaultTenantID,
 		ClientID:      "client-1",
 		RedirectURIs:  []string{"https://example.com/cb"},

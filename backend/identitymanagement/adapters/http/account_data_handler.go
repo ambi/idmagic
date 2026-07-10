@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -22,14 +23,14 @@ type accountDataExport struct {
 }
 
 type accountConsentResponse struct {
-	ClientID  string            `json:"client_id"`
-	Scopes    []string          `json:"scopes"`
-	State     spec.ConsentState `json:"state"`
-	GrantedAt time.Time         `json:"granted_at"`
-	ExpiresAt time.Time         `json:"expires_at"`
+	ClientID  string                   `json:"client_id"`
+	Scopes    []string                 `json:"scopes"`
+	State     oauthdomain.ConsentState `json:"state"`
+	GrantedAt time.Time                `json:"granted_at"`
+	ExpiresAt time.Time                `json:"expires_at"`
 }
 
-func toAccountConsentResponse(consent *spec.Consent) accountConsentResponse {
+func toAccountConsentResponse(consent *oauthdomain.Consent) accountConsentResponse {
 	return accountConsentResponse{
 		ClientID: consent.ClientID, Scopes: append([]string(nil), consent.Scopes...),
 		State: consent.State, GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt,

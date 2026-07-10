@@ -39,16 +39,16 @@ func tenantContext(id string) context.Context {
 func newDeviceServer() deviceFixture {
 	clientRepo := memory.NewClientRepository()
 	// テスト用クライアントをシード
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID:                spec.DefaultTenantID,
 		ClientID:                "device-client",
 		ClientType:              spec.ClientPublic,
 		RedirectURIs:            []string{"https://device.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantDeviceCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodNone,
+		TokenEndpointAuthMethod: domain.AuthMethodNone,
 		Scope:                   "openid profile",
-		FapiProfile:             spec.FapiNone,
+		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 

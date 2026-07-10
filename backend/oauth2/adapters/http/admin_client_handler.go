@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -25,24 +27,24 @@ type adminClientUpdateRequest struct {
 }
 
 type adminClientResponse struct {
-	TenantID                           string                       `json:"tenant_id"`
-	ClientID                           string                       `json:"client_id"`
-	ClientName                         *string                      `json:"client_name,omitempty"`
-	ClientType                         spec.ClientType              `json:"client_type"`
-	RedirectURIs                       []string                     `json:"redirect_uris"`
-	GrantTypes                         []spec.GrantType             `json:"grant_types"`
-	ResponseTypes                      []spec.ResponseType          `json:"response_types"`
-	TokenEndpointAuthMethod            spec.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	Scope                              string                       `json:"scope"`
-	JWKS                               map[string]any               `json:"jwks,omitempty"`
-	JwksURI                            *string                      `json:"jwks_uri,omitempty"`
-	TlsClientAuthSubjectDN             *string                      `json:"tls_client_auth_subject_dn,omitempty"`
-	IDTokenSignedResponseAlg           spec.SignatureAlgorithm      `json:"id_token_signed_response_alg"`
-	RequirePushedAuthorizationRequests bool                         `json:"require_pushed_authorization_requests"`
-	DpopBoundAccessTokens              bool                         `json:"dpop_bound_access_tokens"`
-	FapiProfile                        spec.FapiProfile             `json:"fapi_profile"`
-	CreatedAt                          time.Time                    `json:"created_at"`
-	UpdatedAt                          time.Time                    `json:"updated_at"`
+	TenantID                           string                              `json:"tenant_id"`
+	ClientID                           string                              `json:"client_id"`
+	ClientName                         *string                             `json:"client_name,omitempty"`
+	ClientType                         spec.ClientType                     `json:"client_type"`
+	RedirectURIs                       []string                            `json:"redirect_uris"`
+	GrantTypes                         []spec.GrantType                    `json:"grant_types"`
+	ResponseTypes                      []spec.ResponseType                 `json:"response_types"`
+	TokenEndpointAuthMethod            oauthdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
+	Scope                              string                              `json:"scope"`
+	JWKS                               map[string]any                      `json:"jwks,omitempty"`
+	JwksURI                            *string                             `json:"jwks_uri,omitempty"`
+	TlsClientAuthSubjectDN             *string                             `json:"tls_client_auth_subject_dn,omitempty"`
+	IDTokenSignedResponseAlg           spec.SignatureAlgorithm             `json:"id_token_signed_response_alg"`
+	RequirePushedAuthorizationRequests bool                                `json:"require_pushed_authorization_requests"`
+	DpopBoundAccessTokens              bool                                `json:"dpop_bound_access_tokens"`
+	FapiProfile                        oauthdomain.FapiProfile             `json:"fapi_profile"`
+	CreatedAt                          time.Time                           `json:"created_at"`
+	UpdatedAt                          time.Time                           `json:"updated_at"`
 }
 
 func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {
@@ -53,7 +55,7 @@ func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	slices.SortFunc(clients, func(a, b *spec.OAuth2Client) int {
+	slices.SortFunc(clients, func(a, b *oauthdomain.OAuth2Client) int {
 		if a.ClientID < b.ClientID {
 			return -1
 		}
@@ -107,10 +109,10 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 	}
 	registration := oauthusecases.RegisterClientInput{
 		ClientName: req.ClientName, ClientType: spec.ClientType(req.ClientType),
-		RedirectURIs: req.RedirectURIs, TokenEndpointAuthMethod: spec.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
+		RedirectURIs: req.RedirectURIs, TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
 		Scope: req.Scope, JWKS: req.JWKS, JwksURI: req.JwksURI,
 		TlsClientAuthSubjectDN: req.TlsClientAuthSubjectDN, RequirePAR: req.RequirePAR,
-		DpopBoundAccessTokens: req.DpopBoundAccessTokens, FapiProfile: spec.FapiProfile(req.FapiProfile),
+		DpopBoundAccessTokens: req.DpopBoundAccessTokens, FapiProfile: oauthdomain.FapiProfile(req.FapiProfile),
 	}
 	for _, grant := range req.GrantTypes {
 		registration.GrantTypes = append(registration.GrantTypes, spec.GrantType(grant))
@@ -187,7 +189,7 @@ func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 }
 
-func toAdminOAuth2ClientResponse(client *spec.OAuth2Client) adminClientResponse {
+func toAdminOAuth2ClientResponse(client *oauthdomain.OAuth2Client) adminClientResponse {
 	return adminClientResponse{
 		TenantID: client.TenantID, ClientID: client.ClientID, ClientName: client.ClientName,
 		ClientType: client.ClientType, RedirectURIs: slices.Clone(client.RedirectURIs),

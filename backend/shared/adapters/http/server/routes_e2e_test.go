@@ -59,17 +59,17 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: demoClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{demoRedirectURI},
 		GrantTypes: []spec.GrantType{
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
 	hash, err := hasher.Hash(demoPassword)
@@ -131,7 +131,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: demoClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{demoRedirectURI},
 		GrantTypes: []spec.GrantType{
@@ -139,10 +139,10 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			spec.GrantClientCredentials, spec.GrantDeviceCode,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
 

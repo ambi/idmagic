@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -19,13 +21,13 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 	now := time.Now().UTC()
 
 	named := "Admin Console"
-	clients.Seed(&spec.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "client-named",
 		ClientName: &named, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})
 	// client_name が空白のみのクライアントは Application カタログ名へフォールバックする。
 	blank := "   "
-	clients.Seed(&spec.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "client-catalog",
 		ClientName: &blank, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})

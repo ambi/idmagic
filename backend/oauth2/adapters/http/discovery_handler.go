@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"sync"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -40,7 +41,7 @@ func (d Deps) handleDiscovery(c *echo.Context) error {
 		}
 		supported := make([]string, 0, len(types))
 		for _, t := range types {
-			if t.State == spec.DetailTypeEnabled {
+			if t.State == oauthdomain.DetailTypeEnabled {
 				supported = append(supported, t.Type)
 			}
 		}

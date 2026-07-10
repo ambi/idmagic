@@ -239,7 +239,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 func evaluateTokenExchangePolicy(
 	ctx context.Context,
 	authorizer ports.Authorizer,
-	client *spec.OAuth2Client,
+	client *domain.OAuth2Client,
 	actorUserID, subjectUserID, resource string,
 	scopes []string,
 	delegationDepth int,

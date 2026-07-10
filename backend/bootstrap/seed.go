@@ -44,7 +44,7 @@ func seedDemoData(
 ) error {
 	secretHash := oauthdomain.HashClientSecret(envDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
 	now := time.Now().UTC()
-	if err := clients.Save(ctx, &spec.OAuth2Client{
+	if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: seedDemoClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{
@@ -57,9 +57,9 @@ func seedDemoData(
 			spec.GrantClientCredentials, spec.GrantDeviceCode,
 		},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                   "openid profile email offline_access", IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile: spec.FapiNone, CreatedAt: now, UpdatedAt: now,
+		FapiProfile: oauthdomain.FapiNone, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 	}
 	for _, p := range portals {
 		name := p.name
-		if err := clients.Save(ctx, &spec.OAuth2Client{
+		if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
 			TenantID: spec.DefaultTenantID, ClientID: p.clientID,
 			ClientName: &name, ClientType: spec.ClientPublic,
 			RedirectURIs: []string{
@@ -148,9 +148,9 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 			},
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-			TokenEndpointAuthMethod: spec.AuthMethodNone,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
 			Scope:                   p.scope, IDTokenSignedResponseAlg: spec.SigAlgPS256,
-			FapiProfile: spec.FapiNone, FirstParty: true, CreatedAt: now, UpdatedAt: now,
+			FapiProfile: oauthdomain.FapiNone, FirstParty: true, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			return err
 		}
@@ -213,19 +213,19 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 	if types == nil {
 		return nil
 	}
-	return types.Save(ctx, &spec.AuthorizationDetailType{
+	return types.Save(ctx, &oauthdomain.AuthorizationDetailType{
 		TenantID:    spec.DefaultTenantID,
 		Type:        "payment_initiation",
 		Description: "口座から指定上限までの送金開始 (RFC 9396 例)",
-		Schema: spec.AuthorizationDetailsSchema{
-			Rules: []spec.AuthorizationDetailFieldRule{
-				{Name: "actions", Semantics: spec.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status", "cancel"}},
-				{Name: "creditorAccount", Semantics: spec.DetailFieldEnum, Required: true},
-				{Name: "instructedAmount", Semantics: spec.DetailFieldAtMost, Required: true},
+		Schema: oauthdomain.AuthorizationDetailsSchema{
+			Rules: []oauthdomain.AuthorizationDetailFieldRule{
+				{Name: "actions", Semantics: oauthdomain.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status", "cancel"}},
+				{Name: "creditorAccount", Semantics: oauthdomain.DetailFieldEnum, Required: true},
+				{Name: "instructedAmount", Semantics: oauthdomain.DetailFieldAtMost, Required: true},
 			},
 		},
 		DisplayTemplate: "口座 {creditorAccount} に対して {actions} を、最大 {instructedAmount} まで",
-		State:           spec.DetailTypeEnabled,
+		State:           oauthdomain.DetailTypeEnabled,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	})

@@ -139,7 +139,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 func evaluateRefreshPolicy(
 	ctx context.Context,
 	authorizer ports.Authorizer,
-	client *spec.OAuth2Client,
+	client *domain.OAuth2Client,
 	record *spec.RefreshTokenRecord,
 	in RefreshInput,
 	now time.Time,

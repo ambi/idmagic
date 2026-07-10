@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -53,7 +55,7 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 	}
 
 	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
-		Client: &spec.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
+		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid", "profile", "phone"}, ResolveAttributeDefs: resolve,
 	})
 	if err != nil {
@@ -82,7 +84,7 @@ func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
 	}
 
 	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
-		Client: &spec.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
+		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, ResolveAttributeDefs: resolve,
 	})
 	if err != nil {

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -82,14 +84,14 @@ var auditEventCategoryTypes = map[string][]string{
 		(&spec.GroupMemberRemoved{}).EventType(),
 	},
 	"client": {
-		(&spec.ClientRegistered{}).EventType(),
-		(&spec.AdminOAuth2ClientCreated{}).EventType(),
-		(&spec.AdminOAuth2ClientUpdated{}).EventType(),
-		(&spec.AdminOAuth2ClientDeleted{}).EventType(),
+		(&oauthdomain.ClientRegistered{}).EventType(),
+		(&oauthdomain.AdminOAuth2ClientCreated{}).EventType(),
+		(&oauthdomain.AdminOAuth2ClientUpdated{}).EventType(),
+		(&oauthdomain.AdminOAuth2ClientDeleted{}).EventType(),
 	},
 	"consent": {
-		(&spec.ConsentGrantedEvent{}).EventType(),
-		(&spec.ConsentRevokedEvent{}).EventType(),
+		(&oauthdomain.ConsentGrantedEvent{}).EventType(),
+		(&oauthdomain.ConsentRevokedEvent{}).EventType(),
 	},
 	"token": {
 		(&spec.AuthorizationCodeIssued{}).EventType(),

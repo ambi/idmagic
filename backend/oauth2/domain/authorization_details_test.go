@@ -8,16 +8,16 @@ import (
 
 // paymentType は RFC 9396 の payment_initiation を模した登録 type。
 // actions は集合包含、creditorAccount は enum、instructedAmount は上限 (単調減少)。
-func paymentType() spec.AuthorizationDetailType {
-	return spec.AuthorizationDetailType{
+func paymentType() AuthorizationDetailType {
+	return AuthorizationDetailType{
 		TenantID: spec.DefaultTenantID,
 		Type:     "payment_initiation",
-		State:    spec.DetailTypeEnabled,
-		Schema: spec.AuthorizationDetailsSchema{
-			Rules: []spec.AuthorizationDetailFieldRule{
-				{Name: "actions", Semantics: spec.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status", "cancel"}},
-				{Name: "creditorAccount", Semantics: spec.DetailFieldEnum, Allowed: []string{"acct-x", "acct-y"}},
-				{Name: "instructedAmount", Semantics: spec.DetailFieldAtMost, Required: true},
+		State:    DetailTypeEnabled,
+		Schema: AuthorizationDetailsSchema{
+			Rules: []AuthorizationDetailFieldRule{
+				{Name: "actions", Semantics: DetailFieldSet, Required: true, Allowed: []string{"initiate", "status", "cancel"}},
+				{Name: "creditorAccount", Semantics: DetailFieldEnum, Allowed: []string{"acct-x", "acct-y"}},
+				{Name: "instructedAmount", Semantics: DetailFieldAtMost, Required: true},
 			},
 		},
 		DisplayTemplate: "{creditorAccount} へ最大 {instructedAmount} まで",
@@ -54,7 +54,7 @@ func TestValidateAgainstType_FailClosed(t *testing.T) {
 
 func TestValidateAgainstType_DisabledRejected(t *testing.T) {
 	pt := paymentType()
-	pt.State = spec.DetailTypeDisabled
+	pt.State = DetailTypeDisabled
 	d := detail(map[string]any{"instructedAmount": float64(10)}, "initiate")
 	if err := ValidateAgainstType(d, pt); err == nil {
 		t.Fatal("expected rejection for disabled type")
@@ -62,7 +62,7 @@ func TestValidateAgainstType_DisabledRejected(t *testing.T) {
 }
 
 func TestDetailsSubsetOf_Downscope(t *testing.T) {
-	types := map[string]spec.AuthorizationDetailType{"payment_initiation": paymentType()}
+	types := map[string]AuthorizationDetailType{"payment_initiation": paymentType()}
 	granted := []spec.AuthorizationDetail{
 		detail(map[string]any{"instructedAmount": float64(100), "creditorAccount": "acct-x"}, "initiate", "status"),
 	}
@@ -88,7 +88,7 @@ func TestDetailsSubsetOf_Downscope(t *testing.T) {
 }
 
 func TestDetailsSubsetOf_OmittedFieldNarrows(t *testing.T) {
-	types := map[string]spec.AuthorizationDetailType{"payment_initiation": paymentType()}
+	types := map[string]AuthorizationDetailType{"payment_initiation": paymentType()}
 	granted := []spec.AuthorizationDetail{
 		detail(map[string]any{"instructedAmount": float64(100), "creditorAccount": "acct-x"}, "initiate", "status"),
 	}

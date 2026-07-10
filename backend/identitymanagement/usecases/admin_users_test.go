@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -173,9 +175,9 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Seed cascade artifacts.
-	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &spec.Consent{
+	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &oauthdomain.Consent{
 		UserID: user.ID, ClientID: "client-a",
-		Scopes: []string{"openid"}, State: spec.ConsentGranted,
+		Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
 	_ = refreshStore.Save(ctx, &spec.RefreshTokenRecord{
@@ -322,9 +324,9 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
-	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &spec.Consent{
+	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice-1", ClientID: "client-a",
-		Scopes: []string{"openid"}, State: spec.ConsentGranted,
+		Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
 

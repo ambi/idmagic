@@ -5,20 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/jackc/pgx/v5"
 )
 
 // OAuth2ClientRepository (OAuth2)
 type OAuth2ClientRepository struct{ Pool DB }
 
-func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, id string) (*spec.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, id string) (*oauthdomain.OAuth2Client, error) {
 	row := r.Pool.QueryRow(ctx, clientSelect+" WHERE tenant_id=$1 AND client_id=$2", tenantID, id)
 	return scanOAuth2Client(row)
 }
 
-func (r *OAuth2ClientRepository) Save(ctx context.Context, c *spec.OAuth2Client) error {
+func (r *OAuth2ClientRepository) Save(ctx context.Context, c *oauthdomain.OAuth2Client) error {
 	redirectURIs, err := json.Marshal(c.RedirectURIs)
 	if err != nil {
 		return err
@@ -65,13 +65,13 @@ func (r *OAuth2ClientRepository) Delete(ctx context.Context, tenantID, id string
 	return err
 }
 
-func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*spec.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*oauthdomain.OAuth2Client, error) {
 	rows, err := r.Pool.Query(ctx, clientSelect+" WHERE tenant_id=$1 ORDER BY created_at", tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []*spec.OAuth2Client
+	var out []*oauthdomain.OAuth2Client
 	for rows.Next() {
 		client, err := scanOAuth2Client(rows)
 		if err != nil {
@@ -87,8 +87,8 @@ grant_types,response_types,token_endpoint_auth_method,scope,jwks_uri,jwks,
 tls_client_auth_subject_dn,id_token_signed_response_alg,
 require_pushed_authorization_requests,dpop_bound_access_tokens,fapi_profile,first_party,created_at,updated_at FROM clients`
 
-func scanOAuth2Client(row RowScanner) (*spec.OAuth2Client, error) {
-	var c spec.OAuth2Client
+func scanOAuth2Client(row RowScanner) (*oauthdomain.OAuth2Client, error) {
+	var c oauthdomain.OAuth2Client
 	var redirectURIs, grantTypes, responseTypes, jwks []byte
 	err := row.Scan(&c.TenantID, &c.ClientID, &c.ClientSecretHash, &c.ClientName, &c.ClientType,
 		&redirectURIs, &grantTypes, &responseTypes, &c.TokenEndpointAuthMethod, &c.Scope,

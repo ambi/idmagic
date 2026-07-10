@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -27,16 +29,16 @@ const (
 func newEndSessionServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	clientRepo := memory.NewClientRepository()
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: logoutClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{logoutRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodNone,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodNone,
 		Scope:                    "openid",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
 	e := echo.New()

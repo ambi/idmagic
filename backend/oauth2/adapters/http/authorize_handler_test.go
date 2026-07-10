@@ -40,36 +40,36 @@ const (
 	authFirstPartyClientID = "auth-client-fp"
 )
 
-func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *spec.Consent) *echo.Echo {
+func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *domain.Consent) *echo.Echo {
 	t.Helper()
 	clientRepo := memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	consentRepo := memory.NewConsentRepository()
 	secretHash := domain.HashClientSecret(authClientSec)
 	now := time.Now().UTC()
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: authClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{authRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
 	// first-party クライアント (ADR-061): consent をスキップする検証用。
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: authFirstPartyClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{authRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodNone,
+		TokenEndpointAuthMethod:  domain.AuthMethodNone,
 		Scope:                    "openid profile idmagic.admin",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		FirstParty:               true,
 		CreatedAt:                now,
 	})
@@ -163,10 +163,10 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
 	// 既存 Consent。prompt=consent が無ければ即 issueCode に進む。
-	consent := &spec.Consent{
+	consent := &domain.Consent{
 		UserID: "user_alice", ClientID: authClientID,
 		Scopes:    []string{"openid", "profile"},
-		State:     spec.ConsentGranted,
+		State:     domain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
 	e := newAuthorizeTestServer(t, authn, consent)

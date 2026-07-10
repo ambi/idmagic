@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -34,9 +36,9 @@ func TestNewAuditEventRecordExtractsTenantID(t *testing.T) {
 func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	for _, ev := range []spec.DomainEvent{
-		&spec.ClientRegistered{At: now, TenantID: "acme", ClientID: "demo-client"},
+		&oauthdomain.ClientRegistered{At: now, TenantID: "acme", ClientID: "demo-client"},
 		&spec.AccessTokenIssued{At: now, TenantID: "acme", JTI: "jti", ClientID: "demo-client", UserID: "user_alice"},
-		&spec.ConsentGrantedEvent{At: now, TenantID: "acme", UserID: "user_alice", ClientID: "demo-client"},
+		&oauthdomain.ConsentGrantedEvent{At: now, TenantID: "acme", UserID: "user_alice", ClientID: "demo-client"},
 	} {
 		rec, err := newAuditEventRecord(ev)
 		if err != nil {

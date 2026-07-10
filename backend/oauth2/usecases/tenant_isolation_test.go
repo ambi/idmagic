@@ -20,13 +20,13 @@ func tenantContext(id string) context.Context {
 
 func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 	clients := memory.NewClientRepository()
-	clients.Seed(&spec.OAuth2Client{
+	clients.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "web-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/callback"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: spec.FapiNone,
+		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
+		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	_, err := Authorize(tenantContext("acme"), AuthorizeDeps{
@@ -61,13 +61,13 @@ func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 
 func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 	clients := memory.NewClientRepository()
-	clients.Seed(&spec.OAuth2Client{
+	clients.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "web-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: spec.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: spec.FapiNone,
+		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
+		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	users := memory.NewUserRepository()
@@ -94,13 +94,13 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 
 func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 	clients := memory.NewClientRepository()
-	clients.Seed(&spec.OAuth2Client{
+	clients.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "tv-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://tv.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantDeviceCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{},
-		TokenEndpointAuthMethod: spec.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: spec.FapiNone,
+		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
+		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	users := memory.NewUserRepository()

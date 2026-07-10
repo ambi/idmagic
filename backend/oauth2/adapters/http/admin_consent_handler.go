@@ -6,23 +6,24 @@ import (
 	"slices"
 	"time"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
 type adminConsentResponse struct {
-	UserID            string            `json:"user_id"`
-	PreferredUsername string            `json:"preferred_username,omitempty"`
-	ClientID          string            `json:"client_id"`
-	ClientName        string            `json:"client_name"`
-	Scopes            []string          `json:"scopes"`
-	State             spec.ConsentState `json:"state"`
-	GrantedAt         time.Time         `json:"granted_at"`
-	ExpiresAt         time.Time         `json:"expires_at"`
-	RevokedAt         *time.Time        `json:"revoked_at,omitempty"`
+	UserID            string                   `json:"user_id"`
+	PreferredUsername string                   `json:"preferred_username,omitempty"`
+	ClientID          string                   `json:"client_id"`
+	ClientName        string                   `json:"client_name"`
+	Scopes            []string                 `json:"scopes"`
+	State             oauthdomain.ConsentState `json:"state"`
+	GrantedAt         time.Time                `json:"granted_at"`
+	ExpiresAt         time.Time                `json:"expires_at"`
+	RevokedAt         *time.Time               `json:"revoked_at,omitempty"`
 }
 
 func (d Deps) handleListAdminConsents(c *echo.Context) error {
@@ -101,7 +102,7 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func toAdminConsentResponse(consent *spec.Consent, clientName, preferredUsername string) adminConsentResponse {
+func toAdminConsentResponse(consent *oauthdomain.Consent, clientName, preferredUsername string) adminConsentResponse {
 	return adminConsentResponse{
 		UserID: consent.UserID, PreferredUsername: preferredUsername,
 		ClientID: consent.ClientID, ClientName: clientName,

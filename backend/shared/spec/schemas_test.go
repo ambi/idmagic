@@ -53,22 +53,6 @@ func TestUserValidateRejectsMalformedEmail(t *testing.T) {
 	}
 }
 
-func TestClientValidateRequiresGrantTypes(t *testing.T) {
-	c := OAuth2Client{
-		ClientID:                 "demo",
-		ClientType:               ClientConfidential,
-		RedirectURIs:             []string{"https://app.example.com/cb"},
-		GrantTypes:               nil,
-		TokenEndpointAuthMethod:  AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: SigAlgPS256,
-		FapiProfile:              FapiNone,
-		CreatedAt:                time.Now().UTC(),
-	}
-	if err := c.Validate(); err == nil {
-		t.Fatal("expected error for empty grant_types")
-	}
-}
-
 func TestTransitionAuthorizationCodeFlowHappyPath(t *testing.T) {
 	steps := []struct {
 		from  AuthorizationCodeFlowState

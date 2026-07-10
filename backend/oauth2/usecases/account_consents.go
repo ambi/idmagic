@@ -8,20 +8,21 @@ package usecases
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 // ListConsentsForSub は指定 sub の active な (granted) Consent のみを返す。
 // 接続済みアプリ一覧の用途で、revoked / expired は除外する。
-func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*spec.Consent, error) {
+func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*domain.Consent, error) {
 	all, err := deps.ConsentRepo.FindAll(ctx, tenancy.TenantID(ctx))
 	if err != nil {
 		return nil, err
 	}
-	mine := make([]*spec.Consent, 0)
+	mine := make([]*domain.Consent, 0)
 	for _, consent := range all {
-		if consent.UserID == sub && consent.State == spec.ConsentGranted {
+		if consent.UserID == sub && consent.State == domain.ConsentGranted {
 			mine = append(mine, consent)
 		}
 	}

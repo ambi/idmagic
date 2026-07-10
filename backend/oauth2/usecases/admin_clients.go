@@ -10,6 +10,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -39,7 +41,7 @@ func CreateAdminOAuth2Client(
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.AdminOAuth2ClientCreated{
+	emit(deps.Emit, &domain.AdminOAuth2ClientCreated{
 		At: adminNow(in.Now), TenantID: result.Client.TenantID, ActorUserID: in.ActorUserID, ClientID: result.Client.ClientID,
 	})
 	return result, nil
@@ -58,7 +60,7 @@ type UpdateAdminOAuth2ClientInput struct {
 	Now             time.Time
 }
 
-func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in UpdateAdminOAuth2ClientInput) (*spec.OAuth2Client, error) {
+func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in UpdateAdminOAuth2ClientInput) (*domain.OAuth2Client, error) {
 	tenantID := tenancy.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
@@ -107,7 +109,7 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 	if err := deps.ClientRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.AdminOAuth2ClientUpdated{
+	emit(deps.Emit, &domain.AdminOAuth2ClientUpdated{
 		At: adminNow(in.Now), TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: client.ClientID,
 		ChangedFields: changed,
 	})
@@ -131,7 +133,7 @@ func DeleteAdminOAuth2Client(
 	if err := deps.ClientRepo.Delete(ctx, tenantID, clientID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.AdminOAuth2ClientDeleted{
+	emit(deps.Emit, &domain.AdminOAuth2ClientDeleted{
 		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ClientID: clientID,
 	})
 	return nil

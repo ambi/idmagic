@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -35,7 +37,7 @@ func TestAdminConsents(t *testing.T) {
 		}
 
 		// 1つ保存
-		consent := &spec.Consent{
+		consent := &domain.Consent{
 			UserID:   "user-1",
 			ClientID: "client-1",
 			Scopes:   []string{"openid"},
@@ -84,7 +86,7 @@ func TestAdminConsents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if consent.State != spec.ConsentRevoked {
+		if consent.State != domain.ConsentRevoked {
 			t.Errorf("expected state to be ConsentRevoked, got %v", consent.State)
 		}
 		if consent.RevokedAt == nil {
@@ -95,7 +97,7 @@ func TestAdminConsents(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*spec.ConsentRevokedEvent)
+		ev, ok := emitted[0].(*domain.ConsentRevokedEvent)
 		if !ok {
 			t.Fatalf("expected ConsentRevokedEvent, got %T", emitted[0])
 		}

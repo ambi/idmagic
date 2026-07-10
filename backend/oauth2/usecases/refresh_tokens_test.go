@@ -28,15 +28,15 @@ func newRefreshFixture(t *testing.T, sc *spec.SenderConstraint, now time.Time, t
 	refreshStore := memory.NewRefreshTokenStore()
 	issuer := &fakeTokenIssuer{}
 
-	clientRepo.Seed(&spec.OAuth2Client{
+	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{"https://client.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  spec.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid offline_access",
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
-		FapiProfile:              spec.FapiNone,
+		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
 	userRepo.Seed(&spec.User{
