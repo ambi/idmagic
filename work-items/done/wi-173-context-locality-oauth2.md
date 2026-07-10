@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-11
@@ -104,10 +104,23 @@ context であり、横展開の中でも最も工数の大きい 1 件になる
   `oauth2/adapters/persistence/postgres/{queries,sqlcgen}` を新設。3 リポジトリ 9 クエリ
   すべて静的生成（エスケープハッチなし、動的 WHERE を持つクエリが無いため）。
   `just sqlc-generate` の冪等性を確認済み。
-- [ ] T006 [DI] `oauth2/module.go` を新設し Client/Consent/AuthzDetailType を Module 化。
-- [ ] T007 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から該当 3 field を撤去。
-- [ ] T008 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
-- [ ] T009 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
+- [x] T006 [DI] `oauth2/module.go` を新設し Client/Consent/AuthzDetailType を Module 化。
+  `oauth2.Module{ClientRepo, ConsentRepo, AuthzDetailTypeRepo}`。token/grant・audit 分の
+  field が中央 Deps に残るため、oauth2 自身の `Register()`（route 全登録）はまだ持たせず
+  （[[wi-181]]・[[wi-182]] で拡張後に導入予定、Plan 3 参照）。
+- [x] T007 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` `Dependencies` から
+  `ClientRepo`/`ConsentRepo`/`AuthzDetailTypeRepo` の 3 field を撤去し `OAuth2 oauth2.Module`
+  1 個へ集約。呼び出し側（application/identitymanagement/authentication の Deps 構築・
+  テストヘルパー含む）を `d.OAuth2.ClientRepo` 等へ更新。
+- [x] T008 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。oauth2 client/consent/
+  認可詳細タイプの 3 リポジトリ 9 クエリは静的生成 100%（動的エスケープハッチ 0 件）。
+  application の 96%/4% と合わせて sqlc 継続採用の追加傍証とする。
+- [x] T009 [Verify] `just verify-go`（lint 0 issues、race テスト全 green）/ `just test-go` /
+  `just yaml-check` green。`just build-go` 成功、memory backend で `/health` (200) と
+  `/api/admin/clients`（未認証 401、oauth2.Module 経由のルーティング疎通確認）をスモーク。
+  locality 指標：`grep -r "internal/shared/spec" internal/oauth2` は 92 件（token/grant・
+  audit・ClientType/GrantType/ResponseType/SignatureAlgorithm 等、本 WI 対象外の意図的な
+  残置参照。[[wi-181]]・[[wi-182]] 完了後にさらに減少する）。
 
 ## Verification
 
@@ -128,3 +141,42 @@ context であり、横展開の中でも最も工数の大きい 1 件になる
   保つ。`oauth2.Module` の設計を [[wi-181]]・[[wi-182]] が拡張しやすい形にすることで
   後続 WI のやり直しリスクを下げる。振る舞い不変を `just test-go`（既存 E2E 含む）で
   都度確認する。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: oauth2 context 横展開の第一弾として client / consent / 認可詳細タイプを
+  [[ADR-089]]/[[ADR-090]]/[[ADR-091]] の型紙で移設した。T001 の実測で全体規模が
+  wi-172（95 ファイル変更）を上回ると判明し、Plan の分岐規定に従い client/consent/認可詳細
+  タイプ（本 WI）・token/grant（[[wi-181]]）・audit/outbox（[[wi-182]]）に 3 分割した。
+  `OAuth2Client`/`Consent`/`AuthorizationDetailFieldRule`/`AuthorizationDetailsSchema`/
+  `AuthorizationDetailType` とその zog 検証・イベント・専用 enum を `internal/oauth2/domain/`
+  へ移設。`ClientType`/`GrantType`/`ResponseType`/`AuthorizationDetail`（実行時インスタンス）
+  は shared 側の SCL permissions エンジンおよび [[wi-181]] 側の型が直接参照するため shared
+  残置と判断（T003、循環回避）。この判断の過程で [[ADR-089]] 決定 3 の「validation.go」解釈の
+  齟齬を発見し [[ADR-093]] を新設して是正した（zog スキーマは型と共に移設、汎用ラッパーのみ
+  shared 残置）。postgres/memory の repository 実装を `internal/oauth2/adapters/persistence/`
+  へ同居し、postgres 実装は新設と同時に sqlc 生成へ置換（3 リポジトリ 9 クエリすべて静的、
+  エスケープハッチ 0 件、[[ADR-090]] に追記）。`internal/oauth2/module.go` を新設し中央
+  `server/routes.go` の `Deps` と `bootstrap/deps.go` の `Dependencies` から
+  `ClientRepo`/`ConsentRepo`/`AuthzDetailTypeRepo` の 3 field を `OAuth2 oauth2.Module` へ
+  集約。副産物として `shared/adapters/persistence/memory` の `defaultTenant` を
+  `DefaultTenant` として export（[[wi-172]] の RowScanner/TenantKey と同じ再利用パターン）。
+- **Affected Guarantees State**: 振る舞い・HTTP route・DB schema・公開 API は不変（純構造 +
+  生成方式の変更）。SCL 規範（`spec/scl.yaml` / `spec/contexts/oauth2.yaml`）は変更していない。
+- **Verification Results**:
+  - `just yaml-check` — passed（184 files, 272 record ids）
+  - `just verify-go`（lint + `go test -race ./...`）— passed, 0 lint issues
+  - `just sqlc-generate` — 冪等性を確認（2 回目の生成で差分なし）
+  - locality 指標：`grep -r "internal/shared/spec" internal/oauth2 | wc -l` は 92
+    （token/grant・audit・`ClientType`/`GrantType`/`ResponseType`/`SignatureAlgorithm`/
+    `AuthorizationDetail` 等、本 WI scope 外の意図的な残置参照。[[wi-181]]・[[wi-182]] 完了後に
+    さらに減少する見込み）
+  - memory backend の起動 + `/health`（200）・`/api/admin/clients`（未認証 401、
+    `oauth2.Module` 経由のルーティング疎通確認）スモークテスト — passed
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: ローカル開発環境
+  - 実行主体: Claude Code
+  - 対象ソース版: `main`（コミット前）
+  - 保存先: CI 外部成果物なし。上記コマンドの成功結果を本記録に要約。

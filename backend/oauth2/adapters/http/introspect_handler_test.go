@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -43,7 +44,8 @@ func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.
 	})
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
+		Deps:              support.Deps{Issuer: "http://test"},
+		OAuth2:            oauth2.Module{ClientRepo: clientRepo},
 		TokenIntrospector: intro,
 		RefreshStore:      memory.NewRefreshTokenStore(),
 	}

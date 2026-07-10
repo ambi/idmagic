@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/application"
@@ -49,8 +50,10 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
-		SamlSPRepo:    memory.NewSamlServiceProviderRepository(),
-		ClientRepo:    oauth2memory.NewClientRepository(),
+		SamlSPRepo: memory.NewSamlServiceProviderRepository(),
+		OAuth2: oauth2.Module{
+			ClientRepo: oauth2memory.NewClientRepository(),
+		},
 		WsFedRPRepo:   memory.NewWsFedRelyingPartyRepository(),
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})

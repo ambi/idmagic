@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -50,9 +51,9 @@ func newTokenExchangeServer(t *testing.T) string {
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
+		Deps:         support.Deps{Issuer: "http://test"},
+		OAuth2:       oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()},
 		UserRepo:     memory.NewUserRepository(),
-		ConsentRepo:  oauth2memory.NewConsentRepository(),
 		RefreshStore: memory.NewRefreshTokenStore(),
 		KeyStore:     keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	})

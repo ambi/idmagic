@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -65,7 +66,7 @@ func newDeviceServer() deviceFixture {
 			Issuer:     "http://test",
 			TenantRepo: memory.NewTenantRepository(),
 		},
-		ClientRepo:      clientRepo,
+		OAuth2:          oauth2.Module{ClientRepo: clientRepo},
 		DeviceCodeStore: deviceStore,
 		AuthnResolver:   authn,
 	}

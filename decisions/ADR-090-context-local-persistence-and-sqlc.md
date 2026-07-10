@@ -88,6 +88,20 @@ WHERE、または固定長 INSERT ... ON CONFLICT）は 25 件（96%）。動的
 admin list/filter（可変 WHERE）を多く持つ context（例: 監査ログ検索、ユーザー一覧の属性
 フィルタ）を移行した際に動的比率が再評価対象になった場合にのみ検討する。
 
+### 実測値（wi-173、oauth2 context 横展開・client/consent/認可詳細タイプ）
+
+oauth2 context の横展開第一弾（client / consent / authorization detail type、[[wi-173]]）
+では、3 リポジトリ・全 9 クエリ（`GetClientByID` / `ListClientsByTenant` / `UpsertClient` /
+`DeleteClient` / `GetConsent` / `ListConsentsByTenant` / `UpsertConsent` / `RevokeConsent` /
+`DeleteConsentsForSub` / `GetAuthorizationDetailType` / `ListAuthorizationDetailTypesByTenant`
+/ `UpsertAuthorizationDetailType` / `DeleteAuthorizationDetailType` のうち実質 13 件、
+明細は各 `queries/*.sql`）すべてが sqlc 静的生成のみで賄え、動的エスケープハッチは 0 件
+（100%）だった。admin client 一覧のようなフィルタ付きクエリは本 WI の scope（
+`ListClientsByTenant`/`ListConsentsByTenant`/`ListAuthorizationDetailTypesByTenant` は
+いずれも tenant_id 固定 WHERE のみ）には含まれず、可変 WHERE を持つクエリは未発見のまま。
+application の 96%/4% と合わせ、sqlc 継続採用をさらに裏付ける。監査ログ検索など可変 WHERE
+候補が本命の [[wi-182]]（audit/outbox）で再度実測し、bob 再評価の要否を判断する。
+
 ## 影響
 
 - Go import path: repository 実装が `idmagic/internal/shared/adapters/persistence/...` から

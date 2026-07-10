@@ -6,6 +6,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -22,7 +23,6 @@ func assembleMemory() (*Dependencies, error) {
 		ScimRepo:                memory.NewScimRepository(),
 		TenantRepo:              memory.NewTenantRepository(),
 		AttrSchemaRepo:          memory.NewTenantUserAttributeSchemaRepository(),
-		ClientRepo:              oauth2memory.NewClientRepository(),
 		UserRepo:                memory.NewUserRepository(),
 		GroupRepo:               memory.NewGroupRepository(),
 		AgentRepo:               memory.NewAgentRepository(),
@@ -30,20 +30,23 @@ func assembleMemory() (*Dependencies, error) {
 		PasswordHistoryRepo:     memory.NewPasswordHistoryRepository(),
 		PasswordResetTokenStore: memory.NewPasswordResetTokenStore(),
 		EmailChangeTokenStore:   memory.NewEmailChangeTokenStore(),
-		ConsentRepo:             oauth2memory.NewConsentRepository(),
-		AuthzDetailTypeRepo:     oauth2memory.NewAuthorizationDetailTypeRepository(),
-		RequestStore:            memory.NewAuthorizationRequestStore(),
-		CodeStore:               memory.NewAuthorizationCodeStore(),
-		PARStore:                memory.NewPARStore(),
-		RefreshStore:            memory.NewRefreshTokenStore(),
-		DeviceCodeStore:         memory.NewDeviceCodeStore(),
-		DpopReplay:              memory.NewDpopReplayStore(),
-		ClientAssertionReplay:   memory.NewClientAssertionReplayStore(),
-		AccessTokenDenylist:     memory.NewAccessTokenDenylist(),
-		SessionStore:            memory.NewSessionStore(),
-		WebAuthnCredentialRepo:  memory.NewWebAuthnCredentialRepository(),
-		WebAuthnSessionStore:    memory.NewWebAuthnSessionStore(),
-		RecoveryCodeRepo:        memory.NewRecoveryCodeRepository(),
+		OAuth2: oauth2.Module{
+			ClientRepo:          oauth2memory.NewClientRepository(),
+			ConsentRepo:         oauth2memory.NewConsentRepository(),
+			AuthzDetailTypeRepo: oauth2memory.NewAuthorizationDetailTypeRepository(),
+		},
+		RequestStore:           memory.NewAuthorizationRequestStore(),
+		CodeStore:              memory.NewAuthorizationCodeStore(),
+		PARStore:               memory.NewPARStore(),
+		RefreshStore:           memory.NewRefreshTokenStore(),
+		DeviceCodeStore:        memory.NewDeviceCodeStore(),
+		DpopReplay:             memory.NewDpopReplayStore(),
+		ClientAssertionReplay:  memory.NewClientAssertionReplayStore(),
+		AccessTokenDenylist:    memory.NewAccessTokenDenylist(),
+		SessionStore:           memory.NewSessionStore(),
+		WebAuthnCredentialRepo: memory.NewWebAuthnCredentialRepository(),
+		WebAuthnSessionStore:   memory.NewWebAuthnSessionStore(),
+		RecoveryCodeRepo:       memory.NewRecoveryCodeRepository(),
 		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 			return memory.NewLoginAttemptThrottle(configs)
 		},

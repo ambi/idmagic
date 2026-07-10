@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -68,10 +69,12 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
-		AgentRepo:             memory.NewAgentRepository(),
-		GroupRepo:             groupRepo,
-		ClientRepo:            clientRepo,
-		ConsentRepo:           consentRepo,
+		AgentRepo: memory.NewAgentRepository(),
+		GroupRepo: groupRepo,
+		OAuth2: oauth2.Module{
+			ClientRepo:  clientRepo,
+			ConsentRepo: consentRepo,
+		},
 		EmailChangeTokenStore: tokenStore,
 		EmailSender:           mockEmailSender{},
 	})

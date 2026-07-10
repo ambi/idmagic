@@ -59,7 +59,7 @@ func Run() error {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
 	if os.Getenv("SKIP_DEMO_SEED") == "" {
-		if err := seedDemoData(ctx, deps.ClientRepo, deps.UserRepo, deps.MfaFactorRepo, deps.PasswordHistoryRepo, deps.GroupRepo, deps.AuthzDetailTypeRepo, hasher); err != nil {
+		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.UserRepo, deps.MfaFactorRepo, deps.PasswordHistoryRepo, deps.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
 			return fmt.Errorf("seed demo data: %w", err)
 		}
 		if err := seedWsFedRelyingParty(ctx, deps.WsFedRPRepo); err != nil {
@@ -184,10 +184,8 @@ func Run() error {
 		},
 		ScimRepo:                   deps.ScimRepo,
 		AttrSchemaRepo:             deps.AttrSchemaRepo,
-		ClientRepo:                 deps.ClientRepo,
 		UserRepo:                   deps.UserRepo,
-		ConsentRepo:                deps.ConsentRepo,
-		AuthzDetailTypeRepo:        deps.AuthzDetailTypeRepo,
+		OAuth2:                     deps.OAuth2,
 		RequestStore:               deps.RequestStore,
 		CodeStore:                  deps.CodeStore,
 		PARStore:                   deps.PARStore,

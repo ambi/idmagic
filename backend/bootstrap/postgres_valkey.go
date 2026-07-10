@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/adapters/persistence/postgres"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
@@ -91,7 +92,6 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		ScimRepo:                &postgres.ScimRepository{Pool: resilientDB},
 		TenantRepo:              &postgres.TenantRepository{Pool: resilientDB},
 		AttrSchemaRepo:          &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
-		ClientRepo:              &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
 		UserRepo:                &postgres.UserRepository{Pool: resilientDB},
 		GroupRepo:               &postgres.GroupRepository{Pool: resilientDB},
 		AgentRepo:               &postgres.AgentRepository{Pool: resilientDB},
@@ -99,20 +99,23 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		PasswordHistoryRepo:     &postgres.PasswordHistoryRepository{Pool: resilientDB},
 		PasswordResetTokenStore: &postgres.PasswordResetTokenStore{Pool: resilientDB},
 		EmailChangeTokenStore:   &postgres.EmailChangeTokenStore{Pool: resilientDB},
-		ConsentRepo:             &oauth2postgres.ConsentRepository{Pool: resilientDB},
-		AuthzDetailTypeRepo:     &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
-		RequestStore:            &valkeystore.AuthorizationRequestStore{Client: valkeyClient},
-		CodeStore:               &valkeystore.AuthorizationCodeStore{Client: valkeyClient},
-		PARStore:                &valkeystore.PARStore{Client: valkeyClient},
-		RefreshStore:            &postgres.RefreshTokenStore{Pool: resilientDB},
-		DeviceCodeStore:         &valkeystore.DeviceCodeStore{Client: valkeyClient},
-		DpopReplay:              &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
-		ClientAssertionReplay:   &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
-		AccessTokenDenylist:     &valkeystore.AccessTokenDenylist{Client: valkeyClient},
-		SessionStore:            &valkeystore.SessionStore{Client: valkeyClient},
-		WebAuthnCredentialRepo:  &postgres.WebAuthnCredentialRepository{Pool: resilientDB},
-		WebAuthnSessionStore:    &valkeystore.WebAuthnSessionStore{Client: valkeyClient},
-		RecoveryCodeRepo:        &postgres.RecoveryCodeRepository{Pool: resilientDB},
+		OAuth2: oauth2.Module{
+			ClientRepo:          &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
+			ConsentRepo:         &oauth2postgres.ConsentRepository{Pool: resilientDB},
+			AuthzDetailTypeRepo: &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
+		},
+		RequestStore:           &valkeystore.AuthorizationRequestStore{Client: valkeyClient},
+		CodeStore:              &valkeystore.AuthorizationCodeStore{Client: valkeyClient},
+		PARStore:               &valkeystore.PARStore{Client: valkeyClient},
+		RefreshStore:           &postgres.RefreshTokenStore{Pool: resilientDB},
+		DeviceCodeStore:        &valkeystore.DeviceCodeStore{Client: valkeyClient},
+		DpopReplay:             &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
+		ClientAssertionReplay:  &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
+		AccessTokenDenylist:    &valkeystore.AccessTokenDenylist{Client: valkeyClient},
+		SessionStore:           &valkeystore.SessionStore{Client: valkeyClient},
+		WebAuthnCredentialRepo: &postgres.WebAuthnCredentialRepository{Pool: resilientDB},
+		WebAuthnSessionStore:   &valkeystore.WebAuthnSessionStore{Client: valkeyClient},
+		RecoveryCodeRepo:       &postgres.RecoveryCodeRepository{Pool: resilientDB},
 		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 			return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
 		},

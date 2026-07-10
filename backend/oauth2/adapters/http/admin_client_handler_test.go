@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -162,7 +163,7 @@ func newAdminOAuth2ClientHandler(
 			Emit: func(event spec.DomainEvent) {
 				events = append(events, event)
 			},
-		}, ClientRepo: clients, UserRepo: users,
+		}, OAuth2: oauth2.Module{ClientRepo: clients}, UserRepo: users,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})
 	return e, clients, &events

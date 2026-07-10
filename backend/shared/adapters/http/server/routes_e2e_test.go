@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/application"
@@ -102,7 +103,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 			Issuer: "http://test",
 
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
+		}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()}, UserRepo: userRepo,
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
@@ -211,7 +212,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			Issuer: "http://test",
 
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
+		}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()}, UserRepo: userRepo,
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
@@ -1046,7 +1047,7 @@ func TestHealthProbes(t *testing.T) {
 			StartupComplete: startupComplete,
 			ShuttingDown:    shuttingDown,
 			HealthInfo:      support.HealthInfo{Persistence: "memory"},
-		}, ClientRepo: clientRepo,
+		}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
 		UserRepo:          userRepo,
 		KeyStore:          keyStore,
 		TokenIssuer:       tokenIssuer,

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -294,10 +295,12 @@ func newAdminUserHandler(
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
-		AgentRepo:             memory.NewAgentRepository(),
-		GroupRepo:             memory.NewGroupRepository(),
-		ClientRepo:            oauth2memory.NewClientRepository(),
-		ConsentRepo:           oauth2memory.NewConsentRepository(),
+		AgentRepo: memory.NewAgentRepository(),
+		GroupRepo: memory.NewGroupRepository(),
+		OAuth2: oauth2.Module{
+			ClientRepo:  oauth2memory.NewClientRepository(),
+			ConsentRepo: oauth2memory.NewConsentRepository(),
+		},
 		EmailChangeTokenStore: memory.NewEmailChangeTokenStore(),
 		EmailSender:           mockEmailSender{},
 	})

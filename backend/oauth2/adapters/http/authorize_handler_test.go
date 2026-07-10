@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -86,9 +87,9 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	}
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
+		Deps:         support.Deps{Issuer: "http://test"},
+		OAuth2:       oauth2.Module{ClientRepo: clientRepo, ConsentRepo: consentRepo},
 		UserRepo:     userRepo,
-		ConsentRepo:  consentRepo,
 		RequestStore: memory.NewAuthorizationRequestStore(),
 		CodeStore:    memory.NewAuthorizationCodeStore(),
 		PARStore:     memory.NewPARStore(),

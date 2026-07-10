@@ -9,6 +9,7 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmhttp "github.com/ambi/idmagic/backend/identitymanagement/adapters/http"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlhttp "github.com/ambi/idmagic/backend/saml/adapters/http"
@@ -35,10 +36,8 @@ type Deps struct {
 
 	ScimRepo                   scimports.ScimRepository
 	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
-	ClientRepo                 oauthports.OAuth2ClientRepository
 	UserRepo                   idmports.UserRepository
-	ConsentRepo                oauthports.ConsentRepository
-	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
+	OAuth2                     oauth2.Module
 	RequestStore               oauthports.AuthorizationRequestStore
 	CodeStore                  oauthports.AuthorizationCodeStore
 	PARStore                   oauthports.PARStore
@@ -124,16 +123,16 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	}
 
 	appGate := d.Application.Gate(d.GroupRepo, d.TrustedForwardedHops)
-	clientDisplayNames := d.Application.ClientDisplayNames(d.ClientRepo)
+	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
 		Deps:                       d.Deps,
 		Authenticator:              authenticator,
 		ApplicationGate:            appGate,
 		AuditEventRepo:             d.AuditEventRepo,
-		AuthzDetailTypeRepo:        d.AuthzDetailTypeRepo,
-		ClientRepo:                 d.ClientRepo,
-		ConsentRepo:                d.ConsentRepo,
+		AuthzDetailTypeRepo:        d.OAuth2.AuthzDetailTypeRepo,
+		ClientRepo:                 d.OAuth2.ClientRepo,
+		ConsentRepo:                d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver:  clientDisplayNames,
 		KeyStore:                   d.KeyStore,
 		TenantSaltStore:            d.TenantSaltStore,
@@ -171,7 +170,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:                  d.UserRepo,
 		PasswordHasher:            d.PasswordHasher,
 		PasswordHistoryRepo:       d.PasswordHistoryRepo,
-		ConsentRepo:               d.ConsentRepo,
+		ConsentRepo:               d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver: clientDisplayNames,
 		AttrSchemaRepo:            d.AttrSchemaRepo,
 		MfaFactorRepo:             d.MfaFactorRepo,
@@ -192,10 +191,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:              d.UserRepo,
 		GroupRepo:             d.GroupRepo,
 		AgentRepo:             d.AgentRepo,
-		ClientRepo:            d.ClientRepo,
+		ClientRepo:            d.OAuth2.ClientRepo,
 		ScimRepo:              d.ScimRepo,
 		AttrSchemaRepo:        d.AttrSchemaRepo,
-		ConsentRepo:           d.ConsentRepo,
+		ConsentRepo:           d.OAuth2.ConsentRepo,
 		RefreshStore:          d.RefreshStore,
 		DeviceCodeStore:       d.DeviceCodeStore,
 		MfaFactorRepo:         d.MfaFactorRepo,
@@ -235,7 +234,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:         d.UserRepo,
 	})
 
-	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.ClientRepo, d.WsFedRPRepo, d.SamlSPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFedRPRepo, d.SamlSPRepo)
 
 	scimUsecasesInst := scimusecases.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{

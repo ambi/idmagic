@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -36,7 +37,7 @@ func newAdminAuthzTypeHandler() *echo.Echo {
 			Issuer: "http://idp.test",
 
 			Emit: func(spec.DomainEvent) {},
-		}, UserRepo: users, AuthzDetailTypeRepo: types,
+		}, UserRepo: users, OAuth2: oauth2.Module{AuthzDetailTypeRepo: types},
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})
 	return e

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -31,7 +32,7 @@ func newRegisterServer() registerFixture {
 			Issuer:     "http://test",
 			TenantRepo: memory.NewTenantRepository(),
 		},
-		ClientRepo: clientRepo,
+		OAuth2: oauth2.Module{ClientRepo: clientRepo},
 	}
 	_ = deps.TenantRepo.Save(context.Background(), &spec.Tenant{
 		ID:     spec.DefaultTenantID,

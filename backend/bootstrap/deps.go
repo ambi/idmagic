@@ -9,6 +9,7 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
@@ -22,7 +23,6 @@ import (
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
 	ScimRepo                scimports.ScimRepository
-	ClientRepo              oauthports.OAuth2ClientRepository
 	TenantRepo              tenantports.TenantRepository
 	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository
 	UserRepo                idmports.UserRepository
@@ -32,8 +32,7 @@ type Dependencies struct {
 	PasswordHistoryRepo     authnports.PasswordHistoryRepository
 	PasswordResetTokenStore authnports.PasswordResetTokenStore
 	EmailChangeTokenStore   authnports.EmailChangeTokenStore
-	ConsentRepo             oauthports.ConsentRepository
-	AuthzDetailTypeRepo     oauthports.AuthorizationDetailTypeRepository
+	OAuth2                  oauth2.Module
 	RequestStore            oauthports.AuthorizationRequestStore
 	CodeStore               oauthports.AuthorizationCodeStore
 	PARStore                oauthports.PARStore
