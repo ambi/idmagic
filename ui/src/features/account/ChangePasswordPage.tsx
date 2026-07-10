@@ -8,7 +8,7 @@ import {
   IconLock,
   IconShieldLock,
 } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 import { AuthenticationAPIError, changePassword, PasswordPolicyError, tenantURL } from '../../api'
 import { AuthShell } from '../../components/AuthShell'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
@@ -17,7 +17,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 
-function violationMessage(violation: string): string {
+export function passwordViolationMessage(violation: string): string {
   switch (violation) {
     case 'too_short':
       return 'パスワードが短すぎます。'
@@ -62,7 +62,7 @@ export function ChangePasswordPage({
     } catch (cause) {
       if (cause instanceof StepUpCancelledError) return
       if (cause instanceof PasswordPolicyError) {
-        setError(cause.violations.map(violationMessage).join(' ') || cause.message)
+        setError(cause.violations.map(passwordViolationMessage).join(' ') || cause.message)
       } else if (cause instanceof AuthenticationAPIError) {
         switch (cause.code) {
           case 'access_denied':
@@ -85,6 +85,51 @@ export function ChangePasswordPage({
     }
   }
 
+  return (
+    <ChangePasswordPresentation
+      backHref={backHref}
+      backLabel={backLabel}
+      preferredUsername={preferredUsername}
+      showCurrent={showCurrent}
+      showNew={showNew}
+      error={error}
+      success={success}
+      submitting={submitting}
+      dialog={dialog}
+      onToggleShowCurrent={() => setShowCurrent((visible) => !visible)}
+      onToggleShowNew={() => setShowNew((visible) => !visible)}
+      onSubmit={handleSubmit}
+    />
+  )
+}
+
+export function ChangePasswordPresentation({
+  backHref,
+  backLabel,
+  preferredUsername,
+  showCurrent,
+  showNew,
+  error,
+  success,
+  submitting,
+  dialog,
+  onToggleShowCurrent,
+  onToggleShowNew,
+  onSubmit,
+}: {
+  backHref: string
+  backLabel: string
+  preferredUsername: string
+  showCurrent: boolean
+  showNew: boolean
+  error: string
+  success: boolean
+  submitting: boolean
+  dialog: ReactNode
+  onToggleShowCurrent: () => void
+  onToggleShowNew: () => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
   return (
     <AuthShell aside={false}>
       <div className="flex flex-col gap-7">
@@ -142,7 +187,7 @@ export function ChangePasswordPage({
           </Alert>
         ) : null}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit}>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <Label htmlFor="current_password">現在のパスワード</Label>
@@ -165,7 +210,7 @@ export function ChangePasswordPage({
                 />
                 <button
                   type="button"
-                  onClick={() => setShowCurrent((visible) => !visible)}
+                  onClick={onToggleShowCurrent}
                   className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
                   aria-label={showCurrent ? 'パスワードを隠す' : 'パスワードを表示'}
                   aria-pressed={showCurrent}
@@ -200,7 +245,7 @@ export function ChangePasswordPage({
                 />
                 <button
                   type="button"
-                  onClick={() => setShowNew((visible) => !visible)}
+                  onClick={onToggleShowNew}
                   className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
                   aria-label={showNew ? 'パスワードを隠す' : 'パスワードを表示'}
                   aria-pressed={showNew}

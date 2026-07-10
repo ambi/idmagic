@@ -36,6 +36,30 @@ export function AccountDataPage({ username, isAdmin }: { username: string; isAdm
   }
 
   return (
+    <AccountDataPresentation
+      username={username}
+      isAdmin={isAdmin}
+      downloading={downloading}
+      error={error}
+      onExport={handleExport}
+    />
+  )
+}
+
+export function AccountDataPresentation({
+  username,
+  isAdmin,
+  downloading,
+  error,
+  onExport,
+}: {
+  username: string
+  isAdmin: boolean
+  downloading: boolean
+  error: string
+  onExport: () => void
+}) {
+  return (
     <AccountShell
       active="data"
       username={username}
@@ -60,7 +84,7 @@ export function AccountDataPage({ username, isAdmin }: { username: string; isAdm
           </div>
         </div>
         <div>
-          <Button type="button" onClick={handleExport} disabled={downloading}>
+          <Button type="button" onClick={onExport} disabled={downloading}>
             <IconDownload size={16} aria-hidden="true" />
             {downloading ? '生成中…' : 'データをダウンロード (JSON)'}
           </Button>

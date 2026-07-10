@@ -145,11 +145,11 @@ function DragPreview({ app }: { app: MyApplication }) {
   )
 }
 
-type Section = { key: string; name: string; apps: MyApplication[] }
+export type Section = { key: string; name: string; apps: MyApplication[] }
 
 // buildSections は manual order を保ったまま、各カテゴリ (position 昇順) にアプリを振り分ける。
 // 1 アプリは付与された各カテゴリに現れ、カテゴリ未付与のアプリは末尾の「その他」へ集める。
-function buildSections(apps: MyApplication[], categories: PortalCategory[]): Section[] {
+export function buildSections(apps: MyApplication[], categories: PortalCategory[]): Section[] {
   const sections: Section[] = categories.map((category) => ({
     key: category.category_id,
     name: category.name,
@@ -189,10 +189,7 @@ export function AccountAppsPage({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   )
-  const itemIDs = useMemo(() => order.map((app) => app.application_id), [order])
   const appByID = useMemo(() => new Map(order.map((app) => [app.application_id, app])), [order])
-  const sections = buildSections(order, categories)
-  const grouped = categories.length > 0
   const activeApp = activeID ? appByID.get(activeID) : null
 
   async function persistOrder(next: MyApplication[]) {
@@ -246,6 +243,55 @@ export function AccountAppsPage({
   }
 
   return (
+    <AccountAppsPresentation
+      username={username}
+      isAdmin={isAdmin}
+      order={order}
+      categories={categories}
+      activeApp={activeApp}
+      saving={saving}
+      error={error}
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+      onLaunch={handleLaunch}
+    />
+  )
+}
+
+export function AccountAppsPresentation({
+  username,
+  isAdmin,
+  order,
+  categories,
+  activeApp,
+  saving,
+  error,
+  sensors,
+  onDragStart,
+  onDragEnd,
+  onDragCancel,
+  onLaunch,
+}: {
+  username: string
+  isAdmin: boolean
+  order: MyApplication[]
+  categories: PortalCategory[]
+  activeApp: MyApplication | null | undefined
+  saving: boolean
+  error: string | null
+  sensors: ReturnType<typeof useSensors>
+  onDragStart: (event: DragStartEvent) => void
+  onDragEnd: (event: DragEndEvent) => void
+  onDragCancel: () => void
+  onLaunch: (app: MyApplication) => void
+}) {
+  const itemIDs = useMemo(() => order.map((app) => app.application_id), [order])
+  const sections = useMemo(() => buildSections(order, categories), [order, categories])
+  const grouped = categories.length > 0
+
+  return (
     <AccountShell
       active="apps"
       username={username}
@@ -269,9 +315,9 @@ export function AccountAppsPage({
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragCancel={onDragCancel}
           >
             <SortableContext items={itemIDs} strategy={rectSortingStrategy}>
               {grouped ? (
@@ -279,12 +325,12 @@ export function AccountAppsPage({
                   {sections.map((section) => (
                     <section key={section.key} className="flex flex-col gap-3">
                       <h2 className="text-sm font-semibold text-slate-500">{section.name}</h2>
-                      <AppGrid apps={section.apps} onLaunch={handleLaunch} />
+                      <AppGrid apps={section.apps} onLaunch={onLaunch} />
                     </section>
                   ))}
                 </div>
               ) : (
-                <AppGrid apps={order} onLaunch={handleLaunch} />
+                <AppGrid apps={order} onLaunch={onLaunch} />
               )}
             </SortableContext>
             <DragOverlay dropAnimation={null}>

@@ -10,7 +10,7 @@ import { AccountShell } from '../../components/AccountShell'
 import { Card } from '../../components/ui/card'
 import { requiredActionLabel, type AccountSummary } from '../../types'
 
-function formatDateTime(value: string | undefined): string {
+export function formatAccountSummaryDateTime(value: string | undefined): string {
   if (!value) {
     return '記録なし'
   }
@@ -84,7 +84,7 @@ export function AccountHomePage({
           icon={<IconClockHour4 size={20} />}
           tone="neutral"
           label="最終ログイン"
-          value={formatDateTime(summary.last_login_at)}
+          value={formatAccountSummaryDateTime(summary.last_login_at)}
         />
         <SummaryCard
           icon={<IconUser size={20} />}

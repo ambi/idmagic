@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import type { AccountConsent } from '../../types'
 
-function formatDate(value: string): string {
+export function formatAccountConsentDate(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return value
@@ -55,6 +55,39 @@ export function AccountApplicationsPage({
   }
 
   return (
+    <AccountApplicationsPresentation
+      username={username}
+      consents={consents}
+      isAdmin={isAdmin}
+      pending={pending}
+      error={error}
+      notice={notice}
+      onDismissNotice={() => setNotice('')}
+      onRevoke={handleRevoke}
+    />
+  )
+}
+
+export function AccountApplicationsPresentation({
+  username,
+  consents,
+  isAdmin,
+  pending,
+  error,
+  notice,
+  onDismissNotice,
+  onRevoke,
+}: {
+  username: string
+  consents: AccountConsent[]
+  isAdmin: boolean
+  pending: string
+  error: string
+  notice: string
+  onDismissNotice: () => void
+  onRevoke: (consent: AccountConsent) => void
+}) {
+  return (
     <AccountShell
       active="applications"
       username={username}
@@ -62,7 +95,7 @@ export function AccountApplicationsPage({
       title="接続済みアプリ"
       description="あなたのアカウントへのアクセスを許可したアプリケーションです。不要なものは取り消せます。"
     >
-      <Toast message={notice} onDismiss={() => setNotice('')} />
+      <Toast message={notice} onDismiss={onDismissNotice} />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
       {consents.length === 0 ? (
@@ -85,7 +118,7 @@ export function AccountApplicationsPage({
                   {consent.client_name}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {formatDate(consent.granted_at)} に許可
+                  {formatAccountConsentDate(consent.granted_at)} に許可
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {consent.scopes.map((scope) => (
@@ -103,7 +136,7 @@ export function AccountApplicationsPage({
                 variant="outline"
                 className="text-red-700 hover:bg-red-50"
                 disabled={pending === consent.client_id}
-                onClick={() => handleRevoke(consent)}
+                onClick={() => onRevoke(consent)}
               >
                 <IconTrash size={16} aria-hidden="true" />
                 {pending === consent.client_id ? '取り消し中…' : 'アクセスを取り消す'}

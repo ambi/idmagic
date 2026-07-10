@@ -92,3 +92,13 @@ The admin console and account portal follow a set of strict UI consistency and n
    - Every page must have a dynamic and context-aware browser tab title (e.g., "ユーザー | IdMagic 管理コンソール") defined via the `PAGE_TITLES` map in `src/routes/-page.tsx` and evaluated by the `PageMarker` component.
 4. **Terminology Unification**
    - The UI must use the term "監査イベント" (Audit Event) instead of "監査ログ" (Audit Log) to maintain consistency with the underlying SCL definition (`AuditEvent`/`audit_events`).
+
+## Container / Presentation component split
+
+New `*Page.tsx` files (and refactors of existing ones) follow a container/presentation split so that UI rendering can be unit-tested apart from data fetching and side effects (ADR-081 precedent in wi-115, formalized in wi-132/wi-133):
+
+1. **Split by meaning, not by file.** The exported `XxxPage` function stays a thin container: it owns `useState`, API calls, and effects, and lays out the page's `*Shell` wrapper directly. Do not wrap an entire page in a single `XxxPresentation` twin that re-receives every piece of container state as a prop — that only relocates the same complexity behind an extra layer.
+2. **Extract at the section boundary.** Pull out a presentational component for each self-contained unit that benefits from isolated testing — a form with its own validation (e.g. `DefaultPolicyFormPresentation` in `AdminSignInPolicyPage.tsx`), an item list (`PasskeyList`), or a card with interactive state (`TotpEnrollmentForm` in `AccountSecurityPage.tsx`). Purely static, read-only markup can stay inline in the container; it does not need its own component.
+3. **Keep presentational props small.** A presentational component should take only the props its own section needs (typically well under 10), plus callbacks for the actions it triggers — never the container's entire state object. If a component's prop list balloons because a page has several independent sections, split it further into one component per section instead of widening the props.
+4. **No side effects in presentational components.** They receive data and callbacks and render; `fetch`/`api.*` calls, `useEffect`, and navigation stay in the container (or in a small section-local container, e.g. `DefaultPolicyCard`, when a section manages its own state before delegating to a pure form).
+5. **Test what was extracted.** Each extracted presentational component and any pure helper function (date formatting, validation, derived-value calculators) gets a Vitest/Testing Library unit test. Components that wrap `AccountShell`/`AdminShell`/`AuthShell` need a router context to render (those shells use TanStack Router's `Link`); use the `renderWithRouter` test helper (`src/test/renderWithRouter.tsx`) for those instead of skipping the test.

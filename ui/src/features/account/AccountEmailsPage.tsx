@@ -1,5 +1,5 @@
 import { IconCircleCheck, IconCircleDashed, IconMail } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 import { AuthenticationAPIError, requestEmailChange } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
@@ -51,6 +51,57 @@ export function AccountEmailsPage({
   }
 
   return (
+    <AccountEmailsPresentation
+      email={email}
+      emailVerified={emailVerified}
+      isAdmin={isAdmin}
+      newEmail={newEmail}
+      editing={editing}
+      submitting={submitting}
+      error={error}
+      sentTo={sentTo}
+      dialog={dialog}
+      onStartEdit={() => setEditing(true)}
+      onCancelEdit={() => {
+        setNewEmail('')
+        setEditing(false)
+      }}
+      onNewEmailChange={setNewEmail}
+      onSubmit={handleSubmit}
+    />
+  )
+}
+
+export function AccountEmailsPresentation({
+  email,
+  emailVerified,
+  isAdmin,
+  newEmail,
+  editing,
+  submitting,
+  error,
+  sentTo,
+  dialog,
+  onStartEdit,
+  onCancelEdit,
+  onNewEmailChange,
+  onSubmit,
+}: {
+  email?: string
+  emailVerified: boolean
+  isAdmin: boolean
+  newEmail: string
+  editing: boolean
+  submitting: boolean
+  error: string
+  sentTo: string
+  dialog: ReactNode
+  onStartEdit: () => void
+  onCancelEdit: () => void
+  onNewEmailChange: (value: string) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  return (
     <AccountShell
       active="emails"
       username={email ?? 'account'}
@@ -81,7 +132,7 @@ export function AccountEmailsPage({
           ) : null}
         </div>
         {!editing ? (
-          <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+          <Button type="button" variant="outline" onClick={onStartEdit}>
             変更
           </Button>
         ) : null}
@@ -97,7 +148,7 @@ export function AccountEmailsPage({
 
       {editing ? (
         <Card className="p-5">
-          <form onSubmit={handleSubmit} className="grid gap-4">
+          <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="new-email">新しいメールアドレス</Label>
               <Input
@@ -107,7 +158,7 @@ export function AccountEmailsPage({
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                onChange={(event) => setNewEmail(event.target.value)}
+                onChange={(event) => onNewEmailChange(event.target.value)}
               />
               <p className="text-xs text-slate-500">
                 新しいアドレス宛に確認リンクを送ります。リンクを開いて確認するまで、現在の
@@ -118,15 +169,7 @@ export function AccountEmailsPage({
               <Button type="submit" disabled={submitting || newEmail.trim().length === 0}>
                 {submitting ? '送信中…' : '確認メールを送信'}
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={submitting}
-                onClick={() => {
-                  setNewEmail('')
-                  setEditing(false)
-                }}
-              >
+              <Button type="button" variant="ghost" disabled={submitting} onClick={onCancelEdit}>
                 キャンセル
               </Button>
             </div>

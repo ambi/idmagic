@@ -11,9 +11,9 @@ import { Label } from '../../components/ui/label'
 import type { AccountProfile, AttributeValue, UserAttributeDef } from '../../types'
 
 // 編集フォーム上の属性値は文字列で保持し、保存時に AttributeValue へ整形する。
-type AttributeDraft = Record<string, string>
+export type AttributeDraft = Record<string, string>
 
-function draftFromProfile(profile: AccountProfile): AttributeDraft {
+export function draftFromProfile(profile: AccountProfile): AttributeDraft {
   const draft: AttributeDraft = {}
   for (const def of profile.editable_attributes) {
     const value = profile.attributes[def.key]
@@ -22,7 +22,7 @@ function draftFromProfile(profile: AccountProfile): AttributeDraft {
   return draft
 }
 
-function valueToText(value: AttributeValue): string {
+export function valueToText(value: AttributeValue): string {
   switch (value.type) {
     case 'string':
       return value.string ?? ''
@@ -40,7 +40,7 @@ function valueToText(value: AttributeValue): string {
 }
 
 // textToValue は空入力なら undefined を返し、その key を送らない (self-delete はしない)。
-function textToValue(def: UserAttributeDef, text: string): AttributeValue | undefined {
+export function textToValue(def: UserAttributeDef, text: string): AttributeValue | undefined {
   const trimmed = text.trim()
   switch (def.type) {
     case 'boolean':
@@ -76,6 +76,27 @@ export function AccountProfilePage({
   })
 
   return (
+    <AccountProfilePresentation
+      profile={profile}
+      isAdmin={isAdmin}
+      notice={notice}
+      onDismissNotice={() => setNotice('')}
+    />
+  )
+}
+
+export function AccountProfilePresentation({
+  profile,
+  isAdmin,
+  notice,
+  onDismissNotice,
+}: {
+  profile: AccountProfile
+  isAdmin: boolean
+  notice: string
+  onDismissNotice: () => void
+}) {
+  return (
     <AccountShell
       active="profile"
       username={profile.preferred_username}
@@ -84,7 +105,7 @@ export function AccountProfilePage({
       description="登録されているプロフィール情報を確認できます。"
     >
       <div className="grid gap-6">
-        <Toast message={notice} onDismiss={() => setNotice('')} />
+        <Toast message={notice} onDismiss={onDismissNotice} />
 
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -175,6 +196,54 @@ export function AccountProfileEditPage({
   }
 
   return (
+    <AccountProfileEditPresentation
+      profile={profile}
+      isAdmin={isAdmin}
+      name={name}
+      givenName={givenName}
+      familyName={familyName}
+      attributes={attributes}
+      saving={saving}
+      error={error}
+      onNameChange={setName}
+      onGivenNameChange={setGivenName}
+      onFamilyNameChange={setFamilyName}
+      onAttributeChange={(key, next) => setAttributes((current) => ({ ...current, [key]: next }))}
+      onSubmit={handleSave}
+    />
+  )
+}
+
+export function AccountProfileEditPresentation({
+  profile,
+  isAdmin,
+  name,
+  givenName,
+  familyName,
+  attributes,
+  saving,
+  error,
+  onNameChange,
+  onGivenNameChange,
+  onFamilyNameChange,
+  onAttributeChange,
+  onSubmit,
+}: {
+  profile: AccountProfile
+  isAdmin: boolean
+  name: string
+  givenName: string
+  familyName: string
+  attributes: AttributeDraft
+  saving: boolean
+  error: string
+  onNameChange: (value: string) => void
+  onGivenNameChange: (value: string) => void
+  onFamilyNameChange: (value: string) => void
+  onAttributeChange: (key: string, value: string) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  return (
     <AccountShell
       active="profile"
       username={profile.preferred_username}
@@ -211,10 +280,14 @@ export function AccountProfileEditPage({
             <h2 className="text-base font-semibold text-slate-900">プロフィールの編集</h2>
           </div>
 
-          <form onSubmit={handleSave} className="mt-5 grid gap-4">
+          <form onSubmit={onSubmit} className="mt-5 grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="name">表示名</Label>
-              <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />
+              <Input
+                id="name"
+                value={name}
+                onChange={(event) => onNameChange(event.target.value)}
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
@@ -222,7 +295,7 @@ export function AccountProfileEditPage({
                 <Input
                   id="given-name"
                   value={givenName}
-                  onChange={(event) => setGivenName(event.target.value)}
+                  onChange={(event) => onGivenNameChange(event.target.value)}
                 />
               </div>
               <div className="grid gap-1.5">
@@ -230,7 +303,7 @@ export function AccountProfileEditPage({
                 <Input
                   id="family-name"
                   value={familyName}
-                  onChange={(event) => setFamilyName(event.target.value)}
+                  onChange={(event) => onFamilyNameChange(event.target.value)}
                 />
               </div>
             </div>
@@ -238,7 +311,7 @@ export function AccountProfileEditPage({
             <EditableAttributeGroups
               defs={profile.editable_attributes}
               values={attributes}
-              onChange={(key, next) => setAttributes((current) => ({ ...current, [key]: next }))}
+              onChange={onAttributeChange}
             />
 
             <div className="flex items-center gap-2">
