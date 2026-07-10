@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: low
 created_at: 2026-07-05
@@ -63,3 +63,12 @@ wi-129 のサブタスク E。SCIM Inbound Provisioning のユースケース層
 
 scim/usecases のテストではリポジトリ層のモックが必要で、ports インターフェースの理解が前提となる。
 0% パッケージの一部（eventsink, observability）はサイドエフェクト中心のため、テスト設計に工夫が要る。
+
+## Completion
+- **Completed At**: 2026-07-10
+- **Summary**:
+  cancelled。単独 work item としては閉じ、対象範囲を
+  [[wi-129-backend-test-coverage-improvement]] に統合した。
+- **Verification Results**:
+  - `just yaml-check-work-items` - passed
+  - `just check-ids` - passed

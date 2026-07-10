@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: low
 created_at: 2026-07-05
@@ -54,3 +54,12 @@ wi-129 のサブタスク D。共有基盤パッケージ（crypto: 48.3%, spec:
 
 crypto パッケージのテストでは鍵ペアの生成等で外部依存が生じる可能性があるが、既存テストの構成に揃える。
 http/support の認証・テナント解決テストではモック設計に注意が必要。
+
+## Completion
+- **Completed At**: 2026-07-10
+- **Summary**:
+  cancelled。単独 work item としては閉じ、対象範囲を
+  [[wi-129-backend-test-coverage-improvement]] に統合した。
+- **Verification Results**:
+  - `just yaml-check-work-items` - passed
+  - `just check-ids` - passed

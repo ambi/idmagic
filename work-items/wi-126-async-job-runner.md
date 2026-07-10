@@ -5,7 +5,7 @@ risk: high
 created_at: 2026-07-08
 ---
 
-# テナント境界を保つ汎用非同期ジョブ基盤 (durable queue + worker) を導入する
+# テナント境界を保つ汎用非同期ジョブ基盤の core runtime を導入する
 
 ## Motivation
 現状、時間のかかる処理はすべて HTTP リクエスト内で同期実行するしかなく、単発の
@@ -23,21 +23,23 @@ CSV 一括インポート ([[wi-96-bulk-user-import-csv]]) はサイズ上限で
 ジョブ基盤」を導入し、各機能はジョブ種別を登録するだけで durable なキューイング・
 at-least-once 実行・リトライ・進捗可視化・水平スケールを共有できるようにする。
 
-本 WI は基盤のみを提供し、既存の同期処理の載せ替えは各機能側 WI で行う。最初の
-consumer は [[wi-96-bulk-user-import-csv]] を想定する。
+本 WI は core runtime のみに絞る。管理者向けジョブ一覧 / 詳細 / キャンセル UI、
+運用メトリクス、runbook は [[wi-157-job-admin-operations-surface]] に分離する。
+既存の同期処理の載せ替えは各機能側 WI で行う。最初の consumer は
+[[wi-96-bulk-user-import-csv]] または [[wi-148-admin-resource-csv-export]] を想定する。
 
 ## Scope
 - **decision**:
-  - 新規 ADR (キュー基盤): durable job queue を PostgreSQL の `SELECT ... FOR UPDATE
+  - 新規 ADR: durable job queue を PostgreSQL の `SELECT ... FOR UPDATE
     SKIP LOCKED` によるリース方式で実装する判断。却下案 (Valkey Streams / 外部
     ブローカー NATS・Kafka / cron のみ) と、その理由を記録する。
-  - 新規 ADR (実行モデル): worker 実行モデル (同一バイナリの run mode 分離 +
+  - 新規 ADR: worker 実行モデル (同一バイナリの run mode 分離 +
     in-process worker pool、水平スケールは worker replica 増設)、配信保証
     (at-least-once + ハンドラ冪等性)、リース + heartbeat による失効ジョブ再取得、
     指数バックオフ付きリトライと max_attempts 超過時の dead-letter、
     graceful drain ([[ADR-078-kubernetes-health-probes-and-graceful-drain]]
     と整合) を記録する。
-  - 新規 ADR (ジョブデータ保持): params / result / error に載る PII の at-rest
+  - 新規 ADR: params / result / error に載る PII の at-rest
     方針と保持期間 (TTL / purge) を記録する。
 - **scl**:
   - 新規 bounded context (仮称 `Jobs`) を追加する想定。context 追加の是非
@@ -46,9 +48,10 @@ consumer は [[wi-96-bulk-user-import-csv]] を想定する。
     は Plan の未決定事項とする。
   - §3.2 models: `Job` (集約)、`JobStatus` / `JobKind` enum、`JobProgress`、
     `JobRef` (published language) を追加する。
-  - §3.3 interfaces: 管理者向け `ListJobs` / `GetJob` / `CancelJob` (admin API) と、
-    内部 enqueue capability (`EnqueueJob`) を追加する。enqueue は他 context が
-    published language 経由で呼ぶ内部 interface として定義する。
+  - §3.3 interfaces: 内部 enqueue capability (`EnqueueJob`) と worker 内部の
+    claim / heartbeat / complete / retry contract を定義する。管理者向け
+    `ListJobs` / `GetJob` / `CancelJob` は [[wi-157-job-admin-operations-surface]]
+    で扱う。
   - §3.4 states/events: 状態機械 `JobLifecycle` (Queued → Running →
     Succeeded / Failed / Canceled、Running → Queued の再試行遷移) と、
     `JobEnqueued` / `JobStarted` / `JobSucceeded` / `JobFailed` / `JobRetried` /
@@ -57,7 +60,8 @@ consumer は [[wi-96-bulk-user-import-csv]] を想定する。
     (b) at-least-once + 冪等 (再試行で副作用が重複しない)、(c) テナント分離
     (worker は job.tenant_id の境界内でのみ副作用を起こす)、(d) 終端状態の不可逆性、
     (e) max_attempts 超過で dead-letter へ確定、を明示する。
-  - `permissions`: `AdminJobsRead` / `AdminJobsCancel` を追加する。
+  - 管理者 permission は本 WI では追加しない。`AdminJobsRead` / `AdminJobsCancel` は
+    [[wi-157-job-admin-operations-surface]] の範囲。
 - **architecture**:
   - 新規 context / worker プロセス / ディレクトリ規約を追加するため
     [ARCHITECTURE.md](../ARCHITECTURE.md) の map と details を同期する。
@@ -66,22 +70,21 @@ consumer は [[wi-96-bulk-user-import-csv]] を想定する。
     usecase、`JobKind` ごとの handler registry、worker pool (poll / concurrency /
     backoff / drain) を追加する。memory ランタイム用の in-process 実装と
     postgres_valkey ランタイム用の SKIP LOCKED 実装を用意する。
-- **http**:
-  - admin の `GET /api/admin/jobs` / `GET /api/admin/jobs/{job_id}` /
-    `POST /api/admin/jobs/{job_id}/cancel` を追加する。
 - **infrastructure / deploy**:
   - `MODE=worker` 相当の run mode を bootstrap に追加し、worker を API と別プロセス /
-    別レプリカで起動できるようにする。compose / Ansible / K8s manifest に worker
-    デプロイ単位を追加する。PostgreSQL schema に `jobs` テーブルを追加する。
-- **ui**:
-  - admin にジョブ一覧 / 詳細 (進捗・失敗理由・リトライ状況・キャンセル) 画面を追加する。
-- **documentation**:
-  - README に worker プロセスの起動方法とジョブ運用 (スケール・監視) を追記する。
+    別レプリカで起動できるようにする。ローカル compose に worker デプロイ単位を追加し、
+    Kubernetes / Ansible の本格運用設定は [[wi-157-job-admin-operations-surface]] に送る。
+    PostgreSQL schema に `jobs` テーブルを追加する。
+  - 疎通確認用の no-op / echo job を追加し、外部 feature への載せ替えなしで worker
+    lifecycle を検証できるようにする。
 
 ## Out of Scope
 - 個別機能の非同期化そのもの (CSV インポート = [[wi-96-bulk-user-import-csv]]、
   outbound SCIM = [[wi-45-outbound-scim-provisioning]] 等) は各機能側 WI で行う。
   本 WI は基盤 + 最小の疎通確認用ジョブ種別 (no-op / echo) までとする。
+- 管理者向けジョブ一覧 / 詳細 / キャンセル API、管理 UI、運用 runbook、メトリクス、
+  Kubernetes / Ansible の本格運用設定。これらは
+  [[wi-157-job-admin-operations-surface]] で扱う。
 - cron / スケジュール実行 (定期起動) は本 WI では最小に留め、必要なら別 WI で拡張する。
 - 外部メッセージブローカー (Kafka / NATS / SQS) への差し替え。将来 JobRepository port の
   別実装として追加可能にするが、本 WI では PostgreSQL 実装のみ。
@@ -113,16 +116,15 @@ consumer は [[wi-96-bulk-user-import-csv]] を想定する。
      [[wi-97-envelope-encryption-at-rest]] との関係、保持期間)。
   3. worker のリース poll 間隔 / concurrency / backoff の既定値と設定注入点。
   4. `LISTEN/NOTIFY` によるプッシュ起動を初期から入れるか、poll のみで始めるか。
-  5. admin ジョブ画面をどこまで作るか (一覧 + 詳細 + キャンセルの最小か、リアルタイム
-     進捗まで含めるか)。
+  5. admin ジョブ画面の詳細は [[wi-157-job-admin-operations-surface]] で決める。
 
 ## Tasks
 - [ ] T001 [Decision] キュー基盤 ADR (PostgreSQL SKIP LOCKED リース) を書く。
 - [ ] T002 [Decision] 実行モデル ADR (worker 分離 / at-least-once + 冪等 / リース +
       heartbeat / backoff + dead-letter / graceful drain) を書く。
 - [ ] T003 [Decision] ジョブデータ保持 ADR (params/result の PII / TTL) を書く。
-- [ ] T004 [SCL] `Jobs` context を追加し、models / interfaces / states / events /
-      invariants / permissions を定義する。`just yaml-check` を通す。
+- [ ] T004 [SCL] `Jobs` context を追加し、models / internal interfaces / states /
+      events / invariants を定義する。`just yaml-check` を通す。
 - [ ] T005 [Architecture] 新規 context / worker プロセス / ディレクトリ規約を
       ARCHITECTURE.md に同期する。
 - [ ] T006 [Go domain] `Job` 集約・`JobStatus`/`JobKind`・状態遷移・イベントを実装する。
@@ -133,19 +135,18 @@ consumer は [[wi-96-bulk-user-import-csv]] を想定する。
 - [ ] T009 [Adapter] memory (in-process) と postgres (SKIP LOCKED) の JobRepository を
       実装し、リース排他・失効再取得・冪等をテストする。
 - [ ] T010 [Schema] `jobs` テーブルを deploy/schema/postgres.sql に追加する。
-- [ ] T011 [HTTP] admin `ListJobs` / `GetJob` / `CancelJob` を実装しテストする。
-- [ ] T012 [Infra] bootstrap に worker run mode を追加し、compose / K8s に worker
-      デプロイ単位を追加する。
-- [ ] T013 [UI] admin ジョブ一覧 / 詳細 (進捗・失敗・キャンセル) 画面を追加する。
-- [ ] T014 [Docs] README に worker 起動とジョブ運用を追記する。
-- [ ] T015 [Verify] `just verify` を green にする。
+- [ ] T011 [Infra] bootstrap に worker run mode を追加し、ローカル compose で API と
+      worker を分離起動できるようにする。
+- [ ] T012 [Smoke] no-op / echo job を enqueue し、Queued → Running → Succeeded と
+      worker kill 後のリース失効再取得を確認できるテストを追加する。
+- [ ] T013 [Verify] `just verify` を green にする。
 
 ## Verification
 - `just yaml-check`
 - `just verify-go` (lint + race テスト)。特に claim のリース排他・失効再取得・
   冪等再試行を並行テストで担保する。
 - `just verify-ui`
-- 手動: worker を API と別プロセスで起動し、疎通用ジョブ (no-op) を enqueue →
+- 手動: worker を API と別プロセスで起動し、疎通用ジョブ (no-op / echo) を enqueue →
   Running → Succeeded まで遷移すること、worker を kill してリース失効後に別 worker が
   再取得すること、max_attempts 超過で dead-letter へ確定することを確認する。
 

@@ -25,7 +25,8 @@ OAuth2 系イベントはユーザー名検索に一致しない。ユーザー 
 ため、同じ対象ユーザーの行動を横断して追うという監査イベント検索の価値が弱い。
 
 ## Scope
-- **scl** (`spec/contexts/oauth2.yaml`):
+- **scl** (`spec/contexts/audit.yaml`。[[wi-146-extract-audit-bounded-context]] 未完了時は
+  `spec/contexts/oauth2.yaml` に暫定適用し、wi-146 実装時に audit context へ移す):
   - `AuditEventQuery` / `AuditEventSearchAttribute` / `ListAdminAuditEvents` /
     `ExportAdminAuditEvents` の説明を、トップレベル条件と検索属性 filter の役割が重複しない語彙へ更新する。
   - `sub` / `user_id` / `target.id` / `actor.username` の意味を明確化し、管理 UI に露出する語彙を
@@ -52,6 +53,7 @@ OAuth2 系イベントはユーザー名検索に一致しない。ユーザー 
 
 ## Out of Scope
 - 監査イベントストアの保持期間、削除、エクスポート形式、SIEM 連携。
+- 監査 bounded context への切り出し。これは [[wi-146-extract-audit-bounded-context]] の範囲。
 - 新しい監査イベント種別の追加。
 - 監査イベント payload 全体の再設計や過去データの大規模 backfill。
 - 任意 SQL / JSONPath / OData / SCIM filter の公開。検索は既存の registry allowlist に閉じる。
