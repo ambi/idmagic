@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -27,7 +29,7 @@ import (
 )
 
 func clientAuthServer(method domain.TokenEndpointAuthMethod) *echo.Echo {
-	repo := memory.NewClientRepository()
+	repo := oauth2memory.NewClientRepository()
 	var secretHash *string
 	if method == domain.AuthMethodClientSecretBasic || method == domain.AuthMethodClientSecretPost {
 		hash := domain.HashClientSecret("secret")
@@ -201,7 +203,7 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		"n":   base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
 		"e":   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.PublicKey.E)).Bytes()),
 	}
-	repo := memory.NewClientRepository()
+	repo := oauth2memory.NewClientRepository()
 	repo.Seed(&domain.OAuth2Client{
 		ClientID: "private-client", ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{"https://client.example/cb"},

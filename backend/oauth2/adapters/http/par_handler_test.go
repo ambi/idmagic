@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -32,7 +34,7 @@ const (
 
 func newPARTestServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
@@ -141,7 +143,7 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	}
 	// PARStore を差し替えた Deps で再 Register。
 	e := echo.New()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
@@ -166,7 +168,7 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 }
 
 func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing.T) {
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,

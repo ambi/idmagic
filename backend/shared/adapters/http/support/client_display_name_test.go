@@ -5,18 +5,19 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 	ctx := context.Background()
-	clients := memory.NewClientRepository()
+	clients := oauth2memory.NewClientRepository()
 	apps := appmemory.NewApplicationRepository()
 	now := time.Now().UTC()
 

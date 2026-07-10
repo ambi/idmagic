@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/adapters/persistence/postgres"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
@@ -90,7 +91,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		ScimRepo:                &postgres.ScimRepository{Pool: resilientDB},
 		TenantRepo:              &postgres.TenantRepository{Pool: resilientDB},
 		AttrSchemaRepo:          &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
-		ClientRepo:              &postgres.OAuth2ClientRepository{Pool: resilientDB},
+		ClientRepo:              &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
 		UserRepo:                &postgres.UserRepository{Pool: resilientDB},
 		GroupRepo:               &postgres.GroupRepository{Pool: resilientDB},
 		AgentRepo:               &postgres.AgentRepository{Pool: resilientDB},
@@ -98,8 +99,8 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		PasswordHistoryRepo:     &postgres.PasswordHistoryRepository{Pool: resilientDB},
 		PasswordResetTokenStore: &postgres.PasswordResetTokenStore{Pool: resilientDB},
 		EmailChangeTokenStore:   &postgres.EmailChangeTokenStore{Pool: resilientDB},
-		ConsentRepo:             &postgres.ConsentRepository{Pool: resilientDB},
-		AuthzDetailTypeRepo:     &postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
+		ConsentRepo:             &oauth2postgres.ConsentRepository{Pool: resilientDB},
+		AuthzDetailTypeRepo:     &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
 		RequestStore:            &valkeystore.AuthorizationRequestStore{Client: valkeyClient},
 		CodeStore:               &valkeystore.AuthorizationCodeStore{Client: valkeyClient},
 		PARStore:                &valkeystore.PARStore{Client: valkeyClient},

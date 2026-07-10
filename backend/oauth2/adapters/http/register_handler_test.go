@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -18,11 +20,11 @@ import (
 
 type registerFixture struct {
 	e          *echo.Echo
-	clientRepo *memory.OAuth2ClientRepository
+	clientRepo *oauth2memory.OAuth2ClientRepository
 }
 
 func newRegisterServer() registerFixture {
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Deps: support.Deps{

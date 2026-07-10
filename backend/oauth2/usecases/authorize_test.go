@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -12,7 +14,7 @@ import (
 )
 
 func newAuthorizeDeps(requirePAR bool) AuthorizeDeps {
-	repo := memory.NewClientRepository()
+	repo := oauth2memory.NewClientRepository()
 	repo.Seed(&domain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientPublic,
 		RedirectURIs: []string{"https://client.example/cb"},

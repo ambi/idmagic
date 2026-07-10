@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -18,7 +20,7 @@ import (
 
 func newAdminAuthzTypeHandler() *echo.Echo {
 	users := memory.NewUserRepository()
-	types := memory.NewAuthorizationDetailTypeRepository()
+	types := oauth2memory.NewAuthorizationDetailTypeRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
 		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",

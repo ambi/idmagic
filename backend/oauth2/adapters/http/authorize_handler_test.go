@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -42,9 +44,9 @@ const (
 
 func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *domain.Consent) *echo.Echo {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
-	consentRepo := memory.NewConsentRepository()
+	consentRepo := oauth2memory.NewConsentRepository()
 	secretHash := domain.HashClientSecret(authClientSec)
 	now := time.Now().UTC()
 	clientRepo.Seed(&domain.OAuth2Client{

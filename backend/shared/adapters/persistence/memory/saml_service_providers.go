@@ -60,7 +60,7 @@ func (r *SamlServiceProviderRepository) ListByTenant(_ context.Context, tenantID
 func (r *SamlServiceProviderRepository) Save(_ context.Context, sp *spec.SamlServiceProvider) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	defaultTenant(&sp.TenantID)
+	DefaultTenant(&sp.TenantID)
 	r.sps[TenantKey(sp.TenantID, sp.EntityID)] = cloneServiceProvider(sp)
 	return nil
 }

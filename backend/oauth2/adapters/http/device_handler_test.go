@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -23,7 +25,7 @@ import (
 
 type deviceFixture struct {
 	e           *echo.Echo
-	clientRepo  *memory.OAuth2ClientRepository
+	clientRepo  *oauth2memory.OAuth2ClientRepository
 	deviceStore *memory.DeviceCodeStore
 	authn       *fakeAuthnResolver
 	userCode    string
@@ -37,7 +39,7 @@ func tenantContext(id string) context.Context {
 }
 
 func newDeviceServer() deviceFixture {
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	// テスト用クライアントをシード
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID:                spec.DefaultTenantID,

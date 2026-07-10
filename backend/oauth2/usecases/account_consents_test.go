@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -21,7 +22,7 @@ func accountConsentCtx() context.Context {
 	)
 }
 
-func saveConsent(t *testing.T, repo *memory.ConsentRepository, sub, client string, state domain.ConsentState) {
+func saveConsent(t *testing.T, repo *oauth2memory.ConsentRepository, sub, client string, state domain.ConsentState) {
 	t.Helper()
 	now := time.Now().UTC()
 	if err := repo.Save(accountConsentCtx(), spec.DefaultTenantID, &domain.Consent{
@@ -34,7 +35,7 @@ func saveConsent(t *testing.T, repo *memory.ConsentRepository, sub, client strin
 
 func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 	ctx := accountConsentCtx()
-	repo := memory.NewConsentRepository()
+	repo := oauth2memory.NewConsentRepository()
 	saveConsent(t, repo, "user-alice", "app-1", domain.ConsentGranted)
 	saveConsent(t, repo, "user-alice", "app-2", domain.ConsentRevoked)
 	saveConsent(t, repo, "user-bob", "app-3", domain.ConsentGranted)
@@ -50,7 +51,7 @@ func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 
 func TestRevokeConsentSelfMarksRevokedAndEmits(t *testing.T) {
 	ctx := accountConsentCtx()
-	repo := memory.NewConsentRepository()
+	repo := oauth2memory.NewConsentRepository()
 	saveConsent(t, repo, "user-alice", "app-1", domain.ConsentGranted)
 
 	var events []spec.DomainEvent

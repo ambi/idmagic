@@ -25,7 +25,7 @@ func NewAuthorizationCodeStore() *AuthorizationCodeStore {
 func (s *AuthorizationCodeStore) Save(_ context.Context, code *spec.AuthorizationCodeRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&code.TenantID)
+	DefaultTenant(&code.TenantID)
 	s.codes[code.Code] = cloneAuthorizationCode(code)
 	return nil
 }

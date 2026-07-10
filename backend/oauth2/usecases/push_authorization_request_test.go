@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -13,9 +15,9 @@ import (
 
 func TestPushAuthorizationRequest(t *testing.T) {
 	ctx := tenantContext(spec.DefaultTenantID)
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	parStore := memory.NewPARStore()
-	authzDetailRepo := memory.NewAuthorizationDetailTypeRepository()
+	authzDetailRepo := oauth2memory.NewAuthorizationDetailTypeRepository()
 
 	var emitted []spec.DomainEvent
 	emitFunc := func(e spec.DomainEvent) {

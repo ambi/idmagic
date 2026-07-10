@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -22,12 +24,12 @@ import (
 
 type tokenFixture struct {
 	e          *echo.Echo
-	clientRepo *memory.OAuth2ClientRepository
+	clientRepo *oauth2memory.OAuth2ClientRepository
 }
 
 func newTokenServer(t *testing.T) tokenFixture {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 
 	// confidential client
 	secretHash := domain.HashClientSecret("secret-conf")

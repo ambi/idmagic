@@ -5,95 +5,9 @@ import (
 	"testing"
 	"time"
 
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
-
-func TestOAuth2ClientRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	repo := &OAuth2ClientRepository{Pool: db}
-	ctx := context.Background()
-
-	client := seedClient(t, db, tenant.ID)
-
-	got, err := repo.FindByID(ctx, tenant.ID, client.ClientID)
-	if err != nil || got == nil {
-		t.Fatalf("find: %v, %+v", err, got)
-	}
-	if got.Scope != "openid offline_access" || got.ClientType != spec.ClientConfidential {
-		t.Fatalf("unexpected client: %+v", got)
-	}
-	if len(got.RedirectURIs) != 1 || got.RedirectURIs[0] != "https://client.example/cb" {
-		t.Fatalf("redirect uris not round-tripped: %+v", got.RedirectURIs)
-	}
-
-	all, err := repo.FindAll(ctx, tenant.ID)
-	if err != nil || len(all) != 1 {
-		t.Fatalf("find all: %v len=%d", err, len(all))
-	}
-
-	if err := repo.Delete(ctx, tenant.ID, client.ClientID); err != nil {
-		t.Fatalf("delete: %v", err)
-	}
-	got, err = repo.FindByID(ctx, tenant.ID, client.ClientID)
-	if err != nil || got != nil {
-		t.Fatalf("expected deleted, got %v %+v", err, got)
-	}
-}
-
-func TestConsentRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	user := seedUser(t, db, tenant.ID)
-	client := seedClient(t, db, tenant.ID)
-	repo := &ConsentRepository{Pool: db}
-	ctx := context.Background()
-
-	now := testClock()
-	consent := &oauthdomain.Consent{
-		UserID:   user.ID,
-		ClientID: client.ClientID,
-		Scopes:   []string{"openid", "profile"},
-		// State は Find 時に実時刻 (time.Now) で導出されるため、有効期限は実時刻基準で未来に置く。
-		GrantedAt: now,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	if err := repo.Save(ctx, tenant.ID, consent); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-
-	got, err := repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
-	if err != nil || got == nil {
-		t.Fatalf("find: %v %+v", err, got)
-	}
-	if got.State != oauthdomain.ConsentGranted || len(got.Scopes) != 2 {
-		t.Fatalf("unexpected consent: %+v", got)
-	}
-
-	all, err := repo.FindAll(ctx, tenant.ID)
-	if err != nil || len(all) != 1 {
-		t.Fatalf("find all: %v len=%d", err, len(all))
-	}
-
-	if err := repo.Revoke(ctx, tenant.ID, user.ID, client.ClientID); err != nil {
-		t.Fatalf("revoke: %v", err)
-	}
-	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
-	if err != nil || got == nil || got.State != oauthdomain.ConsentRevoked {
-		t.Fatalf("expected revoked: %v %+v", err, got)
-	}
-
-	if err := repo.DeleteAllForSub(ctx, user.ID); err != nil {
-		t.Fatalf("delete all: %v", err)
-	}
-	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
-	if err != nil || got != nil {
-		t.Fatalf("expected gone: %v %+v", err, got)
-	}
-}
 
 func TestRefreshTokenStoreSaveFindRotate(t *testing.T) {
 	db := requireDB(t)

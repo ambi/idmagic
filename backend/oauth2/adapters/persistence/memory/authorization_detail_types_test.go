@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 func TestAuthorizationDetailTypeRepository(t *testing.T) {
@@ -13,18 +13,18 @@ func TestAuthorizationDetailTypeRepository(t *testing.T) {
 	repo := NewAuthorizationDetailTypeRepository()
 
 	t.Run("Save and FindByType", func(t *testing.T) {
-		detailType := &oauthdomain.AuthorizationDetailType{
+		detailType := &domain.AuthorizationDetailType{
 			TenantID:    "tenant-1",
 			Type:        "payment",
 			Description: "Payment details type",
-			Schema: oauthdomain.AuthorizationDetailsSchema{
-				Rules: []oauthdomain.AuthorizationDetailFieldRule{
+			Schema: domain.AuthorizationDetailsSchema{
+				Rules: []domain.AuthorizationDetailFieldRule{
 					{
 						Allowed: []string{"USD", "JPY"},
 					},
 				},
 			},
-			State:     oauthdomain.DetailTypeEnabled,
+			State:     domain.DetailTypeEnabled,
 			CreatedAt: time.Now(),
 		}
 
@@ -58,10 +58,10 @@ func TestAuthorizationDetailTypeRepository(t *testing.T) {
 	})
 
 	t.Run("Seed", func(t *testing.T) {
-		detailType := &oauthdomain.AuthorizationDetailType{
+		detailType := &domain.AuthorizationDetailType{
 			TenantID: "tenant-1",
 			Type:     "seed-type",
-			State:    oauthdomain.DetailTypeEnabled,
+			State:    domain.DetailTypeEnabled,
 		}
 		//nolint:contextcheck // memory repo Seed doesn't take context
 		repo.Seed(detailType)
@@ -78,20 +78,20 @@ func TestAuthorizationDetailTypeRepository(t *testing.T) {
 	t.Run("ListByTenant", func(t *testing.T) {
 		// すでに payment と seed-type が tenant-1 に存在する
 		// さらに追加してソート順を確認する
-		dtC := &oauthdomain.AuthorizationDetailType{
+		dtC := &domain.AuthorizationDetailType{
 			TenantID: "tenant-1",
 			Type:     "c-type",
-			State:    oauthdomain.DetailTypeEnabled,
+			State:    domain.DetailTypeEnabled,
 		}
-		dtB := &oauthdomain.AuthorizationDetailType{
+		dtB := &domain.AuthorizationDetailType{
 			TenantID: "tenant-1",
 			Type:     "b-type",
-			State:    oauthdomain.DetailTypeEnabled,
+			State:    domain.DetailTypeEnabled,
 		}
-		dtOther := &oauthdomain.AuthorizationDetailType{
+		dtOther := &domain.AuthorizationDetailType{
 			TenantID: "tenant-other",
 			Type:     "other-type",
-			State:    oauthdomain.DetailTypeEnabled,
+			State:    domain.DetailTypeEnabled,
 		}
 
 		_ = repo.Save(ctx, dtC)

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -19,7 +21,7 @@ func tenantContext(id string) context.Context {
 }
 
 func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
-	clients := memory.NewClientRepository()
+	clients := oauth2memory.NewClientRepository()
 	clients.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "web-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/callback"},
@@ -60,7 +62,7 @@ func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 }
 
 func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
-	clients := memory.NewClientRepository()
+	clients := oauth2memory.NewClientRepository()
 	clients.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "web-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/cb"},
@@ -93,7 +95,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 }
 
 func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
-	clients := memory.NewClientRepository()
+	clients := oauth2memory.NewClientRepository()
 	clients.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "tv-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://tv.example/cb"},

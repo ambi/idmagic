@@ -22,7 +22,7 @@ func NewTenantUserAttributeSchemaRepository() *TenantUserAttributeSchemaReposito
 }
 
 func (r *TenantUserAttributeSchemaRepository) FindByTenant(_ context.Context, tenantID string) (*spec.TenantUserAttributeSchema, error) {
-	defaultTenant(&tenantID)
+	DefaultTenant(&tenantID)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if schema := r.byTenant[tenantID]; schema != nil {
@@ -33,7 +33,7 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(_ context.Context, te
 
 func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *spec.TenantUserAttributeSchema) error {
 	cloned := cloneUserAttributeSchema(schema)
-	defaultTenant(&cloned.TenantID)
+	DefaultTenant(&cloned.TenantID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if existing := r.byTenant[cloned.TenantID]; existing != nil && !existing.CreatedAt.IsZero() {
@@ -44,7 +44,7 @@ func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *sp
 }
 
 func (r *TenantUserAttributeSchemaRepository) Delete(_ context.Context, tenantID string) error {
-	defaultTenant(&tenantID)
+	DefaultTenant(&tenantID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.byTenant, tenantID)

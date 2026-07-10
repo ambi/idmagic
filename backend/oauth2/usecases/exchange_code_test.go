@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -42,7 +44,7 @@ type exchangeFixture struct {
 
 func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	codeStore := memory.NewAuthorizationCodeStore()
 	refreshStore := memory.NewRefreshTokenStore()

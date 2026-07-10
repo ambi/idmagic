@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -294,8 +296,8 @@ func newAdminUserHandler(
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
 		AgentRepo:             memory.NewAgentRepository(),
 		GroupRepo:             memory.NewGroupRepository(),
-		ClientRepo:            memory.NewClientRepository(),
-		ConsentRepo:           memory.NewConsentRepository(),
+		ClientRepo:            oauth2memory.NewClientRepository(),
+		ConsentRepo:           oauth2memory.NewConsentRepository(),
 		EmailChangeTokenStore: memory.NewEmailChangeTokenStore(),
 		EmailSender:           mockEmailSender{},
 	})

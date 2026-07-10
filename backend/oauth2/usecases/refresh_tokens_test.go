@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -23,7 +25,7 @@ type refreshFixture struct {
 
 func newRefreshFixture(t *testing.T, sc *spec.SenderConstraint, now time.Time, ttl time.Duration) refreshFixture {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	refreshStore := memory.NewRefreshTokenStore()
 	issuer := &fakeTokenIssuer{}
@@ -121,7 +123,7 @@ func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	sc := &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "matching-jkt"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	// tenant context が無いと FindByID は default を期待するが、Seed では明示せず
-	// memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。
+	// oauth2memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。
 	res, err := RefreshTokens(
 		tenancy.WithTenant(context.Background(), &spec.Tenant{ID: f.record.TenantID, Status: spec.TenantStatusActive}, "", ""),
 		f.deps,

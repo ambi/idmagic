@@ -34,7 +34,7 @@ func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*spec.Re
 func (s *RefreshTokenStore) Save(_ context.Context, rec *spec.RefreshTokenRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&rec.TenantID)
+	DefaultTenant(&rec.TenantID)
 	stored := cloneRefreshToken(rec)
 	s.byHash[stored.Hash] = stored
 	s.byID[stored.ID] = stored
@@ -52,7 +52,7 @@ func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *s
 		return nil, nil
 	}
 	parent.Rotated = true
-	defaultTenant(&newRec.TenantID)
+	DefaultTenant(&newRec.TenantID)
 	stored := cloneRefreshToken(newRec)
 	s.byHash[stored.Hash] = stored
 	s.byID[stored.ID] = stored

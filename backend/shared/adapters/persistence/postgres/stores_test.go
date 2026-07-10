@@ -202,56 +202,6 @@ func TestAuthEventBucketStoreRecordListAndSweep(t *testing.T) {
 	}
 }
 
-func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	repo := &AuthorizationDetailTypeRepository{Pool: db}
-	ctx := context.Background()
-
-	now := testClock()
-	detailType := &oauthdomain.AuthorizationDetailType{
-		TenantID:        tenant.ID,
-		Type:            "payment_initiation",
-		Description:     "Payment initiation details",
-		DisplayTemplate: "Pay {{.amount}}",
-		State:           oauthdomain.DetailTypeEnabled,
-		Schema: oauthdomain.AuthorizationDetailsSchema{
-			Rules: []oauthdomain.AuthorizationDetailFieldRule{
-				{Name: "currency", Semantics: oauthdomain.DetailFieldEnum, Allowed: []string{"USD", "JPY"}},
-			},
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	if err := repo.Save(ctx, detailType); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-
-	got, err := repo.FindByType(ctx, tenant.ID, "payment_initiation")
-	if err != nil || got == nil {
-		t.Fatalf("find by type: %v %+v", err, got)
-	}
-	if got.DisplayTemplate != "Pay {{.amount}}" || got.State != oauthdomain.DetailTypeEnabled {
-		t.Fatalf("unexpected detail type: %+v", got)
-	}
-	if len(got.Schema.Rules) != 1 || got.Schema.Rules[0].Semantics != oauthdomain.DetailFieldEnum {
-		t.Fatalf("schema not round-tripped: %+v", got.Schema)
-	}
-
-	list, err := repo.ListByTenant(ctx, tenant.ID)
-	if err != nil || len(list) != 1 {
-		t.Fatalf("list by tenant: %v len=%d", err, len(list))
-	}
-
-	if err := repo.Delete(ctx, tenant.ID, "payment_initiation"); err != nil {
-		t.Fatalf("delete: %v", err)
-	}
-	got, err = repo.FindByType(ctx, tenant.ID, "payment_initiation")
-	if err != nil || got != nil {
-		t.Fatalf("expected deleted: %v %+v", err, got)
-	}
-}
-
 func TestEmailChangeTokenStoreSaveAndConsume(t *testing.T) {
 	db := requireDB(t)
 	tenant := seedTenant(t, db)

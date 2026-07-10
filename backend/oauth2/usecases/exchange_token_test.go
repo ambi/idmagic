@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -53,7 +54,7 @@ func (s tokenIntrospector) IntrospectAccessToken(_ context.Context, token string
 
 func newExchangeTokenDeps(t *testing.T, issuer *recordingIssuer, results map[string]*ports.IntrospectionResult) ExchangeTokenDeps {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID:   "client",
 		ClientType: spec.ClientConfidential,

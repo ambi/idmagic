@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 func TestConsentRepository(t *testing.T) {
@@ -13,11 +13,11 @@ func TestConsentRepository(t *testing.T) {
 	repo := NewConsentRepository()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		consent := &oauthdomain.Consent{
+		consent := &domain.Consent{
 			UserID:    "user-1",
 			ClientID:  "client-1",
 			Scopes:    []string{"read", "write"},
-			State:     oauthdomain.ConsentGranted,
+			State:     domain.ConsentGranted,
 			GrantedAt: time.Now(),
 			ExpiresAt: time.Now().Add(24 * time.Hour),
 		}
@@ -53,9 +53,9 @@ func TestConsentRepository(t *testing.T) {
 
 	t.Run("FindAll and Sort", func(t *testing.T) {
 		// すでに user-1 / client-1 が tenant-1 にある
-		c2 := &oauthdomain.Consent{UserID: "user-2", ClientID: "client-2", State: oauthdomain.ConsentGranted}
-		c3 := &oauthdomain.Consent{UserID: "user-1", ClientID: "client-2", State: oauthdomain.ConsentGranted}
-		cOther := &oauthdomain.Consent{UserID: "user-1", ClientID: "client-1", State: oauthdomain.ConsentGranted}
+		c2 := &domain.Consent{UserID: "user-2", ClientID: "client-2", State: domain.ConsentGranted}
+		c3 := &domain.Consent{UserID: "user-1", ClientID: "client-2", State: domain.ConsentGranted}
+		cOther := &domain.Consent{UserID: "user-1", ClientID: "client-1", State: domain.ConsentGranted}
 
 		_ = repo.Save(ctx, "tenant-1", c2)
 		_ = repo.Save(ctx, "tenant-1", c3)
@@ -103,7 +103,7 @@ func TestConsentRepository(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if found.State != oauthdomain.ConsentRevoked {
+		if found.State != domain.ConsentRevoked {
 			t.Errorf("expected state to be ConsentRevoked, got %v", found.State)
 		}
 		if found.RevokedAt == nil {

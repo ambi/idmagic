@@ -90,9 +90,20 @@ context であり、横展開の中でも最も工数の大きい 1 件になる
   `ResponseType` は `shared/spec/policy.go`（SCL permissions 評価エンジン）と
   [[wi-181]] 側に残る `AuthorizationRequest` 等が直接参照するため shared に残置し、
   `oauth2/domain` から一方向 import する形とした（循環回避、詳細は Plan 4 参照）。
-- [ ] T004 [Persistence] `clients.go` / `consents.go` / `authorization_detail_types.go` を
-  `oauth2/adapters/persistence/{postgres,memory}` へ同居。
-- [ ] T005 [Persistence] 上記 postgres 実装を sqlc 生成へ置換（動的はエスケープハッチ）。
+- [x] T004 [Persistence] `clients.go` / `consents.go` / `authorization_detail_types.go` を
+  `oauth2/adapters/persistence/{postgres,memory}` へ同居。postgres 側は新設と同時に
+  sqlc 化したため T005 を本タスクで合わせて実施（下記）。`shared/adapters/persistence/memory`
+  の `defaultTenant` を `DefaultTenant` としてエクスポートし per-context adapter から再利用
+  （[[wi-172]] の RowScanner/TenantKey と同じパターン）。`pgfixtures.SeedClient` の参照先を
+  新 `oauth2/adapters/persistence/postgres.OAuth2ClientRepository` へ更新。postgres の
+  round-trip テストは import cycle 回避のため oauth2 パッケージ自身に自前の
+  seedTenant/seedUser/seedClient ヘルパーを持たせて移設（shared 側の `fixtures_test.go` の
+  `seedClient` は FK 充足専用の生 SQL ヘルパーへ縮小）。
+- [x] T005 [Persistence] 上記 postgres 実装を sqlc 生成へ置換（動的はエスケープハッチ）。
+  `sqlc.yaml` に oauth2 用の 2 個目の `sql:` エントリを追加し
+  `oauth2/adapters/persistence/postgres/{queries,sqlcgen}` を新設。3 リポジトリ 9 クエリ
+  すべて静的生成（エスケープハッチなし、動的 WHERE を持つクエリが無いため）。
+  `just sqlc-generate` の冪等性を確認済み。
 - [ ] T006 [DI] `oauth2/module.go` を新設し Client/Consent/AuthzDetailType を Module 化。
 - [ ] T007 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から該当 3 field を撤去。
 - [ ] T008 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。

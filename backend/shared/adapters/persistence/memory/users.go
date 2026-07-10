@@ -34,7 +34,7 @@ func (r *UserRepository) Save(_ context.Context, u *spec.User) error {
 		existing.PreferredUsername != u.PreferredUsername {
 		delete(r.byUser, TenantKey(existing.TenantID, existing.PreferredUsername))
 	}
-	defaultTenant(&u.TenantID)
+	DefaultTenant(&u.TenantID)
 	r.bySub[u.ID] = u
 	r.byUser[TenantKey(u.TenantID, u.PreferredUsername)] = u
 	return nil

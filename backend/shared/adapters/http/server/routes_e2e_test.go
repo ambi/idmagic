@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -50,7 +52,7 @@ func newServer(t *testing.T) *httptest.Server {
 // disable / lifecycle 関連のテスト専用。
 func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserRepository) {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	mfaFactorRepo := memory.NewMfaFactorRepository()
 	passwordHistoryRepo := memory.NewPasswordHistoryRepository()
@@ -100,7 +102,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 			Issuer: "http://test",
 
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
+		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
@@ -118,7 +120,7 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *httptest.Server {
 	t.Helper()
 
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	mfaFactorRepo := memory.NewMfaFactorRepository()
 	passwordHistoryRepo := memory.NewPasswordHistoryRepository()
@@ -209,7 +211,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			Issuer: "http://test",
 
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: memory.NewConsentRepository(),
+		}, ClientRepo: clientRepo, UserRepo: userRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
@@ -1026,7 +1028,7 @@ func mustJSON(t *testing.T, value any) string {
 }
 
 func TestHealthProbes(t *testing.T) {
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	keyStore, _ := crypto.NewInMemoryKeyStore()
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)

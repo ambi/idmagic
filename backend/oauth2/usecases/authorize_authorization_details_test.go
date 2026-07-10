@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func seedPaymentType(repo *memory.AuthorizationDetailTypeRepository) {
+func seedPaymentType(repo *oauth2memory.AuthorizationDetailTypeRepository) {
 	repo.Seed(&domain.AuthorizationDetailType{
 		TenantID: spec.DefaultTenantID, Type: "payment_initiation", State: domain.DetailTypeEnabled,
 		Schema: domain.AuthorizationDetailsSchema{Rules: []domain.AuthorizationDetailFieldRule{
@@ -24,7 +25,7 @@ func seedPaymentType(repo *memory.AuthorizationDetailTypeRepository) {
 
 func authorizeDepsWithTypes() AuthorizeDeps {
 	deps := newAuthorizeDeps(false)
-	types := memory.NewAuthorizationDetailTypeRepository()
+	types := oauth2memory.NewAuthorizationDetailTypeRepository()
 	seedPaymentType(types)
 	deps.AuthzDetailTypeRepo = types
 	return deps

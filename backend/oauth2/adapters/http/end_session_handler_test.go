@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -28,7 +29,7 @@ const (
 
 func newEndSessionServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,
 		ClientID: logoutClientID, ClientType: spec.ClientPublic,

@@ -34,7 +34,7 @@ func (s *SessionStore) now() time.Time {
 func (s *SessionStore) Save(_ context.Context, sess *spec.LoginSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&sess.TenantID)
+	DefaultTenant(&sess.TenantID)
 	s.sessions[sess.ID] = sess
 	return nil
 }

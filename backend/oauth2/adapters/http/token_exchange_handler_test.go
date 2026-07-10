@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -29,7 +31,7 @@ const (
 // confidential client を持つ最小サーバを返す。subject_token は client_credentials で発行する。
 func newTokenExchangeServer(t *testing.T) string {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(exchClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: exchClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
@@ -50,7 +52,7 @@ func newTokenExchangeServer(t *testing.T) string {
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://test"}, ClientRepo: clientRepo,
 		UserRepo:     memory.NewUserRepository(),
-		ConsentRepo:  memory.NewConsentRepository(),
+		ConsentRepo:  oauth2memory.NewConsentRepository(),
 		RefreshStore: memory.NewRefreshTokenStore(),
 		KeyStore:     keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	})

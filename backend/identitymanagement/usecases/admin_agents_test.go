@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
@@ -17,7 +19,7 @@ import (
 
 func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent) {
 	t.Helper()
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{

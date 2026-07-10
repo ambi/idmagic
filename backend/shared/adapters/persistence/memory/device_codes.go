@@ -27,7 +27,7 @@ func NewDeviceCodeStore() *DeviceCodeStore {
 func (s *DeviceCodeStore) Save(_ context.Context, rec *spec.DeviceAuthorization) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&rec.TenantID)
+	DefaultTenant(&rec.TenantID)
 	stored := cloneDeviceAuthorization(rec)
 	s.byHash[stored.DeviceCodeHash] = stored
 	s.byUserCode[stored.UserCode] = stored
@@ -49,7 +49,7 @@ func (s *DeviceCodeStore) FindByUserCode(_ context.Context, userCode string) (*s
 func (s *DeviceCodeStore) Update(_ context.Context, rec *spec.DeviceAuthorization) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&rec.TenantID)
+	DefaultTenant(&rec.TenantID)
 	stored := cloneDeviceAuthorization(rec)
 	s.byHash[stored.DeviceCodeHash] = stored
 	s.byUserCode[stored.UserCode] = stored

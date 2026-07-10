@@ -8,7 +8,7 @@ package memory
 
 import "github.com/ambi/idmagic/backend/shared/spec"
 
-func defaultTenant(tenantID *string) {
+func DefaultTenant(tenantID *string) {
 	if *tenantID == "" {
 		*tenantID = spec.DefaultTenantID
 	}

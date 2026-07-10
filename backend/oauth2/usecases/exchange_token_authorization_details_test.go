@@ -5,15 +5,16 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func exchangeDepsWithDetailTypes(t *testing.T, issuer *recordingIssuer, results map[string]*ports.IntrospectionResult) ExchangeTokenDeps {
 	t.Helper()
 	deps := newExchangeTokenDeps(t, issuer, results)
-	types := memory.NewAuthorizationDetailTypeRepository()
+	types := oauth2memory.NewAuthorizationDetailTypeRepository()
 	seedPaymentType(types)
 	deps.AuthzDetailTypeRepo = types
 	return deps

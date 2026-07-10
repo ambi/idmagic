@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
@@ -153,7 +155,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
 	historyRepo := memory.NewPasswordHistoryRepository()
-	consentRepo := memory.NewConsentRepository()
+	consentRepo := oauth2memory.NewConsentRepository()
 	refreshStore := memory.NewRefreshTokenStore()
 	deviceStore := memory.NewDeviceCodeStore()
 	sessionStore := memory.NewSessionStore()
@@ -303,9 +305,9 @@ func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 
 // softDeleteTestDeps は soft-delete 系テスト用に cascade 対象リポジトリを揃えた
 // deps と consent リポジトリ (cascade 温存の確認用) を返す。
-func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, *memory.ConsentRepository, *memory.UserRepository) {
+func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, *oauth2memory.ConsentRepository, *memory.UserRepository) {
 	userRepo := memory.NewUserRepository()
-	consentRepo := memory.NewConsentRepository()
+	consentRepo := oauth2memory.NewConsentRepository()
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, ConsentRepo: consentRepo,
 		RefreshStore: memory.NewRefreshTokenStore(), SessionStore: memory.NewSessionStore(),

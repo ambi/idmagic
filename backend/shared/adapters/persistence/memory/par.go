@@ -24,7 +24,7 @@ func NewPARStore() *PARStore {
 func (s *PARStore) Save(_ context.Context, rec *spec.PARRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&rec.TenantID)
+	DefaultTenant(&rec.TenantID)
 	s.records[rec.RequestURI] = rec
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	oauthpg "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
@@ -114,7 +115,7 @@ func SeedClient(t *testing.T, db sharedpg.DB, tenantID string) *oauthdomain.OAut
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}
-	if err := (&sharedpg.OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
+	if err := (&oauthpg.OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
 		t.Fatalf("seed client: %v", err)
 	}
 	return client

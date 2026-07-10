@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -141,9 +143,9 @@ type adminConsentBody struct {
 	ClientName        string `json:"client_name"`
 }
 
-func newAdminConsentHandler() (*echo.Echo, *memory.ConsentRepository, *[]spec.DomainEvent) {
+func newAdminConsentHandler() (*echo.Echo, *oauth2memory.ConsentRepository, *[]spec.DomainEvent) {
 	users := memory.NewUserRepository()
-	consents := memory.NewConsentRepository()
+	consents := oauth2memory.NewConsentRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
 		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",

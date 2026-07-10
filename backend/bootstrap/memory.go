@@ -6,6 +6,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
@@ -21,7 +22,7 @@ func assembleMemory() (*Dependencies, error) {
 		ScimRepo:                memory.NewScimRepository(),
 		TenantRepo:              memory.NewTenantRepository(),
 		AttrSchemaRepo:          memory.NewTenantUserAttributeSchemaRepository(),
-		ClientRepo:              memory.NewClientRepository(),
+		ClientRepo:              oauth2memory.NewClientRepository(),
 		UserRepo:                memory.NewUserRepository(),
 		GroupRepo:               memory.NewGroupRepository(),
 		AgentRepo:               memory.NewAgentRepository(),
@@ -29,8 +30,8 @@ func assembleMemory() (*Dependencies, error) {
 		PasswordHistoryRepo:     memory.NewPasswordHistoryRepository(),
 		PasswordResetTokenStore: memory.NewPasswordResetTokenStore(),
 		EmailChangeTokenStore:   memory.NewEmailChangeTokenStore(),
-		ConsentRepo:             memory.NewConsentRepository(),
-		AuthzDetailTypeRepo:     memory.NewAuthorizationDetailTypeRepository(),
+		ConsentRepo:             oauth2memory.NewConsentRepository(),
+		AuthzDetailTypeRepo:     oauth2memory.NewAuthorizationDetailTypeRepository(),
 		RequestStore:            memory.NewAuthorizationRequestStore(),
 		CodeStore:               memory.NewAuthorizationCodeStore(),
 		PARStore:                memory.NewPARStore(),

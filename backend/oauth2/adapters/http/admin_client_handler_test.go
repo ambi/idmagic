@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -138,10 +140,10 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 
 func newAdminOAuth2ClientHandler(
 	t *testing.T,
-) (*echo.Echo, *memory.OAuth2ClientRepository, *[]spec.DomainEvent) {
+) (*echo.Echo, *oauth2memory.OAuth2ClientRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	users := memory.NewUserRepository()
-	clients := memory.NewClientRepository()
+	clients := oauth2memory.NewClientRepository()
 	now := time.Now().UTC()
 	users.Seed(&spec.User{
 		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",

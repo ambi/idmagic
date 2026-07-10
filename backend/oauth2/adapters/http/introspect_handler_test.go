@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -28,7 +30,7 @@ const (
 )
 
 func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.Echo {
-	clientRepo := memory.NewClientRepository()
+	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(introSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: spec.DefaultTenantID,

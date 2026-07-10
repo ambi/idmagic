@@ -25,7 +25,7 @@ func NewAuthorizationRequestStore() *AuthorizationRequestStore {
 func (s *AuthorizationRequestStore) Save(_ context.Context, req *spec.AuthorizationRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defaultTenant(&req.TenantID)
+	DefaultTenant(&req.TenantID)
 	s.requests[req.ID] = req
 	return nil
 }

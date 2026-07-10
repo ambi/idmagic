@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestRegisterClientHashesSecret(t *testing.T) {
-	repo := memory.NewClientRepository()
+	repo := oauth2memory.NewClientRepository()
 	result, err := RegisterClient(context.Background(), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
@@ -32,7 +33,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 }
 
 func TestRegisterPrivateKeyJWTRequiresInlineJWKS(t *testing.T) {
-	repo := memory.NewClientRepository()
+	repo := oauth2memory.NewClientRepository()
 	_, err := RegisterClient(context.Background(), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},

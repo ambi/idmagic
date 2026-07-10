@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -87,7 +88,10 @@ func seedUser(t *testing.T, db DB, tenantID string) *spec.User {
 	return user
 }
 
-// seedClient は指定テナントに OAuth2 クライアントを作成して返す。
+// seedClient は指定テナントに OAuth2 クライアントを作成して返す。OAuth2ClientRepository は
+// oauth2/adapters/persistence/postgres へ移設済み (wi-173) で、本パッケージの内部テストから
+// import すると postgres -> oauth2/postgres -> postgres の import cycle になるため、
+// FK 充足専用の最小限フィクスチャとして生 SQL で直接 INSERT する。
 func seedClient(t *testing.T, db DB, tenantID string) *oauthdomain.OAuth2Client {
 	t.Helper()
 	now := testClock()
@@ -106,7 +110,28 @@ func seedClient(t *testing.T, db DB, tenantID string) *oauthdomain.OAuth2Client 
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}
-	if err := (&OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
+	redirectURIs, err := json.Marshal(client.RedirectURIs)
+	if err != nil {
+		t.Fatalf("marshal redirect_uris: %v", err)
+	}
+	grantTypes, err := json.Marshal(client.GrantTypes)
+	if err != nil {
+		t.Fatalf("marshal grant_types: %v", err)
+	}
+	responseTypes, err := json.Marshal(client.ResponseTypes)
+	if err != nil {
+		t.Fatalf("marshal response_types: %v", err)
+	}
+	_, err = db.Exec(context.Background(), `
+INSERT INTO clients (
+ tenant_id,client_id,client_secret_hash,client_type,redirect_uris,grant_types,response_types,
+ token_endpoint_auth_method,scope,id_token_signed_response_alg,fapi_profile,created_at,updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+		client.TenantID, client.ClientID, client.ClientSecretHash, client.ClientType,
+		string(redirectURIs), string(grantTypes), string(responseTypes),
+		client.TokenEndpointAuthMethod, client.Scope, client.IDTokenSignedResponseAlg,
+		client.FapiProfile, client.CreatedAt, client.UpdatedAt)
+	if err != nil {
 		t.Fatalf("seed client: %v", err)
 	}
 	return client

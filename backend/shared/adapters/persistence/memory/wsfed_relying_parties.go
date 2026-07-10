@@ -64,7 +64,7 @@ func (r *WsFedRelyingPartyRepository) ListByTenant(_ context.Context, tenantID s
 func (r *WsFedRelyingPartyRepository) Save(_ context.Context, rp *spec.WsFedRelyingParty) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	defaultTenant(&rp.TenantID)
+	DefaultTenant(&rp.TenantID)
 	r.parts[TenantKey(rp.TenantID, rp.Wtrealm)] = cloneRelyingParty(rp)
 	return nil
 }

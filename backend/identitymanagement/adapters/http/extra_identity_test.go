@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -33,8 +35,8 @@ type identityTestHandler struct {
 	users    *memory.UserRepository
 	tokens   *memory.EmailChangeTokenStore
 	groups   *memory.GroupRepository
-	clients  *memory.OAuth2ClientRepository
-	consents *memory.ConsentRepository
+	clients  *oauth2memory.OAuth2ClientRepository
+	consents *oauth2memory.ConsentRepository
 }
 
 func newIdentityTestHandler(t *testing.T) identityTestHandler {
@@ -42,8 +44,8 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	repo := memory.NewUserRepository()
 	tokenStore := memory.NewEmailChangeTokenStore()
 	groupRepo := memory.NewGroupRepository()
-	clientRepo := memory.NewClientRepository()
-	consentRepo := memory.NewConsentRepository()
+	clientRepo := oauth2memory.NewClientRepository()
+	consentRepo := oauth2memory.NewConsentRepository()
 
 	history := memory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
