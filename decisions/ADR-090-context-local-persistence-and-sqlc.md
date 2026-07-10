@@ -1,0 +1,85 @@
+---
+status: suggested
+authors: [tn]
+created_at: 2026-07-10
+---
+
+# ADR-090: 永続化アダプタのコンテキスト同居と sqlc 採用
+
+## コンテキスト
+
+[[ADR-047]] §3 と [[ADR-070]] §3 はいずれも、`shared/adapters/persistence/{postgres,memory}`
+に置かれた context 固有 repository 実装は「実装上の利便性を優先した暫定配置」であり、
+所有 context の per-context adapter へ移す余地があると *明記済み* である。両 ADR は
+「shared に残すべきは DB 接続・pool・row scanner・transaction helper・Valkey client 等の
+技術的共通部品に限定する」とも述べている。
+
+現状はその暫定配置のままで、約 93 file の repository 実装が `shared` に集中している。
+加えて 1 つの repository を memory と postgres で **手書き二重実装**しており、実装工数が
+2 倍・両者の乖離リスクが常在する。postgres 側は生 SQL 文字列＋手書き scanner で、
+`shared/adapters/persistence/postgres/base.go` の `ResilientDB`（circuit breaker / timeout、
+`DB` interface）へ `Pool DB` として注入されている。
+
+一方でスキーマは [[ADR-071]] により `deploy/schema/postgres.sql` を宣言的な正とし、
+psqldef で移行する。[[ADR-084]] はカラム型を明示し、セキュリティ IdP として *実 SQL が
+監査可能・予測可能*であることを要件とする。
+
+本 ADR は [[ADR-089]]（ドメイン型の per-context 化）と対になり、永続化アダプタも
+所有 context へ同居させ、併せて手書き SQL の削減手段を決める。
+
+## 決定
+
+1. **context 固有 repository 実装を per-context へ同居させる**。
+   `shared/adapters/persistence/postgres/clients.go` →
+   `internal/oauth2/adapters/persistence/postgres/`、memory 実装も同様に
+   `internal/<context>/adapters/persistence/memory/` へ移す。ポート interface は所有
+   context の `ports/` が持つ（[[ADR-047]] §3 補足の方向を確定させる）。
+2. **`shared/adapters/persistence` は技術的共通部品に限定する**。`base.go`（`ResilientDB` /
+   `DB` interface / 接続 pool）、共通 row scanner、transaction helper、circuit breaker、
+   Valkey client のみを残す。各 context の postgres 実装はこの `DB`（= `DBTX` 相当）
+   interface を受け取る（既に `Pool DB` 注入のため移設は機械的）。
+3. **postgres 側の手書き SQL を sqlc 生成へ置換する**。`queries/*.sql` を各 context の
+   `adapters/persistence/` 配下に置き、sqlc（pgx/v5 ネイティブモード）で型安全な Go を
+   生成する。生成関数は `DBTX` を受けるため、`ResilientDB` を `DBTX` 実装としてラップし
+   circuit breaker / timeout を温存する。sqlc の schema 入力には [[ADR-071]] の
+   `deploy/schema/postgres.sql` をそのまま用い、スキーマの正を一本化する。
+4. **動的クエリはエスケープハッチで扱う**。sqlc は条件付き WHERE が不得手なため、任意
+   フィルタは `sqlc.narg` + `COALESCE` で吸収し、真に動的なクエリのみ同パッケージ内に
+   薄い手書き pgx を併置する。探索上、クエリの大半は tenant + id の静的引きであり影響
+   範囲は限定的である。
+5. **codegen は `just` レシピ経由とする**。`just sqlc-generate` を追加し、生 sqlc を直接
+   叩かない（AGENTS.md の just 単一コマンドマップ方針）。
+6. **memory 実装はテストダブルとして維持する**。SQL 生成は memory 二重を解消しない。
+   当面はポート interface を維持し memory をテスト用に残す。二重自体の解消（testcontainers
+   ベースの postgres テストへ寄せて memory を退役）は本 ADR の対象外とし、別途評価する。
+
+## sqlc を選ぶ理由と次点 bob（Considered Alternatives 実測）
+
+選定は sqlc / bob / jet / bun の 4 択で比較した。判断軸は「[[ADR-071]] の単一スキーマ源
+との整合」「実 SQL の監査性（[[ADR-084]] / IdP）」「pgx/v5 ネイティブ統合」「実行時
+リフレクション回避（RA 再生成思想・AI 可読性）」。
+
+- **sqlc（採用）**: `postgres.sql` を*そのまま schema 入力*にでき単一スキーマ源と直結。
+  `.sql` が成果物として残り監査可能。pgx/v5 ネイティブ、`DBTX` 注入で `ResilientDB` を
+  温存。reflection ゼロ。唯一の弱点は動的クエリ（上記エスケープハッチで対処）。
+- **bob（次点）**: pgx ネイティブ codegen でありつつ builder で動的クエリも解決できる
+  唯一の対抗。コストは稼働 DB introspect パイプライン、新しめでエコシステム小。
+  **動的クエリが支配的と判明した場合は bob へ切替**する。
+- **jet（却下）**: 型安全 builder だが database/sql 主体で pgx ネイティブでなく、bob に
+  対する決定的優位がない。
+- **bun（却下）**: DX と動的クエリは最良だが、実行時 reflection・struct tag のスキーマ
+  二重定義・独自 migration が [[ADR-071]] / psqldef・監査性・再生成思想と噛み合わない。
+
+**判断の分岐点＝動的クエリの実比率**。パイロット context で sqlc を実装し、動的クエリの
+比率を実測して本決定（sqlc 継続 or bob へ切替）を確定する。本節に実測値を追記する。
+
+## 影響
+
+- Go import path: repository 実装が `idmagic/internal/shared/adapters/persistence/...` から
+  `idmagic/internal/<context>/adapters/persistence/{postgres,memory}` へ移る。
+- `shared/adapters/persistence/postgres/base.go`（`ResilientDB`）は共通基盤として残置。
+- 新規ツール依存として sqlc（採用ツール）を導入。`justfile` に codegen レシピを追加。
+- sqlc の schema 入力として `deploy/schema/postgres.sql` を参照（[[ADR-071]] と相互参照）。
+- 振る舞い・SCL 規範・HTTP route・DB schema・公開 API は変更しない（純構造 + 生成方式）。
+- [[ADR-047]] / [[ADR-070]] の「per-context 永続化は要検討事項」を解決し extend する。
+- [[ADR-089]] と同一 Work Item 系列で context 単位に段階移行する。
