@@ -257,7 +257,7 @@ to the destination endpoint.
 
 **Header ownership (app vs edge).** CSP and `frame-ancestors` require per-route
 decisions and are owned by IdMagic so they hold even behind a minimal or absent
-proxy (secure by default). The SPA is served by the gateway (see `ui/Caddyfile`),
+proxy (secure by default). The SPA is served by the gateway (see `frontend/Caddyfile`),
 which sets its own `script-src 'self'` CSP for the static HTML — IdMagic's
 middleware covers the backend responses the gateway reverse-proxies.
 
@@ -281,16 +281,16 @@ enforce (`CSP_REPORT_ONLY=false`).
 spec/             SCL source and generated specification artifacts
 decisions/        Architecture Decision Records
 work-items/       planned and completed change records
-cmd/              process entry points
-internal/         Go bounded contexts, use cases, ports, and adapters
-ui/               React SPA for auth, account, admin, and system flows
+backend/cmd/              process entry points
+backend/         Go bounded contexts, use cases, ports, and adapters
+frontend/               React SPA for auth, account, admin, and system flows
 deploy/           Docker, schema, and runtime infrastructure assets
 ```
 
 The main bounded contexts are `tenancy`, `identitymanagement`,
 `authentication`, `oauth2`, `application`, `wsfederation`, and `saml`.
-Shared adapter code lives under `internal/shared`; runtime composition lives in
-`internal/bootstrap`.
+Shared adapter code lives under `backend/shared`; runtime composition lives in
+`backend/bootstrap`.
 
 ## Architecture
 
@@ -300,9 +300,9 @@ IdMagic follows Regenerative Architecture:
 | --- | --- |
 | Specification Core | `spec/scl.yaml`, `spec/contexts/*.yaml` |
 | Decisions | `decisions/*.md` |
-| Application logic | `internal/<context>/domain`, `internal/<context>/usecases` |
-| Ports and adapters | `internal/<context>/ports`, `internal/<context>/adapters`, `internal/shared/adapters` |
-| Runtime and infrastructure | `cmd/`, `internal/bootstrap`, `deploy/`, `ui/` |
+| Application logic | `backend/<context>/domain`, `backend/<context>/usecases` |
+| Ports and adapters | `backend/<context>/ports`, `backend/<context>/adapters`, `backend/shared/adapters` |
+| Runtime and infrastructure | `backend/cmd/`, `backend/bootstrap`, `deploy/`, `frontend/` |
 
 Start with [ARCHITECTURE.md](ARCHITECTURE.md) when changing code. It is the
 small, stable index for navigating the implementation. Use the generated SCL
@@ -329,7 +329,7 @@ See [deploy/schema/README.md](deploy/schema/README.md) for the full workflow.
 
 - Product specification: [spec/scl.yaml](spec/scl.yaml)
 - Implementation index: [ARCHITECTURE.md](ARCHITECTURE.md)
-- UI design and test policy: [ui/README.md](ui/README.md)
+- UI design and test policy: [frontend/README.md](frontend/README.md)
 - PostgreSQL workflow: [deploy/schema/README.md](deploy/schema/README.md)
 - Architecture decisions: [decisions/](decisions/)
 - Work items: [work-items/](work-items/)

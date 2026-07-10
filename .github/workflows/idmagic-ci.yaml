@@ -35,19 +35,19 @@ jobs:
       - name: Go tests and SCL coherence
         run: go test -race ./...
       - name: Install UI dependencies
-        working-directory: ui
+        working-directory: frontend
         run: bun install --frozen-lockfile
       - name: UI format check
-        working-directory: ui
+        working-directory: frontend
         run: bun run format:check
       - name: UI lint
-        working-directory: ui
+        working-directory: frontend
         run: bun run lint
       - name: UI type check
-        working-directory: ui
+        working-directory: frontend
         run: bun run typecheck
       - name: UI build
-        working-directory: ui
+        working-directory: frontend
         run: bun run build
 
   sast:

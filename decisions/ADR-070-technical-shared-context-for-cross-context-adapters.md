@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: ADR-092
 ---
 
 # ADR-070: technical shared context for cross-context adapters

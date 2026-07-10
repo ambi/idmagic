@@ -10,7 +10,7 @@ golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golang
 git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
 build_date := `date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown"`
 version := env_var_or_default("VERSION", "0.0.0-dev")
-ldflags := "-X github.com/ambi/idmagic/internal/shared/version.Version=" + version + " -X github.com/ambi/idmagic/internal/shared/version.GitCommit=" + git_commit + " -X github.com/ambi/idmagic/internal/shared/version.BuildDate=" + build_date
+ldflags := "-X github.com/ambi/idmagic/backend/shared/version.Version=" + version + " -X github.com/ambi/idmagic/backend/shared/version.GitCommit=" + git_commit + " -X github.com/ambi/idmagic/backend/shared/version.BuildDate=" + build_date
 
 # Show this command map.
 default:
@@ -29,7 +29,7 @@ setup-ra:
 
 # Install UI dependencies.
 install-ui:
-    cd ui && bun install --frozen-lockfile
+    cd frontend && bun install --frozen-lockfile
 
 # Run the standard app verification suite.
 verify: yaml-check verify-go verify-ui
@@ -75,35 +75,35 @@ verify-ui: format-check-ui lint-ui typecheck-ui test-ui-unit build-ui
 
 # Run UI format check.
 format-check-ui:
-    cd ui && bun run format:check
+    cd frontend && bun run format:check
 
 # Format UI.
 format-ui:
-    cd ui && bun run format
+    cd frontend && bun run format
 
 # Run UI lint.
 lint-ui:
-    cd ui && bun run lint
+    cd frontend && bun run lint
 
 # Run UI typecheck.
 typecheck-ui:
-    cd ui && bun run typecheck
+    cd frontend && bun run typecheck
 
 # Run UI unit tests.
 test-ui-unit:
-    cd ui && bun run test:unit
+    cd frontend && bun run test:unit
 
 # Run UI unit tests with coverage.
 test-ui-cover:
-    cd ui && bun run test:unit:coverage
+    cd frontend && bun run test:unit:coverage
 
 # Build UI.
 build-ui:
-    cd ui && bun run build
+    cd frontend && bun run build
 
 # Run UI E2E tests.
 test-ui-e2e:
-    cd ui && bun run test:e2e
+    cd frontend && bun run test:e2e
 
 # Validate SCL and Work Item YAML.
 yaml-check: yaml-check-scl yaml-check-work-items check-ids
@@ -130,11 +130,11 @@ dev:
 
 # Start the Go API for local UI development.
 dev-api:
-    ADDR=:8081 ISSUER=http://localhost:5173 WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-localhost}" WEBAUTHN_RP_ORIGINS="${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}" WEBAUTHN_RP_DISPLAY_NAME="${WEBAUTHN_RP_DISPLAY_NAME:-IdMagic Local}" go run ./cmd/idmagic
+    ADDR=:8081 ISSUER=http://localhost:5173 WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-localhost}" WEBAUTHN_RP_ORIGINS="${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}" WEBAUTHN_RP_DISPLAY_NAME="${WEBAUTHN_RP_DISPLAY_NAME:-IdMagic Local}" go run ./backend/cmd/idmagic
 
 # Start the React UI dev server.
 dev-ui:
-    cd ui && bun run dev
+    cd frontend && bun run dev
 
 # Start the Docker Compose development stack.
 dev-compose:

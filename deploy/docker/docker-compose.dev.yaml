@@ -79,7 +79,7 @@ services:
       valkey: { condition: service_healthy }
       otel-collector: { condition: service_started }
 
-  ui:
+  frontend:
     build:
       context: ../..
       dockerfile: Dockerfile

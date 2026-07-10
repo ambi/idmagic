@@ -2,11 +2,11 @@ version: "2"
 sql:
   - engine: "postgresql"
     schema: "deploy/schema/postgres.sql"
-    queries: "internal/application/adapters/persistence/postgres/queries"
+    queries: "backend/application/adapters/persistence/postgres/queries"
     gen:
       go:
         package: "sqlcgen"
-        out: "internal/application/adapters/persistence/postgres/sqlcgen"
+        out: "backend/application/adapters/persistence/postgres/sqlcgen"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_json_tags: false

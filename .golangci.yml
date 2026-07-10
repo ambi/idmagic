@@ -105,51 +105,51 @@ linters:
           - forcetypeassert
           - noctx
           - bodyclose
-      # cmd/ の main.go は log.Fatal を許容
-      - path: cmd/
+      # backend/cmd/ の main.go は log.Fatal を許容
+      - path: backend/cmd/
         linters:
           - errcheck
       # support.ResolveAuthentication intentionally represents "unauthenticated"
       # as (nil, nil); callers distinguish it from authentication errors.
-      - path: internal/shared/adapters/http/support/auth\.go
+      - path: backend/shared/adapters/http/support/auth\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Authentication resolvers use nil result + nil error for
       # "not authenticated / not applicable" by port contract.
-      - path: internal/authentication/usecases/(demo_header_resolver|session_manager)\.go
+      - path: backend/authentication/usecases/(demo_header_resolver|session_manager)\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # DPoP is optional for non-DPoP-bound calls; no header means no result.
-      - path: internal/shared/adapters/crypto/dpop_verifier\.go
+      - path: backend/shared/adapters/crypto/dpop_verifier\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Key lookup ports use nil result + nil error for "not found".
-      - path: internal/shared/adapters/crypto/key_store\.go
+      - path: backend/shared/adapters/crypto/key_store\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Test repositories mirror production Find* not-found contracts.
-      - path: internal/oauth2/adapters/http/userinfo_handler_test\.go
+      - path: backend/oauth2/adapters/http/userinfo_handler_test\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Persistence repository Find* methods use nil result + nil error for
       # "not found" to match existing port contracts. Matches both the
       # shared location and per-context adapters/persistence/ (ADR-090).
-      - path: internal/[^/]+/adapters/persistence/
+      - path: backend/[^/]+/adapters/persistence/
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # HIBP Range API requires a SHA-1 fingerprint for k-anonymity lookup.
       # This is not password storage/verification; stored password hashes use Argon2id.
-      - path: internal/shared/adapters/policy/hibp_breached_password_checker\.go
+      - path: backend/shared/adapters/policy/hibp_breached_password_checker\.go
         text: "G505: Blocklisted import crypto/sha1"
         linters:
           - gosec
-      - path: internal/shared/adapters/policy/hibp_breached_password_checker\.go
+      - path: backend/shared/adapters/policy/hibp_breached_password_checker\.go
         text: "G401: Use of weak cryptographic primitive"
         linters:
           - gosec

@@ -22,9 +22,9 @@ command -v bun >/dev/null || {
   exit 1
 }
 
-if [ ! -d "$ROOT_DIR/ui/node_modules" ]; then
+if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
   echo "Installing UI dependencies..."
-  (cd "$ROOT_DIR/ui" && bun install --frozen-lockfile)
+  (cd "$ROOT_DIR/frontend" && bun install --frozen-lockfile)
 fi
 
 echo "Starting idmagic API at http://localhost:8081"
@@ -37,11 +37,11 @@ echo "Starting idmagic API at http://localhost:8081"
   ADDR=:8081 \
     ISSUER=http://localhost:5173 \
     PERSISTENCE=memory \
-    go run ./cmd/idmagic
+    go run ./backend/cmd/idmagic
 ) &
 API_PID=$!
 
 echo "Starting UI at http://localhost:5173"
 echo "Demo credentials: alice / demo-password-1234"
-cd "$ROOT_DIR/ui"
+cd "$ROOT_DIR/frontend"
 bun run dev

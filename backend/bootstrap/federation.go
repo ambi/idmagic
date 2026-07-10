@@ -1,0 +1,90 @@
+package bootstrap
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"fmt"
+	"math/big"
+	"time"
+
+	samlports "github.com/ambi/idmagic/backend/saml/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
+	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+)
+
+// newDevFederationSigner は開発用の自己署名 federation 署名証明書から署名器を作る。
+// 本番の証明書ライフサイクル・ローテーション・metadata 掲載は後続スライス (ADR-060) で扱う。
+func newDevFederationSigner() (*samltoken.Signer, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, fmt.Errorf("generate federation signing key: %w", err)
+	}
+	now := time.Now().UTC()
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(now.UnixNano()),
+		Subject:      pkix.Name{CommonName: "idmagic federation signing (dev)"},
+		NotBefore:    now.Add(-1 * time.Hour),
+		NotAfter:     now.Add(365 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		return nil, fmt.Errorf("create federation signing certificate: %w", err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, fmt.Errorf("parse federation signing certificate: %w", err)
+	}
+	return samltoken.NewSigner(cert, key)
+}
+
+// seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
+func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository) error {
+	now := time.Now().UTC()
+	rp := &spec.WsFedRelyingParty{
+		TenantID:    spec.DefaultTenantID,
+		Wtrealm:     "urn:idmagic:demo-rp",
+		DisplayName: "Demo WS-Federation RP",
+		ReplyURLs:   []string{"https://rp.example/wsfed"},
+		ClaimPolicy: spec.ClaimMappingPolicy{
+			NameID: spec.NameIdConfiguration{
+				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+				SourceAttribute: "sub",
+			},
+			Rules: []spec.ClaimMappingRule{
+				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: spec.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
+				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: spec.ClaimSourceUserAttribute, SourceKey: "email"},
+			},
+		},
+		CreatedAt: now,
+	}
+	return repo.Save(ctx, rp)
+}
+
+// seedSamlServiceProvider は SAML 2.0 Web Browser SSO のデモ用 service provider を投入する。
+func seedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository) error {
+	now := time.Now().UTC()
+	sp := &spec.SamlServiceProvider{
+		TenantID:    spec.DefaultTenantID,
+		EntityID:    "urn:idmagic:demo-sp",
+		DisplayName: "Demo SAML SP",
+		ACSURLs:     []string{"https://sp.example/saml/acs"},
+		ClaimPolicy: spec.ClaimMappingPolicy{
+			NameID: spec.NameIdConfiguration{
+				Format:          spec.SamlNameIDFormatPersistent,
+				SourceAttribute: "sub",
+			},
+			Rules: []spec.ClaimMappingRule{
+				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: spec.ClaimSourceUserAttribute, SourceKey: "email"},
+				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Source: spec.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
+			},
+		},
+		SignAssertion: true,
+		CreatedAt:     now,
+	}
+	return repo.Save(ctx, sp)
+}

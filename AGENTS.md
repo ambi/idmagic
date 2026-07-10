@@ -24,6 +24,8 @@ The `justfile` is the single command map for this repo. Run every basic command 
 ## Repository Layout
 
 ```text
+backend/            Go bounded contexts, shared adapters, and process entry points
+frontend/           React UI and gateway configuration
 spec/scl.yaml      Specification Core Language source
 decisions/         Architecture Decision Records
 work-items/        Work Items, with completed records in work-items/done/
