@@ -113,92 +113,15 @@ export function AdminKeysPage({
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Kid</th>
-                <th className="px-4 py-3">Provider</th>
-                <th className="px-4 py-3">Alg</th>
-                <th className="px-4 py-3">状態</th>
-                <th className="px-4 py-3">生成</th>
-                {canManage ? <th className="px-4 py-3 text-right">操作</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {keys.map((k) => (
-                <tr
-                  key={k.kid}
-                  onClick={() => setSelected(k)}
-                  className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selected?.kid === k.kid ? 'bg-blue-50/60' : ''
-                  }`}
-                >
-                  <td className="px-4 py-3 font-mono text-xs">{k.kid}</td>
-                  <td className="px-4 py-3 text-xs">{k.provider}</td>
-                  <td className="px-4 py-3">{k.alg}</td>
-                  <td className="px-4 py-3">
-                    {k.active ? (
-                      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                        active
-                      </span>
-                    ) : (
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                        verifying
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{formatDate(k.created_at)}</td>
-                  {canManage ? (
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="outline"
-                        className="h-8 px-2 text-xs text-red-600"
-                        aria-label={`鍵 ${k.kid} を無効化`}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setDisableTarget(k)
-                        }}
-                        disabled={busy}
-                      >
-                        <IconTrash size={14} aria-hidden="true" />
-                        無効化
-                      </Button>
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex items-center gap-2">
-            <IconKey size={16} aria-hidden="true" className="text-slate-500" />
-            <h2 className="text-sm font-semibold text-slate-700">公開鍵 JWK</h2>
-          </div>
-          {selected ? (
-            <>
-              <dl className="mt-4 grid grid-cols-[80px_minmax(0,1fr)] gap-y-2 text-xs">
-                <dt className="text-slate-500">Kid</dt>
-                <dd className="break-all font-mono">{selected.kid}</dd>
-                <dt className="text-slate-500">Provider</dt>
-                <dd>{selected.provider}</dd>
-                <dt className="text-slate-500">Alg</dt>
-                <dd>{selected.alg}</dd>
-                <dt className="text-slate-500">状態</dt>
-                <dd>{selected.active ? 'yes' : 'no'}</dd>
-                <dt className="text-slate-500">生成</dt>
-                <dd>{formatDate(selected.created_at)}</dd>
-              </dl>
-              <pre className="mt-4 max-h-[360px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50">
-                {JSON.stringify(selected.public_jwk, null, 2)}
-              </pre>
-            </>
-          ) : (
-            <p className="mt-4 text-sm text-slate-500">署名鍵がありません。</p>
-          )}
-        </Card>
+        <SigningKeyTable
+          keys={keys}
+          selectedKid={selected?.kid}
+          canManage={canManage}
+          busy={busy}
+          onSelect={setSelected}
+          onDisable={setDisableTarget}
+        />
+        <SigningKeyDetail keyItem={selected} />
       </div>
 
       {confirm ? (
@@ -244,7 +167,114 @@ export function AdminKeysPage({
   )
 }
 
-function formatDate(value: string): string {
+export function SigningKeyTable({
+  keys,
+  selectedKid,
+  canManage,
+  busy,
+  onSelect,
+  onDisable,
+}: {
+  keys: AdminKey[]
+  selectedKid?: string
+  canManage: boolean
+  busy: boolean
+  onSelect: (key: AdminKey) => void
+  onDisable: (key: AdminKey) => void
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-4 py-3">Kid</th>
+            <th className="px-4 py-3">Provider</th>
+            <th className="px-4 py-3">Alg</th>
+            <th className="px-4 py-3">状態</th>
+            <th className="px-4 py-3">生成</th>
+            {canManage ? <th className="px-4 py-3 text-right">操作</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {keys.map((key) => (
+            <tr
+              key={key.kid}
+              onClick={() => onSelect(key)}
+              className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selectedKid === key.kid ? 'bg-blue-50/60' : ''}`}
+            >
+              <td className="px-4 py-3 font-mono text-xs">{key.kid}</td>
+              <td className="px-4 py-3 text-xs">{key.provider}</td>
+              <td className="px-4 py-3">{key.alg}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={
+                    key.active
+                      ? 'rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700'
+                      : 'rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600'
+                  }
+                >
+                  {key.active ? 'active' : 'verifying'}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-xs text-slate-500">{formatDate(key.created_at)}</td>
+              {canManage ? (
+                <td className="px-4 py-3 text-right">
+                  <Button
+                    variant="outline"
+                    className="h-8 px-2 text-xs text-red-600"
+                    aria-label={`鍵 ${key.kid} を無効化`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onDisable(key)
+                    }}
+                    disabled={busy}
+                  >
+                    <IconTrash size={14} aria-hidden="true" />
+                    無効化
+                  </Button>
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  )
+}
+
+export function SigningKeyDetail({ keyItem }: { keyItem: AdminKey | null }) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2">
+        <IconKey size={16} aria-hidden="true" className="text-slate-500" />
+        <h2 className="text-sm font-semibold text-slate-700">公開鍵 JWK</h2>
+      </div>
+      {keyItem ? (
+        <>
+          <dl className="mt-4 grid grid-cols-[80px_minmax(0,1fr)] gap-y-2 text-xs">
+            <dt className="text-slate-500">Kid</dt>
+            <dd className="break-all font-mono">{keyItem.kid}</dd>
+            <dt className="text-slate-500">Provider</dt>
+            <dd>{keyItem.provider}</dd>
+            <dt className="text-slate-500">Alg</dt>
+            <dd>{keyItem.alg}</dd>
+            <dt className="text-slate-500">状態</dt>
+            <dd>{keyItem.active ? 'yes' : 'no'}</dd>
+            <dt className="text-slate-500">生成</dt>
+            <dd>{formatDate(keyItem.created_at)}</dd>
+          </dl>
+          <pre className="mt-4 max-h-[360px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50">
+            {JSON.stringify(keyItem.public_jwk, null, 2)}
+          </pre>
+        </>
+      ) : (
+        <p className="mt-4 text-sm text-slate-500">署名鍵がありません。</p>
+      )}
+    </Card>
+  )
+}
+
+export function formatDate(value: string): string {
   try {
     return new Date(value).toLocaleString()
   } catch {

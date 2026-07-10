@@ -30,7 +30,7 @@ const VISIBILITY_LABEL: Record<AttrVisibility, string> = {
   claim_exposed: 'claim として開示',
 }
 
-function newAttribute(): UserAttributeDef {
+export function newAttribute(): UserAttributeDef {
   return {
     key: '',
     label: '',
@@ -40,6 +40,17 @@ function newAttribute(): UserAttributeDef {
     editable_by_user: false,
     visibility: 'admin_readable',
     pii: true,
+  }
+}
+
+export function normalizeAttribute(draft: UserAttributeDef): UserAttributeDef {
+  return {
+    ...draft,
+    key: draft.key.trim(),
+    label: draft.label?.trim() || undefined,
+    multi_valued: draft.type === 'string_array',
+    claim_name: draft.claim_name?.trim() || undefined,
+    oidc_scope: draft.oidc_scope?.trim() || undefined,
   }
 }
 
@@ -84,14 +95,7 @@ export function AdminTenantAttributesPage({
   }
 
   async function handleSubmit(draft: UserAttributeDef, index: number | null) {
-    const cleaned: UserAttributeDef = {
-      ...draft,
-      key: draft.key.trim(),
-      label: draft.label?.trim() || undefined,
-      multi_valued: draft.type === 'string_array',
-      claim_name: draft.claim_name?.trim() || undefined,
-      oidc_scope: draft.oidc_scope?.trim() || undefined,
-    }
+    const cleaned = normalizeAttribute(draft)
     const next =
       index === null
         ? [...attributes, cleaned]

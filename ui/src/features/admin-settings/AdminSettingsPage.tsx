@@ -19,6 +19,22 @@ import type { AdminSettings, ScimToken } from '../../types'
 
 const DEFAULT_REALM = 'default'
 
+export function displayNameError(value: string): string | null {
+  return value.trim() ? null : '表示名を入力してください。'
+}
+
+export function passwordPolicyOverride(
+  minLength: string,
+  maxLength: string,
+  historyDepth: string,
+): NonNullable<AdminSettings['password_policy_override']> {
+  const policy: NonNullable<AdminSettings['password_policy_override']> = {}
+  if (minLength.trim()) policy.min_length = Number.parseInt(minLength, 10)
+  if (maxLength.trim()) policy.max_length = Number.parseInt(maxLength, 10)
+  if (historyDepth.trim()) policy.history_depth = Number.parseInt(historyDepth, 10)
+  return policy
+}
+
 type TabKey = 'general' | 'password-policy' | 'email' | 'scim'
 
 type Tab = {
@@ -175,8 +191,9 @@ function GeneralTab({
     setNotice('')
     try {
       const trimmed = displayName.trim()
-      if (!trimmed) {
-        setError('表示名を入力してください。')
+      const validationError = displayNameError(displayName)
+      if (validationError) {
+        setError(validationError)
         return
       }
       if (trimmed === settings.display_name) {
@@ -291,10 +308,7 @@ function PasswordPolicyTab({
     setError('')
     setNotice('')
     try {
-      const policy: AdminSettings['password_policy_override'] = {}
-      if (minLength.trim()) policy.min_length = Number.parseInt(minLength, 10)
-      if (maxLength.trim()) policy.max_length = Number.parseInt(maxLength, 10)
-      if (historyDepth.trim()) policy.history_depth = Number.parseInt(historyDepth, 10)
+      const policy = passwordPolicyOverride(minLength, maxLength, historyDepth)
       const next = await updateAdminSettings(csrfToken, {
         password_policy_override: policy,
       })

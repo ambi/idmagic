@@ -111,59 +111,13 @@ export function SystemTenantsPage({
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Realm</th>
-                <th className="px-4 py-3">表示名</th>
-                <th className="px-4 py-3">状態</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.map((t) => (
-                <tr
-                  key={t.id}
-                  onClick={() => setSelected(t)}
-                  className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selected?.id === t.id ? 'bg-blue-50/60' : ''
-                  }`}
-                >
-                  <td className="px-4 py-3 font-mono text-xs">{t.realm}</td>
-                  <td className="px-4 py-3">{t.display_name}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={t.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {t.realm !== 'default' ? (
-                      <Button
-                        variant="ghost"
-                        className={
-                          t.status === 'active'
-                            ? 'text-rose-700 hover:bg-rose-50'
-                            : 'text-emerald-700 hover:bg-emerald-50'
-                        }
-                        disabled={busy}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleToggleDisabled(t)
-                        }}
-                      >
-                        {t.status === 'active' ? (
-                          <IconBan size={14} aria-hidden="true" />
-                        ) : (
-                          <IconCheck size={14} aria-hidden="true" />
-                        )}
-                        {t.status === 'active' ? '無効化' : '有効化'}
-                      </Button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <TenantTable
+          tenants={tenants}
+          selectedID={selected?.id}
+          busy={busy}
+          onSelect={setSelected}
+          onToggleDisabled={handleToggleDisabled}
+        />
 
         <TenantDetailCard
           tenant={selected}
@@ -214,7 +168,75 @@ export function SystemTenantsPage({
   )
 }
 
-function TenantDetailCard({
+export function TenantTable({
+  tenants,
+  selectedID,
+  busy,
+  onSelect,
+  onToggleDisabled,
+}: {
+  tenants: AdminTenant[]
+  selectedID?: string
+  busy: boolean
+  onSelect: (tenant: AdminTenant) => void
+  onToggleDisabled: (tenant: AdminTenant) => void
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-4 py-3">Realm</th>
+            <th className="px-4 py-3">表示名</th>
+            <th className="px-4 py-3">状態</th>
+            <th className="px-4 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {tenants.map((tenant) => (
+            <tr
+              key={tenant.id}
+              onClick={() => onSelect(tenant)}
+              className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selectedID === tenant.id ? 'bg-blue-50/60' : ''}`}
+            >
+              <td className="px-4 py-3 font-mono text-xs">{tenant.realm}</td>
+              <td className="px-4 py-3">{tenant.display_name}</td>
+              <td className="px-4 py-3">
+                <StatusBadge status={tenant.status} />
+              </td>
+              <td className="px-4 py-3 text-right">
+                {tenant.realm !== 'default' ? (
+                  <Button
+                    variant="ghost"
+                    className={
+                      tenant.status === 'active'
+                        ? 'text-rose-700 hover:bg-rose-50'
+                        : 'text-emerald-700 hover:bg-emerald-50'
+                    }
+                    disabled={busy}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onToggleDisabled(tenant)
+                    }}
+                  >
+                    {tenant.status === 'active' ? (
+                      <IconBan size={14} aria-hidden="true" />
+                    ) : (
+                      <IconCheck size={14} aria-hidden="true" />
+                    )}
+                    {tenant.status === 'active' ? '無効化' : '有効化'}
+                  </Button>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  )
+}
+
+export function TenantDetailCard({
   tenant,
   csrfToken,
   busy,
@@ -365,7 +387,7 @@ function TenantEditor({
   )
 }
 
-function StatusBadge({ status }: { status: AdminTenant['status'] }) {
+export function StatusBadge({ status }: { status: AdminTenant['status'] }) {
   return status === 'active' ? (
     <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
       active
