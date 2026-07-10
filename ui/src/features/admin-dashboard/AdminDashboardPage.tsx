@@ -116,7 +116,7 @@ export function AdminDashboardPage({
 
       {/* システムサマリー (ビジュアルと価値を再検討した MetricCards) */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6" aria-label="サマリー">
-        <MetricCard
+        <DashboardMetricCard
           label="総ユーザー"
           value={userCount}
           icon={IconUsers}
@@ -136,7 +136,7 @@ export function AdminDashboardPage({
             </div>
           }
         />
-        <MetricCard
+        <DashboardMetricCard
           label="登録アプリケーション"
           value={clientCount}
           icon={IconKey}
@@ -153,7 +153,7 @@ export function AdminDashboardPage({
             </div>
           }
         />
-        <MetricCard
+        <DashboardMetricCard
           label="付与済みの同意"
           value={grantedConsentCount}
           icon={IconCheckupList}
@@ -170,7 +170,7 @@ export function AdminDashboardPage({
             </div>
           }
         />
-        <MetricCard
+        <DashboardMetricCard
           label="監査イベント (24h)"
           value={auditEventCount24h}
           icon={IconActivity}
@@ -286,32 +286,32 @@ export function AdminDashboardPage({
               <h2 className="text-sm font-semibold text-slate-900">管理者クイックリンク</h2>
             </div>
             <ul className="grid gap-2">
-              <QuickLink
+              <DashboardQuickLink
                 href={tenantURL('/admin/users/new')}
                 icon={IconUserPlus}
                 label="ユーザーを追加"
                 description="新しい組織アカウントを作成します。"
               />
-              <QuickLink
+              <DashboardQuickLink
                 href={tenantURL('/admin/applications')}
                 icon={IconKey}
                 label="アプリケーション管理"
                 description="OIDC クライアントや SAML SP を管理します。"
               />
-              <QuickLink
+              <DashboardQuickLink
                 href={tenantURL('/admin/sign-in-policy')}
                 icon={IconShieldLock}
                 label="サインインポリシー"
                 description="パスワードポリシーやMFA要求ルールを設定します。"
               />
-              <QuickLink
+              <DashboardQuickLink
                 href={tenantURL('/admin/audit_events')}
                 icon={IconActivity}
                 label="監査イベントビュー"
                 description="テナント内の全イベントをフィルタ・追跡します。"
               />
               {actorRoles.includes('system_admin') ? (
-                <QuickLink
+                <DashboardQuickLink
                   href="/system"
                   icon={IconShieldCheck}
                   label="システムコンソール"
@@ -326,7 +326,7 @@ export function AdminDashboardPage({
   )
 }
 
-function MetricCard({
+export function DashboardMetricCard({
   label,
   value,
   icon: Icon,
@@ -366,7 +366,7 @@ function MetricCard({
   )
 }
 
-function QuickLink({
+export function DashboardQuickLink({
   href,
   icon: Icon,
   label,
@@ -396,7 +396,7 @@ function QuickLink({
   )
 }
 
-function SecurityTaskCard({
+export function SecurityTaskCard({
   title,
   description,
   href,

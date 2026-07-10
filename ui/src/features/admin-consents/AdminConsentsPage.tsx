@@ -9,6 +9,21 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import type { AdminConsent } from '../../types'
 
+export function filterAdminConsents(consents: AdminConsent[], query: string): AdminConsent[] {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return consents
+  return consents.filter((consent) =>
+    [
+      consent.user_id,
+      consent.preferred_username ?? '',
+      consent.client_id,
+      consent.client_name,
+      consent.state,
+      ...consent.scopes,
+    ].some((value) => value.toLowerCase().includes(needle)),
+  )
+}
+
 export function AdminConsentsPage({
   csrfToken,
   actorUsername,
@@ -26,20 +41,7 @@ export function AdminConsentsPage({
   const [notice, setNotice] = useState('')
   const [confirmTarget, setConfirmTarget] = useState<AdminConsent | null>(null)
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return consents
-    return consents.filter((c) =>
-      [
-        c.user_id,
-        c.preferred_username ?? '',
-        c.client_id,
-        c.client_name,
-        c.state,
-        ...c.scopes,
-      ].some((value) => value.toLowerCase().includes(needle)),
-    )
-  }, [consents, query])
+  const filtered = useMemo(() => filterAdminConsents(consents, query), [consents, query])
 
   async function refresh(preferred?: AdminConsent) {
     const next = await listAdminConsents()
@@ -141,9 +143,11 @@ export function AdminConsentsPage({
                     <NameWithId name={c.client_name} id={c.client_id} />
                   </td>
                   <td className="px-4 py-3">
-                    <StateBadge state={c.state} />
+                    <ConsentStateBadge state={c.state} />
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{formatDate(c.granted_at)}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {formatConsentDate(c.granted_at)}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     {c.state === 'granted' ? (
                       <Button
@@ -198,16 +202,16 @@ export function AdminConsentsPage({
               </dd>
               <dt className="text-slate-500">状態</dt>
               <dd>
-                <StateBadge state={selected.state} />
+                <ConsentStateBadge state={selected.state} />
               </dd>
               <dt className="text-slate-500">付与</dt>
-              <dd>{formatDate(selected.granted_at)}</dd>
+              <dd>{formatConsentDate(selected.granted_at)}</dd>
               <dt className="text-slate-500">期限</dt>
-              <dd>{formatDate(selected.expires_at)}</dd>
+              <dd>{formatConsentDate(selected.expires_at)}</dd>
               {selected.revoked_at ? (
                 <>
                   <dt className="text-slate-500">取消</dt>
-                  <dd>{formatDate(selected.revoked_at)}</dd>
+                  <dd>{formatConsentDate(selected.revoked_at)}</dd>
                 </>
               ) : null}
             </dl>
@@ -233,7 +237,7 @@ export function AdminConsentsPage({
 
 // 可読名を主表示にし、UUID (client_id / user_id) は補助表記に留める (wi-141)。
 // name が id と一致する場合 (解決名なしのフォールバック) は id 行を重複表示しない。
-function NameWithId({ name, id }: { name: string; id: string }) {
+export function NameWithId({ name, id }: { name: string; id: string }) {
   return (
     <div className="min-w-0">
       <span className="block truncate text-sm text-slate-800" title={id}>
@@ -248,7 +252,7 @@ function NameWithId({ name, id }: { name: string; id: string }) {
   )
 }
 
-function StateBadge({ state }: { state: AdminConsent['state'] }) {
+export function ConsentStateBadge({ state }: { state: AdminConsent['state'] }) {
   const variants: Record<AdminConsent['state'], string> = {
     granted: 'bg-emerald-50 text-emerald-700',
     revoked: 'bg-rose-50 text-rose-700',
@@ -261,7 +265,7 @@ function StateBadge({ state }: { state: AdminConsent['state'] }) {
   )
 }
 
-function formatDate(value?: string): string {
+export function formatConsentDate(value?: string): string {
   if (!value) return '—'
   try {
     return new Date(value).toLocaleString()

@@ -111,34 +111,52 @@ export function AdminEntraFederationPage({
         ))}
       </div>
 
-      {items.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-slate-500">
-          まだフェデレーション済みのドメインがありません。「ドメインフェデレーションを追加」から作成してください。
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {items.map((rp) => (
-            <Card key={rp.wtrealm} className="flex items-start justify-between gap-3 p-4">
-              <div className="flex min-w-0 items-start gap-2">
-                <IconWorldShare
-                  size={16}
-                  className="mt-0.5 shrink-0 text-blue-600"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 text-xs leading-5 text-slate-600">
-                  <p className="font-semibold text-slate-900">{rp.entra_profile?.domain}</p>
-                  <p className="truncate font-mono">{rp.wtrealm}</p>
-                  <p>sourceAnchor: {rp.entra_profile?.source_anchor_attribute}</p>
-                </div>
-              </div>
-              <Button type="button" variant="ghost" onClick={() => handleDelete(rp)}>
-                <IconTrash size={16} aria-hidden="true" />
-              </Button>
-            </Card>
-          ))}
-        </div>
-      )}
+      <EntraFederationList items={items} onDelete={handleDelete} />
     </AdminShell>
+  )
+}
+
+export function EntraFederationList({
+  items,
+  onDelete,
+}: {
+  items: WsFedRelyingParty[]
+  onDelete: (relyingParty: WsFedRelyingParty) => void
+}) {
+  if (items.length === 0) {
+    return (
+      <Card className="p-8 text-center text-sm text-slate-500">
+        まだフェデレーション済みのドメインがありません。「ドメインフェデレーションを追加」から作成してください。
+      </Card>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map((relyingParty) => (
+        <Card key={relyingParty.wtrealm} className="flex items-start justify-between gap-3 p-4">
+          <div className="flex min-w-0 items-start gap-2">
+            <IconWorldShare
+              size={16}
+              className="mt-0.5 shrink-0 text-blue-600"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 text-xs leading-5 text-slate-600">
+              <p className="font-semibold text-slate-900">{relyingParty.entra_profile?.domain}</p>
+              <p className="truncate font-mono">{relyingParty.wtrealm}</p>
+              <p>sourceAnchor: {relyingParty.entra_profile?.source_anchor_attribute}</p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label={`${relyingParty.wtrealm} を削除`}
+            onClick={() => onDelete(relyingParty)}
+          >
+            <IconTrash size={16} aria-hidden="true" />
+          </Button>
+        </Card>
+      ))}
+    </div>
   )
 }
 
