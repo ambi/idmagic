@@ -15,8 +15,8 @@ import (
 
 type GroupRepository struct {
 	mu      sync.RWMutex
-	groups  map[string]*spec.Group         // key: tenantKey(tenant_id, id)
-	members map[string][]*spec.GroupMember // key: tenantKey(tenant_id, group_id)
+	groups  map[string]*spec.Group         // key: TenantKey(tenant_id, id)
+	members map[string][]*spec.GroupMember // key: TenantKey(tenant_id, group_id)
 }
 
 func NewGroupRepository() *GroupRepository {
@@ -48,7 +48,7 @@ func (r *GroupRepository) ListByTenant(_ context.Context, tenantID string) ([]*s
 func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*spec.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	group := r.groups[tenantKey(tenantID, id)]
+	group := r.groups[TenantKey(tenantID, id)]
 	if group == nil {
 		return nil, nil
 	}
@@ -58,22 +58,22 @@ func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*spe
 func (r *GroupRepository) Save(_ context.Context, group *spec.Group) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.groups[tenantKey(group.TenantID, group.ID)] = cloneGroup(group)
+	r.groups[TenantKey(group.TenantID, group.ID)] = cloneGroup(group)
 	return nil
 }
 
 func (r *GroupRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.groups, tenantKey(tenantID, id))
-	delete(r.members, tenantKey(tenantID, id))
+	delete(r.groups, TenantKey(tenantID, id))
+	delete(r.members, TenantKey(tenantID, id))
 	return nil
 }
 
 func (r *GroupRepository) ListMembersByGroup(_ context.Context, tenantID, groupID string) ([]*spec.GroupMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	stored := r.members[tenantKey(tenantID, groupID)]
+	stored := r.members[TenantKey(tenantID, groupID)]
 	out := make([]*spec.GroupMember, 0, len(stored))
 	for _, member := range stored {
 		cloned := *member
@@ -103,7 +103,7 @@ func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID s
 func (r *GroupRepository) CountMembers(_ context.Context, tenantID, groupID string) (int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return len(r.members[tenantKey(tenantID, groupID)]), nil
+	return len(r.members[TenantKey(tenantID, groupID)]), nil
 }
 
 func (r *GroupRepository) AddMember(_ context.Context, member *spec.GroupMember) (bool, error) {
@@ -123,7 +123,7 @@ func (r *GroupRepository) AddMember(_ context.Context, member *spec.GroupMember)
 func (r *GroupRepository) RemoveMember(_ context.Context, tenantID, groupID, userID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := tenantKey(tenantID, groupID)
+	key := TenantKey(tenantID, groupID)
 	members := r.members[key]
 	for i, existing := range members {
 		if existing.UserID == userID {

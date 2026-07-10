@@ -28,7 +28,7 @@ type AuditEventRepository struct{ Pool DB }
 
 const auditEventSelect = `SELECT id,tenant_id,type,occurred_at,payload FROM audit_events`
 
-func scanAuditEvent(row rowScanner) (*ports.AuditEventRecord, error) {
+func scanAuditEvent(row RowScanner) (*ports.AuditEventRecord, error) {
 	var rec ports.AuditEventRecord
 	err := row.Scan(&rec.ID, &rec.TenantID, &rec.Type, &rec.OccurredAt, &rec.Payload)
 	if errors.Is(err, pgx.ErrNoRows) {

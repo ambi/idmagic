@@ -82,7 +82,7 @@ ON CONFLICT (id) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
 const userSelect = `SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,roles,lifecycle,attributes,created_at,updated_at FROM users`
 
-func scanUser(row rowScanner) (*spec.User, error) {
+func scanUser(row RowScanner) (*spec.User, error) {
 	var u spec.User
 	var lifecycle, attributes []byte
 	err := row.Scan(&u.ID, &u.TenantID, &u.PreferredUsername, &u.PasswordHash, &u.Name, &u.GivenName,

@@ -14,7 +14,7 @@ func defaultTenant(tenantID *string) {
 	}
 }
 
-func tenantKey(tenantID, id string) string {
+func TenantKey(tenantID, id string) string {
 	if tenantID == "" {
 		tenantID = spec.DefaultTenantID
 	}

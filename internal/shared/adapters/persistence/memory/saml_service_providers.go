@@ -15,7 +15,7 @@ import (
 
 type SamlServiceProviderRepository struct {
 	mu  sync.RWMutex
-	sps map[string]*spec.SamlServiceProvider // key: tenantKey(tenant_id, entity_id)
+	sps map[string]*spec.SamlServiceProvider // key: TenantKey(tenant_id, entity_id)
 }
 
 func NewSamlServiceProviderRepository() *SamlServiceProviderRepository {
@@ -37,7 +37,7 @@ func cloneServiceProvider(sp *spec.SamlServiceProvider) *spec.SamlServiceProvide
 func (r *SamlServiceProviderRepository) FindByEntityID(_ context.Context, tenantID, entityID string) (*spec.SamlServiceProvider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	sp := r.sps[tenantKey(tenantID, entityID)]
+	sp := r.sps[TenantKey(tenantID, entityID)]
 	if sp == nil {
 		return nil, nil
 	}
@@ -61,13 +61,13 @@ func (r *SamlServiceProviderRepository) Save(_ context.Context, sp *spec.SamlSer
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	defaultTenant(&sp.TenantID)
-	r.sps[tenantKey(sp.TenantID, sp.EntityID)] = cloneServiceProvider(sp)
+	r.sps[TenantKey(sp.TenantID, sp.EntityID)] = cloneServiceProvider(sp)
 	return nil
 }
 
 func (r *SamlServiceProviderRepository) Delete(_ context.Context, tenantID, entityID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.sps, tenantKey(tenantID, entityID))
+	delete(r.sps, TenantKey(tenantID, entityID))
 	return nil
 }

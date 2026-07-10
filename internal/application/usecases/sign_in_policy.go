@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	"github.com/ambi/idmagic/internal/application/ports"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
@@ -32,18 +33,18 @@ type SignInPolicyDeps struct {
 type UpdateSignInPolicyInput struct {
 	ActorUserID   string
 	ApplicationID string
-	Rules         []spec.SignInRule
+	Rules         []domain.SignInRule
 	Now           time.Time
 }
 
-func EmptySignInPolicy(tenantID, applicationID string, now time.Time) *spec.AppSignInPolicy {
+func EmptySignInPolicy(tenantID, applicationID string, now time.Time) *domain.AppSignInPolicy {
 	at := adminNow(now)
-	return &spec.AppSignInPolicy{
-		TenantID: tenantID, ApplicationID: applicationID, Rules: []spec.SignInRule{}, CreatedAt: at, UpdatedAt: at,
+	return &domain.AppSignInPolicy{
+		TenantID: tenantID, ApplicationID: applicationID, Rules: []domain.SignInRule{}, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
-func GetSignInPolicy(ctx context.Context, deps SignInPolicyDeps, applicationID string) (*spec.AppSignInPolicy, error) {
+func GetSignInPolicy(ctx context.Context, deps SignInPolicyDeps, applicationID string) (*domain.AppSignInPolicy, error) {
 	tenantID := tenancy.TenantID(ctx)
 	if err := ensureApplicationExists(ctx, deps.AppRepo, tenantID, applicationID); err != nil {
 		return nil, err
@@ -59,12 +60,12 @@ func GetSignInPolicy(ctx context.Context, deps SignInPolicyDeps, applicationID s
 		return EmptySignInPolicy(tenantID, applicationID, time.Now().UTC()), nil
 	}
 	if policy.Rules == nil {
-		policy.Rules = []spec.SignInRule{}
+		policy.Rules = []domain.SignInRule{}
 	}
 	return policy, nil
 }
 
-func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSignInPolicyInput) (*spec.AppSignInPolicy, error) {
+func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSignInPolicyInput) (*domain.AppSignInPolicy, error) {
 	tenantID := tenancy.TenantID(ctx)
 	if err := ensureApplicationExists(ctx, deps.AppRepo, tenantID, in.ApplicationID); err != nil {
 		return nil, err
@@ -74,7 +75,7 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 		return nil, err
 	}
 	now := adminNow(in.Now)
-	policy := &spec.AppSignInPolicy{
+	policy := &domain.AppSignInPolicy{
 		TenantID: tenantID, ApplicationID: in.ApplicationID, Rules: rules, CreatedAt: now, UpdatedAt: now,
 	}
 	if deps.PolicyRepo != nil {
@@ -89,22 +90,22 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 			return nil, err
 		}
 	}
-	emit(deps.Emit, &spec.AppSignInPolicyUpdated{
+	emit(deps.Emit, &domain.AppSignInPolicyUpdated{
 		At: policy.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
 	})
 	return policy, nil
 }
 
 // EmptyDefaultSignInPolicy は未設定テナントの空のデフォルトポリシーを返す。
-func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *spec.TenantDefaultSignInPolicy {
+func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *domain.TenantDefaultSignInPolicy {
 	at := adminNow(now)
-	return &spec.TenantDefaultSignInPolicy{
-		TenantID: tenantID, Rules: []spec.SignInRule{}, CreatedAt: at, UpdatedAt: at,
+	return &domain.TenantDefaultSignInPolicy{
+		TenantID: tenantID, Rules: []domain.SignInRule{}, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
 // GetDefaultSignInPolicy はテナントデフォルト sign-in policy を取得する。未設定なら空ルールを返す。
-func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*spec.TenantDefaultSignInPolicy, error) {
+func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*domain.TenantDefaultSignInPolicy, error) {
 	tenantID := tenancy.TenantID(ctx)
 	if deps.DefaultRepo == nil {
 		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
@@ -117,27 +118,27 @@ func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*spec.T
 		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
 	}
 	if policy.Rules == nil {
-		policy.Rules = []spec.SignInRule{}
+		policy.Rules = []domain.SignInRule{}
 	}
 	return policy, nil
 }
 
 type UpdateDefaultSignInPolicyInput struct {
 	ActorUserID string
-	Rules       []spec.SignInRule
+	Rules       []domain.SignInRule
 	Now         time.Time
 }
 
 // UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える (ADR-081)。
 // 空 rules で保存すればデフォルトは allow-all に戻る。
-func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateDefaultSignInPolicyInput) (*spec.TenantDefaultSignInPolicy, error) {
+func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateDefaultSignInPolicyInput) (*domain.TenantDefaultSignInPolicy, error) {
 	tenantID := tenancy.TenantID(ctx)
 	rules := slices.Clone(in.Rules)
 	if err := ValidateSignInPolicyRules(rules); err != nil {
 		return nil, err
 	}
 	now := adminNow(in.Now)
-	policy := &spec.TenantDefaultSignInPolicy{
+	policy := &domain.TenantDefaultSignInPolicy{
 		TenantID: tenantID, Rules: rules, CreatedAt: now, UpdatedAt: now,
 	}
 	if deps.DefaultRepo != nil {
@@ -152,7 +153,7 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 			return nil, err
 		}
 	}
-	emit(deps.Emit, &spec.TenantDefaultSignInPolicyUpdated{
+	emit(deps.Emit, &domain.TenantDefaultSignInPolicyUpdated{
 		At: policy.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
 	})
 	return policy, nil
@@ -160,7 +161,7 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 
 // appPolicyConfigured はアプリが独自の sign-in policy を持つ (デフォルトを上書きする) かを返す。
 // 有効ルールが 1 つでもあれば「設定あり」とみなす (ADR-081)。
-func appPolicyConfigured(app *spec.AppSignInPolicy) bool {
+func appPolicyConfigured(app *domain.AppSignInPolicy) bool {
 	if app == nil {
 		return false
 	}
@@ -174,7 +175,7 @@ func appPolicyConfigured(app *spec.AppSignInPolicy) bool {
 
 // EffectiveSignInRules は上書きモデルで実際に適用されるルール列を返す (ADR-081)。
 // アプリが独自ポリシーを持てばそれがデフォルトを完全に置換し、持たなければデフォルトを適用する。
-func EffectiveSignInRules(def *spec.TenantDefaultSignInPolicy, app *spec.AppSignInPolicy) []spec.SignInRule {
+func EffectiveSignInRules(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) []domain.SignInRule {
 	if appPolicyConfigured(app) {
 		return slices.Clone(app.Rules)
 	}
@@ -185,12 +186,12 @@ func EffectiveSignInRules(def *spec.TenantDefaultSignInPolicy, app *spec.AppSign
 }
 
 // EffectivePolicyForEvaluation は上書き後の実効ルールで評価用 policy を組み立てる。ルールが無ければ nil。
-func EffectivePolicyForEvaluation(def *spec.TenantDefaultSignInPolicy, app *spec.AppSignInPolicy) *spec.AppSignInPolicy {
+func EffectivePolicyForEvaluation(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) *domain.AppSignInPolicy {
 	rules := EffectiveSignInRules(def, app)
 	if len(rules) == 0 {
 		return nil
 	}
-	out := &spec.AppSignInPolicy{Rules: rules}
+	out := &domain.AppSignInPolicy{Rules: rules}
 	if app != nil {
 		out.TenantID = app.TenantID
 		out.ApplicationID = app.ApplicationID
@@ -206,13 +207,13 @@ type signInSettings struct {
 	cidrs      []string
 }
 
-func settingsFromRules(rules []spec.SignInRule) signInSettings {
+func settingsFromRules(rules []domain.SignInRule) signInSettings {
 	for _, rule := range rules {
 		if !rule.Enabled {
 			continue
 		}
 		return signInSettings{
-			requireMfa: rule.RequiredAuthn.Strength == spec.RequiredAuthnMfa,
+			requireMfa: rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa,
 			reauth:     rule.Condition.ReauthMaxAgeSeconds,
 			cidrs:      rule.Condition.NetworkAllowCIDRs,
 		}
@@ -223,7 +224,7 @@ func settingsFromRules(rules []spec.SignInRule) signInSettings {
 // AppPolicyWeakerThanDefault はアプリ独自ポリシーがデフォルトより弱いかを返す (ADR-081, UI 警告用)。
 // アプリが独自ポリシーを持たなければ (=デフォルトを適用) 常に false。弱さは認証強度・再認証時間・
 // 許可ネットワークの 3 項目のいずれかで判定する。
-func AppPolicyWeakerThanDefault(def *spec.TenantDefaultSignInPolicy, app *spec.AppSignInPolicy) bool {
+func AppPolicyWeakerThanDefault(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) bool {
 	if !appPolicyConfigured(app) {
 		return false
 	}
@@ -257,14 +258,14 @@ func AppPolicyWeakerThanDefault(def *spec.TenantDefaultSignInPolicy, app *spec.A
 	return false
 }
 
-func ValidateSignInPolicyRules(rules []spec.SignInRule) error {
+func ValidateSignInPolicyRules(rules []domain.SignInRule) error {
 	seen := map[string]struct{}{}
 	for i := range rules {
 		r := &rules[i]
 		r.RuleID = strings.TrimSpace(r.RuleID)
 		r.Name = strings.TrimSpace(r.Name)
 		if r.RequiredAuthn.Strength == "" {
-			r.RequiredAuthn.Strength = spec.RequiredAuthnPassword
+			r.RequiredAuthn.Strength = domain.RequiredAuthnPassword
 		}
 		if r.RuleID == "" {
 			id, err := spec.NewUUIDv4()
@@ -333,7 +334,7 @@ type PolicyEvaluation struct {
 
 // EvaluateSignInPolicy はサインインポリシーを fail-closed で評価する。
 // clientIP は許可 CIDR 条件の評価に使う。IP が空で許可 CIDR が設定されていれば拒否する。
-func EvaluateSignInPolicy(policy *spec.AppSignInPolicy, authn *authdomain.AuthenticationContext, clientIP string, now time.Time) PolicyEvaluation {
+func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.AuthenticationContext, clientIP string, now time.Time) PolicyEvaluation {
 	if policy == nil || len(policy.Rules) == 0 {
 		return PolicyEvaluation{Decision: PolicyAllow}
 	}
@@ -350,7 +351,7 @@ func EvaluateSignInPolicy(policy *spec.AppSignInPolicy, authn *authdomain.Authen
 		if len(rule.Condition.NetworkAllowCIDRs) > 0 && !clientIPAllowed(clientIP, rule.Condition.NetworkAllowCIDRs) {
 			return PolicyEvaluation{Decision: PolicyDeny, Reason: "client network is not allowed"}
 		}
-		if rule.RequiredAuthn.Strength == spec.RequiredAuthnMfa && !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
+		if rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
 			return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "mfa requirement is not satisfied"}
 		}
 		if rule.Condition.ReauthMaxAgeSeconds != nil {

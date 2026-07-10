@@ -10,6 +10,7 @@ import (
 	"context"
 	"time"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	idmports "github.com/ambi/idmagic/internal/identitymanagement/ports"
 	"github.com/ambi/idmagic/internal/shared/spec"
@@ -31,7 +32,7 @@ type ApplicationGate interface {
 	EvaluateApplicationAccess(
 		ctx context.Context,
 		tenantID string,
-		bindingType spec.ProtocolBindingType,
+		bindingType appdomain.ProtocolBindingType,
 		bindingKey, sub string,
 		authn *authdomain.AuthenticationContext,
 		clientIP string,
@@ -127,7 +128,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 
 	// 割当ゲート (wi-69): RP が Application binding に属する場合、未割当 subject には
 	// assertion を発行しない (fail-closed, AssignmentGatesProtocol)。
-	decision, err := s.Gate.EvaluateApplicationAccess(ctx, tenantID, spec.ProtocolBindingWsFed, rp.Wtrealm, authn.UserID, authn, in.ClientIP)
+	decision, err := s.Gate.EvaluateApplicationAccess(ctx, tenantID, appdomain.ProtocolBindingWsFed, rp.Wtrealm, authn.UserID, authn, in.ClientIP)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
@@ -135,12 +136,12 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		reason := decision.Reason
 		if decision.StepUpRequired {
 			reason = "step-up required by application sign-in policy"
-			s.emit(&spec.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.UserID})
+			s.emit(&appdomain.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ProtocolBindingWsFed), Subject: authn.UserID})
 		} else if reason == "" {
 			reason = "subject not assigned to application"
 		}
 		if decision.ApplicationID != "" {
-			s.emit(&spec.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(spec.ProtocolBindingWsFed), Subject: authn.UserID, Reason: reason})
+			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ProtocolBindingWsFed), Subject: authn.UserID, Reason: reason})
 		}
 		s.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
 		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil

@@ -176,5 +176,5 @@ func RegisterUUIDAsText(conn *pgx.Conn) {
 	})
 }
 
-// rowScanner は pgx.Row / pgx.Rows の共通スキャンインターフェース。
-type rowScanner interface{ Scan(...any) error }
+// RowScanner は pgx.Row / pgx.Rows の共通スキャンインターフェース。
+type RowScanner interface{ Scan(...any) error }

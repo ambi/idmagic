@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	appports "github.com/ambi/idmagic/internal/application/ports"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
@@ -17,12 +18,12 @@ import (
 )
 
 type myApplicationResponse struct {
-	ApplicationID string               `json:"application_id"`
-	Name          string               `json:"name"`
-	Kind          spec.ApplicationKind `json:"kind"`
-	IconURL       string               `json:"icon_url,omitempty"`
-	LaunchURL     string               `json:"launch_url,omitempty"`
-	CategoryIDs   []string             `json:"category_ids"`
+	ApplicationID string                 `json:"application_id"`
+	Name          string                 `json:"name"`
+	Kind          domain.ApplicationKind `json:"kind"`
+	IconURL       string                 `json:"icon_url,omitempty"`
+	LaunchURL     string                 `json:"launch_url,omitempty"`
+	CategoryIDs   []string               `json:"category_ids"`
 }
 
 type portalCategoryResponse struct {
@@ -89,7 +90,7 @@ func (d Deps) portalCategories(ctx context.Context) ([]portalCategoryResponse, e
 
 // subjectsForUser は割当解決に使う subject 群 (本人 + 所属グループ) を組み立てる (wi-69)。
 func (d Deps) subjectsForUser(ctx context.Context, user *spec.User) []appports.SubjectRef {
-	subjects := []appports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: user.ID}}
+	subjects := []appports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: user.ID}}
 	if d.GroupRepo == nil {
 		return subjects
 	}
@@ -98,7 +99,7 @@ func (d Deps) subjectsForUser(ctx context.Context, user *spec.User) []appports.S
 		return subjects
 	}
 	for _, g := range groups {
-		subjects = append(subjects, appports.SubjectRef{Type: spec.AssignmentSubjectGroup, ID: g.ID})
+		subjects = append(subjects, appports.SubjectRef{Type: domain.AssignmentSubjectGroup, ID: g.ID})
 	}
 	return subjects
 }

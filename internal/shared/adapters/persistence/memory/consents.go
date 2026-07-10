@@ -98,5 +98,5 @@ func (r *ConsentRepository) DeleteAllForSub(_ context.Context, sub string) error
 }
 
 func consentKey(tenantID, sub, clientID string) string {
-	return tenantKey(tenantID, sub+"|"+clientID)
+	return TenantKey(tenantID, sub+"|"+clientID)
 }

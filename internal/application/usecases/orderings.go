@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	"github.com/ambi/idmagic/internal/application/ports"
-	"github.com/ambi/idmagic/internal/shared/spec"
 	"github.com/ambi/idmagic/internal/tenancy"
 )
 
@@ -35,15 +35,15 @@ func GetMyApplicationOrder(ctx context.Context, repo ports.ApplicationOrderingRe
 // ApplyManualOrder は name 昇順の apps に手動順 order を重ねる。order に在るアプリを
 // その順で前に置き、order に無い割当アプリは元の (name 昇順) で末尾に付ける。
 // order に在って apps に無い (現在は未割当) id は無視する。
-func ApplyManualOrder(apps []*spec.Application, order []string) []*spec.Application {
+func ApplyManualOrder(apps []*domain.Application, order []string) []*domain.Application {
 	if len(order) == 0 {
 		return apps
 	}
-	byID := make(map[string]*spec.Application, len(apps))
+	byID := make(map[string]*domain.Application, len(apps))
 	for _, app := range apps {
 		byID[app.ApplicationID] = app
 	}
-	out := make([]*spec.Application, 0, len(apps))
+	out := make([]*domain.Application, 0, len(apps))
 	placed := make(map[string]struct{}, len(apps))
 	for _, id := range order {
 		app, ok := byID[id]
@@ -90,7 +90,7 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID str
 		cleaned = append(cleaned, id)
 	}
 	nowAt := adminNow(now)
-	ordering := &spec.ApplicationOrdering{
+	ordering := &domain.ApplicationOrdering{
 		UserID:         userID,
 		ApplicationIDs: cleaned,
 		CreatedAt:      nowAt,

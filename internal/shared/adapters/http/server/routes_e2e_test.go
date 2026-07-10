@@ -17,6 +17,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application"
+	appmemory "github.com/ambi/idmagic/internal/application/adapters/persistence/memory"
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	"github.com/ambi/idmagic/internal/oauth2/domain"
 	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
@@ -121,10 +124,10 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 	passwordHistoryRepo := memory.NewPasswordHistoryRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
 	codeStore := memory.NewAuthorizationCodeStore()
-	applicationRepo := memory.NewApplicationRepository()
-	assignmentRepo := memory.NewApplicationAssignmentRepository()
-	signInPolicyRepo := memory.NewSignInPolicyRepository()
-	defaultSignInPolicyRepo := memory.NewDefaultSignInPolicyRepository()
+	applicationRepo := appmemory.NewApplicationRepository()
+	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
+	signInPolicyRepo := appmemory.NewSignInPolicyRepository()
+	defaultSignInPolicyRepo := appmemory.NewDefaultSignInPolicyRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
@@ -165,26 +168,26 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 		}
 	}
 	if requireMFA {
-		if err := applicationRepo.Save(context.Background(), &spec.Application{
+		if err := applicationRepo.Save(context.Background(), &appdomain.Application{
 			TenantID: spec.DefaultTenantID, ApplicationID: "app-demo", Name: "Demo App",
-			Kind: spec.ApplicationFederated, Status: spec.ApplicationActive,
-			Bindings:  []spec.ProtocolBinding{{Type: spec.ProtocolBindingOIDC, ClientID: demoClientID}},
+			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+			Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: demoClientID}},
 			CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed application: %v", err)
 		}
-		if err := assignmentRepo.Save(context.Background(), &spec.ApplicationAssignment{
+		if err := assignmentRepo.Save(context.Background(), &appdomain.ApplicationAssignment{
 			TenantID: spec.DefaultTenantID, ApplicationID: "app-demo",
-			SubjectType: spec.AssignmentSubjectUser, SubjectID: "user_alice",
-			Visibility: spec.AssignmentVisible, CreatedAt: now, UpdatedAt: now,
+			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "user_alice",
+			Visibility: appdomain.AssignmentVisible, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed assignment: %v", err)
 		}
-		if err := defaultSignInPolicyRepo.Save(context.Background(), &spec.TenantDefaultSignInPolicy{
+		if err := defaultSignInPolicyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
 			TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
-			Rules: []spec.SignInRule{{
+			Rules: []appdomain.SignInRule{{
 				RuleID: "default", Name: "Require MFA", Enabled: true,
-				RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+				RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
 			}},
 		}); err != nil {
 			t.Fatalf("seed sign-in policy: %v", err)
@@ -212,8 +215,10 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
-		ApplicationRepo: applicationRepo, ApplicationAssignmentRepo: assignmentRepo,
-		ApplicationSignInPolicyRepo: signInPolicyRepo, DefaultSignInPolicyRepo: defaultSignInPolicyRepo,
+		Application: application.Module{
+			Repo: applicationRepo, AssignmentRepo: assignmentRepo,
+			SignInPolicyRepo: signInPolicyRepo, DefaultSignInPolicyRepo: defaultSignInPolicyRepo,
+		},
 	})
 	return httptest.NewServer(e)
 }

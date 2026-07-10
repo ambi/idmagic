@@ -15,7 +15,7 @@ import (
 
 type AuthorizationDetailTypeRepository struct {
 	mu    sync.RWMutex
-	types map[string]*spec.AuthorizationDetailType // key: tenantKey(tenant_id, type)
+	types map[string]*spec.AuthorizationDetailType // key: TenantKey(tenant_id, type)
 }
 
 func NewAuthorizationDetailTypeRepository() *AuthorizationDetailTypeRepository {
@@ -52,7 +52,7 @@ func (r *AuthorizationDetailTypeRepository) ListByTenant(_ context.Context, tena
 func (r *AuthorizationDetailTypeRepository) FindByType(_ context.Context, tenantID, detailType string) (*spec.AuthorizationDetailType, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	t := r.types[tenantKey(tenantID, detailType)]
+	t := r.types[TenantKey(tenantID, detailType)]
 	if t == nil {
 		return nil, nil
 	}
@@ -63,13 +63,13 @@ func (r *AuthorizationDetailTypeRepository) Save(_ context.Context, t *spec.Auth
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	defaultTenant(&t.TenantID)
-	r.types[tenantKey(t.TenantID, t.Type)] = cloneDetailType(t)
+	r.types[TenantKey(t.TenantID, t.Type)] = cloneDetailType(t)
 	return nil
 }
 
 func (r *AuthorizationDetailTypeRepository) Delete(_ context.Context, tenantID, detailType string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.types, tenantKey(tenantID, detailType))
+	delete(r.types, TenantKey(tenantID, detailType))
 	return nil
 }

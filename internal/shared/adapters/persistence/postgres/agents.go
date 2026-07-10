@@ -17,7 +17,7 @@ type AgentRepository struct{ Pool DB }
 const agentSelect = `SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at FROM agents`
 
-func scanAgent(row rowScanner) (*spec.Agent, error) {
+func scanAgent(row RowScanner) (*spec.Agent, error) {
 	var a spec.Agent
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Description, &a.Kind, &a.OwnerUserID, &a.Status,
 		&a.Roles, &a.CreatedAt, &a.UpdatedAt, &a.DisabledAt, &a.KilledAt)

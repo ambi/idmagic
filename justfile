@@ -66,6 +66,10 @@ test-go-fuzz package fuzztime="30s":
 build-go:
     GOCACHE={{go_cache}} go build -ldflags '{{ldflags}}' ./...
 
+# Regenerate sqlc-generated postgres query code from sqlc.yaml (ADR-090).
+sqlc-generate:
+    sqlc generate
+
 # Verify UI with format check, lint, typecheck, and build.
 verify-ui: format-check-ui lint-ui typecheck-ui test-ui-unit build-ui
 

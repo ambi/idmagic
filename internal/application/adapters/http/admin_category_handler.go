@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
-	"github.com/ambi/idmagic/internal/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -148,7 +148,7 @@ func (d Deps) writeCategoryError(c *echo.Context, err error) error {
 	}
 }
 
-func toCategoryResponse(category *spec.ApplicationCategory) categoryResponse {
+func toCategoryResponse(category *domain.ApplicationCategory) categoryResponse {
 	return categoryResponse{
 		CategoryID: category.CategoryID, Name: category.Name, Position: category.Position,
 		CreatedAt: category.CreatedAt, UpdatedAt: category.UpdatedAt,

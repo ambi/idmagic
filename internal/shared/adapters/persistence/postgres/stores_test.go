@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
 	"github.com/ambi/idmagic/internal/shared/spec"
@@ -390,7 +391,7 @@ func TestOutboxEventSinkEmit(t *testing.T) {
 	}
 
 	// トピック未定義のイベントは拒否される。
-	if err := sink.Emit(ctx, &spec.AppAccessDeniedByPolicy{At: testClock()}); err == nil {
+	if err := sink.Emit(ctx, &appdomain.AppAccessDeniedByPolicy{At: testClock()}); err == nil {
 		t.Fatal("expected error for event without topic mapping")
 	}
 }

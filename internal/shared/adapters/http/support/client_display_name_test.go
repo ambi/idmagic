@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	appmemory "github.com/ambi/idmagic/internal/application/adapters/persistence/memory"
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/internal/shared/spec"
@@ -13,7 +15,7 @@ import (
 func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 	ctx := context.Background()
 	clients := memory.NewClientRepository()
-	apps := memory.NewApplicationRepository()
+	apps := appmemory.NewApplicationRepository()
 	now := time.Now().UTC()
 
 	named := "Admin Console"
@@ -27,10 +29,10 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 		TenantID: spec.DefaultTenantID, ClientID: "client-catalog",
 		ClientName: &blank, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})
-	if err := apps.Save(ctx, &spec.Application{
+	if err := apps.Save(ctx, &appdomain.Application{
 		TenantID: spec.DefaultTenantID, ApplicationID: "app-1", Name: "Catalog App",
-		Kind: spec.ApplicationFederated, Status: spec.ApplicationActive,
-		Bindings:  []spec.ProtocolBinding{{Type: spec.ProtocolBindingOIDC, ClientID: "client-catalog"}},
+		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+		Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: "client-catalog"}},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)

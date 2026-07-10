@@ -6,8 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	"github.com/ambi/idmagic/internal/application/ports"
-	"github.com/ambi/idmagic/internal/shared/spec"
+	sharedmem "github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 )
 
 // =====================================================================
@@ -16,21 +17,21 @@ import (
 
 type ApplicationRepository struct {
 	mu           sync.RWMutex
-	applications map[string]*spec.Application // key: tenantKey(tenant_id, application_id)
+	applications map[string]*domain.Application // key: sharedmem.TenantKey(tenant_id, application_id)
 }
 
 func NewApplicationRepository() *ApplicationRepository {
-	return &ApplicationRepository{applications: map[string]*spec.Application{}}
+	return &ApplicationRepository{applications: map[string]*domain.Application{}}
 }
 
-func cloneApplication(app *spec.Application) *spec.Application {
+func cloneApplication(app *domain.Application) *domain.Application {
 	cloned := *app
 	cloned.Bindings = slices.Clone(app.Bindings)
 	cloned.CategoryIDs = slices.Clone(app.CategoryIDs)
 	return &cloned
 }
 
-func cloneSignInPolicy(policy *spec.AppSignInPolicy) *spec.AppSignInPolicy {
+func cloneSignInPolicy(policy *domain.AppSignInPolicy) *domain.AppSignInPolicy {
 	cloned := *policy
 	cloned.Rules = slices.Clone(policy.Rules)
 	return &cloned
@@ -42,24 +43,24 @@ func cloneSignInPolicy(policy *spec.AppSignInPolicy) *spec.AppSignInPolicy {
 
 type ApplicationIconStore struct {
 	mu    sync.RWMutex
-	icons map[string]*spec.ApplicationIcon // key: tenant_id + application_id + object_key
+	icons map[string]*domain.ApplicationIcon // key: tenant_id + application_id + object_key
 }
 
 func NewApplicationIconStore() *ApplicationIconStore {
-	return &ApplicationIconStore{icons: map[string]*spec.ApplicationIcon{}}
+	return &ApplicationIconStore{icons: map[string]*domain.ApplicationIcon{}}
 }
 
 func iconKey(tenantID, applicationID, objectKey string) string {
 	return strings.Join([]string{tenantID, applicationID, objectKey}, "\x00")
 }
 
-func cloneIcon(icon *spec.ApplicationIcon) *spec.ApplicationIcon {
+func cloneIcon(icon *domain.ApplicationIcon) *domain.ApplicationIcon {
 	cloned := *icon
 	cloned.Data = slices.Clone(icon.Data)
 	return &cloned
 }
 
-func (s *ApplicationIconStore) Save(_ context.Context, icon *spec.ApplicationIcon) error {
+func (s *ApplicationIconStore) Save(_ context.Context, icon *domain.ApplicationIcon) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	key := iconKey(icon.TenantID, icon.ApplicationID, icon.ObjectKey)
@@ -71,7 +72,7 @@ func (s *ApplicationIconStore) Save(_ context.Context, icon *spec.ApplicationIco
 	return nil
 }
 
-func (s *ApplicationIconStore) Find(_ context.Context, tenantID, applicationID, objectKey string) (*spec.ApplicationIcon, error) {
+func (s *ApplicationIconStore) Find(_ context.Context, tenantID, applicationID, objectKey string) (*domain.ApplicationIcon, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	icon := s.icons[iconKey(tenantID, applicationID, objectKey)]
@@ -93,43 +94,43 @@ func (s *ApplicationIconStore) DeleteByApplication(_ context.Context, tenantID, 
 	return nil
 }
 
-func (r *ApplicationRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.Application, error) {
+func (r *ApplicationRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.Application, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.Application, 0)
+	out := make([]*domain.Application, 0)
 	for _, app := range r.applications {
 		if app.TenantID == tenantID {
 			out = append(out, cloneApplication(app))
 		}
 	}
-	slices.SortFunc(out, func(a, b *spec.Application) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(out, func(a, b *domain.Application) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
 }
 
-func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicationID string) (*spec.Application, error) {
+func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicationID string) (*domain.Application, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	app := r.applications[tenantKey(tenantID, applicationID)]
+	app := r.applications[sharedmem.TenantKey(tenantID, applicationID)]
 	if app == nil {
 		return nil, nil
 	}
 	return cloneApplication(app), nil
 }
 
-func bindingKey(binding spec.ProtocolBinding) string {
+func bindingKey(binding domain.ProtocolBinding) string {
 	switch binding.Type {
-	case spec.ProtocolBindingOIDC:
+	case domain.ProtocolBindingOIDC:
 		return binding.ClientID
-	case spec.ProtocolBindingWsFed:
+	case domain.ProtocolBindingWsFed:
 		return binding.Wtrealm
-	case spec.ProtocolBindingSAML:
+	case domain.ProtocolBindingSAML:
 		return binding.EntityID
 	default:
 		return ""
 	}
 }
 
-func (r *ApplicationRepository) FindByBinding(_ context.Context, tenantID string, bindingType spec.ProtocolBindingType, key string) (*spec.Application, error) {
+func (r *ApplicationRepository) FindByBinding(_ context.Context, tenantID string, bindingType domain.ProtocolBindingType, key string) (*domain.Application, error) {
 	if key == "" {
 		return nil, nil
 	}
@@ -148,17 +149,17 @@ func (r *ApplicationRepository) FindByBinding(_ context.Context, tenantID string
 	return nil, nil
 }
 
-func (r *ApplicationRepository) Save(_ context.Context, app *spec.Application) error {
+func (r *ApplicationRepository) Save(_ context.Context, app *domain.Application) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.applications[tenantKey(app.TenantID, app.ApplicationID)] = cloneApplication(app)
+	r.applications[sharedmem.TenantKey(app.TenantID, app.ApplicationID)] = cloneApplication(app)
 	return nil
 }
 
 func (r *ApplicationRepository) Delete(_ context.Context, tenantID, applicationID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.applications, tenantKey(tenantID, applicationID))
+	delete(r.applications, sharedmem.TenantKey(tenantID, applicationID))
 	return nil
 }
 
@@ -180,27 +181,27 @@ func (r *ApplicationRepository) RemoveCategory(_ context.Context, tenantID, cate
 
 type SignInPolicyRepository struct {
 	mu       sync.RWMutex
-	policies map[string]*spec.AppSignInPolicy // key: tenantKey(tenant_id, application_id)
+	policies map[string]*domain.AppSignInPolicy // key: sharedmem.TenantKey(tenant_id, application_id)
 }
 
 func NewSignInPolicyRepository() *SignInPolicyRepository {
-	return &SignInPolicyRepository{policies: map[string]*spec.AppSignInPolicy{}}
+	return &SignInPolicyRepository{policies: map[string]*domain.AppSignInPolicy{}}
 }
 
-func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*spec.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*domain.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	policy := r.policies[tenantKey(tenantID, applicationID)]
+	policy := r.policies[sharedmem.TenantKey(tenantID, applicationID)]
 	if policy == nil {
 		return nil, nil
 	}
 	return cloneSignInPolicy(policy), nil
 }
 
-func (r *SignInPolicyRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.AppSignInPolicy, 0)
+	out := make([]*domain.AppSignInPolicy, 0)
 	for _, policy := range r.policies {
 		if policy.TenantID == tenantID {
 			out = append(out, cloneSignInPolicy(policy))
@@ -209,10 +210,10 @@ func (r *SignInPolicyRepository) ListByTenant(_ context.Context, tenantID string
 	return out, nil
 }
 
-func (r *SignInPolicyRepository) Save(_ context.Context, policy *spec.AppSignInPolicy) error {
+func (r *SignInPolicyRepository) Save(_ context.Context, policy *domain.AppSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := tenantKey(policy.TenantID, policy.ApplicationID)
+	key := sharedmem.TenantKey(policy.TenantID, policy.ApplicationID)
 	cloned := cloneSignInPolicy(policy)
 	if existing := r.policies[key]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt
@@ -224,7 +225,7 @@ func (r *SignInPolicyRepository) Save(_ context.Context, policy *spec.AppSignInP
 func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, applicationID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.policies, tenantKey(tenantID, applicationID))
+	delete(r.policies, sharedmem.TenantKey(tenantID, applicationID))
 	return nil
 }
 
@@ -232,7 +233,7 @@ func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, application
 // DefaultSignInPolicyRepository (wi-115, ADR-081)
 // =====================================================================
 
-func cloneDefaultSignInPolicy(policy *spec.TenantDefaultSignInPolicy) *spec.TenantDefaultSignInPolicy {
+func cloneDefaultSignInPolicy(policy *domain.TenantDefaultSignInPolicy) *domain.TenantDefaultSignInPolicy {
 	cloned := *policy
 	cloned.Rules = slices.Clone(policy.Rules)
 	return &cloned
@@ -240,14 +241,14 @@ func cloneDefaultSignInPolicy(policy *spec.TenantDefaultSignInPolicy) *spec.Tena
 
 type DefaultSignInPolicyRepository struct {
 	mu       sync.RWMutex
-	policies map[string]*spec.TenantDefaultSignInPolicy // key: tenant_id
+	policies map[string]*domain.TenantDefaultSignInPolicy // key: tenant_id
 }
 
 func NewDefaultSignInPolicyRepository() *DefaultSignInPolicyRepository {
-	return &DefaultSignInPolicyRepository{policies: map[string]*spec.TenantDefaultSignInPolicy{}}
+	return &DefaultSignInPolicyRepository{policies: map[string]*domain.TenantDefaultSignInPolicy{}}
 }
 
-func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) (*spec.TenantDefaultSignInPolicy, error) {
+func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) (*domain.TenantDefaultSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	policy := r.policies[tenantID]
@@ -257,7 +258,7 @@ func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) 
 	return cloneDefaultSignInPolicy(policy), nil
 }
 
-func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *spec.TenantDefaultSignInPolicy) error {
+func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *domain.TenantDefaultSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := cloneDefaultSignInPolicy(policy)
@@ -274,28 +275,28 @@ func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *spec.Ten
 
 type ApplicationAssignmentRepository struct {
 	mu          sync.RWMutex
-	assignments map[string]*spec.ApplicationAssignment // key: assignmentKey(...)
+	assignments map[string]*domain.ApplicationAssignment // key: assignmentKey(...)
 }
 
 func NewApplicationAssignmentRepository() *ApplicationAssignmentRepository {
-	return &ApplicationAssignmentRepository{assignments: map[string]*spec.ApplicationAssignment{}}
+	return &ApplicationAssignmentRepository{assignments: map[string]*domain.ApplicationAssignment{}}
 }
 
-func assignmentKey(tenantID, applicationID string, subjectType spec.AssignmentSubjectType, subjectID string) string {
+func assignmentKey(tenantID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string) string {
 	return strings.Join([]string{tenantID, applicationID, string(subjectType), subjectID}, "\x00")
 }
 
-func (r *ApplicationAssignmentRepository) ListByApplication(_ context.Context, tenantID, applicationID string) ([]*spec.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListByApplication(_ context.Context, tenantID, applicationID string) ([]*domain.ApplicationAssignment, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.ApplicationAssignment, 0)
+	out := make([]*domain.ApplicationAssignment, 0)
 	for _, assignment := range r.assignments {
 		if assignment.TenantID == tenantID && assignment.ApplicationID == applicationID {
 			cloned := *assignment
 			out = append(out, &cloned)
 		}
 	}
-	slices.SortFunc(out, func(a, b *spec.ApplicationAssignment) int {
+	slices.SortFunc(out, func(a, b *domain.ApplicationAssignment) int {
 		if c := strings.Compare(string(a.SubjectType), string(b.SubjectType)); c != 0 {
 			return c
 		}
@@ -304,10 +305,10 @@ func (r *ApplicationAssignmentRepository) ListByApplication(_ context.Context, t
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.ApplicationAssignment, 0)
+	out := make([]*domain.ApplicationAssignment, 0)
 	for _, assignment := range r.assignments {
 		if assignment.TenantID == tenantID {
 			cloned := *assignment
@@ -317,10 +318,10 @@ func (r *ApplicationAssignmentRepository) ListByTenant(_ context.Context, tenant
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) ListBySubjects(_ context.Context, tenantID string, subjects []ports.SubjectRef) ([]*spec.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListBySubjects(_ context.Context, tenantID string, subjects []ports.SubjectRef) ([]*domain.ApplicationAssignment, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.ApplicationAssignment, 0)
+	out := make([]*domain.ApplicationAssignment, 0)
 	for _, assignment := range r.assignments {
 		if assignment.TenantID != tenantID {
 			continue
@@ -335,7 +336,7 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(_ context.Context, tena
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) Save(_ context.Context, assignment *spec.ApplicationAssignment) error {
+func (r *ApplicationAssignmentRepository) Save(_ context.Context, assignment *domain.ApplicationAssignment) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := assignmentKey(assignment.TenantID, assignment.ApplicationID, assignment.SubjectType, assignment.SubjectID)
@@ -347,7 +348,7 @@ func (r *ApplicationAssignmentRepository) Save(_ context.Context, assignment *sp
 	return nil
 }
 
-func (r *ApplicationAssignmentRepository) Delete(_ context.Context, tenantID, applicationID string, subjectType spec.AssignmentSubjectType, subjectID string) error {
+func (r *ApplicationAssignmentRepository) Delete(_ context.Context, tenantID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.assignments, assignmentKey(tenantID, applicationID, subjectType, subjectID))
@@ -371,20 +372,20 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(_ context.Context,
 
 type ApplicationOrderingRepository struct {
 	mu        sync.RWMutex
-	orderings map[string]*spec.ApplicationOrdering // key: user_id (global unique)
+	orderings map[string]*domain.ApplicationOrdering // key: user_id (global unique)
 }
 
 func NewApplicationOrderingRepository() *ApplicationOrderingRepository {
-	return &ApplicationOrderingRepository{orderings: map[string]*spec.ApplicationOrdering{}}
+	return &ApplicationOrderingRepository{orderings: map[string]*domain.ApplicationOrdering{}}
 }
 
-func cloneOrdering(o *spec.ApplicationOrdering) *spec.ApplicationOrdering {
+func cloneOrdering(o *domain.ApplicationOrdering) *domain.ApplicationOrdering {
 	cloned := *o
 	cloned.ApplicationIDs = slices.Clone(o.ApplicationIDs)
 	return &cloned
 }
 
-func (r *ApplicationOrderingRepository) Get(_ context.Context, _ /*tenantID*/, userID string) (*spec.ApplicationOrdering, error) {
+func (r *ApplicationOrderingRepository) Get(_ context.Context, _ /*tenantID*/, userID string) (*domain.ApplicationOrdering, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	o := r.orderings[userID]
@@ -394,7 +395,7 @@ func (r *ApplicationOrderingRepository) Get(_ context.Context, _ /*tenantID*/, u
 	return cloneOrdering(o), nil
 }
 
-func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *spec.ApplicationOrdering) error {
+func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *domain.ApplicationOrdering) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := ordering.UserID
@@ -412,24 +413,24 @@ func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *spec.A
 
 type ApplicationCategoryRepository struct {
 	mu         sync.RWMutex
-	categories map[string]*spec.ApplicationCategory // key: tenantKey(tenant_id, category_id)
+	categories map[string]*domain.ApplicationCategory // key: sharedmem.TenantKey(tenant_id, category_id)
 }
 
 func NewApplicationCategoryRepository() *ApplicationCategoryRepository {
-	return &ApplicationCategoryRepository{categories: map[string]*spec.ApplicationCategory{}}
+	return &ApplicationCategoryRepository{categories: map[string]*domain.ApplicationCategory{}}
 }
 
-func (r *ApplicationCategoryRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.ApplicationCategory, error) {
+func (r *ApplicationCategoryRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.ApplicationCategory, 0)
+	out := make([]*domain.ApplicationCategory, 0)
 	for _, category := range r.categories {
 		if category.TenantID == tenantID {
 			cloned := *category
 			out = append(out, &cloned)
 		}
 	}
-	slices.SortFunc(out, func(a, b *spec.ApplicationCategory) int {
+	slices.SortFunc(out, func(a, b *domain.ApplicationCategory) int {
 		if a.Position != b.Position {
 			return a.Position - b.Position
 		}
@@ -438,10 +439,10 @@ func (r *ApplicationCategoryRepository) ListByTenant(_ context.Context, tenantID
 	return out, nil
 }
 
-func (r *ApplicationCategoryRepository) FindByID(_ context.Context, tenantID, categoryID string) (*spec.ApplicationCategory, error) {
+func (r *ApplicationCategoryRepository) FindByID(_ context.Context, tenantID, categoryID string) (*domain.ApplicationCategory, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	category := r.categories[tenantKey(tenantID, categoryID)]
+	category := r.categories[sharedmem.TenantKey(tenantID, categoryID)]
 	if category == nil {
 		return nil, nil
 	}
@@ -449,17 +450,17 @@ func (r *ApplicationCategoryRepository) FindByID(_ context.Context, tenantID, ca
 	return &cloned, nil
 }
 
-func (r *ApplicationCategoryRepository) Save(_ context.Context, category *spec.ApplicationCategory) error {
+func (r *ApplicationCategoryRepository) Save(_ context.Context, category *domain.ApplicationCategory) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *category
-	r.categories[tenantKey(category.TenantID, category.CategoryID)] = &cloned
+	r.categories[sharedmem.TenantKey(category.TenantID, category.CategoryID)] = &cloned
 	return nil
 }
 
 func (r *ApplicationCategoryRepository) Delete(_ context.Context, tenantID, categoryID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.categories, tenantKey(tenantID, categoryID))
+	delete(r.categories, sharedmem.TenantKey(tenantID, categoryID))
 	return nil
 }

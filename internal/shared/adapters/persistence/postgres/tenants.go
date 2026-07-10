@@ -49,7 +49,7 @@ status=EXCLUDED.status,updated_at=EXCLUDED.updated_at,disabled_at=EXCLUDED.disab
 
 const tenantSelect = `SELECT id,realm,display_name,status,created_at,updated_at,disabled_at FROM tenants`
 
-func scanTenant(row rowScanner) (*spec.Tenant, error) {
+func scanTenant(row RowScanner) (*spec.Tenant, error) {
 	var tenant spec.Tenant
 	err := row.Scan(&tenant.ID, &tenant.Realm, &tenant.DisplayName, &tenant.Status, &tenant.CreatedAt,
 		&tenant.UpdatedAt, &tenant.DisabledAt)

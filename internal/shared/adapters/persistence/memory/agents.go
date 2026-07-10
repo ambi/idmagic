@@ -15,8 +15,8 @@ import (
 
 type AgentRepository struct {
 	mu       sync.RWMutex
-	agents   map[string]*spec.Agent                    // key: tenantKey(tenant_id, id)
-	bindings map[string][]*spec.AgentCredentialBinding // key: tenantKey(tenant_id, agent_id)
+	agents   map[string]*spec.Agent                    // key: TenantKey(tenant_id, id)
+	bindings map[string][]*spec.AgentCredentialBinding // key: TenantKey(tenant_id, agent_id)
 }
 
 func NewAgentRepository() *AgentRepository {
@@ -48,7 +48,7 @@ func (r *AgentRepository) ListByTenant(_ context.Context, tenantID string) ([]*s
 func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*spec.Agent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	agent := r.agents[tenantKey(tenantID, id)]
+	agent := r.agents[TenantKey(tenantID, id)]
 	if agent == nil {
 		return nil, nil
 	}
@@ -58,22 +58,22 @@ func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*spe
 func (r *AgentRepository) Save(_ context.Context, agent *spec.Agent) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.agents[tenantKey(agent.TenantID, agent.ID)] = cloneAgent(agent)
+	r.agents[TenantKey(agent.TenantID, agent.ID)] = cloneAgent(agent)
 	return nil
 }
 
 func (r *AgentRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.agents, tenantKey(tenantID, id))
-	delete(r.bindings, tenantKey(tenantID, id))
+	delete(r.agents, TenantKey(tenantID, id))
+	delete(r.bindings, TenantKey(tenantID, id))
 	return nil
 }
 
 func (r *AgentRepository) ListBindings(_ context.Context, tenantID, agentID string) ([]*spec.AgentCredentialBinding, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	stored := r.bindings[tenantKey(tenantID, agentID)]
+	stored := r.bindings[TenantKey(tenantID, agentID)]
 	out := make([]*spec.AgentCredentialBinding, 0, len(stored))
 	for _, binding := range stored {
 		cloned := *binding
@@ -105,7 +105,7 @@ func (r *AgentRepository) AddBinding(_ context.Context, binding *spec.AgentCrede
 			return false, nil
 		}
 	}
-	key := tenantKey(tenantID, binding.AgentID)
+	key := TenantKey(tenantID, binding.AgentID)
 	for _, existing := range r.bindings[key] {
 		if existing.ClientID == binding.ClientID {
 			return false, nil
@@ -119,7 +119,7 @@ func (r *AgentRepository) AddBinding(_ context.Context, binding *spec.AgentCrede
 func (r *AgentRepository) RemoveBinding(_ context.Context, tenantID, agentID, clientID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := tenantKey(tenantID, agentID)
+	key := TenantKey(tenantID, agentID)
 	bindings := r.bindings[key]
 	for i, existing := range bindings {
 		if existing.ClientID == clientID {

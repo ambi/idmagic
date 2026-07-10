@@ -5,28 +5,53 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	appports "github.com/ambi/idmagic/internal/application/ports"
-	"github.com/ambi/idmagic/internal/shared/spec"
+	sharedpg "github.com/ambi/idmagic/internal/shared/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/postgres/pgfixtures"
+	"github.com/ambi/idmagic/internal/shared/adapters/persistence/postgres/pgtest"
 )
 
+// seedApplication は指定テナントに Application を作成して返す。application_id は UUID 列の
+// ため UUID を生成する。icon / assignment / sign-in policy は本 Application を FK 親に持つ。
+func seedApplication(t *testing.T, db sharedpg.DB, tenantID string) *domain.Application {
+	t.Helper()
+	now := pgfixtures.TestClock()
+	app := &domain.Application{
+		TenantID:      tenantID,
+		ApplicationID: pgfixtures.NewUUID(t),
+		Name:          pgfixtures.UniqueID("app-name"),
+		Kind:          domain.ApplicationFederated,
+		Status:        domain.ApplicationActive,
+		Bindings:      []domain.ProtocolBinding{},
+		CategoryIDs:   []string{},
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := (&ApplicationRepository{Pool: db}).Save(context.Background(), app); err != nil {
+		t.Fatalf("seed application: %v", err)
+	}
+	return app
+}
+
 func TestApplicationRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	client := seedClient(t, db, tenant.ID)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	client := pgfixtures.SeedClient(t, db, tenant.ID)
 	repo := &ApplicationRepository{Pool: db}
 	ctx := context.Background()
 
-	now := testClock()
-	categoryID := newUUID(t)
-	app := &spec.Application{
+	now := pgfixtures.TestClock()
+	categoryID := pgfixtures.NewUUID(t)
+	app := &domain.Application{
 		TenantID:      tenant.ID,
-		ApplicationID: newUUID(t),
+		ApplicationID: pgfixtures.NewUUID(t),
 		Name:          "Portal App",
-		Kind:          spec.ApplicationFederated,
-		Status:        spec.ApplicationActive,
+		Kind:          domain.ApplicationFederated,
+		Status:        domain.ApplicationActive,
 		LaunchURL:     "https://app.example/launch",
-		Bindings: []spec.ProtocolBinding{
-			{Type: spec.ProtocolBindingOIDC, ClientID: client.ClientID},
+		Bindings: []domain.ProtocolBinding{
+			{Type: domain.ProtocolBindingOIDC, ClientID: client.ClientID},
 		},
 		CategoryIDs: []string{categoryID},
 		CreatedAt:   now,
@@ -40,7 +65,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find by id: %v %+v", err, got)
 	}
-	if got.Name != "Portal App" || got.Kind != spec.ApplicationFederated {
+	if got.Name != "Portal App" || got.Kind != domain.ApplicationFederated {
 		t.Fatalf("unexpected application: %+v", got)
 	}
 	if len(got.Bindings) != 1 || got.Bindings[0].ClientID != client.ClientID {
@@ -50,7 +75,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("category ids not round-tripped: %+v", got.CategoryIDs)
 	}
 
-	byBinding, err := repo.FindByBinding(ctx, tenant.ID, spec.ProtocolBindingOIDC, client.ClientID)
+	byBinding, err := repo.FindByBinding(ctx, tenant.ID, domain.ProtocolBindingOIDC, client.ClientID)
 	if err != nil || byBinding == nil || byBinding.ApplicationID != app.ApplicationID {
 		t.Fatalf("find by binding: %v %+v", err, byBinding)
 	}
@@ -78,22 +103,22 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 }
 
 func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
 	app := seedApplication(t, db, tenant.ID)
 	repo := &SignInPolicyRepository{Pool: db}
 	ctx := context.Background()
 
-	now := testClock()
-	policy := &spec.AppSignInPolicy{
+	now := pgfixtures.TestClock()
+	policy := &domain.AppSignInPolicy{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ApplicationID,
-		Rules: []spec.SignInRule{
+		Rules: []domain.SignInRule{
 			{
 				RuleID:        "rule-1",
 				Name:          "require mfa",
 				Enabled:       true,
-				RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnMfa},
+				RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
 			},
 		},
 		CreatedAt: now,
@@ -107,7 +132,7 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("get: %v %+v", err, got)
 	}
-	if len(got.Rules) != 1 || got.Rules[0].RequiredAuthn.Strength != spec.RequiredAuthnMfa {
+	if len(got.Rules) != 1 || got.Rules[0].RequiredAuthn.Strength != domain.RequiredAuthnMfa {
 		t.Fatalf("rules not round-tripped: %+v", got.Rules)
 	}
 
@@ -126,8 +151,8 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 }
 
 func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
 	repo := &DefaultSignInPolicyRepository{Pool: db}
 	ctx := context.Background()
 
@@ -135,15 +160,15 @@ func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("expected no policy initially: %v %+v", err, got)
 	}
 
-	now := testClock()
-	policy := &spec.TenantDefaultSignInPolicy{
+	now := pgfixtures.TestClock()
+	policy := &domain.TenantDefaultSignInPolicy{
 		TenantID: tenant.ID,
-		Rules: []spec.SignInRule{
+		Rules: []domain.SignInRule{
 			{
 				RuleID:        "floor",
 				Name:          "password floor",
 				Enabled:       true,
-				RequiredAuthn: spec.RequiredAuthnLevel{Strength: spec.RequiredAuthnPassword},
+				RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnPassword},
 			},
 		},
 		CreatedAt: now,
@@ -157,20 +182,20 @@ func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil || len(got.Rules) != 1 {
 		t.Fatalf("get: %v %+v", err, got)
 	}
-	if got.Rules[0].RequiredAuthn.Strength != spec.RequiredAuthnPassword {
+	if got.Rules[0].RequiredAuthn.Strength != domain.RequiredAuthnPassword {
 		t.Fatalf("rule not round-tripped: %+v", got.Rules[0])
 	}
 }
 
 func TestApplicationIconStoreRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
 	app := seedApplication(t, db, tenant.ID)
 	store := &ApplicationIconStore{Pool: db}
 	ctx := context.Background()
 
-	now := testClock()
-	icon := &spec.ApplicationIcon{
+	now := pgfixtures.TestClock()
+	icon := &domain.ApplicationIcon{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ApplicationID,
 		ObjectKey:     "icon-1",
@@ -202,30 +227,30 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 }
 
 func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	user := seedUser(t, db, tenant.ID)
-	group := seedGroup(t, db, tenant.ID)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	user := pgfixtures.SeedUser(t, db, tenant.ID)
+	group := pgfixtures.SeedGroup(t, db, tenant.ID)
 	app := seedApplication(t, db, tenant.ID)
 	repo := &ApplicationAssignmentRepository{Pool: db}
 	ctx := context.Background()
 
-	now := testClock()
-	userAssignment := &spec.ApplicationAssignment{
+	now := pgfixtures.TestClock()
+	userAssignment := &domain.ApplicationAssignment{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ApplicationID,
-		SubjectType:   spec.AssignmentSubjectUser,
+		SubjectType:   domain.AssignmentSubjectUser,
 		SubjectID:     user.ID,
-		Visibility:    spec.AssignmentVisible,
+		Visibility:    domain.AssignmentVisible,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	groupAssignment := &spec.ApplicationAssignment{
+	groupAssignment := &domain.ApplicationAssignment{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ApplicationID,
-		SubjectType:   spec.AssignmentSubjectGroup,
+		SubjectType:   domain.AssignmentSubjectGroup,
 		SubjectID:     group.ID,
-		Visibility:    spec.AssignmentHidden,
+		Visibility:    domain.AssignmentHidden,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -247,13 +272,13 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	}
 
 	bySubjects, err := repo.ListBySubjects(ctx, tenant.ID, []appports.SubjectRef{
-		{Type: spec.AssignmentSubjectUser, ID: user.ID},
+		{Type: domain.AssignmentSubjectUser, ID: user.ID},
 	})
 	if err != nil || len(bySubjects) != 1 || bySubjects[0].SubjectID != user.ID {
 		t.Fatalf("list by subjects: %v %+v", err, bySubjects)
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID, spec.AssignmentSubjectUser, user.ID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID, domain.AssignmentSubjectUser, user.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	byApp, err = repo.ListByApplication(ctx, tenant.ID, app.ApplicationID)
@@ -271,9 +296,9 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 }
 
 func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	user := seedUser(t, db, tenant.ID)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	user := pgfixtures.SeedUser(t, db, tenant.ID)
 	repo := &ApplicationOrderingRepository{Pool: db}
 	ctx := context.Background()
 
@@ -281,8 +306,8 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("expected no ordering initially: %v %+v", err, got)
 	}
 
-	now := testClock()
-	ordering := &spec.ApplicationOrdering{
+	now := pgfixtures.TestClock()
+	ordering := &domain.ApplicationOrdering{
 		UserID:         user.ID,
 		ApplicationIDs: []string{"app-b", "app-a", "app-c"},
 		CreatedAt:      now,
@@ -313,15 +338,15 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 }
 
 func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
 	repo := &ApplicationCategoryRepository{Pool: db}
 	ctx := context.Background()
 
-	now := testClock()
-	category := &spec.ApplicationCategory{
+	now := pgfixtures.TestClock()
+	category := &domain.ApplicationCategory{
 		TenantID:   tenant.ID,
-		CategoryID: newUUID(t),
+		CategoryID: pgfixtures.NewUUID(t),
 		Name:       "Productivity",
 		Position:   2,
 		CreatedAt:  now,

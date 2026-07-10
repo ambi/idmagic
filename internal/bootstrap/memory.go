@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"context"
 
+	"github.com/ambi/idmagic/internal/application"
+	appmemory "github.com/ambi/idmagic/internal/application/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
 	"github.com/ambi/idmagic/internal/shared/adapters/crypto"
@@ -44,22 +46,24 @@ func assembleMemory() (*Dependencies, error) {
 		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 			return memory.NewLoginAttemptThrottle(configs)
 		},
-		KeyStore:                    selectKeyStore(oauthports.KeyStore(keyStore)),
-		TenantSaltStore:             crypto.NewInMemoryTenantSaltStore(),
-		EventSink:                   eventsink.NewConsoleSink(),
-		AuditEventRepo:              memory.NewAuditEventStore(0),
-		AuthEventBucketStore:        memory.NewAuthEventBucketStore(),
-		WsFedRPRepo:                 memory.NewWsFedRelyingPartyRepository(),
-		SamlSPRepo:                  memory.NewSamlServiceProviderRepository(),
-		ApplicationRepo:             memory.NewApplicationRepository(),
-		ApplicationIconStore:        memory.NewApplicationIconStore(),
-		ApplicationAssignmentRepo:   memory.NewApplicationAssignmentRepository(),
-		ApplicationOrderingRepo:     memory.NewApplicationOrderingRepository(),
-		ApplicationCategoryRepo:     memory.NewApplicationCategoryRepository(),
-		ApplicationSignInPolicyRepo: memory.NewSignInPolicyRepository(),
-		DefaultSignInPolicyRepo:     memory.NewDefaultSignInPolicyRepository(),
-		Close:                       func() {},
-		DbPing:                      func(c context.Context) error { return nil },
-		ValkeyPing:                  func(c context.Context) error { return nil },
+		KeyStore:             selectKeyStore(oauthports.KeyStore(keyStore)),
+		TenantSaltStore:      crypto.NewInMemoryTenantSaltStore(),
+		EventSink:            eventsink.NewConsoleSink(),
+		AuditEventRepo:       memory.NewAuditEventStore(0),
+		AuthEventBucketStore: memory.NewAuthEventBucketStore(),
+		WsFedRPRepo:          memory.NewWsFedRelyingPartyRepository(),
+		SamlSPRepo:           memory.NewSamlServiceProviderRepository(),
+		Application: application.Module{
+			Repo:                    appmemory.NewApplicationRepository(),
+			IconStore:               appmemory.NewApplicationIconStore(),
+			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
+			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
+			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
+			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
+			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
+		},
+		Close:      func() {},
+		DbPing:     func(c context.Context) error { return nil },
+		ValkeyPing: func(c context.Context) error { return nil },
 	}, nil
 }

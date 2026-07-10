@@ -16,7 +16,7 @@ type GroupRepository struct{ Pool DB }
 
 const groupSelect = `SELECT id,tenant_id,name,description,roles,created_at,updated_at FROM groups`
 
-func scanGroup(row rowScanner) (*spec.Group, error) {
+func scanGroup(row RowScanner) (*spec.Group, error) {
 	var g spec.Group
 	err := row.Scan(&g.ID, &g.TenantID, &g.Name, &g.Description, &g.Roles, &g.CreatedAt, &g.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

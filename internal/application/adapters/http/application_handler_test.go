@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application"
+	appmemory "github.com/ambi/idmagic/internal/application/adapters/persistence/memory"
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/internal/shared/adapters/http/server"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
@@ -37,16 +39,18 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 
 			Emit: func(spec.DomainEvent) {},
 		}, UserRepo: users, GroupRepo: memory.NewGroupRepository(),
-		ApplicationRepo:           memory.NewApplicationRepository(),
-		ApplicationIconStore:      memory.NewApplicationIconStore(),
-		ApplicationAssignmentRepo: memory.NewApplicationAssignmentRepository(),
-		ApplicationOrderingRepo:   memory.NewApplicationOrderingRepository(),
-		ApplicationCategoryRepo:   memory.NewApplicationCategoryRepository(),
-		DefaultSignInPolicyRepo:   memory.NewDefaultSignInPolicyRepository(),
-		SamlSPRepo:                memory.NewSamlServiceProviderRepository(),
-		ClientRepo:                memory.NewClientRepository(),
-		WsFedRPRepo:               memory.NewWsFedRelyingPartyRepository(),
-		AuthnResolver:             authusecases.DemoHeaderResolver{},
+		Application: application.Module{
+			Repo:                    appmemory.NewApplicationRepository(),
+			IconStore:               appmemory.NewApplicationIconStore(),
+			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
+			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
+			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
+			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
+		},
+		SamlSPRepo:    memory.NewSamlServiceProviderRepository(),
+		ClientRepo:    memory.NewClientRepository(),
+		WsFedRPRepo:   memory.NewWsFedRelyingPartyRepository(),
+		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})
 	return e
 }

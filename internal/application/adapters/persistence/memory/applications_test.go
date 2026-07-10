@@ -4,22 +4,22 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	appports "github.com/ambi/idmagic/internal/application/ports"
-	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 
-	app := &spec.Application{
+	app := &domain.Application{
 		TenantID:      "acme",
 		ApplicationID: "app-1",
 		Name:          "Zebra",
-		Kind:          spec.ApplicationFederated,
-		Status:        spec.ApplicationActive,
-		Bindings: []spec.ProtocolBinding{
-			{Type: spec.ProtocolBindingOIDC, ClientID: "client-1"},
+		Kind:          domain.ApplicationFederated,
+		Status:        domain.ApplicationActive,
+		Bindings: []domain.ProtocolBinding{
+			{Type: domain.ProtocolBindingOIDC, ClientID: "client-1"},
 		},
 		CategoryIDs: []string{"cat-1", "cat-2"},
 	}
@@ -27,8 +27,8 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 	// 名前順ソートを確認するために 2 件目を追加する。
-	if err := repo.Save(ctx, &spec.Application{
-		TenantID: "acme", ApplicationID: "app-2", Name: "Alpha", Kind: spec.ApplicationWeblink,
+	if err := repo.Save(ctx, &domain.Application{
+		TenantID: "acme", ApplicationID: "app-2", Name: "Alpha", Kind: domain.ApplicationWeblink,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -76,12 +76,12 @@ func TestApplicationRepositoryFindByBinding(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 
-	app := &spec.Application{
+	app := &domain.Application{
 		TenantID: "acme", ApplicationID: "app-1", Name: "SP",
-		Bindings: []spec.ProtocolBinding{
-			{Type: spec.ProtocolBindingOIDC, ClientID: "cid"},
-			{Type: spec.ProtocolBindingSAML, EntityID: "urn:sp"},
-			{Type: spec.ProtocolBindingWsFed, Wtrealm: "urn:realm"},
+		Bindings: []domain.ProtocolBinding{
+			{Type: domain.ProtocolBindingOIDC, ClientID: "cid"},
+			{Type: domain.ProtocolBindingSAML, EntityID: "urn:sp"},
+			{Type: domain.ProtocolBindingWsFed, Wtrealm: "urn:realm"},
 		},
 	}
 	if err := repo.Save(ctx, app); err != nil {
@@ -89,15 +89,15 @@ func TestApplicationRepositoryFindByBinding(t *testing.T) {
 	}
 
 	cases := []struct {
-		bindingType spec.ProtocolBindingType
+		bindingType domain.ProtocolBindingType
 		key         string
 		wantFound   bool
 	}{
-		{spec.ProtocolBindingOIDC, "cid", true},
-		{spec.ProtocolBindingSAML, "urn:sp", true},
-		{spec.ProtocolBindingWsFed, "urn:realm", true},
-		{spec.ProtocolBindingOIDC, "other", false},
-		{spec.ProtocolBindingOIDC, "", false},
+		{domain.ProtocolBindingOIDC, "cid", true},
+		{domain.ProtocolBindingSAML, "urn:sp", true},
+		{domain.ProtocolBindingWsFed, "urn:realm", true},
+		{domain.ProtocolBindingOIDC, "other", false},
+		{domain.ProtocolBindingOIDC, "", false},
 	}
 	for _, c := range cases {
 		got, err := repo.FindByBinding(ctx, "acme", c.bindingType, c.key)
@@ -109,7 +109,7 @@ func TestApplicationRepositoryFindByBinding(t *testing.T) {
 		}
 	}
 	// 別テナントでは一致しない。
-	if got, _ := repo.FindByBinding(ctx, "other", spec.ProtocolBindingOIDC, "cid"); got != nil {
+	if got, _ := repo.FindByBinding(ctx, "other", domain.ProtocolBindingOIDC, "cid"); got != nil {
 		t.Fatal("binding lookup ignored tenant boundary")
 	}
 }
@@ -117,7 +117,7 @@ func TestApplicationRepositoryFindByBinding(t *testing.T) {
 func TestApplicationRepositoryRemoveCategory(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
-	if err := repo.Save(ctx, &spec.Application{
+	if err := repo.Save(ctx, &domain.Application{
 		TenantID: "acme", ApplicationID: "app-1", Name: "A",
 		CategoryIDs: []string{"cat-1", "cat-2"},
 	}); err != nil {
@@ -136,7 +136,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	store := NewApplicationIconStore()
 
-	icon := &spec.ApplicationIcon{
+	icon := &domain.ApplicationIcon{
 		TenantID: "acme", ApplicationID: "app-1", ObjectKey: "k1",
 		ContentType: "image/png", SizeBytes: 3, Data: []byte{1, 2, 3},
 	}
@@ -171,9 +171,9 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewSignInPolicyRepository()
 
-	policy := &spec.AppSignInPolicy{
+	policy := &domain.AppSignInPolicy{
 		TenantID: "acme", ApplicationID: "app-1",
-		Rules: []spec.SignInRule{{RuleID: "r1", Name: "rule", Enabled: true}},
+		Rules: []domain.SignInRule{{RuleID: "r1", Name: "rule", Enabled: true}},
 	}
 	if err := repo.Save(ctx, policy); err != nil {
 		t.Fatal(err)
@@ -210,9 +210,9 @@ func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewDefaultSignInPolicyRepository()
 
-	policy := &spec.TenantDefaultSignInPolicy{
+	policy := &domain.TenantDefaultSignInPolicy{
 		TenantID: "acme",
-		Rules:    []spec.SignInRule{{RuleID: "r1", Name: "floor", Enabled: true}},
+		Rules:    []domain.SignInRule{{RuleID: "r1", Name: "floor", Enabled: true}},
 	}
 	if err := repo.Save(ctx, policy); err != nil {
 		t.Fatal(err)
@@ -237,11 +237,11 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationAssignmentRepository()
 
-	assignments := []*spec.ApplicationAssignment{
-		{TenantID: "acme", ApplicationID: "app-1", SubjectType: spec.AssignmentSubjectUser, SubjectID: "u2", Visibility: spec.AssignmentVisible},
-		{TenantID: "acme", ApplicationID: "app-1", SubjectType: spec.AssignmentSubjectUser, SubjectID: "u1", Visibility: spec.AssignmentVisible},
-		{TenantID: "acme", ApplicationID: "app-1", SubjectType: spec.AssignmentSubjectGroup, SubjectID: "g1", Visibility: spec.AssignmentHidden},
-		{TenantID: "acme", ApplicationID: "app-2", SubjectType: spec.AssignmentSubjectUser, SubjectID: "u9", Visibility: spec.AssignmentVisible},
+	assignments := []*domain.ApplicationAssignment{
+		{TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: "u2", Visibility: domain.AssignmentVisible},
+		{TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: "u1", Visibility: domain.AssignmentVisible},
+		{TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectGroup, SubjectID: "g1", Visibility: domain.AssignmentHidden},
+		{TenantID: "acme", ApplicationID: "app-2", SubjectType: domain.AssignmentSubjectUser, SubjectID: "u9", Visibility: domain.AssignmentVisible},
 	}
 	for _, a := range assignments {
 		if err := repo.Save(ctx, a); err != nil {
@@ -257,7 +257,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	if len(byApp) != 3 {
 		t.Fatalf("ListByApplication len=%d want 3", len(byApp))
 	}
-	if byApp[0].SubjectType != spec.AssignmentSubjectGroup ||
+	if byApp[0].SubjectType != domain.AssignmentSubjectGroup ||
 		byApp[1].SubjectID != "u1" || byApp[2].SubjectID != "u2" {
 		t.Fatalf("ListByApplication order: %+v", byApp)
 	}
@@ -268,8 +268,8 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	}
 
 	bySubjects, err := repo.ListBySubjects(ctx, "acme", []appports.SubjectRef{
-		{Type: spec.AssignmentSubjectUser, ID: "u1"},
-		{Type: spec.AssignmentSubjectGroup, ID: "g1"},
+		{Type: domain.AssignmentSubjectUser, ID: "u1"},
+		{Type: domain.AssignmentSubjectGroup, ID: "g1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -278,7 +278,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("ListBySubjects len=%d want 2", len(bySubjects))
 	}
 
-	if err := repo.Delete(ctx, "acme", "app-1", spec.AssignmentSubjectUser, "u1"); err != nil {
+	if err := repo.Delete(ctx, "acme", "app-1", domain.AssignmentSubjectUser, "u1"); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := repo.ListByApplication(ctx, "acme", "app-1"); len(got) != 2 {
@@ -301,7 +301,7 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationOrderingRepository()
 
-	ordering := &spec.ApplicationOrdering{
+	ordering := &domain.ApplicationOrdering{
 		UserID: "u1", ApplicationIDs: []string{"app-1", "app-2"},
 	}
 	if err := repo.Save(ctx, ordering); err != nil {
@@ -327,7 +327,7 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationCategoryRepository()
 
-	categories := []*spec.ApplicationCategory{
+	categories := []*domain.ApplicationCategory{
 		{TenantID: "acme", CategoryID: "c1", Name: "B", Position: 2},
 		{TenantID: "acme", CategoryID: "c2", Name: "A", Position: 1},
 		{TenantID: "acme", CategoryID: "c3", Name: "C", Position: 1},

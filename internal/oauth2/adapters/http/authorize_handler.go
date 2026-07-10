@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
@@ -440,7 +441,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	}
 	if !client.FirstParty {
 		decision, err := d.EvaluateApplicationAccess(
-			c.Request().Context(), support.RequestTenantID(c), spec.ProtocolBindingOIDC, req.ClientID,
+			c.Request().Context(), support.RequestTenantID(c), appdomain.ProtocolBindingOIDC, req.ClientID,
 			authn.UserID, authn, d.ClientIP(c.Request()),
 		)
 		if err != nil {
@@ -510,7 +511,7 @@ func (d Deps) enforceDefaultSignInPolicy(
 		return false, nil
 	}
 	evaluation := appusecases.EvaluateSignInPolicy(
-		&spec.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
+		&appdomain.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
 		authn,
 		d.ClientIP(c.Request()),
 		time.Now().UTC(),
@@ -763,16 +764,16 @@ func (d Deps) issueCodeURL(
 	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない (ADR-061)。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
 		decision, err := d.EvaluateApplicationAccess(
-			ctx, tenantID, spec.ProtocolBindingOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
+			ctx, tenantID, appdomain.ProtocolBindingOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
 		)
 		if err != nil {
 			return "", err
 		}
 		if decision.StepUpRequired {
 			if d.Emit != nil {
-				d.Emit(&spec.AppStepUpRequired{
+				d.Emit(&appdomain.AppStepUpRequired{
 					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
-					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.UserID,
+					Protocol: string(appdomain.ProtocolBindingOIDC), Subject: authn.UserID,
 				})
 			}
 			if len(d.secondFactorMethods(c, authn.UserID)) > 0 { //nolint:contextcheck // HTTP request context is required for factor lookup.
@@ -794,9 +795,9 @@ func (d Deps) issueCodeURL(
 				reason = "subject not assigned to application"
 			}
 			if d.Emit != nil && decision.ApplicationID != "" {
-				d.Emit(&spec.AppAccessDeniedByPolicy{
+				d.Emit(&appdomain.AppAccessDeniedByPolicy{
 					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
-					Protocol: string(spec.ProtocolBindingOIDC), Subject: authn.UserID, Reason: reason,
+					Protocol: string(appdomain.ProtocolBindingOIDC), Subject: authn.UserID, Reason: reason,
 				})
 			}
 			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションにアクセスできません"), nil

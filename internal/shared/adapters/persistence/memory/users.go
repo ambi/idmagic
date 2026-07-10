@@ -32,11 +32,11 @@ func (r *UserRepository) Save(_ context.Context, u *spec.User) error {
 	defer r.mu.Unlock()
 	if existing := r.bySub[u.ID]; existing != nil &&
 		existing.PreferredUsername != u.PreferredUsername {
-		delete(r.byUser, tenantKey(existing.TenantID, existing.PreferredUsername))
+		delete(r.byUser, TenantKey(existing.TenantID, existing.PreferredUsername))
 	}
 	defaultTenant(&u.TenantID)
 	r.bySub[u.ID] = u
-	r.byUser[tenantKey(u.TenantID, u.PreferredUsername)] = u
+	r.byUser[TenantKey(u.TenantID, u.PreferredUsername)] = u
 	return nil
 }
 
@@ -59,7 +59,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(_ context.Context, sub string
 func (r *UserRepository) FindByUsername(_ context.Context, tenantID, username string) (*spec.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	user := r.byUser[tenantKey(tenantID, username)]
+	user := r.byUser[TenantKey(tenantID, username)]
 	if user == nil || user.IsDeleted() {
 		return nil, nil
 	}

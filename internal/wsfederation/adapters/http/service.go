@@ -3,9 +3,9 @@ package http
 import (
 	"context"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
-	"github.com/ambi/idmagic/internal/shared/spec"
 	wsfedusecases "github.com/ambi/idmagic/internal/wsfederation/usecases"
 )
 
@@ -30,7 +30,7 @@ type gateAdapter struct{ *support.ApplicationGate }
 func (g gateAdapter) EvaluateApplicationAccess(
 	ctx context.Context,
 	tenantID string,
-	bindingType spec.ProtocolBindingType,
+	bindingType appdomain.ProtocolBindingType,
 	bindingKey, sub string,
 	authn *authdomain.AuthenticationContext,
 	clientIP string,

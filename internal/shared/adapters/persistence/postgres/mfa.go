@@ -58,7 +58,7 @@ func (r *MfaFactorRepository) DeleteAllForSub(ctx context.Context, sub string) e
 
 const mfaFactorSelect = `SELECT user_id,type,secret,label,created_at,last_used_at FROM mfa_factors`
 
-func scanMfaFactor(row rowScanner) (*spec.MfaFactor, error) {
+func scanMfaFactor(row RowScanner) (*spec.MfaFactor, error) {
 	var factor spec.MfaFactor
 	err := row.Scan(&factor.UserID, &factor.Type, &factor.Secret, &factor.Label, &factor.CreatedAt, &factor.LastUsedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

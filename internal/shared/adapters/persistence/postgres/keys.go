@@ -146,7 +146,7 @@ VALUES ($1,$2,'PS256','Postgres','Signing',$3,$4,TRUE)`,
 
 const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active,created_at FROM signing_keys`
 
-func scanSigningKey(row rowScanner) (*ports.SigningKey, error) {
+func scanSigningKey(row RowScanner) (*ports.SigningKey, error) {
 	var key ports.SigningKey
 	var publicJSON, privateJSON []byte
 	err := row.Scan(&key.Kid, &key.TenantID, &key.Alg, &key.Provider, &key.Usage,

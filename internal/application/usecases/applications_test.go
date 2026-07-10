@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	appmemory "github.com/ambi/idmagic/internal/application/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/application/domain"
 	"github.com/ambi/idmagic/internal/application/ports"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
-	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/internal/shared/spec"
 	"github.com/ambi/idmagic/internal/tenancy"
 )
@@ -16,8 +17,8 @@ func tenantContext() context.Context {
 }
 
 func newDeps() (appusecases.ApplicationDeps, appusecases.AssignmentDeps) {
-	apps := memory.NewApplicationRepository()
-	assignments := memory.NewApplicationAssignmentRepository()
+	apps := appmemory.NewApplicationRepository()
+	assignments := appmemory.NewApplicationAssignmentRepository()
 	appDeps := appusecases.ApplicationDeps{Repo: apps, AssignmentRepo: assignments}
 	assignDeps := appusecases.AssignmentDeps{Repo: apps, AssignmentRepo: assignments}
 	return appDeps, assignDeps
@@ -28,13 +29,13 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	appDeps, assignDeps := newDeps()
 
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	userSubjects := []ports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: "alice"}}
+	userSubjects := []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}}
 
 	// 未割当はポータルに出ず、割当ゲートも閉じる。
 	mine, err := appusecases.ListMyApplications(ctx, assignDeps, userSubjects)
@@ -51,7 +52,7 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 
 	// 割当後はポータルに出て、ゲートが開く。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
@@ -66,8 +67,8 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 
 	// hidden 割当はポータルから消えるが、ゲートは開いたまま。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: spec.AssignmentSubjectUser, SubjectID: "alice",
-		Visibility: spec.AssignmentHidden,
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		Visibility: domain.AssignmentHidden,
 	}); err != nil {
 		t.Fatalf("assign hidden: %v", err)
 	}
@@ -86,20 +87,20 @@ func TestWeblinkRequiresLaunchURLAndRejectsBindings(t *testing.T) {
 	appDeps, _ := newDeps()
 
 	if _, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Wiki", Kind: spec.ApplicationWeblink,
+		ActorUserID: "admin", Name: "Wiki", Kind: domain.ApplicationWeblink,
 	}); err == nil {
 		t.Fatal("weblink without launch_url must be rejected")
 	}
 
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Wiki", Kind: spec.ApplicationWeblink, LaunchURL: "https://wiki.example",
+		ActorUserID: "admin", Name: "Wiki", Kind: domain.ApplicationWeblink, LaunchURL: "https://wiki.example",
 	})
 	if err != nil {
 		t.Fatalf("create weblink: %v", err)
 	}
 	if _, err := appusecases.AttachBinding(ctx, appDeps, appusecases.AttachBindingInput{
 		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: "c1"},
+		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: "c1"},
 	}); err == nil {
 		t.Fatal("weblink must not accept protocol bindings")
 	}
@@ -109,7 +110,7 @@ func TestAttachBindingReplacesSameType(t *testing.T) {
 	ctx := tenantContext()
 	appDeps, _ := newDeps()
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "CRM", Kind: spec.ApplicationFederated,
+		ActorUserID: "admin", Name: "CRM", Kind: domain.ApplicationFederated,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -117,7 +118,7 @@ func TestAttachBindingReplacesSameType(t *testing.T) {
 	for _, clientID := range []string{"c1", "c2"} {
 		if _, err := appusecases.AttachBinding(ctx, appDeps, appusecases.AttachBindingInput{
 			ActorUserID: "admin", ApplicationID: app.ApplicationID,
-			Binding: spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: clientID},
+			Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: clientID},
 		}); err != nil {
 			t.Fatalf("attach %s: %v", clientID, err)
 		}

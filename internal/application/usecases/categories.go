@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	"github.com/ambi/idmagic/internal/application/ports"
 	"github.com/ambi/idmagic/internal/shared/spec"
 	"github.com/ambi/idmagic/internal/tenancy"
@@ -31,7 +32,7 @@ type CategoryDeps struct {
 	Emit    func(spec.DomainEvent)
 }
 
-func ListCategories(ctx context.Context, deps CategoryDeps) ([]*spec.ApplicationCategory, error) {
+func ListCategories(ctx context.Context, deps CategoryDeps) ([]*domain.ApplicationCategory, error) {
 	return deps.Repo.ListByTenant(ctx, tenancy.TenantID(ctx))
 }
 
@@ -42,7 +43,7 @@ type CreateCategoryInput struct {
 	Now         time.Time
 }
 
-func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInput) (*spec.ApplicationCategory, error) {
+func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInput) (*domain.ApplicationCategory, error) {
 	tenantID := tenancy.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -57,14 +58,14 @@ func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInp
 		return nil, err
 	}
 	now := adminNow(in.Now)
-	category := &spec.ApplicationCategory{
+	category := &domain.ApplicationCategory{
 		TenantID: tenantID, CategoryID: id, Name: name, Position: position,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := deps.Repo.Save(ctx, category); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id})
+	emit(deps.Emit, &domain.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id})
 	return category, nil
 }
 
@@ -88,7 +89,7 @@ type UpdateCategoryInput struct {
 	Now         time.Time
 }
 
-func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInput) (*spec.ApplicationCategory, error) {
+func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInput) (*domain.ApplicationCategory, error) {
 	tenantID := tenancy.TenantID(ctx)
 	category, err := deps.Repo.FindByID(ctx, tenantID, in.CategoryID)
 	if err != nil {
@@ -120,7 +121,7 @@ func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInp
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.ApplicationCategoryUpdated{
+	emit(deps.Emit, &domain.ApplicationCategoryUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: category.CategoryID,
 	})
 	return &updated, nil
@@ -141,7 +142,7 @@ func DeleteCategory(ctx context.Context, deps CategoryDeps, actorUserID, categor
 	if err := deps.AppRepo.RemoveCategory(ctx, tenantID, categoryID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID})
+	emit(deps.Emit, &domain.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID})
 	return nil
 }
 
@@ -154,7 +155,7 @@ type SetApplicationCategoriesInput struct {
 
 // SetApplicationCategories は Application に付与するカテゴリ集合を置き換える。
 // category_ids は所属テナントの既存カテゴリのみを許し、重複は除去する。
-func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetApplicationCategoriesInput) (*spec.Application, error) {
+func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetApplicationCategoriesInput) (*domain.Application, error) {
 	tenantID := tenancy.TenantID(ctx)
 	app, err := deps.AppRepo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
@@ -190,7 +191,7 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 	if err := deps.AppRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.ApplicationUpdated{
+	emit(deps.Emit, &domain.ApplicationUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
 		ApplicationID: app.ApplicationID, ChangedFields: []string{"category_ids"},
 	})

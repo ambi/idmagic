@@ -87,7 +87,7 @@ grant_types,response_types,token_endpoint_auth_method,scope,jwks_uri,jwks,
 tls_client_auth_subject_dn,id_token_signed_response_alg,
 require_pushed_authorization_requests,dpop_bound_access_tokens,fapi_profile,first_party,created_at,updated_at FROM clients`
 
-func scanOAuth2Client(row rowScanner) (*spec.OAuth2Client, error) {
+func scanOAuth2Client(row RowScanner) (*spec.OAuth2Client, error) {
 	var c spec.OAuth2Client
 	var redirectURIs, grantTypes, responseTypes, jwks []byte
 	err := row.Scan(&c.TenantID, &c.ClientID, &c.ClientSecretHash, &c.ClientName, &c.ClientType,

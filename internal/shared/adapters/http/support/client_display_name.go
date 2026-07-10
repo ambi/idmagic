@@ -9,9 +9,9 @@ import (
 	"context"
 	"strings"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	appports "github.com/ambi/idmagic/internal/application/ports"
 	oauthports "github.com/ambi/idmagic/internal/oauth2/ports"
-	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 // ClientDisplayNameResolver は OAuth2Client.client_name → Application カタログ名 → client_id
@@ -36,7 +36,7 @@ func (r *ClientDisplayNameResolver) Resolve(ctx context.Context, tenantID, clien
 	}
 	if r.ApplicationRepo != nil {
 		if app, err := r.ApplicationRepo.FindByBinding(
-			ctx, tenantID, spec.ProtocolBindingOIDC, clientID,
+			ctx, tenantID, appdomain.ProtocolBindingOIDC, clientID,
 		); err == nil && app != nil {
 			if name := strings.TrimSpace(app.Name); name != "" {
 				return name

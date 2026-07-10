@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	oauthusecases "github.com/ambi/idmagic/internal/oauth2/usecases"
 	samldomain "github.com/ambi/idmagic/internal/saml/domain"
@@ -119,7 +120,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	switch req.Type {
 	case "weblink":
 		app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
-			ActorUserID: actor.ID, Name: req.Name, Kind: spec.ApplicationWeblink,
+			ActorUserID: actor.ID, Name: req.Name, Kind: domain.ApplicationWeblink,
 			LaunchURL: req.LaunchURL, Now: now,
 		})
 		if err != nil {
@@ -151,8 +152,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationFederated,
-			spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
+			domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -175,8 +176,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationService,
-			spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationService,
+			domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -201,8 +202,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 			return err
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationFederated,
-			spec.ProtocolBinding{Type: spec.ProtocolBindingWsFed, Wtrealm: req.Wtrealm})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
+			domain.ProtocolBinding{Type: domain.ProtocolBindingWsFed, Wtrealm: req.Wtrealm})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -234,8 +235,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
 			return err
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, spec.ApplicationFederated,
-			spec.ProtocolBinding{Type: spec.ProtocolBindingSAML, EntityID: req.EntityID})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
+			domain.ProtocolBinding{Type: domain.ProtocolBindingSAML, EntityID: req.EntityID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -247,7 +248,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 }
 
 // createCatalogApp は指定 kind の Application を作成し、protocol binding を接続する。
-func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind spec.ApplicationKind, binding spec.ProtocolBinding) (*spec.Application, error) {
+func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind domain.ApplicationKind, binding domain.ProtocolBinding) (*domain.Application, error) {
 	app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
 		ActorUserID: actorUserID, Name: req.Name, Kind: kind, LaunchURL: req.LaunchURL, Now: now,
 	})
@@ -261,7 +262,7 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 
 // resolveProtocolConfig は Application の binding から OAuth2 client / WS-Fed RP の
 // 実設定を解決して返す (アプリ詳細表示用)。
-func (d Deps) resolveProtocolConfig(c *echo.Context, app *spec.Application) (*oidcConfig, *wsfedConfig, *samlConfig) {
+func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*oidcConfig, *wsfedConfig, *samlConfig) {
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 	var oidc *oidcConfig
@@ -269,7 +270,7 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *spec.Application) (*oi
 	var saml *samlConfig
 	for _, binding := range app.Bindings {
 		switch binding.Type {
-		case spec.ProtocolBindingOIDC:
+		case domain.ProtocolBindingOIDC:
 			if d.ClientRepo == nil {
 				continue
 			}
@@ -282,7 +283,7 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *spec.Application) (*oi
 					DpopBoundAccessTokens: client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
 				}
 			}
-		case spec.ProtocolBindingWsFed:
+		case domain.ProtocolBindingWsFed:
 			if d.WsFedRPRepo == nil {
 				continue
 			}
@@ -294,7 +295,7 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *spec.Application) (*oi
 					Rules: nonNilRules(rp.ClaimPolicy.Rules),
 				}
 			}
-		case spec.ProtocolBindingSAML:
+		case domain.ProtocolBindingSAML:
 			if d.SamlSPRepo == nil {
 				continue
 			}
@@ -335,7 +336,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, spec.ProtocolBindingOIDC)
+	clientID := bindingKeyOf(app, domain.ProtocolBindingOIDC)
 	if clientID == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "OIDC バインディングがありません")
 	}
@@ -374,7 +375,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	wtrealm := bindingKeyOf(app, spec.ProtocolBindingWsFed)
+	wtrealm := bindingKeyOf(app, domain.ProtocolBindingWsFed)
 	if wtrealm == "" || d.WsFedRPRepo == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "WS-Federation バインディングがありません")
 	}
@@ -440,7 +441,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	entityID := bindingKeyOf(app, spec.ProtocolBindingSAML)
+	entityID := bindingKeyOf(app, domain.ProtocolBindingSAML)
 	if entityID == "" || d.SamlSPRepo == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML バインディングがありません")
 	}
@@ -496,7 +497,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) requireApp(c *echo.Context) (*spec.Application, error) {
+func (d Deps) requireApp(c *echo.Context) (*domain.Application, error) {
 	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"))
 	if err != nil {
 		return nil, err
@@ -507,13 +508,13 @@ func (d Deps) requireApp(c *echo.Context) (*spec.Application, error) {
 	return app, nil
 }
 
-func bindingKeyOf(app *spec.Application, bindingType spec.ProtocolBindingType) string {
+func bindingKeyOf(app *domain.Application, bindingType domain.ProtocolBindingType) string {
 	for _, b := range app.Bindings {
 		if b.Type == bindingType {
 			switch bindingType {
-			case spec.ProtocolBindingWsFed:
+			case domain.ProtocolBindingWsFed:
 				return b.Wtrealm
-			case spec.ProtocolBindingSAML:
+			case domain.ProtocolBindingSAML:
 				return b.EntityID
 			default:
 				return b.ClientID

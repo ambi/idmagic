@@ -137,8 +137,9 @@ linters:
         linters:
           - nilnil
       # Persistence repository Find* methods use nil result + nil error for
-      # "not found" to match existing port contracts.
-      - path: internal/shared/adapters/persistence/
+      # "not found" to match existing port contracts. Matches both the
+      # shared location and per-context adapters/persistence/ (ADR-090).
+      - path: internal/[^/]+/adapters/persistence/
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil

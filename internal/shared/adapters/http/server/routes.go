@@ -2,8 +2,7 @@
 package server
 
 import (
-	apphttp "github.com/ambi/idmagic/internal/application/adapters/http"
-	appports "github.com/ambi/idmagic/internal/application/ports"
+	"github.com/ambi/idmagic/internal/application"
 	authhttp "github.com/ambi/idmagic/internal/authentication/adapters/http"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
@@ -34,51 +33,45 @@ import (
 type Deps struct {
 	support.Deps
 
-	ScimRepo                    scimports.ScimRepository
-	AttrSchemaRepo              tenantports.TenantUserAttributeSchemaRepository
-	ClientRepo                  oauthports.OAuth2ClientRepository
-	UserRepo                    idmports.UserRepository
-	ConsentRepo                 oauthports.ConsentRepository
-	AuthzDetailTypeRepo         oauthports.AuthorizationDetailTypeRepository
-	RequestStore                oauthports.AuthorizationRequestStore
-	CodeStore                   oauthports.AuthorizationCodeStore
-	PARStore                    oauthports.PARStore
-	RefreshStore                oauthports.RefreshTokenStore
-	DeviceCodeStore             oauthports.DeviceCodeStore
-	DpopReplayStore             oauthports.DpopReplayStore
-	ClientAssertionReplayStore  oauthports.ClientAssertionReplayStore
-	AccessTokenDenylist         oauthports.AccessTokenDenylist
-	KeyStore                    oauthports.KeyStore
-	TenantSaltStore             oauthports.TenantSaltStore
-	TokenIssuer                 oauthports.TokenIssuer
-	TokenIntrospector           oauthports.TokenIntrospector
-	AuditEventRepo              oauthports.AuditEventRepository
-	AuthEventBucketStore        authnports.AuthEventBucketStore
-	Authorizer                  oauthports.Authorizer
-	JWKResolver                 *crypto.JWKResolver
-	PasswordHasher              authnports.PasswordHasher
-	GroupRepo                   idmports.GroupRepository
-	AgentRepo                   idmports.AgentRepository
-	MfaFactorRepo               authnports.MfaFactorRepository
-	PasswordHistoryRepo         authnports.PasswordHistoryRepository
-	PasswordResetTokenStore     authnports.PasswordResetTokenStore
-	EmailChangeTokenStore       authnports.EmailChangeTokenStore
-	EmailSender                 authnports.EmailSender
-	BreachedPasswordChecker     authnports.BreachedPasswordChecker
-	LoginAttemptThrottle        authnports.LoginAttemptThrottle
-	SentinelPasswordHash        string
-	SessionManager              *authusecases.SessionManager
-	AuthnResolver               authdomain.AuthenticationContextResolver
-	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
-	SamlSPRepo                  samlports.SamlServiceProviderRepository
-	FederationSigner            *samltoken.Signer
-	ApplicationRepo             appports.ApplicationRepository
-	ApplicationIconStore        appports.ApplicationIconStore
-	ApplicationAssignmentRepo   appports.AssignmentRepository
-	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
-	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
-	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
-	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+	ScimRepo                   scimports.ScimRepository
+	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
+	ClientRepo                 oauthports.OAuth2ClientRepository
+	UserRepo                   idmports.UserRepository
+	ConsentRepo                oauthports.ConsentRepository
+	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
+	RequestStore               oauthports.AuthorizationRequestStore
+	CodeStore                  oauthports.AuthorizationCodeStore
+	PARStore                   oauthports.PARStore
+	RefreshStore               oauthports.RefreshTokenStore
+	DeviceCodeStore            oauthports.DeviceCodeStore
+	DpopReplayStore            oauthports.DpopReplayStore
+	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
+	AccessTokenDenylist        oauthports.AccessTokenDenylist
+	KeyStore                   oauthports.KeyStore
+	TenantSaltStore            oauthports.TenantSaltStore
+	TokenIssuer                oauthports.TokenIssuer
+	TokenIntrospector          oauthports.TokenIntrospector
+	AuditEventRepo             oauthports.AuditEventRepository
+	AuthEventBucketStore       authnports.AuthEventBucketStore
+	Authorizer                 oauthports.Authorizer
+	JWKResolver                *crypto.JWKResolver
+	PasswordHasher             authnports.PasswordHasher
+	GroupRepo                  idmports.GroupRepository
+	AgentRepo                  idmports.AgentRepository
+	MfaFactorRepo              authnports.MfaFactorRepository
+	PasswordHistoryRepo        authnports.PasswordHistoryRepository
+	PasswordResetTokenStore    authnports.PasswordResetTokenStore
+	EmailChangeTokenStore      authnports.EmailChangeTokenStore
+	EmailSender                authnports.EmailSender
+	BreachedPasswordChecker    authnports.BreachedPasswordChecker
+	LoginAttemptThrottle       authnports.LoginAttemptThrottle
+	SentinelPasswordHash       string
+	SessionManager             *authusecases.SessionManager
+	AuthnResolver              authdomain.AuthenticationContextResolver
+	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
+	SamlSPRepo                 samlports.SamlServiceProviderRepository
+	FederationSigner           *samltoken.Signer
+	Application                application.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 	WebAuthnRP             *gowebauthn.WebAuthn
@@ -130,19 +123,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AuthnResolver:     d.AuthnResolver,
 	}
 
-	appGate := &support.ApplicationGate{
-		ApplicationRepo:             d.ApplicationRepo,
-		ApplicationAssignmentRepo:   d.ApplicationAssignmentRepo,
-		GroupRepo:                   d.GroupRepo,
-		ApplicationSignInPolicyRepo: d.ApplicationSignInPolicyRepo,
-		DefaultSignInPolicyRepo:     d.DefaultSignInPolicyRepo,
-		GateTrustedForwardedHops:    d.TrustedForwardedHops,
-	}
-
-	clientDisplayNames := &support.ClientDisplayNameResolver{
-		ClientRepo:      d.ClientRepo,
-		ApplicationRepo: d.ApplicationRepo,
-	}
+	appGate := d.Application.Gate(d.GroupRepo, d.TrustedForwardedHops)
+	clientDisplayNames := d.Application.ClientDisplayNames(d.ClientRepo)
 
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
 		Deps:                       d.Deps,
@@ -253,22 +235,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:         d.UserRepo,
 	})
 
-	apphttp.RegisterRoutes(g, apphttp.Deps{
-		Deps:                        d.Deps,
-		Authenticator:               authenticator,
-		ApplicationRepo:             d.ApplicationRepo,
-		ApplicationIconStore:        d.ApplicationIconStore,
-		ApplicationAssignmentRepo:   d.ApplicationAssignmentRepo,
-		ApplicationOrderingRepo:     d.ApplicationOrderingRepo,
-		ApplicationCategoryRepo:     d.ApplicationCategoryRepo,
-		ApplicationSignInPolicyRepo: d.ApplicationSignInPolicyRepo,
-		DefaultSignInPolicyRepo:     d.DefaultSignInPolicyRepo,
-		GroupRepo:                   d.GroupRepo,
-		UserRepo:                    d.UserRepo,
-		ClientRepo:                  d.ClientRepo,
-		WsFedRPRepo:                 d.WsFedRPRepo,
-		SamlSPRepo:                  d.SamlSPRepo,
-	})
+	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.ClientRepo, d.WsFedRPRepo, d.SamlSPRepo)
 
 	scimUsecasesInst := scimusecases.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{

@@ -27,21 +27,21 @@ func (r *OAuth2ClientRepository) Seed(c *spec.OAuth2Client) {
 func (r *OAuth2ClientRepository) FindByID(_ context.Context, tenantID, clientID string) (*spec.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.clients[tenantKey(tenantID, clientID)], nil
+	return r.clients[TenantKey(tenantID, clientID)], nil
 }
 
 func (r *OAuth2ClientRepository) Save(_ context.Context, c *spec.OAuth2Client) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	defaultTenant(&c.TenantID)
-	r.clients[tenantKey(c.TenantID, c.ClientID)] = c
+	r.clients[TenantKey(c.TenantID, c.ClientID)] = c
 	return nil
 }
 
 func (r *OAuth2ClientRepository) Delete(_ context.Context, tenantID, clientID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.clients, tenantKey(tenantID, clientID))
+	delete(r.clients, TenantKey(tenantID, clientID))
 	return nil
 }
 

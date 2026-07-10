@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	appports "github.com/ambi/idmagic/internal/application/ports"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	authdomain "github.com/ambi/idmagic/internal/authentication/domain"
-	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 type ApplicationAccessDecision struct {
@@ -31,7 +31,7 @@ type ApplicationAccessDecision struct {
 func (g *ApplicationGate) ApplicationAccessAllowed(
 	ctx context.Context,
 	tenantID string,
-	bindingType spec.ProtocolBindingType,
+	bindingType appdomain.ProtocolBindingType,
 	bindingKey, sub string,
 ) (bool, error) {
 	decision, err := g.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, nil, "")
@@ -64,7 +64,7 @@ func (g *ApplicationGate) ClientIP(r *http.Request) string {
 func (g *ApplicationGate) EvaluateApplicationAccess(
 	ctx context.Context,
 	tenantID string,
-	bindingType spec.ProtocolBindingType,
+	bindingType appdomain.ProtocolBindingType,
 	bindingKey, sub string,
 	authn *authdomain.AuthenticationContext,
 	clientIP string,
@@ -79,20 +79,20 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 	if app == nil {
 		return ApplicationAccessDecision{Allowed: true}, nil
 	}
-	if app.Status != spec.ApplicationActive {
+	if app.Status != appdomain.ApplicationActive {
 		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "application is disabled"}, nil
 	}
 	if g.ApplicationAssignmentRepo == nil {
 		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "application assignments are unavailable"}, nil
 	}
-	subjects := []appports.SubjectRef{{Type: spec.AssignmentSubjectUser, ID: sub}}
+	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: sub}}
 	if g.GroupRepo != nil {
 		groups, err := g.GroupRepo.ListGroupsByUser(ctx, tenantID, sub)
 		if err != nil {
 			return ApplicationAccessDecision{}, err
 		}
 		for _, grp := range groups {
-			subjects = append(subjects, appports.SubjectRef{Type: spec.AssignmentSubjectGroup, ID: grp.ID})
+			subjects = append(subjects, appports.SubjectRef{Type: appdomain.AssignmentSubjectGroup, ID: grp.ID})
 		}
 	}
 	assignments, err := g.ApplicationAssignmentRepo.ListBySubjects(ctx, tenantID, subjects)
@@ -117,7 +117,7 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 		return ApplicationAccessDecision{}, err
 	}
 	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル, ADR-081)。
-	var defaultPolicy *spec.TenantDefaultSignInPolicy
+	var defaultPolicy *appdomain.TenantDefaultSignInPolicy
 	if g.DefaultSignInPolicyRepo != nil {
 		defaultPolicy, err = g.DefaultSignInPolicyRepo.Get(ctx, tenantID)
 		if err != nil {

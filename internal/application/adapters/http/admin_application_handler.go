@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ambi/idmagic/internal/application/domain"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
 	"github.com/ambi/idmagic/internal/shared/adapters/http/support"
 	"github.com/ambi/idmagic/internal/shared/spec"
@@ -17,16 +18,16 @@ import (
 )
 
 type protocolBindingResponse struct {
-	Type     spec.ProtocolBindingType `json:"type"`
-	ClientID string                   `json:"client_id,omitempty"`
-	Wtrealm  string                   `json:"wtrealm,omitempty"`
+	Type     domain.ProtocolBindingType `json:"type"`
+	ClientID string                     `json:"client_id,omitempty"`
+	Wtrealm  string                     `json:"wtrealm,omitempty"`
 }
 
 type applicationResponse struct {
 	ApplicationID        string                    `json:"application_id"`
 	Name                 string                    `json:"name"`
-	Kind                 spec.ApplicationKind      `json:"kind"`
-	Status               spec.ApplicationStatus    `json:"status"`
+	Kind                 domain.ApplicationKind    `json:"kind"`
+	Status               domain.ApplicationStatus  `json:"status"`
 	IconURL              string                    `json:"icon_url,omitempty"`
 	IconObjectKey        string                    `json:"icon_object_key,omitempty"`
 	LaunchURL            string                    `json:"launch_url,omitempty"`
@@ -41,37 +42,37 @@ type applicationResponse struct {
 }
 
 type applicationUpdateRequest struct {
-	Name      *string                 `json:"name"`
-	Status    *spec.ApplicationStatus `json:"status"`
-	LaunchURL *string                 `json:"launch_url"`
+	Name      *string                   `json:"name"`
+	Status    *domain.ApplicationStatus `json:"status"`
+	LaunchURL *string                   `json:"launch_url"`
 }
 
 type protocolBindingRequest struct {
-	Type     spec.ProtocolBindingType `json:"type"`
-	ClientID string                   `json:"client_id"`
-	Wtrealm  string                   `json:"wtrealm"`
+	Type     domain.ProtocolBindingType `json:"type"`
+	ClientID string                     `json:"client_id"`
+	Wtrealm  string                     `json:"wtrealm"`
 }
 
 type assignmentRequest struct {
-	SubjectType spec.AssignmentSubjectType `json:"subject_type"`
-	SubjectID   string                     `json:"subject_id"`
-	Visibility  spec.AssignmentVisibility  `json:"visibility"`
+	SubjectType domain.AssignmentSubjectType `json:"subject_type"`
+	SubjectID   string                       `json:"subject_id"`
+	Visibility  domain.AssignmentVisibility  `json:"visibility"`
 }
 
 type assignmentResponse struct {
-	SubjectType spec.AssignmentSubjectType `json:"subject_type"`
-	SubjectID   string                     `json:"subject_id"`
-	Visibility  spec.AssignmentVisibility  `json:"visibility"`
-	CreatedAt   time.Time                  `json:"created_at"`
-	UpdatedAt   time.Time                  `json:"updated_at"`
+	SubjectType domain.AssignmentSubjectType `json:"subject_type"`
+	SubjectID   string                       `json:"subject_id"`
+	Visibility  domain.AssignmentVisibility  `json:"visibility"`
+	CreatedAt   time.Time                    `json:"created_at"`
+	UpdatedAt   time.Time                    `json:"updated_at"`
 }
 
 type signInPolicyRequest struct {
-	Rules []spec.SignInRule `json:"rules"`
+	Rules []domain.SignInRule `json:"rules"`
 }
 
 type defaultSignInPolicyRequest struct {
-	Rules []spec.SignInRule `json:"rules"`
+	Rules []domain.SignInRule `json:"rules"`
 }
 
 func (d Deps) handleListApplications(c *echo.Context) error {
@@ -110,7 +111,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	}
 
 	// Bulkロード：個別ログインポリシー
-	policyMap := make(map[string]*spec.AppSignInPolicy)
+	policyMap := make(map[string]*domain.AppSignInPolicy)
 	if d.ApplicationSignInPolicyRepo != nil {
 		policies, err := d.ApplicationSignInPolicyRepo.ListByTenant(ctx, tenantID)
 		if err != nil {
@@ -155,19 +156,19 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 		var summaries []string
 		for _, b := range app.Bindings {
 			switch b.Type {
-			case spec.ProtocolBindingOIDC:
+			case domain.ProtocolBindingOIDC:
 				if b.ClientID != "" {
 					summaries = append(summaries, "OIDC (Client ID: "+b.ClientID+")")
 				} else {
 					summaries = append(summaries, "OIDC")
 				}
-			case spec.ProtocolBindingWsFed:
+			case domain.ProtocolBindingWsFed:
 				if b.Wtrealm != "" {
 					summaries = append(summaries, "WS-Fed (Realm: "+b.Wtrealm+")")
 				} else {
 					summaries = append(summaries, "WS-Fed")
 				}
-			case spec.ProtocolBindingSAML:
+			case domain.ProtocolBindingSAML:
 				if b.EntityID != "" {
 					summaries = append(summaries, "SAML (Entity ID: "+b.EntityID+")")
 				} else {
@@ -175,7 +176,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 				}
 			}
 		}
-		if len(summaries) == 0 && app.Kind == spec.ApplicationWeblink {
+		if len(summaries) == 0 && app.Kind == domain.ApplicationWeblink {
 			summaries = append(summaries, "Web Link")
 		}
 		if summaries == nil {
@@ -365,7 +366,7 @@ func (d Deps) handleAttachBinding(c *echo.Context) error {
 	}
 	app, err := appusecases.AttachBinding(c.Request().Context(), d.applicationDeps(), appusecases.AttachBindingInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
-		Binding: spec.ProtocolBinding{Type: req.Type, ClientID: req.ClientID, Wtrealm: req.Wtrealm}, Now: time.Now().UTC(),
+		Binding: domain.ProtocolBinding{Type: req.Type, ClientID: req.ClientID, Wtrealm: req.Wtrealm}, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -383,7 +384,7 @@ func (d Deps) handleDetachBinding(c *echo.Context) error {
 	}
 	if err := appusecases.DetachBinding(
 		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"),
-		spec.ProtocolBindingType(c.Param("binding_type")), time.Now().UTC(),
+		domain.ProtocolBindingType(c.Param("binding_type")), time.Now().UTC(),
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -438,7 +439,7 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 	}
 	if err := appusecases.UnassignApplication(
 		c.Request().Context(), d.assignmentDeps(), actor.ID, c.Param("application_id"),
-		spec.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC(),
+		domain.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -448,7 +449,7 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 
 // signInPolicyView は app 個別・テナントデフォルト・上書き後 effective を区別して返す (ADR-081)。
 // weaker_than_default はアプリ独自ポリシーがデフォルトより弱いときの UI 警告用フラグ。
-func (d Deps) signInPolicyView(c *echo.Context, policy *spec.AppSignInPolicy) (map[string]any, error) {
+func (d Deps) signInPolicyView(c *echo.Context, policy *domain.AppSignInPolicy) (map[string]any, error) {
 	deps := d.signInPolicyDeps()
 	defaultPolicy, err := appusecases.GetDefaultSignInPolicy(c.Request().Context(), deps)
 	if err != nil {
@@ -456,7 +457,7 @@ func (d Deps) signInPolicyView(c *echo.Context, policy *spec.AppSignInPolicy) (m
 	}
 	effective := appusecases.EffectiveSignInRules(defaultPolicy, policy)
 	if effective == nil {
-		effective = []spec.SignInRule{}
+		effective = []domain.SignInRule{}
 	}
 	return map[string]any{
 		"policy":              policy,
@@ -574,7 +575,7 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 }
 
-func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *spec.Application) applicationResponse {
+func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *domain.Application) applicationResponse {
 	var categoryNames []string
 	if d.ApplicationCategoryRepo != nil && len(app.CategoryIDs) > 0 {
 		for _, catID := range app.CategoryIDs {
@@ -605,7 +606,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	}
 
 	var policySummary string
-	var p *spec.AppSignInPolicy
+	var p *domain.AppSignInPolicy
 	var err error
 	if d.ApplicationSignInPolicyRepo != nil {
 		p, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
@@ -619,19 +620,19 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	var summaries []string
 	for _, b := range app.Bindings {
 		switch b.Type {
-		case spec.ProtocolBindingOIDC:
+		case domain.ProtocolBindingOIDC:
 			if b.ClientID != "" {
 				summaries = append(summaries, "OIDC (Client ID: "+b.ClientID+")")
 			} else {
 				summaries = append(summaries, "OIDC")
 			}
-		case spec.ProtocolBindingWsFed:
+		case domain.ProtocolBindingWsFed:
 			if b.Wtrealm != "" {
 				summaries = append(summaries, "WS-Fed (Realm: "+b.Wtrealm+")")
 			} else {
 				summaries = append(summaries, "WS-Fed")
 			}
-		case spec.ProtocolBindingSAML:
+		case domain.ProtocolBindingSAML:
 			if b.EntityID != "" {
 				summaries = append(summaries, "SAML (Entity ID: "+b.EntityID+")")
 			} else {
@@ -639,7 +640,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 			}
 		}
 	}
-	if len(summaries) == 0 && app.Kind == spec.ApplicationWeblink {
+	if len(summaries) == 0 && app.Kind == domain.ApplicationWeblink {
 		summaries = append(summaries, "Web Link")
 	}
 	if summaries == nil {
@@ -673,7 +674,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	}
 }
 
-func toAssignmentResponse(a *spec.ApplicationAssignment) assignmentResponse {
+func toAssignmentResponse(a *domain.ApplicationAssignment) assignmentResponse {
 	return assignmentResponse{
 		SubjectType: a.SubjectType, SubjectID: a.SubjectID, Visibility: a.Visibility, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	}

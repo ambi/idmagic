@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	appdomain "github.com/ambi/idmagic/internal/application/domain"
 	appports "github.com/ambi/idmagic/internal/application/ports"
 	authnports "github.com/ambi/idmagic/internal/authentication/ports"
 	authusecases "github.com/ambi/idmagic/internal/authentication/usecases"
@@ -175,18 +176,18 @@ func seedDemoApplications(
 		id        string
 		name      string
 		launchURL string
-		binding   spec.ProtocolBinding
+		binding   appdomain.ProtocolBinding
 	}{
-		{"00000000-0000-4000-8000-000000000101", "IdMagic Admin Console", "/realms/default/admin", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: seedAdminConsoleClientID}},
-		{"00000000-0000-4000-8000-000000000102", "IdMagic Account Portal", "/realms/default/account", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: seedAccountPortalClientID}},
-		{"00000000-0000-4000-8000-000000000103", "Demo Client", "", spec.ProtocolBinding{Type: spec.ProtocolBindingOIDC, ClientID: seedDemoClientID}},
-		{"00000000-0000-4000-8000-000000000104", "Demo WS-Federation RP", "https://rp.example/wsfed", spec.ProtocolBinding{Type: spec.ProtocolBindingWsFed, Wtrealm: "urn:idmagic:demo-rp"}},
+		{"00000000-0000-4000-8000-000000000101", "IdMagic Admin Console", "/realms/default/admin", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: seedAdminConsoleClientID}},
+		{"00000000-0000-4000-8000-000000000102", "IdMagic Account Portal", "/realms/default/account", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: seedAccountPortalClientID}},
+		{"00000000-0000-4000-8000-000000000103", "Demo Client", "", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: seedDemoClientID}},
+		{"00000000-0000-4000-8000-000000000104", "Demo WS-Federation RP", "https://rp.example/wsfed", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingWsFed, Wtrealm: "urn:idmagic:demo-rp"}},
 	}
 	for _, s := range seeds {
-		if err := apps.Save(ctx, &spec.Application{
+		if err := apps.Save(ctx, &appdomain.Application{
 			TenantID: spec.DefaultTenantID, ApplicationID: s.id, Name: s.name,
-			Kind: spec.ApplicationFederated, Status: spec.ApplicationActive,
-			LaunchURL: s.launchURL, Bindings: []spec.ProtocolBinding{s.binding},
+			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+			LaunchURL: s.launchURL, Bindings: []appdomain.ProtocolBinding{s.binding},
 			CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			return err
@@ -194,10 +195,10 @@ func seedDemoApplications(
 		if assignments == nil {
 			continue
 		}
-		if err := assignments.Save(ctx, &spec.ApplicationAssignment{
+		if err := assignments.Save(ctx, &appdomain.ApplicationAssignment{
 			TenantID: spec.DefaultTenantID, ApplicationID: s.id,
-			SubjectType: spec.AssignmentSubjectUser, SubjectID: seedUserAliceID,
-			Visibility: spec.AssignmentVisible, CreatedAt: now,
+			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: seedUserAliceID,
+			Visibility: appdomain.AssignmentVisible, CreatedAt: now,
 		}); err != nil {
 			return err
 		}

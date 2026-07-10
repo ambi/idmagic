@@ -1,5 +1,5 @@
 ---
-status: suggested
+status: accepted
 authors: [tn]
 created_at: 2026-07-10
 ---
@@ -72,6 +72,21 @@ psqldef で移行する。[[ADR-084]] はカラム型を明示し、セキュリ
 
 **判断の分岐点＝動的クエリの実比率**。パイロット context で sqlc を実装し、動的クエリの
 比率を実測して本決定（sqlc 継続 or bob へ切替）を確定する。本節に実測値を追記する。
+
+### 実測値（wi-172、application context パイロット）
+
+application context の全クエリ 26 件中、sqlc 生成で賄えた静的クエリ（tenant + id の固定
+WHERE、または固定長 INSERT ... ON CONFLICT）は 25 件（96%）。動的クエリのエスケープハッチ
+（手書き pgx）が必要だったのは `ApplicationAssignmentRepository.ListBySubjects` の 1 件
+（4%）のみで、これも「可変 WHERE」ではなく `UNNEST($2::text[], $3::text[])` による
+(subject_type, subject_id) ペア配列突合せを sqlc の静的解析器が型解決できないという sqlc
+自体の制約が理由であり、真に動的な条件分岐クエリ（admin list/filter 等）はゼロだった。
+
+この結果は本 ADR の当初の探索（「クエリの大半は tenant + id の静的引きであり影響範囲は
+限定的」)を裏付ける。application は動的フィルタを持たない小さめの context だが、96% という
+比率は sqlc 継続判断を強く支持する。**sqlc を継続採用する**。bob への切替は、今後の横展開で
+admin list/filter（可変 WHERE）を多く持つ context（例: 監査ログ検索、ユーザー一覧の属性
+フィルタ）を移行した際に動的比率が再評価対象になった場合にのみ検討する。
 
 ## 影響
 

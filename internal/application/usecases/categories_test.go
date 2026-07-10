@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
+	appmemory "github.com/ambi/idmagic/internal/application/adapters/persistence/memory"
+	"github.com/ambi/idmagic/internal/application/domain"
 	appusecases "github.com/ambi/idmagic/internal/application/usecases"
-	"github.com/ambi/idmagic/internal/shared/adapters/persistence/memory"
-	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 func newCategoryDeps() (appusecases.CategoryDeps, appusecases.ApplicationDeps) {
-	apps := memory.NewApplicationRepository()
-	assignments := memory.NewApplicationAssignmentRepository()
-	categories := memory.NewApplicationCategoryRepository()
+	apps := appmemory.NewApplicationRepository()
+	assignments := appmemory.NewApplicationAssignmentRepository()
+	categories := appmemory.NewApplicationCategoryRepository()
 	return appusecases.CategoryDeps{Repo: categories, AppRepo: apps},
 		appusecases.ApplicationDeps{Repo: apps, AssignmentRepo: assignments}
 }
@@ -130,7 +130,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated,
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)
@@ -171,7 +171,7 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: spec.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated,
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)

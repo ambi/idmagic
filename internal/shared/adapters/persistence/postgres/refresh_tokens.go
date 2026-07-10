@@ -62,7 +62,7 @@ func (s *RefreshTokenStore) DeleteAllForSub(ctx context.Context, sub string) err
 const refreshSelect = `SELECT id::text,tenant_id,hash,family_id::text,parent_id::text,client_id,user_id,scopes,
 issued_at,expires_at,absolute_expires_at,revoked,rotated,sender_constraint FROM refresh_tokens`
 
-func scanRefresh(row rowScanner) (*spec.RefreshTokenRecord, error) {
+func scanRefresh(row RowScanner) (*spec.RefreshTokenRecord, error) {
 	var rec spec.RefreshTokenRecord
 	var parentID *string
 	var scopes, constraint []byte

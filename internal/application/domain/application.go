@@ -3,8 +3,6 @@ package domain
 
 import (
 	"errors"
-
-	"github.com/ambi/idmagic/internal/shared/spec"
 )
 
 var (
@@ -21,7 +19,7 @@ var (
 
 // ValidateApplication は Application aggregate の不変条件を検証する (wi-69)。
 // weblink は launch_url 必須で binding を持てない。federated は binding を検証する。
-func ValidateApplication(app *spec.Application) error {
+func ValidateApplication(app *Application) error {
 	if app.Name == "" {
 		return ErrNameRequired
 	}
@@ -31,7 +29,7 @@ func ValidateApplication(app *spec.Application) error {
 	if !app.Status.Valid() {
 		return ErrInvalidStatus
 	}
-	if app.Kind == spec.ApplicationWeblink {
+	if app.Kind == ApplicationWeblink {
 		if app.LaunchURL == "" {
 			return ErrWeblinkLaunchURL
 		}
@@ -49,20 +47,20 @@ func ValidateApplication(app *spec.Application) error {
 
 // ValidateBinding は 1 つの protocol binding を検証する (wi-69)。
 // oidc は client_id、wsfed は wtrealm を必須とする。
-func ValidateBinding(binding spec.ProtocolBinding) error {
+func ValidateBinding(binding ProtocolBinding) error {
 	if !binding.Type.Valid() {
 		return ErrInvalidBindingType
 	}
 	switch binding.Type {
-	case spec.ProtocolBindingOIDC:
+	case ProtocolBindingOIDC:
 		if binding.ClientID == "" {
 			return ErrOIDCBindingClientID
 		}
-	case spec.ProtocolBindingWsFed:
+	case ProtocolBindingWsFed:
 		if binding.Wtrealm == "" {
 			return ErrWsFedBindingWtrealm
 		}
-	case spec.ProtocolBindingSAML:
+	case ProtocolBindingSAML:
 		if binding.EntityID == "" {
 			return ErrSAMLBindingEntityID
 		}

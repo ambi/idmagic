@@ -18,7 +18,7 @@ type AuthorizationDetailTypeRepository struct{ Pool DB }
 const authorizationDetailTypeSelect = `SELECT tenant_id,type,description,schema,display_template,
 state,created_at,updated_at FROM authorization_detail_types`
 
-func scanAuthorizationDetailType(row rowScanner) (*spec.AuthorizationDetailType, error) {
+func scanAuthorizationDetailType(row RowScanner) (*spec.AuthorizationDetailType, error) {
 	var t spec.AuthorizationDetailType
 	var schema []byte
 	err := row.Scan(&t.TenantID, &t.Type, &t.Description, &schema, &t.DisplayTemplate,

@@ -18,7 +18,7 @@ const samlServiceProviderSelect = `SELECT tenant_id,entity_id,display_name,acs_u
 claim_policy,sign_assertion,sign_response,want_authn_requests_signed,authn_request_signing_certificate_pem,
 created_at,updated_at FROM saml_service_providers`
 
-func scanSamlServiceProvider(row rowScanner) (*spec.SamlServiceProvider, error) {
+func scanSamlServiceProvider(row RowScanner) (*spec.SamlServiceProvider, error) {
 	var (
 		sp          spec.SamlServiceProvider
 		acsURLs     []byte

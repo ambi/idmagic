@@ -15,7 +15,7 @@ import (
 
 type WsFedRelyingPartyRepository struct {
 	mu    sync.RWMutex
-	parts map[string]*spec.WsFedRelyingParty // key: tenantKey(tenant_id, wtrealm)
+	parts map[string]*spec.WsFedRelyingParty // key: TenantKey(tenant_id, wtrealm)
 }
 
 func NewWsFedRelyingPartyRepository() *WsFedRelyingPartyRepository {
@@ -41,7 +41,7 @@ func cloneRelyingParty(rp *spec.WsFedRelyingParty) *spec.WsFedRelyingParty {
 func (r *WsFedRelyingPartyRepository) FindByWtrealm(_ context.Context, tenantID, wtrealm string) (*spec.WsFedRelyingParty, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	rp := r.parts[tenantKey(tenantID, wtrealm)]
+	rp := r.parts[TenantKey(tenantID, wtrealm)]
 	if rp == nil {
 		return nil, nil
 	}
@@ -65,13 +65,13 @@ func (r *WsFedRelyingPartyRepository) Save(_ context.Context, rp *spec.WsFedRely
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	defaultTenant(&rp.TenantID)
-	r.parts[tenantKey(rp.TenantID, rp.Wtrealm)] = cloneRelyingParty(rp)
+	r.parts[TenantKey(rp.TenantID, rp.Wtrealm)] = cloneRelyingParty(rp)
 	return nil
 }
 
 func (r *WsFedRelyingPartyRepository) Delete(_ context.Context, tenantID, wtrealm string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.parts, tenantKey(tenantID, wtrealm))
+	delete(r.parts, TenantKey(tenantID, wtrealm))
 	return nil
 }

@@ -79,7 +79,7 @@ func (r *WebAuthnCredentialRepository) DeleteAllForSub(ctx context.Context, sub 
 	return err
 }
 
-func scanWebAuthnCredential(row rowScanner) (*spec.WebAuthnCredential, error) {
+func scanWebAuthnCredential(row RowScanner) (*spec.WebAuthnCredential, error) {
 	var c spec.WebAuthnCredential
 	var signCount int64
 	err := row.Scan(&c.CredentialID, &c.UserID, &c.PublicKey, &signCount, &c.Transports,

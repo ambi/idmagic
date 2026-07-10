@@ -17,7 +17,7 @@ type WsFedRelyingPartyRepository struct{ Pool DB }
 const wsFedRelyingPartySelect = `SELECT tenant_id,wtrealm,display_name,reply_urls,audience,token_type,
 claim_policy,entra_profile,created_at,updated_at FROM wsfed_relying_parties`
 
-func scanWsFedRelyingParty(row rowScanner) (*spec.WsFedRelyingParty, error) {
+func scanWsFedRelyingParty(row RowScanner) (*spec.WsFedRelyingParty, error) {
 	var (
 		rp           spec.WsFedRelyingParty
 		replyURLs    []byte
