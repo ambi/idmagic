@@ -89,6 +89,10 @@ typecheck-ui:
 test-ui-unit:
     cd ui && bun run test:unit
 
+# Run UI unit tests with coverage.
+test-ui-cover:
+    cd ui && bun run test:unit:coverage
+
 # Build UI.
 build-ui:
     cd ui && bun run build
