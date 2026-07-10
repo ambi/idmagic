@@ -54,39 +54,57 @@ export function ResetPasswordPage({ csrfToken, token }: { csrfToken: string; tok
           </Alert>
         ) : null}
         {!success ? (
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="new_password">新しいパスワード</Label>
-                <div className="relative">
-                  <IconLock
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
-                  <Input
-                    id="new_password"
-                    name="new_password"
-                    type="password"
-                    className="pl-10"
-                    autoComplete="new-password"
-                    minLength={12}
-                    required
-                    autoFocus
-                    disabled={!token || submitting}
-                  />
-                </div>
-              </div>
-              <Button type="submit" size="lg" className="w-full" disabled={!token || submitting}>
-                {submitting ? '更新しています…' : 'パスワードを更新'}
-                <IconArrowRight size={18} aria-hidden="true" />
-              </Button>
-            </div>
-          </form>
+          <ResetPasswordFormPresentation
+            token={token}
+            submitting={submitting}
+            onSubmit={handleSubmit}
+          />
         ) : null}
         <a className="text-center text-sm font-medium text-blue-700 hover:underline" href="/login">
           ログインに戻る
         </a>
       </div>
     </AuthShell>
+  )
+}
+
+export function ResetPasswordFormPresentation({
+  token,
+  submitting,
+  onSubmit,
+}: {
+  token: string
+  submitting: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  return (
+    <form onSubmit={onSubmit}>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="new_password">新しいパスワード</Label>
+          <div className="relative">
+            <IconLock
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <Input
+              id="new_password"
+              name="new_password"
+              type="password"
+              className="pl-10"
+              autoComplete="new-password"
+              minLength={12}
+              required
+              autoFocus
+              disabled={!token || submitting}
+            />
+          </div>
+        </div>
+        <Button type="submit" size="lg" className="w-full" disabled={!token || submitting}>
+          {submitting ? '更新しています…' : 'パスワードを更新'}
+          <IconArrowRight size={18} aria-hidden="true" />
+        </Button>
+      </div>
+    </form>
   )
 }

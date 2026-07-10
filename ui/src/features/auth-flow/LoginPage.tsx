@@ -68,79 +68,12 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
           </Alert>
         ) : null}
 
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="username">ユーザー名</Label>
-              <div className="relative">
-                <IconAt
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <Input
-                  id="username"
-                  name="username"
-                  placeholder="例: your.name"
-                  className="pl-10"
-                  autoComplete="username"
-                  spellCheck={false}
-                  required
-                  autoFocus
-                  disabled={submitting}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">パスワード</Label>
-              <div className="relative">
-                <IconLock
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  placeholder="パスワードを入力"
-                  className="px-10"
-                  autoComplete="current-password"
-                  required
-                  disabled={submitting}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
-                  aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? (
-                    <IconEyeOff size={18} aria-hidden="true" />
-                  ) : (
-                    <IconEye size={18} aria-hidden="true" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
-              {submitting ? '確認しています…' : 'ログインして続行'}
-              <IconArrowRight size={18} aria-hidden="true" />
-            </Button>
-
-            <div className="flex justify-center">
-              <a
-                className="text-xs font-medium text-blue-700 hover:underline"
-                href="/forgot_password"
-              >
-                パスワードを忘れた場合
-              </a>
-            </div>
-          </div>
-        </form>
+        <LoginFormPresentation
+          submitting={submitting}
+          showPassword={showPassword}
+          onSubmit={handleSubmit}
+          onTogglePassword={() => setShowPassword((visible) => !visible)}
+        />
 
         <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
           <IconShieldLock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
@@ -150,5 +83,87 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
         </div>
       </div>
     </AuthShell>
+  )
+}
+
+export function LoginFormPresentation({
+  submitting,
+  showPassword,
+  onSubmit,
+  onTogglePassword,
+}: {
+  submitting: boolean
+  showPassword: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onTogglePassword: () => void
+}) {
+  return (
+    <form onSubmit={onSubmit}>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="username">ユーザー名</Label>
+          <div className="relative">
+            <IconAt
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <Input
+              id="username"
+              name="username"
+              placeholder="例: your.name"
+              className="pl-10"
+              autoComplete="username"
+              spellCheck={false}
+              required
+              autoFocus
+              disabled={submitting}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">パスワード</Label>
+          <div className="relative">
+            <IconLock
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              placeholder="パスワードを入力"
+              className="px-10"
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+            />
+            <button
+              type="button"
+              onClick={onTogglePassword}
+              className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+              aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? (
+                <IconEyeOff size={18} aria-hidden="true" />
+              ) : (
+                <IconEye size={18} aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
+          {submitting ? '確認しています…' : 'ログインして続行'}
+          <IconArrowRight size={18} aria-hidden="true" />
+        </Button>
+        <div className="flex justify-center">
+          <a className="text-xs font-medium text-blue-700 hover:underline" href="/forgot_password">
+            パスワードを忘れた場合
+          </a>
+        </div>
+      </div>
+    </form>
   )
 }

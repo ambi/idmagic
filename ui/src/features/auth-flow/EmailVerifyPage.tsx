@@ -36,26 +36,44 @@ export function EmailVerifyPage({ csrfToken, token }: { csrfToken: string; token
 
         {error ? <Alert variant="destructive">{error}</Alert> : null}
 
-        {state === 'done' ? (
-          <Alert variant="success" className="flex items-start gap-2">
-            <IconCircleCheck className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-            <span>
-              メールアドレスを確認しました。{' '}
-              <a href={tenantURL('/account')} className="font-medium underline">
-                アカウントへ戻る
-              </a>
-            </span>
-          </Alert>
-        ) : token ? (
-          <Button type="button" onClick={handleConfirm} disabled={state === 'submitting'}>
-            {state === 'submitting' ? '確認中…' : 'メールアドレスを確認する'}
-          </Button>
-        ) : (
-          <Alert variant="destructive">
-            確認リンクが正しくありません。メール内のリンクをもう一度開いてください。
-          </Alert>
-        )}
+        <EmailVerificationAction token={token} state={state} onConfirm={handleConfirm} />
       </div>
     </AuthShell>
+  )
+}
+
+export function EmailVerificationAction({
+  token,
+  state,
+  onConfirm,
+}: {
+  token: string
+  state: 'idle' | 'submitting' | 'done'
+  onConfirm: () => void
+}) {
+  if (state === 'done') {
+    return (
+      <Alert variant="success" className="flex items-start gap-2">
+        <IconCircleCheck className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
+        <span>
+          メールアドレスを確認しました。{' '}
+          <a href={tenantURL('/account')} className="font-medium underline">
+            アカウントへ戻る
+          </a>
+        </span>
+      </Alert>
+    )
+  }
+  if (!token) {
+    return (
+      <Alert variant="destructive">
+        確認リンクが正しくありません。メール内のリンクをもう一度開いてください。
+      </Alert>
+    )
+  }
+  return (
+    <Button type="button" onClick={onConfirm} disabled={state === 'submitting'}>
+      {state === 'submitting' ? '確認中…' : 'メールアドレスを確認する'}
+    </Button>
   )
 }

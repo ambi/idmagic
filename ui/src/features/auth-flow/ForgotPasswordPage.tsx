@@ -55,36 +55,55 @@ export function ForgotPasswordPage({ csrfToken }: { csrfToken: string }) {
             <p className="text-sm text-red-800">{error}</p>
           </Alert>
         ) : null}
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">メールアドレス</Label>
-              <div className="relative">
-                <IconAt
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  className="pl-10"
-                  autoComplete="email"
-                  required
-                  autoFocus
-                />
-              </div>
-            </div>
-            <Button type="submit" size="lg" className="w-full" disabled={submitting || submitted}>
-              {submitting ? '送信しています…' : 'リセットリンクを送信'}
-              <IconArrowRight size={18} aria-hidden="true" />
-            </Button>
-          </div>
-        </form>
+        <ForgotPasswordFormPresentation
+          submitting={submitting}
+          submitted={submitted}
+          onSubmit={handleSubmit}
+        />
         <a className="text-center text-sm font-medium text-blue-700 hover:underline" href="/login">
           ログインに戻る
         </a>
       </div>
     </AuthShell>
+  )
+}
+
+export function ForgotPasswordFormPresentation({
+  submitting,
+  submitted,
+  onSubmit,
+}: {
+  submitting: boolean
+  submitted: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  return (
+    <form onSubmit={onSubmit}>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">メールアドレス</Label>
+          <div className="relative">
+            <IconAt
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              className="pl-10"
+              autoComplete="email"
+              required
+              autoFocus
+              disabled={submitting || submitted}
+            />
+          </div>
+        </div>
+        <Button type="submit" size="lg" className="w-full" disabled={submitting || submitted}>
+          {submitting ? '送信しています…' : 'リセットリンクを送信'}
+          <IconArrowRight size={18} aria-hidden="true" />
+        </Button>
+      </div>
+    </form>
   )
 }

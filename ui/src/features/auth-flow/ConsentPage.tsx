@@ -166,34 +166,48 @@ export function ConsentPage({
           <p>許可は組織のポリシーに従って保存され、後から管理者またはアプリ側で取り消せます。</p>
         </div>
 
-        {error ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
-            {error}
-          </p>
-        ) : null}
-
-        <div className="flex flex-col gap-2.5">
-          <Button
-            type="button"
-            size="lg"
-            disabled={submitting}
-            onClick={() => handleConsent('allow')}
-          >
-            {submitting ? '処理しています…' : '許可して続行'}
-            <IconArrowRight size={18} aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            size="lg"
-            variant="ghost"
-            disabled={submitting}
-            onClick={() => handleConsent('deny')}
-          >
-            <IconX size={17} aria-hidden="true" />
-            許可しない
-          </Button>
-        </div>
+        <ConsentActionsPresentation
+          error={error}
+          submitting={submitting}
+          onConsent={handleConsent}
+        />
       </div>
     </AuthShell>
+  )
+}
+
+export function ConsentActionsPresentation({
+  error,
+  submitting,
+  onConsent,
+}: {
+  error: string
+  submitting: boolean
+  onConsent: (action: 'allow' | 'deny') => void
+}) {
+  return (
+    <>
+      {error ? (
+        <p role="alert" className="text-sm font-medium text-red-700">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex flex-col gap-2.5">
+        <Button type="button" size="lg" disabled={submitting} onClick={() => onConsent('allow')}>
+          {submitting ? '処理しています…' : '許可して続行'}
+          <IconArrowRight size={18} aria-hidden="true" />
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          variant="ghost"
+          disabled={submitting}
+          onClick={() => onConsent('deny')}
+        >
+          <IconX size={17} aria-hidden="true" />
+          許可しない
+        </Button>
+      </div>
+    </>
   )
 }

@@ -30,6 +30,11 @@ const methodLabels: Record<SecondFactorMethod, string> = {
   recovery_code: 'リカバリコード',
 }
 
+export function availableSecondFactorMethods(methods?: string[]): SecondFactorMethod[] {
+  const available = methodOrder.filter((method) => (methods ?? ['totp']).includes(method))
+  return available.length > 0 ? available : ['totp']
+}
+
 // TotpPage は password 認証後の第二要素ステップ。利用できる method (認証アプリ / パスキー /
 // リカバリコード) を選択して検証する (wi-26 / ADR-087)。
 export function TotpPage({
@@ -41,8 +46,7 @@ export function TotpPage({
   returnTo?: string
   secondFactorMethods?: string[]
 }) {
-  const available = methodOrder.filter((m) => (secondFactorMethods ?? ['totp']).includes(m))
-  const methods = available.length > 0 ? available : (['totp'] as SecondFactorMethod[])
+  const methods = availableSecondFactorMethods(secondFactorMethods)
   const [method, setMethod] = useState<SecondFactorMethod>(methods[0])
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
