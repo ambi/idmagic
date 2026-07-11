@@ -1,7 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
-import { AccountEmailsPresentation } from './AccountEmailsPage'
+import { AccountEmailsPage, AccountEmailsPresentation } from './AccountEmailsPage'
+
+const response = (status: number, body: unknown = {}) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: vi.fn().mockResolvedValue(body),
+})
 
 describe('AccountEmailsPresentation', () => {
   const baseProps = {
@@ -76,5 +82,60 @@ describe('AccountEmailsPresentation', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
     expect(onCancelEdit).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('AccountEmailsPage', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  async function startEditingAndSubmit(newEmail = 'new@example.com') {
+    await renderWithRouter(
+      <AccountEmailsPage csrfToken="csrf" email="taro@example.com" emailVerified isAdmin={false} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '変更' }))
+    fireEvent.change(screen.getByLabelText('新しいメールアドレス'), {
+      target: { value: newEmail },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '確認メールを送信' }))
+  }
+
+  it('requests an email change and shows the confirmation notice', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    await startEditingAndSubmit()
+
+    expect(await screen.findByText(/確認メールを送信しました/)).toBeInTheDocument()
+    expect(screen.getByText('new@example.com')).toBeInTheDocument()
+  })
+
+  it('shows an error message when the request fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(400, { message: 'すでに使用されています' })),
+    )
+    await startEditingAndSubmit()
+
+    expect(await screen.findByText('すでに使用されています')).toBeInTheDocument()
+  })
+
+  it('keeps the form open without an error when step-up re-authentication is cancelled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/step_up/start')) {
+          return Promise.resolve(response(200, { methods: ['password'] }))
+        }
+        return Promise.resolve(
+          response(403, { message: '再認証が必要です', error: 'step_up_required' }),
+        )
+      }),
+    )
+    await startEditingAndSubmit()
+
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'キャンセル' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.queryByText(/確認メールを送信しました/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

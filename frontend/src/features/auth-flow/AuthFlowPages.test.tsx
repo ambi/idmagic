@@ -4,6 +4,7 @@ import { ForgotPasswordPage } from './ForgotPasswordPage'
 import { LoginPage } from './LoginPage'
 import { ResetPasswordPage } from './ResetPasswordPage'
 import { ConsentPage } from './ConsentPage'
+import { DevicePage } from './DevicePage'
 import { EmailVerifyPage } from './EmailVerifyPage'
 import { TotpPage } from './TotpPage'
 
@@ -11,6 +12,19 @@ const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
   json: vi.fn().mockResolvedValue(body),
+})
+
+const assertionCredential = () => ({
+  id: 'credential',
+  rawId: new Uint8Array([1, 2, 3]).buffer,
+  type: 'public-key',
+  getClientExtensionResults: () => ({}),
+  response: {
+    authenticatorData: new Uint8Array([1]).buffer,
+    clientDataJSON: new Uint8Array([2]).buffer,
+    signature: new Uint8Array([3]).buffer,
+    userHandle: null,
+  },
 })
 
 describe('auth-flow pages', () => {
@@ -118,6 +132,16 @@ describe('auth-flow pages', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('許可できません')
   })
 
+  it('also exposes a failure when allowing consent fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(403, { message: '許可を保存できませんでした' })),
+    )
+    render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)
+    fireEvent.click(screen.getByRole('button', { name: '許可して続行' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('許可を保存できませんでした')
+  })
+
   it('confirms an email change and retains an actionable error on failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
     const { unmount } = render(<EmailVerifyPage csrfToken="csrf" token="verification-token" />)
@@ -147,6 +171,138 @@ describe('auth-flow pages', () => {
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/auth/recovery-code'),
       expect.objectContaining({ body: expect.stringContaining('recovery-code') }),
+    )
+  })
+
+  it('submits a TOTP code and continues the browser flow', async () => {
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)
+    fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: 'コードを確認' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/totp'),
+      expect.objectContaining({ body: expect.stringContaining('123456') }),
+    )
+  })
+
+  it('shows a returned error for an invalid TOTP code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(400, { message: 'コードが正しくありません' })),
+    )
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)
+    fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'コードを確認' }))
+
+    expect(await screen.findByText('コードが正しくありません')).toBeInTheDocument()
+  })
+
+  it('shows a returned error for an invalid recovery code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(400, { message: 'リカバリコードが正しくありません' })),
+    )
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'recovery_code']} />)
+    fireEvent.click(screen.getByRole('button', { name: 'リカバリコード' }))
+    fireEvent.change(screen.getByLabelText('リカバリコード'), { target: { value: 'wrong-code' } })
+    fireEvent.click(screen.getByRole('button', { name: 'リカバリコードを確認' }))
+
+    expect(await screen.findByText('リカバリコードが正しくありません')).toBeInTheDocument()
+  })
+
+  it('authenticates with a passkey and continues the browser flow', async () => {
+    vi.stubGlobal('navigator', {
+      credentials: { get: vi.fn().mockResolvedValue(assertionCredential()) },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/webauthn/challenge')) {
+          return Promise.resolve(response(200, { publicKey: { challenge: 'Y2hhbGxlbmdl' } }))
+        }
+        return Promise.resolve(response(200, { next: '/continue' }))
+      }),
+    )
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'webauthn']} />)
+    fireEvent.click(screen.getByRole('button', { name: 'パスキー' }))
+    fireEvent.click(screen.getByRole('button', { name: 'パスキーで認証' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+  })
+
+  it('shows a cancellation message when the passkey prompt is dismissed', async () => {
+    vi.stubGlobal('navigator', {
+      credentials: {
+        get: vi.fn().mockRejectedValue(new DOMException('cancelled', 'NotAllowedError')),
+      },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(200, { publicKey: { challenge: 'Y2hhbGxlbmdl' } })),
+    )
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'webauthn']} />)
+    fireEvent.click(screen.getByRole('button', { name: 'パスキー' }))
+    fireEvent.click(screen.getByRole('button', { name: 'パスキーで認証' }))
+
+    expect(await screen.findByText('パスキー認証がキャンセルされました。')).toBeInTheDocument()
+  })
+})
+
+describe('DevicePage', () => {
+  const originalLocation = window.location
+
+  beforeEach(() => {
+    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('allows a device connection and continues the browser flow', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { next: '/continue' })))
+    render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
+    fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/device'),
+      expect.objectContaining({ body: expect.stringContaining('"action":"allow"') }),
+    )
+  })
+
+  it('denies a device connection and continues the browser flow', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { next: '/continue' })))
+    render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
+    fireEvent.click(screen.getByRole('button', { name: '接続を拒否' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/device'),
+      expect.objectContaining({ body: expect.stringContaining('"action":"deny"') }),
+    )
+  })
+
+  it('shows an error when the device request cannot be processed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(400, { message: 'コードが見つかりません' })),
+    )
+    render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
+    fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('コードが見つかりません')
+  })
+
+  it('redirects to the status page when re-authentication is required', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(403, { error: 'authentication_required' })),
+    )
+    render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
+    fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
+
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith('/status?state=authentication-required'),
     )
   })
 })

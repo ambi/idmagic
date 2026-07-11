@@ -1,11 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import {
+  AccountApplicationsPage,
   AccountApplicationsPresentation,
   formatAccountConsentDate,
 } from './AccountApplicationsPage'
 import type { AccountConsent } from '../../types'
+
+const response = (status: number, body: unknown = {}) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: vi.fn().mockResolvedValue(body),
+})
 
 describe('formatAccountConsentDate', () => {
   it('formats a valid ISO date string', () => {
@@ -64,5 +71,56 @@ describe('AccountApplicationsPresentation', () => {
   it('shows an error message when present', async () => {
     await renderWithRouter(<AccountApplicationsPresentation {...baseProps} error="失敗しました" />)
     expect(screen.getByText('失敗しました')).toBeInTheDocument()
+  })
+})
+
+describe('AccountApplicationsPage', () => {
+  const consent: AccountConsent = {
+    client_id: 'client-1',
+    client_name: 'Example App',
+    scopes: ['openid', 'profile'],
+    state: 'active',
+    granted_at: '2026-01-01T00:00:00Z',
+    expires_at: '2027-01-01T00:00:00Z',
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('revokes access and removes the application with a notice', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    await renderWithRouter(
+      <AccountApplicationsPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        consents={[consent]}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /アクセスを取り消す/ }))
+
+    expect(await screen.findByText(/アクセスを取り消しました/)).toBeInTheDocument()
+    expect(screen.queryByText('Example App')).not.toBeInTheDocument()
+  })
+
+  it('shows an error message when revoking fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
+    )
+    await renderWithRouter(
+      <AccountApplicationsPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        consents={[consent]}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /アクセスを取り消す/ }))
+
+    expect(await screen.findByText('一時的に利用できません')).toBeInTheDocument()
+    expect(screen.getByText('Example App')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /アクセスを取り消す/ })).toBeEnabled(),
+    )
   })
 })

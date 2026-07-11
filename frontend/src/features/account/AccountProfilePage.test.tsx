@@ -1,13 +1,20 @@
-import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import {
+  AccountProfileEditPage,
   AccountProfilePresentation,
   draftFromProfile,
   textToValue,
   valueToText,
 } from './AccountProfilePage'
 import type { AccountProfile, AttributeValue, UserAttributeDef } from '../../types'
+
+const response = (status: number, body: unknown = {}) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: vi.fn().mockResolvedValue(body),
+})
 
 const stringDef: UserAttributeDef = {
   key: 'nickname',
@@ -143,5 +150,57 @@ describe('AccountProfilePresentation', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /閉じる|dismiss/i }))
     expect(onDismissNotice).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('AccountProfileEditPage', () => {
+  const originalLocation = window.location
+  const profile: AccountProfile = {
+    sub: 'user-1',
+    preferred_username: 'taro',
+    name: 'Taro Yamada',
+    email: 'taro@example.com',
+    email_verified: true,
+    mfa_enrolled: false,
+    status: 'active',
+    attributes: {},
+    readable_attributes: [],
+    editable_attributes: [],
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('saves the profile and redirects with a success notice', async () => {
+    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, profile)))
+    await renderWithRouter(
+      <AccountProfileEditPage csrfToken="csrf" profile={profile} isAdmin={false} />,
+    )
+    fireEvent.change(screen.getByLabelText('表示名'), { target: { value: 'Jiro Yamada' } })
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith('/account/profile?notice=success'),
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/account/profile'),
+      expect.objectContaining({ body: expect.stringContaining('Jiro Yamada') }),
+    )
+  })
+
+  it('shows an error and keeps the form when saving fails', async () => {
+    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(400, { message: '表示名を保存できませんでした。' })),
+    )
+    await renderWithRouter(
+      <AccountProfileEditPage csrfToken="csrf" profile={profile} isAdmin={false} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    expect(await screen.findByText('表示名を保存できませんでした。')).toBeInTheDocument()
+    expect(window.location.assign).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: '保存' })).toBeEnabled()
   })
 })

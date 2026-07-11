@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { renderWithRouter } from '../../test/renderWithRouter'
 import {
+  AccountSecurityPage,
   PasskeyList,
   PasskeyRegisterForm,
   RecoveryCodesPanel,
@@ -9,10 +11,17 @@ import {
   formatAccountSecurityDateTime,
 } from './AccountSecurityPage'
 import type {
+  AccountSecurity,
   RecoveryCodeStatus,
   TotpEnrollmentStart,
   WebAuthnCredentialSummary,
 } from '../../types'
+
+const response = (status: number, body: unknown = {}) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: vi.fn().mockResolvedValue(body),
+})
 
 // isWebAuthnSupported() は window.PublicKeyCredential の有無で判定するため、
 // jsdom (未対応) でも「対応ブラウザ」の分岐をテストできるよう一時的に定義する。
@@ -229,5 +238,98 @@ describe('RecoveryCodesPanel', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'すべて失効' }))
     expect(onRevoke).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('AccountSecurityPage', () => {
+  const security: AccountSecurity = {
+    totp_enrolled: false,
+    factors: [],
+    webauthn_credentials: [],
+    recovery_codes: { total: 0, remaining: 0 },
+  }
+  const enrollment: TotpEnrollmentStart = {
+    secret: 'SECRET123',
+    otpauth_uri: 'otpauth://totp/test',
+    account_name: 'taro',
+    issuer: 'idmagic',
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('enrolls a TOTP factor and shows a success notice', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/mfa/totp/enroll/start'))
+          return Promise.resolve(response(200, enrollment))
+        if (url.includes('/mfa/totp/enroll/confirm')) return Promise.resolve(response(204))
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage csrfToken="csrf" username="taro" isAdmin={false} security={security} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '認証アプリを設定' }))
+    fireEvent.change(await screen.findByLabelText('認証アプリに表示された 6 桁コード'), {
+      target: { value: '123456' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '登録を完了' }))
+
+    expect(await screen.findByText(/認証アプリを登録しました/)).toBeInTheDocument()
+    expect(screen.getByText('設定済み')).toBeInTheDocument()
+  })
+
+  it('shows an error when confirming the TOTP code fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/mfa/totp/enroll/start'))
+          return Promise.resolve(response(200, enrollment))
+        if (url.includes('/mfa/totp/enroll/confirm')) {
+          return Promise.resolve(response(400, { message: 'コードが正しくありません' }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage csrfToken="csrf" username="taro" isAdmin={false} security={security} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '認証アプリを設定' }))
+    fireEvent.change(await screen.findByLabelText('認証アプリに表示された 6 桁コード'), {
+      target: { value: '000000' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '登録を完了' }))
+
+    expect(await screen.findByText('コードが正しくありません')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '登録を完了' })).toBeInTheDocument()
+  })
+
+  it('keeps existing recovery codes when step-up re-authentication is cancelled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/step_up/start')) {
+          return Promise.resolve(response(200, { methods: ['password'] }))
+        }
+        if (url.includes('/mfa/recovery-codes/generate')) {
+          return Promise.resolve(
+            response(403, { message: '再認証が必要です', error: 'step_up_required' }),
+          )
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage csrfToken="csrf" username="taro" isAdmin={false} security={security} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'リカバリコードを生成' }))
+
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'キャンセル' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'リカバリコードを生成' })).toBeInTheDocument()
   })
 })
