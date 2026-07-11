@@ -22,9 +22,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	wsfederationhttp "github.com/ambi/idmagic/backend/wsfederation/adapters/http"
+	"github.com/ambi/idmagic/backend/wsfederation"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
@@ -67,7 +66,7 @@ type Deps struct {
 	SentinelPasswordHash       string
 	SessionManager             *authusecases.SessionManager
 	AuthnResolver              authdomain.AuthenticationContextResolver
-	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
+	WsFederation               wsfederation.Module
 	SamlSPRepo                 samlports.SamlServiceProviderRepository
 	FederationSigner           *samltoken.Signer
 	Application                application.Module
@@ -250,18 +249,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:       d.UserRepo,
 	})
 
-	wsfederationhttp.RegisterRoutes(g, wsfederationhttp.Deps{
-		Deps:                       d.Deps,
-		Authenticator:              authenticator,
-		ApplicationGate:            appGate,
-		WsFedRPRepo:                d.WsFedRPRepo,
-		UserRepo:                   d.UserRepo,
-		FederationSigner:           d.FederationSigner,
-		ClientAssertionReplayStore: d.OAuth2.ClientAssertionReplayStore,
-		LoginAttemptThrottle:       d.LoginAttemptThrottle,
-		PasswordHasher:             d.PasswordHasher,
-		SentinelPasswordHash:       d.SentinelPasswordHash,
-	})
+	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.UserRepo, d.FederationSigner,
+		d.OAuth2.ClientAssertionReplayStore, d.LoginAttemptThrottle, d.PasswordHasher, d.SentinelPasswordHash)
 
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
 		Deps:             d.Deps,
@@ -272,7 +261,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:         d.UserRepo,
 	})
 
-	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFedRPRepo, d.SamlSPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.SamlSPRepo)
 
 	scimUsecasesInst := scimusecases.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{

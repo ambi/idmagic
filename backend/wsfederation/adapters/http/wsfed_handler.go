@@ -21,8 +21,8 @@ import (
 const assertionLifetime = 5 * time.Minute
 
 // samlVersion は RP の token type を samltoken の SAML バージョンへ写す。
-func samlVersion(t spec.WsFedTokenType) samltoken.SAMLVersion {
-	if t == spec.TokenTypeSAML20 {
+func samlVersion(t feddomain.WsFedTokenType) samltoken.SAMLVersion {
+	if t == feddomain.TokenTypeSAML20 {
 		return samltoken.SAML20
 	}
 	return samltoken.SAML11
@@ -104,7 +104,7 @@ func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) e
 		return c.String(http.StatusInternalServerError, "form render failed")
 	}
 
-	d.emit(&spec.WsFedSignInIssued{At: o.Now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: o.Authn.UserID})
+	d.emit(&feddomain.WsFedSignInIssued{At: o.Now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: o.Authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }
@@ -119,7 +119,7 @@ func (d Deps) handleWsFedSignOut(c *echo.Context, req feddomain.WsFedSignInReque
 		_ = d.SessionManager.Revoke(ctx, c.Request().Header.Get("Cookie"))
 	}
 	d.clearSessionCookie(c)
-	d.emit(&spec.WsFedSignOut{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm})
+	d.emit(&feddomain.WsFedSignOut{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm})
 
 	if req.Wa == feddomain.WaSignOut {
 		if target := d.signOutService().ResolveReply(ctx, tenantID, req); target != "" {

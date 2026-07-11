@@ -62,7 +62,7 @@ func Run() error {
 		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.UserRepo, deps.MfaFactorRepo, deps.PasswordHistoryRepo, deps.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
 			return fmt.Errorf("seed demo data: %w", err)
 		}
-		if err := seedWsFedRelyingParty(ctx, deps.WsFedRPRepo); err != nil {
+		if err := seedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
 			return fmt.Errorf("seed federation relying party: %w", err)
 		}
 		if err := seedSamlServiceProvider(ctx, deps.SamlSPRepo); err != nil {
@@ -206,7 +206,7 @@ func Run() error {
 		SentinelPasswordHash:    sentinelPasswordHash,
 		SessionManager:          sessionManager,
 		AuthnResolver:           sessionManager,
-		WsFedRPRepo:             deps.WsFedRPRepo,
+		WsFederation:            deps.WsFederation,
 		SamlSPRepo:              deps.SamlSPRepo,
 		FederationSigner:        federationSigner,
 		Application:             deps.Application,

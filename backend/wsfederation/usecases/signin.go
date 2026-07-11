@@ -71,7 +71,7 @@ type SignInOutcome struct {
 	Validated   feddomain.ValidatedSignIn
 	ClaimResult feddomain.ClaimIssuanceResult
 	AuthnMethod feddomain.AuthnMethodClass
-	TokenType   spec.WsFedTokenType
+	TokenType   feddomain.WsFedTokenType
 	Authn       *authdomain.AuthenticationContext
 	Now         time.Time
 }
@@ -91,7 +91,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	req := in.Request
 
 	if req.Wtrealm == "" {
-		s.emit(&spec.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Reason: "wtrealm is required"})
+		s.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Reason: "wtrealm is required"})
 		return SignInOutcome{Kind: SignInRejected, Message: "wtrealm is required", Status: 400}, nil
 	}
 
@@ -100,13 +100,13 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{}, err
 	}
 	if rp == nil {
-		s.emit(&spec.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: "unknown relying party"})
+		s.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: "unknown relying party"})
 		return SignInOutcome{Kind: SignInRejected, Message: "unknown relying party", Status: 400}, nil
 	}
 
 	validated, err := feddomain.ValidateSignIn(req, *rp)
 	if err != nil {
-		s.emit(&spec.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: err.Error()})
+		s.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: err.Error()})
 		//nolint:nilerr // 検証エラーは 400 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: err.Error(), Status: 400}, nil
 	}
@@ -143,7 +143,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		if decision.ApplicationID != "" {
 			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ProtocolBindingWsFed), Subject: authn.UserID, Reason: reason})
 		}
-		s.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
+		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
 		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil
 	}
 
@@ -154,20 +154,20 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	// wauth: 要求された認証方式を尊重する。満たせない方式 (統合 Windows 等) は拒否する。
 	authnMethod, err := feddomain.ResolveAuthnMethod(req.Wauth, authn.AMR)
 	if err != nil {
-		s.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: err.Error()})
+		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: err.Error()})
 		//nolint:nilerr // wauth 不適合は 400 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: err.Error(), Status: 400}, nil
 	}
 
 	attrs, err := feddomain.ApplyEntraProfile(feddomain.ResolveUserAttributes(*user), rp.EntraProfile)
 	if err != nil {
-		s.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "entra profile failed"})
+		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "entra profile failed"})
 		//nolint:nilerr // entra profile 失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: "entra profile failed", Status: 500}, nil
 	}
 	result, err := feddomain.IssueClaims(rp.ClaimPolicy, attrs)
 	if err != nil {
-		s.emit(&spec.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "claim issuance failed"})
+		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "claim issuance failed"})
 		//nolint:nilerr // claim 発行失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: "claim issuance failed", Status: 500}, nil
 	}

@@ -14,7 +14,7 @@ type WsTrustService struct{}
 
 // TokenRequest は認証・RP 解決を通過した後のトークン発行入力。
 type TokenRequest struct {
-	RP                 spec.WsFedRelyingParty
+	RP                 feddomain.WsFedRelyingParty
 	User               spec.User
 	RequestedTokenType string // RST の要求 token type (空なら RP 既定)。
 }
@@ -22,7 +22,7 @@ type TokenRequest struct {
 // TokenDecision はトークン発行判断の結果。RejectReason が非空なら発行拒否。
 type TokenDecision struct {
 	ClaimResult  feddomain.ClaimIssuanceResult
-	TokenType    spec.WsFedTokenType
+	TokenType    feddomain.WsFedTokenType
 	RejectReason string // 非空なら発行拒否 (WsTrustTokenRejected を発行し RejectStatus を返す)。
 	RejectStatus int
 }
@@ -40,10 +40,10 @@ func (WsTrustService) IssueToken(req TokenRequest) TokenDecision {
 	}
 	tokenType := req.RP.EffectiveTokenType()
 	if strings.TrimSpace(req.RequestedTokenType) != "" {
-		if req.RequestedTokenType != string(spec.TokenTypeSAML11) && req.RequestedTokenType != string(spec.TokenTypeSAML20) {
+		if req.RequestedTokenType != string(feddomain.TokenTypeSAML11) && req.RequestedTokenType != string(feddomain.TokenTypeSAML20) {
 			return TokenDecision{RejectReason: "unsupported token type", RejectStatus: 400}
 		}
-		tokenType = spec.WsFedTokenType(req.RequestedTokenType)
+		tokenType = feddomain.WsFedTokenType(req.RequestedTokenType)
 	}
 	return TokenDecision{ClaimResult: result, TokenType: tokenType}
 }

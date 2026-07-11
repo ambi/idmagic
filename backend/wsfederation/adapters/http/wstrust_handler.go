@@ -26,18 +26,18 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	}
 	rst, err := wstrust.ParseRST(body, now)
 	if err != nil {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, Reason: err.Error()})
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, Reason: err.Error()})
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	expectedTo := d.federationEndpoints(c).ActiveURL
 	if rst.To != expectedTo {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "To does not match active STS endpoint"})
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "To does not match active STS endpoint"})
 		return c.String(http.StatusBadRequest, "To does not match active STS endpoint")
 	}
 	if ok, err := d.recordWsTrustMessageID(c, rst.MessageID, now); err != nil {
 		return err
 	} else if !ok {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "replayed MessageID"})
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "replayed MessageID"})
 		return c.String(http.StatusBadRequest, "replayed MessageID")
 	}
 
@@ -46,12 +46,12 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		return err
 	}
 	if rp == nil {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unknown relying party"})
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unknown relying party"})
 		return c.String(http.StatusBadRequest, "unknown relying party")
 	}
 	user, err := d.authenticateWsTrustUser(c, rst.Username, rst.Password, now)
 	if err != nil {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: err.Error()})
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: err.Error()})
 		return c.String(http.StatusUnauthorized, "invalid credentials")
 	}
 
@@ -61,7 +61,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		RequestedTokenType: rst.TokenType,
 	})
 	if decision.RejectReason != "" {
-		d.emit(&spec.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
 		return c.String(decision.RejectStatus, decision.RejectReason)
 	}
 	result := decision.ClaimResult
@@ -85,7 +85,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "rstr build failed")
 	}
-	d.emit(&spec.WsTrustTokenIssued{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, UserID: user.ID})
+	d.emit(&feddomain.WsTrustTokenIssued{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, UserID: user.ID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.Blob(http.StatusOK, "application/soap+xml; charset=utf-8", out)
 }

@@ -89,13 +89,13 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	rp := &spec.WsFedRelyingParty{
+	rp := &feddomain.WsFedRelyingParty{
 		TenantID:     tenantID,
 		Wtrealm:      issuerURI,
 		DisplayName:  "Microsoft Entra federation: " + domain,
 		ReplyURLs:    []string{replyURL},
 		Audience:     issuerURI,
-		TokenType:    spec.TokenTypeSAML11,
+		TokenType:    feddomain.TokenTypeSAML11,
 		ClaimPolicy:  feddomain.BuildEntraClaimPolicy(),
 		EntraProfile: profile,
 		CreatedAt:    now,
@@ -111,7 +111,7 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err
 	}
-	d.emit(&spec.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})
+	d.emit(&feddomain.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})
 
 	return support.NoStoreJSON(c, status, map[string]any{
 		"profile":       rp.EntraProfile,

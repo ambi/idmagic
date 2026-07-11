@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-11
@@ -56,16 +56,17 @@ ClaimMapping の型と**混在**している。ClaimMapping はまだ独立 cont
 
 ## Tasks
 
-- [ ] T001 [Domain] `shared/spec/federation.go` から WsFederation 型のみを
+- [x] T001 [Domain] `shared/spec/federation.go` から WsFederation 型のみを
   `wsfederation/domain/` へ移設し参照更新。ClaimMapping 型は shared/spec に残置。
-- [ ] T002 [Kernel] wsfederation が他 context と共有する型を選別。
-- [ ] T003 [Persistence] wsfederation 固有 repo 実装を
+- [x] T002 [Kernel] wsfederation が他 context と共有する型を選別。ClaimMapping 型は
+  shared/spec に残し、新規 shared kernel は作らない。
+- [x] T003 [Persistence] wsfederation 固有 repo 実装を
   `wsfederation/adapters/persistence/{postgres,memory}` へ同居。
-- [ ] T004 [Persistence] wsfederation postgres 実装を sqlc 生成へ置換。
-- [ ] T005 [DI] `wsfederation/module.go` を新設し Module パターン化。
-- [ ] T006 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から wsfederation 分を撤去。
-- [ ] T007 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
-- [ ] T008 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
+- [x] T004 [Persistence] wsfederation postgres 実装を sqlc 生成へ置換。
+- [x] T005 [DI] `wsfederation/module.go` を新設し Module パターン化。
+- [x] T006 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から wsfederation 分を撤去。
+- [x] T007 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
+- [x] T008 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
 
 ## Verification
 
@@ -83,3 +84,26 @@ ClaimMapping の型と**混在**している。ClaimMapping はまだ独立 cont
   ClaimMapping との境界を誤ると意図せず ClaimMapping 側の参照を壊す可能性がある。
 - 軽減：分割前後で `grep` によりファイル内の型一覧を突合し、移動漏れ・誤移動がないことを
   確認する。ClaimMapping 型は名前を変えず shared/spec に残すことで参照側の破壊を避ける。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: WS-Federation 固有の relying party・token type・federation event を
+  `backend/wsfederation/domain/` へ移設し、ClaimMapping 型だけを `backend/shared/spec` に残置した。
+  memory / PostgreSQL repository を context 配下へ同居させ、PostgreSQL は 4 本の静的 sqlc
+  クエリへ置換した。`WsFederation.Module` が RP repository と route 登録を所有し、中央 Deps と
+  bootstrap は Module だけを配線する形にした。ARCHITECTURE.md と ADR-090 の実測も同期した。
+- **Affected Guarantees State**: 振る舞い、HTTP route、DB schema、公開 API、SCL 規範は不変。
+- **Verification Results**:
+  - `just yaml-check` / `just check-ids` — passed
+  - `just sqlc-generate` — passed（再実行後の生成差分なし）
+  - `just test-go` / `just verify-go` — passed（lint 0 issues、race test green）
+  - `just verify` — passed
+  - locality: `backend/wsfederation` の `shared/spec` 参照は ClaimMapping・User 等の共有型のみで、
+    WsFederation 固有型の参照は 0
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: ローカル開発環境
+  - 実行主体: Codex
+  - 対象ソース版: `main`（コミット前）
+  - 保存先: 外部成果物なし。検証結果は本記録に要約。

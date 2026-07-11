@@ -12,6 +12,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/wsfederation"
+	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/memory"
 )
 
 func assembleMemory() (*Dependencies, error) {
@@ -55,7 +57,7 @@ func assembleMemory() (*Dependencies, error) {
 		KeyStore:             selectKeyStore(oauthports.KeyStore(keyStore)),
 		TenantSaltStore:      crypto.NewInMemoryTenantSaltStore(),
 		AuthEventBucketStore: memory.NewAuthEventBucketStore(),
-		WsFedRPRepo:          memory.NewWsFedRelyingPartyRepository(),
+		WsFederation:         wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		SamlSPRepo:           memory.NewSamlServiceProviderRepository(),
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),

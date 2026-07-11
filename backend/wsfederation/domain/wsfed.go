@@ -14,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // WS-Federation の wa アクション値。
@@ -55,7 +53,7 @@ func (r WsFedSignInRequest) IsSignIn() bool { return r.Wa == WaSignIn }
 
 // ValidatedSignIn は検証を通った sign-in 要求の確定結果。
 type ValidatedSignIn struct {
-	RelyingParty spec.WsFedRelyingParty
+	RelyingParty WsFedRelyingParty
 	ReplyURL     string // 実際に POST する返信先 (許可集合内に確定済み)。
 	Wctx         string // 往復させる不透明コンテキスト。
 }
@@ -66,7 +64,7 @@ type ValidatedSignIn struct {
 //   - wtrealm は rp.Wtrealm と完全一致しなければならない。
 //   - wreply 指定時は rp.ReplyURLs の完全一致のみ受理する (open redirect 防止)。
 //   - wreply 省略時は rp.ReplyURLs の先頭を既定の返信先とする。
-func ValidateSignIn(req WsFedSignInRequest, rp spec.WsFedRelyingParty) (ValidatedSignIn, error) {
+func ValidateSignIn(req WsFedSignInRequest, rp WsFedRelyingParty) (ValidatedSignIn, error) {
 	if req.Wa != WaSignIn {
 		return ValidatedSignIn{}, fmt.Errorf("wsfed: unsupported wa %q", req.Wa)
 	}

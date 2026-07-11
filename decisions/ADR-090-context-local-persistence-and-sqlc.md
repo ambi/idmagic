@@ -114,6 +114,12 @@ event type・user・検索属性（eq / in / contains）・フリーテキスト
 動的クエリは audit 検索という最も可変性の高い候補でも少数であり、oauth2 context 全体の
 sqlc 継続判断を維持する。bob への切替条件である「動的クエリが支配的」は満たさない。
 
+### 実測値（wi-174、wsfederation context 横展開）
+
+WS-Federation relying party repository の 4 クエリ（取得、テナント一覧、upsert、delete）は
+すべて固定 SQL のため sqlc 静的生成へ移行でき、動的エスケープハッチは 0 件（100%）だった。
+この context に可変 WHERE を必要とする操作はなく、sqlc 継続採用の判断を維持する。
+
 ## 影響
 
 - Go import path: repository 実装が `idmagic/internal/shared/adapters/persistence/...` から

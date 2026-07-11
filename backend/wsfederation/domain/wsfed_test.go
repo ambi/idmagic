@@ -6,8 +6,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func sampleRP() spec.WsFedRelyingParty {
-	return spec.WsFedRelyingParty{
+func sampleRP() WsFedRelyingParty {
+	return WsFedRelyingParty{
 		TenantID:  spec.DefaultTenantID,
 		Wtrealm:   "urn:federation:MicrosoftOnline",
 		ReplyURLs: []string{"https://login.microsoftonline.com/login.srf", "https://account.activedirectory.windowsazure.com/"},

@@ -14,7 +14,7 @@ import (
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	"github.com/ambi/idmagic/backend/wsfederation"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
@@ -47,7 +47,7 @@ type Dependencies struct {
 	KeyStore                oauthports.KeyStore
 	TenantSaltStore         oauthports.TenantSaltStore
 	AuthEventBucketStore    authnports.AuthEventBucketStore
-	WsFedRPRepo             wsfederationports.WsFedRelyingPartyRepository
+	WsFederation            wsfederation.Module
 	SamlSPRepo              samlports.SamlServiceProviderRepository
 	Application             application.Module
 	Close                   func()

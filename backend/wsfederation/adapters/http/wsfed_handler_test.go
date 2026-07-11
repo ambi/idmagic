@@ -20,7 +20,10 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/wsfederation"
+	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
+	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -67,8 +70,8 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 
 	captured := &[]spec.DomainEvent{}
 
-	rpRepo := memory.NewWsFedRelyingPartyRepository()
-	rpRepo.Seed(&spec.WsFedRelyingParty{
+	rpRepo := wsfedmemory.NewWsFedRelyingPartyRepository()
+	rpRepo.Seed(&feddomain.WsFedRelyingParty{
 		Wtrealm:   "urn:idmagic:demo-rp",
 		ReplyURLs: []string{"https://rp.example/wsfed"},
 		ClaimPolicy: spec.ClaimMappingPolicy{
@@ -101,7 +104,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, WsFedRPRepo: rpRepo,
+		}, WsFederation: wsfederation.Module{RPRepo: rpRepo},
 		UserRepo:                   userRepo,
 		PasswordHasher:             hasher,
 		SentinelPasswordHash:       sentinel,
@@ -445,7 +448,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		Deps: support.Deps{
 			Issuer: "https://idp.example",
 			SCL:    spec.MustLoadSCL(),
-		}, WsFedRPRepo: memory.NewWsFedRelyingPartyRepository(),
+		}, WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		UserRepo:      userRepo,
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})

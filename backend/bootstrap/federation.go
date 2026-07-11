@@ -13,6 +13,7 @@ import (
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
+	"github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -45,7 +46,7 @@ func newDevFederationSigner() (*samltoken.Signer, error) {
 // seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
 func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository) error {
 	now := time.Now().UTC()
-	rp := &spec.WsFedRelyingParty{
+	rp := &domain.WsFedRelyingParty{
 		TenantID:    spec.DefaultTenantID,
 		Wtrealm:     "urn:idmagic:demo-rp",
 		DisplayName: "Demo WS-Federation RP",

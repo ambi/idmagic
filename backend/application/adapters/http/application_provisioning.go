@@ -18,6 +18,7 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -72,13 +73,13 @@ type oidcConfig struct {
 }
 
 type wsfedConfig struct {
-	Wtrealm      string                  `json:"wtrealm"`
-	ReplyURLs    []string                `json:"reply_urls"`
-	Audience     string                  `json:"audience"`
-	TokenType    spec.WsFedTokenType     `json:"token_type"`
-	NameIDFormat string                  `json:"name_id_format"`
-	NameIDSource string                  `json:"name_id_source"`
-	Rules        []spec.ClaimMappingRule `json:"rules"`
+	Wtrealm      string                   `json:"wtrealm"`
+	ReplyURLs    []string                 `json:"reply_urls"`
+	Audience     string                   `json:"audience"`
+	TokenType    feddomain.WsFedTokenType `json:"token_type"`
+	NameIDFormat string                   `json:"name_id_format"`
+	NameIDSource string                   `json:"name_id_source"`
+	Rules        []spec.ClaimMappingRule  `json:"rules"`
 }
 
 type samlConfig struct {
@@ -191,7 +192,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if strings.TrimSpace(req.Wtrealm) == "" || len(req.ReplyURLs) == 0 {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "wtrealm と reply URL を指定してください")
 		}
-		rp := &spec.WsFedRelyingParty{
+		rp := &feddomain.WsFedRelyingParty{
 			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
 			ClaimPolicy: spec.ClaimMappingPolicy{NameID: spec.NameIdConfiguration{
 				Format: nonEmpty(req.NameIDFormat, defaultNameIDFormat), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
@@ -358,12 +359,12 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 }
 
 type updateWsFedRequest struct {
-	ReplyURLs    *[]string                `json:"reply_urls"`
-	Audience     *string                  `json:"audience"`
-	TokenType    *spec.WsFedTokenType     `json:"token_type"`
-	NameIDFormat *string                  `json:"name_id_format"`
-	NameIDSource *string                  `json:"name_id_source"`
-	Rules        *[]spec.ClaimMappingRule `json:"rules"`
+	ReplyURLs    *[]string                 `json:"reply_urls"`
+	Audience     *string                   `json:"audience"`
+	TokenType    *feddomain.WsFedTokenType `json:"token_type"`
+	NameIDFormat *string                   `json:"name_id_format"`
+	NameIDSource *string                   `json:"name_id_source"`
+	Rules        *[]spec.ClaimMappingRule  `json:"rules"`
 }
 
 func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {

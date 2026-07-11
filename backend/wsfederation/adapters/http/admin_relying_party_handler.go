@@ -9,6 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -71,7 +72,7 @@ func (d Deps) handleUpsertRelyingParty(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	rp := &spec.WsFedRelyingParty{
+	rp := &feddomain.WsFedRelyingParty{
 		TenantID:    tenantID,
 		Wtrealm:     req.Wtrealm,
 		DisplayName: req.DisplayName,
