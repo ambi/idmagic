@@ -171,28 +171,6 @@ type EmailChangeToken struct {
 	ExpiresAt time.Time
 }
 
-type EventDelivery struct {
-	EventID     string
-	Status      string
-	Attempts    int32
-	LastError   pgtype.Text
-	DeliveredAt pgtype.Timestamptz
-	UpdatedAt   time.Time
-}
-
-type EventLog struct {
-	ID             string
-	TenantID       string
-	Type           string
-	Classification string
-	Actor          pgtype.Text
-	Subject        pgtype.Text
-	CorrelationID  string
-	OccurredAt     time.Time
-	CreatedAt      time.Time
-	Payload        []byte
-}
-
 type Group struct {
 	ID          string
 	TenantID    string
@@ -336,6 +314,33 @@ type Tenant struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DisabledAt  pgtype.Timestamptz
+}
+
+type TenantBranding struct {
+	TenantID         string
+	ProductName      pgtype.Text
+	LogoObjectKey    pgtype.Text
+	LogoUrl          pgtype.Text
+	FaviconObjectKey pgtype.Text
+	FaviconUrl       pgtype.Text
+	PrimaryColor     pgtype.Text
+	AccentColor      pgtype.Text
+	SupportUrl       pgtype.Text
+	LegalUrl         pgtype.Text
+	FooterText       pgtype.Text
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type TenantBrandingAsset struct {
+	TenantID    string
+	Kind        string
+	ObjectKey   string
+	ContentType string
+	SizeBytes   int32
+	Data        []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type TenantCorrelationSalt struct {
