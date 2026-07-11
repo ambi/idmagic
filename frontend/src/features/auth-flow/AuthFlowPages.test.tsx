@@ -74,6 +74,25 @@ describe('auth-flow pages', () => {
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
   })
 
+  it('renders configured footer link labels as text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(200, {
+          footer_link_1: {
+            label: '<img src=x onerror=alert(1)>',
+            url: 'https://help.example.com',
+          },
+        }),
+      ),
+    )
+    render(<LoginPage csrfToken="csrf" />)
+
+    const link = await screen.findByRole('link', { name: '<img src=x onerror=alert(1)>' })
+    expect(link).toHaveAttribute('href', 'https://help.example.com')
+    expect(link.querySelector('img')).toBeNull()
+  })
+
   it('shows only the generic reset-request confirmation after a successful submit', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
     render(<ForgotPasswordPage csrfToken="csrf" />)

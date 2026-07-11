@@ -27,6 +27,17 @@ export function brandingSupportURLError(value: string): string | null {
   return isHTTPSURL(value.trim()) ? null : 'https:// で始まる URL を指定してください。'
 }
 
+export function brandingFooterLinkError(label: string, url: string): string | null {
+  const trimmedLabel = label.trim()
+  const trimmedURL = url.trim()
+  if (!trimmedLabel && !trimmedURL) return null
+  if (!trimmedLabel) return 'リンクテキストを指定してください。'
+  if (trimmedLabel.length > 80) return 'リンクテキストは80文字以内で指定してください。'
+  return (
+    brandingSupportURLError(trimmedURL) ?? (trimmedURL ? null : 'HTTPS URL を指定してください。')
+  )
+}
+
 export function brandingColorError(value: string): string | null {
   if (!value.trim()) return null
   return isValidHexColor(value.trim()) ? null : '#rrggbb 形式の色コードを指定してください。'
@@ -37,8 +48,10 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
   const [productName, setProductName] = useState('')
   const [primaryColor, setPrimaryColor] = useState('')
   const [accentColor, setAccentColor] = useState('')
-  const [supportURL, setSupportURL] = useState('')
-  const [legalURL, setLegalURL] = useState('')
+  const [footerLink1Label, setFooterLink1Label] = useState('')
+  const [footerLink1URL, setFooterLink1URL] = useState('')
+  const [footerLink2Label, setFooterLink2Label] = useState('')
+  const [footerLink2URL, setFooterLink2URL] = useState('')
   const [footerText, setFooterText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -70,17 +83,19 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
     setProductName(next.product_name ?? '')
     setPrimaryColor(next.primary_color ?? '')
     setAccentColor(next.accent_color ?? '')
-    setSupportURL(next.support_url ?? '')
-    setLegalURL(next.legal_url ?? '')
+    setFooterLink1Label(next.footer_link_1?.label ?? '')
+    setFooterLink1URL(next.footer_link_1?.url ?? '')
+    setFooterLink2Label(next.footer_link_2?.label ?? '')
+    setFooterLink2URL(next.footer_link_2?.url ?? '')
     setFooterText(next.footer_text ?? '')
   }
 
   async function handleSave() {
-    const supportError = brandingSupportURLError(supportURL)
-    const legalError = brandingSupportURLError(legalURL)
+    const footerLink1Error = brandingFooterLinkError(footerLink1Label, footerLink1URL)
+    const footerLink2Error = brandingFooterLinkError(footerLink2Label, footerLink2URL)
     const primaryColorError = brandingColorError(primaryColor)
     const accentColorError = brandingColorError(accentColor)
-    const firstError = supportError ?? legalError ?? primaryColorError ?? accentColorError
+    const firstError = footerLink1Error ?? footerLink2Error ?? primaryColorError ?? accentColorError
     if (firstError) {
       setError(firstError)
       return
@@ -93,8 +108,8 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
         product_name: productName.trim(),
         primary_color: primaryColor.trim(),
         accent_color: accentColor.trim(),
-        support_url: supportURL.trim(),
-        legal_url: legalURL.trim(),
+        footer_link_1: { label: footerLink1Label.trim(), url: footerLink1URL.trim() },
+        footer_link_2: { label: footerLink2Label.trim(), url: footerLink2URL.trim() },
         footer_text: footerText.trim(),
       })
       applyBranding(next)
@@ -173,30 +188,20 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
               error={brandingColorError(accentColor)}
             />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="branding-support-url">サポート URL</Label>
-            <Input
-              id="branding-support-url"
-              value={supportURL}
-              onChange={(event) => setSupportURL(event.target.value)}
-              placeholder="https://support.example.com"
-            />
-            {brandingSupportURLError(supportURL) ? (
-              <p className="text-xs text-red-700">{brandingSupportURLError(supportURL)}</p>
-            ) : null}
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="branding-legal-url">法務リンク (利用規約 / プライバシー)</Label>
-            <Input
-              id="branding-legal-url"
-              value={legalURL}
-              onChange={(event) => setLegalURL(event.target.value)}
-              placeholder="https://example.com/legal"
-            />
-            {brandingSupportURLError(legalURL) ? (
-              <p className="text-xs text-red-700">{brandingSupportURLError(legalURL)}</p>
-            ) : null}
-          </div>
+          <FooterLinkFields
+            number={1}
+            label={footerLink1Label}
+            url={footerLink1URL}
+            onLabelChange={setFooterLink1Label}
+            onURLChange={setFooterLink1URL}
+          />
+          <FooterLinkFields
+            number={2}
+            label={footerLink2Label}
+            url={footerLink2URL}
+            onLabelChange={setFooterLink2Label}
+            onURLChange={setFooterLink2URL}
+          />
           <div className="grid gap-1.5">
             <Label htmlFor="branding-footer-text">フッターテキスト</Label>
             <Input
@@ -215,6 +220,47 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
         </div>
       </Card>
     </div>
+  )
+}
+
+function FooterLinkFields({
+  number,
+  label,
+  url,
+  onLabelChange,
+  onURLChange,
+}: {
+  number: 1 | 2
+  label: string
+  url: string
+  onLabelChange: (value: string) => void
+  onURLChange: (value: string) => void
+}) {
+  const error = brandingFooterLinkError(label, url)
+  return (
+    <fieldset className="grid gap-3 rounded-md border border-slate-200 p-3">
+      <legend className="px-1 text-sm font-medium text-slate-800">フッターリンク {number}</legend>
+      <div className="grid gap-1.5">
+        <Label htmlFor={`branding-footer-link-${number}-label`}>リンクテキスト</Label>
+        <Input
+          id={`branding-footer-link-${number}-label`}
+          value={label}
+          onChange={(event) => onLabelChange(event.target.value)}
+          placeholder="ヘルプ"
+          maxLength={80}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor={`branding-footer-link-${number}-url`}>HTTPS URL</Label>
+        <Input
+          id={`branding-footer-link-${number}-url`}
+          value={url}
+          onChange={(event) => onURLChange(event.target.value)}
+          placeholder="https://example.com/help"
+        />
+      </div>
+      {error ? <p className="text-xs text-red-700">{error}</p> : null}
+    </fieldset>
   )
 }
 

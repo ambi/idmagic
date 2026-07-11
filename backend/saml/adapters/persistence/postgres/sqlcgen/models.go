@@ -325,8 +325,10 @@ type TenantBranding struct {
 	FaviconUrl       pgtype.Text
 	PrimaryColor     pgtype.Text
 	AccentColor      pgtype.Text
-	SupportUrl       pgtype.Text
-	LegalUrl         pgtype.Text
+	FooterLink1Label pgtype.Text
+	FooterLink1Url   pgtype.Text
+	FooterLink2Label pgtype.Text
+	FooterLink2Url   pgtype.Text
 	FooterText       pgtype.Text
 	CreatedAt        time.Time
 	UpdatedAt        time.Time

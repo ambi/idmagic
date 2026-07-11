@@ -39,7 +39,7 @@ func TestTenantBrandingRepositorySaveAndFind(t *testing.T) {
 		TenantID:     tenant.ID,
 		ProductName:  "Acme",
 		PrimaryColor: "#0f172a",
-		SupportURL:   "https://support.example.com",
+		FooterLink1:  domain.TenantFooterLink{Label: "ヘルプ", URL: "https://support.example.com"},
 		FooterText:   "(c) Acme",
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -52,10 +52,10 @@ func TestTenantBrandingRepositorySaveAndFind(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
-	if got.ProductName != "Acme" || got.PrimaryColor != "#0f172a" || got.SupportURL != "https://support.example.com" {
+	if got.ProductName != "Acme" || got.PrimaryColor != "#0f172a" || got.FooterLink1.URL != "https://support.example.com" || got.FooterLink1.Label != "ヘルプ" {
 		t.Fatalf("branding not round-tripped: %+v", got)
 	}
-	if got.LogoURL != "" || got.LegalURL != "" {
+	if got.LogoURL != "" || got.FooterLink2.IsSet() {
 		t.Fatalf("expected unset fields to remain empty: %+v", got)
 	}
 }

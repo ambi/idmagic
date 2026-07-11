@@ -29,13 +29,13 @@ func TestUpdateBrandingPersistsAndClearsFields(t *testing.T) {
 	saved, err := UpdateBranding(ctx, repo, domain.DefaultTenantID, BrandingUpdateInput{
 		ProductName:  new("Acme"),
 		PrimaryColor: new("#0f172a"),
-		SupportURL:   new("https://support.example.com"),
+		FooterLink1:  &domain.TenantFooterLink{Label: "ヘルプ", URL: "https://support.example.com"},
 		FooterText:   new("(c) Acme"),
 	}, now)
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
 	}
-	if saved.ProductName != "Acme" || saved.PrimaryColor != "#0f172a" || saved.SupportURL != "https://support.example.com" {
+	if saved.ProductName != "Acme" || saved.PrimaryColor != "#0f172a" || saved.FooterLink1.URL != "https://support.example.com" || saved.FooterLink1.Label != "ヘルプ" {
 		t.Fatalf("unexpected saved branding: %#v", saved)
 	}
 	if !saved.IsConfigured() {
@@ -61,9 +61,18 @@ func TestUpdateBrandingRejectsNonHTTPSLinks(t *testing.T) {
 	cases := []string{"javascript:alert(1)", "http://example.com", "data:text/html,<script>1</script>"}
 	for _, link := range cases {
 		if _, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{
-			SupportURL: new(link),
+			FooterLink1: &domain.TenantFooterLink{Label: "ヘルプ", URL: link},
 		}, time.Now().UTC()); !errors.Is(err, ErrInvalidBranding) {
 			t.Fatalf("link %q: expected ErrInvalidBranding, got %v", link, err)
+		}
+	}
+}
+
+func TestUpdateBrandingRejectsIncompleteFooterLinks(t *testing.T) {
+	repo := tenancymemory.NewTenantBrandingRepository()
+	for _, link := range []domain.TenantFooterLink{{Label: "ヘルプ"}, {URL: "https://help.example.com"}} {
+		if _, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{FooterLink1: &link}, time.Now().UTC()); !errors.Is(err, ErrInvalidBranding) {
+			t.Fatalf("link %#v: expected ErrInvalidBranding, got %v", link, err)
 		}
 	}
 }

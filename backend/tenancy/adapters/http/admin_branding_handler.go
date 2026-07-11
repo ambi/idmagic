@@ -15,12 +15,12 @@ import (
 )
 
 type brandingUpdateRequest struct {
-	ProductName  *string `json:"product_name,omitempty"`
-	PrimaryColor *string `json:"primary_color,omitempty"`
-	AccentColor  *string `json:"accent_color,omitempty"`
-	SupportURL   *string `json:"support_url,omitempty"`
-	LegalURL     *string `json:"legal_url,omitempty"`
-	FooterText   *string `json:"footer_text,omitempty"`
+	ProductName  *string                  `json:"product_name,omitempty"`
+	PrimaryColor *string                  `json:"primary_color,omitempty"`
+	AccentColor  *string                  `json:"accent_color,omitempty"`
+	FooterLink1  *domain.TenantFooterLink `json:"footer_link_1,omitempty"`
+	FooterLink2  *domain.TenantFooterLink `json:"footer_link_2,omitempty"`
+	FooterText   *string                  `json:"footer_text,omitempty"`
 }
 
 func brandingChangedFields(input brandingUpdateRequest) []string {
@@ -34,11 +34,11 @@ func brandingChangedFields(input brandingUpdateRequest) []string {
 	if input.AccentColor != nil {
 		fields = append(fields, "accent_color")
 	}
-	if input.SupportURL != nil {
-		fields = append(fields, "support_url")
+	if input.FooterLink1 != nil {
+		fields = append(fields, "footer_link_1")
 	}
-	if input.LegalURL != nil {
-		fields = append(fields, "legal_url")
+	if input.FooterLink2 != nil {
+		fields = append(fields, "footer_link_2")
 	}
 	if input.FooterText != nil {
 		fields = append(fields, "footer_text")
@@ -80,8 +80,8 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 		ProductName:  input.ProductName,
 		PrimaryColor: input.PrimaryColor,
 		AccentColor:  input.AccentColor,
-		SupportURL:   input.SupportURL,
-		LegalURL:     input.LegalURL,
+		FooterLink1:  input.FooterLink1,
+		FooterLink2:  input.FooterLink2,
 		FooterText:   input.FooterText,
 	}, time.Now().UTC())
 	if err != nil {

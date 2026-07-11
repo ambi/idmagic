@@ -16,22 +16,30 @@ import (
 // 安全な projection (SCL TenantBrandingResponse の双子定義)。未設定フィールドは省略し、
 // クライアント側でシステム既定 (IdMagic) に解決する (ADR-096)。
 type BrandingResponse struct {
-	ProductName  string     `json:"product_name,omitempty"`
-	LogoURL      string     `json:"logo_url,omitempty"`
-	FaviconURL   string     `json:"favicon_url,omitempty"`
-	PrimaryColor string     `json:"primary_color,omitempty"`
-	AccentColor  string     `json:"accent_color,omitempty"`
-	SupportURL   string     `json:"support_url,omitempty"`
-	LegalURL     string     `json:"legal_url,omitempty"`
-	FooterText   string     `json:"footer_text,omitempty"`
-	UpdatedAt    *time.Time `json:"updated_at,omitempty"`
+	ProductName  string                   `json:"product_name,omitempty"`
+	LogoURL      string                   `json:"logo_url,omitempty"`
+	FaviconURL   string                   `json:"favicon_url,omitempty"`
+	PrimaryColor string                   `json:"primary_color,omitempty"`
+	AccentColor  string                   `json:"accent_color,omitempty"`
+	FooterLink1  *domain.TenantFooterLink `json:"footer_link_1,omitempty"`
+	FooterLink2  *domain.TenantFooterLink `json:"footer_link_2,omitempty"`
+	FooterText   string                   `json:"footer_text,omitempty"`
+	UpdatedAt    *time.Time               `json:"updated_at,omitempty"`
 }
 
 func toBrandingResponse(b *domain.TenantBranding) BrandingResponse {
 	resp := BrandingResponse{
 		ProductName: b.ProductName, LogoURL: b.LogoURL, FaviconURL: b.FaviconURL,
 		PrimaryColor: b.PrimaryColor, AccentColor: b.AccentColor,
-		SupportURL: b.SupportURL, LegalURL: b.LegalURL, FooterText: b.FooterText,
+		FooterText: b.FooterText,
+	}
+	if b.FooterLink1.IsSet() {
+		link := b.FooterLink1
+		resp.FooterLink1 = &link
+	}
+	if b.FooterLink2.IsSet() {
+		link := b.FooterLink2
+		resp.FooterLink2 = &link
 	}
 	if b.IsConfigured() && !b.UpdatedAt.IsZero() {
 		updatedAt := b.UpdatedAt

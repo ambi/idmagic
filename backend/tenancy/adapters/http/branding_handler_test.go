@@ -105,7 +105,7 @@ func TestGetBrandingSupportsIfNoneMatch(t *testing.T) {
 
 func TestUpdateBrandingRejectsNonAdmin(t *testing.T) {
 	e, _, _, _ := newBrandingServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
-	resp := patchBranding(t, e, http.MethodPut, "/realms/acme/api/admin/tenant/branding", map[string]any{"product_name": "Acme"})
+	resp := patchBranding(t, e, map[string]any{"product_name": "Acme"})
 	if resp.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -113,10 +113,10 @@ func TestUpdateBrandingRejectsNonAdmin(t *testing.T) {
 
 func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	e, repo, _, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
-	resp := patchBranding(t, e, http.MethodPut, "/realms/acme/api/admin/tenant/branding", map[string]any{
+	resp := patchBranding(t, e, map[string]any{
 		"product_name":  "Acme",
 		"primary_color": "#0f172a",
-		"support_url":   "https://support.example.com",
+		"footer_link_1": map[string]any{"label": "ヘルプ", "url": "https://support.example.com"},
 		"footer_text":   "(c) Acme",
 	})
 	if resp.Code != http.StatusOK {
@@ -149,8 +149,8 @@ func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 
 func TestUpdateBrandingRejectsNonHTTPSSupportURL(t *testing.T) {
 	e, _, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
-	resp := patchBranding(t, e, http.MethodPut, "/realms/acme/api/admin/tenant/branding", map[string]any{
-		"support_url": "javascript:alert(1)",
+	resp := patchBranding(t, e, map[string]any{
+		"footer_link_1": map[string]any{"label": "ヘルプ", "url": "javascript:alert(1)"},
 	})
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
@@ -160,9 +160,19 @@ func TestUpdateBrandingRejectsNonHTTPSSupportURL(t *testing.T) {
 	}
 }
 
+func TestUpdateBrandingRejectsIncompleteFooterLink(t *testing.T) {
+	e, _, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
+	resp := patchBranding(t, e, map[string]any{
+		"footer_link_1": map[string]any{"label": "ヘルプ"},
+	})
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
 func TestUpdateBrandingAcceptsLowContrastColor(t *testing.T) {
 	e, repo, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
-	resp := patchBranding(t, e, http.MethodPut, "/realms/acme/api/admin/tenant/branding", map[string]any{
+	resp := patchBranding(t, e, map[string]any{
 		"primary_color": "#eeeeee",
 	})
 	if resp.Code != http.StatusOK {
@@ -220,14 +230,15 @@ func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 	}
 }
 
-func patchBranding(t *testing.T, e *echo.Echo, method, path string, body any) *httptest.ResponseRecorder {
+func patchBranding(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecorder {
 	t.Helper()
-	csrf, cookie := passwordResetContextCSRF(t, e, tenantPrefix(path)+"/api/auth/password_reset_context")
+	const path = "/realms/acme/api/admin/tenant/branding"
+	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password_reset_context")
 	payload, err := json.Marshal(body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(method, path, bytes.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)

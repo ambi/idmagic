@@ -24,10 +24,9 @@ export function AuthShell({
   aside = true,
 }: AuthShellProps) {
   const branding = useTenantBranding()
-  const footerLinks = [
-    branding.support_url ? { label: 'サポート', href: branding.support_url } : null,
-    branding.legal_url ? { label: '利用規約・プライバシー', href: branding.legal_url } : null,
-  ].filter((link): link is { label: string; href: string } => link !== null)
+  const footerLinks = [branding.footer_link_1, branding.footer_link_2].filter(
+    (link): link is { label: string; url: string } => Boolean(link?.label && link.url),
+  )
 
   return (
     <div className="auth-background" style={tenantBrandStyle(branding)}>
@@ -96,8 +95,8 @@ export function AuthShell({
               </span>
               {footerLinks.map((link) => (
                 <a
-                  key={link.href}
-                  href={link.href}
+                  key={`${link.label}:${link.url}`}
+                  href={link.url}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="font-medium text-blue-700 hover:underline"

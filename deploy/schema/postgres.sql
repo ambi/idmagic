@@ -92,8 +92,10 @@ CREATE TABLE tenant_brandings (
     favicon_url TEXT,
     primary_color TEXT,
     accent_color TEXT,
-    support_url TEXT,
-    legal_url TEXT,
+    footer_link_1_label TEXT,
+    footer_link_1_url TEXT,
+    footer_link_2_label TEXT,
+    footer_link_2_url TEXT,
     footer_text TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -101,8 +103,12 @@ CREATE TABLE tenant_brandings (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     CONSTRAINT tenant_brandings_primary_color_format CHECK (primary_color IS NULL OR primary_color ~ '^#[0-9a-fA-F]{6}$'),
     CONSTRAINT tenant_brandings_accent_color_format CHECK (accent_color IS NULL OR accent_color ~ '^#[0-9a-fA-F]{6}$'),
-    CONSTRAINT tenant_brandings_support_url_format CHECK (support_url IS NULL OR support_url ~ '^https://'),
-    CONSTRAINT tenant_brandings_legal_url_format CHECK (legal_url IS NULL OR legal_url ~ '^https://')
+    CONSTRAINT tenant_brandings_footer_link_1_complete CHECK ((footer_link_1_label IS NULL) = (footer_link_1_url IS NULL)),
+    CONSTRAINT tenant_brandings_footer_link_2_complete CHECK ((footer_link_2_label IS NULL) = (footer_link_2_url IS NULL)),
+    CONSTRAINT tenant_brandings_footer_link_1_label_length CHECK (footer_link_1_label IS NULL OR char_length(footer_link_1_label) <= 80),
+    CONSTRAINT tenant_brandings_footer_link_2_label_length CHECK (footer_link_2_label IS NULL OR char_length(footer_link_2_label) <= 80),
+    CONSTRAINT tenant_brandings_footer_link_1_url_format CHECK (footer_link_1_url IS NULL OR footer_link_1_url ~ '^https://'),
+    CONSTRAINT tenant_brandings_footer_link_2_url_format CHECK (footer_link_2_url IS NULL OR footer_link_2_url ~ '^https://')
 );
 
 -- tenant_branding_assets (wi-89, ADR-096): validated logo / favicon blobs for

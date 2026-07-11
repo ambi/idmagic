@@ -3,6 +3,7 @@
 package domain
 
 import (
+	"errors"
 	"regexp"
 	"time"
 
@@ -90,27 +91,42 @@ func (k TenantBrandingAssetKind) Valid() bool {
 	return k == TenantBrandingAssetKindLogo || k == TenantBrandingAssetKindFavicon
 }
 
+// TenantFooterLink は hosted UI footer に表示する、順序固定の安全な外部リンク。
+// ラベルは描画時にプレーンテキストとして扱い、URL は HTTPS だけを許可する。
+type TenantFooterLink struct {
+	Label string `json:"label,omitempty"`
+	URL   string `json:"url,omitempty"`
+}
+
+func (l TenantFooterLink) IsSet() bool { return l.Label != "" || l.URL != "" }
+
 // TenantBranding はテナント単位の hosted UI ブランディング設定 (wi-89, ADR-096)。SCL
 // `TenantBranding` の双子定義。Tenant aggregate には埋め込まず、TenantUserAttributeSchema
 // と同じ理由で独立 entity として持つ。全フィールドは空文字列 (ゼロ値) を「未設定」として扱う。
 type TenantBranding struct {
-	TenantID         string    `json:"tenant_id"`
-	ProductName      string    `json:"product_name,omitempty"`
-	LogoObjectKey    string    `json:"logo_object_key,omitempty"`
-	LogoURL          string    `json:"logo_url,omitempty"`
-	FaviconObjectKey string    `json:"favicon_object_key,omitempty"`
-	FaviconURL       string    `json:"favicon_url,omitempty"`
-	PrimaryColor     string    `json:"primary_color,omitempty"`
-	AccentColor      string    `json:"accent_color,omitempty"`
-	SupportURL       string    `json:"support_url,omitempty"`
-	LegalURL         string    `json:"legal_url,omitempty"`
-	FooterText       string    `json:"footer_text,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	TenantID         string           `json:"tenant_id"`
+	ProductName      string           `json:"product_name,omitempty"`
+	LogoObjectKey    string           `json:"logo_object_key,omitempty"`
+	LogoURL          string           `json:"logo_url,omitempty"`
+	FaviconObjectKey string           `json:"favicon_object_key,omitempty"`
+	FaviconURL       string           `json:"favicon_url,omitempty"`
+	PrimaryColor     string           `json:"primary_color,omitempty"`
+	AccentColor      string           `json:"accent_color,omitempty"`
+	FooterLink1      TenantFooterLink `json:"footer_link_1"`
+	FooterLink2      TenantFooterLink `json:"footer_link_2"`
+	FooterText       string           `json:"footer_text,omitempty"`
+	CreatedAt        time.Time        `json:"created_at"`
+	UpdatedAt        time.Time        `json:"updated_at"`
 }
 
 func (b TenantBranding) Validate() error {
-	return spec.Validate(tenantBrandingSchema, &b)
+	if err := spec.Validate(tenantBrandingSchema, &b); err != nil {
+		return err
+	}
+	if !validTenantFooterLink(b.FooterLink1) || !validTenantFooterLink(b.FooterLink2) {
+		return errors.New("footer links must be complete plaintext label and https URL pairs")
+	}
+	return nil
 }
 
 // IsConfigured は branding が presentational に意味のある値を 1 つでも持つかを返す。
@@ -118,8 +134,8 @@ func (b TenantBranding) Validate() error {
 // (ADR-096 決定 8)。
 func (b TenantBranding) IsConfigured() bool {
 	return b.ProductName != "" || b.LogoURL != "" || b.FaviconURL != "" ||
-		b.PrimaryColor != "" || b.AccentColor != "" || b.SupportURL != "" ||
-		b.LegalURL != "" || b.FooterText != ""
+		b.PrimaryColor != "" || b.AccentColor != "" || b.FooterLink1.IsSet() ||
+		b.FooterLink2.IsSet() || b.FooterText != ""
 }
 
 var (
@@ -154,18 +170,24 @@ var tenantBrandingSchema = z.Struct(z.Shape{
 		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingColor(*value) },
 		z.Message("accent_color must be #rrggbb"),
 	),
-	"SupportURL": z.String().Max(2048).TestFunc(
-		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingLink(*value) },
-		z.Message("support_url must use the https scheme"),
-	),
-	"LegalURL": z.String().Max(2048).TestFunc(
-		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingLink(*value) },
-		z.Message("legal_url must use the https scheme"),
-	),
-	"FooterText": z.String().Max(280),
-	"CreatedAt":  z.Time().Required(),
-	"UpdatedAt":  z.Time().Required(),
+	"FooterLink1": tenantFooterLinkSchema,
+	"FooterLink2": tenantFooterLinkSchema,
+	"FooterText":  z.String().Max(280),
+	"CreatedAt":   z.Time().Required(),
+	"UpdatedAt":   z.Time().Required(),
 })
+
+var tenantFooterLinkSchema = z.Struct(z.Shape{
+	"Label": z.String().Max(80),
+	"URL":   z.String().Max(2048),
+})
+
+func validTenantFooterLink(link TenantFooterLink) bool {
+	if !link.IsSet() {
+		return true
+	}
+	return len(link.Label) <= 80 && link.Label != "" && len(link.URL) <= 2048 && link.URL != "" && validTenantBrandingLink(link.URL)
+}
 
 // TenantBrandingAsset はテナントの branding ロゴ / favicon の保存済み blob (wi-89,
 // ADR-096)。ADR-073 の Application icon 保存パターンを再利用するが、専用テーブル・専用

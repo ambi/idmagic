@@ -243,6 +243,21 @@ models:
     values:
       - Logo
       - Favicon
+  TenantFooterLink:
+    kind: value_object
+    description: hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。
+    fields:
+      label:
+        type: String
+        constraints:
+          - max_length: 80
+        description: 利用者に表示するリンクテキスト。HTML / Markdown として解釈しない。
+      url:
+        type: String
+        constraints:
+          - max_length: 2048
+          - pattern: "^https://"
+        description: 遷移先。https scheme のみ許可する allowlist。
   TenantBranding:
     kind: entity
     description: "テナント単位の hosted UI ブランディング設定 (wi-89, ADR-096)。Tenant 集約には埋め込まず、\nTenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で\n独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら\n「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。\n色・リンク・テキストは限定トークンのみを受け付け、任意 CSS / HTML は構造的に受け付けない。\n"
@@ -285,20 +300,14 @@ models:
         constraints:
           - pattern: "^#[0-9a-fA-F]{6}$"
         description: "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
-      support_url:
-        type: String
+      footer_link_1:
+        type: TenantFooterLink
         optional: true
-        constraints:
-          - max_length: 2048
-          - pattern: "^https://"
-        description: サポート / ヘルプリンク。https scheme のみ許可する allowlist。
-      legal_url:
-        type: String
+        description: footer の先頭リンク。リンク順序は footer_link_1、footer_link_2 に固定する。
+      footer_link_2:
+        type: TenantFooterLink
         optional: true
-        constraints:
-          - max_length: 2048
-          - pattern: "^https://"
-        description: 利用規約 / プライバシー等の法務リンク。https scheme のみ許可する allowlist。
+        description: footer の二番目のリンク。リンク順序は footer_link_1、footer_link_2 に固定する。
       footer_text:
         type: String
         optional: true
@@ -329,11 +338,11 @@ models:
       accent_color:
         type: String
         optional: true
-      support_url:
-        type: String
+      footer_link_1:
+        type: TenantFooterLink
         optional: true
-      legal_url:
-        type: String
+      footer_link_2:
+        type: TenantFooterLink
         optional: true
       footer_text:
         type: String
@@ -355,11 +364,11 @@ models:
       accent_color:
         type: String
         optional: true
-      support_url:
-        type: String
+      footer_link_1:
+        type: TenantFooterLink
         optional: true
-      legal_url:
-        type: String
+      footer_link_2:
+        type: TenantFooterLink
         optional: true
       footer_text:
         type: String
@@ -699,7 +708,7 @@ interfaces:
         method: GET
         path: /api/branding
   UpdateTenantBranding:
-    description: "テナント内 admin が自身のテナントの branding (製品名 / 色 / サポートリンク / 法務リンク /\nフッターテキスト) を更新する。画像アセットは別 interface で扱う。色は `#rrggbb` 形式のみを\n検証し、コントラスト比を理由に拒否しない。リンクは https scheme のみを use case 側で検証し、\n満たさない値は拒否する。\n"
+    description: "テナント内 admin が自身のテナントの branding (製品名 / 色 / 順序固定の footer リンク /\nフッターテキスト) を更新する。画像アセットは別 interface で扱う。色は `#rrggbb` 形式のみを\n検証し、コントラスト比を理由に拒否しない。各 footer link は label と https URL の組で、どちらか\n一方だけの指定は拒否する。\n"
     input:
       request:
         type: TenantBrandingUpdateRequest
@@ -772,9 +781,9 @@ interfaces:
         path: "/tenant-branding-assets/{kind}/{object_key}"
 invariants:
   TenantBrandingSafeTokens:
-    description: "TenantBranding の色 / リンク / テキストは限定トークンのみを許容する。色は `#rrggbb`\n形式、リンクは https scheme のみ、テキストは長さ上限内のプレーンテキストのみを保存できる。\n色のコントラスト比は保存可否に用いず、配色の可読性はテナントが判断する。\n反例: 任意 CSS 宣言や `javascript:` リンク、非 https リンクが branding として保存される。\n"
+    description: "TenantBranding の色 / footer リンク / テキストは限定トークンのみを許容する。色は `#rrggbb`\n形式、各リンクはラベルと https URL の完全な組、テキストは長さ上限内のプレーンテキストのみを保存できる。\n色のコントラスト比は保存可否に用いず、配色の可読性はテナントが判断する。\n反例: 任意 CSS 宣言や HTML ラベル、`javascript:` リンク、非 https リンク、片側だけのリンクが branding として保存される。\n"
     target: TenantBranding
-    always: branding_persisted implies (colors_are_hex_tokens and links_https_only and text_within_length_limits)
+    always: branding_persisted implies (colors_are_hex_tokens and footer_links_are_complete_plaintext_https_pairs and text_within_length_limits)
   TenantBrandingSafeAssetServing:
     description: TenantBranding のロゴ / favicon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
     target: TenantBranding
@@ -851,7 +860,7 @@ scenarios:
         steps:
           - default テナントの disable は InvalidRequestError で拒否される
   管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に反映される:
-    goal: 管理者がテナントのロゴ・配色・サポートリンクを設定し、未認証の login 画面がそれを表示する。
+    goal: 管理者がテナントのロゴ・配色・任意ラベルの footer リンクを設定し、未認証の login 画面がそれを表示する。
     primary_actor: Administrator
     scope: Tenancy
     level: user_goal
@@ -861,9 +870,9 @@ scenarios:
       - "管理者 \"operator\" が PNG ロゴをアップロードする"
       - アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る
       - 管理画面のロゴプレビューにアップロードした PNG が表示される
-      - "管理者 \"operator\" が primary_color / accent_color / support_url / footer_text を設定する"
+      - "管理者 \"operator\" が primary_color / accent_color / footer_link_1={label: \"ヘルプ\", url: \"https://help.example.test\"} / footer_text を設定する"
       - 未認証の利用者が login 画面を開く
-      - login / consent / account portal に設定したロゴが表示され、login 画面には配色・サポートリンク・フッターテキストも表示される
+      - login / consent / account portal に設定したロゴが表示され、login 画面には配色・指定ラベルの footer リンク・フッターテキストも表示される
     extensions:
       - condition: realm 配下の logo_url が gateway で backend に転送されない
         steps:
@@ -879,7 +888,10 @@ scenarios:
       - "管理者 \"operator\" が branding を一度も設定していないテナントで login 画面を開く"
       - login 画面はシステム既定 (IdMagic) のブランディングを表示する
     extensions:
-      - condition: "管理者 \"operator\" が support_url に javascript: スキームを指定して保存を試みる"
+      - condition: "管理者 \"operator\" が footer_link_1.url に javascript: スキームを指定して保存を試みる"
+        steps:
+          - InvalidRequestError で拒否され保存されない
+      - condition: "管理者 \"operator\" が footer_link_1 に label だけを指定して保存を試みる"
         steps:
           - InvalidRequestError で拒否され保存されない
       - condition: "管理者 \"operator\" が低コントラストの `#eeeeee` を primary_color に指定して保存を試みる"
@@ -937,7 +949,7 @@ user_experience:
         - service_error
     AdminSettings:
       route: /admin/settings
-      purpose: 管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。
+      purpose: 管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。footer リンクは固定順の二件までをラベルと HTTPS URL の組で編集・削除でき、ラベルはプレーンテキストとして表示する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。
       interfaces:
         - GetAdminSettings
         - UpdateAdminSettings

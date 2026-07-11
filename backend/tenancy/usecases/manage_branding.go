@@ -32,8 +32,8 @@ type BrandingUpdateInput struct {
 	ProductName  *string
 	PrimaryColor *string
 	AccentColor  *string
-	SupportURL   *string
-	LegalURL     *string
+	FooterLink1  *domain.TenantFooterLink
+	FooterLink2  *domain.TenantFooterLink
 	FooterText   *string
 }
 
@@ -76,11 +76,11 @@ func UpdateBranding(
 	if input.AccentColor != nil {
 		branding.AccentColor = strings.TrimSpace(*input.AccentColor)
 	}
-	if input.SupportURL != nil {
-		branding.SupportURL = strings.TrimSpace(*input.SupportURL)
+	if input.FooterLink1 != nil {
+		branding.FooterLink1 = normalizeFooterLink(*input.FooterLink1)
 	}
-	if input.LegalURL != nil {
-		branding.LegalURL = strings.TrimSpace(*input.LegalURL)
+	if input.FooterLink2 != nil {
+		branding.FooterLink2 = normalizeFooterLink(*input.FooterLink2)
 	}
 	if input.FooterText != nil {
 		branding.FooterText = strings.TrimSpace(*input.FooterText)
@@ -97,6 +97,10 @@ func UpdateBranding(
 		return nil, err
 	}
 	return branding, nil
+}
+
+func normalizeFooterLink(link domain.TenantFooterLink) domain.TenantFooterLink {
+	return domain.TenantFooterLink{Label: strings.TrimSpace(link.Label), URL: strings.TrimSpace(link.URL)}
 }
 
 // DetectBrandingAssetContentType は backend/shared/mediavalidation の magic byte 判定に

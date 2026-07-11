@@ -413,18 +413,23 @@ export type Branding = {
   favicon_url?: string
   primary_color?: string
   accent_color?: string
-  support_url?: string
-  legal_url?: string
+  footer_link_1?: FooterLink
+  footer_link_2?: FooterLink
   footer_text?: string
   updated_at?: string
+}
+
+export type FooterLink = {
+  label: string
+  url: string
 }
 
 export type BrandingUpdateInput = {
   product_name?: string
   primary_color?: string
   accent_color?: string
-  support_url?: string
-  legal_url?: string
+  footer_link_1?: FooterLink
+  footer_link_2?: FooterLink
   footer_text?: string
 }
 

@@ -8204,17 +8204,13 @@
           "pattern": "^#[0-9a-fA-F]{6}$",
           "description": "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
         },
-        "support_url": {
-          "type": "string",
-          "maxLength": 2048,
-          "pattern": "^https://",
-          "description": "サポート / ヘルプリンク。https scheme のみ許可する allowlist。"
+        "footer_link_1": {
+          "$ref": "#/$defs/TenantFooterLink",
+          "description": "footer の先頭リンク。リンク順序は footer_link_1、footer_link_2 に固定する。"
         },
-        "legal_url": {
-          "type": "string",
-          "maxLength": 2048,
-          "pattern": "^https://",
-          "description": "利用規約 / プライバシー等の法務リンク。https scheme のみ許可する allowlist。"
+        "footer_link_2": {
+          "$ref": "#/$defs/TenantFooterLink",
+          "description": "footer の二番目のリンク。リンク順序は footer_link_1、footer_link_2 に固定する。"
         },
         "footer_text": {
           "type": "string",
@@ -8265,11 +8261,11 @@
         "accent_color": {
           "type": "string"
         },
-        "support_url": {
-          "type": "string"
+        "footer_link_1": {
+          "$ref": "#/$defs/TenantFooterLink"
         },
-        "legal_url": {
-          "type": "string"
+        "footer_link_2": {
+          "$ref": "#/$defs/TenantFooterLink"
         },
         "footer_text": {
           "type": "string"
@@ -8295,11 +8291,11 @@
         "accent_color": {
           "type": "string"
         },
-        "support_url": {
-          "type": "string"
+        "footer_link_1": {
+          "$ref": "#/$defs/TenantFooterLink"
         },
-        "legal_url": {
-          "type": "string"
+        "footer_link_2": {
+          "$ref": "#/$defs/TenantFooterLink"
         },
         "footer_text": {
           "type": "string"
@@ -8519,6 +8515,28 @@
         "tenantId"
       ],
       "description": "system_admin が無効化済みテナントを再有効化した。"
+    },
+    "TenantFooterLink": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "利用者に表示するリンクテキスト。HTML / Markdown として解釈しない。"
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://",
+          "description": "遷移先。https scheme のみ許可する allowlist。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "url"
+      ],
+      "description": "hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。"
     },
     "TenantListResponse": {
       "type": "object",
