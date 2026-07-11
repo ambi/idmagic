@@ -114,7 +114,7 @@ test-ui-e2e:
     cd frontend && bun run test:e2e
 
 # Validate SCL and Work Item YAML.
-yaml-check: yaml-check-scl yaml-check-work-items check-ids
+yaml-check: yaml-check-scl yaml-check-work-items check-ids yaml-check-architecture
 
 # Validate SCL YAML files.
 yaml-check-scl:
@@ -127,6 +127,10 @@ yaml-check-work-items:
 # Detect duplicate / mismatched change-record ids.
 check-ids:
     {{ra_cmd}} yaml-check --ids
+
+# Validate ARCHITECTURE.md against the workspace it describes.
+yaml-check-architecture:
+    {{ra_cmd}} yaml-check --architecture
 
 # Regenerate SCL-derived artifacts.
 scl-render:

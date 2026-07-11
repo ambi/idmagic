@@ -13,12 +13,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newAuditEventRecord(e spec.DomainEvent) (*oauthports.AuditEventRecord, error) {
+func newAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
 	wire, err := spec.MarshalDomainEvent(e)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func newAuditEventRecord(e spec.DomainEvent) (*oauthports.AuditEventRecord, erro
 	if err != nil {
 		return nil, err
 	}
-	rec := &oauthports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		ID:         id,
 		Type:       e.EventType(),
 		OccurredAt: e.OccurredAt(),
@@ -43,6 +43,6 @@ func newAuditEventRecord(e spec.DomainEvent) (*oauthports.AuditEventRecord, erro
 	if rec.Payload == nil {
 		return nil, fmt.Errorf("audit event %s: empty payload", e.EventType())
 	}
-	rec.SearchAttributes = oauthusecases.ExtractSearchAttributes(rec)
+	rec.SearchAttributes = auditusecases.ExtractSearchAttributes(rec)
 	return rec, nil
 }

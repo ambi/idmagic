@@ -1073,19 +1073,6 @@ glossary:
     definition: Resource Owner Password Credentials grant は RFC 9700 §2.4 により参照実装から除外する。
     aliases:
       - __excluded_password
-  AuditEventSearchRegistry:
-    definition: 監査イベント検索で許可される検索軸 (AuditEventSearchAttribute) の allowlist。field/operator/transform を宣言し、任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry map が単一の正。
-    aliases:
-      - search-attribute-registry
-      - 検索属性 registry
-    not_to_confuse_with:
-      - term: AuditEventFilterExpression
-        reason: registry は許可される検索軸の定義集合、filter expression は 1 回の検索で指定される具体的な field/operator/value。
-  AuditEventFilterExpression:
-    definition: AuditEventQuery.filter の 1 項。registry allowlist の field と operator、値の並びからなる連言 (AND) の 1 要素。PII 属性は平文入力をサーバ側で transform してから照合する。
-    aliases:
-      - filter-expression
-      - フィルタ式
 models:
   ClientType:
     kind: enum
@@ -2227,120 +2214,6 @@ models:
     fields:
       consents:
         type: "AccountConsentResponse[]"
-  AuditEventQuery:
-    kind: value_object
-    description: "ListAdminAuditEvents のクエリパラメータ。tenant_id は context から付与されるため\nフィールドには含めない。type は SCL events セクションの型名。\n"
-    fields:
-      type:
-        type: String
-        optional: true
-        description: "type 完全一致フィルタ (機械向け低レベル)。例: AccessTokenIssued"
-      category:
-        type: String
-        optional: true
-        description: イベントカテゴリ絞り込み。authentication / success / fail / aggregated / user / group / client / consent / token / tenant / key。
-      user_id:
-        type: String
-        optional: true
-        description: 対象ユーザー sub の完全一致フィルタ。
-      after:
-        type: Timestamp
-        optional: true
-        description: occurred_at がこの時刻以降。
-      before:
-        type: Timestamp
-        optional: true
-        description: occurred_at がこの時刻以前。
-      limit:
-        type: Integer
-        optional: true
-        description: "返却件数の上限 (default 100, max 1000)。"
-      q:
-        type: String
-        optional: true
-        description: "raw 保存された text 列 (type / outcome 等) への部分一致フリーテキスト。PII 列は対象外。"
-      filter:
-        type: "AuditEventFilterExpression[]"
-        optional: true
-        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。username / IP はここで actor.username / client.ip として表現し、専用 query param にはしない。actor.username は lowercased username を tenant salt 付き hash に変換して照合し、client.ip は IPv4 /24・IPv6 /48 に丸めて照合する。"
-  AuditEventFilterOperator:
-    kind: enum
-    description: "監査イベント検索 filter 式で使える比較演算子。registry の属性ごとに許可 operator が宣言される。eq は完全一致、in は値集合のいずれか一致、contains は部分一致 (q 用)、time_range は occurred_at の期間指定。"
-    values:
-      - eq
-      - in
-      - contains
-      - time_range
-  AuditEventSearchTransform:
-    kind: enum
-    description: "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。none は raw 保存、hash は tenant salt 付き SHA-256、ip_truncate は IPv4 /24・IPv6 /48 への丸め (ADR-046)。"
-    values:
-      - none
-      - hash
-      - ip_truncate
-  AuditEventSearchAttribute:
-    kind: value_object
-    description: "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist と PII 変換方針を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nactor.username / client.ip は admin 検索ビルダーに表示できる PII-safe 属性で、sidecar には平文を保存しない。\n"
-    fields:
-      field:
-        type: String
-        description: "検索軸の正準ドット名。例: actor.username / client.ip / event.type。"
-      raw_storable:
-        type: Boolean
-        description: 平文をそのまま sidecar に保存してよいか。PII 属性は false で hash / ip_truncate を要する。
-      transform:
-        type: AuditEventSearchTransform
-        description: 保存 / 検索前に平文値へ適用する変換。
-      tenant_salt_required:
-        type: Boolean
-        description: transform に tenant salt を要するか (hash 属性で true)。
-      allowed_operators:
-        type: "AuditEventFilterOperator[]"
-        description: この属性に許可される operator の allowlist。
-      ui_visible:
-        type: Boolean
-        description: admin 検索ビルダーの UI プリセットに出すか。
-  AuditEventFilterExpression:
-    kind: value_object
-    description: "AuditEventQuery.filter の 1 項。registry allowlist の field と operator、値の並びからなる連言 (AND) の 1 要素。\n任意 SQL は許さない。\n"
-    fields:
-      field:
-        type: String
-        description: registry の AuditEventSearchAttribute.field。
-      operator:
-        type: AuditEventFilterOperator
-        description: 属性の allowed_operators に含まれる operator。
-      values:
-        type: "String[]"
-        description: "operator に応じた値の並び (eq=1 / in=N / time_range=2)。PII 属性は平文入力をサーバ側で transform してから照合する。"
-  AdminAuditEventResponse:
-    kind: value_object
-    description: "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\n"
-    fields:
-      id:
-        type: String
-        description: ストア側で割り当てたイベント ID (UUIDv4)。
-      tenant_id:
-        type: String
-        description: イベントが帰属するテナント ID。
-      type:
-        type: String
-        description: DomainEvent.type ワイヤ名。
-      occurred_at:
-        type: Timestamp
-      payload:
-        type: JSON
-        description: イベント本体 (SCL events セクションの payload 形状)。
-  AdminAuditEventListResponse:
-    kind: value_object
-    description: 監査イベントの検索結果。
-    fields:
-      events:
-        type: "AdminAuditEventResponse[]"
-      next_after:
-        type: Timestamp
-        optional: true
-        description: ページング継続用カーソル。
   TokenRequest:
     kind: value_object
     description: application/x-www-form-urlencoded で送信される token endpoint リクエスト。
@@ -3736,54 +3609,6 @@ interfaces:
         path: "/api/account/consents/{client_id}/revoke"
         successful_status_codes:
           - "204"
-  ListAdminAuditEvents:
-    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / sub による絞り込みを提供する。\n認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、category\n(authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nactor.username / client.ip filter は管理者が平文で入力し、サーバが tenant salt 付き hash または\nIP 丸めに変換して sidecar の transform 済み値と照合する。system_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に閉じる。\n"
-    input:
-      query:
-        type: AuditEventQuery
-    output:
-      response:
-        type: AdminAuditEventListResponse
-    errors:
-      - InvalidRequestError
-      - AccessDeniedError
-    read_only: true
-    bindings:
-      - kind: http
-        method: GET
-        path: /api/admin/audit_events
-  ExportAdminAuditEvents:
-    description: "管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。permission は AdminAuditEventsRead。\n"
-    input:
-      query:
-        type: AuditEventQuery
-    output:
-      response:
-        type: AdminAuditEventListResponse
-    errors:
-      - InvalidRequestError
-      - AccessDeniedError
-    read_only: true
-    bindings:
-      - kind: http
-        method: GET
-        path: /api/admin/audit_events/export
-  GetAdminAuditEvent:
-    description: 管理者が監査イベント 1 件を ID で取得する。別テナントのイベントは未存在として扱う。
-    input:
-      id:
-        type: String
-    output:
-      event:
-        type: AdminAuditEventResponse
-    errors:
-      - InvalidRequestError
-      - AccessDeniedError
-    read_only: true
-    bindings:
-      - kind: http
-        method: GET
-        path: "/api/admin/audit_events/{id}"
 invariants:
   PkceRoundTrip:
     description: "任意の verifier in [A-Za-z0-9._~-]{43,128} に対して、\nchallenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, challenge, S256) は true。\n反例: PKCE が壊れている。認可コード横取り攻撃の防御がない。\n"
@@ -3863,11 +3688,6 @@ invariants:
     description: クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。
     assuming: event == ClientAuthenticationFailed
     always: "error == InvalidClient && size(error_description) == size(error_description_constant)"
-  AuditPIISearchAttributesAreTransformed:
-    description: "認証イベントの username / IP 相関検索属性は sidecar に平文を保存しない。actor.username は tenant salt 付き hash、client.ip は IPv4 /24・IPv6 /48 に丸めた値だけを保存し、検索時も同じ変換を通す。\n反例: 監査検索 index から username / IP の平文が漏洩する、または tenant 間で同一 username を相関できる。\n"
-    target: AuditEventSearchAttribute
-    assuming: "field in [actor.username, client.ip]"
-    always: "raw_storable == false && stored_value == transform(plaintext, tenant_salt)"
   AuthenticationFailurePlainUsernameTtl:
     description: "AuthenticationFailed.username の平文は失敗調査用に短期保持し、発生から 7 日を超えた sweep 後は null 化される。usernameHash は保持され、相関検索には hash を使う。\n反例: 失敗イベントの平文 username が長期監査ログに残る。\n"
     target: AuthenticationFailed
@@ -3937,11 +3757,6 @@ permissions:
     actor: User
     resource: Consent
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminAuditEventsRead:
-    description: "管理者による所属テナントの監査イベント読み出し。admin は所属テナントに閉じ、\nsystem_admin は default tenant 経路から全テナント横断的に参照できる。\n書き込みエンドポイントは存在しないため Read のみ。\n"
-    actor: User
-    resource: AdminAuditEventResponse
-    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true"
 objectives:
   AuthorizeLatency:
     kind: slo
@@ -4176,12 +3991,6 @@ objectives:
     target: DeviceAuthorization
     value: 5
     reference: RFC 8628 §3.5
-  AuditLogRetention:
-    kind: retention
-    target: DomainEvent
-    policy: append_only
-    retention: 7y
-    reference: GDPR Art. 30
   ConsentRecordsRetention:
     kind: retention
     target: Consent
@@ -4746,19 +4555,6 @@ user_experience:
         - ready
         - loading
         - submitting
-        - empty
-        - access_denied
-        - service_error
-    AdminAuditEvents:
-      route: /admin/audit_events
-      purpose: 管理者が監査イベントを対象ユーザーや期間で絞り込んで一覧・参照し、エクスポートする。
-      interfaces:
-        - ListAdminAuditEvents
-        - GetAdminAuditEvent
-        - ExportAdminAuditEvents
-      states:
-        - ready
-        - loading
         - empty
         - access_denied
         - service_error

@@ -12,7 +12,7 @@ import (
 	"context"
 	"time"
 
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -80,7 +80,7 @@ func (p RetentionPolicy) capDays(days int) int {
 }
 
 // AuditCutoff は now を基準に、監査イベント sweep の type 別 cutoff を組み立てる。
-func (p RetentionPolicy) AuditCutoff(now time.Time) oauthports.RetentionCutoff {
+func (p RetentionPolicy) AuditCutoff(now time.Time) auditports.RetentionCutoff {
 	byType := map[string]time.Time{}
 	assign := func(types []string, days int) {
 		days = p.capDays(days)
@@ -97,7 +97,7 @@ func (p RetentionPolicy) AuditCutoff(now time.Time) oauthports.RetentionCutoff {
 	assign(retentionMfaTypes, p.MfaDays)
 	assign(retentionSessionTypes, p.SessionDays)
 
-	cutoff := oauthports.RetentionCutoff{ByType: byType}
+	cutoff := auditports.RetentionCutoff{ByType: byType}
 	// impersonation は short 化対象外。global cap がある場合のみ cap で消す。
 	if p.MaxDays > 0 {
 		before := now.Add(-time.Duration(p.MaxDays) * 24 * time.Hour)
@@ -125,7 +125,7 @@ func (p RetentionPolicy) BucketCutoff(now time.Time) time.Time {
 // AuditEventPurger / AuthEventBucketPurger は sweep が要求する削除境界。store の read 契約
 // (AuditEventRepository / AuthEventBucketStore) とは分離し、sweep を持たない構成でも動く。
 type AuditEventPurger interface {
-	DeleteOlderThan(ctx context.Context, cutoff oauthports.RetentionCutoff) (int64, error)
+	DeleteOlderThan(ctx context.Context, cutoff auditports.RetentionCutoff) (int64, error)
 }
 
 type AuthEventBucketPurger interface {

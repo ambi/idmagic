@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 

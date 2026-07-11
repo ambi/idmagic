@@ -7,7 +7,7 @@ package usecases
 // (usernameHash / ipTruncated) だけを対象とする。username / IP の平文は sidecar に載せない。
 
 import (
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 

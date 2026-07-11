@@ -136,6 +136,10 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
+      - path: backend/audit/adapters/http/admin_audit_event_handler_test\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
       # Persistence repository Find* methods use nil result + nil error for
       # "not found" to match existing port contracts. Matches both the
       # shared location and per-context adapters/persistence/ (ADR-090).

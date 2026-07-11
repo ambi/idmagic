@@ -2,11 +2,13 @@
 //
 // OAuth 2.0 / OIDC のプロトコルエンドポイント (authorize/token/introspect/revoke/
 // userinfo/par/device/discovery/register) と、認可トランザクションのフロントエンドである
-// 対話ログイン (login/totp/consent/end_session)、および client/consent/key/audit_event/
-// role_policy の管理 API を所有する。共有基盤 support.Deps を受け取り router から登録される。
+// 対話ログイン (login/totp/consent/end_session)、および client/consent/key/
+// role_policy の管理 API を所有する。監査 (audit_event) の管理 API は audit context が
+// 所有する (wi-146)。共有基盤 support.Deps を受け取り router から登録される。
 package http
 
 import (
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -25,7 +27,6 @@ type Deps struct {
 	*support.Authenticator
 	*support.ApplicationGate
 
-	AuditEventRepo             oauthports.AuditEventRepository
 	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
 	ClientRepo                 oauthports.OAuth2ClientRepository
 	ConsentRepo                oauthports.ConsentRepository
@@ -51,7 +52,7 @@ type Deps struct {
 	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
 	AuthEventBucketStore       authnports.AuthEventBucketStore
 	Authorizer                 oauthports.Authorizer
-	TenantSaltStore            oauthports.TenantSaltStore
+	TenantSaltStore            auditports.TenantSaltStore
 	SentinelPasswordHash       string
 
 	// WebAuthn / recovery code を第二要素 (login step) として使うための依存 (wi-26)。
@@ -101,9 +102,6 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/consents", d.handleListAdminConsents)
 	g.GET("/api/admin/consents/:sub/:client_id", d.handleGetAdminConsent)
 	g.DELETE("/api/admin/consents/:sub/:client_id", d.handleRevokeAdminConsent)
-	g.GET("/api/admin/audit_events", d.handleListAdminAuditEvents)
-	g.GET("/api/admin/audit_events/export", d.handleExportAdminAuditEvents)
-	g.GET("/api/admin/audit_events/:id", d.handleGetAdminAuditEvent)
 	g.GET("/api/admin/keys", d.handleListAdminKeys)
 	g.GET("/api/admin/keys/health", d.handleListTenantKeyHealth)
 	g.GET("/api/admin/keys/:kid", d.handleGetAdminKey)

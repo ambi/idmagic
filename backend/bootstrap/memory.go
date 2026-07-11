@@ -5,6 +5,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/audit"
+	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -66,14 +68,16 @@ func assembleMemory() (*Dependencies, error) {
 			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
 			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
-			AuditEventRepo:             oauth2memory.NewAuditEventStore(0),
 			EventSink:                  eventsink.NewConsoleSink(),
 		},
-		KeyStore:        selectKeyStore(oauthports.KeyStore(keyStore)),
-		TenantSaltStore: crypto.NewInMemoryTenantSaltStore(),
-		WsFederation:    wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		Saml:            saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
-		Scim:            scim.Module{Repo: scimmemory.NewScimRepository()},
+		KeyStore: selectKeyStore(oauthports.KeyStore(keyStore)),
+		Audit: audit.Module{
+			AuditEventRepo:  auditmemory.NewAuditEventStore(0),
+			TenantSaltStore: crypto.NewInMemoryTenantSaltStore(),
+		},
+		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Scim:         scim.Module{Repo: scimmemory.NewScimRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

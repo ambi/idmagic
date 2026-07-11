@@ -20,12 +20,12 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
+	"github.com/ambi/idmagic/backend/audit"
+	audithttp "github.com/ambi/idmagic/backend/audit/adapters/http"
+	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
-	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -33,13 +33,60 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newAuditAdminServer(t *testing.T, actor *idmdomain.User, events []*oauthports.AuditEventRecord) *echo.Echo {
+type fakeAuthnResolver struct {
+	ctx *authdomain.AuthenticationContext
+}
+
+func (f *fakeAuthnResolver) Resolve(_ context.Context, _ authdomain.Headers) (*authdomain.AuthenticationContext, error) {
+	return f.ctx, nil
+}
+
+// singleTenantRepo は指定 ID の Active テナントだけを返す最小の TenantRepository。
+type singleTenantRepo struct {
+	tenant *tenancydomain.Tenant
+}
+
+func newSingleTenantRepo() *singleTenantRepo {
+	now := time.Now().UTC()
+	return &singleTenantRepo{tenant: &tenancydomain.Tenant{
+		ID: "acme", Realm: "acme", Status: tenancydomain.TenantStatusActive, CreatedAt: now,
+	}}
+}
+
+func (r *singleTenantRepo) FindByID(_ context.Context, id string) (*tenancydomain.Tenant, error) {
+	if r.tenant.ID == id {
+		return r.tenant, nil
+	}
+	if id == tenancydomain.DefaultTenantID {
+		return &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive}, nil
+	}
+	return nil, nil
+}
+
+func (r *singleTenantRepo) FindByRealm(_ context.Context, realm string) (*tenancydomain.Tenant, error) {
+	if r.tenant.Realm == realm {
+		return r.tenant, nil
+	}
+	if realm == tenancydomain.DefaultRealm {
+		return &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive}, nil
+	}
+	return nil, nil
+}
+
+func (r *singleTenantRepo) FindAll(_ context.Context) ([]*tenancydomain.Tenant, error) {
+	return []*tenancydomain.Tenant{r.tenant}, nil
+}
+
+func (r *singleTenantRepo) Save(_ context.Context, _ *tenancydomain.Tenant) error { return nil }
+func (r *singleTenantRepo) Delete(_ context.Context, _ string) error              { return nil }
+
+func newAuditAdminServer(t *testing.T, actor *idmdomain.User, events []*auditports.AuditEventRecord) *echo.Echo {
 	t.Helper()
 	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
-	auditStore := oauthmemory.NewAuditEventStore(0)
+	auditStore := auditmemory.NewAuditEventStore(0)
 	for _, ev := range events {
 		_ = auditStore.Append(context.Background(), ev)
 	}
@@ -56,7 +103,7 @@ func newAuditAdminServer(t *testing.T, actor *idmdomain.User, events []*oauthpor
 
 			TenantRepo: newSingleTenantRepo(),
 		}, UserRepo: userRepo,
-		OAuth2: oauth2.Module{AuditEventRepo: auditStore}, AuthnResolver: resolver,
+		Audit: audit.Module{AuditEventRepo: auditStore}, AuthnResolver: resolver,
 	})
 	return e
 }
@@ -69,13 +116,13 @@ func auditUser(sub, tenantID string, roles []string) *idmdomain.User {
 	}
 }
 
-func auditEvent(tenantID, typ, sub string, occurredAt time.Time) *oauthports.AuditEventRecord {
-	rec := &oauthports.AuditEventRecord{
+func auditEvent(tenantID, typ, sub string, occurredAt time.Time) *auditports.AuditEventRecord {
+	rec := &auditports.AuditEventRecord{
 		ID:       tenantID + ":" + typ + ":" + sub + ":" + occurredAt.Format(time.RFC3339Nano),
 		TenantID: tenantID, Type: typ, OccurredAt: occurredAt,
 		Payload: map[string]any{"userId": sub, "tenantId": tenantID, "type": typ},
 	}
-	rec.SearchAttributes = oauthusecases.ExtractSearchAttributes(rec)
+	rec.SearchAttributes = auditusecases.ExtractSearchAttributes(rec)
 	return rec
 }
 
@@ -100,7 +147,7 @@ func TestAdminAuditEventsRequiresAdminRole(t *testing.T) {
 func TestAdminAuditEventsScopesToOwnTenant(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now.Add(-time.Minute)),
 		auditEvent(tenancydomain.DefaultTenantID, "UserAuthenticated", "ops", now.Add(-30*time.Second)),
 		auditEvent("acme", "AccessTokenIssued", "alice", now),
@@ -111,7 +158,7 @@ func TestAdminAuditEventsScopesToOwnTenant(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -130,7 +177,7 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 	// admin (acme) が all_tenants=true を渡しても自テナント限定で動く。
 	admin := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "X", "a", now),
 		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
 	}
@@ -140,7 +187,7 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 || body.Events[0].TenantID != "acme" {
@@ -151,7 +198,7 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 func TestAdminAuditEventsAllTenantsHonoredForSystemAdminAtDefault(t *testing.T) {
 	sysAdmin := auditUser("user_system_admin", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "X", "a", now),
 		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
 	}
@@ -161,7 +208,7 @@ func TestAdminAuditEventsAllTenantsHonoredForSystemAdminAtDefault(t *testing.T) 
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 2 {
@@ -173,7 +220,7 @@ func TestAdminAuditEventsGetReturns404ForCrossTenant(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
 	foreign := auditEvent(tenancydomain.DefaultTenantID, "X", "alice", now)
-	e := newAuditAdminServer(t, user, []*oauthports.AuditEventRecord{foreign})
+	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{foreign})
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/"+foreign.ID)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for cross-tenant event, got %d body=%s", rec.Code, rec.Body.String())
@@ -183,7 +230,7 @@ func TestAdminAuditEventsGetReturns404ForCrossTenant(t *testing.T) {
 func TestAdminAuditEventsFilterByTypeAndSub(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now),
 		auditEvent("acme", "UserAuthenticated", "bob", now.Add(-time.Second)),
 		auditEvent("acme", "AccessTokenIssued", "alice", now.Add(-2*time.Second)),
@@ -191,7 +238,7 @@ func TestAdminAuditEventsFilterByTypeAndSub(t *testing.T) {
 	e := newAuditAdminServer(t, user, events)
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?type=UserAuthenticated&user_id=alice")
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 ||
@@ -205,7 +252,7 @@ func TestAdminAuditEventsFilterByTypeAndSub(t *testing.T) {
 func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now),
 		auditEvent("acme", "AuthenticationFailed", "", now.Add(-time.Second)),
 		auditEvent("acme", "PasswordChanged", "alice", now.Add(-2*time.Second)),        // user カテゴリ
@@ -214,7 +261,7 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	e := newAuditAdminServer(t, user, events)
 
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=fail")
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
@@ -245,7 +292,7 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now),
 		auditEvent("acme", "AuthenticationFailed", "bob", now.Add(-time.Second)),
 		auditEvent("acme", "AccessTokenIssued", "alice", now.Add(-2*time.Second)),
@@ -257,7 +304,7 @@ func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 || body.Events[0].Type != "AuthenticationFailed" {
@@ -281,15 +328,15 @@ func TestAdminAuditEventsTransformsPIIFilters(t *testing.T) {
 	ev := auditEvent("acme", "AuthenticationFailed", "", now)
 	ev.Payload["usernameHash"] = spec.SaltedHash(nil, spec.NormalizeUsername("Alice"))
 	ev.Payload["ipTruncated"] = "203.0.113.0/24"
-	ev.SearchAttributes = oauthusecases.ExtractSearchAttributes(ev)
-	e := newAuditAdminServer(t, user, []*oauthports.AuditEventRecord{ev})
+	ev.SearchAttributes = auditusecases.ExtractSearchAttributes(ev)
+	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{ev})
 
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=actor.username:eq:Alice&filter=client.ip:eq:203.0.113.42")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 || body.Events[0].Type != "AuthenticationFailed" {
@@ -310,7 +357,7 @@ func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 func TestAdminAuditEventsExportSetsAttachment(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	events := []*oauthports.AuditEventRecord{
+	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now),
 	}
 	e := newAuditAdminServer(t, user, events)
@@ -322,7 +369,7 @@ func TestAdminAuditEventsExportSetsAttachment(t *testing.T) {
 		t.Fatal("export must set Content-Disposition")
 	}
 	var body struct {
-		Events []oauth2http.AdminAuditEventResponse `json:"events"`
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 {

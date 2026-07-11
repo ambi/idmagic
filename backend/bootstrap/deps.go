@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ambi/idmagic/backend/application"
+	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/identitymanagement"
@@ -27,7 +28,7 @@ type Dependencies struct {
 	Authentication     authentication.Module
 	OAuth2             oauth2.Module
 	KeyStore           oauthports.KeyStore
-	TenantSaltStore    oauthports.TenantSaltStore
+	Audit              audit.Module
 	WsFederation       wsfederation.Module
 	Saml               saml.Module
 	Scim               scim.Module

@@ -5,39 +5,39 @@ import (
 	"testing"
 	"time"
 
+	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
-	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 	ctx := context.Background()
-	store := oauthmemory.NewAuditEventStore(0)
+	store := auditmemory.NewAuditEventStore(0)
 	base := time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC)
 
 	// 古い順に追加する (memory store は挿入順の降順で返す)。
-	add := func(rec *oauthports.AuditEventRecord) {
+	add := func(rec *auditports.AuditEventRecord) {
 		if err := store.Append(ctx, rec); err != nil {
 			t.Fatal(err)
 		}
 	}
-	add(&oauthports.AuditEventRecord{
+	add(&auditports.AuditEventRecord{
 		ID: "1", TenantID: "t1", Type: "UserAuthenticated", OccurredAt: base,
 		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd"}},
 	})
-	add(&oauthports.AuditEventRecord{
+	add(&auditports.AuditEventRecord{
 		ID: "2", TenantID: "t1", Type: "PasswordChanged", OccurredAt: base.Add(time.Minute),
 		Payload: map[string]any{"userId": "alice"},
 	})
-	add(&oauthports.AuditEventRecord{
+	add(&auditports.AuditEventRecord{
 		ID: "3", TenantID: "t1", Type: "UserAuthenticated", OccurredAt: base.Add(2 * time.Minute),
 		Payload: map[string]any{"userId": "bob", "amr": []any{"pwd"}},
 	})
-	add(&oauthports.AuditEventRecord{
+	add(&auditports.AuditEventRecord{
 		ID: "4", TenantID: "t2", Type: "UserAuthenticated", OccurredAt: base.Add(3 * time.Minute),
 		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd"}},
 	})
-	add(&oauthports.AuditEventRecord{
+	add(&auditports.AuditEventRecord{
 		ID: "5", TenantID: "t1", Type: "UserAuthenticated", OccurredAt: base.Add(4 * time.Minute),
 		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd", "otp"}},
 	})
@@ -61,10 +61,10 @@ func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 
 func TestListSignInActivityClampsLimit(t *testing.T) {
 	ctx := context.Background()
-	store := oauthmemory.NewAuditEventStore(0)
+	store := auditmemory.NewAuditEventStore(0)
 	base := time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC)
 	for i := range usecases.SignInActivityMaxLimit + 20 {
-		if err := store.Append(ctx, &oauthports.AuditEventRecord{
+		if err := store.Append(ctx, &auditports.AuditEventRecord{
 			ID: string(rune('a' + (i % 26))), TenantID: "t1", Type: "UserAuthenticated",
 			OccurredAt: base.Add(time.Duration(i) * time.Minute),
 			Payload:    map[string]any{"userId": "alice", "amr": []any{"pwd"}},

@@ -1,6 +1,6 @@
 package memory
 
-// AuditEventStore は AuditEventRepository (SCL OAuth2 bounded context) の in-memory
+// AuditEventStore は AuditEventRepository (SCL Audit bounded context) の in-memory
 // 実装。直近のオペレーション可視化を目的に、テナントごとに最大 maxEvents 件を
 // FIFO で保持する。永続化はせず、本番では Postgres / SIEM 等に差し替える前提。
 
@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/audit/ports"
 )
 
 const (

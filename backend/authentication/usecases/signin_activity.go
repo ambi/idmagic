@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -30,7 +30,7 @@ type SignInActivity struct {
 // 最大 limit 件返す。limit は [1, SignInActivityMaxLimit] にクランプし、0 以下は既定値。
 func ListSignInActivity(
 	ctx context.Context,
-	repo oauthports.AuditEventRepository,
+	repo auditports.AuditEventRepository,
 	tenantID, sub string,
 	limit int,
 ) ([]SignInActivity, error) {
@@ -38,7 +38,7 @@ func ListSignInActivity(
 		return []SignInActivity{}, nil
 	}
 	limit = clampSignInActivityLimit(limit)
-	records, err := repo.List(ctx, oauthports.AuditEventQuery{
+	records, err := repo.List(ctx, auditports.AuditEventQuery{
 		TenantID: tenantID,
 		Type:     (&spec.UserAuthenticated{}).EventType(),
 		UserID:   sub,

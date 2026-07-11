@@ -7,10 +7,10 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
-	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -18,9 +18,9 @@ func daysAgo(now time.Time, d int) time.Time {
 	return now.Add(-time.Duration(d) * 24 * time.Hour)
 }
 
-func seedAudit(t *testing.T, store *oauthmemory.AuditEventStore, id, eventType string, at time.Time) {
+func seedAudit(t *testing.T, store *auditmemory.AuditEventStore, id, eventType string, at time.Time) {
 	t.Helper()
-	if err := store.Append(context.Background(), &oauthports.AuditEventRecord{
+	if err := store.Append(context.Background(), &auditports.AuditEventRecord{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Type: eventType, OccurredAt: at,
 		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID},
 	}); err != nil {
@@ -28,9 +28,9 @@ func seedAudit(t *testing.T, store *oauthmemory.AuditEventStore, id, eventType s
 	}
 }
 
-func remainingAuditIDs(t *testing.T, store *oauthmemory.AuditEventStore) map[string]bool {
+func remainingAuditIDs(t *testing.T, store *auditmemory.AuditEventStore) map[string]bool {
 	t.Helper()
-	recs, err := store.List(context.Background(), oauthports.AuditEventQuery{Limit: 1000})
+	recs, err := store.List(context.Background(), auditports.AuditEventQuery{Limit: 1000})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func remainingAuditIDs(t *testing.T, store *oauthmemory.AuditEventStore) map[str
 func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := oauthmemory.NewAuditEventStore(0)
+	store := auditmemory.NewAuditEventStore(0)
 
 	// 失敗詳細 30 日: 29 日前は残り 31 日前は消える。
 	seedAudit(t, store, "fail-29", (&spec.AuthenticationFailed{}).EventType(), daysAgo(now, 29))
@@ -84,8 +84,8 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := oauthmemory.NewAuditEventStore(0)
-	oldFailure := &oauthports.AuditEventRecord{
+	store := auditmemory.NewAuditEventStore(0)
+	oldFailure := &auditports.AuditEventRecord{
 		ID: "fail-8", TenantID: tenancydomain.DefaultTenantID,
 		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
 		Payload: map[string]any{
@@ -94,7 +94,7 @@ func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
 			"usernameHash": "hash-alice",
 		},
 	}
-	freshFailure := &oauthports.AuditEventRecord{
+	freshFailure := &auditports.AuditEventRecord{
 		ID: "fail-6", TenantID: tenancydomain.DefaultTenantID,
 		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 6),
 		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID, "username": "bob"},
@@ -129,7 +129,7 @@ func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
 func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := oauthmemory.NewAuditEventStore(0)
+	store := auditmemory.NewAuditEventStore(0)
 	// global cap 30 日: 成功も impersonation も 31 日前は消える。
 	seedAudit(t, store, "ok-31", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 31))
 	seedAudit(t, store, "ok-29", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 29))

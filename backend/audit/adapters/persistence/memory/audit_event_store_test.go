@@ -7,7 +7,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/audit/ports"
 )
 
 func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, userID string) *ports.AuditEventRecord {

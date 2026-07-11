@@ -81,8 +81,9 @@ SCL context と Go package の主な対応は次の通り。
 | `Tenancy` | `backend/tenancy` | tenant / realm、tenant-scoped settings、user attribute schema、control-plane tenant 管理。 |
 | `IdentityManagement` | `backend/identitymanagement` | User、Group、Agent、自己プロフィール、identity lifecycle。 |
 | `Authentication` | `backend/authentication` | 資格情報検証、MFA、ログインセッション、step-up、パスワード変更・リセット、認証イベント。 |
-| `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC protocol endpoint、client、consent、token、audit、role policy。 |
+| `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC protocol endpoint、client、consent、token、role policy。 |
 | `Application` | `backend/application` | Application catalog、protocol binding、assignment、portal ordering/category。 |
+| `Audit` | `backend/audit` | authentication / identity-management / oauth2 / tenancy / signing-keys / application / saml / wsfederation を横断する監査イベントの read model。検索属性 registry、PII 変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | 現状は protocol context と persistence adapter に分散 | Claim release policy の概念境界。protocol-neutral へ切り出すときは SCL を先に調整する。 |
 | `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。 |
 | `SigningKeys` | `backend/oauth2`, `backend/shared/adapters/crypto`, persistence adapters | 鍵ライフサイクルの規範は SCL。JWK/JWT/XML signer は adapter。 |

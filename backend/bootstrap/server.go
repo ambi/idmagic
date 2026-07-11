@@ -163,13 +163,13 @@ func Run() error {
 		if err := deps.OAuth2.EventSink.Emit(eventCtx, event); err != nil {
 			logger.Error(eventCtx, "event sink emit failed", "error", err)
 		}
-		if deps.OAuth2.AuditEventRepo != nil {
+		if deps.Audit.AuditEventRepo != nil {
 			if rec, err := newAuditEventRecord(event); err == nil {
 				appendCtx := eventCtx
 				if rec.TenantID != "" {
 					appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
 				}
-				_ = deps.OAuth2.AuditEventRepo.Append(appendCtx, rec)
+				_ = deps.Audit.AuditEventRepo.Append(appendCtx, rec)
 			}
 		}
 	}
@@ -199,7 +199,7 @@ func Run() error {
 		Authentication:     deps.Authentication,
 		OAuth2:             deps.OAuth2,
 		KeyStore:           deps.KeyStore,
-		TenantSaltStore:    deps.TenantSaltStore,
+		Audit:              deps.Audit,
 		JWKResolver:        jwkResolver,
 		WsFederation:       deps.WsFederation,
 		Saml:               deps.Saml,

@@ -3,6 +3,8 @@ package server
 
 import (
 	"github.com/ambi/idmagic/backend/application"
+	"github.com/ambi/idmagic/backend/audit"
+	audithttp "github.com/ambi/idmagic/backend/audit/adapters/http"
 	"github.com/ambi/idmagic/backend/authentication"
 	authhttp "github.com/ambi/idmagic/backend/authentication/adapters/http"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -62,7 +64,7 @@ type Deps struct {
 	TokenIntrospector oauthports.TokenIntrospector
 	Authorizer        oauthports.Authorizer
 	KeyStore          oauthports.KeyStore
-	TenantSaltStore   oauthports.TenantSaltStore
+	Audit             audit.Module
 	JWKResolver       *crypto.JWKResolver
 	WsFederation      wsfederation.Module
 	Saml              saml.Module
@@ -206,13 +208,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps:                       d.Deps,
 		Authenticator:              authenticator,
 		ApplicationGate:            appGate,
-		AuditEventRepo:             d.OAuth2.AuditEventRepo,
 		AuthzDetailTypeRepo:        d.OAuth2.AuthzDetailTypeRepo,
 		ClientRepo:                 d.OAuth2.ClientRepo,
 		ConsentRepo:                d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver:  clientDisplayNames,
 		KeyStore:                   d.KeyStore,
-		TenantSaltStore:            d.TenantSaltStore,
+		TenantSaltStore:            d.Audit.TenantSaltStore,
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.OAuth2.PARStore,
 		RequestStore:               d.OAuth2.RequestStore,
@@ -240,10 +241,17 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
 	})
 
+	audithttp.RegisterRoutes(g, audithttp.Deps{
+		Deps:            d.Deps,
+		Authenticator:   authenticator,
+		AuditEventRepo:  d.Audit.AuditEventRepo,
+		TenantSaltStore: d.Audit.TenantSaltStore,
+	})
+
 	authhttp.RegisterRoutes(g, authhttp.Deps{
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
-		AuditEventRepo:            d.OAuth2.AuditEventRepo,
+		AuditEventRepo:            d.Audit.AuditEventRepo,
 		UserRepo:                  d.IdentityManagement.UserRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,

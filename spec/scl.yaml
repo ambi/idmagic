@@ -48,7 +48,7 @@ context_map:
           - AgentRef
         reason: 認証は User の状態、required actions、MFA 登録状態、Agent 所有者などの identity 情報を参照する。
   OAuth2:
-    description: "OAuth 2.0 / OIDC プロトコルファミリーの全責務を所有する。Client metadata\nとその Dynamic Registration、認可判断 (Authorize / Consent /\nAuthorization Code / PAR / Device Authorization / RP-Initiated Logout)、\nトークン発行とライフサイクル (AccessToken / RefreshToken / ID Token /\nIntrospect / Revoke / UserInfo / proof-of-possession)、Discovery /\nAuthorization Server Metadata / 健全性報告 / 監査保管\nを本 bounded context に集約する。\n"
+    description: "OAuth 2.0 / OIDC プロトコルファミリーの全責務を所有する。Client metadata\nとその Dynamic Registration、認可判断 (Authorize / Consent /\nAuthorization Code / PAR / Device Authorization / RP-Initiated Logout)、\nトークン発行とライフサイクル (AccessToken / RefreshToken / ID Token /\nIntrospect / Revoke / UserInfo / proof-of-possession)、Discovery /\nAuthorization Server Metadata / 健全性報告\nを本 bounded context に集約する。\n"
     path: contexts/oauth2.yaml
     publishes:
       - Authorize
@@ -61,7 +61,7 @@ context_map:
         via: published_language
         uses:
           - TenantRef
-        reason: クライアント・コード・トークン・鍵・監査はテナント境界内に閉じる。
+        reason: クライアント・コード・トークン・鍵はテナント境界内に閉じる。
       Authentication:
         via: published_language
         uses:
@@ -84,6 +84,17 @@ context_map:
         uses:
           - ApplicationAssignmentRef
         reason: authorize は client が属する Application への割当を fail-closed で確認する。
+  Audit:
+    description: "authentication、identity-management、oauth2、tenancy、signing-keys、application、\nsaml / wsfederation など複数 bounded context から発火されるセキュリティ監査イベントの\n横断的な read model を所有する。監査イベントの検索・エクスポート管理 API、検索属性\nregistry、PII 変換方針、保持期間を集約する。イベントの発火元は各 context のままであり、\nAudit はそれらを横断して読む窓口を所有する。\n"
+    path: contexts/audit.yaml
+    publishes:
+      []
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: 監査イベントはテナント境界内に閉じる。system_admin だけが default tenant 経路から横断参照できる。
   Application:
     description: "運用者が「接続する業務アプリケーション」として扱う上位概念を所有する。OIDC client /\nSAML SP / WS-Fed RP は Application の protocol binding であり、表示名、アイコン、\nライフサイクル、割当はここに集約する。割当はポータル可視性と\nフェデレーション利用可否を fail-closed で制御する。protocol binding の wire 挙動は\n各 protocol context が所有し、Application は binding を opaque key で参照する。\n"
     path: contexts/application.yaml

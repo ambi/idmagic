@@ -1,9 +1,10 @@
 // Package oauth2 は oauth2 bounded context の DI 組立を自前で持つ (ADR-091)。
 // 中央 server/routes.go の Deps と bootstrap/deps.go の Dependencies から oauth2 由来
 // field を Module へ集約していく。client/consent/認可詳細タイプ分から着手し (wi-173)、
-// token/grant (wi-181)・audit/outbox (wi-182) が Module へフィールドを追加していく。
+// token/grant (wi-181) が Module へフィールドを追加していく。監査 (audit) の repository は
+// wi-146 で独立した audit context の Module へ移設した。
 // 全フィールドが揃うまでは oauth2/adapters/http.RegisterRoutes は中央 routes.go から
-// 直接呼ばれ続け、Module 自身の Register は持たない (wi-182 で完了予定)。
+// 直接呼ばれ続け、Module 自身の Register は持たない。
 package oauth2
 
 import (
@@ -27,6 +28,5 @@ type Module struct {
 	TokenIssuer                oauthports.TokenIssuer
 	TokenIntrospector          oauthports.TokenIntrospector
 	Authorizer                 oauthports.Authorizer
-	AuditEventRepo             oauthports.AuditEventRepository
 	EventSink                  oauthports.EventSink
 }

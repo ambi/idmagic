@@ -8,6 +8,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/backend/audit"
+	auditpostgres "github.com/ambi/idmagic/backend/audit/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
 	authnvalkey "github.com/ambi/idmagic/backend/authentication/adapters/persistence/valkey"
@@ -138,14 +140,16 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			DpopReplayStore:            &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
 			ClientAssertionReplayStore: &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
 			AccessTokenDenylist:        &oauth2valkey.AccessTokenDenylist{Client: valkeyClient},
-			AuditEventRepo:             &oauth2postgres.AuditEventRepository{Pool: resilientDB},
 			EventSink:                  sink,
 		},
-		KeyStore:        selectKeyStore(keyStore),
-		TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),
-		WsFederation:    wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
-		Saml:            saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
-		Scim:            scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
+		KeyStore: selectKeyStore(keyStore),
+		Audit: audit.Module{
+			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},
+			TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),
+		},
+		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
+		Saml:         saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
+		Scim:         scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

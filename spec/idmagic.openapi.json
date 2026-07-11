@@ -11984,6 +11984,43 @@
         ],
         "description": "文字列または1つ以上の文字列の配列（JWT RFC 7519 §4.1.3）。"
       },
+      "AuditEventFilterExpression": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "registry の AuditEventSearchAttribute.field。"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/AuditEventFilterOperator",
+            "description": "属性の allowed_operators に含まれる operator。"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "operator に応じた値の並び (eq=1 / in=N / time_range=2)。PII 属性は平文入力をサーバ側で transform してから照合する。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "operator",
+          "values"
+        ],
+        "description": "AuditEventQuery.filter の 1 項。registry allowlist の field と operator、値の並びからなる連言 (AND) の 1 要素。\n任意 SQL は許さない。\n"
+      },
+      "AuditEventFilterOperator": {
+        "type": "string",
+        "enum": [
+          "eq",
+          "in",
+          "contains",
+          "time_range"
+        ],
+        "description": "監査イベント検索 filter 式で使える比較演算子。registry の属性ごとに許可 operator が宣言される。eq は完全一致、in は値集合のいずれか一致、contains は部分一致 (q 用)、time_range は occurred_at の期間指定。"
+      },
       "AuditEventQuery": {
         "type": "object",
         "properties": {
@@ -12012,10 +12049,72 @@
           "limit": {
             "type": "integer",
             "description": "返却件数の上限 (default 100, max 1000)。"
+          },
+          "q": {
+            "type": "string",
+            "description": "raw 保存された text 列 (type / outcome 等) への部分一致フリーテキスト。PII 列は対象外。"
+          },
+          "filter": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventFilterExpression"
+            },
+            "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。username / IP はここで actor.username / client.ip として表現し、専用 query param にはしない。actor.username は lowercased username を tenant salt 付き hash に変換して照合し、client.ip は IPv4 /24・IPv6 /48 に丸めて照合する。"
           }
         },
         "additionalProperties": false,
         "description": "ListAdminAuditEvents のクエリパラメータ。tenant_id は context から付与されるため\nフィールドには含めない。type は SCL events セクションの型名。\n"
+      },
+      "AuditEventSearchAttribute": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "検索軸の正準ドット名。例: actor.username / client.ip / event.type。"
+          },
+          "raw_storable": {
+            "type": "boolean",
+            "description": "平文をそのまま sidecar に保存してよいか。PII 属性は false で hash / ip_truncate を要する。"
+          },
+          "transform": {
+            "$ref": "#/components/schemas/AuditEventSearchTransform",
+            "description": "保存 / 検索前に平文値へ適用する変換。"
+          },
+          "tenant_salt_required": {
+            "type": "boolean",
+            "description": "transform に tenant salt を要するか (hash 属性で true)。"
+          },
+          "allowed_operators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventFilterOperator"
+            },
+            "description": "この属性に許可される operator の allowlist。"
+          },
+          "ui_visible": {
+            "type": "boolean",
+            "description": "admin 検索ビルダーの UI プリセットに出すか。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "raw_storable",
+          "transform",
+          "tenant_salt_required",
+          "allowed_operators",
+          "ui_visible"
+        ],
+        "description": "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist と PII 変換方針を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nactor.username / client.ip は admin 検索ビルダーに表示できる PII-safe 属性で、sidecar には平文を保存しない。\n"
+      },
+      "AuditEventSearchTransform": {
+        "type": "string",
+        "enum": [
+          "none",
+          "hash",
+          "ip_truncate"
+        ],
+        "description": "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。none は raw 保存、hash は tenant salt 付き SHA-256、ip_truncate は IPv4 /24・IPv6 /48 への丸め (ADR-046)。"
       },
       "AuthenticationContext": {
         "type": "object",
