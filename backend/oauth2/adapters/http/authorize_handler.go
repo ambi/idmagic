@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -455,7 +457,7 @@ func (d Deps) enforceDefaultSignInPolicy(
 func (d Deps) emitAuthenticationSuccess(
 	c *echo.Context,
 	at time.Time,
-	user *spec.User,
+	user *idmdomain.User,
 	authn *authdomain.AuthenticationContext,
 	clientID string,
 ) {
@@ -475,14 +477,14 @@ func (d Deps) emitAuthenticationSuccess(
 // 記録し (wi-19)、未充足の required action があればログイン後の強制誘導先を返す。
 // 返り値 gateNext が非空なら OAuth フローを完了させず、その画面へ誘導する。現状
 // 専用画面のある update_password のみ change-password へ gate する (UI 拡張は wi-21)。
-func (d Deps) recordLoginAndRequiredAction(c *echo.Context, user *spec.User, now time.Time) (string, error) {
+func (d Deps) recordLoginAndRequiredAction(c *echo.Context, user *idmdomain.User, now time.Time) (string, error) {
 	updated := *user
 	updated.Lifecycle.LastLoginAt = &now
 	if err := d.UserRepo.Save(c.Request().Context(), &updated); err != nil {
 		return "", err
 	}
 	*user = updated
-	if slices.Contains(updated.Lifecycle.RequiredActions, spec.RequiredActionUpdatePassword) {
+	if slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword) {
 		return support.TenantRoute(c, "/change_password"), nil
 	}
 	return "", nil

@@ -8,6 +8,8 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/identitymanagement"
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -29,10 +31,12 @@ func assembleMemory() (*Dependencies, error) {
 	}
 	return &Dependencies{
 		TenantRepo:     memory.NewTenantRepository(),
-		AttrSchemaRepo: memory.NewTenantUserAttributeSchemaRepository(),
-		UserRepo:       memory.NewUserRepository(),
-		GroupRepo:      memory.NewGroupRepository(),
-		AgentRepo:      memory.NewAgentRepository(),
+		AttrSchemaRepo: idmmemory.NewTenantUserAttributeSchemaRepository(),
+		IdentityManagement: identitymanagement.Module{
+			UserRepo:  idmmemory.NewUserRepository(),
+			GroupRepo: idmmemory.NewGroupRepository(),
+			AgentRepo: idmmemory.NewAgentRepository(),
+		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),
 			PasswordHistoryRepo:     authnmemory.NewPasswordHistoryRepository(),

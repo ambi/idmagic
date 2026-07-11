@@ -1,8 +1,12 @@
-package spec
+package domain
 
 import (
 	"slices"
 	"time"
+
+	z "github.com/Oudwins/zog"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ===============================================================
@@ -22,8 +26,18 @@ type Group struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+var groupSchema = z.Struct(z.Shape{
+	"ID":          z.String().Min(1).Max(64).Required(),
+	"TenantID":    z.String().Min(1).Required(),
+	"Name":        z.String().Min(1).Max(100).Required(),
+	"Description": z.Ptr(z.String().Max(500)),
+	"Roles":       z.Slice(z.String().Min(1)),
+	"CreatedAt":   z.Time().Required(),
+	"UpdatedAt":   z.Time().Required(),
+})
+
 func (g Group) Validate() error {
-	return validate(groupSchema, &g)
+	return spec.Validate(groupSchema, &g)
 }
 
 // GroupMember は User と Group の所属関係。group_id × user_sub で一意。
@@ -33,13 +47,19 @@ type GroupMember struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+var groupMemberSchema = z.Struct(z.Shape{
+	"GroupID":   z.String().Min(1).Required(),
+	"UserID":    z.String().Min(1).Required(),
+	"CreatedAt": z.Time().Required(),
+})
+
 func (m GroupMember) Validate() error {
-	return validate(groupMemberSchema, &m)
+	return spec.Validate(groupMemberSchema, &m)
 }
 
 // NewGroupID は不変の Group 識別子 group_<uuid> を生成する。
 func NewGroupID() (string, error) {
-	id, err := NewUUIDv4()
+	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return "", err
 	}

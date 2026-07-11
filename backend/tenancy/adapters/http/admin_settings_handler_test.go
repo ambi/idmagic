@@ -14,6 +14,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -24,9 +28,9 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newSettingsServer(t *testing.T, actor *spec.User, tenants ...*spec.Tenant) (*echo.Echo, *memory.TenantRepository, *[]spec.DomainEvent) {
+func newSettingsServer(t *testing.T, actor *idmdomain.User, tenants ...*spec.Tenant) (*echo.Echo, *memory.TenantRepository, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
@@ -57,9 +61,9 @@ func newSettingsServer(t *testing.T, actor *spec.User, tenants ...*spec.Tenant) 
 	return e, tenantRepo, &events
 }
 
-func settingsActor(sub, tenantID string, roles []string) *spec.User {
+func settingsActor(sub, tenantID string, roles []string) *idmdomain.User {
 	now := time.Now().UTC()
-	return &spec.User{
+	return &idmdomain.User{
 		ID: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}

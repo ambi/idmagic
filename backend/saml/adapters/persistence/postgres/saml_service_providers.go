@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/ambi/idmagic/backend/saml/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/saml/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	"github.com/jackc/pgx/v5"
 )
 
 // SamlServiceProviderRepository は SAML 2.0 SP trust を PostgreSQL に永続化する。

@@ -6,27 +6,28 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
 type agentRegisterRequest struct {
-	Name        string          `json:"name"`
-	Description *string         `json:"description"`
-	Kind        *spec.AgentKind `json:"kind"`
-	OwnerUserID *string         `json:"owner_user_id"`
-	Roles       []string        `json:"roles"`
+	Name        string               `json:"name"`
+	Description *string              `json:"description"`
+	Kind        *idmdomain.AgentKind `json:"kind"`
+	OwnerUserID *string              `json:"owner_user_id"`
+	Roles       []string             `json:"roles"`
 }
 
 type agentUpdateRequest struct {
-	Name        *string         `json:"name"`
-	Description *string         `json:"description"`
-	Kind        *spec.AgentKind `json:"kind"`
-	OwnerUserID *string         `json:"owner_user_id"`
-	Roles       *[]string       `json:"roles"`
+	Name        *string              `json:"name"`
+	Description *string              `json:"description"`
+	Kind        *idmdomain.AgentKind `json:"kind"`
+	OwnerUserID *string              `json:"owner_user_id"`
+	Roles       *[]string            `json:"roles"`
 }
 
 type agentCredentialBindRequest struct {
@@ -34,19 +35,19 @@ type agentCredentialBindRequest struct {
 }
 
 type agentSummaryResponse struct {
-	ID          string           `json:"id"`
-	TenantID    string           `json:"tenant_id"`
-	Name        string           `json:"name"`
-	Description *string          `json:"description,omitempty"`
-	Kind        spec.AgentKind   `json:"kind"`
-	OwnerUserID string           `json:"owner_user_id"`
-	Status      spec.AgentStatus `json:"status"`
-	Roles       []string         `json:"roles"`
-	ClientIDs   []string         `json:"client_ids"`
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   time.Time        `json:"updated_at"`
-	DisabledAt  *time.Time       `json:"disabled_at,omitempty"`
-	KilledAt    *time.Time       `json:"killed_at,omitempty"`
+	ID          string                `json:"id"`
+	TenantID    string                `json:"tenant_id"`
+	Name        string                `json:"name"`
+	Description *string               `json:"description,omitempty"`
+	Kind        idmdomain.AgentKind   `json:"kind"`
+	OwnerUserID string                `json:"owner_user_id"`
+	Status      idmdomain.AgentStatus `json:"status"`
+	Roles       []string              `json:"roles"`
+	ClientIDs   []string              `json:"client_ids"`
+	CreatedAt   time.Time             `json:"created_at"`
+	UpdatedAt   time.Time             `json:"updated_at"`
+	DisabledAt  *time.Time            `json:"disabled_at,omitempty"`
+	KilledAt    *time.Time            `json:"killed_at,omitempty"`
 }
 
 func (d Deps) handleListAgents(c *echo.Context) error {
@@ -210,7 +211,7 @@ func (d Deps) adminAgentDeps() idmusecases.AdminAgentDeps {
 	return idmusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.Emit}
 }
 
-func toAgentSummaryResponse(agent *spec.Agent, clientIDs []string) agentSummaryResponse {
+func toAgentSummaryResponse(agent *idmdomain.Agent, clientIDs []string) agentSummaryResponse {
 	if clientIDs == nil {
 		clientIDs = []string{}
 	}

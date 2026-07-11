@@ -12,6 +12,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmhttp "github.com/ambi/idmagic/backend/identitymanagement/adapters/http"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -22,9 +26,9 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newAccountServer(t *testing.T, user *spec.User) *echo.Echo {
+func newAccountServer(t *testing.T, user *idmdomain.User) *echo.Echo {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	if user != nil {
 		userRepo.Seed(user)
 	}
@@ -45,22 +49,22 @@ func newAccountServer(t *testing.T, user *spec.User) *echo.Echo {
 			TenantRepo: tenantRepo,
 			Emit:       func(spec.DomainEvent) {},
 		}, UserRepo: userRepo,
-		AttrSchemaRepo: memory.NewTenantUserAttributeSchemaRepository(),
+		AttrSchemaRepo: idmmemory.NewTenantUserAttributeSchemaRepository(),
 		AuthnResolver:  resolver,
 	})
 	return e
 }
 
-func accountUser() *spec.User {
+func accountUser() *idmdomain.User {
 	now := time.Now().UTC()
 	name := "Dave Q"
-	return &spec.User{
+	return &idmdomain.User{
 		ID: "user-1", PreferredUsername: "dave", TenantID: spec.DefaultTenantID, Name: &name,
 		PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHQ$aGFzaGhhc2g",
-		Lifecycle:    spec.UserLifecycle{Status: spec.UserStatusActive},
-		Attributes: map[string]spec.AttributeValue{
-			"nickname":   {Type: spec.AttributeTypeString, String: new("davey")},    // claim_exposed
-			"department": {Type: spec.AttributeTypeString, String: new("Platform")}, // self_readable
+		Lifecycle:    idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]idmdomain.AttributeValue{
+			"nickname":   {Type: idmdomain.AttributeTypeString, String: new("davey")},    // claim_exposed
+			"department": {Type: idmdomain.AttributeTypeString, String: new("Platform")}, // self_readable
 		},
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -113,7 +117,7 @@ func TestAccountSummaryReturnsLifecycleAndOmitsRoles(t *testing.T) {
 	user := accountUser()
 	last := time.Date(2026, 6, 20, 9, 0, 0, 0, time.UTC)
 	user.Lifecycle.LastLoginAt = &last
-	user.Lifecycle.RequiredActions = []spec.RequiredAction{spec.RequiredActionUpdatePassword}
+	user.Lifecycle.RequiredActions = []idmdomain.RequiredAction{idmdomain.RequiredActionUpdatePassword}
 	user.Roles = []string{"admin"}
 	e := newAccountServer(t, user)
 	rec := httptest.NewRecorder()
@@ -132,7 +136,7 @@ func TestAccountSummaryReturnsLifecycleAndOmitsRoles(t *testing.T) {
 		t.Fatalf("last_login_at missing: %+v", body)
 	}
 	actions, ok := body["required_actions"].([]any)
-	if !ok || len(actions) != 1 || actions[0] != string(spec.RequiredActionUpdatePassword) {
+	if !ok || len(actions) != 1 || actions[0] != string(idmdomain.RequiredActionUpdatePassword) {
 		t.Fatalf("required_actions not projected: %+v", body["required_actions"])
 	}
 }

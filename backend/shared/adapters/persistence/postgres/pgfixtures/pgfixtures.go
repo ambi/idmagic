@@ -14,6 +14,9 @@ import (
 	"testing"
 	"time"
 
+	idmpg "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauthpg "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
@@ -60,10 +63,10 @@ func SeedTenant(t *testing.T, db sharedpg.DB) *spec.Tenant {
 }
 
 // SeedUser は指定テナントにユーザを作成して返す。
-func SeedUser(t *testing.T, db sharedpg.DB, tenantID string) *spec.User {
+func SeedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
 	t.Helper()
 	now := TestClock()
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID:                NewUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: UniqueID("username"),
@@ -72,17 +75,17 @@ func SeedUser(t *testing.T, db sharedpg.DB, tenantID string) *spec.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&sharedpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := (&idmpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user
 }
 
 // SeedGroup は指定テナントにグループを作成して返す。
-func SeedGroup(t *testing.T, db sharedpg.DB, tenantID string) *spec.Group {
+func SeedGroup(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.Group {
 	t.Helper()
 	now := TestClock()
-	group := &spec.Group{
+	group := &idmdomain.Group{
 		ID:        NewUUID(t),
 		TenantID:  tenantID,
 		Name:      UniqueID("group-name"),
@@ -90,7 +93,7 @@ func SeedGroup(t *testing.T, db sharedpg.DB, tenantID string) *spec.Group {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := (&sharedpg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
+	if err := (&idmpg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
 		t.Fatalf("seed group: %v", err)
 	}
 	return group

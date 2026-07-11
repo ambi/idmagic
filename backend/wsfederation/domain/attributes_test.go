@@ -3,11 +3,11 @@ package domain
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 )
 
 func TestResolveUserAttributes_StandardFields(t *testing.T) {
-	u := spec.User{
+	u := idmdomain.User{
 		ID:                "user-1",
 		PreferredUsername: "alice",
 		Email:             new("alice@contoso.com"),
@@ -48,14 +48,14 @@ func TestResolveUserAttributes_StandardFields(t *testing.T) {
 func TestResolveUserAttributes_CustomAttributes(t *testing.T) {
 	num := 42.0
 	flag := true
-	u := spec.User{
+	u := idmdomain.User{
 		ID: "user-2",
-		Attributes: map[string]spec.AttributeValue{
-			"object_guid": {Type: spec.AttributeTypeString, String: new("AAECAwQFBgc=")},
-			"groups":      {Type: spec.AttributeTypeStringArray, StringArray: []string{"g1", "g2"}},
-			"level":       {Type: spec.AttributeTypeNumber, Number: &num},
-			"vip":         {Type: spec.AttributeTypeBoolean, Boolean: &flag},
-			"blank":       {Type: spec.AttributeTypeString, String: new("  ")},
+		Attributes: map[string]idmdomain.AttributeValue{
+			"object_guid": {Type: idmdomain.AttributeTypeString, String: new("AAECAwQFBgc=")},
+			"groups":      {Type: idmdomain.AttributeTypeStringArray, StringArray: []string{"g1", "g2"}},
+			"level":       {Type: idmdomain.AttributeTypeNumber, Number: &num},
+			"vip":         {Type: idmdomain.AttributeTypeBoolean, Boolean: &flag},
+			"blank":       {Type: idmdomain.AttributeTypeString, String: new("  ")},
 		},
 	}
 	attrs := ResolveUserAttributes(u)

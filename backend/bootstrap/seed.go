@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -77,12 +79,12 @@ func seedDemoData(
 	}
 	email := "alice@example.com"
 	totpSecret := envDefault("DEMO_TOTP_SECRET", "")
-	if err := users.Save(ctx, &spec.User{
+	if err := users.Save(ctx, &idmdomain.User{
 		ID: seedUserAliceID, TenantID: spec.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		Roles:     []string{"admin"},
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		return err
@@ -96,12 +98,12 @@ func seedDemoData(
 	// ロール) とあわせて両方を付与し、全画面を試せるようにする。alice とは別に
 	// 用意し、既定テナントに所属する。
 	rootEmail := "root@example.com"
-	if err := users.Save(ctx, &spec.User{
+	if err := users.Save(ctx, &idmdomain.User{
 		ID: seedUserRootID, TenantID: spec.DefaultTenantID,
 		PreferredUsername: "root", PasswordHash: hash,
 		Email: &rootEmail, EmailVerified: true,
 		Roles:     []string{"admin", "system_admin"},
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		return err
@@ -239,7 +241,7 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now time.Time) error {
 	engineeringDesc := "プロダクト開発チーム"
 	supportDesc := "カスタマーサポートチーム"
-	demoGroups := []*spec.Group{
+	demoGroups := []*idmdomain.Group{
 		{
 			ID: seedGroupEngineeringID, TenantID: spec.DefaultTenantID, Name: "engineering",
 			Description: &engineeringDesc, Roles: []string{"catalog:read"}, CreatedAt: now,
@@ -254,7 +256,7 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 			return err
 		}
 	}
-	if _, err := groups.AddMember(ctx, &spec.GroupMember{
+	if _, err := groups.AddMember(ctx, &idmdomain.GroupMember{
 		GroupID: seedGroupEngineeringID, UserID: seedUserAliceID, CreatedAt: now,
 	}); err != nil {
 		return err

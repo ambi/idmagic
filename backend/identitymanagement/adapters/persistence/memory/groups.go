@@ -6,7 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 // =====================================================================
@@ -15,80 +16,80 @@ import (
 
 type GroupRepository struct {
 	mu      sync.RWMutex
-	groups  map[string]*spec.Group         // key: TenantKey(tenant_id, id)
-	members map[string][]*spec.GroupMember // key: TenantKey(tenant_id, group_id)
+	groups  map[string]*idmdomain.Group         // key: sharedmem.TenantKey(tenant_id, id)
+	members map[string][]*idmdomain.GroupMember // key: sharedmem.TenantKey(tenant_id, group_id)
 }
 
 func NewGroupRepository() *GroupRepository {
 	return &GroupRepository{
-		groups:  map[string]*spec.Group{},
-		members: map[string][]*spec.GroupMember{},
+		groups:  map[string]*idmdomain.Group{},
+		members: map[string][]*idmdomain.GroupMember{},
 	}
 }
 
-func cloneGroup(group *spec.Group) *spec.Group {
+func cloneGroup(group *idmdomain.Group) *idmdomain.Group {
 	cloned := *group
 	cloned.Roles = slices.Clone(group.Roles)
 	return &cloned
 }
 
-func (r *GroupRepository) ListByTenant(_ context.Context, tenantID string) ([]*spec.Group, error) {
+func (r *GroupRepository) ListByTenant(_ context.Context, tenantID string) ([]*idmdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.Group, 0)
+	out := make([]*idmdomain.Group, 0)
 	for _, group := range r.groups {
 		if group.TenantID == tenantID {
 			out = append(out, cloneGroup(group))
 		}
 	}
-	slices.SortFunc(out, func(a, b *spec.Group) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(out, func(a, b *idmdomain.Group) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
 }
 
-func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*spec.Group, error) {
+func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*idmdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	group := r.groups[TenantKey(tenantID, id)]
+	group := r.groups[sharedmem.TenantKey(tenantID, id)]
 	if group == nil {
 		return nil, nil
 	}
 	return cloneGroup(group), nil
 }
 
-func (r *GroupRepository) Save(_ context.Context, group *spec.Group) error {
+func (r *GroupRepository) Save(_ context.Context, group *idmdomain.Group) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.groups[TenantKey(group.TenantID, group.ID)] = cloneGroup(group)
+	r.groups[sharedmem.TenantKey(group.TenantID, group.ID)] = cloneGroup(group)
 	return nil
 }
 
 func (r *GroupRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.groups, TenantKey(tenantID, id))
-	delete(r.members, TenantKey(tenantID, id))
+	delete(r.groups, sharedmem.TenantKey(tenantID, id))
+	delete(r.members, sharedmem.TenantKey(tenantID, id))
 	return nil
 }
 
-func (r *GroupRepository) ListMembersByGroup(_ context.Context, tenantID, groupID string) ([]*spec.GroupMember, error) {
+func (r *GroupRepository) ListMembersByGroup(_ context.Context, tenantID, groupID string) ([]*idmdomain.GroupMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	stored := r.members[TenantKey(tenantID, groupID)]
-	out := make([]*spec.GroupMember, 0, len(stored))
+	stored := r.members[sharedmem.TenantKey(tenantID, groupID)]
+	out := make([]*idmdomain.GroupMember, 0, len(stored))
 	for _, member := range stored {
 		cloned := *member
 		out = append(out, &cloned)
 	}
-	slices.SortFunc(out, func(a, b *spec.GroupMember) int { return strings.Compare(a.UserID, b.UserID) })
+	slices.SortFunc(out, func(a, b *idmdomain.GroupMember) int { return strings.Compare(a.UserID, b.UserID) })
 	return out, nil
 }
 
-func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID string) ([]*spec.Group, error) {
+func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID string) ([]*idmdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*spec.Group, 0)
+	out := make([]*idmdomain.Group, 0)
 	for key, members := range r.members {
-		if !slices.ContainsFunc(members, func(m *spec.GroupMember) bool { return m.UserID == userID }) {
+		if !slices.ContainsFunc(members, func(m *idmdomain.GroupMember) bool { return m.UserID == userID }) {
 			continue
 		}
 		group := r.groups[key]
@@ -96,17 +97,17 @@ func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID s
 			out = append(out, cloneGroup(group))
 		}
 	}
-	slices.SortFunc(out, func(a, b *spec.Group) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(out, func(a, b *idmdomain.Group) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
 }
 
 func (r *GroupRepository) CountMembers(_ context.Context, tenantID, groupID string) (int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return len(r.members[TenantKey(tenantID, groupID)]), nil
+	return len(r.members[sharedmem.TenantKey(tenantID, groupID)]), nil
 }
 
-func (r *GroupRepository) AddMember(_ context.Context, member *spec.GroupMember) (bool, error) {
+func (r *GroupRepository) AddMember(_ context.Context, member *idmdomain.GroupMember) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := r.memberKey(member.GroupID)
@@ -123,7 +124,7 @@ func (r *GroupRepository) AddMember(_ context.Context, member *spec.GroupMember)
 func (r *GroupRepository) RemoveMember(_ context.Context, tenantID, groupID, userID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := TenantKey(tenantID, groupID)
+	key := sharedmem.TenantKey(tenantID, groupID)
 	members := r.members[key]
 	for i, existing := range members {
 		if existing.UserID == userID {

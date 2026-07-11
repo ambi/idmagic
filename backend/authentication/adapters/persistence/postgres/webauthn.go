@@ -6,11 +6,12 @@ import (
 	"math"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // WebAuthnCredentialRepository (Authentication) — wi-26 / ADR-087

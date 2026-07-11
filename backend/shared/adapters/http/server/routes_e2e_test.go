@@ -17,6 +17,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -54,10 +58,10 @@ func newServer(t *testing.T) *httptest.Server {
 // newServerWithUserAccess は newServerWithTOTP と同等のスタックを組みつつ、
 // テストから user 状態を直接 mutate するため UserRepository を返す。
 // disable / lifecycle 関連のテスト専用。
-func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserRepository) {
+func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRepository) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
@@ -84,7 +88,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 	}
 	email := "alice@example.com"
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
 		Email: &email, EmailVerified: true,
 		CreatedAt: now, UpdatedAt: now,
@@ -125,7 +129,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 	t.Helper()
 
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
@@ -158,7 +162,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 	}
 	email := "alice@example.com"
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		CreatedAt: now, UpdatedAt: now,
@@ -450,7 +454,7 @@ func TestLoginWithUpdatePasswordActionRedirectsToChangePassword(t *testing.T) {
 	if err != nil || user == nil {
 		t.Fatalf("seed user lookup: %v", err)
 	}
-	user.Lifecycle.RequiredActions = []spec.RequiredAction{spec.RequiredActionUpdatePassword}
+	user.Lifecycle.RequiredActions = []idmdomain.RequiredAction{idmdomain.RequiredActionUpdatePassword}
 	if err := userRepo.Save(context.Background(), user); err != nil {
 		t.Fatal(err)
 	}
@@ -870,7 +874,7 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 		t.Fatalf("seed lookup: user=%v err=%v", user, err)
 	}
 	now := time.Now().UTC()
-	user.Lifecycle.Status = spec.UserStatusDisabled
+	user.Lifecycle.Status = idmdomain.UserStatusDisabled
 	user.Lifecycle.StatusChangedAt = &now
 	if err := repo.Save(context.Background(), user); err != nil {
 		t.Fatalf("disable: %v", err)
@@ -1033,7 +1037,7 @@ func mustJSON(t *testing.T, value any) string {
 
 func TestHealthProbes(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	keyStore, _ := crypto.NewInMemoryKeyStore()
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())

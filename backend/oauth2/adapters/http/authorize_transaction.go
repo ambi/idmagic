@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v5"
+
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/labstack/echo/v5"
 )
 
 func (d Deps) transactionRequest(c *echo.Context) (*domain.AuthorizationRequest, error) {

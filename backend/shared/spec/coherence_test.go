@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/usecases"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -93,8 +94,8 @@ func TestUserStatusPendingDeletionWireValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := s.ToWire("PendingDeletion"); got != string(spec.UserStatusPendingDeletion) {
-		t.Fatalf("SCL PendingDeletion wire=%q, Go UserStatusPendingDeletion=%q", got, spec.UserStatusPendingDeletion)
+	if got := s.ToWire("PendingDeletion"); got != string(idmdomain.UserStatusPendingDeletion) {
+		t.Fatalf("SCL PendingDeletion wire=%q, Go UserStatusPendingDeletion=%q", got, idmdomain.UserStatusPendingDeletion)
 	}
 }
 
@@ -151,9 +152,9 @@ func TestAgentStatusMatchesSCL(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		string(spec.AgentStatusActive),
-		string(spec.AgentStatusDisabled),
-		string(spec.AgentStatusKilled),
+		string(idmdomain.AgentStatusActive),
+		string(idmdomain.AgentStatusDisabled),
+		string(idmdomain.AgentStatusKilled),
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("SCL AgentStatus=%v, Go=%v", got, want)
@@ -170,8 +171,8 @@ func TestAgentKindMatchesSCL(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		string(spec.AgentKindAutonomous),
-		string(spec.AgentKindSupervised),
+		string(idmdomain.AgentKindAutonomous),
+		string(idmdomain.AgentKindSupervised),
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("SCL AgentKind=%v, Go=%v", got, want)

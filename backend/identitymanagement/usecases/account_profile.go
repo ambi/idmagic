@@ -12,6 +12,8 @@ import (
 	"maps"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -32,7 +34,7 @@ type AccountProfileDeps struct {
 // 返した定義は handler 側で self 可視属性の絞り込み・編集可能属性の提示に使う。
 func GetUserProfile(
 	ctx context.Context, deps AccountProfileDeps, sub string,
-) (*spec.User, []spec.UserAttributeDef, error) {
+) (*idmdomain.User, []idmdomain.UserAttributeDef, error) {
 	user, err := loadSelf(ctx, deps.UserRepo, sub)
 	if err != nil {
 		return nil, nil, err
@@ -51,7 +53,7 @@ type UpdateUserProfileInput struct {
 	FamilyName *string
 	// Attributes は editable_by_user=true の属性の部分更新 (指定 key のみ upsert)。
 	// 未指定 key は現状維持。admin 管理属性は保持される。
-	Attributes *map[string]spec.AttributeValue
+	Attributes *map[string]idmdomain.AttributeValue
 	Now        time.Time
 }
 
@@ -59,7 +61,7 @@ type UpdateUserProfileInput struct {
 // 属性は全置換ではなく key 単位の merge とし、editable_by_user=false の key は拒否する。
 func UpdateUserProfile(
 	ctx context.Context, deps AccountProfileDeps, in UpdateUserProfileInput,
-) (*spec.User, []spec.UserAttributeDef, error) {
+) (*idmdomain.User, []idmdomain.UserAttributeDef, error) {
 	user, err := loadSelf(ctx, deps.UserRepo, in.Sub)
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +111,7 @@ func UpdateUserProfile(
 	return &updated, defs, nil
 }
 
-func loadSelf(ctx context.Context, repo idmports.UserRepository, sub string) (*spec.User, error) {
+func loadSelf(ctx context.Context, repo idmports.UserRepository, sub string) (*idmdomain.User, error) {
 	user, err := repo.FindBySub(ctx, sub)
 	if err != nil {
 		return nil, err
@@ -123,15 +125,15 @@ func loadSelf(ctx context.Context, repo idmports.UserRepository, sub string) (*s
 // mergeEditableAttributes は既存属性を保ったまま、editable_by_user=true の key だけを
 // 上書きする。未定義 key は ErrInvalidAttribute、編集不可 key は ErrAttributeNotEditable。
 func mergeEditableAttributes(
-	current map[string]spec.AttributeValue,
-	patch map[string]spec.AttributeValue,
-	defs []spec.UserAttributeDef,
-) (map[string]spec.AttributeValue, error) {
-	byKey := make(map[string]spec.UserAttributeDef, len(defs))
+	current map[string]idmdomain.AttributeValue,
+	patch map[string]idmdomain.AttributeValue,
+	defs []idmdomain.UserAttributeDef,
+) (map[string]idmdomain.AttributeValue, error) {
+	byKey := make(map[string]idmdomain.UserAttributeDef, len(defs))
 	for _, def := range defs {
 		byKey[def.Key] = def
 	}
-	merged := make(map[string]spec.AttributeValue, len(current)+len(patch))
+	merged := make(map[string]idmdomain.AttributeValue, len(current)+len(patch))
 	maps.Copy(merged, current)
 	for key, value := range patch {
 		def, ok := byKey[key]
@@ -141,7 +143,7 @@ func mergeEditableAttributes(
 		if !def.EditableByUser {
 			return nil, errors.Join(ErrAttributeNotEditable, errors.New("attribute "+key+" is admin-managed"))
 		}
-		if err := spec.ValidateAttributeValue(value, def); err != nil {
+		if err := idmdomain.ValidateAttributeValue(value, def); err != nil {
 			return nil, errors.Join(ErrInvalidAttribute, err)
 		}
 		merged[key] = value
@@ -152,16 +154,16 @@ func mergeEditableAttributes(
 // SelfReadableAttributes は self が読める属性 (self_readable / claim_exposed) の値だけを
 // 抽出する。private / admin_readable は除外する。
 func SelfReadableAttributes(
-	attributes map[string]spec.AttributeValue, defs []spec.UserAttributeDef,
-) map[string]spec.AttributeValue {
-	visibility := make(map[string]spec.AttrVisibility, len(defs))
+	attributes map[string]idmdomain.AttributeValue, defs []idmdomain.UserAttributeDef,
+) map[string]idmdomain.AttributeValue {
+	visibility := make(map[string]idmdomain.AttrVisibility, len(defs))
 	for _, def := range defs {
 		visibility[def.Key] = def.Visibility
 	}
-	out := map[string]spec.AttributeValue{}
+	out := map[string]idmdomain.AttributeValue{}
 	for key, value := range attributes {
 		switch visibility[key] {
-		case spec.AttrVisibilitySelfReadable, spec.AttrVisibilityClaimExposed:
+		case idmdomain.AttrVisibilitySelfReadable, idmdomain.AttrVisibilityClaimExposed:
 			out[key] = value
 		}
 	}
@@ -169,11 +171,11 @@ func SelfReadableAttributes(
 }
 
 // SelfReadableAttributeDefs は self が読める属性定義を返す。
-func SelfReadableAttributeDefs(defs []spec.UserAttributeDef) []spec.UserAttributeDef {
-	out := []spec.UserAttributeDef{}
+func SelfReadableAttributeDefs(defs []idmdomain.UserAttributeDef) []idmdomain.UserAttributeDef {
+	out := []idmdomain.UserAttributeDef{}
 	for _, def := range defs {
 		switch def.Visibility {
-		case spec.AttrVisibilitySelfReadable, spec.AttrVisibilityClaimExposed:
+		case idmdomain.AttrVisibilitySelfReadable, idmdomain.AttrVisibilityClaimExposed:
 			out = append(out, def)
 		}
 	}
@@ -181,8 +183,8 @@ func SelfReadableAttributeDefs(defs []spec.UserAttributeDef) []spec.UserAttribut
 }
 
 // EditableAttributeDefs は self が編集できる属性定義 (editable_by_user=true) を返す。
-func EditableAttributeDefs(defs []spec.UserAttributeDef) []spec.UserAttributeDef {
-	out := []spec.UserAttributeDef{}
+func EditableAttributeDefs(defs []idmdomain.UserAttributeDef) []idmdomain.UserAttributeDef {
+	out := []idmdomain.UserAttributeDef{}
 	for _, def := range defs {
 		if def.EditableByUser {
 			out = append(out, def)

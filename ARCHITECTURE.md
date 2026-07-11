@@ -105,7 +105,7 @@ backend/<context>/
 
 `domain/` は Echo、PostgreSQL、Valkey、HTTP request/response を知らない。`usecases/` は `ports/` に依存し、具体 adapter には依存しない。`adapters/http` は入力の wire 変換、HTTP status、cookie/header、CSRF/Origin など境界処理を持つ。`usecases/` が adapter を import しない依存方向は全 context 共通で、外界の能力（署名・割当ゲート・認証解決など）は `ports/` の抽象か usecase パッケージ内の interface で受け、adapter が具体実装を注入する（例: `oauth2` の `ports.TokenIssuer`、`saml` / `wsfederation` の `ApplicationGate` interface）。
 
-`domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、4 層すべてを機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`identitymanagement` / `tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `saml` / `wsfederation` のようにプロトコル固有の解析・claim mapping を持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`adapters/http` は wire と HTTP 境界に閉じる。
+`domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、4 層すべてを機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `identitymanagement`（User/Group/Agent 集約、属性スキーマ、field validation）や `saml` / `wsfederation`（プロトコル固有の解析・claim mapping）のように固有ロジックを持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`adapters/http` は wire と HTTP 境界に閉じる。
 
 `backend/shared/` は「複数 context が本当に共有する technical capability」だけに使う。context 固有の概念を便利だからという理由で `shared` に置くと、次の変更で読む範囲が広がる。
 

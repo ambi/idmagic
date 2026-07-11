@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 )
 
 func TestGroupRepository(t *testing.T) {
@@ -13,7 +13,7 @@ func TestGroupRepository(t *testing.T) {
 	repo := NewGroupRepository()
 
 	t.Run("Save and FindByID", func(t *testing.T) {
-		group := &spec.Group{
+		group := &idmdomain.Group{
 			ID:          "group-1",
 			TenantID:    "tenant-1",
 			Name:        "Administrators",
@@ -53,9 +53,9 @@ func TestGroupRepository(t *testing.T) {
 
 	t.Run("ListByTenant", func(t *testing.T) {
 		// すでに group-1 が tenant-1 に存在する
-		g2 := &spec.Group{ID: "group-2", TenantID: "tenant-1", Name: "Developers"}
-		g3 := &spec.Group{ID: "group-3", TenantID: "tenant-1", Name: "Auditors"}
-		gOther := &spec.Group{ID: "group-other", TenantID: "tenant-other", Name: "Other"}
+		g2 := &idmdomain.Group{ID: "group-2", TenantID: "tenant-1", Name: "Developers"}
+		g3 := &idmdomain.Group{ID: "group-3", TenantID: "tenant-1", Name: "Auditors"}
+		gOther := &idmdomain.Group{ID: "group-other", TenantID: "tenant-other", Name: "Other"}
 
 		_ = repo.Save(ctx, g2)
 		_ = repo.Save(ctx, g3)
@@ -76,12 +76,12 @@ func TestGroupRepository(t *testing.T) {
 	})
 
 	t.Run("Members Management", func(t *testing.T) {
-		member1 := &spec.GroupMember{
+		member1 := &idmdomain.GroupMember{
 			GroupID:   "group-1",
 			UserID:    "user-1",
 			CreatedAt: time.Now(),
 		}
-		member2 := &spec.GroupMember{
+		member2 := &idmdomain.GroupMember{
 			GroupID:   "group-1",
 			UserID:    "user-2",
 			CreatedAt: time.Now(),

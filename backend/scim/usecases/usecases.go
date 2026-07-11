@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -141,12 +143,12 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 	sub := fmt.Sprintf("user_%s", hex.EncodeToString(subBytes))
 
 	now := time.Now()
-	status := spec.UserStatusActive
+	status := idmdomain.UserStatusActive
 	if !activeVal {
-		status = spec.UserStatusDisabled
+		status = idmdomain.UserStatusDisabled
 	}
 
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID:                sub,
 		TenantID:          tenantID,
 		PreferredUsername: userName,
@@ -157,11 +159,11 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		Email:             &emailVal,
 		EmailVerified:     true,
 		Roles:             []string{},
-		Lifecycle: spec.UserLifecycle{
+		Lifecycle: idmdomain.UserLifecycle{
 			Status:          status,
 			StatusChangedAt: &now,
 		},
-		Attributes: make(map[string]spec.AttributeValue),
+		Attributes: make(map[string]idmdomain.AttributeValue),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -319,13 +321,13 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	return u.toScimUser(user, scimID), nil
 }
 
-func (u *Usecases) setUserActive(user *spec.User, active bool) {
+func (u *Usecases) setUserActive(user *idmdomain.User, active bool) {
 	now := time.Now()
-	if active && user.Lifecycle.Status != spec.UserStatusActive {
-		user.Lifecycle.Status = spec.UserStatusActive
+	if active && user.Lifecycle.Status != idmdomain.UserStatusActive {
+		user.Lifecycle.Status = idmdomain.UserStatusActive
 		user.Lifecycle.StatusChangedAt = &now
-	} else if !active && user.Lifecycle.Status == spec.UserStatusActive {
-		user.Lifecycle.Status = spec.UserStatusDisabled
+	} else if !active && user.Lifecycle.Status == idmdomain.UserStatusActive {
+		user.Lifecycle.Status = idmdomain.UserStatusDisabled
 		user.Lifecycle.StatusChangedAt = &now
 	}
 }
@@ -349,7 +351,7 @@ func (u *Usecases) DeleteUser(ctx context.Context, tenantID, scimID string) erro
 
 	// Soft Delete: status = PendingDeletion (ADR-080)
 	now := time.Now()
-	user.Lifecycle.Status = spec.UserStatusPendingDeletion
+	user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
 	user.Lifecycle.StatusChangedAt = &now
 	user.UpdatedAt = now
 
@@ -389,7 +391,7 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID, filter string) ([]ma
 	return out, nil
 }
 
-func (u *Usecases) toScimUser(user *spec.User, scimID string) map[string]any {
+func (u *Usecases) toScimUser(user *idmdomain.User, scimID string) map[string]any {
 	var emailVal string
 	if user.Email != nil {
 		emailVal = *user.Email
@@ -406,7 +408,7 @@ func (u *Usecases) toScimUser(user *spec.User, scimID string) map[string]any {
 		formattedName = *user.Name
 	}
 
-	active := user.Lifecycle.Status == spec.UserStatusActive
+	active := user.Lifecycle.Status == idmdomain.UserStatusActive
 
 	return map[string]any{
 		"schemas":  []string{"urn:ietf:params:scim:schemas:core:2.0:User"},
@@ -447,7 +449,7 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 	id := fmt.Sprintf("group_%s", hex.EncodeToString(idBytes))
 
 	now := time.Now()
-	group := &spec.Group{
+	group := &idmdomain.Group{
 		ID:          id,
 		TenantID:    tenantID,
 		Name:        displayName,
@@ -483,7 +485,7 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 				if userScimID != "" {
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
+						if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
 							GroupID:   id,
 							UserID:    userRef.UserID,
 							CreatedAt: time.Now(),
@@ -586,7 +588,7 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 				if userScimID != "" {
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
+						if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
 							GroupID:   group.ID,
 							UserID:    userRef.UserID,
 							CreatedAt: time.Now(),
@@ -670,7 +672,7 @@ func (u *Usecases) patchAddMembers(ctx context.Context, tenantID, groupID string
 				if userScimID != "" {
 					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
 					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.AddMember(ctx, &spec.GroupMember{
+						if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
 							GroupID:   groupID,
 							UserID:    userRef.UserID,
 							CreatedAt: time.Now(),
@@ -732,7 +734,7 @@ func (u *Usecases) DeleteGroup(ctx context.Context, tenantID, scimID string) err
 	return u.ScimRepo.DeleteGroupRef(ctx, tenantID, scimID)
 }
 
-func (u *Usecases) toScimGroup(ctx context.Context, group *spec.Group, scimID string) (map[string]any, error) {
+func (u *Usecases) toScimGroup(ctx context.Context, group *idmdomain.Group, scimID string) (map[string]any, error) {
 	members, err := u.GroupRepo.ListMembersByGroup(ctx, group.TenantID, group.ID)
 	if err != nil {
 		return nil, err

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -53,7 +55,7 @@ func newTokenExchangeServer(t *testing.T) string {
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps:         support.Deps{Issuer: "http://test"},
 		OAuth2:       oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()},
-		UserRepo:     memory.NewUserRepository(),
+		UserRepo:     idmmemory.NewUserRepository(),
 		RefreshStore: memory.NewRefreshTokenStore(),
 		KeyStore:     keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	})

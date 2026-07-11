@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -150,7 +152,7 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in ports.IDTokenInput) (str
 			return "", err
 		}
 		// 標準 claim とキーが衝突した場合は標準 claim を優先する。
-		for key, value := range spec.ClaimsForScopes(*in.User, defs, in.Scopes) {
+		for key, value := range idmdomain.ClaimsForScopes(*in.User, defs, in.Scopes) {
 			if _, exists := claims[key]; !exists {
 				claims[key] = value
 			}

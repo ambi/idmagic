@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -44,7 +46,7 @@ type AdminAgentDeps struct {
 
 // AgentView は一覧・詳細で Agent と束縛済み client id をまとめて返す。
 type AgentView struct {
-	Agent     *spec.Agent
+	Agent     *idmdomain.Agent
 	ClientIDs []string
 }
 
@@ -87,13 +89,13 @@ type RegisterAgentInput struct {
 	ActorUserID string
 	Name        string
 	Description *string
-	Kind        *spec.AgentKind
+	Kind        *idmdomain.AgentKind
 	OwnerUserID string
 	Roles       []string
 	Now         time.Time
 }
 
-func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInput) (*spec.Agent, error) {
+func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInput) (*idmdomain.Agent, error) {
 	tenantID := tenancy.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -116,14 +118,14 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err != nil {
 		return nil, err
 	}
-	id, err := spec.NewAgentID()
+	id, err := idmdomain.NewAgentID()
 	if err != nil {
 		return nil, err
 	}
 	now := normalizedNow(in.Now)
-	agent := &spec.Agent{
+	agent := &idmdomain.Agent{
 		ID: id, TenantID: tenantID, Name: name, Description: normalizeDescription(in.Description),
-		Kind: normalizeAgentKind(in.Kind), OwnerUserID: owner, Status: spec.AgentStatusActive,
+		Kind: normalizeAgentKind(in.Kind), OwnerUserID: owner, Status: idmdomain.AgentStatusActive,
 		Roles: roles, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := agent.Validate(); err != nil {
@@ -141,13 +143,13 @@ type UpdateAgentInput struct {
 	ID          string
 	Name        *string
 	Description *string
-	Kind        *spec.AgentKind
+	Kind        *idmdomain.AgentKind
 	OwnerUserID *string
 	Roles       *[]string
 	Now         time.Time
 }
 
-func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) (*spec.Agent, error) {
+func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) (*idmdomain.Agent, error) {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, in.ID)
 	if err != nil {
@@ -156,7 +158,7 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 	if agent == nil {
 		return nil, ErrAgentNotFound
 	}
-	if agent.Status == spec.AgentStatusKilled {
+	if agent.Status == idmdomain.AgentStatusKilled {
 		return nil, ErrAgentKilled
 	}
 	updated := *agent
@@ -239,7 +241,7 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 
 // SetAgentDisabled は Agent を運用停止 (disabled=true) / 再稼働 (disabled=false) する。
 // Killed の Agent は復帰できないため reject する (一方向終端)。
-func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, disabled bool, now time.Time) (*spec.Agent, error) {
+func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, disabled bool, now time.Time) (*idmdomain.Agent, error) {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -248,17 +250,17 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 	if agent == nil {
 		return nil, ErrAgentNotFound
 	}
-	if agent.Status == spec.AgentStatusKilled {
+	if agent.Status == idmdomain.AgentStatusKilled {
 		return nil, ErrAgentKilled
 	}
 	now = normalizedNow(now)
 	updated := *agent
 	updated.UpdatedAt = now
 	if disabled {
-		updated.Status = spec.AgentStatusDisabled
+		updated.Status = idmdomain.AgentStatusDisabled
 		updated.DisabledAt = &now
 	} else {
-		updated.Status = spec.AgentStatusActive
+		updated.Status = idmdomain.AgentStatusActive
 		updated.DisabledAt = nil
 	}
 	if err := updated.Validate(); err != nil {
@@ -277,7 +279,7 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 
 // KillAgent は Agent を緊急停止し Killed (一方向終端) に遷移させる。既に Killed なら
 // reject する (冪等ではなく irreversible なため明示エラー)。
-func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, now time.Time) (*spec.Agent, error) {
+func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, now time.Time) (*idmdomain.Agent, error) {
 	tenantID := tenancy.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -286,12 +288,12 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string,
 	if agent == nil {
 		return nil, ErrAgentNotFound
 	}
-	if agent.Status == spec.AgentStatusKilled {
+	if agent.Status == idmdomain.AgentStatusKilled {
 		return nil, ErrAgentKilled
 	}
 	now = normalizedNow(now)
 	updated := *agent
-	updated.Status = spec.AgentStatusKilled
+	updated.Status = idmdomain.AgentStatusKilled
 	updated.KilledAt = &now
 	updated.UpdatedAt = now
 	if err := updated.Validate(); err != nil {
@@ -314,7 +316,7 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 	if agent == nil {
 		return ErrAgentNotFound
 	}
-	if agent.Status == spec.AgentStatusKilled {
+	if agent.Status == idmdomain.AgentStatusKilled {
 		return ErrAgentKilled
 	}
 	now = normalizedNow(now)
@@ -336,7 +338,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 	if agent == nil {
 		return ErrAgentNotFound
 	}
-	if agent.Status == spec.AgentStatusKilled {
+	if agent.Status == idmdomain.AgentStatusKilled {
 		return ErrAgentKilled
 	}
 	clientID = strings.TrimSpace(clientID)
@@ -360,7 +362,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 		return ErrAgentClientBound
 	}
 	now = normalizedNow(now)
-	added, err := deps.AgentRepo.AddBinding(ctx, &spec.AgentCredentialBinding{
+	added, err := deps.AgentRepo.AddBinding(ctx, &idmdomain.AgentCredentialBinding{
 		AgentID: agentID, ClientID: clientID, CreatedAt: now,
 	})
 	if err != nil {
@@ -446,9 +448,9 @@ func ensureAgentNameAvailable(ctx context.Context, deps AdminAgentDeps, tenantID
 	return nil
 }
 
-func normalizeAgentKind(kind *spec.AgentKind) spec.AgentKind {
+func normalizeAgentKind(kind *idmdomain.AgentKind) idmdomain.AgentKind {
 	if kind == nil || !kind.Valid() {
-		return spec.AgentKindSupervised
+		return idmdomain.AgentKindSupervised
 	}
 	return *kind
 }

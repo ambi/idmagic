@@ -14,6 +14,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
@@ -22,15 +26,14 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
-func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.AuditEventRecord) *echo.Echo {
+func newAuditAdminServer(t *testing.T, actor *idmdomain.User, events []*oauthports.AuditEventRecord) *echo.Echo {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
@@ -56,9 +59,9 @@ func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.Au
 	return e
 }
 
-func auditUser(sub, tenantID string, roles []string) *spec.User {
+func auditUser(sub, tenantID string, roles []string) *idmdomain.User {
 	now := time.Now().UTC()
-	return &spec.User{
+	return &idmdomain.User{
 		ID: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}

@@ -6,18 +6,21 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/authentication/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *memory.UserRepository, *[]spec.DomainEvent) {
+func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *idmmemory.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})

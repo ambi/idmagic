@@ -39,46 +39,6 @@ func TestPasswordResetTokenStoreSaveAndConsume(t *testing.T) {
 	}
 }
 
-func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	repo := &TenantUserAttributeSchemaRepository{Pool: db}
-	ctx := context.Background()
-
-	if got, err := repo.FindByTenant(ctx, tenant.ID); err != nil || got != nil {
-		t.Fatalf("expected no schema initially: %v %+v", err, got)
-	}
-
-	now := testClock()
-	schema := &spec.TenantUserAttributeSchema{
-		TenantID: tenant.ID,
-		Attributes: []spec.UserAttributeDef{
-			{Key: "department", Label: "Department", Type: spec.AttributeTypeString},
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	if err := repo.Save(ctx, schema); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-
-	got, err := repo.FindByTenant(ctx, tenant.ID)
-	if err != nil || got == nil || len(got.Attributes) != 1 {
-		t.Fatalf("find by tenant: %v %+v", err, got)
-	}
-	if got.Attributes[0].Key != "department" {
-		t.Fatalf("attributes not round-tripped: %+v", got.Attributes)
-	}
-
-	if err := repo.Delete(ctx, tenant.ID); err != nil {
-		t.Fatalf("delete: %v", err)
-	}
-	got, err = repo.FindByTenant(ctx, tenant.ID)
-	if err != nil || got != nil {
-		t.Fatalf("expected deleted: %v %+v", err, got)
-	}
-}
-
 func TestKeyStoreRotateAndLookup(t *testing.T) {
 	db := requireDB(t)
 	// signing_keys.tenant_id は tenants(id) を参照する。NewKeyStore は default テナントの

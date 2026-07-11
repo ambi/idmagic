@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
@@ -46,10 +50,10 @@ func TestStepUpSatisfiedRecencyWindow(t *testing.T) {
 
 func TestAvailableStepUpMethods(t *testing.T) {
 	t.Parallel()
-	if got := AvailableStepUpMethods(&spec.User{}); len(got) != 1 || got[0] != StepUpMethodPassword {
+	if got := AvailableStepUpMethods(&idmdomain.User{}); len(got) != 1 || got[0] != StepUpMethodPassword {
 		t.Fatalf("no MFA: got %v", got)
 	}
-	got := AvailableStepUpMethods(&spec.User{MfaEnrolled: true})
+	got := AvailableStepUpMethods(&idmdomain.User{MfaEnrolled: true})
 	if len(got) != 2 || got[1] != StepUpMethodTOTP {
 		t.Fatalf("MFA enrolled: got %v", got)
 	}
@@ -58,13 +62,13 @@ func TestAvailableStepUpMethods(t *testing.T) {
 func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *SessionManager, *[]spec.DomainEvent) {
 	t.Helper()
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := userRepo.Save(ctx, &spec.User{
+	if err := userRepo.Save(ctx, &idmdomain.User{
 		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash, MfaEnrolled: true,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	}); err != nil {

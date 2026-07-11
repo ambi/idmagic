@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -203,7 +205,7 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 // admin / system_admin のどちらでも通る。所属テナントの拘束は問わない (実際の
 // テナント絞り込みは List のクエリ生成時に行う)。
 
-func (d Deps) parseAuditEventQuery(c *echo.Context, actor *spec.User) (oauthports.AuditEventQuery, error) {
+func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (oauthports.AuditEventQuery, error) {
 	q := oauthports.AuditEventQuery{
 		TenantID:   actor.TenantID,
 		AllTenants: false,
@@ -297,7 +299,7 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]oauthports.AuditFilterExpres
 
 // auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。
 // system_admin で default テナント在籍なら全件 OK、それ以外は所属テナントのみ。
-func auditEventVisibleTo(rec *oauthports.AuditEventRecord, actor *spec.User) bool {
+func auditEventVisibleTo(rec *oauthports.AuditEventRecord, actor *idmdomain.User) bool {
 	if slices.Contains(actor.Roles, "system_admin") && actor.TenantID == spec.DefaultTenantID {
 		return true
 	}

@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	idmpg "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
@@ -45,10 +48,10 @@ func seedTenant(t *testing.T, db sharedpg.DB) *spec.Tenant {
 	return tenant
 }
 
-func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *spec.User {
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
 	t.Helper()
 	now := testClock()
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: "user-" + newUUID(t)[:8],
@@ -57,7 +60,7 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *spec.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&sharedpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := (&idmpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user

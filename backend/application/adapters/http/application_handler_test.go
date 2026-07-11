@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -19,7 +23,6 @@ import (
 	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/memory"
@@ -29,13 +32,13 @@ import (
 
 func newApplicationHandler(t *testing.T) *echo.Echo {
 	t.Helper()
-	users := memory.NewUserRepository()
+	users := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
@@ -45,7 +48,7 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 			Issuer: "http://idp.test",
 
 			Emit: func(spec.DomainEvent) {},
-		}, UserRepo: users, GroupRepo: memory.NewGroupRepository(),
+		}, UserRepo: users, GroupRepo: idmmemory.NewGroupRepository(),
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

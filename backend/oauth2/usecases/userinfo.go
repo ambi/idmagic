@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -20,7 +22,7 @@ type UserInfoInput struct {
 	// ResolveAttributeDefs はユーザのテナントに有効な属性定義 (builtin + custom) を
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする。tenant_id は対象
 	// ユーザを読み込んだ後に確定するため、関数として遅延解決する。
-	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]spec.UserAttributeDef, error)
+	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error)
 }
 
 type UserInfoResponse struct {
@@ -119,7 +121,7 @@ func UserInfo(
 		if err != nil {
 			return nil, err
 		}
-		res.Extra = spec.ClaimsForScopes(*u, defs, in.Scopes)
+		res.Extra = idmdomain.ClaimsForScopes(*u, defs, in.Scopes)
 	}
 	return res, nil
 }

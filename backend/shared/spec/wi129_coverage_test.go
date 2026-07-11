@@ -89,44 +89,6 @@ func TestEnumValid(t *testing.T) {
 		{"tenant active", TenantStatusActive, true},
 		{"tenant disabled", TenantStatusDisabled, true},
 		{"tenant bad", TenantStatus("x"), false},
-
-		{"agent active", AgentStatusActive, true},
-		{"agent disabled", AgentStatusDisabled, true},
-		{"agent killed", AgentStatusKilled, true},
-		{"agent bad", AgentStatus("x"), false},
-
-		{"agentkind autonomous", AgentKindAutonomous, true},
-		{"agentkind supervised", AgentKindSupervised, true},
-		{"agentkind bad", AgentKind("x"), false},
-
-		{"userstatus active", UserStatusActive, true},
-		{"userstatus disabled", UserStatusDisabled, true},
-		{"userstatus pending", UserStatusPendingDeletion, true},
-		{"userstatus deleted", UserStatusDeleted, true},
-		{"userstatus locked", UserStatusLocked, true},
-		{"userstatus staged", UserStatusStaged, true},
-		{"userstatus suspended", UserStatusSuspended, true},
-		{"userstatus bad", UserStatus("x"), false},
-
-		{"reqaction update password", RequiredActionUpdatePassword, true},
-		{"reqaction verify email", RequiredActionVerifyEmail, true},
-		{"reqaction configure totp", RequiredActionConfigureTOTP, true},
-		{"reqaction update profile", RequiredActionUpdateProfile, true},
-		{"reqaction terms", RequiredActionTermsAndConditions, true},
-		{"reqaction bad", RequiredAction("x"), false},
-
-		{"attrtype string", AttributeTypeString, true},
-		{"attrtype number", AttributeTypeNumber, true},
-		{"attrtype boolean", AttributeTypeBoolean, true},
-		{"attrtype date", AttributeTypeDate, true},
-		{"attrtype string_array", AttributeTypeStringArray, true},
-		{"attrtype bad", AttributeType("x"), false},
-
-		{"attrvis private", AttrVisibilityPrivate, true},
-		{"attrvis self", AttrVisibilitySelfReadable, true},
-		{"attrvis admin", AttrVisibilityAdminReadable, true},
-		{"attrvis claim", AttrVisibilityClaimExposed, true},
-		{"attrvis bad", AttrVisibility("x"), false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -144,23 +106,6 @@ func TestEnumValid(t *testing.T) {
 func TestValidateHappyAndFailure(t *testing.T) {
 	now := time.Now().UTC()
 
-	validAgent := Agent{
-		ID: "agent_1", TenantID: DefaultTenantID, Name: "bot", Kind: AgentKindAutonomous,
-		OwnerUserID: "user_1", Status: AgentStatusActive, CreatedAt: now, UpdatedAt: now,
-	}
-	badAgent := validAgent
-	badAgent.Kind = AgentKind("x")
-
-	validBinding := AgentCredentialBinding{AgentID: "agent_1", ClientID: "demo", CreatedAt: now}
-	badBinding := AgentCredentialBinding{CreatedAt: now}
-
-	validGroup := Group{ID: "group_1", TenantID: DefaultTenantID, Name: "eng", CreatedAt: now, UpdatedAt: now}
-	badGroup := validGroup
-	badGroup.Name = ""
-
-	validMember := GroupMember{GroupID: "group_1", UserID: "user_1", CreatedAt: now}
-	badMember := GroupMember{UserID: "user_1", CreatedAt: now}
-
 	validTenant := Tenant{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 	badTenant := validTenant
 	badTenant.Realm = "admin" // admin は予約語で realm として拒否される。
@@ -170,14 +115,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 		v       interface{ Validate() error }
 		wantErr bool
 	}{
-		{"agent ok", validAgent, false},
-		{"agent bad", badAgent, true},
-		{"binding ok", validBinding, false},
-		{"binding bad", badBinding, true},
-		{"group ok", validGroup, false},
-		{"group bad", badGroup, true},
-		{"member ok", validMember, false},
-		{"member bad", badMember, true},
 		{"tenant ok", validTenant, false},
 		{"tenant bad", badTenant, true},
 	}
@@ -219,47 +156,6 @@ func TestNewUUIDv4Format(t *testing.T) {
 	id2, _ := NewUUIDv4()
 	if id == id2 {
 		t.Fatal("two UUIDs must differ")
-	}
-}
-
-func TestNewIDPrefixes(t *testing.T) {
-	agentID, err := NewAgentID()
-	if err != nil {
-		t.Fatalf("NewAgentID: %v", err)
-	}
-	if len(agentID) <= len("agent_") || agentID[:6] != "agent_" {
-		t.Fatalf("NewAgentID = %q, want agent_ prefix", agentID)
-	}
-	groupID, err := NewGroupID()
-	if err != nil {
-		t.Fatalf("NewGroupID: %v", err)
-	}
-	if len(groupID) <= len("group_") || groupID[:6] != "group_" {
-		t.Fatalf("NewGroupID = %q, want group_ prefix", groupID)
-	}
-}
-
-// ---------------------------------------------------------------
-// Agent.IsActive
-// ---------------------------------------------------------------
-
-func TestAgentIsActive(t *testing.T) {
-	now := time.Now().UTC()
-	active := Agent{Status: AgentStatusActive}
-	if !active.IsActive() {
-		t.Fatal("active agent must be active")
-	}
-	disabledStatus := Agent{Status: AgentStatusDisabled}
-	if disabledStatus.IsActive() {
-		t.Fatal("disabled status must not be active")
-	}
-	withDisabledAt := Agent{Status: AgentStatusActive, DisabledAt: &now}
-	if withDisabledAt.IsActive() {
-		t.Fatal("disabled_at set must not be active")
-	}
-	withKilledAt := Agent{Status: AgentStatusActive, KilledAt: &now}
-	if withKilledAt.IsActive() {
-		t.Fatal("killed_at set must not be active")
 	}
 }
 
@@ -322,30 +218,6 @@ func TestIsAuthorizationCodeRecordTerminal(t *testing.T) {
 	}
 	if IsAuthorizationCodeRecordTerminal(AuthCodeRecordIssued) {
 		t.Fatal("issued must not be terminal")
-	}
-}
-
-// ---------------------------------------------------------------
-// EffectiveRoles (ADR-038)
-// ---------------------------------------------------------------
-
-func TestEffectiveRoles(t *testing.T) {
-	g1 := &Group{Roles: []string{"editor", "viewer"}}
-	g2 := &Group{Roles: []string{"viewer", "admin", ""}}
-	got := EffectiveRoles([]string{"viewer", ""}, []*Group{g1, g2, nil})
-	want := []string{"admin", "editor", "viewer"}
-	if len(got) != len(want) {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("got %v, want %v (sorted, deduped, no empties)", got, want)
-		}
-	}
-	// グループ無しなら user.roles に一致する。
-	solo := EffectiveRoles([]string{"a"}, nil)
-	if len(solo) != 1 || solo[0] != "a" {
-		t.Fatalf("solo = %v, want [a]", solo)
 	}
 }
 

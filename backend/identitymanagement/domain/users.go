@@ -1,12 +1,22 @@
-package spec
+package domain
 
 // IdentityManagement bounded context の User / 属性モデル (ADR-039 / ADR-040)。
-// 組み込み属性カタログと claim 射影は attributes.go が持つ。
+// 組み込み属性カタログと claim 射影は attributes.go が持つ。field validation の
+// zog schema は本パッケージが所有し、`shared/spec` の Validate/ZogError 汎用ラッパーのみ
+// 再利用する (ADR-093)。
 
 import (
 	"fmt"
+	"regexp"
 	"time"
+
+	z "github.com/Oudwins/zog"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+// attrKeyPattern は ADR-040 の属性キー命名規則: snake_case、英字始まり。
+var attrKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
 // User は IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを型付きで
 // 持ち、それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 / tenant
@@ -30,8 +40,21 @@ type User struct {
 	UpdatedAt         time.Time                 `json:"updated_at"`
 }
 
+var userSchema = z.Struct(z.Shape{
+	"ID":                z.String().Required(),
+	"PreferredUsername": z.String().Min(1).Max(100).Required(),
+	"PasswordHash":      z.String().Required(),
+	"Name":              z.Ptr(z.String().Max(200)),
+	"GivenName":         z.Ptr(z.String().Max(100)),
+	"FamilyName":        z.Ptr(z.String().Max(100)),
+	"Email":             z.Ptr(z.String().Email()),
+	"Roles":             z.Slice(z.String().Min(1)),
+	"CreatedAt":         z.Time().Required(),
+	"UpdatedAt":         z.Time().Required(),
+})
+
 func (u User) Validate() error {
-	if err := validate(userSchema, &u); err != nil {
+	if err := spec.Validate(userSchema, &u); err != nil {
 		return err
 	}
 	if err := u.Lifecycle.Validate(); err != nil {
@@ -154,7 +177,7 @@ func (v AttributeValue) JSONValue() any {
 	return nil
 }
 
-// UserAttributeDef は属性 1 件の定義 (ADR-040)。OIDC 組み込みカタログ
+// UserAttributeDef は属性 1 件の定義 (ADR-040)。組み込みカタログ
 // (BuiltinUserAttributeDefs) と tenant 定義 (TenantUserAttributeSchema) の両方で使う。
 type UserAttributeDef struct {
 	Key            string         `json:"key"`
@@ -169,7 +192,27 @@ type UserAttributeDef struct {
 	PII            bool           `json:"pii"` // 省略時は PII 扱い (hash 化) が安全側 default
 }
 
-func (d UserAttributeDef) Validate() error { return validate(userAttributeDefSchema, &d) }
+var userAttributeDefSchema = z.Struct(z.Shape{
+	"Key": z.String().TestFunc(
+		func(value *string, _ z.Ctx) bool {
+			return value != nil && attrKeyPattern.MatchString(*value)
+		},
+		z.Message("attribute key must be snake_case starting with a letter"),
+	).Required(),
+	"Type": z.StringLike[AttributeType]().TestFunc(
+		func(value *AttributeType, _ z.Ctx) bool { return value.Valid() },
+		z.Message("attribute type is not in enum"),
+	).Required(),
+	"Label":     z.String().Max(100),
+	"ClaimName": z.Ptr(z.String().Min(1).Max(100)),
+	"OIDCScope": z.Ptr(z.String().Min(1).Max(60)),
+	"Visibility": z.StringLike[AttrVisibility]().TestFunc(
+		func(value *AttrVisibility, _ z.Ctx) bool { return value.Valid() },
+		z.Message("attribute visibility is not in enum"),
+	).Required(),
+})
+
+func (d UserAttributeDef) Validate() error { return spec.Validate(userAttributeDefSchema, &d) }
 
 // TenantUserAttributeSchema は tenant 単位の custom 属性定義集合 (ADR-040)。
 // 組み込み属性は BuiltinUserAttributeDefs() がコードで持ち、本集合は tenant 固有分のみ。

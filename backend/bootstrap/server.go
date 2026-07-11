@@ -59,7 +59,7 @@ func Run() error {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
 	if os.Getenv("SKIP_DEMO_SEED") == "" {
-		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.UserRepo, deps.Authentication.MfaFactorRepo, deps.Authentication.PasswordHistoryRepo, deps.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
+		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.IdentityManagement.UserRepo, deps.Authentication.MfaFactorRepo, deps.Authentication.PasswordHistoryRepo, deps.IdentityManagement.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
 			return fmt.Errorf("seed demo data: %w", err)
 		}
 		if err := seedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
@@ -192,20 +192,18 @@ func Run() error {
 				AuthZEN:       runtime.AuthZEN,
 			},
 		},
-		AttrSchemaRepo:   deps.AttrSchemaRepo,
-		UserRepo:         deps.UserRepo,
-		Authentication:   deps.Authentication,
-		OAuth2:           deps.OAuth2,
-		KeyStore:         deps.KeyStore,
-		TenantSaltStore:  deps.TenantSaltStore,
-		JWKResolver:      jwkResolver,
-		GroupRepo:        deps.GroupRepo,
-		AgentRepo:        deps.AgentRepo,
-		WsFederation:     deps.WsFederation,
-		Saml:             deps.Saml,
-		Scim:             deps.Scim,
-		FederationSigner: federationSigner,
-		Application:      deps.Application,
+		AttrSchemaRepo:     deps.AttrSchemaRepo,
+		IdentityManagement: deps.IdentityManagement,
+		Authentication:     deps.Authentication,
+		OAuth2:             deps.OAuth2,
+		KeyStore:           deps.KeyStore,
+		TenantSaltStore:    deps.TenantSaltStore,
+		JWKResolver:        jwkResolver,
+		WsFederation:       deps.WsFederation,
+		Saml:               deps.Saml,
+		Scim:               deps.Scim,
+		FederationSigner:   federationSigner,
+		Application:        deps.Application,
 	})
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))

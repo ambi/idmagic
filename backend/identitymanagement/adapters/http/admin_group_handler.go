@@ -7,9 +7,10 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -208,7 +209,7 @@ func (d Deps) adminGroupDeps() idmusecases.AdminGroupDeps {
 	return idmusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.Emit}
 }
 
-func (d Deps) toGroupMemberResponses(ctx context.Context, members []*spec.GroupMember) []groupMemberResponse {
+func (d Deps) toGroupMemberResponses(ctx context.Context, members []*idmdomain.GroupMember) []groupMemberResponse {
 	out := make([]groupMemberResponse, len(members))
 	for i, member := range members {
 		username := member.UserID
@@ -220,7 +221,7 @@ func (d Deps) toGroupMemberResponses(ctx context.Context, members []*spec.GroupM
 	return out
 }
 
-func toGroupSummaryResponse(group *spec.Group, memberCount int) groupSummaryResponse {
+func toGroupSummaryResponse(group *idmdomain.Group, memberCount int) groupSummaryResponse {
 	return groupSummaryResponse{
 		ID: group.ID, TenantID: group.TenantID, Name: group.Name, Description: group.Description,
 		Roles: slices.Clone(group.Roles), MemberCount: memberCount,

@@ -12,9 +12,6 @@ import (
 
 var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 
-// attrKeyPattern は ADR-040 の属性キー命名規則: snake_case、英字始まり。
-var attrKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
-
 var tenantSchema = z.Struct(z.Shape{
 	"ID": z.String().Min(1).Required(),
 	"Realm": z.String().Min(1).Max(63).TestFunc(
@@ -30,80 +27,6 @@ var tenantSchema = z.Struct(z.Shape{
 	).Required(),
 	"CreatedAt": z.Time().Required(),
 	"UpdatedAt": z.Time().Required(),
-})
-
-var userSchema = z.Struct(z.Shape{
-	"ID":                z.String().Required(),
-	"PreferredUsername": z.String().Min(1).Max(100).Required(),
-	"PasswordHash":      z.String().Required(),
-	"Name":              z.Ptr(z.String().Max(200)),
-	"GivenName":         z.Ptr(z.String().Max(100)),
-	"FamilyName":        z.Ptr(z.String().Max(100)),
-	"Email":             z.Ptr(z.String().Email()),
-	"Roles":             z.Slice(z.String().Min(1)),
-	"CreatedAt":         z.Time().Required(),
-	"UpdatedAt":         z.Time().Required(),
-})
-
-var userAttributeDefSchema = z.Struct(z.Shape{
-	"Key": z.String().TestFunc(
-		func(value *string, _ z.Ctx) bool {
-			return value != nil && attrKeyPattern.MatchString(*value)
-		},
-		z.Message("attribute key must be snake_case starting with a letter"),
-	).Required(),
-	"Type": z.StringLike[AttributeType]().TestFunc(
-		func(value *AttributeType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("attribute type is not in enum"),
-	).Required(),
-	"Label":     z.String().Max(100),
-	"ClaimName": z.Ptr(z.String().Min(1).Max(100)),
-	"OIDCScope": z.Ptr(z.String().Min(1).Max(60)),
-	"Visibility": z.StringLike[AttrVisibility]().TestFunc(
-		func(value *AttrVisibility, _ z.Ctx) bool { return value.Valid() },
-		z.Message("attribute visibility is not in enum"),
-	).Required(),
-})
-
-var groupSchema = z.Struct(z.Shape{
-	"ID":          z.String().Min(1).Max(64).Required(),
-	"TenantID":    z.String().Min(1).Required(),
-	"Name":        z.String().Min(1).Max(100).Required(),
-	"Description": z.Ptr(z.String().Max(500)),
-	"Roles":       z.Slice(z.String().Min(1)),
-	"CreatedAt":   z.Time().Required(),
-	"UpdatedAt":   z.Time().Required(),
-})
-
-var groupMemberSchema = z.Struct(z.Shape{
-	"GroupID":   z.String().Min(1).Required(),
-	"UserID":    z.String().Min(1).Required(),
-	"CreatedAt": z.Time().Required(),
-})
-
-var agentSchema = z.Struct(z.Shape{
-	"ID":          z.String().Min(1).Max(64).Required(),
-	"TenantID":    z.String().Min(1).Required(),
-	"Name":        z.String().Min(1).Max(100).Required(),
-	"Description": z.Ptr(z.String().Max(500)),
-	"Kind": z.StringLike[AgentKind]().TestFunc(
-		func(value *AgentKind, _ z.Ctx) bool { return value.Valid() },
-		z.Message("agent kind is not in enum"),
-	).Required(),
-	"OwnerUserID": z.String().Min(1).Required(),
-	"Status": z.StringLike[AgentStatus]().TestFunc(
-		func(value *AgentStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("agent status is not in enum"),
-	).Required(),
-	"Roles":     z.Slice(z.String().Min(1)),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
-
-var agentCredentialBindingSchema = z.Struct(z.Shape{
-	"AgentID":   z.String().Min(1).Required(),
-	"ClientID":  z.String().Min(1).Required(),
-	"CreatedAt": z.Time().Required(),
 })
 
 var authorizationRequestSchema = z.Struct(z.Shape{

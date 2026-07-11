@@ -11,6 +11,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -19,7 +23,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/notification"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/policy"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -78,9 +81,9 @@ func TestForgotPasswordHTTPDoesNotRevealUnknownEmail(t *testing.T) {
 
 func newPasswordResetHandler(
 	t *testing.T,
-) (*echo.Echo, *memory.UserRepository, *notification.NoopEmailSender, *crypto.Argon2idPasswordHasher) {
+) (*echo.Echo, *idmmemory.UserRepository, *notification.NoopEmailSender, *crypto.Argon2idPasswordHasher) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	tokenStore := memory.NewPasswordResetTokenStore()
 	sender := &notification.NoopEmailSender{}
@@ -91,7 +94,7 @@ func newPasswordResetHandler(
 	}
 	email := "alice@example.com"
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})

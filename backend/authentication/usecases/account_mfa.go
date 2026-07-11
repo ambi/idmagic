@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
@@ -181,7 +183,7 @@ func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFac
 }
 
 // loadSelfUser は self 経路で対象 user を取得する。tenant 不一致は ErrUserNotFound に潰す。
-func loadSelfUser(ctx context.Context, repo idmports.UserRepository, sub string) (*spec.User, error) {
+func loadSelfUser(ctx context.Context, repo idmports.UserRepository, sub string) (*idmdomain.User, error) {
 	user, err := repo.FindBySub(ctx, sub)
 	if err != nil {
 		return nil, err

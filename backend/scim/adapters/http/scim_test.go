@@ -8,6 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/labstack/echo/v5"
 
 	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
@@ -15,14 +19,13 @@ import (
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestScimInboundProvisioning(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
-	groupRepo := memory.NewGroupRepository()
+	userRepo := idmmemory.NewUserRepository()
+	groupRepo := idmmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
@@ -153,7 +156,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 		if *u.Email != "bjensen@example.com" {
 			t.Fatalf("expected email bjensen@example.com, got %s", *u.Email)
 		}
-		if u.Lifecycle.Status != spec.UserStatusActive {
+		if u.Lifecycle.Status != idmdomain.UserStatusActive {
 			t.Fatalf("expected status active, got %s", u.Lifecycle.Status)
 		}
 	}
@@ -185,7 +188,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 
 		ref, _ := scimRepo.FindUserRefByScimID(ctx, spec.DefaultTenantID, scimUserID)
 		u, _ := userRepo.FindBySub(ctx, ref.UserID)
-		if u.Lifecycle.Status != spec.UserStatusDisabled {
+		if u.Lifecycle.Status != idmdomain.UserStatusDisabled {
 			t.Fatalf("expected status disabled, got %s", u.Lifecycle.Status)
 		}
 	}
@@ -205,7 +208,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 		if u == nil {
 			t.Fatal("user should still be accessible by sub for admin purposes")
 		}
-		if u.Lifecycle.Status != spec.UserStatusPendingDeletion {
+		if u.Lifecycle.Status != idmdomain.UserStatusPendingDeletion {
 			t.Fatalf("expected status PendingDeletion, got %s", u.Lifecycle.Status)
 		}
 
@@ -219,8 +222,8 @@ func TestScimInboundProvisioning(t *testing.T) {
 
 func TestScimGroupSync(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
-	groupRepo := memory.NewGroupRepository()
+	userRepo := idmmemory.NewUserRepository()
+	groupRepo := idmmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
@@ -244,8 +247,8 @@ func TestScimGroupSync(t *testing.T) {
 	// 1. テストユーザー作成
 	user1Sub := "user_1"
 	user2Sub := "user_2"
-	_ = userRepo.Save(ctx, &spec.User{ID: user1Sub, TenantID: spec.DefaultTenantID, PreferredUsername: "user1"})
-	_ = userRepo.Save(ctx, &spec.User{ID: user2Sub, TenantID: spec.DefaultTenantID, PreferredUsername: "user2"})
+	_ = userRepo.Save(ctx, &idmdomain.User{ID: user1Sub, TenantID: spec.DefaultTenantID, PreferredUsername: "user1"})
+	_ = userRepo.Save(ctx, &idmdomain.User{ID: user2Sub, TenantID: spec.DefaultTenantID, PreferredUsername: "user2"})
 	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: spec.DefaultTenantID, ScimID: "scim_u1", UserID: user1Sub})
 	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: spec.DefaultTenantID, ScimID: "scim_u2", UserID: user2Sub})
 

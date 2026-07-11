@@ -6,10 +6,11 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -24,14 +25,14 @@ type adminUserCreateRequest struct {
 }
 
 type adminUserUpdateRequest struct {
-	PreferredUsername *string                         `json:"preferred_username"`
-	Name              *string                         `json:"name"`
-	GivenName         *string                         `json:"given_name"`
-	FamilyName        *string                         `json:"family_name"`
-	Email             *string                         `json:"email"`
-	EmailVerified     *bool                           `json:"email_verified"`
-	Roles             *[]string                       `json:"roles"`
-	Attributes        *map[string]spec.AttributeValue `json:"attributes"`
+	PreferredUsername *string                              `json:"preferred_username"`
+	Name              *string                              `json:"name"`
+	GivenName         *string                              `json:"given_name"`
+	FamilyName        *string                              `json:"family_name"`
+	Email             *string                              `json:"email"`
+	EmailVerified     *bool                                `json:"email_verified"`
+	Roles             *[]string                            `json:"roles"`
+	Attributes        *map[string]idmdomain.AttributeValue `json:"attributes"`
 }
 
 type adminUserDeleteRequest struct {
@@ -42,20 +43,20 @@ type adminUserDeleteRequest struct {
 }
 
 type adminUserResponse struct {
-	ID                string                         `json:"id"`
-	PreferredUsername string                         `json:"preferred_username"`
-	Name              *string                        `json:"name,omitempty"`
-	GivenName         *string                        `json:"given_name,omitempty"`
-	FamilyName        *string                        `json:"family_name,omitempty"`
-	Email             *string                        `json:"email,omitempty"`
-	EmailVerified     bool                           `json:"email_verified"`
-	MfaEnrolled       bool                           `json:"mfa_enrolled"`
-	Roles             []string                       `json:"roles"`
-	Status            spec.UserStatus                `json:"status"`
-	Attributes        map[string]spec.AttributeValue `json:"attributes,omitempty"`
-	RequiredActions   []spec.RequiredAction          `json:"required_actions,omitempty"`
-	LastLoginAt       *time.Time                     `json:"last_login_at,omitempty"`
-	PasswordChangedAt *time.Time                     `json:"password_changed_at,omitempty"`
+	ID                string                              `json:"id"`
+	PreferredUsername string                              `json:"preferred_username"`
+	Name              *string                             `json:"name,omitempty"`
+	GivenName         *string                             `json:"given_name,omitempty"`
+	FamilyName        *string                             `json:"family_name,omitempty"`
+	Email             *string                             `json:"email,omitempty"`
+	EmailVerified     bool                                `json:"email_verified"`
+	MfaEnrolled       bool                                `json:"mfa_enrolled"`
+	Roles             []string                            `json:"roles"`
+	Status            idmdomain.UserStatus                `json:"status"`
+	Attributes        map[string]idmdomain.AttributeValue `json:"attributes,omitempty"`
+	RequiredActions   []idmdomain.RequiredAction          `json:"required_actions,omitempty"`
+	LastLoginAt       *time.Time                          `json:"last_login_at,omitempty"`
+	PasswordChangedAt *time.Time                          `json:"password_changed_at,omitempty"`
 	// DisabledAt は status から導出した後方互換フィールド (現行 UI 用)。
 	DisabledAt *time.Time `json:"disabled_at,omitempty"`
 	// PendingDeletionAt は status == PendingDeletion のとき soft-delete された時刻
@@ -308,13 +309,13 @@ func (d Deps) writeAdminUserError(c *echo.Context, err error) error {
 	}
 }
 
-func toAdminUserResponse(user *spec.User) adminUserResponse {
+func toAdminUserResponse(user *idmdomain.User) adminUserResponse {
 	var disabledAt *time.Time
-	if user.Lifecycle.Status == spec.UserStatusDisabled {
+	if user.Lifecycle.Status == idmdomain.UserStatusDisabled {
 		disabledAt = user.Lifecycle.StatusChangedAt
 	}
 	var pendingDeletionAt, purgeAfter *time.Time
-	if user.Lifecycle.EffectiveStatus() == spec.UserStatusPendingDeletion {
+	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
 		pendingDeletionAt = user.Lifecycle.StatusChangedAt
 		if pendingDeletionAt != nil {
 			deadline := pendingDeletionAt.Add(idmusecases.UserSoftDeleteGracePeriodSeconds * time.Second)
@@ -353,7 +354,7 @@ func (d Deps) handleSetUserRequiredAction(c *echo.Context) error {
 	defer cancel()
 	user, err := idmusecases.SetUserRequiredAction(
 		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
-		spec.RequiredAction(input.Action), time.Now().UTC(),
+		idmdomain.RequiredAction(input.Action), time.Now().UTC(),
 	)
 	if err != nil {
 		return d.writeAdminUserError(c, err)
@@ -373,7 +374,7 @@ func (d Deps) handleClearUserRequiredAction(c *echo.Context) error {
 	defer cancel()
 	user, err := idmusecases.ClearUserRequiredAction(
 		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
-		spec.RequiredAction(c.Param("action")), time.Now().UTC(),
+		idmdomain.RequiredAction(c.Param("action")), time.Now().UTC(),
 	)
 	if err != nil {
 		return d.writeAdminUserError(c, err)

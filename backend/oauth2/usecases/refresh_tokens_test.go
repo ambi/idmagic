@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -26,7 +30,7 @@ type refreshFixture struct {
 func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time, ttl time.Duration) refreshFixture {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	refreshStore := memory.NewRefreshTokenStore()
 	issuer := &fakeTokenIssuer{}
 
@@ -41,7 +45,7 @@ func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})

@@ -12,6 +12,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -23,10 +27,10 @@ import (
 )
 
 func newUserAttributeSchemaServer(
-	t *testing.T, actor *spec.User, tenants ...*spec.Tenant,
-) (*echo.Echo, *memory.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
+	t *testing.T, actor *idmdomain.User, tenants ...*spec.Tenant,
+) (*echo.Echo, *idmmemory.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
@@ -36,7 +40,7 @@ func newUserAttributeSchemaServer(
 			t.Fatal(err)
 		}
 	}
-	schemaRepo := memory.NewTenantUserAttributeSchemaRepository()
+	schemaRepo := idmmemory.NewTenantUserAttributeSchemaRepository()
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{

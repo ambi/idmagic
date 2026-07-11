@@ -11,6 +11,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -18,14 +22,14 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
+	"github.com/labstack/echo/v5"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/labstack/echo/v5"
 )
 
 func sha256Hex(value string) string {
@@ -35,25 +39,25 @@ func sha256Hex(value string) string {
 
 type identityTestHandler struct {
 	echo     *echo.Echo
-	users    *memory.UserRepository
+	users    *idmmemory.UserRepository
 	tokens   *authnmemory.EmailChangeTokenStore
-	groups   *memory.GroupRepository
+	groups   *idmmemory.GroupRepository
 	clients  *oauth2memory.OAuth2ClientRepository
 	consents *oauth2memory.ConsentRepository
 }
 
 func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	t.Helper()
-	repo := memory.NewUserRepository()
+	repo := idmmemory.NewUserRepository()
 	tokenStore := authnmemory.NewEmailChangeTokenStore()
-	groupRepo := memory.NewGroupRepository()
+	groupRepo := idmmemory.NewGroupRepository()
 	clientRepo := oauth2memory.NewClientRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 
 	history := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
-	for _, user := range []*spec.User{
+	for _, user := range []*idmdomain.User{
 		{
 			ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 			Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
@@ -71,7 +75,7 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
-		AgentRepo: memory.NewAgentRepository(),
+		AgentRepo: idmmemory.NewAgentRepository(),
 		GroupRepo: groupRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo:  clientRepo,
@@ -354,8 +358,8 @@ func TestAccountProfileHTTPExtra(t *testing.T) {
 		t.Fatalf("profile update status=%d body=%s", update.Code, update.Body.String())
 	}
 
-	attrs := map[string]spec.AttributeValue{
-		"not_a_real_attribute": {Type: spec.AttributeTypeString, String: new("x")},
+	attrs := map[string]idmdomain.AttributeValue{
+		"not_a_real_attribute": {Type: idmdomain.AttributeTypeString, String: new("x")},
 	}
 	invalidAttr := adminJSONRequest(t, e, http.MethodPatch, "/api/account/profile", csrf, cookie, map[string]any{
 		"attributes": attrs,
@@ -433,7 +437,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 	_ = repo.Save(context.Background(), regularUser)
 
 	// Seed a group
-	group := &spec.Group{
+	group := &idmdomain.Group{
 		ID: "group-1", Name: "Group One", TenantID: spec.DefaultTenantID,
 	}
 	_ = groupRepo.Save(context.Background(), group)

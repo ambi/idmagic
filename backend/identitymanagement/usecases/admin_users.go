@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
@@ -75,7 +77,7 @@ type CreateUserInput struct {
 	Now               time.Time
 }
 
-func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*spec.User, error) {
+func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*idmdomain.User, error) {
 	username := strings.TrimSpace(in.PreferredUsername)
 	if username == "" {
 		return nil, errors.New("preferred username is required")
@@ -105,10 +107,10 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*s
 		return nil, err
 	}
 	now := normalizedNow(in.Now)
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID: "user_" + id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
 		Name: in.Name, Email: in.Email, EmailVerified: in.EmailVerified, Roles: roles,
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := user.Validate(); err != nil {
@@ -135,11 +137,11 @@ type UpdateUserInput struct {
 	EmailVerified     *bool
 	Roles             *[]string
 	// Attributes は指定時に attributes 全体を置換する (実効スキーマで検証)。
-	Attributes *map[string]spec.AttributeValue
+	Attributes *map[string]idmdomain.AttributeValue
 	Now        time.Time
 }
 
-func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*spec.User, error) {
+func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*idmdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, in.Sub)
 	if err != nil {
 		return nil, err
@@ -186,7 +188,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*s
 		if err != nil {
 			return nil, err
 		}
-		if err := spec.ValidateAttributes(*in.Attributes, defs); err != nil {
+		if err := idmdomain.ValidateAttributes(*in.Attributes, defs); err != nil {
 			return nil, errors.Join(ErrInvalidAttribute, err)
 		}
 		updated.Attributes = *in.Attributes
@@ -233,7 +235,7 @@ func SetUserDisabled(
 	actorUserID, targetUserID string,
 	disabled bool,
 	now time.Time,
-) (*spec.User, error) {
+) (*idmdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -250,16 +252,16 @@ func SetUserDisabled(
 	updated := *user
 	now = normalizedNow(now)
 	if disabled {
-		if updated.Lifecycle.Status == spec.UserStatusDisabled {
+		if updated.Lifecycle.Status == idmdomain.UserStatusDisabled {
 			return &updated, nil
 		}
-		updated.Lifecycle.Status = spec.UserStatusDisabled
+		updated.Lifecycle.Status = idmdomain.UserStatusDisabled
 		updated.Lifecycle.StatusChangedAt = &now
 	} else {
-		if updated.Lifecycle.Status == spec.UserStatusActive {
+		if updated.Lifecycle.Status == idmdomain.UserStatusActive {
 			return &updated, nil
 		}
-		updated.Lifecycle.Status = spec.UserStatusActive
+		updated.Lifecycle.Status = idmdomain.UserStatusActive
 		updated.Lifecycle.StatusChangedAt = &now
 	}
 	updated.UpdatedAt = now
@@ -283,9 +285,9 @@ func SetUserRequiredAction(
 	ctx context.Context,
 	deps AdminUserDeps,
 	actorUserID, targetUserID string,
-	action spec.RequiredAction,
+	action idmdomain.RequiredAction,
 	now time.Time,
-) (*spec.User, error) {
+) (*idmdomain.User, error) {
 	if !action.Valid() {
 		return nil, ErrInvalidRequiredAction
 	}
@@ -319,9 +321,9 @@ func ClearUserRequiredAction(
 	ctx context.Context,
 	deps AdminUserDeps,
 	actorUserID, targetUserID string,
-	action spec.RequiredAction,
+	action idmdomain.RequiredAction,
 	now time.Time,
-) (*spec.User, error) {
+) (*idmdomain.User, error) {
 	if !action.Valid() {
 		return nil, ErrInvalidRequiredAction
 	}
@@ -350,7 +352,7 @@ func ClearUserRequiredAction(
 
 // loadTenantUser は現在のテナント内の user を取得する。存在しない / 別テナントなら
 // ErrUserNotFound。admin user 操作の共通プレリュード。
-func loadTenantUser(ctx context.Context, deps AdminUserDeps, sub string) (*spec.User, error) {
+func loadTenantUser(ctx context.Context, deps AdminUserDeps, sub string) (*idmdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, sub)
 	if err != nil {
 		return nil, err
@@ -362,8 +364,8 @@ func loadTenantUser(ctx context.Context, deps AdminUserDeps, sub string) (*spec.
 }
 
 // removeRequiredAction は action を除いた新しいスライスを返す (元を破壊しない)。
-func removeRequiredAction(actions []spec.RequiredAction, action spec.RequiredAction) []spec.RequiredAction {
-	out := make([]spec.RequiredAction, 0, len(actions))
+func removeRequiredAction(actions []idmdomain.RequiredAction, action idmdomain.RequiredAction) []idmdomain.RequiredAction {
+	out := make([]idmdomain.RequiredAction, 0, len(actions))
 	for _, a := range actions {
 		if a != action {
 			out = append(out, a)
@@ -498,12 +500,12 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if in.ActorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return ErrSelfDeleteForbidden
 	}
-	if user.Lifecycle.EffectiveStatus() == spec.UserStatusPendingDeletion {
+	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
 		return nil
 	}
 	now := normalizedNow(in.Now)
 	updated := *user
-	updated.Lifecycle.Status = spec.UserStatusPendingDeletion
+	updated.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
 	updated.Lifecycle.StatusChangedAt = &now
 	updated.UpdatedAt = now
 	if err := updated.Validate(); err != nil {
@@ -524,7 +526,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 // ErrRestoreGracePeriodExpired を返す。自分自身 (admin/system_admin) は reject する。
 func RestoreUser(
 	ctx context.Context, deps AdminUserDeps, actorUserID, targetUserID string, now time.Time,
-) (*spec.User, error) {
+) (*idmdomain.User, error) {
 	user, err := loadTenantUser(ctx, deps, targetUserID)
 	if err != nil {
 		return nil, err
@@ -532,7 +534,7 @@ func RestoreUser(
 	if actorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return nil, ErrSelfDeleteForbidden
 	}
-	if user.Lifecycle.EffectiveStatus() != spec.UserStatusPendingDeletion {
+	if user.Lifecycle.EffectiveStatus() != idmdomain.UserStatusPendingDeletion {
 		return nil, ErrUserNotPendingDeletion
 	}
 	now = normalizedNow(now)
@@ -540,7 +542,7 @@ func RestoreUser(
 		return nil, ErrRestoreGracePeriodExpired
 	}
 	updated := *user
-	updated.Lifecycle.Status = spec.UserStatusActive
+	updated.Lifecycle.Status = idmdomain.UserStatusActive
 	updated.Lifecycle.StatusChangedAt = &now
 	updated.UpdatedAt = now
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
@@ -563,7 +565,7 @@ func PurgeExpiredSoftDeleted(ctx context.Context, deps AdminUserDeps, now time.T
 	}
 	grace := deps.graceSeconds()
 	for _, user := range users {
-		if user.Lifecycle.EffectiveStatus() != spec.UserStatusPendingDeletion {
+		if user.Lifecycle.EffectiveStatus() != idmdomain.UserStatusPendingDeletion {
 			continue
 		}
 		if !softDeleteExpired(user, now, grace) {
@@ -580,7 +582,7 @@ func PurgeExpiredSoftDeleted(ctx context.Context, deps AdminUserDeps, now time.T
 
 // softDeleteExpired は PendingDeletion の user が猶予期間を過ぎたかを返す。
 // status_changed_at が無い場合は期限切れ扱いにしない (安全側)。
-func softDeleteExpired(user *spec.User, now time.Time, graceSeconds int) bool {
+func softDeleteExpired(user *idmdomain.User, now time.Time, graceSeconds int) bool {
 	changed := user.Lifecycle.StatusChangedAt
 	if changed == nil {
 		return false
@@ -592,8 +594,8 @@ func softDeleteExpired(user *spec.User, now time.Time, graceSeconds int) bool {
 // AttrSchemaRepo 未配線 (nil) の場合は組み込み属性のみで検証する。
 func effectiveUserAttributeDefs(
 	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository, tenantID string,
-) ([]spec.UserAttributeDef, error) {
-	defs := spec.BuiltinUserAttributeDefs()
+) ([]idmdomain.UserAttributeDef, error) {
+	defs := idmdomain.BuiltinUserAttributeDefs()
 	if repo == nil {
 		return defs, nil
 	}
@@ -607,7 +609,7 @@ func effectiveUserAttributeDefs(
 	return defs, nil
 }
 
-func anonymizeUser(user *spec.User, now time.Time) *spec.User {
+func anonymizeUser(user *idmdomain.User, now time.Time) *idmdomain.User {
 	tombstone := *user
 	tombstone.PreferredUsername = "deleted:" + user.ID
 	tombstone.PasswordHash = deletedPasswordHashSentinel
@@ -620,7 +622,7 @@ func anonymizeUser(user *spec.User, now time.Time) *spec.User {
 	tombstone.Roles = []string{}
 	tombstone.Attributes = nil
 	tombstone.UpdatedAt = now
-	tombstone.Lifecycle = spec.UserLifecycle{Status: spec.UserStatusDeleted, StatusChangedAt: &now}
+	tombstone.Lifecycle = idmdomain.UserLifecycle{Status: idmdomain.UserStatusDeleted, StatusChangedAt: &now}
 	return &tombstone
 }
 

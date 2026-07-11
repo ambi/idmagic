@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	"github.com/ambi/idmagic/backend/identitymanagement"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
@@ -22,22 +22,20 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
-	TenantRepo      tenantports.TenantRepository
-	AttrSchemaRepo  tenantports.TenantUserAttributeSchemaRepository
-	UserRepo        idmports.UserRepository
-	GroupRepo       idmports.GroupRepository
-	AgentRepo       idmports.AgentRepository
-	Authentication  authentication.Module
-	OAuth2          oauth2.Module
-	KeyStore        oauthports.KeyStore
-	TenantSaltStore oauthports.TenantSaltStore
-	WsFederation    wsfederation.Module
-	Saml            saml.Module
-	Scim            scim.Module
-	Application     application.Module
-	Close           func()
-	DbPing          func(context.Context) error
-	ValkeyPing      func(context.Context) error
+	TenantRepo         tenantports.TenantRepository
+	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
+	IdentityManagement identitymanagement.Module
+	Authentication     authentication.Module
+	OAuth2             oauth2.Module
+	KeyStore           oauthports.KeyStore
+	TenantSaltStore    oauthports.TenantSaltStore
+	WsFederation       wsfederation.Module
+	Saml               saml.Module
+	Scim               scim.Module
+	Application        application.Module
+	Close              func()
+	DbPing             func(context.Context) error
+	ValkeyPing         func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
@@ -190,7 +192,7 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) requireSystemAdmin(c *echo.Context) (*spec.User, error) {
+func (d Deps) requireSystemAdmin(c *echo.Context) (*idmdomain.User, error) {
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err

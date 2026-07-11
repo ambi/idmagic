@@ -6,17 +6,20 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	t.Parallel()
 
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
@@ -24,7 +27,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Date(2025, 6, 10, 0, 0, 0, 0, time.UTC)
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	}
@@ -84,14 +87,14 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 func TestChangePasswordRejectsCurrentPasswordMismatch(t *testing.T) {
 	t.Parallel()
 
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := userRepo.Save(context.Background(), &spec.User{
+	if err := userRepo.Save(context.Background(), &idmdomain.User{
 		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
 		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	}); err != nil {
@@ -115,7 +118,7 @@ func TestChangePasswordRejectsCurrentPasswordMismatch(t *testing.T) {
 func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 	t.Parallel()
 
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
@@ -123,7 +126,7 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Date(2025, 6, 10, 0, 0, 0, 0, time.UTC)
-	if err := userRepo.Save(context.Background(), &spec.User{
+	if err := userRepo.Save(context.Background(), &idmdomain.User{
 		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	}); err != nil {
@@ -154,7 +157,7 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	t.Parallel()
 
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	initialHash, err := hasher.Hash("demo-password-1234")
@@ -162,7 +165,7 @@ func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	if err := userRepo.Save(context.Background(), &spec.User{
+	if err := userRepo.Save(context.Background(), &idmdomain.User{
 		ID: "user-1", PreferredUsername: "alice", PasswordHash: initialHash,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {

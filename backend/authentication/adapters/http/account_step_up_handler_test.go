@@ -16,6 +16,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	authhttp "github.com/ambi/idmagic/backend/authentication/adapters/http"
@@ -48,16 +52,16 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash(stepUpTestPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-1", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
 		PasswordHash: hash, MfaEnrolled: true,
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -89,7 +93,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 
 			Emit: func(ev spec.DomainEvent) { events = append(events, ev) },
 		}, UserRepo: userRepo,
-		AttrSchemaRepo:        memory.NewTenantUserAttributeSchemaRepository(),
+		AttrSchemaRepo:        idmmemory.NewTenantUserAttributeSchemaRepository(),
 		MfaFactorRepo:         mfaRepo,
 		PasswordHasher:        hasher,
 		PasswordHistoryRepo:   authnmemory.NewPasswordHistoryRepository(),

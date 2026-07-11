@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -96,13 +100,13 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	users := memory.NewUserRepository()
+	users := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "ops", TenantID: spec.DefaultTenantID, PreferredUsername: "ops",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -137,8 +141,8 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	users := memory.NewUserRepository()
-	users.Seed(&spec.User{
+	users := idmmemory.NewUserRepository()
+	users.Seed(&idmdomain.User{
 		ID: "acme-admin", TenantID: "acme", PreferredUsername: "acme-admin",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})

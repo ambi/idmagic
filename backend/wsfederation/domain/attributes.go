@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 )
 
 // 標準 User フィールドを指す属性キー。ClaimMappingRule.source_key から参照する。
@@ -27,7 +27,7 @@ const (
 // ResolveUserAttributes は User を claim 発行エンジン向けの属性マップへ平坦化する。
 // 標準フィールドを先に入れ、tenant 定義の custom 属性 (ADR-040) で上書きする。
 // 値が無いフィールドはキーごと省略する (claim 発行側の属性最小化と整合)。
-func ResolveUserAttributes(u spec.User) Attributes {
+func ResolveUserAttributes(u idmdomain.User) Attributes {
 	attrs := Attributes{}
 
 	put := func(key string, values ...string) {
@@ -69,13 +69,13 @@ func ResolveUserAttributes(u spec.User) Attributes {
 }
 
 // attributeValueStrings は AttributeValue (sum type, ADR-040) を文字列スライスへ変換する。
-func attributeValueStrings(v spec.AttributeValue) []string {
+func attributeValueStrings(v idmdomain.AttributeValue) []string {
 	switch v.Type {
-	case spec.AttributeTypeString:
+	case idmdomain.AttributeTypeString:
 		if v.String != nil && strings.TrimSpace(*v.String) != "" {
 			return []string{*v.String}
 		}
-	case spec.AttributeTypeStringArray:
+	case idmdomain.AttributeTypeStringArray:
 		out := make([]string, 0, len(v.StringArray))
 		for _, s := range v.StringArray {
 			if strings.TrimSpace(s) != "" {
@@ -83,15 +83,15 @@ func attributeValueStrings(v spec.AttributeValue) []string {
 			}
 		}
 		return out
-	case spec.AttributeTypeNumber:
+	case idmdomain.AttributeTypeNumber:
 		if v.Number != nil {
 			return []string{strconv.FormatFloat(*v.Number, 'f', -1, 64)}
 		}
-	case spec.AttributeTypeBoolean:
+	case idmdomain.AttributeTypeBoolean:
 		if v.Boolean != nil {
 			return []string{strconv.FormatBool(*v.Boolean)}
 		}
-	case spec.AttributeTypeDate:
+	case idmdomain.AttributeTypeDate:
 		if v.Date != nil && strings.TrimSpace(*v.Date) != "" {
 			return []string{*v.Date}
 		}

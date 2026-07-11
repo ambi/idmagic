@@ -6,18 +6,21 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileDeps, *spec.User) {
+func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileDeps, *idmdomain.User) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
-	schemaRepo := memory.NewTenantUserAttributeSchemaRepository()
+	userRepo := idmmemory.NewUserRepository()
+	schemaRepo := idmmemory.NewTenantUserAttributeSchemaRepository()
 	adminDeps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, AttrSchemaRepo: schemaRepo,
 		PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
@@ -31,8 +34,8 @@ func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileD
 		t.Fatal(err)
 	}
 	// admin 管理属性 (organization, editable_by_user=false) を事前に入れておく。
-	user.Attributes = map[string]spec.AttributeValue{
-		"department": {Type: spec.AttributeTypeString, String: new("Platform")},
+	user.Attributes = map[string]idmdomain.AttributeValue{
+		"department": {Type: idmdomain.AttributeTypeString, String: new("Platform")},
 	}
 	if err := userRepo.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -43,8 +46,8 @@ func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileD
 
 func TestUpdateUserProfileEditsNameAndEditableAttribute(t *testing.T) {
 	ctx, deps, user := accountTestDeps(t)
-	attrs := map[string]spec.AttributeValue{
-		"nickname": {Type: spec.AttributeTypeString, String: new("davey")},
+	attrs := map[string]idmdomain.AttributeValue{
+		"nickname": {Type: idmdomain.AttributeTypeString, String: new("davey")},
 	}
 	updated, _, err := idmusecases.UpdateUserProfile(ctx, deps, idmusecases.UpdateUserProfileInput{
 		Sub: user.ID, GivenName: new("Dave"), Attributes: &attrs, Now: time.Now().UTC(),
@@ -66,8 +69,8 @@ func TestUpdateUserProfileEditsNameAndEditableAttribute(t *testing.T) {
 
 func TestUpdateUserProfileRejectsAdminManagedAttribute(t *testing.T) {
 	ctx, deps, user := accountTestDeps(t)
-	attrs := map[string]spec.AttributeValue{
-		"department": {Type: spec.AttributeTypeString, String: new("Sales")}, // editable_by_user=false
+	attrs := map[string]idmdomain.AttributeValue{
+		"department": {Type: idmdomain.AttributeTypeString, String: new("Sales")}, // editable_by_user=false
 	}
 	_, _, err := idmusecases.UpdateUserProfile(ctx, deps, idmusecases.UpdateUserProfileInput{
 		Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
@@ -79,8 +82,8 @@ func TestUpdateUserProfileRejectsAdminManagedAttribute(t *testing.T) {
 
 func TestUpdateUserProfileRejectsUndefinedAttribute(t *testing.T) {
 	ctx, deps, user := accountTestDeps(t)
-	attrs := map[string]spec.AttributeValue{
-		"not_a_real_attribute": {Type: spec.AttributeTypeString, String: new("x")},
+	attrs := map[string]idmdomain.AttributeValue{
+		"not_a_real_attribute": {Type: idmdomain.AttributeTypeString, String: new("x")},
 	}
 	_, _, err := idmusecases.UpdateUserProfile(ctx, deps, idmusecases.UpdateUserProfileInput{
 		Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
@@ -104,11 +107,11 @@ func TestGetUserProfileShowsReadOnlyOrganizationAttributes(t *testing.T) {
 }
 
 func TestAccountProfileAttributeDefFilters(t *testing.T) {
-	defs := []spec.UserAttributeDef{
-		{Key: "nickname", Visibility: spec.AttrVisibilityClaimExposed, EditableByUser: true},
-		{Key: "department", Visibility: spec.AttrVisibilitySelfReadable, EditableByUser: false},
-		{Key: "payroll_id", Visibility: spec.AttrVisibilityAdminReadable, EditableByUser: false},
-		{Key: "secret_note", Visibility: spec.AttrVisibilityPrivate, EditableByUser: false},
+	defs := []idmdomain.UserAttributeDef{
+		{Key: "nickname", Visibility: idmdomain.AttrVisibilityClaimExposed, EditableByUser: true},
+		{Key: "department", Visibility: idmdomain.AttrVisibilitySelfReadable, EditableByUser: false},
+		{Key: "payroll_id", Visibility: idmdomain.AttrVisibilityAdminReadable, EditableByUser: false},
+		{Key: "secret_note", Visibility: idmdomain.AttrVisibilityPrivate, EditableByUser: false},
 	}
 
 	readable := idmusecases.SelfReadableAttributeDefs(defs)

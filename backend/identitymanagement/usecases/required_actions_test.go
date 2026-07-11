@@ -6,19 +6,22 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newRequiredActionFixture(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *[]spec.DomainEvent, *spec.User) {
+func newRequiredActionFixture(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *[]spec.DomainEvent, *idmdomain.User) {
 	t.Helper()
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	events := &[]spec.DomainEvent{}
@@ -44,12 +47,12 @@ func TestSetAndClearUserRequiredAction(t *testing.T) {
 	now := time.Date(2026, 6, 20, 13, 0, 0, 0, time.UTC)
 
 	updated, err := idmusecases.SetUserRequiredAction(
-		ctx, deps, "admin", user.ID, spec.RequiredActionUpdatePassword, now,
+		ctx, deps, "admin", user.ID, idmdomain.RequiredActionUpdatePassword, now,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(updated.Lifecycle.RequiredActions, spec.RequiredActionUpdatePassword) {
+	if !slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword) {
 		t.Fatalf("required actions=%v, want update_password", updated.Lifecycle.RequiredActions)
 	}
 	if got := (*events)[len(*events)-1]; got.EventType() != "UserRequiredActionSet" {
@@ -59,7 +62,7 @@ func TestSetAndClearUserRequiredAction(t *testing.T) {
 	// 冪等: 二重付与してもイベントを増やさず単一のまま。
 	before := len(*events)
 	updated, err = idmusecases.SetUserRequiredAction(
-		ctx, deps, "admin", user.ID, spec.RequiredActionUpdatePassword, now,
+		ctx, deps, "admin", user.ID, idmdomain.RequiredActionUpdatePassword, now,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +75,7 @@ func TestSetAndClearUserRequiredAction(t *testing.T) {
 	}
 
 	updated, err = idmusecases.ClearUserRequiredAction(
-		ctx, deps, "admin", user.ID, spec.RequiredActionUpdatePassword, now,
+		ctx, deps, "admin", user.ID, idmdomain.RequiredActionUpdatePassword, now,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +91,7 @@ func TestSetAndClearUserRequiredAction(t *testing.T) {
 func TestSetUserRequiredActionRejectsUnknownAction(t *testing.T) {
 	ctx, deps, _, user := newRequiredActionFixture(t)
 	_, err := idmusecases.SetUserRequiredAction(
-		ctx, deps, "admin", user.ID, spec.RequiredAction("teleport"), time.Now().UTC(),
+		ctx, deps, "admin", user.ID, idmdomain.RequiredAction("teleport"), time.Now().UTC(),
 	)
 	if err == nil {
 		t.Fatal("expected error for unknown required action")
@@ -99,7 +102,7 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 	ctx, deps, events, user := newRequiredActionFixture(t)
 	now := time.Date(2026, 6, 20, 14, 0, 0, 0, time.UTC)
 	if _, err := idmusecases.SetUserRequiredAction(
-		ctx, deps, "admin", user.ID, spec.RequiredActionUpdatePassword, now,
+		ctx, deps, "admin", user.ID, idmdomain.RequiredActionUpdatePassword, now,
 	); err != nil {
 		t.Fatal(err)
 	}

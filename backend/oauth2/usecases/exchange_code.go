@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -26,7 +28,7 @@ type ExchangeCodeDeps struct {
 	TokenIssuer  ports.TokenIssuer
 	Emit         func(spec.DomainEvent)
 	// ResolveAttributeDefs は ID Token の属性 claim 生成用 (wi-19)。nil 可。
-	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]spec.UserAttributeDef, error)
+	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error)
 }
 
 type ExchangeCodeInput struct {

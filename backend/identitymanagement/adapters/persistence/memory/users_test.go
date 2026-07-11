@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 )
 
 func TestUserRepository(t *testing.T) {
@@ -16,7 +16,7 @@ func TestUserRepository(t *testing.T) {
 	email2 := "bob@EXAMPLE.COM" // 大文字混じり
 
 	t.Run("Save and FindBySub", func(t *testing.T) {
-		user := &spec.User{
+		user := &idmdomain.User{
 			ID:                "user-1",
 			TenantID:          "tenant-1",
 			PreferredUsername: "alice",
@@ -51,7 +51,7 @@ func TestUserRepository(t *testing.T) {
 	})
 
 	t.Run("Seed", func(t *testing.T) {
-		user := &spec.User{
+		user := &idmdomain.User{
 			ID:                "user-seeded",
 			TenantID:          "tenant-1",
 			PreferredUsername: "seeded",
@@ -90,13 +90,13 @@ func TestUserRepository(t *testing.T) {
 	})
 
 	t.Run("FindByEmail with Case Insensitivity and Tenant isolation", func(t *testing.T) {
-		user2 := &spec.User{
+		user2 := &idmdomain.User{
 			ID:                "user-2",
 			TenantID:          "tenant-1",
 			PreferredUsername: "bob",
 			Email:             &email2,
 		}
-		userOtherTenant := &spec.User{
+		userOtherTenant := &idmdomain.User{
 			ID:                "user-other-tenant",
 			TenantID:          "tenant-other",
 			PreferredUsername: "alice-new",
@@ -133,13 +133,13 @@ func TestUserRepository(t *testing.T) {
 	})
 
 	t.Run("Deleted User behaviors", func(t *testing.T) {
-		userDel := &spec.User{
+		userDel := &idmdomain.User{
 			ID:                "user-deleted",
 			TenantID:          "tenant-1",
 			PreferredUsername: "charlie",
 			Email:             &email1,
-			Lifecycle: spec.UserLifecycle{
-				Status: spec.UserStatusDeleted,
+			Lifecycle: idmdomain.UserLifecycle{
+				Status: idmdomain.UserStatusDeleted,
 			},
 		}
 		_ = repo.Save(ctx, userDel)

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -30,16 +32,16 @@ func idTokenClaims(t *testing.T, token string) map[string]any {
 	return claims
 }
 
-func idTokenTestUser() *spec.User {
+func idTokenTestUser() *idmdomain.User {
 	name := "Carol Q"
 	nick := "cici"
 	phone := "+819012345678"
-	return &spec.User{
+	return &idmdomain.User{
 		ID: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol", Name: &name,
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
-		Attributes: map[string]spec.AttributeValue{
-			"nickname":     {Type: spec.AttributeTypeString, String: &nick},
-			"phone_number": {Type: spec.AttributeTypeString, String: &phone},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]idmdomain.AttributeValue{
+			"nickname":     {Type: idmdomain.AttributeTypeString, String: &nick},
+			"phone_number": {Type: idmdomain.AttributeTypeString, String: &phone},
 		},
 	}
 }
@@ -50,8 +52,8 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	resolve := func(_ context.Context, _ string) ([]spec.UserAttributeDef, error) {
-		return spec.BuiltinUserAttributeDefs(), nil
+	resolve := func(_ context.Context, _ string) ([]idmdomain.UserAttributeDef, error) {
+		return idmdomain.BuiltinUserAttributeDefs(), nil
 	}
 
 	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
@@ -79,8 +81,8 @@ func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	resolve := func(_ context.Context, _ string) ([]spec.UserAttributeDef, error) {
-		return spec.BuiltinUserAttributeDefs(), nil
+	resolve := func(_ context.Context, _ string) ([]idmdomain.UserAttributeDef, error) {
+		return idmdomain.BuiltinUserAttributeDefs(), nil
 	}
 
 	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{

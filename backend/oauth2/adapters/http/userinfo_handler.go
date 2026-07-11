@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -18,8 +20,8 @@ import (
 
 // effectiveUserAttributeDefs はテナントに有効な属性定義 (組み込み + tenant custom)
 // を返す。AttrSchemaRepo 未設定時は組み込み定義のみ。
-func (d Deps) effectiveUserAttributeDefs(ctx context.Context, tenantID string) ([]spec.UserAttributeDef, error) {
-	defs := spec.BuiltinUserAttributeDefs()
+func (d Deps) effectiveUserAttributeDefs(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error) {
+	defs := idmdomain.BuiltinUserAttributeDefs()
 	if d.AttrSchemaRepo == nil {
 		return defs, nil
 	}

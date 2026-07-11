@@ -8,6 +8,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/identitymanagement"
 	idmhttp "github.com/ambi/idmagic/backend/identitymanagement/adapters/http"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -31,8 +32,12 @@ import (
 type Deps struct {
 	support.Deps
 
-	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
+	IdentityManagement identitymanagement.Module
+	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdentityManagement.Module のみを設定する。
 	UserRepo       idmports.UserRepository
+	GroupRepo      idmports.GroupRepository
+	AgentRepo      idmports.AgentRepository
 	Authentication authentication.Module
 	// Deprecated: wi-177 移行中のテスト用互換入力。bootstrap は Authentication.Module のみを設定する。
 	MfaFactorRepo           authnports.MfaFactorRepository
@@ -67,8 +72,6 @@ type Deps struct {
 	KeyStore                   oauthports.KeyStore
 	TenantSaltStore            oauthports.TenantSaltStore
 	JWKResolver                *crypto.JWKResolver
-	GroupRepo                  idmports.GroupRepository
-	AgentRepo                  idmports.AgentRepository
 	WsFederation               wsfederation.Module
 	Saml                       saml.Module
 	Scim                       scim.Module
@@ -81,12 +84,13 @@ type Deps struct {
 func Register(e *echo.Echo, d Deps) {
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
+	d.IdentityManagement = mergeLegacyIdentityManagementDeps(d.IdentityManagement, d)
 	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
 
 	authenticator := &support.Authenticator{
-		UserRepo:          d.UserRepo,
-		GroupRepo:         d.GroupRepo,
+		UserRepo:          d.IdentityManagement.UserRepo,
+		GroupRepo:         d.IdentityManagement.GroupRepo,
 		SessionManager:    d.Authentication.SessionManager,
 		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		AuthnResolver:     d.Authentication.AuthnResolver,
@@ -98,14 +102,14 @@ func Register(e *echo.Echo, d Deps) {
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.AttrSchemaRepo,
-		UserRepo:       d.UserRepo,
+		UserRepo:       d.IdentityManagement.UserRepo,
 	})
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.AttrSchemaRepo,
-		UserRepo:       d.UserRepo,
+		UserRepo:       d.IdentityManagement.UserRepo,
 	})
 
 	e.GET("/health", d.handleHealth)
@@ -206,16 +210,29 @@ func mergeLegacyOAuth2Deps(module oauth2.Module, d Deps) oauth2.Module {
 	return module
 }
 
+func mergeLegacyIdentityManagementDeps(module identitymanagement.Module, d Deps) identitymanagement.Module {
+	if module.UserRepo == nil {
+		module.UserRepo = d.UserRepo
+	}
+	if module.GroupRepo == nil {
+		module.GroupRepo = d.GroupRepo
+	}
+	if module.AgentRepo == nil {
+		module.AgentRepo = d.AgentRepo
+	}
+	return module
+}
+
 func registerTenantRoutes(g *echo.Group, d Deps) {
 	authenticator := &support.Authenticator{
-		UserRepo:          d.UserRepo,
-		GroupRepo:         d.GroupRepo,
+		UserRepo:          d.IdentityManagement.UserRepo,
+		GroupRepo:         d.IdentityManagement.GroupRepo,
 		SessionManager:    d.Authentication.SessionManager,
 		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		AuthnResolver:     d.Authentication.AuthnResolver,
 	}
 
-	appGate := d.Application.Gate(d.GroupRepo, d.TrustedForwardedHops)
+	appGate := d.Application.Gate(d.IdentityManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
@@ -232,7 +249,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.OAuth2.PARStore,
 		RequestStore:               d.OAuth2.RequestStore,
-		UserRepo:                   d.UserRepo,
+		UserRepo:                   d.IdentityManagement.UserRepo,
 		PasswordHasher:             d.Authentication.PasswordHasher,
 		LoginAttemptThrottle:       d.Authentication.LoginAttemptThrottle,
 		MfaFactorRepo:              d.Authentication.MfaFactorRepo,
@@ -243,7 +260,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		DpopReplayStore:            d.OAuth2.DpopReplayStore,
 		RefreshStore:               d.OAuth2.RefreshStore,
 		TokenIssuer:                d.OAuth2.TokenIssuer,
-		AgentRepo:                  d.AgentRepo,
+		AgentRepo:                  d.IdentityManagement.AgentRepo,
 		TokenIntrospector:          d.OAuth2.TokenIntrospector,
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
 		AttrSchemaRepo:             d.AttrSchemaRepo,
@@ -260,7 +277,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
 		AuditEventRepo:            d.OAuth2.AuditEventRepo,
-		UserRepo:                  d.UserRepo,
+		UserRepo:                  d.IdentityManagement.UserRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
 		ConsentRepo:               d.OAuth2.ConsentRepo,
@@ -281,9 +298,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{
 		Deps:                  d.Deps,
 		Authenticator:         authenticator,
-		UserRepo:              d.UserRepo,
-		GroupRepo:             d.GroupRepo,
-		AgentRepo:             d.AgentRepo,
+		UserRepo:              d.IdentityManagement.UserRepo,
+		GroupRepo:             d.IdentityManagement.GroupRepo,
+		AgentRepo:             d.IdentityManagement.AgentRepo,
 		ClientRepo:            d.OAuth2.ClientRepo,
 		ScimRepo:              d.Scim.Repo,
 		AttrSchemaRepo:        d.AttrSchemaRepo,
@@ -302,15 +319,15 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.AttrSchemaRepo,
-		UserRepo:       d.UserRepo,
+		UserRepo:       d.IdentityManagement.UserRepo,
 	})
 
-	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.UserRepo, d.FederationSigner,
+	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash)
 
-	d.Saml.Register(g, d.Deps, authenticator, appGate, d.UserRepo, d.FederationSigner)
+	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner)
 
-	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdentityManagement.GroupRepo, d.IdentityManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
-	d.Scim.Register(g, d.Deps, authenticator, d.UserRepo, d.GroupRepo, d.Emit)
+	d.Scim.Register(g, d.Deps, authenticator, d.IdentityManagement.UserRepo, d.IdentityManagement.GroupRepo, d.Emit)
 }

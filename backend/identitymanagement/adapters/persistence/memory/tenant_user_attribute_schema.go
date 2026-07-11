@@ -5,7 +5,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 // =====================================================================
@@ -14,15 +15,15 @@ import (
 
 type TenantUserAttributeSchemaRepository struct {
 	mu       sync.RWMutex
-	byTenant map[string]*spec.TenantUserAttributeSchema
+	byTenant map[string]*idmdomain.TenantUserAttributeSchema
 }
 
 func NewTenantUserAttributeSchemaRepository() *TenantUserAttributeSchemaRepository {
-	return &TenantUserAttributeSchemaRepository{byTenant: map[string]*spec.TenantUserAttributeSchema{}}
+	return &TenantUserAttributeSchemaRepository{byTenant: map[string]*idmdomain.TenantUserAttributeSchema{}}
 }
 
-func (r *TenantUserAttributeSchemaRepository) FindByTenant(_ context.Context, tenantID string) (*spec.TenantUserAttributeSchema, error) {
-	DefaultTenant(&tenantID)
+func (r *TenantUserAttributeSchemaRepository) FindByTenant(_ context.Context, tenantID string) (*idmdomain.TenantUserAttributeSchema, error) {
+	sharedmem.DefaultTenant(&tenantID)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if schema := r.byTenant[tenantID]; schema != nil {
@@ -31,9 +32,9 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(_ context.Context, te
 	return nil, nil
 }
 
-func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *spec.TenantUserAttributeSchema) error {
+func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *idmdomain.TenantUserAttributeSchema) error {
 	cloned := cloneUserAttributeSchema(schema)
-	DefaultTenant(&cloned.TenantID)
+	sharedmem.DefaultTenant(&cloned.TenantID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if existing := r.byTenant[cloned.TenantID]; existing != nil && !existing.CreatedAt.IsZero() {
@@ -44,7 +45,7 @@ func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *sp
 }
 
 func (r *TenantUserAttributeSchemaRepository) Delete(_ context.Context, tenantID string) error {
-	DefaultTenant(&tenantID)
+	sharedmem.DefaultTenant(&tenantID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.byTenant, tenantID)
@@ -52,7 +53,7 @@ func (r *TenantUserAttributeSchemaRepository) Delete(_ context.Context, tenantID
 }
 
 // cloneUserAttributeSchema は呼び出し側との aliasing を断つための深いコピー。
-func cloneUserAttributeSchema(s *spec.TenantUserAttributeSchema) *spec.TenantUserAttributeSchema {
+func cloneUserAttributeSchema(s *idmdomain.TenantUserAttributeSchema) *idmdomain.TenantUserAttributeSchema {
 	cloned := *s
 	cloned.Attributes = slices.Clone(s.Attributes)
 	return &cloned

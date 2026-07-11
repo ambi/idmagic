@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres/sqlcgen"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	"github.com/jackc/pgx/v5"
 )
 
 // EmailChangeTokenStore (Authentication)

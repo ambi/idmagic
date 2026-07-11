@@ -7,26 +7,29 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func newGroupDeps(t *testing.T) (idmusecases.AdminGroupDeps, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_alice", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_other", TenantID: "acme", PreferredUsername: "other",
 		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	events := &[]spec.DomainEvent{}
 	deps := idmusecases.AdminGroupDeps{
-		GroupRepo: memory.NewGroupRepository(),
+		GroupRepo: idmmemory.NewGroupRepository(),
 		UserRepo:  userRepo,
 		Emit:      func(e spec.DomainEvent) { *events = append(*events, e) },
 	}

@@ -9,6 +9,8 @@ import (
 	"errors"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/go-webauthn/webauthn/protocol"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
@@ -66,10 +68,10 @@ type WebAuthnDeps struct {
 	Emit           func(spec.DomainEvent)
 }
 
-// webauthnUser は spec.User + 登録済み credential を go-webauthn の User interface に適合させる。
+// webauthnUser は idmdomain.User + 登録済み credential を go-webauthn の User interface に適合させる。
 // WebAuthnID は user handle として sub (UUID 文字列) の byte 列を使う。
 type webauthnUser struct {
-	user        *spec.User
+	user        *idmdomain.User
 	credentials []gowebauthn.Credential
 }
 
@@ -86,7 +88,7 @@ func (u *webauthnUser) WebAuthnDisplayName() string {
 func (u *webauthnUser) WebAuthnCredentials() []gowebauthn.Credential { return u.credentials }
 
 // loadWebAuthnUser は user と登録済み credential をまとめて go-webauthn の User に適合させる。
-func loadWebAuthnUser(user *spec.User, stored []*domain.WebAuthnCredential) (*webauthnUser, error) {
+func loadWebAuthnUser(user *idmdomain.User, stored []*domain.WebAuthnCredential) (*webauthnUser, error) {
 	credentials := make([]gowebauthn.Credential, 0, len(stored))
 	for _, c := range stored {
 		converted, err := toWebAuthnCredential(c)

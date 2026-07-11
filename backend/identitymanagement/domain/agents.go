@@ -1,7 +1,11 @@
-package spec
+package domain
 
 import (
 	"time"
+
+	z "github.com/Oudwins/zog"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ===============================================================
@@ -28,8 +32,27 @@ type Agent struct {
 	KilledAt    *time.Time  `json:"killed_at,omitempty"`
 }
 
+var agentSchema = z.Struct(z.Shape{
+	"ID":          z.String().Min(1).Max(64).Required(),
+	"TenantID":    z.String().Min(1).Required(),
+	"Name":        z.String().Min(1).Max(100).Required(),
+	"Description": z.Ptr(z.String().Max(500)),
+	"Kind": z.StringLike[AgentKind]().TestFunc(
+		func(value *AgentKind, _ z.Ctx) bool { return value.Valid() },
+		z.Message("agent kind is not in enum"),
+	).Required(),
+	"OwnerUserID": z.String().Min(1).Required(),
+	"Status": z.StringLike[AgentStatus]().TestFunc(
+		func(value *AgentStatus, _ z.Ctx) bool { return value.Valid() },
+		z.Message("agent status is not in enum"),
+	).Required(),
+	"Roles":     z.Slice(z.String().Min(1)),
+	"CreatedAt": z.Time().Required(),
+	"UpdatedAt": z.Time().Required(),
+})
+
 func (a Agent) Validate() error {
-	return validate(agentSchema, &a)
+	return spec.Validate(agentSchema, &a)
 }
 
 // IsActive は Agent が新規トークン発行可能な状態かを返す (ADR-048)。Status が Active
@@ -46,13 +69,19 @@ type AgentCredentialBinding struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+var agentCredentialBindingSchema = z.Struct(z.Shape{
+	"AgentID":   z.String().Min(1).Required(),
+	"ClientID":  z.String().Min(1).Required(),
+	"CreatedAt": z.Time().Required(),
+})
+
 func (b AgentCredentialBinding) Validate() error {
-	return validate(agentCredentialBindingSchema, &b)
+	return spec.Validate(agentCredentialBindingSchema, &b)
 }
 
 // NewAgentID は不変の Agent 識別子 agent_<uuid> を生成する。
 func NewAgentID() (string, error) {
-	id, err := NewUUIDv4()
+	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return "", err
 	}

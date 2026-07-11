@@ -8,22 +8,25 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/notification"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	tokenStore := authnmemory.NewEmailChangeTokenStore()
 	sender := &notification.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &current, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
@@ -51,17 +54,17 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 
 func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	tokenStore := authnmemory.NewEmailChangeTokenStore()
 	sender := &notification.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &current, EmailVerified: false, CreatedAt: now, UpdatedAt: now,
-		Lifecycle: spec.UserLifecycle{
-			Status:          spec.UserStatusActive,
-			RequiredActions: []spec.RequiredAction{spec.RequiredActionVerifyEmail},
+		Lifecycle: idmdomain.UserLifecycle{
+			Status:          idmdomain.UserStatusActive,
+			RequiredActions: []idmdomain.RequiredAction{idmdomain.RequiredActionVerifyEmail},
 		},
 	})
 	if err := usecases.RequestEmailChange(ctx, usecases.RequestEmailChangeDeps{
@@ -83,7 +86,7 @@ func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 		t.Fatalf("email not applied: email=%v verified=%v", updated.Email, updated.EmailVerified)
 	}
 	for _, a := range updated.Lifecycle.RequiredActions {
-		if a == spec.RequiredActionVerifyEmail {
+		if a == idmdomain.RequiredActionVerifyEmail {
 			t.Fatal("verify_email required action was not cleared")
 		}
 	}
@@ -102,15 +105,15 @@ func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 
 func TestRequestEmailChangeRejectsAddressTakenByAnotherUser(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	mine := "mine@example.com"
 	taken := "taken@example.com"
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &mine, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-bob", PreferredUsername: "bob", PasswordHash: "unused",
 		Email: &taken, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})

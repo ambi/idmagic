@@ -14,6 +14,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -85,7 +89,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 		},
 	})
 
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	passwordHash, err := hasher.Hash("correct-password")
 	if err != nil {
@@ -95,7 +99,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	if err != nil {
 		t.Fatalf("hash sentinel: %v", err)
 	}
-	userRepo.Seed(&spec.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
+	userRepo.Seed(&idmdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -432,15 +436,15 @@ func wsTrustRST(now time.Time, messageID, appliesTo string) string {
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID:                "admin-1",
 		TenantID:          spec.DefaultTenantID,
 		PreferredUsername: "admin@contoso.com",
 		Roles:             []string{"admin"},
-		Attributes: map[string]spec.AttributeValue{
-			"object_guid": {Type: spec.AttributeTypeString, String: &objectGUID},
+		Attributes: map[string]idmdomain.AttributeValue{
+			"object_guid": {Type: idmdomain.AttributeTypeString, String: &objectGUID},
 		},
 	})
 	e := echo.New()

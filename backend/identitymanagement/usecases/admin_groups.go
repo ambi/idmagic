@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -34,7 +36,7 @@ type AdminGroupDeps struct {
 
 // GroupView は一覧・詳細でグループとメンバー数をまとめて返す。
 type GroupView struct {
-	Group       *spec.Group
+	Group       *idmdomain.Group
 	MemberCount int
 }
 
@@ -57,7 +59,7 @@ func ListGroups(ctx context.Context, deps AdminGroupDeps) ([]GroupView, error) {
 
 // GetGroup はグループ本体と所属メンバー一覧を返す。別テナントのグループは
 // 未存在として扱う。
-func GetGroup(ctx context.Context, deps AdminGroupDeps, id string) (*spec.Group, []*spec.GroupMember, error) {
+func GetGroup(ctx context.Context, deps AdminGroupDeps, id string) (*idmdomain.Group, []*idmdomain.GroupMember, error) {
 	tenantID := tenancy.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -81,7 +83,7 @@ type CreateGroupInput struct {
 	Now         time.Time
 }
 
-func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) (*spec.Group, error) {
+func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) (*idmdomain.Group, error) {
 	tenantID := tenancy.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -94,12 +96,12 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err != nil {
 		return nil, err
 	}
-	id, err := spec.NewGroupID()
+	id, err := idmdomain.NewGroupID()
 	if err != nil {
 		return nil, err
 	}
 	now := normalizedNow(in.Now)
-	group := &spec.Group{
+	group := &idmdomain.Group{
 		ID: id, TenantID: tenantID, Name: name, Description: normalizeDescription(in.Description),
 		Roles: roles, CreatedAt: now, UpdatedAt: now,
 	}
@@ -122,7 +124,7 @@ type UpdateGroupInput struct {
 	Now         time.Time
 }
 
-func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) (*spec.Group, error) {
+func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) (*idmdomain.Group, error) {
 	tenantID := tenancy.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, in.ID)
 	if err != nil {
@@ -233,7 +235,7 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, u
 		return ErrUserNotFound
 	}
 	now = normalizedNow(now)
-	added, err := deps.GroupRepo.AddMember(ctx, &spec.GroupMember{
+	added, err := deps.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
 		GroupID: groupID, UserID: userID, CreatedAt: now,
 	})
 	if err != nil {
@@ -273,7 +275,7 @@ func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID
 // UserGroupView は ListUserGroups の結果。明示ロール・グループ由来ロール・union を
 // 分けて返し、管理 UI が effective roles を理解しやすくする。
 type UserGroupView struct {
-	Groups         []*spec.Group
+	Groups         []*idmdomain.Group
 	DirectRoles    []string
 	GroupRoles     []string
 	EffectiveRoles []string
@@ -292,13 +294,13 @@ func UserGroups(ctx context.Context, deps AdminGroupDeps, sub string) (*UserGrou
 	if err != nil {
 		return nil, err
 	}
-	directRoles := spec.EffectiveRoles(user.Roles, nil)
-	groupRoles := spec.EffectiveRoles(nil, groups)
+	directRoles := idmdomain.EffectiveRoles(user.Roles, nil)
+	groupRoles := idmdomain.EffectiveRoles(nil, groups)
 	return &UserGroupView{
 		Groups:         groups,
 		DirectRoles:    directRoles,
 		GroupRoles:     groupRoles,
-		EffectiveRoles: spec.EffectiveRoles(user.Roles, groups),
+		EffectiveRoles: idmdomain.EffectiveRoles(user.Roles, groups),
 	}, nil
 }
 

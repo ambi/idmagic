@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -21,7 +25,7 @@ import (
 )
 
 func TestDisabledUserCannotLogIn(t *testing.T) {
-	repo := memory.NewUserRepository()
+	repo := idmmemory.NewUserRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("current-password-1")
@@ -29,9 +33,9 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	repo.Seed(&spec.User{
+	repo.Seed(&idmdomain.User{
 		ID: "disabled", PreferredUsername: "disabled", PasswordHash: hash,
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusDisabled, StatusChangedAt: &now},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled, StatusChangedAt: &now},
 		CreatedAt: now, UpdatedAt: now,
 	})
 	if err := requestStore.Save(context.Background(), &domain.AuthorizationRequest{

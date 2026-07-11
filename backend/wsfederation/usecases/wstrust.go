@@ -3,7 +3,8 @@ package usecases
 import (
 	"strings"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
@@ -15,7 +16,7 @@ type WsTrustService struct{}
 // TokenRequest は認証・RP 解決を通過した後のトークン発行入力。
 type TokenRequest struct {
 	RP                 feddomain.WsFedRelyingParty
-	User               spec.User
+	User               idmdomain.User
 	RequestedTokenType string // RST の要求 token type (空なら RP 既定)。
 }
 

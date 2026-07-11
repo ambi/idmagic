@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/labstack/echo/v5"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/labstack/echo/v5"
 )
 
 // renderConsentDetails は authorization_details を登録 type の表示テンプレートで

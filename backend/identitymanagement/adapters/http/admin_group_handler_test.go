@@ -7,25 +7,28 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
-func newAdminGroupHandler(t *testing.T) (*echo.Echo, *memory.GroupRepository) {
+func newAdminGroupHandler(t *testing.T) (*echo.Echo, *idmmemory.GroupRepository) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
-	groupRepo := memory.NewGroupRepository()
+	userRepo := idmmemory.NewUserRepository()
+	groupRepo := idmmemory.NewGroupRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -107,11 +110,11 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	e, groupRepo := newAdminGroupHandler(t)
 	ctx := httptest.NewRequest(http.MethodGet, "/", http.NoBody).Context()
-	group := &spec.Group{ID: "group_admins", TenantID: spec.DefaultTenantID, Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
+	group := &idmdomain.Group{ID: "group_admins", TenantID: spec.DefaultTenantID, Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
 	if err := groupRepo.Save(ctx, group); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := groupRepo.AddMember(ctx, &spec.GroupMember{GroupID: group.ID, UserID: "alice", CreatedAt: time.Now().UTC()}); err != nil {
+	if _, err := groupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: group.ID, UserID: "alice", CreatedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodGet, "/api/admin/groups", http.NoBody)

@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -17,11 +21,11 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDeps, *memory.UserRepository, *[]spec.DomainEvent) {
+func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDeps, *idmmemory.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		MfaEnrolled: true, CreatedAt: now, UpdatedAt: now,
 	})

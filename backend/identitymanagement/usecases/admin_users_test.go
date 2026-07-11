@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
@@ -20,7 +24,7 @@ import (
 
 func TestCreateUpdateAndDisableUser(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	var events []spec.DomainEvent
@@ -60,7 +64,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user.Lifecycle.Status != spec.UserStatusDisabled {
+	if user.Lifecycle.Status != idmdomain.UserStatusDisabled {
 		t.Fatal("status was not set to disabled")
 	}
 	if got := events[len(events)-1].EventType(); got != "UserDisabled" {
@@ -72,7 +76,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user.Lifecycle.Status != spec.UserStatusActive {
+	if user.Lifecycle.Status != idmdomain.UserStatusActive {
 		t.Fatal("status was not cleared to active")
 	}
 	if got := events[len(events)-1].EventType(); got != "UserEnabled" {
@@ -82,7 +86,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 
 func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: crypto.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
@@ -136,9 +140,9 @@ func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 }
 
 func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
-	repo := memory.NewUserRepository()
+	repo := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	repo.Seed(&spec.User{
+	repo.Seed(&idmdomain.User{
 		ID: "existing", PreferredUsername: "bob", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -155,7 +159,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 
 func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 	refreshStore := memory.NewRefreshTokenStore()
@@ -251,9 +255,9 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 
 func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -266,9 +270,9 @@ func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 
 func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -288,9 +292,9 @@ func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
 
 func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "admin-2", PreferredUsername: "other-admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -300,15 +304,15 @@ func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("disable other admin error=%v, want nil", err)
 	}
-	if user.Lifecycle.Status != spec.UserStatusDisabled {
+	if user.Lifecycle.Status != idmdomain.UserStatusDisabled {
 		t.Fatalf("status=%v, want disabled", user.Lifecycle.Status)
 	}
 }
 
 // softDeleteTestDeps は soft-delete 系テスト用に cascade 対象リポジトリを揃えた
 // deps と consent リポジトリ (cascade 温存の確認用) を返す。
-func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, *oauth2memory.ConsentRepository, *memory.UserRepository) {
-	userRepo := memory.NewUserRepository()
+func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, *oauth2memory.ConsentRepository, *idmmemory.UserRepository) {
+	userRepo := idmmemory.NewUserRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, ConsentRepo: consentRepo,
@@ -324,7 +328,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 	var events []spec.DomainEvent
 	deps, consentRepo, userRepo := softDeleteTestDeps(&events)
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -373,7 +377,7 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	email := "alice@example.com"
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash", Email: &email,
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -400,7 +404,7 @@ func TestRestoreUserRejectsNonPendingAndExpired(t *testing.T) {
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	deps.SoftDeleteGraceSeconds = 60
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -421,9 +425,9 @@ func TestRestoreUserRejectsNonPendingAndExpired(t *testing.T) {
 
 func TestSoftDeleteAndRestoreRejectSelf(t *testing.T) {
 	ctx := context.Background()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -444,7 +448,7 @@ func TestPurgeExpiredSoftDeletedAnonymizesAfterGrace(t *testing.T) {
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	deps.SoftDeleteGraceSeconds = 1
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})

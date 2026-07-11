@@ -12,10 +12,13 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -35,9 +38,9 @@ func (s stubIntrospector) IntrospectAccessToken(
 	return &oauthports.IntrospectionResult{Active: false}, nil
 }
 
-func newBearerAdminServer(t *testing.T, actor *spec.User, introspector oauthports.TokenIntrospector) *echo.Echo {
+func newBearerAdminServer(t *testing.T, actor *idmdomain.User, introspector oauthports.TokenIntrospector) *echo.Echo {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}

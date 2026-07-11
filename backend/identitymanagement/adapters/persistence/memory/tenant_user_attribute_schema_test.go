@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -21,10 +23,10 @@ func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
 	}
 
 	claim := "region"
-	schema := &spec.TenantUserAttributeSchema{
+	schema := &idmdomain.TenantUserAttributeSchema{
 		TenantID: "acme",
-		Attributes: []spec.UserAttributeDef{
-			{Key: "region", Type: spec.AttributeTypeString, Required: true, Visibility: spec.AttrVisibilityClaimExposed, ClaimName: &claim},
+		Attributes: []idmdomain.UserAttributeDef{
+			{Key: "region", Type: idmdomain.AttributeTypeString, Required: true, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: &claim},
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
@@ -49,13 +51,13 @@ func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
 
 	// 既存スキーマがある状態で再 Save 時に CreatedAt が保持されることの検証
 	createdTime := time.Now().Add(-1 * time.Hour).UTC()
-	schemaWithCreated := &spec.TenantUserAttributeSchema{
+	schemaWithCreated := &idmdomain.TenantUserAttributeSchema{
 		TenantID:  "acme",
 		CreatedAt: createdTime,
 	}
 	_ = repo.Save(ctx, schemaWithCreated)
 
-	schemaUpdate := &spec.TenantUserAttributeSchema{
+	schemaUpdate := &idmdomain.TenantUserAttributeSchema{
 		TenantID:  "acme",
 		CreatedAt: time.Now().UTC(), // 新しい時間
 	}
@@ -77,7 +79,7 @@ func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
 func TestTenantUserAttributeSchemaRepositoryDefaultsTenant(t *testing.T) {
 	ctx := context.Background()
 	repo := NewTenantUserAttributeSchemaRepository()
-	if err := repo.Save(ctx, &spec.TenantUserAttributeSchema{UpdatedAt: time.Now().UTC()}); err != nil {
+	if err := repo.Save(ctx, &idmdomain.TenantUserAttributeSchema{UpdatedAt: time.Now().UTC()}); err != nil {
 		t.Fatalf("save failed: %v", err)
 	}
 	got, err := repo.FindByTenant(ctx, "")

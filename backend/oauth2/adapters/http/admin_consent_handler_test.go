@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -16,7 +20,6 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -145,18 +148,18 @@ type adminConsentBody struct {
 }
 
 func newAdminConsentHandler() (*echo.Echo, *oauth2memory.ConsentRepository, *[]spec.DomainEvent) {
-	users := memory.NewUserRepository()
+	users := idmmemory.NewUserRepository()
 	consents := oauth2memory.NewConsentRepository()
 	now := time.Now().UTC()
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "alice", TenantID: spec.DefaultTenantID, PreferredUsername: "alice-name",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})

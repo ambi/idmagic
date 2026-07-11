@@ -11,6 +11,8 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/identitymanagement"
+	idmpostgres "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/valkey"
@@ -99,10 +101,12 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 
 	return &Dependencies{
 		TenantRepo:     &postgres.TenantRepository{Pool: resilientDB},
-		AttrSchemaRepo: &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
-		UserRepo:       &postgres.UserRepository{Pool: resilientDB},
-		GroupRepo:      &postgres.GroupRepository{Pool: resilientDB},
-		AgentRepo:      &postgres.AgentRepository{Pool: resilientDB},
+		AttrSchemaRepo: &idmpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+		IdentityManagement: identitymanagement.Module{
+			UserRepo:  &idmpostgres.UserRepository{Pool: resilientDB},
+			GroupRepo: &idmpostgres.GroupRepository{Pool: resilientDB},
+			AgentRepo: &idmpostgres.AgentRepository{Pool: resilientDB},
+		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
 			PasswordHistoryRepo:     &authnpostgres.PasswordHistoryRepository{Pool: resilientDB},

@@ -5,7 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -17,14 +18,14 @@ var ErrInvalidUserAttributeSchema = errors.New("invalid attribute schema")
 // 空集合の schema を返し、呼び出し側が常に non-nil を扱えるようにする。
 func GetUserAttributeSchema(
 	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository, tenantID string,
-) (*spec.TenantUserAttributeSchema, error) {
+) (*idmdomain.TenantUserAttributeSchema, error) {
 	schema, err := repo.FindByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	if schema == nil {
 		now := time.Now().UTC()
-		return &spec.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []spec.UserAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
+		return &idmdomain.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []idmdomain.UserAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
 	}
 	return schema, nil
 }
@@ -33,12 +34,12 @@ func GetUserAttributeSchema(
 // 組み込み属性との key 衝突・重複 key を拒否したうえで保存する (ADR-040)。
 func UpdateUserAttributeSchema(
 	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository,
-	tenantID string, defs []spec.UserAttributeDef, now time.Time,
-) (*spec.TenantUserAttributeSchema, error) {
+	tenantID string, defs []idmdomain.UserAttributeDef, now time.Time,
+) (*idmdomain.TenantUserAttributeSchema, error) {
 	if defs == nil {
-		defs = []spec.UserAttributeDef{}
+		defs = []idmdomain.UserAttributeDef{}
 	}
-	schema := &spec.TenantUserAttributeSchema{
+	schema := &idmdomain.TenantUserAttributeSchema{
 		TenantID:   tenantID,
 		Attributes: defs,
 		CreatedAt:  now,

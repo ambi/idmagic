@@ -8,6 +8,8 @@ import (
 	"context"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -44,7 +46,7 @@ func syncMfaEnrolled(
 	userRepo idmports.UserRepository,
 	mfaRepo authnports.MfaFactorRepository,
 	credRepo authnports.WebAuthnCredentialRepository,
-	user *spec.User,
+	user *idmdomain.User,
 	now time.Time,
 ) error {
 	enrolled, err := hasSecondFactor(ctx, mfaRepo, credRepo, user.ID)

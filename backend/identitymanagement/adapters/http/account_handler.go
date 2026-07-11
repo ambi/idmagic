@@ -6,55 +6,56 @@ import (
 	"net/http"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
 type AccountProfileResponse struct {
-	ID                string                         `json:"id"`
-	PreferredUsername string                         `json:"preferred_username"`
-	Name              *string                        `json:"name,omitempty"`
-	GivenName         *string                        `json:"given_name,omitempty"`
-	FamilyName        *string                        `json:"family_name,omitempty"`
-	Email             *string                        `json:"email,omitempty"`
-	EmailVerified     bool                           `json:"email_verified"`
-	MfaEnrolled       bool                           `json:"mfa_enrolled"`
-	Status            spec.UserStatus                `json:"status"`
-	Attributes        map[string]spec.AttributeValue `json:"attributes"`
+	ID                string                              `json:"id"`
+	PreferredUsername string                              `json:"preferred_username"`
+	Name              *string                             `json:"name,omitempty"`
+	GivenName         *string                             `json:"given_name,omitempty"`
+	FamilyName        *string                             `json:"family_name,omitempty"`
+	Email             *string                             `json:"email,omitempty"`
+	EmailVerified     bool                                `json:"email_verified"`
+	MfaEnrolled       bool                                `json:"mfa_enrolled"`
+	Status            idmdomain.UserStatus                `json:"status"`
+	Attributes        map[string]idmdomain.AttributeValue `json:"attributes"`
 	// ReadableAttributes は self が参照できる属性定義。
-	ReadableAttributes []spec.UserAttributeDef `json:"readable_attributes"`
+	ReadableAttributes []idmdomain.UserAttributeDef `json:"readable_attributes"`
 	// EditableAttributes は self が編集できる属性定義 (editable_by_user=true)。
 	// UI がフォームを描画するために型・multi_valued 等のメタを併せて返す。
-	EditableAttributes []spec.UserAttributeDef `json:"editable_attributes"`
+	EditableAttributes []idmdomain.UserAttributeDef `json:"editable_attributes"`
 }
 
 // accountSummaryResponse は portal home 用のアカウント概要 (self-service)。
 // admin shell 用の AccountContext とは別契約で roles を含めない (wi-21 / ADR-042)。
 type accountSummaryResponse struct {
-	ID                string                `json:"id"`
-	PreferredUsername string                `json:"preferred_username"`
-	Name              *string               `json:"name,omitempty"`
-	Email             *string               `json:"email,omitempty"`
-	EmailVerified     bool                  `json:"email_verified"`
-	MfaEnrolled       bool                  `json:"mfa_enrolled"`
-	Status            spec.UserStatus       `json:"status"`
-	LastLoginAt       *time.Time            `json:"last_login_at,omitempty"`
-	PasswordChangedAt *time.Time            `json:"password_changed_at,omitempty"`
-	RequiredActions   []spec.RequiredAction `json:"required_actions"`
+	ID                string                     `json:"id"`
+	PreferredUsername string                     `json:"preferred_username"`
+	Name              *string                    `json:"name,omitempty"`
+	Email             *string                    `json:"email,omitempty"`
+	EmailVerified     bool                       `json:"email_verified"`
+	MfaEnrolled       bool                       `json:"mfa_enrolled"`
+	Status            idmdomain.UserStatus       `json:"status"`
+	LastLoginAt       *time.Time                 `json:"last_login_at,omitempty"`
+	PasswordChangedAt *time.Time                 `json:"password_changed_at,omitempty"`
+	RequiredActions   []idmdomain.RequiredAction `json:"required_actions"`
 }
 
 type accountProfileUpdateRequest struct {
-	Name       *string                         `json:"name"`
-	GivenName  *string                         `json:"given_name"`
-	FamilyName *string                         `json:"family_name"`
-	Attributes *map[string]spec.AttributeValue `json:"attributes"`
+	Name       *string                              `json:"name"`
+	GivenName  *string                              `json:"given_name"`
+	FamilyName *string                              `json:"family_name"`
+	Attributes *map[string]idmdomain.AttributeValue `json:"attributes"`
 }
 
-func toAccountProfileResponse(user *spec.User, defs []spec.UserAttributeDef) AccountProfileResponse {
+func toAccountProfileResponse(user *idmdomain.User, defs []idmdomain.UserAttributeDef) AccountProfileResponse {
 	return AccountProfileResponse{
 		ID: user.ID, PreferredUsername: user.PreferredUsername,
 		Name: user.Name, GivenName: user.GivenName, FamilyName: user.FamilyName,
@@ -72,10 +73,10 @@ func (d Deps) accountProfileDeps() idmusecases.AccountProfileDeps {
 	}
 }
 
-func toAccountSummaryResponse(user *spec.User) accountSummaryResponse {
+func toAccountSummaryResponse(user *idmdomain.User) accountSummaryResponse {
 	actions := user.Lifecycle.RequiredActions
 	if actions == nil {
-		actions = []spec.RequiredAction{}
+		actions = []idmdomain.RequiredAction{}
 	}
 	return accountSummaryResponse{
 		ID: user.ID, PreferredUsername: user.PreferredUsername, Name: user.Name,

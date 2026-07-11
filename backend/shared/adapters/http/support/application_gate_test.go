@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -28,7 +29,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, GroupRepo: memory.NewGroupRepository()}
+	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, GroupRepo: idmmemory.NewGroupRepository()}
 
 	// catalog 外の client は gating 対象外。
 	if allowed, err := d.ApplicationAccessAllowed(ctx, spec.DefaultTenantID, appdomain.ProtocolBindingOIDC, "other", "alice"); err != nil || !allowed {

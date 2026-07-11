@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // RefreshTokenStore は sqlc 生成クエリを利用する OAuth2 refresh token repository。

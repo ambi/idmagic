@@ -7,8 +7,9 @@ import (
 	"slices"
 	"strings"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -105,7 +106,7 @@ func bearerToken(c *echo.Context) string {
 
 // RequireAdmin は認証済み + 有効ロールに admin を含むユーザを要求する。
 // グループ由来ロールを含めた有効ロールで判定する (ADR-038)。
-func (a *Authenticator) RequireAdmin(c *echo.Context) (*spec.User, error) {
+func (a *Authenticator) RequireAdmin(c *echo.Context) (*idmdomain.User, error) {
 	authn, err := a.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err
@@ -137,7 +138,7 @@ func (a *Authenticator) WriteAdminAccessError(c *echo.Context, err error) error 
 // ResolveAdminActor は認証済みかつ有効なユーザを、グループ由来ロールを合成した
 // 形で返す。ロール別の細かな認可判定 (key reader / settings admin など) を呼び出し側に
 // 委ねる管理系ハンドラが、actor の解決だけを共有するために使う。
-func (a *Authenticator) ResolveAdminActor(c *echo.Context) (*spec.User, error) {
+func (a *Authenticator) ResolveAdminActor(c *echo.Context) (*idmdomain.User, error) {
 	authn, err := a.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err
@@ -157,7 +158,7 @@ func (a *Authenticator) ResolveAdminActor(c *echo.Context) (*spec.User, error) {
 
 // RequireAuditReader は admin または system_admin ロールを持つ認証済みユーザを要求する。
 // 監査イベントの閲覧と、そこから派生する認証イベントバケット閲覧が共有する。
-func (a *Authenticator) RequireAuditReader(c *echo.Context) (*spec.User, error) {
+func (a *Authenticator) RequireAuditReader(c *echo.Context) (*idmdomain.User, error) {
 	authn, err := a.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err
@@ -180,7 +181,7 @@ func (a *Authenticator) RequireAuditReader(c *echo.Context) (*spec.User, error) 
 }
 
 // EffectiveRoles は User の直接ロールにグループ由来ロールを合成して返す (ADR-038)。
-func (a *Authenticator) EffectiveRoles(ctx context.Context, user *spec.User) []string {
+func (a *Authenticator) EffectiveRoles(ctx context.Context, user *idmdomain.User) []string {
 	if a.GroupRepo == nil {
 		return user.Roles
 	}
@@ -188,11 +189,11 @@ func (a *Authenticator) EffectiveRoles(ctx context.Context, user *spec.User) []s
 	if err != nil {
 		return user.Roles
 	}
-	return spec.EffectiveRoles(user.Roles, groups)
+	return idmdomain.EffectiveRoles(user.Roles, groups)
 }
 
 // WithEffectiveRoles は Roles を有効ロールへ差し替えた User の複製を返す。
-func (a *Authenticator) WithEffectiveRoles(ctx context.Context, user *spec.User) *spec.User {
+func (a *Authenticator) WithEffectiveRoles(ctx context.Context, user *idmdomain.User) *idmdomain.User {
 	clone := *user
 	clone.Roles = a.EffectiveRoles(ctx, user)
 	return &clone

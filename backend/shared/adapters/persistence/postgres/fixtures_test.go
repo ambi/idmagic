@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -33,24 +35,6 @@ func newUUID(t *testing.T) string {
 	return id
 }
 
-// seedGroup は指定テナントにグループを作成して返す。
-func seedGroup(t *testing.T, db DB, tenantID string) *spec.Group {
-	t.Helper()
-	now := testClock()
-	group := &spec.Group{
-		ID:        newUUID(t),
-		TenantID:  tenantID,
-		Name:      uniqueID("group-name"),
-		Roles:     []string{},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	if err := (&GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
-		t.Fatalf("seed group: %v", err)
-	}
-	return group
-}
-
 // seedTenant はテナントを作成して返す。FK 親が必要なテストの前提として使う。
 func seedTenant(t *testing.T, db DB) *spec.Tenant {
 	t.Helper()
@@ -69,11 +53,15 @@ func seedTenant(t *testing.T, db DB) *spec.Tenant {
 	return tenant
 }
 
-// seedUser は指定テナントにユーザを作成して返す。
-func seedUser(t *testing.T, db DB, tenantID string) *spec.User {
+// seedUser は指定テナントにユーザを作成して返す。UserRepository は
+// identitymanagement/adapters/persistence/postgres へ移設済み (wi-178) で、本パッケージの
+// 内部テストから import すると postgres -> identitymanagement/postgres -> postgres の
+// import cycle になるため、seedClient 同様 FK 充足専用の最小限フィクスチャとして
+// 生 SQL で直接 INSERT する。
+func seedUser(t *testing.T, db DB, tenantID string) *idmdomain.User {
 	t.Helper()
 	now := testClock()
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: uniqueID("username"),
@@ -82,7 +70,20 @@ func seedUser(t *testing.T, db DB, tenantID string) *spec.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	lifecycle, err := json.Marshal(user.Lifecycle)
+	if err != nil {
+		t.Fatalf("marshal lifecycle: %v", err)
+	}
+	attributes, err := json.Marshal(user.Attributes)
+	if err != nil {
+		t.Fatalf("marshal attributes: %v", err)
+	}
+	_, err = db.Exec(context.Background(), `
+INSERT INTO users (id,tenant_id,preferred_username,password_hash,roles,lifecycle,attributes,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+		user.ID, user.TenantID, user.PreferredUsername, user.PasswordHash, user.Roles,
+		string(lifecycle), string(attributes), user.CreatedAt, user.UpdatedAt)
+	if err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user

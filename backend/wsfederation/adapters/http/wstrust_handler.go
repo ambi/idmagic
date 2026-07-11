@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/wstrust"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -97,7 +98,7 @@ func (d Deps) recordWsTrustMessageID(c *echo.Context, messageID string, now time
 	return d.ClientAssertionReplayStore.RecordIfNew(c.Request().Context(), "wstrust:"+messageID, int(assertionLifetime.Seconds()), now)
 }
 
-func (d Deps) authenticateWsTrustUser(c *echo.Context, username, password string, now time.Time) (*spec.User, error) {
+func (d Deps) authenticateWsTrustUser(c *echo.Context, username, password string, now time.Time) (*idmdomain.User, error) {
 	normalizedUsername := strings.ToLower(username)
 	if d.LoginAttemptThrottle != nil {
 		result, err := d.LoginAttemptThrottle.TryAcquire(c.Request().Context(), authnports.LoginThrottleAccount, normalizedUsername, now)

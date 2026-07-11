@@ -6,29 +6,32 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func userInfoFixture(t *testing.T) *memory.UserRepository {
+func userInfoFixture(t *testing.T) *idmmemory.UserRepository {
 	t.Helper()
-	repo := memory.NewUserRepository()
-	repo.Seed(&spec.User{
+	repo := idmmemory.NewUserRepository()
+	repo.Seed(&idmdomain.User{
 		ID: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol",
 		Name: new("Carol Q"), Email: new("carol@example.com"), EmailVerified: true,
-		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusActive},
-		Attributes: map[string]spec.AttributeValue{
-			"nickname":     {Type: spec.AttributeTypeString, String: new("cici")},
-			"phone_number": {Type: spec.AttributeTypeString, String: new("+819012345678")},
+		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]idmdomain.AttributeValue{
+			"nickname":     {Type: idmdomain.AttributeTypeString, String: new("cici")},
+			"phone_number": {Type: idmdomain.AttributeTypeString, String: new("+819012345678")},
 		},
 		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})
 	return repo
 }
 
-func resolveBuiltin(_ context.Context, _ string) ([]spec.UserAttributeDef, error) {
-	return spec.BuiltinUserAttributeDefs(), nil
+func resolveBuiltin(_ context.Context, _ string) ([]idmdomain.UserAttributeDef, error) {
+	return idmdomain.BuiltinUserAttributeDefs(), nil
 }
 
 func TestUserInfoIncludesAttributeClaimsByScope(t *testing.T) {

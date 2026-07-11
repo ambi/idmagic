@@ -22,6 +22,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -91,8 +95,8 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	jwk := rsaJWK(&key.PublicKey)
 	jkt := rsaJWKThumbprint(t, jwk)
 
-	userRepo := memory.NewUserRepository()
-	userRepo.Seed(&spec.User{
+	userRepo := idmmemory.NewUserRepository()
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_alice", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -159,8 +163,8 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 	jwk := rsaJWK(&key.PublicKey)
 	jkt := rsaJWKThumbprint(t, jwk)
 
-	userRepo := memory.NewUserRepository()
-	userRepo.Seed(&spec.User{
+	userRepo := idmmemory.NewUserRepository()
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_bob", PreferredUsername: "bob", TenantID: "acme",
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -254,9 +258,9 @@ func (f *fakeDenylist) IsRevoked(_ context.Context, jti string) (bool, error) {
 
 func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDenylist) *echo.Echo {
 	t.Helper()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_alice", PreferredUsername: "alice",
 		TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})

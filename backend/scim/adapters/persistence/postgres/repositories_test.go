@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	idmpg "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/scim/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
@@ -45,10 +48,10 @@ func seedTenant(t *testing.T, db sharedpg.DB) *spec.Tenant {
 	return tenant
 }
 
-func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *spec.User {
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
 	t.Helper()
 	now := testClock()
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: "user-" + newUUID(t)[:8],
@@ -57,16 +60,16 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *spec.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&sharedpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := (&idmpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user
 }
 
-func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *spec.Group {
+func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.Group {
 	t.Helper()
 	now := testClock()
-	group := &spec.Group{
+	group := &idmdomain.Group{
 		ID:        newUUID(t),
 		TenantID:  tenantID,
 		Name:      "group-" + newUUID(t)[:8],
@@ -74,7 +77,7 @@ func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *spec.Group {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := (&sharedpg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
+	if err := (&idmpg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
 		t.Fatalf("seed group: %v", err)
 	}
 	return group

@@ -7,12 +7,15 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -20,7 +23,7 @@ import (
 func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := memory.NewUserRepository()
+	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: spec.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
@@ -29,17 +32,17 @@ func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "operator", TenantID: spec.DefaultTenantID, PreferredUsername: "operator",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
-	userRepo.Seed(&spec.User{
+	userRepo.Seed(&idmdomain.User{
 		ID: "user_new", TenantID: spec.DefaultTenantID, PreferredUsername: "user-new",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 	events := &[]spec.DomainEvent{}
 	deps := idmusecases.AdminAgentDeps{
-		AgentRepo:  memory.NewAgentRepository(),
+		AgentRepo:  idmmemory.NewAgentRepository(),
 		ClientRepo: clientRepo,
 		UserRepo:   userRepo,
 		Emit:       func(e spec.DomainEvent) { *events = append(*events, e) },
@@ -78,7 +81,7 @@ func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
 	if agent.OwnerUserID != "operator" {
 		t.Fatalf("owner_sub default = %q, want operator", agent.OwnerUserID)
 	}
-	if agent.Status != spec.AgentStatusActive || agent.Kind != spec.AgentKindSupervised {
+	if agent.Status != idmdomain.AgentStatusActive || agent.Kind != idmdomain.AgentKindSupervised {
 		t.Fatalf("unexpected defaults: status=%q kind=%q", agent.Status, agent.Kind)
 	}
 
@@ -119,7 +122,7 @@ func TestListAgentsAndUpdateDetails(t *testing.T) {
 	*events = (*events)[:0]
 	newName := "deploy-bot-renamed"
 	desc := "  deploy automation  "
-	kind := spec.AgentKindAutonomous
+	kind := idmdomain.AgentKindAutonomous
 	roles := []string{"deploy:run", "deploy:read"}
 	normalizedRoles := []string{"deploy:read", "deploy:run"}
 	updated, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
@@ -224,14 +227,14 @@ func TestSetAgentDisabledThenEnable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if disabled.Status != spec.AgentStatusDisabled || disabled.DisabledAt == nil || disabled.IsActive() {
+	if disabled.Status != idmdomain.AgentStatusDisabled || disabled.DisabledAt == nil || disabled.IsActive() {
 		t.Fatalf("disabled agent unexpected: %+v", disabled)
 	}
 	enabled, err := idmusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, false, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if enabled.Status != spec.AgentStatusActive || enabled.DisabledAt != nil || !enabled.IsActive() {
+	if enabled.Status != idmdomain.AgentStatusActive || enabled.DisabledAt != nil || !enabled.IsActive() {
 		t.Fatalf("enabled agent unexpected: %+v", enabled)
 	}
 	if !slices.Equal(agentEventTypes(*events), []string{"AgentDisabled", "AgentEnabled"}) {
@@ -255,7 +258,7 @@ func TestKillAgentIsIrreversible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if killed.Status != spec.AgentStatusKilled || killed.KilledAt == nil || killed.IsActive() {
+	if killed.Status != idmdomain.AgentStatusKilled || killed.KilledAt == nil || killed.IsActive() {
 		t.Fatalf("killed agent unexpected: %+v", killed)
 	}
 	// 再 kill / enable / update は reject
@@ -445,7 +448,7 @@ func TestDeleteKilledAgentIsRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if found.Agent.Status != spec.AgentStatusKilled {
+	if found.Agent.Status != idmdomain.AgentStatusKilled {
 		t.Fatalf("agent was deleted or changed: %+v", found.Agent)
 	}
 }

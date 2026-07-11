@@ -1,9 +1,10 @@
 package http
 
 import (
+	"github.com/labstack/echo/v5"
+
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/labstack/echo/v5"
 )
 
 type Deps struct {

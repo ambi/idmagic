@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -35,7 +37,7 @@ func ResetPasswordWithToken(
 	ctx context.Context,
 	deps ResetPasswordWithTokenDeps,
 	in ResetPasswordWithTokenInput,
-) (*spec.User, error) {
+) (*idmdomain.User, error) {
 	now := in.Now.UTC()
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -96,10 +98,10 @@ func ResetPasswordWithToken(
 	updated.UpdatedAt = now
 	updated.Lifecycle.PasswordChangedAt = &now
 	// リセットで新パスワードを設定したので update_password 強制アクションを自動解除する。
-	clearedUpdatePassword := slices.Contains(updated.Lifecycle.RequiredActions, spec.RequiredActionUpdatePassword)
+	clearedUpdatePassword := slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword)
 	if clearedUpdatePassword {
 		updated.Lifecycle.RequiredActions = removeRequiredAction(
-			updated.Lifecycle.RequiredActions, spec.RequiredActionUpdatePassword,
+			updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword,
 		)
 	}
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
@@ -113,7 +115,7 @@ func ResetPasswordWithToken(
 		if clearedUpdatePassword {
 			deps.Emit(&spec.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
-				Action: string(spec.RequiredActionUpdatePassword),
+				Action: string(idmdomain.RequiredActionUpdatePassword),
 			})
 		}
 	}

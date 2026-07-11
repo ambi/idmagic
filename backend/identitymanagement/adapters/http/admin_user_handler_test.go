@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -20,8 +24,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -84,7 +86,7 @@ func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user == nil || user.Lifecycle.Status != spec.UserStatusDisabled {
+	if user == nil || user.Lifecycle.Status != idmdomain.UserStatusDisabled {
 		t.Fatalf("disabled user=%+v", user)
 	}
 
@@ -275,13 +277,13 @@ func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
 
 func newAdminUserHandler(
 	t *testing.T,
-) (*echo.Echo, *memory.UserRepository) {
+) (*echo.Echo, *idmmemory.UserRepository) {
 	t.Helper()
-	repo := memory.NewUserRepository()
+	repo := idmmemory.NewUserRepository()
 	history := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
-	for _, user := range []*spec.User{
+	for _, user := range []*idmdomain.User{
 		{
 			ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 			Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
@@ -297,8 +299,8 @@ func newAdminUserHandler(
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
-		AgentRepo: memory.NewAgentRepository(),
-		GroupRepo: memory.NewGroupRepository(),
+		AgentRepo: idmmemory.NewAgentRepository(),
+		GroupRepo: idmmemory.NewGroupRepository(),
 		OAuth2: oauth2.Module{
 			ClientRepo:  oauth2memory.NewClientRepository(),
 			ConsentRepo: oauth2memory.NewConsentRepository(),

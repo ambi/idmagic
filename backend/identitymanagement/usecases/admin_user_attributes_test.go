@@ -6,19 +6,22 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func attrTestDeps(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *memory.TenantUserAttributeSchemaRepository) {
+func attrTestDeps(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *idmmemory.TenantUserAttributeSchemaRepository) {
 	t.Helper()
-	schemaRepo := memory.NewTenantUserAttributeSchemaRepository()
+	schemaRepo := idmmemory.NewTenantUserAttributeSchemaRepository()
 	deps := idmusecases.AdminUserDeps{
-		UserRepo:            memory.NewUserRepository(),
+		UserRepo:            idmmemory.NewUserRepository(),
 		AttrSchemaRepo:      schemaRepo,
 		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
@@ -27,7 +30,7 @@ func attrTestDeps(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *me
 	return context.Background(), deps, schemaRepo
 }
 
-func createAttrUser(ctx context.Context, t *testing.T, deps idmusecases.AdminUserDeps) *spec.User {
+func createAttrUser(ctx context.Context, t *testing.T, deps idmusecases.AdminUserDeps) *idmdomain.User {
 	t.Helper()
 	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
 		ActorUserID: "admin", PreferredUsername: "carol", Password: "initial-password-9182",
@@ -43,9 +46,9 @@ func TestUpdateUserAcceptsBuiltinAttribute(t *testing.T) {
 	ctx, deps, _ := attrTestDeps(t)
 	user := createAttrUser(ctx, t, deps)
 
-	attrs := map[string]spec.AttributeValue{
-		"nickname":     {Type: spec.AttributeTypeString, String: new("cici")},
-		"phone_number": {Type: spec.AttributeTypeString, String: new("+819012345678")},
+	attrs := map[string]idmdomain.AttributeValue{
+		"nickname":     {Type: idmdomain.AttributeTypeString, String: new("cici")},
+		"phone_number": {Type: idmdomain.AttributeTypeString, String: new("+819012345678")},
 	}
 	updated, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: user.ID, GivenName: new("Carol"), Attributes: &attrs,
@@ -66,8 +69,8 @@ func TestUpdateUserRejectsUndefinedAttribute(t *testing.T) {
 	ctx, deps, _ := attrTestDeps(t)
 	user := createAttrUser(ctx, t, deps)
 
-	attrs := map[string]spec.AttributeValue{
-		"not_a_real_attribute": {Type: spec.AttributeTypeString, String: new("x")},
+	attrs := map[string]idmdomain.AttributeValue{
+		"not_a_real_attribute": {Type: idmdomain.AttributeTypeString, String: new("x")},
 	}
 	_, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
@@ -79,10 +82,10 @@ func TestUpdateUserRejectsUndefinedAttribute(t *testing.T) {
 
 func TestUpdateUserAcceptsTenantCustomAttribute(t *testing.T) {
 	ctx, deps, schemaRepo := attrTestDeps(t)
-	if err := schemaRepo.Save(ctx, &spec.TenantUserAttributeSchema{
+	if err := schemaRepo.Save(ctx, &idmdomain.TenantUserAttributeSchema{
 		TenantID: spec.DefaultTenantID,
-		Attributes: []spec.UserAttributeDef{
-			{Key: "region", Type: spec.AttributeTypeString, Visibility: spec.AttrVisibilityClaimExposed, ClaimName: new("region")},
+		Attributes: []idmdomain.UserAttributeDef{
+			{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region")},
 		},
 		UpdatedAt: time.Now().UTC(),
 	}); err != nil {
@@ -90,8 +93,8 @@ func TestUpdateUserAcceptsTenantCustomAttribute(t *testing.T) {
 	}
 	user := createAttrUser(ctx, t, deps)
 
-	attrs := map[string]spec.AttributeValue{
-		"region": {Type: spec.AttributeTypeString, String: new("apac")},
+	attrs := map[string]idmdomain.AttributeValue{
+		"region": {Type: idmdomain.AttributeTypeString, String: new("apac")},
 	}
 	updated, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: user.ID, Attributes: &attrs, Now: time.Now().UTC(),
@@ -104,7 +107,7 @@ func TestUpdateUserAcceptsTenantCustomAttribute(t *testing.T) {
 	}
 
 	// schema 未定義の custom key は拒否される。
-	bad := map[string]spec.AttributeValue{"zone": {Type: spec.AttributeTypeString, String: new("z")}}
+	bad := map[string]idmdomain.AttributeValue{"zone": {Type: idmdomain.AttributeTypeString, String: new("z")}}
 	if _, err := idmusecases.UpdateUser(ctx, deps, idmusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: user.ID, Attributes: &bad, Now: time.Now().UTC(),
 	}); !errors.Is(err, idmusecases.ErrInvalidAttribute) {

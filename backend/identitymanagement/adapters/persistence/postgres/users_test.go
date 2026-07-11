@@ -4,17 +4,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 )
 
 func TestUserRepositorySaveAndFind(t *testing.T) {
-	db := requireDB(t)
+	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	repo := &UserRepository{Pool: db}
 	ctx := context.Background()
 
 	now := testClock()
-	user := &spec.User{
+	user := &idmdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenant.ID,
 		PreferredUsername: "alice",

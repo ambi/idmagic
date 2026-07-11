@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -72,8 +76,8 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
-	users := memory.NewUserRepository()
-	users.Seed(&spec.User{
+	users := idmmemory.NewUserRepository()
+	users.Seed(&idmdomain.User{
 		ID: "user", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})
@@ -105,9 +109,9 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
-	users := memory.NewUserRepository()
+	users := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
-	users.Seed(&spec.User{
+	users.Seed(&idmdomain.User{
 		ID: "user", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})

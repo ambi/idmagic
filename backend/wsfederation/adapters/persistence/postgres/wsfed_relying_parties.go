@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
-	"github.com/jackc/pgx/v5"
 )
 
 // WsFedRelyingPartyRepository は WS-Federation RP trust の PostgreSQL 実装。

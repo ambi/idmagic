@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -28,7 +30,7 @@ type ConfirmEmailChangeInput struct {
 	Now   time.Time
 }
 
-func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in ConfirmEmailChangeInput) (*spec.User, error) {
+func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in ConfirmEmailChangeInput) (*idmdomain.User, error) {
 	now := in.Now.UTC()
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -61,10 +63,10 @@ func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in Con
 	updated.Email = &email
 	updated.EmailVerified = true
 	updated.UpdatedAt = now
-	clearedVerifyEmail := slices.Contains(updated.Lifecycle.RequiredActions, spec.RequiredActionVerifyEmail)
+	clearedVerifyEmail := slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionVerifyEmail)
 	if clearedVerifyEmail {
 		updated.Lifecycle.RequiredActions = removeRequiredAction(
-			updated.Lifecycle.RequiredActions, spec.RequiredActionVerifyEmail,
+			updated.Lifecycle.RequiredActions, idmdomain.RequiredActionVerifyEmail,
 		)
 	}
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
@@ -75,7 +77,7 @@ func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in Con
 		if clearedVerifyEmail {
 			deps.Emit(&spec.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
-				Action: string(spec.RequiredActionVerifyEmail),
+				Action: string(idmdomain.RequiredActionVerifyEmail),
 			})
 		}
 	}

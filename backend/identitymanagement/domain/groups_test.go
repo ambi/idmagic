@@ -1,18 +1,21 @@
-package spec
+package domain_test
 
 import (
 	"slices"
 	"testing"
 	"time"
+
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestEffectiveRolesUnionSortedDedup(t *testing.T) {
-	groups := []*Group{
+	groups := []*idmdomain.Group{
 		{Roles: []string{"catalog:read", "invoice:read"}},
 		{Roles: []string{"catalog:read", "support:read"}},
 		nil,
 	}
-	got := EffectiveRoles([]string{"admin", "support:read"}, groups)
+	got := idmdomain.EffectiveRoles([]string{"admin", "support:read"}, groups)
 	want := []string{"admin", "catalog:read", "invoice:read", "support:read"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("EffectiveRoles = %v, want %v", got, want)
@@ -20,7 +23,7 @@ func TestEffectiveRolesUnionSortedDedup(t *testing.T) {
 }
 
 func TestEffectiveRolesEmptyGroupsEqualsUserRoles(t *testing.T) {
-	got := EffectiveRoles([]string{"admin", "auditor"}, nil)
+	got := idmdomain.EffectiveRoles([]string{"admin", "auditor"}, nil)
 	want := []string{"admin", "auditor"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("EffectiveRoles = %v, want %v", got, want)
@@ -29,18 +32,18 @@ func TestEffectiveRolesEmptyGroupsEqualsUserRoles(t *testing.T) {
 
 func TestGroupValidate(t *testing.T) {
 	now := time.Now().UTC()
-	valid := Group{ID: "group_x", TenantID: DefaultTenantID, Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now, UpdatedAt: now}
+	valid := idmdomain.Group{ID: "group_x", TenantID: spec.DefaultTenantID, Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now, UpdatedAt: now}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid group rejected: %v", err)
 	}
-	missingName := Group{ID: "group_x", TenantID: DefaultTenantID, CreatedAt: now, UpdatedAt: now}
+	missingName := idmdomain.Group{ID: "group_x", TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now}
 	if err := missingName.Validate(); err == nil {
 		t.Fatal("group without name was accepted")
 	}
 }
 
 func TestNewGroupIDPrefix(t *testing.T) {
-	id, err := NewGroupID()
+	id, err := idmdomain.NewGroupID()
 	if err != nil {
 		t.Fatal(err)
 	}

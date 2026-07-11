@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // RefreshTokenStore (OAuth2)

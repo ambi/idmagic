@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 )
 
 func TestAgentRepository(t *testing.T) {
@@ -13,12 +13,12 @@ func TestAgentRepository(t *testing.T) {
 	repo := NewAgentRepository()
 
 	t.Run("Save and FindByID", func(t *testing.T) {
-		agent := &spec.Agent{
+		agent := &idmdomain.Agent{
 			ID:          "agent-1",
 			TenantID:    "tenant-a",
 			Name:        "Agent A",
 			OwnerUserID: "user-1",
-			Status:      spec.AgentStatusActive,
+			Status:      idmdomain.AgentStatusActive,
 			Roles:       []string{"role1", "role2"},
 			CreatedAt:   time.Now(),
 		}
@@ -54,26 +54,26 @@ func TestAgentRepository(t *testing.T) {
 
 	t.Run("ListByTenant", func(t *testing.T) {
 		// すでに agent-1 (tenant-a, Name: Agent A) がいる
-		agent2 := &spec.Agent{
+		agent2 := &idmdomain.Agent{
 			ID:          "agent-2",
 			TenantID:    "tenant-a",
 			Name:        "Agent C", // 名前順の検証のため C
 			OwnerUserID: "user-1",
-			Status:      spec.AgentStatusActive,
+			Status:      idmdomain.AgentStatusActive,
 		}
-		agent3 := &spec.Agent{
+		agent3 := &idmdomain.Agent{
 			ID:          "agent-3",
 			TenantID:    "tenant-a",
 			Name:        "Agent B", // 名前順の検証のため B
 			OwnerUserID: "user-1",
-			Status:      spec.AgentStatusActive,
+			Status:      idmdomain.AgentStatusActive,
 		}
-		agentOther := &spec.Agent{
+		agentOther := &idmdomain.Agent{
 			ID:          "agent-other",
 			TenantID:    "tenant-b",
 			Name:        "Agent Other",
 			OwnerUserID: "user-1",
-			Status:      spec.AgentStatusActive,
+			Status:      idmdomain.AgentStatusActive,
 		}
 
 		_ = repo.Save(ctx, agent2)
@@ -96,12 +96,12 @@ func TestAgentRepository(t *testing.T) {
 
 	t.Run("Bindings Management", func(t *testing.T) {
 		// agent-1 (tenant-a), agent-other (tenant-b) が存在する前提
-		binding1 := &spec.AgentCredentialBinding{
+		binding1 := &idmdomain.AgentCredentialBinding{
 			AgentID:   "agent-1",
 			ClientID:  "client-1",
 			CreatedAt: time.Now(),
 		}
-		binding2 := &spec.AgentCredentialBinding{
+		binding2 := &idmdomain.AgentCredentialBinding{
 			AgentID:   "agent-1",
 			ClientID:  "client-2",
 			CreatedAt: time.Now(),
@@ -126,7 +126,7 @@ func TestAgentRepository(t *testing.T) {
 		}
 
 		// 異なる Agent、しかし同じ Client (同 Tenant 内の別 Agent) -> 失敗
-		bindingDupClientSameTenant := &spec.AgentCredentialBinding{
+		bindingDupClientSameTenant := &idmdomain.AgentCredentialBinding{
 			AgentID:   "agent-2",  // tenant-a
 			ClientID:  "client-1", // client-1 は既に agent-1 (tenant-a) に紐付けられている
 			CreatedAt: time.Now(),
@@ -140,7 +140,7 @@ func TestAgentRepository(t *testing.T) {
 		}
 
 		// 異なる Tenant の Agent に対する同じ Client -> 成功
-		bindingDupClientDiffTenant := &spec.AgentCredentialBinding{
+		bindingDupClientDiffTenant := &idmdomain.AgentCredentialBinding{
 			AgentID:   "agent-other", // tenant-b
 			ClientID:  "client-1",
 			CreatedAt: time.Now(),
@@ -154,7 +154,7 @@ func TestAgentRepository(t *testing.T) {
 		}
 
 		// 存在しない AgentID に対する Binding -> 失敗 (tenantID が見つからないため)
-		bindingNoAgent := &spec.AgentCredentialBinding{
+		bindingNoAgent := &idmdomain.AgentCredentialBinding{
 			AgentID:   "agent-not-exist",
 			ClientID:  "client-3",
 			CreatedAt: time.Now(),

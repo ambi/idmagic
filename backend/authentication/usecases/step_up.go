@@ -11,6 +11,8 @@ import (
 	"errors"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
@@ -57,7 +59,7 @@ func StepUpSatisfied(authn *domain.AuthenticationContext, now time.Time) bool {
 
 // AvailableStepUpMethods は user が step-up に使える method を返す。password は常に利用可能、
 // totp は enrolled の場合のみ。
-func AvailableStepUpMethods(user *spec.User) []StepUpMethod {
+func AvailableStepUpMethods(user *idmdomain.User) []StepUpMethod {
 	methods := []StepUpMethod{StepUpMethodPassword}
 	if user != nil && user.MfaEnrolled {
 		methods = append(methods, StepUpMethodTOTP)

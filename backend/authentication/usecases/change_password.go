@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -33,7 +35,7 @@ type ChangePasswordDeps struct {
 	Policy              PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
 }
 
-func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*spec.User, error) {
+func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*idmdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, in.Sub)
 	if err != nil {
 		return nil, err
@@ -92,10 +94,10 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 	updated.UpdatedAt = now
 	updated.Lifecycle.PasswordChangedAt = &now
 	// 本人がパスワードを変更したので update_password の強制アクションは自動解除する。
-	clearedUpdatePassword := slices.Contains(updated.Lifecycle.RequiredActions, spec.RequiredActionUpdatePassword)
+	clearedUpdatePassword := slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword)
 	if clearedUpdatePassword {
 		updated.Lifecycle.RequiredActions = removeRequiredAction(
-			updated.Lifecycle.RequiredActions, spec.RequiredActionUpdatePassword,
+			updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword,
 		)
 	}
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
@@ -110,7 +112,7 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 			// 自動解除なので ActorUserID は本人 (system 操作ではなく能動的解除)。
 			deps.Emit(&spec.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
-				Action: string(spec.RequiredActionUpdatePassword),
+				Action: string(idmdomain.RequiredActionUpdatePassword),
 			})
 		}
 	}
