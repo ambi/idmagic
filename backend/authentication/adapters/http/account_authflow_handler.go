@@ -3,7 +3,6 @@
 package http
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -12,8 +11,6 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
-	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -85,20 +82,17 @@ func (d Deps) handleChangePasswordAPI(c *echo.Context) error {
 
 	ctx := c.Request().Context()
 	snap := d.resolvePasswordPolicy(ctx)
-	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
-		_, txErr := authusecases.ChangePassword(txCtx, authusecases.ChangePasswordDeps{
-			UserRepo:            d.UserRepo,
-			PasswordHasher:      d.PasswordHasher,
-			PasswordHistoryRepo: d.PasswordHistoryRepo,
-			Emit:                sharedeventlog.NewBridgingEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx), d.Emit),
-			Policy:              snap,
-		}, authusecases.ChangePasswordInput{
-			Sub:             authn.UserID,
-			CurrentPassword: input.CurrentPassword,
-			NewPassword:     input.NewPassword,
-			Now:             time.Now().UTC(),
-		})
-		return txErr
+	_, err = authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
+		UserRepo:            d.UserRepo,
+		PasswordHasher:      d.PasswordHasher,
+		PasswordHistoryRepo: d.PasswordHistoryRepo,
+		Emit:                d.legacyEmit(),
+		Policy:              snap,
+	}, authusecases.ChangePasswordInput{
+		Sub:             authn.UserID,
+		CurrentPassword: input.CurrentPassword,
+		NewPassword:     input.NewPassword,
+		Now:             time.Now().UTC(),
 	})
 	switch {
 	case err == nil:

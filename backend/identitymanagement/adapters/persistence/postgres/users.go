@@ -14,17 +14,8 @@ import (
 )
 
 // UserRepository (IdentityManagement)。クエリは sqlc 生成 (wi-178, ADR-090);
-// Pool は sqlcgen.DBTX を構造的に満たす。ctx が pgx.Tx を運ぶ場合 (wi-184 T003
-// の transaction runner 経由) はその tx を使い、業務更新と event_logs 追記を
-// 同一 commit にする (ADR-094)。
+// Pool は sqlcgen.DBTX を構造的に満たす。
 type UserRepository struct{ Pool sharedpg.DB }
-
-func (r *UserRepository) db(ctx context.Context) sqlcgen.DBTX {
-	if tx, ok := sharedpg.TxFromContext(ctx); ok {
-		return tx
-	}
-	return r.Pool
-}
 
 func userFromRow(row *sqlcgen.User) (*idmdomain.User, error) {
 	u := &idmdomain.User{
@@ -73,7 +64,7 @@ func textOrNil(s *string) pgtype.Text {
 }
 
 func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*idmdomain.User, error) {
-	row, err := sqlcgen.New(r.db(ctx)).FindUserBySub(ctx, sub)
+	row, err := sqlcgen.New(r.Pool).FindUserBySub(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -84,7 +75,7 @@ func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*idmdomain.
 }
 
 func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub string) (*idmdomain.User, error) {
-	row, err := sqlcgen.New(r.db(ctx)).FindUserBySubIncludingDeleted(ctx, sub)
+	row, err := sqlcgen.New(r.Pool).FindUserBySubIncludingDeleted(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -95,7 +86,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub stri
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username string) (*idmdomain.User, error) {
-	row, err := sqlcgen.New(r.db(ctx)).FindUserByUsername(ctx, sqlcgen.FindUserByUsernameParams{
+	row, err := sqlcgen.New(r.Pool).FindUserByUsername(ctx, sqlcgen.FindUserByUsernameParams{
 		TenantID: tenantID, PreferredUsername: username,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -108,7 +99,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username 
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string) (*idmdomain.User, error) {
-	row, err := sqlcgen.New(r.db(ctx)).FindUserByEmail(ctx, sqlcgen.FindUserByEmailParams{
+	row, err := sqlcgen.New(r.Pool).FindUserByEmail(ctx, sqlcgen.FindUserByEmailParams{
 		TenantID: tenantID, Lower: email,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -121,7 +112,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string
 }
 
 func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*idmdomain.User, error) {
-	rows, err := sqlcgen.New(r.db(ctx)).ListUsersByTenant(ctx, tenantID)
+	rows, err := sqlcgen.New(r.Pool).ListUsersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +142,7 @@ func (r *UserRepository) Save(ctx context.Context, u *idmdomain.User) error {
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.db(ctx)).SaveUser(ctx, sqlcgen.SaveUserParams{
+	return sqlcgen.New(r.Pool).SaveUser(ctx, sqlcgen.SaveUserParams{
 		ID:                u.ID,
 		TenantID:          u.TenantID,
 		PreferredUsername: u.PreferredUsername,

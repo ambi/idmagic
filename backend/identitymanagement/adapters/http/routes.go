@@ -11,9 +11,7 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/shared/txrunner"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -38,12 +36,6 @@ type Deps struct {
 	PasswordHistoryRepo   authnports.PasswordHistoryRepository
 	EmailChangeTokenStore authnports.EmailChangeTokenStore
 	EmailSender           authnports.EmailSender
-
-	// TxRunner and EventLogRecorder wire wi-184 T003's transaction-bound
-	// event log (ADR-094) into CreateAdminUser/UpdateAdminUser/
-	// DisableAdminUser/EnableAdminUser.
-	TxRunner         txrunner.Runner
-	EventLogRecorder sharedeventlog.Recorder
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {

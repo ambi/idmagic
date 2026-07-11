@@ -1,8 +1,13 @@
 ---
-status: accepted
+status: superseded
 authors: [tn]
 created_at: 2026-07-11
 ---
+
+> **注記 (2026-07-12)**: 本 ADR の `event_logs` / `event_deliveries` schema 保持条項は
+> [[ADR-095]] により supersede された。event_logs/event_deliveries scaffolding は撤去され、
+> 監査は `audit_events`、Kafka 配送は `outbox` を正本とする。audit_only を best-effort で
+> 記録し失敗を観測可能にするという本 ADR の中核方針は、対象を `audit_events` として存続する。
 
 # ADR-094: event log の責務分離と best-effort 監査記録
 

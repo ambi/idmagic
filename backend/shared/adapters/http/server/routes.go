@@ -20,8 +20,6 @@ import (
 	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
-	"github.com/ambi/idmagic/backend/shared/txrunner"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -75,11 +73,6 @@ type Deps struct {
 	Application       application.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
-
-	// TxRunner and EventLogRecorder implement wi-184 T003's transaction-bound
-	// event log (ADR-094).
-	TxRunner         txrunner.Runner
-	EventLogRecorder sharedeventlog.Recorder
 }
 
 func Register(e *echo.Echo, d Deps) {
@@ -275,8 +268,6 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:      d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
-		TxRunner:                  d.TxRunner,
-		EventLogRecorder:          d.EventLogRecorder,
 	})
 
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{
@@ -296,8 +287,6 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
 		EmailChangeTokenStore: d.Authentication.EmailChangeTokenStore,
 		EmailSender:           d.Authentication.EmailSender,
-		TxRunner:              d.TxRunner,
-		EventLogRecorder:      d.EventLogRecorder,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{

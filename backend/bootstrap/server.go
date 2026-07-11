@@ -210,8 +210,6 @@ func Run() error {
 		Scim:               deps.Scim,
 		FederationSigner:   federationSigner,
 		Application:        deps.Application,
-		TxRunner:           deps.TxRunner,
-		EventLogRecorder:   deps.EventLogRecorder,
 	})
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))

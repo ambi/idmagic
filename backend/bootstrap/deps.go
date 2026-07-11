@@ -14,8 +14,6 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/scim"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
-	"github.com/ambi/idmagic/backend/shared/txrunner"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
@@ -38,13 +36,6 @@ type Dependencies struct {
 	Close              func()
 	DbPing             func(context.Context) error
 	ValkeyPing         func(context.Context) error
-	// TxRunner and EventLogRecorder implement wi-184 T003's transaction-bound
-	// event log (ADR-094). TxRunner opens one command transaction per
-	// mutation; EventLogRecorder appends event_logs/event_deliveries rows
-	// within it. The memory runtime uses passthrough implementations (no
-	// durable transaction to offer).
-	TxRunner         txrunner.Runner
-	EventLogRecorder sharedeventlog.Recorder
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

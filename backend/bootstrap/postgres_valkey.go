@@ -26,7 +26,6 @@ import (
 	scimpostgres "github.com/ambi/idmagic/backend/scim/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	eventlogpostgres "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/eventlog"
 	sharedvalkey "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -170,7 +169,5 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		ValkeyPing: func(c context.Context) error {
 			return valkeyClient.Ping(c).Err()
 		},
-		TxRunner:         &postgres.Runner{Pool: resilientDB},
-		EventLogRecorder: eventlogpostgres.New(resilientDB),
 	}, nil
 }

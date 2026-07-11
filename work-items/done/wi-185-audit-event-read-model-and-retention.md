@@ -1,10 +1,17 @@
 ---
 depends_on: [wi-146-extract-audit-bounded-context, wi-184-transactional-event-log-foundation]
-status: pending
+status: cancelled
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-11
 ---
+
+> **Cancelled (2026-07-12)**: 本 WI は event log (`event_logs`) を監査原本とし、`audit_events`
+> をそこから再構築可能な projection にすることを前提としていた。[[ADR-095]] により
+> `event_logs` / `event_deliveries` scaffolding は撤去され、`audit_events` が再び監査原本に
+> 戻ったため、この前提が失われた。監査イベントの長期保持要件が具体化した場合は、
+> `audit_events` を原本とする slim な後継 WI をその時点で新規に立てる。撤去作業自体は
+> [[wi-191]] が扱う。
 
 # event log から再構築可能な監査検索 read model と保持運用を整備する
 
@@ -90,3 +97,18 @@ medium。read model を非同期化すると、直後の管理画面には監査
 原本 event log から再構築できること、投影遅延を可視化すること、security investigation が必要な
 場合は原本照会または投影の catch-up を使えることを保証する。partition や外部 archive を推測で
 導入すると運用複雑性だけが増えるため、測定値に基づく後段判断とする。
+
+## Completion
+
+- **Completed At**: 2026-07-12
+- **Summary**:
+  未実装のまま cancelled。本 WI は `event_logs` を監査原本、`audit_events` をそこから
+  再構築可能な projection とする前提だったが、[[ADR-095]] により `event_logs` /
+  `event_deliveries` scaffolding が [[wi-191]] で撤去され、`audit_events` が再び監査原本に
+  戻ったため前提が失われた。監査イベントの長期保持要件が具体化した場合は、`audit_events`
+  を原本とする slim な後継 WI をその時点で新規に立てる。
+- **Affected Guarantees State**:
+  変更なし。監査検索は従来どおり `audit_events` を原本とし、best-effort で記録される
+  (ADR-094 / ADR-095)。projection・rebuild・非同期保持の新規保証は導入しない。
+- **Verification Results**:
+  - 実装を伴わないため検証コマンドの実行なし。関連する撤去作業の検証は [[wi-191]] に記録。

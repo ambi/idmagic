@@ -12,9 +12,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/shared/txrunner"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -46,11 +44,6 @@ type Deps struct {
 	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore   authnports.WebAuthnSessionStore
 	RecoveryCodeRepo       authnports.RecoveryCodeRepository
-
-	// TxRunner and EventLogRecorder wire wi-184 T003's transaction-bound
-	// event log (ADR-094) into handleChangePasswordAPI.
-	TxRunner         txrunner.Runner
-	EventLogRecorder sharedeventlog.Recorder
 }
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの

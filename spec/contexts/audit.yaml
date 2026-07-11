@@ -19,14 +19,6 @@ glossary:
     aliases:
       - filter-expression
       - フィルタ式
-  AuditEventProjection:
-    definition: "System context の EventLogRecord (event log) から構築される検索用の read model。audit_events /\naudit_event_search_attributes は正本ではなく、EventLogRecord から再構築可能な projection として扱う。\n"
-    aliases:
-      - audit projection
-      - 監査 read model
-    not_to_confuse_with:
-      - term: EventLogRecord
-        reason: EventLogRecord (System context) が監査原本、AuditEventProjection (Audit context) はそこから作られる検索用派生データ。原本と projection の所有が異なる。
 models:
   AuditEventQuery:
     kind: value_object
@@ -197,10 +189,6 @@ invariants:
     target: AuditEventSearchAttribute
     assuming: "field in [actor.username, client.ip]"
     always: "raw_storable == false && stored_value == transform(plaintext, tenant_salt)"
-  AuditProjectionIsRebuildableFromEventLog:
-    description: "audit_events 検索 read model (AuditEventProjection) は System context の EventLogRecord から\n再構築可能な projection であり、正本ではない。read model を全消去して EventLogRecord から\n再構築しても、検索可能な監査イベントの集合 (tenant、type、occurred_at、payload) は同一になる。\n"
-    target: AuditEventProjection
-    always: "rebuild_from(EventLogRecord) == current_search_index"
 permissions:
   AdminAuditEventsRead:
     description: "管理者による所属テナントの監査イベント読み出し。admin は所属テナントに閉じ、\nsystem_admin は default tenant 経路から全テナント横断的に参照できる。\n書き込みエンドポイントは存在しないため Read のみ。\n"
