@@ -319,3 +319,57 @@ func TestRunner_DrainWaitsForInFlight(t *testing.T) {
 
 	waitForStatus(t, repo, job.ID, domain.StatusSucceeded, time.Second)
 }
+
+// TestRunner_ReclaimsAfterWorkerCrash is the wi-126 T012 smoke test: enqueue
+// a no-op/echo Job, have "worker-1" claim it and then go silent forever
+// (crash, never heartbeating/completing/failing again), and confirm a second
+// worker reclaims it once the lease expires and drives it to Succeeded.
+//
+// worker-1's claim is simulated with a direct ClaimBatch call rather than a
+// full Runner, because Runner.execute deliberately runs on a context
+// detached from Run's ctx (so drain doesn't abort in-flight jobs) -- its
+// heartbeat goroutine is tied to the handler goroutine's own lifecycle, not
+// to anything a test could cancel from outside within a single process. A
+// real crash only stops heartbeating because the whole process dies; a bare
+// ClaimBatch call reproduces exactly that end state (leased, never
+// heartbeated again) without needing a second OS process.
+func TestRunner_ReclaimsAfterWorkerCrash(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
+
+	leaseDuration := 20 * time.Millisecond
+	claimed, err := repo.ClaimBatch(context.Background(), "worker-1", 1, leaseDuration, time.Now().UTC())
+	if err != nil || len(claimed) != 1 {
+		t.Fatalf("worker-1 ClaimBatch() = %v, %v", claimed, err)
+	}
+	if got := claimed[0].Status; got != domain.StatusRunning {
+		t.Fatalf("worker-1 claimed job Status = %q, want %q", got, domain.StatusRunning)
+	}
+	// worker-1 is now abandoned: no further Heartbeat/Complete/Fail calls.
+
+	handlers := usecases.NewHandlerRegistry()
+	handlers.Register(domain.KindNoopEcho, func(_ context.Context, job *domain.Job) (json.RawMessage, error) {
+		return json.RawMessage(`{"reclaimed":true}`), nil
+	})
+	runner2 := usecases.NewRunner(
+		usecases.RunnerConfig{WorkerID: "worker-2", PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers},
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner2.Run(ctx) }()
+
+	final := waitForStatus(t, repo, job.ID, domain.StatusSucceeded, 2*time.Second)
+	if final.Attempts != 2 {
+		t.Errorf("Attempts = %d, want 2 (worker-1's crashed attempt + worker-2's reclaim)", final.Attempts)
+	}
+	if got, want := string(final.Result), `{"reclaimed":true}`; got != want {
+		t.Errorf("Result = %s, want %s", got, want)
+	}
+	if final.LeaseOwner != nil {
+		t.Errorf("LeaseOwner = %v, want nil (released on completion)", *final.LeaseOwner)
+	}
+
+	cancel()
+	<-done
+}

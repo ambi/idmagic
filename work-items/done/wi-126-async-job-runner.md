@@ -1,6 +1,6 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: ["tn"]
 risk: high
 created_at: 2026-07-08
@@ -153,10 +153,10 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
 - [x] T010 [Schema] `jobs` テーブルを deploy/schema/postgres.sql に追加する。
 - [x] T011 [Infra] `idmagic-worker` entry point を追加し、ローカル compose で API・relay・
       worker を分離起動できるようにする。API から retention sweep の goroutine を除去する。
-- [ ] T012 [Smoke] retention sweep を最初の worker consumer として移管し、no-op / echo job
+- [x] T012 [Smoke] retention sweep を最初の worker consumer として移管し、no-op / echo job
       を enqueue して Queued → Running → Succeeded と
       worker kill 後のリース失効再取得を確認できるテストを追加する。
-- [ ] T013 [Verify] `just verify` を green にする。
+- [x] T013 [Verify] `just verify` を green にする。
 
 ## Verification
 - `just yaml-check`
@@ -419,4 +419,60 @@ T011 を実施。ユーザー指示により Phase D と同一セッションで
   失効再取得を含む複数 Runner インスタンスの統合テスト)、T013
   `just verify` は次フェーズ。
 
-残り T012〜T013 (Phase F) は pending。
+## 2026-07-12 — Phase F (smoke test + just verify) 完了、WI 完了
+
+T012・T013 を実施し、全フェーズ完了。
+
+- **T012 smoke test** (`backend/jobs/usecases/runner_test.go`
+  `TestRunner_ReclaimsAfterWorkerCrash`): no-op/echo job を enqueue し、
+  `repo.ClaimBatch` を直接呼んで「worker-1 が claim した直後に crash して
+  二度と heartbeat/complete/fail しない」状態を再現（`Runner.execute` は
+  drain 時に in-flight を中断しない設計上、heartbeat goroutine がハンドラ
+  goroutine のライフサイクルに紐づき外部から個別に止められないため、
+  Runner 経由ではなく repository を直接叩いて crash 後の状態を再現する
+  方式を採った）。その後 worker-2 の `Runner` を起動し、lease 失効後に
+  再取得 (`Attempts=2`) して `Succeeded` に到達することを確認。
+  `-race` で 5 回連続実行しフレーキーでないことを確認。
+  dead-letter 確定は Phase C の `TestRunner_DeadLetterAfterMaxAttempts` で
+  既に担保済みのため本テストでは重複させていない。
+- **T013 検証**: `just verify`（`yaml-check` / `verify-go`
+  (lint 0 issues, `go test -race` 全パッケージ green,
+  embedded-postgres ベースの `backend/jobs/adapters/persistence/postgres`
+  含む) / `verify-ui` (frontend format/lint/typecheck/build/test,
+  292 tests) すべて green、exit code 0）。
+- **未実施 (手動検証)**: `docker compose up` での実プロセス起動・
+  実際の `kill -9` による worker プロセス強制終了・別 worker レプリカでの
+  再取得は、本セッションでは実施していない。上記自動テストが同じ状況を
+  in-process で再現しており、コア runtime の正しさはそちらで担保した。
+  実運用相当の確認は、本 WI を消費する最初の実機能 WI
+  ([[wi-96-bulk-user-import-csv]] または [[wi-148-admin-resource-csv-export]])
+  か、admin 運用面を扱う [[wi-157-job-admin-operations-surface]] で
+  行うのが適切と判断した。
+
+wi-126 の core runtime 実装が完了した。管理者向け一覧/詳細/キャンセル UI・
+運用 metrics・runbook は [[wi-157-job-admin-operations-surface]] へ、
+個別機能の非同期化 (CSV import・outbound SCIM 等) は各機能側 WI へ、
+それぞれ既存の Out of Scope の通り委譲する。
+
+## Completion
+- **Completed At**: 2026-07-12
+- **Summary**:
+  テナント境界を保つ汎用非同期ジョブ基盤の core runtime を実装した。
+  ADR-098 (PostgreSQL `FOR UPDATE SKIP LOCKED` によるリース方式 durable
+  queue)、ADR-099 (`idmagic-worker` プロセス分離・at-least-once + 冪等・
+  リース失効再取得・backoff + dead-letter・graceful drain)、ADR-100
+  (params/result は平文 JSONB・30日 TTL) を決定。`spec/contexts/jobs.yaml`
+  に `Jobs` bounded context を追加し、Go 側に `backend/jobs`
+  (domain/ports/usecases/adapters(memory・postgres)) と、新規プロセス
+  `idmagic-worker` (`backend/cmd/idmagic-worker`,
+  `backend/bootstrap/worker.go`) を実装した。API プロセスから
+  テナント横断の retention sweep goroutine を worker プロセスへ移管した。
+  疎通確認用の `noop_echo` JobKind とハンドラを追加し、enqueue →
+  Queued → Running → Succeeded、worker crash 後のリース失効再取得、
+  max_attempts 超過での dead-letter 確定を自動テストで確認した。
+- **Verification Results**:
+  - `just yaml-check` (scl / work-items / ids / architecture) - passed
+  - `just verify-go` (lint 0 issues, `go test -race` 全パッケージ,
+    `backend/jobs/...` の並行 claim 排他・lease 失効再取得テストを含む) - passed
+  - `just verify-ui` (format/lint/typecheck/build, 292 tests) - passed
+  - `just verify` (上記一括) - passed, exit code 0
