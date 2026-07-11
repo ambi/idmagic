@@ -71,3 +71,12 @@ func (r *Repository) FindDeliveryByID(_ context.Context, eventID string) (*share
 	}
 	return &d, nil
 }
+
+// Count returns the number of event_logs rows appended so far. Test-only
+// introspection; the real Recorder port has no such method since callers
+// address rows by event_id, not by counting them.
+func (r *Repository) Count() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.logs)
+}

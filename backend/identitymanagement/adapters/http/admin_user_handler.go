@@ -138,7 +138,7 @@ func (d Deps) handleCreateAdminUser(c *echo.Context) error {
 	var user *idmdomain.User
 	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
 		deps := d.adminUserDeps()
-		deps.Emit = sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx))
+		deps.Emit = sharedeventlog.NewBridgingEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx), d.Emit)
 		var txErr error
 		user, txErr = idmusecases.CreateUser(
 			txCtx,
@@ -174,7 +174,7 @@ func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
 	var user *idmdomain.User
 	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
 		deps := d.adminUserDeps()
-		deps.Emit = sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx))
+		deps.Emit = sharedeventlog.NewBridgingEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx), d.Emit)
 		var txErr error
 		user, txErr = idmusecases.UpdateUser(
 			txCtx,
@@ -268,7 +268,7 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 	defer cancel()
 	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
 		deps := d.adminUserDeps()
-		deps.Emit = sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx))
+		deps.Emit = sharedeventlog.NewBridgingEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx), d.Emit)
 		_, txErr := idmusecases.SetUserDisabled(
 			txCtx, deps, actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
 		)

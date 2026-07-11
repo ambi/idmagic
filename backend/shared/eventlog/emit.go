@@ -40,3 +40,33 @@ func NewEmit(ctx context.Context, recorder Recorder, correlationID string) func(
 		return nil
 	}
 }
+
+// NewBridgingEmit wraps NewEmit so it also invokes legacy — the pre-existing
+// fire-and-forget emit (support.Deps.Emit) that feeds audit_events and, for
+// Kafka-routed types, outbox — after a successful transactional append.
+//
+// Nothing reads event_logs/event_deliveries yet: the admin audit UI queries
+// audit_events, and relay still only drains outbox. Without this bridge,
+// migrating a mutation's Emit to NewEmit alone would silently stop it from
+// appearing in the audit log and (for public_integration events) from
+// reaching Kafka, even though ADR-094's atomicity guarantee is met. legacy
+// is called outside the transaction and its outcome does not affect it
+// (fire-and-forget, matching its pre-existing behavior) — only the
+// event_logs append can roll back the command.
+//
+// This is a deliberate temporary duplication, not the target architecture:
+// remove it once wi-185's audit projection reads from event_logs directly
+// and wi-190's relay reads from event_deliveries, and switch callers back to
+// NewEmit.
+func NewBridgingEmit(ctx context.Context, recorder Recorder, correlationID string, legacy func(spec.DomainEvent)) func(spec.DomainEvent) error {
+	txEmit := NewEmit(ctx, recorder, correlationID)
+	return func(event spec.DomainEvent) error {
+		if err := txEmit(event); err != nil {
+			return err
+		}
+		if legacy != nil {
+			legacy(event)
+		}
+		return nil
+	}
+}

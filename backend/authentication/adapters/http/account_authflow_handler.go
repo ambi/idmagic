@@ -90,7 +90,7 @@ func (d Deps) handleChangePasswordAPI(c *echo.Context) error {
 			UserRepo:            d.UserRepo,
 			PasswordHasher:      d.PasswordHasher,
 			PasswordHistoryRepo: d.PasswordHistoryRepo,
-			Emit:                sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx)),
+			Emit:                sharedeventlog.NewBridgingEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx), d.Emit),
 			Policy:              snap,
 		}, authusecases.ChangePasswordInput{
 			Sub:             authn.UserID,
