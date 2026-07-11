@@ -1,8 +1,10 @@
-package spec
+package domain
 
 import (
 	"slices"
 	"time"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // SAML 2.0 IdP の双子定義 (wi-29, ADR-067)。
@@ -40,13 +42,13 @@ func ValidSamlNameIDFormat(format string) bool {
 // SamlServiceProvider は SAML 2.0 Web Browser SSO の SP 登録 (wi-29)。
 // entityID で識別し、許可 ACS の閉集合・audience・NameID format・署名方針・claim policy を束ねる。
 type SamlServiceProvider struct {
-	TenantID    string             `json:"tenant_id"`
-	EntityID    string             `json:"entity_id"`
-	DisplayName string             `json:"display_name,omitempty"`
-	ACSURLs     []string           `json:"acs_urls"`
-	SLOURL      string             `json:"slo_url,omitempty"`
-	Audience    string             `json:"audience,omitempty"`
-	ClaimPolicy ClaimMappingPolicy `json:"claim_policy"`
+	TenantID    string                  `json:"tenant_id"`
+	EntityID    string                  `json:"entity_id"`
+	DisplayName string                  `json:"display_name,omitempty"`
+	ACSURLs     []string                `json:"acs_urls"`
+	SLOURL      string                  `json:"slo_url,omitempty"`
+	Audience    string                  `json:"audience,omitempty"`
+	ClaimPolicy spec.ClaimMappingPolicy `json:"claim_policy"`
 	// SignAssertion は発行する <Assertion> を enveloped 署名する (既定 true)。
 	SignAssertion bool `json:"sign_assertion"`
 	// SignResponse は <Response> 全体を enveloped 署名する (Okta / Entra の "Sign Response")。

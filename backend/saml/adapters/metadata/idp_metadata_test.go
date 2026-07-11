@@ -13,7 +13,7 @@ import (
 	"github.com/beevik/etree"
 
 	"github.com/ambi/idmagic/backend/saml/adapters/metadata"
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/saml/domain"
 )
 
 func selfSignedCert(t *testing.T) *x509.Certificate {
@@ -81,10 +81,10 @@ func TestBuildIDPMetadataAdvertisesEndpoints(t *testing.T) {
 	for _, e := range doc.FindElements("//SingleLogoutService") {
 		sloBindings = append(sloBindings, e.SelectAttrValue("Binding", ""))
 	}
-	if !slices.Contains(ssoBindings, spec.SamlBindingHTTPRedirect) || !slices.Contains(ssoBindings, spec.SamlBindingHTTPPOST) {
+	if !slices.Contains(ssoBindings, domain.SamlBindingHTTPRedirect) || !slices.Contains(ssoBindings, domain.SamlBindingHTTPPOST) {
 		t.Errorf("SSO bindings=%v", ssoBindings)
 	}
-	if !slices.Contains(sloBindings, spec.SamlBindingHTTPRedirect) || !slices.Contains(sloBindings, spec.SamlBindingHTTPPOST) {
+	if !slices.Contains(sloBindings, domain.SamlBindingHTTPRedirect) || !slices.Contains(sloBindings, domain.SamlBindingHTTPPOST) {
 		t.Errorf("SLO bindings=%v", sloBindings)
 	}
 }

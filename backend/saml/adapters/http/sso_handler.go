@@ -143,13 +143,13 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 		return d.rejectSSO(c, o.SP.EntityID, "form render failed", err)
 	}
 
-	d.emit(&spec.SamlSignInIssued{At: o.Now, TenantID: support.RequestTenantID(c), EntityID: o.SP.EntityID, UserID: o.Authn.UserID})
+	d.emit(&samldomain.SamlSignInIssued{At: o.Now, TenantID: support.RequestTenantID(c), EntityID: o.SP.EntityID, UserID: o.Authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }
 
 // buildAssertion は claim 発行結果から SAML 2.0 assertion を組み立て、SP 設定に従って署名する。
-func (d Deps) buildAssertion(c *echo.Context, sp spec.SamlServiceProvider, validated samldomain.ValidatedSignIn, result feddomain.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time) (*etree.Element, error) {
+func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider, validated samldomain.ValidatedSignIn, result feddomain.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time) (*etree.Element, error) {
 	authnMethod := feddomain.AuthnUnspecified
 	if slices.Contains(authn.AMR, "pwd") {
 		authnMethod = feddomain.AuthnPassword
@@ -180,7 +180,7 @@ func (d Deps) rejectSSO(c *echo.Context, entityID, reason string, cause error) e
 	if cause != nil {
 		msg = reason + ": " + cause.Error()
 	}
-	d.emit(&spec.SamlSignInRejected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), EntityID: entityID, Reason: msg})
+	d.emit(&samldomain.SamlSignInRejected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), EntityID: entityID, Reason: msg})
 	return c.String(http.StatusBadRequest, reason)
 }
 

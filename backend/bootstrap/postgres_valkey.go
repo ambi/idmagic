@@ -13,6 +13,8 @@ import (
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/valkey"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/saml"
+	samlpostgres "github.com/ambi/idmagic/backend/saml/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	valkeystore "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
@@ -128,7 +130,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		TenantSaltStore:      postgres.NewTenantSaltStore(resilientDB),
 		AuthEventBucketStore: &postgres.AuthEventBucketStore{Pool: resilientDB},
 		WsFederation:         wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
-		SamlSPRepo:           &postgres.SamlServiceProviderRepository{Pool: resilientDB},
+		Saml:                 saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

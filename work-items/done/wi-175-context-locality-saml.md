@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-11
@@ -43,14 +43,14 @@ created_at: 2026-07-11
 
 ## Tasks
 
-- [ ] T001 [Domain] `shared/spec/saml.go` の業務型を `saml/domain/` へ移設し参照更新。
-- [ ] T002 [Kernel] saml が他 context と共有する型を選別。
-- [ ] T003 [Persistence] saml 固有 repo 実装を `saml/adapters/persistence/{postgres,memory}` へ同居。
-- [ ] T004 [Persistence] saml postgres 実装を sqlc 生成へ置換。
-- [ ] T005 [DI] `saml/module.go` を新設し Module パターン化。
-- [ ] T006 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から saml 分を撤去。
-- [ ] T007 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
-- [ ] T008 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
+- [x] T001 [Domain] `shared/spec/saml.go` の業務型を `saml/domain/` へ移設し参照更新。
+- [x] T002 [Kernel] saml が他 context と共有する型を選別。
+- [x] T003 [Persistence] saml 固有 repo 実装を `saml/adapters/persistence/{postgres,memory}` へ同居。
+- [x] T004 [Persistence] saml postgres 実装を sqlc 生成へ置換。
+- [x] T005 [DI] `saml/module.go` を新設し Module パターン化。
+- [x] T006 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から saml 分を撤去。
+- [x] T007 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
+- [x] T008 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
 
 ## Verification
 
@@ -67,3 +67,22 @@ created_at: 2026-07-11
   SAML の署名検証・アサーション処理はセキュリティ境界であり、移設時の import 誤りが
   実行時の型不一致に繋がらないことを型検査とテストで担保する必要がある。
 - 軽減：`just verify-go`（typecheck）と既存 SAML E2E を各タスク後に都度実行する。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: SAML 固有の業務型、永続化 adapter、DI を `backend/saml` へ局所化し、PostgreSQL
+  repository を4件すべて sqlc 生成へ置換した。外部コンテキストとの連携は Module または adapter
+  境界に維持し、HTTP route・DB schema・公開 API の振る舞いは変えていない。
+- **Affected Guarantees State**: preserved
+- **Verification Results**:
+  - `just format-go` / `just build-go` — passed
+  - `just test-go` / `just verify-go` — passed
+  - `just yaml-check` / `just check-ids` — passed
+  - `just sqlc-generate` — passed（再実行後の生成差分なし）
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: macOS local workspace, Go 1.26.5
+  - 実行主体: Codex
+  - 対象ソース版: `57db91ef1f545849b9ccfb1b9e0041c29a3dc3f0`（コミット前）
+  - 保存先: 外部成果物なし。静的 sqlc query は4件、動的エスケープは0件。

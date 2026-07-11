@@ -68,7 +68,7 @@ type SignInOutcome struct {
 	Message string // Rejected(400) / Forbidden(403) の応答本文。
 
 	// SignInIssued のときの発行データ。
-	SP          spec.SamlServiceProvider
+	SP          samldomain.SamlServiceProvider
 	Validated   samldomain.ValidatedSignIn
 	ClaimResult feddomain.ClaimIssuanceResult
 	Authn       *authdomain.AuthenticationContext
@@ -140,7 +140,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		if decision.ApplicationID != "" {
 			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: in.TenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ProtocolBindingSAML), Subject: authn.UserID, Reason: reason})
 		}
-		s.emit(&spec.SamlSignInRejected{At: now, TenantID: in.TenantID, EntityID: sp.EntityID, Reason: reason})
+		s.emit(&samldomain.SamlSignInRejected{At: now, TenantID: in.TenantID, EntityID: sp.EntityID, Reason: reason})
 		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil
 	}
 
@@ -168,7 +168,7 @@ func (s SignInService) rejected(tenantID, entityID, reason string, cause error) 
 	if cause != nil {
 		msg = reason + ": " + cause.Error()
 	}
-	s.emit(&spec.SamlSignInRejected{At: time.Now().UTC(), TenantID: tenantID, EntityID: entityID, Reason: msg})
+	s.emit(&samldomain.SamlSignInRejected{At: time.Now().UTC(), TenantID: tenantID, EntityID: entityID, Reason: msg})
 	return SignInOutcome{Kind: SignInRejected, Message: reason}
 }
 

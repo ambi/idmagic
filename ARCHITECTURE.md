@@ -113,7 +113,7 @@ backend/<context>/
 
 HTTP route の集約点は `backend/shared/adapters/http/server/routes.go` である。ここで default tenant と `/realms/:tenant_id` の両方に tenant-scoped routes を登録し、control-plane tenant 管理だけを `/realms/default/admin/tenants` に分ける。
 
-各 context の route は `backend/<context>/adapters/http/routes.go` に置く。エンドポイントの正確な一覧はそのファイルを読む。新しい HTTP API は、所有 context の `routes.go` に登録し、handler は同じ `adapters/http` 配下に置く。
+各 context の route は `backend/<context>/adapters/http/routes.go` に置く。エンドポイントの正確な一覧はそのファイルを読む。新しい HTTP API は、所有 context の `routes.go` に登録し、handler は同じ `adapters/http` 配下に置く。context 固有の repository とルート配線は `backend/<context>/module.go` に集約し、中央 router は Module を呼び出すだけにする（ADR-091）。
 
 ## Bootstrap And Adapters
 

@@ -14,7 +14,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/saml/domain"
 )
 
 const (
@@ -30,10 +30,10 @@ type Endpoints struct {
 
 // nameIDFormats は IdP が広告する NameID format。
 var nameIDFormats = []string{
-	spec.SamlNameIDFormatPersistent,
-	spec.SamlNameIDFormatEmailAddress,
-	spec.SamlNameIDFormatTransient,
-	spec.SamlNameIDFormatUnspecified,
+	domain.SamlNameIDFormatPersistent,
+	domain.SamlNameIDFormatEmailAddress,
+	domain.SamlNameIDFormatTransient,
+	domain.SamlNameIDFormatUnspecified,
 }
 
 // BuildIDPMetadata は realm 単位の IdP metadata XML を生成する。
@@ -63,16 +63,16 @@ func BuildIDPMetadata(entityID string, cert *x509.Certificate, endpoints Endpoin
 	addKeyDescriptor(idp, cert)
 
 	if slo := strings.TrimSpace(endpoints.SLOURL); slo != "" {
-		addEndpoint(idp, "md:SingleLogoutService", spec.SamlBindingHTTPRedirect, slo)
-		addEndpoint(idp, "md:SingleLogoutService", spec.SamlBindingHTTPPOST, slo)
+		addEndpoint(idp, "md:SingleLogoutService", domain.SamlBindingHTTPRedirect, slo)
+		addEndpoint(idp, "md:SingleLogoutService", domain.SamlBindingHTTPPOST, slo)
 	}
 
 	for _, format := range nameIDFormats {
 		idp.CreateElement("md:NameIDFormat").SetText(format)
 	}
 
-	addEndpoint(idp, "md:SingleSignOnService", spec.SamlBindingHTTPRedirect, endpoints.SSOURL)
-	addEndpoint(idp, "md:SingleSignOnService", spec.SamlBindingHTTPPOST, endpoints.SSOURL)
+	addEndpoint(idp, "md:SingleSignOnService", domain.SamlBindingHTTPRedirect, endpoints.SSOURL)
+	addEndpoint(idp, "md:SingleSignOnService", domain.SamlBindingHTTPPOST, endpoints.SSOURL)
 
 	doc.Indent(2)
 	out, err := doc.WriteToBytes()

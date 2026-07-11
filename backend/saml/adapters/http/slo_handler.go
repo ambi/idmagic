@@ -11,7 +11,6 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -33,7 +32,7 @@ func (d Deps) handleSamlSLO(c *echo.Context) error {
 		_ = d.SessionManager.Revoke(ctx, c.Request().Header.Get("Cookie"))
 	}
 	d.clearSessionCookie(c)
-	d.emit(&spec.SamlLogout{At: time.Now().UTC(), TenantID: tenantID, EntityID: entityID})
+	d.emit(&samldomain.SamlLogout{At: time.Now().UTC(), TenantID: tenantID, EntityID: entityID})
 
 	if target := d.logoutService().ResolveRedirect(ctx, tenantID, entityID, relayState); target != "" {
 		return c.Redirect(http.StatusSeeOther, target)
@@ -80,7 +79,7 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 		return err
 	}
 	if decision.EmitLogout {
-		d.emit(&spec.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
+		d.emit(&samldomain.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
 	}
 	if decision.BadRequest != "" {
 		return c.String(http.StatusBadRequest, decision.BadRequest)
@@ -91,7 +90,7 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 		_ = d.SessionManager.Revoke(ctx, c.Request().Header.Get("Cookie"))
 	}
 	d.clearSessionCookie(c)
-	d.emit(&spec.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
+	d.emit(&samldomain.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
 	response, err := d.buildLogoutResponse(c, *sp, req.ID, now)
 	if err != nil {
 		return err
@@ -107,7 +106,7 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 	return c.Redirect(http.StatusSeeOther, target)
 }
 
-func (d Deps) buildLogoutResponse(c *echo.Context, sp spec.SamlServiceProvider, inResponseTo string, now time.Time) ([]byte, error) {
+func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProvider, inResponseTo string, now time.Time) ([]byte, error) {
 	if d.FederationSigner == nil {
 		return nil, fmt.Errorf("SAML signer is required")
 	}

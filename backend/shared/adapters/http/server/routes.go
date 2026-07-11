@@ -12,8 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	samlhttp "github.com/ambi/idmagic/backend/saml/adapters/http"
-	samlports "github.com/ambi/idmagic/backend/saml/ports"
+	"github.com/ambi/idmagic/backend/saml"
 	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	scimusecases "github.com/ambi/idmagic/backend/scim/usecases"
@@ -67,7 +66,7 @@ type Deps struct {
 	SessionManager             *authusecases.SessionManager
 	AuthnResolver              authdomain.AuthenticationContextResolver
 	WsFederation               wsfederation.Module
-	SamlSPRepo                 samlports.SamlServiceProviderRepository
+	Saml                       saml.Module
 	FederationSigner           *samltoken.Signer
 	Application                application.Module
 
@@ -252,16 +251,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.LoginAttemptThrottle, d.PasswordHasher, d.SentinelPasswordHash)
 
-	samlhttp.RegisterRoutes(g, samlhttp.Deps{
-		Deps:             d.Deps,
-		Authenticator:    authenticator,
-		ApplicationGate:  appGate,
-		SamlSPRepo:       d.SamlSPRepo,
-		FederationSigner: d.FederationSigner,
-		UserRepo:         d.UserRepo,
-	})
+	d.Saml.Register(g, d.Deps, authenticator, appGate, d.UserRepo, d.FederationSigner)
 
-	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.SamlSPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
 	scimUsecasesInst := scimusecases.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{

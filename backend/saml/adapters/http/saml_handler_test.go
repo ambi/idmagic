@@ -16,6 +16,8 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/saml"
+	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -87,14 +89,14 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 
 	captured := &[]spec.DomainEvent{}
 
-	spRepo := memory.NewSamlServiceProviderRepository()
-	spRepo.Seed(&spec.SamlServiceProvider{
+	spRepo := samlmemory.NewSamlServiceProviderRepository()
+	spRepo.Seed(&samldomain.SamlServiceProvider{
 		EntityID:      "https://sp.example.com",
 		ACSURLs:       []string{"https://sp.example.com/acs"},
 		SignAssertion: true,
 		ClaimPolicy: spec.ClaimMappingPolicy{
 			NameID: spec.NameIdConfiguration{
-				Format:          spec.SamlNameIDFormatPersistent,
+				Format:          samldomain.SamlNameIDFormatPersistent,
 				SourceAttribute: "sub",
 			},
 		},
@@ -110,7 +112,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, SamlSPRepo: spRepo,
+		}, Saml: saml.Module{SPRepo: spRepo},
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: authn},
@@ -264,15 +266,15 @@ func TestSamlSSO_DestinationMismatchRejected(t *testing.T) {
 }
 
 func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
-	spRepo := memory.NewSamlServiceProviderRepository()
-	spRepo.Seed(&spec.SamlServiceProvider{
+	spRepo := samlmemory.NewSamlServiceProviderRepository()
+	spRepo.Seed(&samldomain.SamlServiceProvider{
 		EntityID:                          "https://sp.example.com",
 		ACSURLs:                           []string{"https://sp.example.com/acs"},
 		SignAssertion:                     true,
 		WantAuthnRequestsSigned:           true,
 		AuthnRequestSigningCertificatePEM: certPEM(t),
 		ClaimPolicy: spec.ClaimMappingPolicy{NameID: spec.NameIdConfiguration{
-			Format: spec.SamlNameIDFormatPersistent, SourceAttribute: "sub",
+			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub",
 		}},
 	})
 	userRepo := memory.NewUserRepository()
@@ -282,7 +284,7 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 		Deps: support.Deps{
 			Issuer: "https://idp.example",
 			SCL:    spec.MustLoadSCL(),
-		}, SamlSPRepo: spRepo,
+		}, Saml: saml.Module{SPRepo: spRepo},
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()}},
@@ -296,13 +298,13 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 
 func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 	captured := &[]spec.DomainEvent{}
-	spRepo := memory.NewSamlServiceProviderRepository()
-	spRepo.Seed(&spec.SamlServiceProvider{
+	spRepo := samlmemory.NewSamlServiceProviderRepository()
+	spRepo.Seed(&samldomain.SamlServiceProvider{
 		EntityID: "https://sp.example.com",
 		ACSURLs:  []string{"https://sp.example.com/acs"},
 		SLOURL:   "https://sp.example.com/saml/slo",
 		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{Format: spec.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
+			NameID: spec.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
 		},
 	})
 	e := echo.New()
@@ -312,7 +314,7 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, SamlSPRepo: spRepo,
+		}, Saml: saml.Module{SPRepo: spRepo},
 		UserRepo:         memory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
@@ -335,13 +337,13 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 
 func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 	captured := &[]spec.DomainEvent{}
-	spRepo := memory.NewSamlServiceProviderRepository()
-	spRepo.Seed(&spec.SamlServiceProvider{
+	spRepo := samlmemory.NewSamlServiceProviderRepository()
+	spRepo.Seed(&samldomain.SamlServiceProvider{
 		EntityID: "https://sp.example.com",
 		ACSURLs:  []string{"https://sp.example.com/acs"},
 		SLOURL:   "https://sp.example.com/saml/slo",
 		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{Format: spec.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
+			NameID: spec.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
 		},
 	})
 	e := echo.New()
@@ -351,7 +353,7 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, SamlSPRepo: spRepo,
+		}, Saml: saml.Module{SPRepo: spRepo},
 		UserRepo:         memory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
@@ -423,7 +425,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		Deps: support.Deps{
 			Issuer: "https://idp.example",
 			SCL:    spec.MustLoadSCL(),
-		}, SamlSPRepo: memory.NewSamlServiceProviderRepository(),
+		}, Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
 		UserRepo:      userRepo,
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})

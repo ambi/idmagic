@@ -28,8 +28,6 @@ import (
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
-
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const (
@@ -183,7 +181,7 @@ func childByTag(parent *etree.Element, tag string) *etree.Element {
 
 // ValidatedSignIn は検証を通った SP-initiated SSO 要求の確定結果。
 type ValidatedSignIn struct {
-	ServiceProvider spec.SamlServiceProvider
+	ServiceProvider SamlServiceProvider
 	ACSURL          string // 実際に POST する ACS (許可集合内に確定済み)。
 	InResponseTo    string // SAMLResponse に往復させる AuthnRequest ID。
 	NameIDFormat    string // 発行 assertion の NameID format (要求 > SP 既定)。
@@ -196,7 +194,7 @@ type ValidatedSignIn struct {
 //   - AssertionConsumerServiceURL 指定時は sp.ACSURLs の完全一致のみ受理する (open redirect 防止)。
 //   - 省略時は sp.ACSURLs の先頭を既定の ACS とする。
 //   - NameID format は要求の NameIDPolicy を尊重し、未指定なら SP の claim policy の format を用いる。
-func ValidateSignIn(req AuthnRequest, sp spec.SamlServiceProvider, expectedDestination string) (ValidatedSignIn, error) {
+func ValidateSignIn(req AuthnRequest, sp SamlServiceProvider, expectedDestination string) (ValidatedSignIn, error) {
 	if req.Issuer != sp.EntityID {
 		return ValidatedSignIn{}, fmt.Errorf("saml: issuer %q does not match service provider", req.Issuer)
 	}
@@ -216,7 +214,7 @@ func ValidateSignIn(req AuthnRequest, sp spec.SamlServiceProvider, expectedDesti
 	}
 
 	nameIDFormat := sp.ClaimPolicy.NameID.Format
-	if req.NameIDFormat != "" && req.NameIDFormat != spec.SamlNameIDFormatUnspecified {
+	if req.NameIDFormat != "" && req.NameIDFormat != SamlNameIDFormatUnspecified {
 		nameIDFormat = req.NameIDFormat
 	}
 
@@ -251,7 +249,7 @@ func ParseCertificatePEM(pemText string) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-func ValidateRequestSignature(binding Binding, xml []byte, rawQuery string, sp spec.SamlServiceProvider) error {
+func ValidateRequestSignature(binding Binding, xml []byte, rawQuery string, sp SamlServiceProvider) error {
 	if !sp.WantAuthnRequestsSigned {
 		return nil
 	}

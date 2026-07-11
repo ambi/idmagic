@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/saml/domain"
 )
 
 func TestSamlServiceProviderRepository(t *testing.T) {
@@ -13,7 +13,7 @@ func TestSamlServiceProviderRepository(t *testing.T) {
 	repo := NewSamlServiceProviderRepository()
 
 	t.Run("Save and FindByEntityID", func(t *testing.T) {
-		sp := &spec.SamlServiceProvider{
+		sp := &domain.SamlServiceProvider{
 			TenantID:      "tenant-1",
 			EntityID:      "urn:sp-1",
 			DisplayName:   "Service Provider 1",
@@ -52,7 +52,7 @@ func TestSamlServiceProviderRepository(t *testing.T) {
 	})
 
 	t.Run("Seed", func(t *testing.T) {
-		sp := &spec.SamlServiceProvider{
+		sp := &domain.SamlServiceProvider{
 			TenantID: "tenant-1",
 			EntityID: "urn:sp-seeded",
 		}
@@ -70,9 +70,9 @@ func TestSamlServiceProviderRepository(t *testing.T) {
 
 	t.Run("ListByTenant", func(t *testing.T) {
 		// すでに urn:sp-1, urn:sp-seeded が tenant-1 に存在する
-		spC := &spec.SamlServiceProvider{TenantID: "tenant-1", EntityID: "urn:sp-c"}
-		spB := &spec.SamlServiceProvider{TenantID: "tenant-1", EntityID: "urn:sp-b"}
-		spOther := &spec.SamlServiceProvider{TenantID: "tenant-other", EntityID: "urn:sp-other"}
+		spC := &domain.SamlServiceProvider{TenantID: "tenant-1", EntityID: "urn:sp-c"}
+		spB := &domain.SamlServiceProvider{TenantID: "tenant-1", EntityID: "urn:sp-b"}
+		spOther := &domain.SamlServiceProvider{TenantID: "tenant-other", EntityID: "urn:sp-other"}
 
 		_ = repo.Save(ctx, spC)
 		_ = repo.Save(ctx, spB)

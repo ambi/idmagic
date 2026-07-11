@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"time"
 
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
@@ -69,14 +70,14 @@ func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 // seedSamlServiceProvider は SAML 2.0 Web Browser SSO のデモ用 service provider を投入する。
 func seedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository) error {
 	now := time.Now().UTC()
-	sp := &spec.SamlServiceProvider{
+	sp := &samldomain.SamlServiceProvider{
 		TenantID:    spec.DefaultTenantID,
 		EntityID:    "urn:idmagic:demo-sp",
 		DisplayName: "Demo SAML SP",
 		ACSURLs:     []string{"https://sp.example/saml/acs"},
 		ClaimPolicy: spec.ClaimMappingPolicy{
 			NameID: spec.NameIdConfiguration{
-				Format:          spec.SamlNameIDFormatPersistent,
+				Format:          samldomain.SamlNameIDFormatPersistent,
 				SourceAttribute: "sub",
 			},
 			Rules: []spec.ClaimMappingRule{

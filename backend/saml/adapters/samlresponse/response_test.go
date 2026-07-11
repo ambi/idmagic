@@ -15,6 +15,7 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	"github.com/ambi/idmagic/backend/saml/adapters/samlresponse"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
@@ -63,7 +64,7 @@ func sampleAssertion(t *testing.T) *etree.Element {
 		NotOnOrAfter: now.Add(5 * time.Minute),
 		AuthnInstant: now,
 		Result: domain.ClaimIssuanceResult{
-			NameIDFormat: spec.SamlNameIDFormatPersistent,
+			NameIDFormat: samldomain.SamlNameIDFormatPersistent,
 			NameIDValue:  "alice",
 			Claims: []spec.IssuedClaim{
 				{ClaimType: "email", Values: []string{"alice@example.com"}},

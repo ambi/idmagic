@@ -18,13 +18,13 @@ const sampleAuthnRequest = `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:
 	`<samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"/>` +
 	`</samlp:AuthnRequest>`
 
-func sampleServiceProvider() spec.SamlServiceProvider {
-	return spec.SamlServiceProvider{
+func sampleServiceProvider() samldomain.SamlServiceProvider {
+	return samldomain.SamlServiceProvider{
 		TenantID: "acme",
 		EntityID: "https://sp.example.com",
 		ACSURLs:  []string{"https://sp.example.com/acs", "https://sp.example.com/acs2"},
 		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{Format: spec.SamlNameIDFormatPersistent},
+			NameID: spec.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent},
 		},
 	}
 }
@@ -66,7 +66,7 @@ func TestParseAuthnRequestExtractsFields(t *testing.T) {
 	if req.Destination != "https://idp.example.com/saml/sso" {
 		t.Errorf("Destination=%q", req.Destination)
 	}
-	if req.NameIDFormat != spec.SamlNameIDFormatEmailAddress {
+	if req.NameIDFormat != samldomain.SamlNameIDFormatEmailAddress {
 		t.Errorf("NameIDFormat=%q", req.NameIDFormat)
 	}
 	if !req.ForceAuthn {
@@ -113,7 +113,7 @@ func TestValidateSignInResolvesRequestedACS(t *testing.T) {
 		t.Errorf("InResponseTo=%q", out.InResponseTo)
 	}
 	// 要求の NameIDPolicy が SP 既定より優先される。
-	if out.NameIDFormat != spec.SamlNameIDFormatEmailAddress {
+	if out.NameIDFormat != samldomain.SamlNameIDFormatEmailAddress {
 		t.Errorf("NameIDFormat=%q", out.NameIDFormat)
 	}
 }
@@ -165,7 +165,7 @@ func TestValidateSignInFallsBackToDefaultACS(t *testing.T) {
 		t.Errorf("ACSURL=%q, want default", out.ACSURL)
 	}
 	// 要求が NameID format を持たないので SP 既定が用いられる。
-	if out.NameIDFormat != spec.SamlNameIDFormatPersistent {
+	if out.NameIDFormat != samldomain.SamlNameIDFormatPersistent {
 		t.Errorf("NameIDFormat=%q, want SP default", out.NameIDFormat)
 	}
 }
@@ -174,13 +174,13 @@ func TestValidateSignInUnspecifiedFormatUsesSPDefault(t *testing.T) {
 	req := samldomain.AuthnRequest{
 		ID:           "_x",
 		Issuer:       "https://sp.example.com",
-		NameIDFormat: spec.SamlNameIDFormatUnspecified,
+		NameIDFormat: samldomain.SamlNameIDFormatUnspecified,
 	}
 	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso")
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	if out.NameIDFormat != spec.SamlNameIDFormatPersistent {
+	if out.NameIDFormat != samldomain.SamlNameIDFormatPersistent {
 		t.Errorf("NameIDFormat=%q, want SP default", out.NameIDFormat)
 	}
 }

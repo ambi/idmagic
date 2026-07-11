@@ -11,7 +11,7 @@ import (
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	samlports "github.com/ambi/idmagic/backend/saml/ports"
+	"github.com/ambi/idmagic/backend/saml"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -48,7 +48,7 @@ type Dependencies struct {
 	TenantSaltStore         oauthports.TenantSaltStore
 	AuthEventBucketStore    authnports.AuthEventBucketStore
 	WsFederation            wsfederation.Module
-	SamlSPRepo              samlports.SamlServiceProviderRepository
+	Saml                    saml.Module
 	Application             application.Module
 	Close                   func()
 	DbPing                  func(context.Context) error

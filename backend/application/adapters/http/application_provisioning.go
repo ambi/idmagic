@@ -224,11 +224,11 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 				return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "AuthnRequest 署名検証用証明書を指定してください")
 			}
 		}
-		sp := &spec.SamlServiceProvider{
+		sp := &samldomain.SamlServiceProvider{
 			TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.Name,
 			ACSURLs: req.ACSURLs, SLOURL: strings.TrimSpace(req.SLOURL),
 			ClaimPolicy: spec.ClaimMappingPolicy{NameID: spec.NameIdConfiguration{
-				Format: nonEmpty(req.NameIDFormat, spec.SamlNameIDFormatPersistent), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
+				Format: nonEmpty(req.NameIDFormat, samldomain.SamlNameIDFormatPersistent), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
 			}},
 			SignAssertion: true, SignResponse: req.SignResponse,
 			WantAuthnRequestsSigned:           req.WantAuthnRequestsSigned,

@@ -5,7 +5,6 @@ import (
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // LogoutService は SAML Single Logout の返送先解決と LogoutRequest 検証を所有する。
@@ -43,9 +42,9 @@ type LogoutRequestInput struct {
 
 // LogoutRequestDecision は LogoutRequest 検証の結果。
 type LogoutRequestDecision struct {
-	SP         *spec.SamlServiceProvider // 非 nil なら logout を honor し LogoutResponse を返す。
-	BadRequest string                    // 非空なら 400 を返す本文。
-	EmitLogout bool                      // 未知 SP のとき SamlLogout イベントを発行すべき。
+	SP         *samldomain.SamlServiceProvider // 非 nil なら logout を honor し LogoutResponse を返す。
+	BadRequest string                          // 非空なら 400 を返す本文。
+	EmitLogout bool                            // 未知 SP のとき SamlLogout イベントを発行すべき。
 }
 
 // ValidateLogoutRequest は LogoutRequest を検証し、返送すべき SP を解決する。

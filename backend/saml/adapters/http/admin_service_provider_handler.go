@@ -92,7 +92,7 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 	if req.SignAssertion != nil {
 		signAssertion = *req.SignAssertion
 	}
-	sp := &spec.SamlServiceProvider{
+	sp := &samldomain.SamlServiceProvider{
 		TenantID:                          tenantID,
 		EntityID:                          req.EntityID,
 		DisplayName:                       req.DisplayName,

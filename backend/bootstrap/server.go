@@ -65,7 +65,7 @@ func Run() error {
 		if err := seedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
 			return fmt.Errorf("seed federation relying party: %w", err)
 		}
-		if err := seedSamlServiceProvider(ctx, deps.SamlSPRepo); err != nil {
+		if err := seedSamlServiceProvider(ctx, deps.Saml.SPRepo); err != nil {
 			return fmt.Errorf("seed saml service provider: %w", err)
 		}
 		if err := seedDemoApplications(ctx, deps.Application.Repo, deps.Application.AssignmentRepo, time.Now().UTC()); err != nil {
@@ -207,7 +207,7 @@ func Run() error {
 		SessionManager:          sessionManager,
 		AuthnResolver:           sessionManager,
 		WsFederation:            deps.WsFederation,
-		SamlSPRepo:              deps.SamlSPRepo,
+		Saml:                    deps.Saml,
 		FederationSigner:        federationSigner,
 		Application:             deps.Application,
 		WebAuthnRP:              deps.WebAuthnRP,
