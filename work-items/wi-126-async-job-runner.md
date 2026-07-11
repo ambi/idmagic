@@ -143,8 +143,8 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
       を通す。
 - [x] T005 [Architecture] 新規 context / worker プロセス / ディレクトリ規約を
       ARCHITECTURE.md に同期する。
-- [ ] T006 [Go domain] `Job` 集約・`JobStatus`/`JobKind`・状態遷移・イベントを実装する。
-- [ ] T007 [Go ports] `JobRepository` (enqueue / claim-with-lease / heartbeat /
+- [x] T006 [Go domain] `Job` 集約・`JobStatus`/`JobKind`・状態遷移・イベントを実装する。
+- [x] T007 [Go ports] `JobRepository` (enqueue / claim-with-lease / heartbeat /
       complete / fail / retry / cancel / list / get) を定義する。
 - [ ] T008 [Go usecase] enqueue・claim・handler registry・worker pool
       (poll / concurrency / backoff / drain) を実装し単体テストする。
@@ -218,4 +218,38 @@ T001〜T005 を実施。
 - **対象外 (今回は触れない)**: T006 以降 (Go domain/ports/usecase/adapters、schema、
   `idmagic-worker` 実装、smoke test、`just verify`) は次フェーズ。
 
-残り T006〜T013 (Phase B〜F) は pending。
+## 2026-07-12 — Phase B (Go domain + ports) 完了
+
+T006〜T007 を実施。
+
+- **T006 domain** (`backend/jobs/domain/job.go`, `events.go`): `Job` entity
+  (`identity: id`)、`JobStatus`/`JobKind` (typed string + `Valid()`、既存の
+  `backend/shared/spec/enums.go` 命名慣例に合わせ `StatusQueued` 等の短縮定数名)、
+  `JobLifecycleEvent` と遷移表 `jobTransitions` + `TransitionJobLifecycle` /
+  `IsJobLifecycleTerminal`（`backend/shared/spec/authorization_code_machine.go`
+  の遷移表パターンを踏襲）。`NextRetryRunAt`（ADR-099 既定値: base 30s 指数
+  バックオフ、cap 30分）をドメイン層の純粋関数として追加。6 種のドメインイベント
+  struct (`JobEnqueued`/`JobStarted`/`JobSucceeded`/`JobFailed`/`JobRetried`/
+  `JobCanceled`) は `backend/shared/spec.DomainEvent`
+  (`EventType() string`/`OccurredAt() time.Time`) を構造的に満たす形で
+  `backend/jobs/domain` に定義し、`shared/spec` への import は行わない
+  （直近の慣例 (wi-178 の `AgentStatus`/`UserStatus` 移設等) に合わせ、
+  context 固有の型は各 context の domain に置く方針、ADR-089 と整合）。
+- **T007 ports** (`backend/jobs/ports/repository.go`): `JobRepository`
+  interface (`Enqueue`/`ClaimBatch`/`Heartbeat`/`Complete`/`Fail`/`Cancel`/`Get`)。
+  `FailOutcome`（retry か dead-letter かは usecase が `NextRetryRunAt` で計算して
+  渡す）、sentinel error (`ErrJobNotFound`/`ErrJobLeaseLost`/`ErrJobAlreadyTerminal`)
+  を ports 層に定義（lease 喪失は usecase の事前検証では検出できず、
+  atomic な UPDATE の影響行数でしか判定できないための例外的配置、理由をコード
+  コメントに明記）。WI 記載の "list" は SCL 側に admin 向け List interface が
+  無く（wi-157 の範囲）、現時点で consumer が無いため YAGNI で見送った
+  （Phase F の smoke test は `Get` で十分）。
+- **検証**: `GOCACHE=/tmp/idmagic-cache go build ./...`、
+  `GOCACHE=/tmp/idmagic-cache go test -race ./backend/jobs/...`
+  （状態機械の全 (status, event) 総当たり invariant テストを含む）、
+  `just lint-go` (0 issues) すべて green。
+- **対象外 (今回は触れない)**: T008 以降 (usecase の enqueue/claim/handler
+  registry/worker pool、memory/postgres adapter、schema、`idmagic-worker`、
+  smoke test) は次フェーズ。
+
+残り T008〜T013 (Phase C〜F) は pending。
