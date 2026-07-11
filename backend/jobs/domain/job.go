@@ -96,6 +96,11 @@ const (
 	DefaultBackoffCap  = 30 * time.Minute
 )
 
+// DefaultMaxAttempts is the ADR-099 default attempt budget applied when
+// EnqueueJob does not specify one; a JobKind's handler registration may
+// override it per kind.
+const DefaultMaxAttempts = 5
+
 // NextRetryRunAt computes the run_at for a Job returned to Queued via EventRetry,
 // using exponential backoff (ADR-099): base * 2^(attempts-1), capped at maxBackoff.
 // attempts is the Job's attempt count after the failure being retried (>= 1).

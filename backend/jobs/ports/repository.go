@@ -54,15 +54,20 @@ type FailOutcome struct {
 // context. Implementations must uphold JobLeaseExclusivity, JobTenantIsolation,
 // and JobTerminalStateIsImmutable (spec/contexts/jobs.yaml invariants).
 type JobRepository interface {
-	// Enqueue inserts a new StatusQueued Job. If input.DedupKey is set and a
-	// non-terminal Job already exists for the same TenantID and DedupKey, that
-	// existing Job is returned instead of creating a duplicate
-	// (JobHandlerIdempotency).
-	Enqueue(ctx context.Context, input EnqueueInput) (*domain.Job, error)
+	// Enqueue inserts a new StatusQueued Job and reports created=true. If
+	// input.DedupKey is set and a non-terminal Job already exists for the same
+	// TenantID and DedupKey, that existing Job is returned instead with
+	// created=false rather than creating a duplicate (JobHandlerIdempotency).
+	Enqueue(ctx context.Context, input EnqueueInput) (job *domain.Job, created bool, err error)
 
-	// ClaimBatch atomically selects up to batchSize claimable Jobs (StatusQueued,
-	// run_at <= now) and transitions them to StatusRunning under a lease held by
-	// workerID until now+leaseDuration (JobLeaseExclusivity).
+	// ClaimBatch atomically selects up to batchSize claimable Jobs and places
+	// them under a lease held by workerID until now+leaseDuration
+	// (JobLeaseExclusivity). Claimable means either StatusQueued with
+	// run_at <= now (transitions to StatusRunning), or already StatusRunning
+	// with an expired lease from a crashed/drained worker (status unchanged,
+	// re-leased to workerID). Each claimed Job's Attempts is incremented by 1
+	// as part of the claim, so the returned Job's Attempts is the attempt
+	// number now starting (JobStarted's Attempt payload).
 	ClaimBatch(ctx context.Context, workerID string, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error)
 
 	// Heartbeat extends jobID's lease for workerID and returns the new expiry.

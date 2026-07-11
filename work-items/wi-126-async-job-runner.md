@@ -146,10 +146,11 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
 - [x] T006 [Go domain] `Job` 集約・`JobStatus`/`JobKind`・状態遷移・イベントを実装する。
 - [x] T007 [Go ports] `JobRepository` (enqueue / claim-with-lease / heartbeat /
       complete / fail / retry / cancel / list / get) を定義する。
-- [ ] T008 [Go usecase] enqueue・claim・handler registry・worker pool
+- [x] T008 [Go usecase] enqueue・claim・handler registry・worker pool
       (poll / concurrency / backoff / drain) を実装し単体テストする。
 - [ ] T009 [Adapter] memory (in-process) と postgres (SKIP LOCKED) の JobRepository を
-      実装し、リース排他・失効再取得・冪等をテストする。
+      実装し、リース排他・失効再取得・冪等をテストする。memory 側は Phase C で前倒し
+      実装済み (下記 Progress 参照)。残るは postgres (SKIP LOCKED) 実装のみ。
 - [ ] T010 [Schema] `jobs` テーブルを deploy/schema/postgres.sql に追加する。
 - [ ] T011 [Infra] `idmagic-worker` entry point を追加し、ローカル compose で API・relay・
       worker を分離起動できるようにする。API から retention sweep の goroutine を除去する。
@@ -276,4 +277,56 @@ T006〜T007 を実施。
   `go test -race ./...` 全パッケージ green、`backend/shared/spec` の
   coherence テスト含む）、`just verify`（UI ビルド含む）すべて green。
 
-残り T008〜T013 (Phase C〜F) は pending。
+## 2026-07-12 — Phase C (Go usecase) 完了、T009 memory adapter を前倒し実装
+
+T008 と、T009 のうち memory adapter 分を実施。
+
+- **ports 修正**: `backend/jobs/ports/repository.go` の `ClaimBatch` に
+  「lease 失効した `Running` ジョブも再 claim 対象に含む」契約を明記
+  （元のドキュメントは `StatusQueued` のみを対象にしており、リース失効
+  再取得という WI の中心要件が抜けていたため、実装前に気付いて修正）。
+  `Enqueue` の戻り値を `(*domain.Job, error)` から
+  `(*domain.Job, created bool, error)` に変更し、dedup ヒット時に
+  `JobEnqueued` を誤って二重発火しないようにした。
+- **T009 (memory 分前倒し)** (`backend/jobs/adapters/persistence/memory/repository.go`):
+  mutex + map ベースの `JobRepository` 実装。dedup (アクティブジョブのみ対象)、
+  claim (`StatusQueued` かつ `run_at<=now`、または lease 失効した
+  `StatusRunning` の再取得。両ケースで `Attempts` を +1)、heartbeat、
+  complete/fail（lease 所有権チェック）、cancel（終端不可逆）、get を実装。
+  この repo の実装は Phase D 予定だったが、「usecase のテストは mock でなく
+  実物の in-memory adapter を使う」という既存 context の慣例
+  (`backend/oauth2/usecases` が `crypto.NewInMemoryKeyStore()` を直接使う等)
+  に合わせるため Phase C に前倒しした。並行 claim の排他性を
+  `TestClaimBatch_ConcurrentClaimIsExclusive`（10 worker 相当の goroutine が
+  50 ジョブを奪い合う `-race` テスト）で、lease 失効再取得を
+  `TestClaimBatch_ReclaimsExpiredLease` で担保。
+- **T008 usecases** (`backend/jobs/usecases/`): `Enqueue`（`JobKind.Valid()`
+  検証、`DefaultMaxAttempts`/`RunAt` 既定値適用、dedup ヒット時は
+  `JobEnqueued` を発火しない）、`HandlerRegistry`（`JobKind`→`Handler`、
+  未登録 kind は `ErrHandlerNotRegistered`）、`Runner`（poll ループ +
+  buffered channel を semaphore にした concurrency 制御 + heartbeat
+  goroutine + backoff/dead-letter 判定）。`Runner.execute` は
+  `context.Background()` から派生した detached context で実行し、
+  drain 開始 (`Run` の `ctx` cancel) で in-flight ハンドラを中断しない
+  設計にした（`gosec G118`/`contextcheck` は意図的なので `//nolint` で
+  抑制、理由をコードコメントに明記）。`fail` は `JobFailed` を常に発火し、
+  リトライの場合のみ追加で `JobRetried` も発火する設計（SCL の
+  `JobFailed.terminal` フィールドを活かすための Go 側実装判断）。
+- **テスト**: `TestRunner_SuccessPath`/`RetryThenSucceed`/
+  `DeadLetterAfterMaxAttempts`/`UnregisteredHandlerDeadLetters`/
+  `ConcurrencyLimit`/`DrainWaitsForInFlight` の 6 本。イベント発行の
+  検証はゴルーチンから呼ばれる `Emit` を mutex 保護した recorder で
+  `-race` 安全に収集。`-count=1 -race` を 5 回連続実行しフレーキーで
+  ないことを確認。worker crash 後の別 worker 再取得の Runner レベル
+  end-to-end 確認 (2 Runner インスタンス) は T012 の smoke test に委譲。
+- **Library 検討**: ユーザーから `riverqueue/river` 等の既存 Go queueing
+  ライブラリ活用を検討すべきか質問があり、pgx 互換・実績面では有力候補と
+  回答したが、dead-letter 等の主要機能が River の OSS 範囲外 (Pro) である
+  ことが判明し、自前実装の継続を選択した。
+- **検証**: `GOCACHE=/tmp/idmagic-cache go build ./...`、
+  `go test -race -count=1 ./backend/jobs/...`、`just lint-go` (0 issues)
+  すべて green。
+- **対象外 (今回は触れない)**: T009 postgres (SKIP LOCKED) adapter、T010
+  schema、T011 `idmagic-worker` infra、T012 smoke test、T013 は次フェーズ。
+
+残り T009 (postgres 分)〜T013 (Phase D〜F) は pending。
