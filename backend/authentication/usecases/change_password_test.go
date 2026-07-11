@@ -40,8 +40,9 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 		UserRepo:            userRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: historyRepo,
-		Emit: func(event spec.DomainEvent) {
+		Emit: func(event spec.DomainEvent) error {
 			events = append(events, event)
+			return nil
 		},
 	}, ChangePasswordInput{
 		Sub:             user.ID,

@@ -11,6 +11,9 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/shared/txrunner"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -35,6 +38,12 @@ type Deps struct {
 	PasswordHistoryRepo   authnports.PasswordHistoryRepository
 	EmailChangeTokenStore authnports.EmailChangeTokenStore
 	EmailSender           authnports.EmailSender
+
+	// TxRunner and EventLogRecorder wire wi-184 T003's transaction-bound
+	// event log (ADR-094) into CreateAdminUser/UpdateAdminUser/
+	// DisableAdminUser/EnableAdminUser.
+	TxRunner         txrunner.Runner
+	EventLogRecorder sharedeventlog.Recorder
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
@@ -77,4 +86,18 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 
 func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
 	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
+}
+
+// legacyEmit adapts the fire-and-forget support.Deps.Emit to the
+// error-returning signature usecases in this context require (wi-184 T003).
+// It is the default for handlers not yet migrated to the transaction
+// runner; migrated handlers (admin_user_handler.go Create/Update/
+// SetDisabled) override deps.Emit with a transaction-bound one instead.
+func (d Deps) legacyEmit() func(spec.DomainEvent) error {
+	return func(event spec.DomainEvent) error {
+		if d.Emit != nil {
+			d.Emit(event)
+		}
+		return nil
+	}
 }

@@ -31,7 +31,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	var events []spec.DomainEvent
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
-		Emit: func(event spec.DomainEvent) { events = append(events, event) },
+		Emit: func(event spec.DomainEvent) error { events = append(events, event); return nil },
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	email := "bob@example.com"
@@ -173,7 +173,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		UserRepo: userRepo, ConsentRepo: consentRepo, RefreshStore: refreshStore,
 		DeviceCodeStore: deviceStore, SessionStore: sessionStore, MfaFactorRepo: mfaRepo,
 		PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
-		Emit: func(event spec.DomainEvent) { events = append(events, event) },
+		Emit: func(event spec.DomainEvent) error { events = append(events, event); return nil },
 	}
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
@@ -319,7 +319,7 @@ func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, 
 		UserRepo: userRepo, ConsentRepo: consentRepo,
 		RefreshStore: oauth2memory.NewRefreshTokenStore(), SessionStore: authnmemory.NewSessionStore(),
 		MfaFactorRepo: authnmemory.NewMfaFactorRepository(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
-		Emit: func(event spec.DomainEvent) { *events = append(*events, event) },
+		Emit: func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
 	}
 	return deps, consentRepo, userRepo
 }

@@ -27,7 +27,7 @@ var ErrAttributeNotEditable = errors.New("attribute is not user-editable")
 type AccountProfileDeps struct {
 	UserRepo       idmports.UserRepository
 	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
-	Emit           func(spec.DomainEvent)
+	Emit           func(spec.DomainEvent) error
 }
 
 // GetUserProfile は呼び出しユーザ自身のプロフィールと実効属性定義を返す。
@@ -105,9 +105,11 @@ func UpdateUserProfile(
 		return nil, nil, err
 	}
 	// self 編集は actorUserID == targetUserID。changedFields の粒度で記録する (ADR-018)。
-	adminEmit(deps.Emit, &spec.UserUpdated{
+	if err := adminEmit(deps.Emit, &spec.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID, ChangedFields: changed,
-	})
+	}); err != nil {
+		return nil, nil, err
+	}
 	return &updated, defs, nil
 }
 

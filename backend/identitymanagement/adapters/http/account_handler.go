@@ -69,7 +69,7 @@ func toAccountProfileResponse(user *idmdomain.User, defs []idmdomain.UserAttribu
 
 func (d Deps) accountProfileDeps() idmusecases.AccountProfileDeps {
 	return idmusecases.AccountProfileDeps{
-		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.Emit,
+		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.legacyEmit(),
 	}
 }
 

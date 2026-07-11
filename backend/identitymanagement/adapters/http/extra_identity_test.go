@@ -31,6 +31,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	eventlogmemory "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/eventlog"
+	memorytxrunner "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/txrunner"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -85,6 +87,8 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 		},
 		EmailChangeTokenStore: tokenStore,
 		EmailSender:           mockEmailSender{},
+		TxRunner:              memorytxrunner.New(),
+		EventLogRecorder:      eventlogmemory.New(),
 	})
 	return identityTestHandler{
 		echo: e, users: repo, tokens: tokenStore, groups: groupRepo, clients: clientRepo, consents: consentRepo,

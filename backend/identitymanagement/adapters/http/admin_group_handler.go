@@ -206,7 +206,7 @@ func (d Deps) handleListUserGroups(c *echo.Context) error {
 }
 
 func (d Deps) adminGroupDeps() idmusecases.AdminGroupDeps {
-	return idmusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.Emit}
+	return idmusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
 }
 
 func (d Deps) toGroupMemberResponses(ctx context.Context, members []*idmdomain.GroupMember) []groupMemberResponse {

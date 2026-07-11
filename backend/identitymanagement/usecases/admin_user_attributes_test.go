@@ -27,7 +27,7 @@ func attrTestDeps(t *testing.T) (context.Context, idmusecases.AdminUserDeps, *id
 		AttrSchemaRepo:      schemaRepo,
 		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
-		Emit:                func(spec.DomainEvent) {},
+		Emit:                func(spec.DomainEvent) error { return nil },
 	}
 	return context.Background(), deps, schemaRepo
 }

@@ -52,7 +52,7 @@ type AdminUserDeps struct {
 	MfaFactorRepo       authnports.MfaFactorRepository
 	PasswordHasher      authnports.PasswordHasher
 	PasswordHistoryRepo authnports.PasswordHistoryRepository
-	Emit                func(spec.DomainEvent)
+	Emit                func(spec.DomainEvent) error
 	// SoftDeleteGraceSeconds は soft-delete の猶予期間 (秒)。0 のとき
 	// UserSoftDeleteGracePeriodSeconds を既定として使う。テストで短縮するために注入する。
 	SoftDeleteGraceSeconds int
@@ -122,7 +122,9 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, passwordHash, now); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID})
+	if err := adminEmit(deps.Emit, &spec.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID}); err != nil {
+		return nil, err
+	}
 	return user, nil
 }
 
@@ -223,9 +225,11 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*i
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.UserUpdated{
+	if err := adminEmit(deps.Emit, &spec.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, ChangedFields: changed,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -268,10 +272,14 @@ func SetUserDisabled(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
+	var emitErr error
 	if disabled {
-		adminEmit(deps.Emit, &spec.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
+		emitErr = adminEmit(deps.Emit, &spec.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
-		adminEmit(deps.Emit, &spec.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
+		emitErr = adminEmit(deps.Emit, &spec.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
+	}
+	if emitErr != nil {
+		return nil, emitErr
 	}
 	return &updated, nil
 }
@@ -308,9 +316,11 @@ func SetUserRequiredAction(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.UserRequiredActionSet{
+	if err := adminEmit(deps.Emit, &spec.UserRequiredActionSet{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -344,9 +354,11 @@ func ClearUserRequiredAction(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.UserRequiredActionCleared{
+	if err := adminEmit(deps.Emit, &spec.UserRequiredActionCleared{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -401,10 +413,11 @@ func equalOptionalString(left, right *string) bool {
 		left != nil && right != nil && *left == *right
 }
 
-func adminEmit(sink func(spec.DomainEvent), event spec.DomainEvent) {
-	if sink != nil {
-		sink(event)
+func adminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error {
+	if sink == nil {
+		return nil
 	}
+	return sink(event)
 }
 
 // DeleteUserInput は ADR-036 の DeleteUser use case 入力。
@@ -452,10 +465,9 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := cascadeDeleteForSub(ctx, deps, user.ID); err != nil {
 		return err
 	}
-	adminEmit(deps.Emit, &spec.UserDeleted{
+	return adminEmit(deps.Emit, &spec.UserDeleted{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, Reason: in.Reason,
 	})
-	return nil
 }
 
 func hasPrivilegedRole(roles []string) bool {
@@ -514,10 +526,9 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return err
 	}
-	adminEmit(deps.Emit, &spec.UserSoftDeleted{
+	return adminEmit(deps.Emit, &spec.UserSoftDeleted{
 		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
 	})
-	return nil
 }
 
 // RestoreUser は PendingDeletion の user を Active に戻し UserRestored を emit する。
@@ -548,9 +559,11 @@ func RestoreUser(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.UserRestored{
+	if err := adminEmit(deps.Emit, &spec.UserRestored{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: updated.ID,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 

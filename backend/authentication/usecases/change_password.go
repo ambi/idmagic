@@ -30,7 +30,7 @@ type ChangePasswordDeps struct {
 	UserRepo            idmports.UserRepository
 	PasswordHasher      authnports.PasswordHasher
 	PasswordHistoryRepo authnports.PasswordHistoryRepository
-	Emit                func(spec.DomainEvent)
+	Emit                func(spec.DomainEvent) error
 	HistoryDepth        int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
 	Policy              PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
 }
@@ -107,13 +107,17 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 		return nil, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
+		if err := deps.Emit(&spec.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID}); err != nil {
+			return nil, err
+		}
 		if clearedUpdatePassword {
 			// 自動解除なので ActorUserID は本人 (system 操作ではなく能動的解除)。
-			deps.Emit(&spec.UserRequiredActionCleared{
+			if err := deps.Emit(&spec.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
 				Action: string(idmdomain.RequiredActionUpdatePassword),
-			})
+			}); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return &updated, nil

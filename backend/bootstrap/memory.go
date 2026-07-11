@@ -21,6 +21,8 @@ import (
 	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
+	eventlogmemory "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/eventlog"
+	memorytxrunner "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/txrunner"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -87,8 +89,10 @@ func assembleMemory() (*Dependencies, error) {
 			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
-		Close:      func() {},
-		DbPing:     func(c context.Context) error { return nil },
-		ValkeyPing: func(c context.Context) error { return nil },
+		Close:            func() {},
+		DbPing:           func(c context.Context) error { return nil },
+		ValkeyPing:       func(c context.Context) error { return nil },
+		TxRunner:         memorytxrunner.New(),
+		EventLogRecorder: eventlogmemory.New(),
 	}, nil
 }

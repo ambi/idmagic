@@ -37,6 +37,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	eventlogmemory "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/eventlog"
+	memorytxrunner "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/txrunner"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -119,6 +121,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
+		TxRunner: memorytxrunner.New(), EventLogRecorder: eventlogmemory.New(),
 	})
 	return httptest.NewServer(e), userRepo
 }
@@ -234,6 +237,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			Repo: applicationRepo, AssignmentRepo: assignmentRepo,
 			SignInPolicyRepo: signInPolicyRepo, DefaultSignInPolicyRepo: defaultSignInPolicyRepo,
 		},
+		TxRunner: memorytxrunner.New(), EventLogRecorder: eventlogmemory.New(),
 	})
 	return httptest.NewServer(e)
 }

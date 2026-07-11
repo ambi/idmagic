@@ -12,6 +12,9 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/shared/txrunner"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -43,6 +46,11 @@ type Deps struct {
 	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore   authnports.WebAuthnSessionStore
 	RecoveryCodeRepo       authnports.RecoveryCodeRepository
+
+	// TxRunner and EventLogRecorder wire wi-184 T003's transaction-bound
+	// event log (ADR-094) into handleChangePasswordAPI.
+	TxRunner         txrunner.Runner
+	EventLogRecorder sharedeventlog.Recorder
 }
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの
@@ -77,4 +85,16 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 
 func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
 	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
+}
+
+// legacyEmit adapts the fire-and-forget support.Deps.Emit to the
+// error-returning signature ChangePasswordDeps requires (wi-184 T003). It is
+// the default for handlers not yet migrated to the transaction runner.
+func (d Deps) legacyEmit() func(spec.DomainEvent) error {
+	return func(event spec.DomainEvent) error {
+		if d.Emit != nil {
+			d.Emit(event)
+		}
+		return nil
+	}
 }

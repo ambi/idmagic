@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
@@ -11,6 +12,8 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
+	"github.com/ambi/idmagic/backend/shared/logging"
 
 	"github.com/labstack/echo/v5"
 )
@@ -132,15 +135,22 @@ func (d Deps) handleCreateAdminUser(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.CreateUser(
-		ctx,
-		d.adminUserDeps(),
-		idmusecases.CreateUserInput{
-			ActorUserID: actor.ID, PreferredUsername: input.PreferredUsername,
-			Password: input.Password, Name: input.Name, Email: input.Email,
-			EmailVerified: input.EmailVerified, Roles: input.Roles, Now: time.Now().UTC(),
-		},
-	)
+	var user *idmdomain.User
+	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
+		deps := d.adminUserDeps()
+		deps.Emit = sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx))
+		var txErr error
+		user, txErr = idmusecases.CreateUser(
+			txCtx,
+			deps,
+			idmusecases.CreateUserInput{
+				ActorUserID: actor.ID, PreferredUsername: input.PreferredUsername,
+				Password: input.Password, Name: input.Name, Email: input.Email,
+				EmailVerified: input.EmailVerified, Roles: input.Roles, Now: time.Now().UTC(),
+			},
+		)
+		return txErr
+	})
 	if err != nil {
 		return d.writeAdminUserError(c, err)
 	}
@@ -161,17 +171,24 @@ func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.UpdateUser(
-		ctx,
-		d.adminUserDeps(),
-		idmusecases.UpdateUserInput{
-			ActorUserID: actor.ID, Sub: c.Param("sub"),
-			PreferredUsername: input.PreferredUsername, Name: input.Name,
-			GivenName: input.GivenName, FamilyName: input.FamilyName, Email: input.Email,
-			EmailVerified: input.EmailVerified, Roles: input.Roles,
-			Attributes: input.Attributes, Now: time.Now().UTC(),
-		},
-	)
+	var user *idmdomain.User
+	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
+		deps := d.adminUserDeps()
+		deps.Emit = sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx))
+		var txErr error
+		user, txErr = idmusecases.UpdateUser(
+			txCtx,
+			deps,
+			idmusecases.UpdateUserInput{
+				ActorUserID: actor.ID, Sub: c.Param("sub"),
+				PreferredUsername: input.PreferredUsername, Name: input.Name,
+				GivenName: input.GivenName, FamilyName: input.FamilyName, Email: input.Email,
+				EmailVerified: input.EmailVerified, Roles: input.Roles,
+				Attributes: input.Attributes, Now: time.Now().UTC(),
+			},
+		)
+		return txErr
+	})
 	if err != nil {
 		return d.writeAdminUserError(c, err)
 	}
@@ -249,9 +266,14 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	_, err = idmusecases.SetUserDisabled(
-		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
-	)
+	err = d.TxRunner.Run(ctx, func(txCtx context.Context) error {
+		deps := d.adminUserDeps()
+		deps.Emit = sharedeventlog.NewEmit(txCtx, d.EventLogRecorder, logging.RequestIDFromContext(ctx))
+		_, txErr := idmusecases.SetUserDisabled(
+			txCtx, deps, actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
+		)
+		return txErr
+	})
 	if err != nil {
 		return d.writeAdminUserError(c, err)
 	}
@@ -265,7 +287,7 @@ func (d Deps) adminUserDeps() idmusecases.AdminUserDeps {
 		ConsentRepo: d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, MfaFactorRepo: d.MfaFactorRepo,
 		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
-		Emit: d.Emit,
+		Emit: d.legacyEmit(),
 	}
 	if d.SessionManager != nil {
 		deps.SessionStore = d.SessionManager.Store

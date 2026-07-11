@@ -32,6 +32,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	eventlogmemory "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/eventlog"
+	memorytxrunner "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory/txrunner"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -102,6 +104,8 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *authnmemory.SessionStore, *[]sp
 		PasswordHistoryRepo:   authnmemory.NewPasswordHistoryRepository(),
 		EmailChangeTokenStore: authnmemory.NewEmailChangeTokenStore(),
 		SessionManager:        sm, AuthnResolver: sm,
+		TxRunner:         memorytxrunner.New(),
+		EventLogRecorder: eventlogmemory.New(),
 	})
 	return e, store, &events
 }

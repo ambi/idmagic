@@ -10,10 +10,17 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
-// PasswordHistoryRepository (Authentication)
+// PasswordHistoryRepository (Authentication)。ctx が pgx.Tx を運ぶ場合
+// (wi-184 T003 の transaction runner 経由) はその tx を使い、業務更新と
+// event_logs 追記を同一 commit にする (ADR-094)。
 type PasswordHistoryRepository struct{ Pool sharedpg.DB }
 
-func (r *PasswordHistoryRepository) queries() *sqlcgen.Queries { return sqlcgen.New(r.Pool) }
+func (r *PasswordHistoryRepository) queries(ctx context.Context) *sqlcgen.Queries {
+	if tx, ok := sharedpg.TxFromContext(ctx); ok {
+		return sqlcgen.New(tx)
+	}
+	return sqlcgen.New(r.Pool)
+}
 
 func (r *PasswordHistoryRepository) Recent(
 	ctx context.Context,
@@ -26,7 +33,7 @@ func (r *PasswordHistoryRepository) Recent(
 	if depth > math.MaxInt32 {
 		depth = math.MaxInt32
 	}
-	rows, err := r.queries().RecentPasswordHistory(ctx, sqlcgen.RecentPasswordHistoryParams{
+	rows, err := r.queries(ctx).RecentPasswordHistory(ctx, sqlcgen.RecentPasswordHistoryParams{
 		UserID: sub, Limit: int32(depth),
 	})
 	if err != nil {
@@ -40,11 +47,11 @@ func (r *PasswordHistoryRepository) Recent(
 }
 
 func (r *PasswordHistoryRepository) Add(ctx context.Context, sub, encoded string, now time.Time) error {
-	return r.queries().InsertPasswordHistory(ctx, sqlcgen.InsertPasswordHistoryParams{
+	return r.queries(ctx).InsertPasswordHistory(ctx, sqlcgen.InsertPasswordHistoryParams{
 		UserID: sub, Encoded: encoded, CreatedAt: now,
 	})
 }
 
 func (r *PasswordHistoryRepository) DeleteAllForSub(ctx context.Context, sub string) error {
-	return r.queries().DeletePasswordHistoryForSub(ctx, sub)
+	return r.queries(ctx).DeletePasswordHistoryForSub(ctx, sub)
 }

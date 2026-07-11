@@ -41,7 +41,7 @@ type AdminAgentDeps struct {
 	AgentRepo  idmports.AgentRepository
 	ClientRepo oauthports.OAuth2ClientRepository
 	UserRepo   idmports.UserRepository
-	Emit       func(spec.DomainEvent)
+	Emit       func(spec.DomainEvent) error
 }
 
 // AgentView は一覧・詳細で Agent と束縛済み client id をまとめて返す。
@@ -134,7 +134,9 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err := deps.AgentRepo.Save(ctx, agent); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.AgentRegistered{At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID})
+	if err := adminEmit(deps.Emit, &spec.AgentRegistered{At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID}); err != nil {
+		return nil, err
+	}
 	return agent, nil
 }
 
@@ -227,14 +229,18 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.AgentUpdated{
+	if err := adminEmit(deps.Emit, &spec.AgentUpdated{
 		At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID, ChangedFields: changed,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	if ownerChanged {
-		adminEmit(deps.Emit, &spec.AgentOwnerChanged{
+		if err := adminEmit(deps.Emit, &spec.AgentOwnerChanged{
 			At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID,
 			PreviousOwnerUserID: previousOwner, NewOwnerUserID: updated.OwnerUserID,
-		})
+		}); err != nil {
+			return nil, err
+		}
 	}
 	return &updated, nil
 }
@@ -269,10 +275,14 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
+	var emitErr error
 	if disabled {
-		adminEmit(deps.Emit, &spec.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+		emitErr = adminEmit(deps.Emit, &spec.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	} else {
-		adminEmit(deps.Emit, &spec.AgentEnabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+		emitErr = adminEmit(deps.Emit, &spec.AgentEnabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+	}
+	if emitErr != nil {
+		return nil, emitErr
 	}
 	return &updated, nil
 }
@@ -302,7 +312,9 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string,
 	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	adminEmit(deps.Emit, &spec.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+	if err := adminEmit(deps.Emit, &spec.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -323,8 +335,7 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 	if err := deps.AgentRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	adminEmit(deps.Emit, &spec.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
-	return nil
+	return adminEmit(deps.Emit, &spec.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
 }
 
 // BindCredential は Agent に同一テナントの OAuth2Client を束縛する。既束縛なら no-op
@@ -378,7 +389,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 		}
 	}
 	if added {
-		adminEmit(deps.Emit, &spec.AgentCredentialBound{
+		return adminEmit(deps.Emit, &spec.AgentCredentialBound{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}
@@ -416,7 +427,7 @@ func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, age
 		return err
 	}
 	if removed {
-		adminEmit(deps.Emit, &spec.AgentCredentialUnbound{
+		return adminEmit(deps.Emit, &spec.AgentCredentialUnbound{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}

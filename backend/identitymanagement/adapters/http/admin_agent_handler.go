@@ -208,7 +208,7 @@ func (d Deps) changeAgentStatus(c *echo.Context, action func(actorUserID, id str
 }
 
 func (d Deps) adminAgentDeps() idmusecases.AdminAgentDeps {
-	return idmusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.Emit}
+	return idmusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
 }
 
 func toAgentSummaryResponse(agent *idmdomain.Agent, clientIDs []string) agentSummaryResponse {

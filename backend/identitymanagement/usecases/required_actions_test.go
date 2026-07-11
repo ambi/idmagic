@@ -27,7 +27,7 @@ func newRequiredActionFixture(t *testing.T) (context.Context, idmusecases.AdminU
 	events := &[]spec.DomainEvent{}
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
-		Emit: func(event spec.DomainEvent) { *events = append(*events, event) },
+		Emit: func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
 	}
 	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
 	email := "carol@example.com"

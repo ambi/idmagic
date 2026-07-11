@@ -33,7 +33,7 @@ func newGroupDeps(t *testing.T) (idmusecases.AdminGroupDeps, *[]spec.DomainEvent
 	deps := idmusecases.AdminGroupDeps{
 		GroupRepo: idmmemory.NewGroupRepository(),
 		UserRepo:  userRepo,
-		Emit:      func(e spec.DomainEvent) { *events = append(*events, e) },
+		Emit:      func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
 	}
 	return deps, events
 }

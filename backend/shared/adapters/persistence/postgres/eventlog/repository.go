@@ -1,5 +1,5 @@
 // Package eventlog is the PostgreSQL adapter for event_logs / event_deliveries
-// (ADR-094, wi-184 T002). It satisfies backend/shared/eventlog.Recorder.
+// (ADR-094, wi-184 T002/T003). It satisfies backend/shared/eventlog.Recorder.
 package eventlog
 
 import (
@@ -10,24 +10,33 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/eventlog/sqlcgen"
 	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 )
 
-// Repository writes/reads event_logs / event_deliveries through the given
-// sqlcgen.DBTX. Pass a *pgxpool.Pool for standalone use, or a pgx.Tx already
-// shared with the business mutation's own repository calls to satisfy
-// ADR-094's EventLogAtomicWithBusinessState invariant (the transaction
-// lifecycle itself is owned by the caller; Repository never
-// commits/rolls back).
+// Repository writes/reads event_logs / event_deliveries. Pool is the
+// standalone connection (a pool) used when no transaction is active. When
+// the given ctx carries a pgx.Tx (backend/shared/adapters/persistence/postgres.WithTx,
+// set by Runner.Run), every method uses that transaction instead — this is
+// how business-mutation repositories and the event log recorder share one
+// PostgreSQL transaction (ADR-094 EventLogAtomicWithBusinessState, wi-184
+// T003) without Repository owning commit/rollback itself.
 type Repository struct {
-	Queries *sqlcgen.Queries
+	Pool sqlcgen.DBTX
 }
 
 var _ sharedeventlog.Recorder = (*Repository)(nil)
 
-func New(db sqlcgen.DBTX) *Repository {
-	return &Repository{Queries: sqlcgen.New(db)}
+func New(pool sqlcgen.DBTX) *Repository {
+	return &Repository{Pool: pool}
+}
+
+func (r *Repository) db(ctx context.Context) sqlcgen.DBTX {
+	if tx, ok := sharedpg.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.Pool
 }
 
 func (r *Repository) Append(ctx context.Context, rec sharedeventlog.Record) error {
@@ -39,7 +48,7 @@ func (r *Repository) Append(ctx context.Context, rec sharedeventlog.Record) erro
 	if err != nil {
 		return err
 	}
-	return r.Queries.InsertEventLog(ctx, sqlcgen.InsertEventLogParams{
+	return sqlcgen.New(r.db(ctx)).InsertEventLog(ctx, sqlcgen.InsertEventLogParams{
 		EventID:        rec.EventID,
 		TenantID:       rec.TenantID,
 		Type:           rec.Type,
@@ -53,14 +62,14 @@ func (r *Repository) Append(ctx context.Context, rec sharedeventlog.Record) erro
 }
 
 func (r *Repository) AppendDelivery(ctx context.Context, eventID string) error {
-	return r.Queries.InsertEventDelivery(ctx, eventID)
+	return sqlcgen.New(r.db(ctx)).InsertEventDelivery(ctx, eventID)
 }
 
 // FindByID returns nil, nil when eventID does not exist. Used by contract
-// tests; the read side for T003+ usecases is designed alongside the
-// transaction runner.
+// tests and by the transaction-bound emit wiring (wi-184 T003) to confirm a
+// write landed.
 func (r *Repository) FindByID(ctx context.Context, eventID string) (*sharedeventlog.Record, error) {
-	row, err := r.Queries.GetEventLogByID(ctx, eventID)
+	row, err := sqlcgen.New(r.db(ctx)).GetEventLogByID(ctx, eventID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -86,7 +95,7 @@ func (r *Repository) FindByID(ctx context.Context, eventID string) (*sharedevent
 
 // FindDeliveryByID returns nil, nil when eventID has no event_deliveries row.
 func (r *Repository) FindDeliveryByID(ctx context.Context, eventID string) (*sharedeventlog.Delivery, error) {
-	row, err := r.Queries.GetEventDeliveryByID(ctx, eventID)
+	row, err := sqlcgen.New(r.db(ctx)).GetEventDeliveryByID(ctx, eventID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

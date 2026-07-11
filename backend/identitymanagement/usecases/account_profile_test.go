@@ -24,7 +24,7 @@ func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileD
 	adminDeps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, AttrSchemaRepo: schemaRepo,
 		PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
-		Emit: func(spec.DomainEvent) {},
+		Emit: func(spec.DomainEvent) error { return nil },
 	}
 	ctx := context.Background()
 	user, err := idmusecases.CreateUser(ctx, adminDeps, idmusecases.CreateUserInput{
@@ -40,7 +40,9 @@ func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileD
 	if err := userRepo.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	deps := idmusecases.AccountProfileDeps{UserRepo: userRepo, AttrSchemaRepo: schemaRepo, Emit: func(spec.DomainEvent) {}}
+	deps := idmusecases.AccountProfileDeps{
+		UserRepo: userRepo, AttrSchemaRepo: schemaRepo, Emit: func(spec.DomainEvent) error { return nil },
+	}
 	return ctx, deps, user
 }
 
