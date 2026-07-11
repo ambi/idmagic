@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-10
@@ -35,7 +35,7 @@ created_at: 2026-07-10
 ## Tasks
 - [x] T001 [Baseline] `just test-ui-cover` で対象別の未カバー経路と全体カバレッジを記録する（2026-07-10: Lines 16.25%、API クライアントおよび管理・認証画面の多くが 0%）。
 - [x] T002 [Test] `ui/src/api/` の未テスト API クライアントに、成功・失敗・境界条件のテストを追加する（account、admin、authFlow、oidc、WebAuthn）。
-- [x] T003 [Verify] `just test-ui-cover` と `just verify-ui` を実行し、API 層 Lines 59.62% と全テスト成功を確認する。
+- [x] T003 [Verify] `just test-ui-cover` と `just verify-ui` を実行し、API 層 Lines 58.5%（webauthn.ts 100%）と全テスト成功を確認する。
 
 ## Verification
 - `just test-ui-cover` — 全テストが成功し、API 層 Lines カバレッジが 50% 以上であること。
@@ -44,3 +44,18 @@ created_at: 2026-07-10
 ## Risk Notes
 DOM、ルーター、非同期 API のモックが実装詳細に依存すると、リファクタリング時に壊れやすい。
 画面の公開された表示と利用者操作を中心にアサートし、共通のモックヘルパーを最小限に保つことで軽減する。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: `frontend/src/api/` の未テスト API クライアント（account、admin、authFlow、oidc）にリクエスト内容・成功応答・失敗応答のテストを追加済みだった状態から、後発の `webauthn.ts`（パスキーの JSON ⇔ ブラウザ API 変換）に対して `webauthn.test.ts` を新規追加し、Scope で挙げた全 API クライアントのテストを揃えた。
+- **Affected Guarantees State**: API 契約・画面の仕様や振る舞いに変更はない。テスト追加のみで SCL の変更は不要。
+- **Verification Results**:
+  - `just test-ui-cover` — passed（`src/api` Lines 58.5%、`webauthn.ts` は Lines/Branches/Funcs/Statements すべて 100%）
+  - `just verify-ui` — passed（format check、lint、typecheck、unit tests 212/212、production build）
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: ローカル開発環境
+  - 実行主体: Claude Code
+  - 対象ソース版: `main`（コミット前）
+  - 保存先: CI 外部成果物なし。上記コマンドの成功結果を本記録に要約。
