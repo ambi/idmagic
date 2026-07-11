@@ -44,9 +44,16 @@ created_at: 2026-07-10
 非同期モックを実装詳細へ結び付けず、表示される結果とユーザー操作を中心にアサートする。
 
 ## Completion
-- `StepUpDialog.test.tsx` を新規作成し、`useStepUpGuard` 経由で再認証成功・失敗・キャンセル (ボタン/背景クリック/Escape)・方式切替を検証 (6 tests)。
-- `AuthFlowPages.test.tsx` に TOTP コードの成功・失敗、パスキーの成功・キャンセル、リカバリコードの失敗、Consent の許可失敗、DevicePage (承認成功・拒否成功・失敗・authentication_required リダイレクト) を追加。
-- `AccountProfilePage` / `AccountEmailsPage` / `AccountSecurityPage` / `AccountDataPage` / `AccountApplicationsPage` の各テストに、実際の API 境界をモックしたコンテナレベルの成功・失敗 (該当箇所は step-up キャンセルも含む) を追加。
-- カバレッジ: `StepUpDialog.tsx` 2.0%→98.0%、`src/features/auth-flow` 71.3%→93.3%、`src/features/account` 26.1%→53.3%。
-- `just test-ui-cover`: 40 test files / 240 tests, 全て成功。
-- `just verify-ui`: format-check / lint / typecheck / build すべて成功。
+
+- **Completed At**: 2026-07-11
+- **Summary**: `StepUpDialog.test.tsx` を新設し、認証フローとアカウント管理の主要操作について、API 境界をモックしたコンポーネントテストの成功・失敗・キャンセル経路を追加した。
+- **Affected Guarantees State**: UI の仕様・API 契約・認証フローの振る舞いは変更していない。利用者が観測する主要操作の回帰検知をテストで強化した。
+- **Verification Results**:
+  - `just test-ui-cover` — passed（40 test files / 240 tests。`StepUpDialog.tsx` 98.0%、`src/features/auth-flow` 93.3%、`src/features/account` 53.3%）
+  - `just verify-ui` — passed（format check、lint、typecheck、production build）
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: ローカル開発環境
+  - 実行主体: Codex
+  - 対象ソース版: main（完了時点）
+  - 保存先: 外部成果物なし。上記検証結果を本記録に要約。
