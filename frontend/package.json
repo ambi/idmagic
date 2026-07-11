@@ -10,7 +10,7 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "test:e2e": "bun test tests/e2e",
+    "test:e2e": "bun test tests/e2e/ui-scenario-actions.spec.ts && bun test tests/e2e/ui-scenario-smoke.spec.ts && bun test tests/e2e/admin-session-recovery.spec.ts && bun test tests/e2e/authorize-golden-path.spec.ts",
     "test:unit": "vitest run",
     "test:unit:coverage": "vitest run --coverage"
   },

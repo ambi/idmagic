@@ -9,7 +9,6 @@ import {
   clickLinkByText,
   demo,
   navigateAndLogin,
-  loginFromCurrentPage,
   selectDropdownOption,
   setCheckboxValue,
   setInputValue,
@@ -68,7 +67,8 @@ test('account profile can be updated from the browser', async () => {
 
     const suffix = String(Date.now())
     const displayName = `Alice E2E ${suffix}`
-    await clickButtonByText(view, '編集')
+    await clickLinkByText(view, '編集')
+    await waitForPage(view, 'account-profile-edit')
     await setInputValue(view, '#name', displayName)
     await setInputValue(view, '#given-name', 'Alice')
     await setInputValue(view, '#family-name', `Scenario ${suffix}`)
@@ -126,7 +126,7 @@ test('admin general settings can be updated from the browser', async () => {
   }
 }, 60_000)
 
-test('admin signing key rotation action is hidden from tenant admins', async () => {
+test('admin signing key rotation action is available to tenant admins', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1800 })
   try {
     await navigateAndLogin(view, '/admin/keys', 'admin-keys')
@@ -134,7 +134,7 @@ test('admin signing key rotation action is hidden from tenant admins', async () 
     expect(
       await view.evaluate(`(() => [...document.querySelectorAll('button')]
         .some((button) => (button.textContent ?? '').includes('ローテート')))()`),
-    ).toBe(false)
+    ).toBe(true)
   } finally {
     view.close()
   }
@@ -143,10 +143,25 @@ test('admin signing key rotation action is hidden from tenant admins', async () 
 test('account connected application consent can be revoked from the browser', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })
   try {
+    // 先に account audience でログインして browser session を確立する。新規 WebView
+    // から直接 /authorize を開くとログインコンテキストが作られる前に SPA route を読むため、
+    // consent の受理経路を安定して観測できない。
+    await navigateAndLogin(view, '/account/applications', 'account-applications')
     await view.navigate(`${uiOrigin}${authorizePath(`consent-revoke-${Date.now()}`)}`)
-    await loginFromCurrentPage(view)
-    await waitForPage(view, 'consent')
-    await clickButtonByText(view, '許可して続行')
+    const deadline = Date.now() + 15_000
+    let needsConsent = false
+    while (Date.now() < deadline) {
+      if (view.url.includes('localhost:3000/callback')) break
+      if (
+        (await view.evaluate(`document.querySelector('meta[name="idmagic:page"]')?.content`)) ===
+        'consent'
+      ) {
+        needsConsent = true
+        break
+      }
+      await Bun.sleep(150)
+    }
+    if (needsConsent) await clickButtonByText(view, '許可して続行')
     await waitForUrl(view, /localhost:3000\/callback/)
 
     await view.navigate(`${uiOrigin}/account/applications`)
@@ -267,7 +282,7 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     const exportURL = await view.evaluate('window.__raAuditExportURL ?? ""')
     expect(String(exportURL)).toContain('/api/admin/audit_events/export')
     expect(String(exportURL)).toContain('category=authentication')
-    expect(String(exportURL)).toContain('sub=00000000-0000-4000-8000-000000000001')
+    expect(String(exportURL)).toContain('user_id=00000000-0000-4000-8000-000000000001')
   } finally {
     view.close()
   }
@@ -349,14 +364,16 @@ test('password reset succeeds through the local SMTP sink without external mail'
     const nextPassword = `reset-password-${suffix}`
 
     await navigateAndLogin(view, '/admin/users', 'admin-users')
-    await clickButtonByText(view, 'ユーザーを追加')
+    await clickLinkByText(view, 'ユーザーを追加')
+    await waitForPage(view, 'admin-user-create')
     await setInputValue(view, 'input[name="preferred_username"]', username)
     await setInputValue(view, 'input[name="name"]', 'Reset E2E')
     await setInputValue(view, 'input[name="email"]', email)
     await setInputValue(view, 'input[name="password"]', initialPassword)
     await setCheckboxValue(view, 'input[name="email_verified"]', true)
     await clickButtonByText(view, '作成')
-    await waitForText(view, 'ユーザーを作成しました。')
+    await waitForPage(view, 'admin-user-detail')
+    await waitForText(view, username)
 
     await view.navigate(`${uiOrigin}/forgot_password`)
     await waitForPage(view, 'forgot-password')

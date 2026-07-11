@@ -7,14 +7,15 @@ import { spawn, spawnSync, type Subprocess } from 'bun'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const uiDir = resolve(here, '../..')
-const goDir = resolve(here, '../../..')
+const goDir = resolve(here, '../../../backend')
 
 export const uiOrigin = 'http://localhost:5173'
 export const apiHealth = 'http://localhost:8081/health'
 export const callbackPort = 3000
 
 export const demo = {
-  clientId: 'demo-client',
+  // seedDemoClientID (ADR-084): external demo client は UUID 識別子を使う。
+  clientId: '00000000-0000-4000-8000-000000000021',
   username: 'alice',
   password: 'demo-password-1234',
   email: 'alice@example.com',
@@ -261,7 +262,8 @@ export async function waitForPage(
     }
     await Bun.sleep(150)
   }
-  throw new Error(`timeout waiting for page kind=${kind}, last url=${view.url}`)
+  const body = await view.evaluate(`document.body.textContent?.slice(0, 500) ?? ''`).catch(() => '')
+  throw new Error(`timeout waiting for page kind=${kind}, body=${body}, last url=${view.url}`)
 }
 
 export async function waitForUrl(

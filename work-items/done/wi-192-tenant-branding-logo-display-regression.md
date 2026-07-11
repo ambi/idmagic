@@ -1,5 +1,5 @@
 ---
-status: in_progress
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-12
@@ -38,3 +38,27 @@ depends_on: []
 
 ## Risk Notes
 公開アセット URL の修正は tenant 境界を越えた取得やキャッシュ混同を招き得る。tenant ID / realm ごとの asset lookup と `nosniff` を回帰テストで維持する。
+
+## Completion
+
+- **Completed At**: 2026-07-12
+- **Summary**:
+  realm ごとの tenant branding asset URL を Caddy / Vite が backend へ転送するようにし、
+  管理プレビュー、login、consent、account portal が同一 origin の検証済みロゴだけを表示するようにした。
+  併せて、E2E fixture の backend 起動先、UUID 化済み demo client、画面遷移・API filter 名を現行実装へ同期し、
+  ポートを共有する E2E spec をプロセス単位で直列化した。
+- **Affected Guarantees State**:
+  ロゴアップロード成功時の `logo_url` は、同じ realm 内の公開 asset endpoint から取得でき、
+  tenant 分離と `nosniff` を保ったまま hosted UI と管理プレビューで描画可能である。
+- **Verification Results**:
+  - `just yaml-check` — passed
+  - `just verify-ui` — passed
+  - `just test-go` — passed
+  - `just test-ui-e2e` — passed
+  - `just verify` — passed
+- **Evidence**:
+  - 実行日: 2026-07-12
+  - 実行環境: ローカル開発環境 (macOS)
+  - 実行主体: Codex (GPT-5)
+  - 対象ソース版: main (コミット前作業ツリー)
+  - 保存先: 外部成果物なし。上記検証結果を本記録に要約。
