@@ -235,3 +235,14 @@ context_map:
           - UserRef
           - GroupRef
         reason: SCIM のプロビジョニング要求は User および Group aggregate の作成・更新・削除へと変換・適用される。
+  Jobs:
+    description: "テナント境界を保つ汎用非同期ジョブ基盤の durable queue と worker runtime を所有する。\n各ジョブの業務ロジックは呼び出し元の bounded context の usecase に残り、Jobs は\nenqueue・claim・リース・リトライ・進捗可視化という技術的能力だけを提供する。管理者向け\n一覧/詳細/キャンセル API と運用 metrics は wi-157-job-admin-operations-surface が別途所有する。\n"
+    path: contexts/jobs.yaml
+    publishes:
+      - JobRef
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: Job は tenant_id を必須とし、worker はテナント境界内でのみ副作用を起こす。

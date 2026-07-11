@@ -134,14 +134,14 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
   4. admin ジョブ画面の詳細は [[wi-157-job-admin-operations-surface]] で決める。
 
 ## Tasks
-- [ ] T001 [Decision] キュー基盤 ADR (PostgreSQL SKIP LOCKED リース) を書く。
-- [ ] T002 [Decision] 実行モデル ADR (worker 分離 / at-least-once + 冪等 / リース +
+- [x] T001 [Decision] キュー基盤 ADR (PostgreSQL SKIP LOCKED リース) を書く。
+- [x] T002 [Decision] 実行モデル ADR (worker 分離 / at-least-once + 冪等 / リース +
       heartbeat / backoff + dead-letter / graceful drain) を書く。
-- [ ] T003 [Decision] ジョブデータ保持 ADR (params/result の PII / TTL) を書く。
-- [ ] T004 [SCL] `Jobs` context を追加し、models / internal interfaces / states /
+- [x] T003 [Decision] ジョブデータ保持 ADR (params/result の PII / TTL) を書く。
+- [x] T004 [SCL] `Jobs` context を追加し、models / internal interfaces / states /
       events / invariants と、API・relay・worker のプロセス責務を定義する。`just yaml-check`
       を通す。
-- [ ] T005 [Architecture] 新規 context / worker プロセス / ディレクトリ規約を
+- [x] T005 [Architecture] 新規 context / worker プロセス / ディレクトリ規約を
       ARCHITECTURE.md に同期する。
 - [ ] T006 [Go domain] `Job` 集約・`JobStatus`/`JobKind`・状態遷移・イベントを実装する。
 - [ ] T007 [Go ports] `JobRepository` (enqueue / claim-with-lease / heartbeat /
@@ -175,3 +175,47 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
 ([[wi-97-envelope-encryption-at-rest]]) を ADR で確定してから実装する。worker
 プロセス分離はデプロイ構成を増やすため、単一プロセス (in-process worker) でも動作する
 縮退経路を残す。
+
+## Progress
+
+本 WI は risk: high の基盤 WI のため、RA の内層から外層へ層ごとに区切って段階実装する。
+各フェーズ完了時にここへ記録し、全フェーズ完了時に `status: completed` + `Completion` を
+追記して `done/` へ移す。
+
+## 2026-07-12 — Phase A (Decision + SCL + Architecture) 完了
+
+T001〜T005 を実施。
+
+- **T001〜T003 ADR**: `decisions/ADR-098-durable-job-queue-skip-locked-lease.md`
+  （PostgreSQL `FOR UPDATE SKIP LOCKED` によるリース方式、既存の
+  `backend/shared/adapters/eventsink/kafka_relay.go` の claim パターンを踏襲する決定と、
+  Valkey Streams / 外部ブローカー / cron のみの却下理由）、
+  `decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md`
+  （`idmagic-worker` プロセス分離、at-least-once + 冪等、リース + heartbeat 失効再取得、
+  backoff + max_attempts 超過 dead-letter、[[ADR-078-kubernetes-health-probes-and-graceful-drain]]
+  整合の graceful drain、poll-only の既定値、retention sweep の移管方法）、
+  `decisions/ADR-100-job-data-retention-and-pii.md`
+  （params/result は本 WI では暗号化せず平文 JSONB、終端ジョブは既定 30 日 TTL purge）を作成。
+- **設計判断**: 既存の `backend/bootstrap/retention.go` の `startRetentionSweep` は
+  テナント横断の一括処理であり、`jobs` テーブルの tenant_id 必須方針（tenant-owned
+  aggregate）と相容れないため、`jobs` テーブルを経由する Job にはせず、
+  `idmagic-worker` プロセスへそのまま再配置する方針とした（ADR-099）。Jobs の queue を
+  実際に通す最初の consumer は疎通確認用の no-op/echo `JobKind` とする。
+- **T004 SCL**: `spec/contexts/jobs.yaml` を新規作成し `Jobs` context を追加
+  （`models`: `Job` (entity)・`JobStatus`/`JobKind` (enum)・`JobProgress`
+  (value_object)・`JobRef` (published language)・6 種の event、`states`:
+  `JobLifecycle`、`interfaces`: `EnqueueJob`/`ClaimJobs`/`HeartbeatJob`/`CompleteJob`/
+  `FailJob`/`CancelJob` (いずれも内部インターフェースで HTTP binding なし、
+  `Tenancy.ResolveTenant` と同型)、`invariants`: リース排他・ハンドラ冪等・テナント分離・
+  終端状態不可逆・dead-letter 確定の 5 件、`objectives`: `JobRecordRetention`
+  (delete_after 30d)、`scenarios`: 正常系・lease 失効再取得・dead-letter・テナント境界の
+  4 件）。`spec/scl.yaml` の `context_map` に `Jobs`（`publishes: [JobRef]`、
+  `depends_on: Tenancy`）を追加。
+- **T005 Architecture**: `ARCHITECTURE.md` の Context Map テーブルに `Jobs` 行、
+  Structural Decisions に ADR-098/099 への参照、Bootstrap And Adapters 節に
+  `backend/cmd/idmagic-worker/main.go` の記述を追加。
+- **検証**: `just yaml-check`（scl / work-items / ids / architecture）全て green。
+- **対象外 (今回は触れない)**: T006 以降 (Go domain/ports/usecase/adapters、schema、
+  `idmagic-worker` 実装、smoke test、`just verify`) は次フェーズ。
+
+残り T006〜T013 (Phase B〜F) は pending。

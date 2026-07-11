@@ -1,0 +1,388 @@
+# idmagic Jobs — SCL
+# wi-126: テナント境界を保つ汎用非同期ジョブ基盤の core runtime。
+# durable queue と worker runtime という技術的能力を所有し、各ジョブの業務ロジックは
+# 呼び出し元の bounded context の usecase に残す。管理者向け一覧/詳細/キャンセル API は
+# wi-157-job-admin-operations-surface に分離する。
+
+system: idmagic
+spec_version: "2.0"
+context: Jobs
+glossary:
+  JobLease:
+    definition: worker が Job を Running にする際に確保する排他権。lease_owner (worker 識別子) と lease_expires_at を持ち、heartbeat で更新される。heartbeat が途絶えて期限切れになると別 worker が再取得できる。
+    aliases:
+      - lease
+      - リース
+  DeadLetter:
+    definition: attempts が max_attempts を超えて Failed に確定した Job。再試行されず、error を保持したまま調査対象として残る。
+    aliases:
+      - dead-letter
+models:
+  Job:
+    kind: entity
+    identity: id
+    description: "enqueue された非同期処理の実行単位。worker がリースを確保して Running にし、\nハンドラが handler_context.tenant_id == job.tenant_id の境界内だけで副作用を起こす。\n"
+    fields:
+      id:
+        type: String
+        description: Job の内部生成 ID (UUIDv4)。
+      tenant_id:
+        type: String
+        description: Job が帰属するテナント境界。worker はこの境界内でのみ副作用を起こす。
+      kind:
+        type: JobKind
+        description: 実行するハンドラを決めるジョブ種別。
+      status:
+        type: JobStatus
+      params:
+        type: JSON
+        description: enqueue 時にハンドラへ渡す入力。呼び出し側は生 PII を極力含めない。
+      result:
+        type: JSON
+        optional: true
+        description: ハンドラが Succeeded 時に残す出力。
+      error:
+        type: String
+        optional: true
+        description: 直近の失敗理由。Failed (dead-letter) 到達時は最終エラーを保持する。
+      attempts:
+        type: Integer
+        description: これまでの実行試行回数。
+      max_attempts:
+        type: Integer
+        description: この回数を超えて失敗すると dead-letter (Failed) に確定する。
+      dedup_key:
+        type: String
+        optional: true
+        description: "(tenant_id, dedup_key) で一意。同じ副作用を重複 enqueue しないための冪等キー。"
+      progress:
+        type: JobProgress
+        optional: true
+        description: ハンドラが Running 中に任意で報告する進捗。
+      lease_owner:
+        type: String
+        optional: true
+        description: 現在 Running を保持する worker 識別子。terminal 状態や Queued では未設定。
+      lease_expires_at:
+        type: Timestamp
+        optional: true
+        description: リースの失効時刻。heartbeat で延長する。期限切れになると別 worker が再 claim できる。
+      run_at:
+        type: Timestamp
+        description: この時刻以降に claim 可能。enqueue 直後は now、リトライ時は backoff 分だけ先送りされる。
+      created_at:
+        type: Timestamp
+      updated_at:
+        type: Timestamp
+  JobStatus:
+    kind: enum
+    description: JobLifecycle の状態。
+    values:
+      - queued
+      - running
+      - succeeded
+      - failed
+      - canceled
+  JobKind:
+    kind: enum
+    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
+    values:
+      - noop_echo
+  JobProgress:
+    kind: value_object
+    description: ハンドラが Running 中に任意で報告する進捗スナップショット。
+    fields:
+      percent:
+        type: Integer
+        optional: true
+        description: 0-100 の概算進捗。
+      message:
+        type: String
+        optional: true
+        description: 人間可読な進捗メッセージ。
+      updated_at:
+        type: Timestamp
+  JobRef:
+    kind: value_object
+    description: "他 bounded context が「enqueue した/参照したい Job」を保持するための published\nlanguage。Job aggregate 全体ではなく、外部公開してよい最小の参照だけを持つ。\n"
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      kind:
+        type: JobKind
+      status:
+        type: JobStatus
+  JobEnqueued:
+    kind: event
+    description: Job が queue に投入された。
+    payload:
+      occurredAt:
+        type: Timestamp
+      jobId:
+        type: String
+      tenantId:
+        type: String
+      kind:
+        type: JobKind
+  JobStarted:
+    kind: event
+    description: worker が Job を claim し Running に遷移した。
+    payload:
+      occurredAt:
+        type: Timestamp
+      jobId:
+        type: String
+      tenantId:
+        type: String
+      workerId:
+        type: String
+      attempt:
+        type: Integer
+  JobSucceeded:
+    kind: event
+    description: ハンドラが正常終了した。
+    payload:
+      occurredAt:
+        type: Timestamp
+      jobId:
+        type: String
+      tenantId:
+        type: String
+  JobFailed:
+    kind: event
+    description: ハンドラが失敗した。terminal が true なら max_attempts 超過による dead-letter 確定。
+    payload:
+      occurredAt:
+        type: Timestamp
+      jobId:
+        type: String
+      tenantId:
+        type: String
+      attempt:
+        type: Integer
+      terminal:
+        type: Boolean
+      error:
+        type: String
+  JobRetried:
+    kind: event
+    description: 失敗後、backoff を経て再試行のため Queued に戻った。
+    payload:
+      occurredAt:
+        type: Timestamp
+      jobId:
+        type: String
+      tenantId:
+        type: String
+      attempt:
+        type: Integer
+      nextRunAt:
+        type: Timestamp
+  JobCanceled:
+    kind: event
+    description: 終端状態に達する前に取消された。
+    payload:
+      occurredAt:
+        type: Timestamp
+      jobId:
+        type: String
+      tenantId:
+        type: String
+states:
+  JobLifecycle:
+    description: "Job の状態機械。Queued → Running は worker の claim、Running → Queued は\nリトライ (backoff 待ち)、Succeeded / Failed / Canceled は終端で不可逆。\n"
+    target: Job
+    initial: Queued
+    terminal:
+      - Succeeded
+      - Failed
+      - Canceled
+    transitions:
+      - from: Queued
+        event: Claim
+        to: Running
+      - from: Running
+        event: Complete
+        to: Succeeded
+      - from: Running
+        event: Fail
+        to: Failed
+      - from: Running
+        event: Retry
+        to: Queued
+      - from: Queued
+        event: Cancel
+        to: Canceled
+      - from: Running
+        event: Cancel
+        to: Canceled
+interfaces:
+  EnqueueJob:
+    description: "呼び出し元 bounded context が非同期処理を queue に投入する内部インターフェース。\nHTTP には公開せず、同一プロセス内の Go 呼び出しとして各 context の usecase から使う。\ndedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job と一致する場合は\n新規作成せず既存 JobRef を返す。\n"
+    input:
+      tenant_id:
+        type: String
+      kind:
+        type: JobKind
+      params:
+        type: JSON
+      dedup_key:
+        type: String
+        optional: true
+      max_attempts:
+        type: Integer
+        optional: true
+    output:
+      job:
+        type: JobRef
+    errors:
+      - InvalidRequestError
+  ClaimJobs:
+    description: "worker が claim 可能な (status=queued かつ run_at <= now) Job をバッチで取得し、\n同一トランザクション内で Running に遷移させ、自分を lease_owner として\nlease_expires_at を設定する内部インターフェース。\n"
+    input:
+      worker_id:
+        type: String
+      batch_size:
+        type: Integer
+    output:
+      jobs:
+        type: "Job[]"
+  HeartbeatJob:
+    description: worker が実行中の Job のリースを延長する。
+    input:
+      job_id:
+        type: String
+      worker_id:
+        type: String
+    output:
+      lease_expires_at:
+        type: Timestamp
+    errors:
+      - JobLeaseLostError
+  CompleteJob:
+    description: worker がハンドラの正常終了を報告し、Job を Succeeded に確定する。
+    input:
+      job_id:
+        type: String
+      worker_id:
+        type: String
+      result:
+        type: JSON
+        optional: true
+    errors:
+      - JobLeaseLostError
+  FailJob:
+    description: "worker がハンドラの失敗を報告する。attempts < max_attempts なら backoff 後の\nrun_at を設定して Queued (Retry) へ、attempts >= max_attempts なら Failed\n(dead-letter) へ確定する。\n"
+    input:
+      job_id:
+        type: String
+      worker_id:
+        type: String
+      error:
+        type: String
+    output:
+      status:
+        type: JobStatus
+    errors:
+      - JobLeaseLostError
+  CancelJob:
+    description: 終端状態に達していない Job を取消す。既に終端状態の Job には作用しない (不可逆)。
+    input:
+      job_id:
+        type: String
+    errors:
+      - InvalidRequestError
+invariants:
+  JobLeaseExclusivity:
+    description: "同一 Job を同時に Running として保持できる worker は 1 つだけ。\n反例: 2 つの worker が同じ job_id を同時に claim し、ハンドラの副作用が二重に発生する。\n"
+    target: Job
+    assuming: status == running
+    always: "count(distinct lease_owner holding a non-expired lease for job.id) <= 1"
+  JobHandlerIdempotency:
+    description: "at-least-once 配信のため、同一 Job が複数回実行されてもハンドラの副作用は\n1 回分しか観測されない (dedup_key またはハンドラ自身の冪等設計による)。\n反例: リトライにより外部への通知や書き込みが重複する。\n"
+    target: Job
+    assuming: attempts > 1
+    always: "observable_side_effects(job) == observable_side_effects(job) as if applied once"
+  JobTenantIsolation:
+    description: "worker は job.tenant_id の境界内でのみ副作用を起こす。\n反例: あるテナントの Job ハンドラが他テナントの集約を変更する。\n"
+    target: Job
+    always: "handler_execution_context.tenant_id == job.tenant_id"
+  JobTerminalStateIsImmutable:
+    description: 終端状態 (Succeeded / Failed / Canceled) に達した Job の status はそれ以降変化しない。
+    target: Job
+    assuming: status in [succeeded, failed, canceled]
+    always: "status does not change"
+  JobDeadLetterOnMaxAttempts:
+    description: attempts が max_attempts に達した状態で FailJob が呼ばれたら、Queued へは戻さず必ず Failed (dead-letter) に確定する。
+    target: Job
+    assuming: attempts >= max_attempts
+    always: "event == JobFailed && terminal == true"
+objectives:
+  JobRecordRetention:
+    kind: retention
+    target: Job
+    policy: delete_after
+    retention: 30d
+    reference: ADR-100-job-data-retention-and-pii
+scenarios:
+  ジョブを enqueue すると worker が実行して成功する:
+    goal: 非同期処理を queue に投入し、worker が claim して実行し、結果が確認できる。
+    primary_actor: System
+    scope: Jobs
+    level: user_goal
+    preconditions:
+      - "テナント \"tenant-a\" が存在する"
+      - worker プロセスが起動している
+    success_guarantees:
+      - Job は Succeeded に到達し result を保持する。
+    main_success:
+      - "テナント \"tenant-a\" に kind=\"noop_echo\" の Job を enqueue する"
+      - Job の状態が Queued である
+      - worker が Job を claim し状態が Running になる
+      - ハンドラが正常終了し状態が Succeeded になる
+  worker がクラッシュしてもリース失効後に別 worker が再取得する:
+    goal: worker プロセスの異常終了に対して Job の取りこぼしが起きない。
+    primary_actor: System
+    scope: Jobs
+    level: subfunction
+    preconditions:
+      - "テナント \"tenant-a\" の Job が worker-1 に claim され Running である"
+    success_guarantees:
+      - lease 失効後、worker-1 以外の worker が同じ Job を claim できる。
+    main_success:
+      - worker-1 が heartbeat を送らないまま停止する
+      - lease_expires_at を過ぎる
+      - worker-2 が同じ Job を claim し Running を継続する
+  ハンドラが失敗し続けると max_attempts 超過で dead-letter になる:
+    goal: 恒久的に失敗するハンドラを無限リトライせず、調査可能な終端状態に落とす。
+    primary_actor: System
+    scope: Jobs
+    level: subfunction
+    preconditions:
+      - "max_attempts=3 の Job が Running で FailJob を呼ばれた回数が既に 2 回である"
+    success_guarantees:
+      - 3 回目の失敗で Job は Failed (dead-letter) に確定し、以後 Queued に戻らない。
+    main_success:
+      - ハンドラが 3 回目も失敗し FailJob を呼ぶ
+      - attempts が max_attempts に達している
+      - Job の状態が Failed になり error が保持される
+      - Job は二度と Running にならない
+  他テナントの Job は worker のテナント境界を跨がない:
+    goal: worker がテナント分離を破ってはならない。
+    primary_actor: System
+    scope: Jobs
+    level: subfunction
+    preconditions:
+      - "テナント \"tenant-a\" の Job \"job-a\" が Running で worker-1 に claim されている"
+    success_guarantees:
+      - worker-1 のハンドラ実行 context は tenant-a に固定され、他テナントの集約へは作用しない。
+    main_success:
+      - worker-1 が "job-a" のハンドラを実行する
+      - ハンドラ実行 context の tenant_id が "tenant-a" と一致する
+    extensions:
+      - at: 2
+        condition: ハンドラが誤って他テナントの集約 ID を渡された
+        steps:
+          - handler_execution_context.tenant_id と対象集約の tenant_id が不一致のため操作が拒否される
