@@ -124,10 +124,10 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
           val = val.slice(1, -1)
         }
         if (val.startsWith('[') && val.endsWith(']')) {
-          data[key] = val
-            .slice(1, -1)
-            .split(',')
-            .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+          const items = val.slice(1, -1).trim()
+          data[key] = items
+            ? items.split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+            : []
         } else if (val === 'true') {
           data[key] = true
         } else if (val === 'false') {
@@ -151,7 +151,7 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
   if (typeof data.title !== 'string' || data.title.length === 0) {
     const firstHeading = bodyText.match(/^#{1,2}\s+(.+)$/m)
     const headingText = firstHeading?.[1]?.trim()
-    if (headingText && !KNOWN_SECTION_HEADINGS.has(headingText.toLowerCase())) {
+    if (firstHeading && headingText && !KNOWN_SECTION_HEADINGS.has(headingText.toLowerCase())) {
       data.title = headingText
       bodyText = bodyText.replace(firstHeading[0], '')
     }

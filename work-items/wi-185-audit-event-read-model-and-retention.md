@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-146-extract-audit-bounded-context, wi-184-transactional-event-log-foundation]
 status: pending
 authors: ["tn"]
 risk: medium

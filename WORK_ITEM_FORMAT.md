@@ -15,6 +15,7 @@ status: pending  # pending | in_progress | completed | cancelled
 authors: [name]
 risk: low        # low | medium | high | critical
 created_at: 2026-01-01  # YYYY-MM-DD
+depends_on: []   # この WI の完了前に完了が必要な WI ID
 ---
 
 # 一文で表す意味変更
@@ -50,6 +51,11 @@ created_at: 2026-01-01  # YYYY-MM-DD
 - **Verification Results**:
   - `just verify` - passed
 ```
+
+`depends_on` はこの work-item の**完了前提**だけを列挙する。参照先は同じ
+work-items 名前空間（`done/` を含む）にある WI ID とし、自己参照・循環参照は許可しない。
+本文中の関連リンク、範囲外への委譲、後続候補は `depends_on` に入れず、従来どおり本文で記す。
+未着手・進行中の WI では `depends_on` を必ず明記し、依存がなければ `[]` とする。
 
 次のいずれかに該当するワークアイテムは、中規模以上として `## Plan` と `## Tasks` を書く。
 

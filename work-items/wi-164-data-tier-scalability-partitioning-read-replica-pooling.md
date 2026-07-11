@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-163-fleet-scale-capacity-and-horizontal-scaling-architecture]
 status: pending
 authors: ["tn"]
 risk: high

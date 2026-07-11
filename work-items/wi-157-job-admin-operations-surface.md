@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-126-async-job-runner]
 status: pending
 authors: ["tn"]
 risk: medium

@@ -176,10 +176,10 @@ function parseMarkdownWorkItem(id: string, text: string): WorkItem | null {
           val = val.slice(1, -1)
         }
         if (val.startsWith('[') && val.endsWith(']')) {
-          wi[key] = val
-            .slice(1, -1)
-            .split(',')
-            .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+          const items = val.slice(1, -1).trim()
+          wi[key] = items
+            ? items.split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+            : []
         } else if (val === 'true') {
           wi[key] = true
         } else if (val === 'false') {
@@ -199,7 +199,7 @@ function parseMarkdownWorkItem(id: string, text: string): WorkItem | null {
   if (typeof wi.title !== 'string' || wi.title.length === 0) {
     const firstHeading = bodyText.match(/^#{1,2}\s+(.+)$/m)
     const headingText = firstHeading?.[1]?.trim()
-    if (headingText && !KNOWN_WORK_ITEM_SECTION_HEADINGS.has(headingText.toLowerCase())) {
+    if (firstHeading && headingText && !KNOWN_WORK_ITEM_SECTION_HEADINGS.has(headingText.toLowerCase())) {
       wi.title = headingText
       bodyText = bodyText.replace(firstHeading[0], '')
     }

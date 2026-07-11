@@ -224,6 +224,14 @@ invariants:
     always: "for every input with a context_map: unresolved depends_on/uses and dependency cycles are reported as error-severity ContextMapFinding"
     severity: must
 
+  work_item_dependencies_are_resolved_and_acyclic:
+    description: |
+      workspace の未完了 work-item が宣言する depends_on は、同じ work-item 名前空間の
+      open / done を含む既知の WI を指す。自己参照と循環依存は error として報告する。
+    target: CheckYaml
+    always: "every workspace work-item dependency refers to an existing non-self work item, and the dependency graph is acyclic"
+    severity: must
+
   warnings_do_not_fail_the_run:
     description: warning 重大度の Finding は表示するが CheckRun の成否を変えない。
     target: CheckYaml
@@ -257,6 +265,13 @@ scenarios:
       - '"--schema=work-item" を指定して yaml-check で検査する'
       - schema 由来の Finding は出ない
       - exit code は 0
+
+  work-item の完了前提は workspace 全体で検査される:
+    steps:
+      - pending work-item に既存 WI ID を depends_on として列挙する
+      - workspace の work-item 検査を実行する
+      - 参照先が存在し、自己参照も循環もなければ成功する
+      - 未知の ID、自己参照、または循環があれば該当 WI の error Finding と exit code 1 を返す
 
   未知のスキーマ名を渡すと、ファイル検査は行わず exit code 2 を返す:
     steps:

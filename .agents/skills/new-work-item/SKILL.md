@@ -30,6 +30,7 @@ status: pending  # pending | in_progress | completed | cancelled
 authors: [name]
 risk: low        # low | medium | high | critical
 created_at: 2026-01-01  # YYYY-MM-DD
+depends_on: []   # 完了前提の WI ID。依存がなければ空配列
 ---
 
 # 一文で表す意味変更

@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-146-extract-audit-bounded-context]
 status: pending
 authors: ["tn"]
 risk: medium

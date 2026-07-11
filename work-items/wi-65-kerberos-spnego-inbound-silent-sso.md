@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-61-ws-federation-passive-requestor-idp]
 status: pending
 authors: ["tn"]
 risk: high

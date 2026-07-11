@@ -138,6 +138,7 @@ describe('loadChanges', () => {
         'risk: low',
         'created_at: 2026-06-17',
         'authors: [tn]',
+        'depends_on: [wi-0-foundation]',
         '---',
         '',
         '# Motivation',
@@ -167,6 +168,7 @@ describe('loadChanges', () => {
     expect(changes[0]?.work_item.title).toBe('Demo')
     expect(changes[0]?.work_item.plan).toBe('Use existing renderer paths.')
     expect(changes[0]?.work_item.tasks).toContain('T001')
+    expect(changes[0]?.work_item.depends_on).toEqual(['wi-0-foundation'])
     expect(changes[0]?.work_item.completion).toBeUndefined()
   })
 
@@ -204,5 +206,15 @@ describe('loadChanges', () => {
     // Sorted by id regardless of which directory the file lives in.
     expect(ids).toEqual(['wi-1-closed', 'wi-9-open'])
     expect(changes[0]?.work_item.completion?.summary).toBe('done')
+  })
+
+  it('preserves an empty frontmatter array', async () => {
+    const dir = await tempDir()
+    await writeFile(
+      join(dir, 'wi-1-empty-dependencies.md'),
+      '---\nstatus: pending\ndepends_on: []\n---\n# Empty dependencies\n',
+    )
+    const changes = await loadChanges(dir)
+    expect(changes[0]?.work_item.depends_on).toEqual([])
   })
 })

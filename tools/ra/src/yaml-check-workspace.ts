@@ -1,13 +1,17 @@
 #!/usr/bin/env bun
 import { existsSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
-import { dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, join } from 'node:path'
 import {
   collectSclElements,
   parseArchitectureDoc,
   verifyArchitecture,
 } from '../../yaml-check/src/arch-check.ts'
 import { loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
+import {
+  type WorkItemDependencyRecord,
+  verifyWorkItemDependencies,
+} from '../../yaml-check/src/work-item-dependencies.ts'
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
@@ -50,7 +54,9 @@ async function hasWorkItems(dir: string): Promise<boolean> {
 }
 
 const workItemPatterns: string[] = []
+const workItemRoots: string[] = []
 if (config.repositoryWorkItems && (await hasWorkItems(rootPath(config.repositoryWorkItems)))) {
+  workItemRoots.push(rootPath(config.repositoryWorkItems))
   workItemPatterns.push(
     rootPath(`${config.repositoryWorkItems}/*.md`),
     rootPath(`${config.repositoryWorkItems}/done/*.md`),
@@ -59,10 +65,55 @@ if (config.repositoryWorkItems && (await hasWorkItems(rootPath(config.repository
 for (const app of config.apps) {
   if (!app.workItems) continue
   if (!(await hasWorkItems(rootPath(app.workItems)))) continue
+  workItemRoots.push(rootPath(app.workItems))
   workItemPatterns.push(rootPath(`${app.workItems}/*.md`), rootPath(`${app.workItems}/done/*.md`))
 }
 if (runWorkItems && workItemPatterns.length > 0) {
   await runTool(['yaml-check/src/main.ts', '--schema=work-item', ...workItemPatterns])
+  const records: WorkItemDependencyRecord[] = []
+  for (const root of workItemRoots) {
+    for (const dir of [root, join(root, 'done')]) {
+      for (const path of await listWorkItemFiles(dir)) records.push(await dependencyRecord(path))
+    }
+  }
+  const findings = verifyWorkItemDependencies(records)
+  if (findings.length > 0) {
+    for (const finding of findings) {
+      console.error(`${finding.path}:${finding.line}:${finding.column}: ${finding.message}`)
+    }
+    process.exit(1)
+  }
+  console.log(`ok  ${records.length} work-item dependency record(s)`)
+}
+
+async function listWorkItemFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    return entries
+      .filter((entry) => entry.isFile() && extname(entry.name) === '.md')
+      .map((entry) => join(dir, entry.name))
+      .sort()
+  } catch {
+    return []
+  }
+}
+
+async function dependencyRecord(path: string): Promise<WorkItemDependencyRecord> {
+  const text = await readFile(path, 'utf8')
+  const frontmatter = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n/)
+  const data = (frontmatter?.[1] ? Bun.YAML.parse(frontmatter[1]) : {}) as {
+    depends_on?: unknown
+  }
+  const depends_on = Array.isArray(data?.depends_on)
+    ? data.depends_on.filter((id: unknown): id is string => typeof id === 'string')
+    : []
+  const depends_on_line = text.split('\n').findIndex((line) => /^depends_on\s*:/.test(line)) + 1
+  return {
+    id: basename(path, '.md'),
+    path,
+    depends_on,
+    ...(depends_on_line > 0 ? { depends_on_line } : {}),
+  }
 }
 
 const sclPatterns: string[] = []

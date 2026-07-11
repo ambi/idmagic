@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-56-mcp-authorization-server]
 status: pending
 authors: ["tn"]
 risk: high

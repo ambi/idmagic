@@ -122,6 +122,7 @@ const WORK_ITEM_KEYS = [
   'created_at',
   'authors',
   'risk',
+  'depends_on',
   'motivation',
   'scope',
   'out_of_scope',
@@ -201,6 +202,14 @@ const renderWorkItem = (wi: WorkItem): string => {
   if (wi.risk_notes) {
     blocks.push(
       `<details class="change-block"><summary>Risk notes</summary>${renderProse(wi.risk_notes)}</details>`,
+    )
+  }
+  if (wi.depends_on !== undefined) {
+    const dependencies = wi.depends_on
+      .map((id) => `<a class="chip" href="#${esc(id)}">${esc(id)}</a>`)
+      .join('')
+    blocks.push(
+      `<details class="change-block"><summary>Depends on</summary>${dependencies || '<p class="muted">(none)</p>'}</details>`,
     )
   }
   blocks.push(...renderExtraBlocks(wi, WORK_ITEM_KEYS))

@@ -244,6 +244,7 @@ describe('renderChangesTab', () => {
         title: 'Demo',
         status: 'in_progress',
         risk: 'medium',
+        depends_on: ['wi-2-done'],
         motivation: 'because',
         scope: { ui: ['screen A'] },
         out_of_scope: ['unrelated'],
@@ -313,6 +314,11 @@ describe('renderChangesTab', () => {
     expect(html).toContain('Use existing renderer paths')
     expect(html).toContain('Tasks (1/2)')
     expect(html).toContain('1/2 tasks')
+  })
+
+  it('renders dependencies as links to their work items', () => {
+    expect(html).toContain('Depends on')
+    expect(html).toContain('href="#wi-2-done"')
   })
 
   it('renders completion evidence as a first-class block', () => {

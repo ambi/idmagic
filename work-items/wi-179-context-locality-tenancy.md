@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-172-context-locality-pilot-application, wi-173-context-locality-oauth2, wi-174-context-locality-wsfederation, wi-175-context-locality-saml, wi-176-context-locality-scim, wi-177-context-locality-authentication, wi-178-context-locality-identity-management]
 status: pending
 authors: [tn]
 risk: critical

@@ -32,7 +32,15 @@ install-ui:
     cd frontend && bun install --frozen-lockfile
 
 # Run the standard app verification suite.
-verify: yaml-check verify-go verify-ui
+verify: yaml-check test-tools typecheck-tools verify-go verify-ui
+
+# Run embedded RA/SCL tooling tests.
+test-tools:
+    cd tools && bun test
+
+# Type-check embedded RA/SCL tooling.
+typecheck-tools:
+    cd tools && bun run typecheck
 
 # Verify Go backend with lint and race-enabled tests.
 verify-go: lint-go test-go-race

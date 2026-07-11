@@ -20,6 +20,13 @@
   "allOf": [
     {
       "if": {
+        "properties": { "status": { "enum": ["pending", "in_progress"] } },
+        "required": ["status"]
+      },
+      "then": { "required": ["depends_on"] }
+    },
+    {
+      "if": {
         "properties": { "status": { "enum": ["completed", "cancelled"] } },
         "required": ["status"]
       },
@@ -49,6 +56,15 @@
     "status": {
       "type": "string",
       "enum": ["pending", "in_progress", "completed", "cancelled"]
+    },
+    "depends_on": {
+      "description": "この work-item の完了前に完了が必要な work-item ID。一時的な関連や後続候補は含めない。",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^wi-[0-9]+(?:-[a-z0-9]+)*$"
+      }
     },
     "motivation": {
       "description": "根拠。なぜこの変更が必要か。",

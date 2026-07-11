@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-24-hibp-breached-password-checker]
 status: pending
 authors: ["tn"]
 risk: medium

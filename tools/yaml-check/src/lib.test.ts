@@ -132,6 +132,7 @@ describe('validateAgainstSchema — work-item', () => {
     created_at: '2026-06-17',
     authors: ['tn'],
     status: 'pending',
+    depends_on: [],
     motivation: 'because',
     scope: {},
     out_of_scope: [],
@@ -176,6 +177,25 @@ describe('validateAgainstSchema — work-item', () => {
   it('rejects an out-of-enum status', () => {
     const f = validateAgainstSchema('work-item', { ...validWorkItem, status: 'planned' }, '')
     expect(f.some((x) => x.message.includes('status'))).toBe(true)
+  })
+
+  it('requires depends_on for active work items and accepts valid IDs', () => {
+    const { depends_on: _omitted, ...withoutDependencies } = validWorkItem
+    expect(validateAgainstSchema('work-item', withoutDependencies, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema('work-item', { ...validWorkItem, depends_on: ['wi-1-foundation'] }, ''),
+    ).toEqual([])
+  })
+
+  it('rejects malformed or duplicate dependency IDs', () => {
+    for (const depends_on of [['WI_1'], ['wi-1-foundation', 'wi-1-foundation']]) {
+      expect(validateAgainstSchema('work-item', { ...validWorkItem, depends_on }, '')).not.toEqual([])
+    }
+  })
+
+  it('keeps completed records without depends_on compatible', () => {
+    const { depends_on: _omitted, ...legacy } = validWorkItem
+    expect(validateAgainstSchema('work-item', { ...legacy, status: 'completed', completion: validCompletion }, '')).toEqual([])
   })
 
   it('rejects an out-of-enum risk', () => {

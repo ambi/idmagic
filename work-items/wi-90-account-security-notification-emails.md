@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-6-real-email-sender-adapter, wi-44-authentication-event-store-and-search]
 status: pending
 authors: ["tn"]
 risk: medium

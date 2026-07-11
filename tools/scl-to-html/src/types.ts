@@ -240,6 +240,7 @@ export interface WorkItem {
   created_at?: string
   authors?: string[]
   risk?: 'low' | 'medium' | 'high' | 'critical'
+  depends_on?: string[]
   motivation?: string
   scope?: unknown
   out_of_scope?: unknown

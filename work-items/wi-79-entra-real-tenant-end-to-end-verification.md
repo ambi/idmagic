@@ -1,4 +1,5 @@
 ---
+depends_on: [wi-61-ws-federation-passive-requestor-idp, wi-62-ws-trust-active-sts, wi-63-federation-metadata-and-claims-mapping, wi-64-entra-domain-federation-m365-sso, wi-65-kerberos-spnego-inbound-silent-sso]
 status: pending
 authors: ["tn"]
 risk: high
