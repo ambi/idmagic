@@ -17,6 +17,46 @@ glossary:
     definition: attempts が max_attempts を超えて Failed に確定した Job。再試行されず、error を保持したまま調査対象として残る。
     aliases:
       - dead-letter
+  Queued:
+    definition: Job が enqueue され、まだ worker に claim されていない初期状態。run_at を過ぎれば claim 可能。
+    aliases:
+      - queued
+  Running:
+    definition: worker がリースを確保し、ハンドラを実行中の状態。
+    aliases:
+      - running
+  Succeeded:
+    definition: ハンドラが正常終了した終端状態。
+    aliases:
+      - succeeded
+  Failed:
+    definition: attempts が max_attempts を超えて dead-letter に確定した終端状態。
+    aliases:
+      - failed
+  Canceled:
+    definition: 終端状態に達する前に取消された終端状態。
+    aliases:
+      - canceled
+  Claim:
+    definition: worker が claim 可能な Job を取得し、自らを lease_owner として Running へ遷移させる。
+    aliases:
+      - claim
+  Complete:
+    definition: worker がハンドラの正常終了を報告し、Job を Succeeded に確定する。
+    aliases:
+      - complete
+  Fail:
+    definition: worker がハンドラの失敗を報告する。attempts が max_attempts 未満なら Retry、以上なら dead-letter (Failed) に確定する。
+    aliases:
+      - fail
+  Retry:
+    definition: 失敗後、backoff を経て再試行のため Queued に戻す遷移。
+    aliases:
+      - retry
+  Cancel:
+    definition: 終端状態に達していない Job を取消す。
+    aliases:
+      - cancel
 models:
   Job:
     kind: entity
