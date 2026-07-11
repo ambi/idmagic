@@ -293,13 +293,13 @@ models:
         optional: true
         constraints:
           - pattern: "^#[0-9a-fA-F]{6}$"
-        description: "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
+        description: "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。"
       accent_color:
         type: String
         optional: true
         constraints:
           - pattern: "^#[0-9a-fA-F]{6}$"
-        description: "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
+        description: "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。"
       footer_link_1:
         type: TenantFooterLink
         optional: true
@@ -353,7 +353,7 @@ models:
         description: branding が一度でも設定されていれば version / ETag として使う。未設定なら省略する。
   TenantBrandingUpdateRequest:
     kind: value_object
-    description: 管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。
+    description: 管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。primary_color / accent_color は空文字列でも未設定に戻す。
     fields:
       product_name:
         type: String
@@ -783,7 +783,7 @@ invariants:
   TenantBrandingSafeTokens:
     description: "TenantBranding の色 / footer リンク / テキストは限定トークンのみを許容する。色は `#rrggbb`\n形式、各リンクはラベルと https URL の完全な組、テキストは長さ上限内のプレーンテキストのみを保存できる。\n色のコントラスト比は保存可否に用いず、配色の可読性はテナントが判断する。\n反例: 任意 CSS 宣言や HTML ラベル、`javascript:` リンク、非 https リンク、片側だけのリンクが branding として保存される。\n"
     target: TenantBranding
-    always: branding_persisted implies (colors_are_hex_tokens and footer_links_are_complete_plaintext_https_pairs and text_within_length_limits)
+    always: branding_persisted implies (colors_are_hex_tokens_or_unset and footer_links_are_complete_plaintext_https_pairs and text_within_length_limits)
   TenantBrandingSafeAssetServing:
     description: TenantBranding のロゴ / favicon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
     target: TenantBranding
@@ -871,8 +871,10 @@ scenarios:
       - アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る
       - 管理画面のロゴプレビューにアップロードした PNG が表示される
       - "管理者 \"operator\" が primary_color / accent_color / footer_link_1={label: \"ヘルプ\", url: \"https://help.example.test\"} / footer_text を設定する"
+      - 管理画面は各設定済み色に現在値と「既定に戻す」操作を表示する
+      - 管理者がプライマリカラーを既定に戻して保存すると、UpdateTenantBranding には primary_color の空文字列が送られる
       - 未認証の利用者が login 画面を開く
-      - login / consent / account portal に設定したロゴが表示され、login 画面には配色・指定ラベルの footer リンク・フッターテキストも表示される
+      - login / consent / account portal に設定したロゴが表示され、login 画面にはプライマリカラーのシステム既定・設定済みアクセントカラー・指定ラベルの footer リンク・フッターテキストも表示される
     extensions:
       - condition: realm 配下の logo_url が gateway で backend に転送されない
         steps:
@@ -949,7 +951,7 @@ user_experience:
         - service_error
     AdminSettings:
       route: /admin/settings
-      purpose: 管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。footer リンクは固定順の二件までをラベルと HTTPS URL の組で編集・削除でき、ラベルはプレーンテキストとして表示する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。
+      purpose: 管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。footer リンクは固定順の二件までをラベルと HTTPS URL の組で編集・削除でき、ラベルはプレーンテキストとして表示する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。各色は未設定（IdMagic 既定）であることを表示し、設定済みなら個別に既定へ戻せる。
       interfaces:
         - GetAdminSettings
         - UpdateAdminSettings

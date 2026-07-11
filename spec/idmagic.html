@@ -857,13 +857,13 @@ TenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tena
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="chip chip-constraint">pattern: ^#[0-9a-fA-F]{6}$</span></td>
-    <td>ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。</td>
+    <td>ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。</td>
   </tr><tr>
     <td><code class="name">accent_color</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="chip chip-constraint">pattern: ^#[0-9a-fA-F]{6}$</span></td>
-    <td>ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。</td>
+    <td>ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。</td>
   </tr><tr>
     <td><code class="name">footer_link_1</code></td>
     <td><code class="type">TenantFooterLink</code></td>
@@ -1217,7 +1217,7 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </article>
 <article class="card" id="context-tenancy-model-tenantbrandingupdaterequest">
     <header><h3>TenantBrandingUpdateRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。</p>
+    <p class="desc">管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。primary_color / accent_color は空文字列でも未設定に戻す。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -2207,7 +2207,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
 色のコントラスト比は保存可否に用いず、配色の可読性はテナントが判断する。
 反例: 任意 CSS 宣言や HTML ラベル、`javascript:` リンク、非 https リンク、片側だけのリンクが branding として保存される。</p>
     <dl class="kv"><dt>target</dt><dd><code>TenantBranding</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">branding_persisted implies (colors_are_hex_tokens and footer_links_are_complete_plaintext_https_pairs and text_within_length_limits)</code></div>
+    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">branding_persisted implies (colors_are_hex_tokens_or_unset and footer_links_are_complete_plaintext_https_pairs and text_within_length_limits)</code></div>
   </article>
 <article class="card" id="context-tenancy-inv-tenantbrandingsafeassetserving">
     <header><h3>TenantBrandingSafeAssetServing</h3></header>
@@ -2291,7 +2291,7 @@ branding 解決の失敗によって停止しない。
 
     <div class="sub"><div class="label">Preconditions</div><ul class="vlist"><li>roles=[<code class="step-arg">admin</code>] のユーザー <code class="step-arg">operator</code> が管理画面の branding 設定を開いている</li></ul></div>
 
-    <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者 <code class="step-arg">operator</code> が PNG ロゴをアップロードする</li><li class="scn-step">アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る</li><li class="scn-step">管理画面のロゴプレビューにアップロードした PNG が表示される</li><li class="scn-step">管理者 <code class="step-arg">operator</code> が primary_color / accent_color / footer_link_1={label: <code class="step-arg">ヘルプ</code>, url: <code class="step-arg">https://help.example.test</code>} / footer_text を設定する</li><li class="scn-step">未認証の利用者が login 画面を開く</li><li class="scn-step">login / consent / account portal に設定したロゴが表示され、login 画面には配色・指定ラベルの footer リンク・フッターテキストも表示される</li></ol></div>
+    <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者 <code class="step-arg">operator</code> が PNG ロゴをアップロードする</li><li class="scn-step">アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る</li><li class="scn-step">管理画面のロゴプレビューにアップロードした PNG が表示される</li><li class="scn-step">管理者 <code class="step-arg">operator</code> が primary_color / accent_color / footer_link_1={label: <code class="step-arg">ヘルプ</code>, url: <code class="step-arg">https://help.example.test</code>} / footer_text を設定する</li><li class="scn-step">管理画面は各設定済み色に現在値と「既定に戻す」操作を表示する</li><li class="scn-step">管理者がプライマリカラーを既定に戻して保存すると、UpdateTenantBranding には primary_color の空文字列が送られる</li><li class="scn-step">未認証の利用者が login 画面を開く</li><li class="scn-step">login / consent / account portal に設定したロゴが表示され、login 画面にはプライマリカラーのシステム既定・設定済みアクセントカラー・指定ラベルの footer リンク・フッターテキストも表示される</li></ol></div>
 
     <div class="sub"><div class="label">Extensions</div><div class="requirements"><article class="requirement">
         <header><code class="name">realm 配下の logo_url が gateway で backend に転送されない</code></header>
@@ -2429,7 +2429,7 @@ GetTenantBrandingAsset) は presentational のみのため public とし、permi
         <div class="chip-row"><span class="chip">ready</span> <span class="chip">loading</span> <span class="chip">submitting</span> <span class="chip">access_denied</span> <span class="chip">service_error</span></div>
       </article><article class="card" id="context-tenancy-screen-adminsettings">
         <header><h3>AdminSettings</h3><span class="chip chip-hint">/admin/settings</span></header>
-        <p class="desc">管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。footer リンクは固定順の二件までをラベルと HTTPS URL の組で編集・削除でき、ラベルはプレーンテキストとして表示する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。</p>
+        <p class="desc">管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。footer リンクは固定順の二件までをラベルと HTTPS URL の組で編集・削除でき、ラベルはプレーンテキストとして表示する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。各色は未設定（IdMagic 既定）であることを表示し、設定済みなら個別に既定へ戻せる。</p>
         <div class="reference-row"><span class="reference-label">interfaces</span><a class="chip chip-iface-ref" href="#context-tenancy-iface-getadminsettings">GetAdminSettings</a> <a class="chip chip-iface-ref" href="#context-tenancy-iface-updateadminsettings">UpdateAdminSettings</a> <a class="chip chip-iface-ref" href="#context-tenancy-iface-gettenantbranding">GetTenantBranding</a> <a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenantbranding">UpdateTenantBranding</a></div>
         <div class="chip-row"><span class="chip">ready</span> <span class="chip">loading</span> <span class="chip">submitting</span> <span class="chip">access_denied</span> <span class="chip">service_error</span></div>
       </article></div></div>

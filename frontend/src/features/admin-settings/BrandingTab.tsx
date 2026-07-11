@@ -178,6 +178,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
               label="プライマリカラー"
               value={primaryColor}
               onChange={setPrimaryColor}
+              onReset={() => setPrimaryColor('')}
               error={brandingColorError(primaryColor)}
             />
             <ColorField
@@ -185,6 +186,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
               label="アクセントカラー"
               value={accentColor}
               onChange={setAccentColor}
+              onReset={() => setAccentColor('')}
               error={brandingColorError(accentColor)}
             />
           </div>
@@ -269,14 +271,17 @@ function ColorField({
   label,
   value,
   onChange,
+  onReset,
   error,
 }: {
   id: string
   label: string
   value: string
   onChange: (value: string) => void
+  onReset: () => void
   error: string | null
 }) {
+  const isUnset = !value.trim()
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -295,7 +300,13 @@ function ColorField({
           placeholder="#0f172a"
           className="font-mono"
         />
+        <Button type="button" variant="outline" size="default" disabled={isUnset} onClick={onReset}>
+          既定に戻す
+        </Button>
       </div>
+      <p className="text-xs text-slate-500" aria-live="polite">
+        {isUnset ? '未設定（IdMagic の既定色を使用）' : `現在値: ${value}`}
+      </p>
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
     </div>
   )

@@ -8197,12 +8197,12 @@
         "primary_color": {
           "type": "string",
           "pattern": "^#[0-9a-fA-F]{6}$",
-          "description": "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
+          "description": "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。"
         },
         "accent_color": {
           "type": "string",
           "pattern": "^#[0-9a-fA-F]{6}$",
-          "description": "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
+          "description": "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。"
         },
         "footer_link_1": {
           "$ref": "#/$defs/TenantFooterLink",
@@ -8302,7 +8302,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。"
+      "description": "管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。primary_color / accent_color は空文字列でも未設定に戻す。"
     },
     "TenantBrandingUpdated": {
       "type": "object",
