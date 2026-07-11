@@ -12,7 +12,6 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -252,11 +251,9 @@ func (d Deps) handleUpdateApplication(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var app *domain.Application
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		var txErr error
-		app, txErr = appusecases.UpdateApplication(command.Context, withApplicationEmit(d.applicationDeps(), command), appusecases.UpdateApplicationInput{ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), Name: req.Name, Status: req.Status, LaunchURL: req.LaunchURL, Now: time.Now().UTC()})
-		return txErr
+	app, err := appusecases.UpdateApplication(c.Request().Context(), d.applicationDeps(), appusecases.UpdateApplicationInput{
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
+		Name: req.Name, Status: req.Status, LaunchURL: req.LaunchURL, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -292,11 +289,9 @@ func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
 		return err
 	}
 	iconURL := support.TenantRoute(c, "/application-icons/"+c.Param("application_id")+"/"+objectKey)
-	var app *domain.Application
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		var txErr error
-		app, txErr = appusecases.UploadApplicationIcon(command.Context, withApplicationEmit(d.applicationDeps(), command), appusecases.UploadApplicationIconInput{ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), ObjectKey: objectKey, Data: data, IconURL: iconURL, Now: time.Now().UTC()})
-		return txErr
+	app, err := appusecases.UploadApplicationIcon(c.Request().Context(), d.applicationDeps(), appusecases.UploadApplicationIconInput{
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), ObjectKey: objectKey,
+		Data: data, IconURL: iconURL, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -312,12 +307,9 @@ func (d Deps) handleDeleteApplicationIcon(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var app *domain.Application
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		var txErr error
-		app, txErr = appusecases.DeleteApplicationIcon(command.Context, withApplicationEmit(d.applicationDeps(), command), actor.ID, c.Param("application_id"), time.Now().UTC())
-		return txErr
-	})
+	app, err := appusecases.DeleteApplicationIcon(
+		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"), time.Now().UTC(),
+	)
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -351,10 +343,9 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		return appusecases.DeleteApplication(command.Context, withApplicationEmit(d.applicationDeps(), command), actor.ID, c.Param("application_id"), time.Now().UTC())
-	})
-	if err != nil {
+	if err := appusecases.DeleteApplication(
+		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"), time.Now().UTC(),
+	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -373,11 +364,9 @@ func (d Deps) handleAttachBinding(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var app *domain.Application
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		var txErr error
-		app, txErr = appusecases.AttachBinding(command.Context, withApplicationEmit(d.applicationDeps(), command), appusecases.AttachBindingInput{ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), Binding: domain.ProtocolBinding{Type: req.Type, ClientID: req.ClientID, Wtrealm: req.Wtrealm}, Now: time.Now().UTC()})
-		return txErr
+	app, err := appusecases.AttachBinding(c.Request().Context(), d.applicationDeps(), appusecases.AttachBindingInput{
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
+		Binding: domain.ProtocolBinding{Type: req.Type, ClientID: req.ClientID, Wtrealm: req.Wtrealm}, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -393,10 +382,10 @@ func (d Deps) handleDetachBinding(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		return appusecases.DetachBinding(command.Context, withApplicationEmit(d.applicationDeps(), command), actor.ID, c.Param("application_id"), domain.ProtocolBindingType(c.Param("binding_type")), time.Now().UTC())
-	})
-	if err != nil {
+	if err := appusecases.DetachBinding(
+		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"),
+		domain.ProtocolBindingType(c.Param("binding_type")), time.Now().UTC(),
+	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -430,13 +419,9 @@ func (d Deps) handleAssignApplication(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var assignment *domain.ApplicationAssignment
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.assignmentDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		assignment, txErr = appusecases.AssignApplication(command.Context, deps, appusecases.AssignApplicationInput{ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), SubjectType: req.SubjectType, SubjectID: req.SubjectID, Visibility: req.Visibility, Now: time.Now().UTC()})
-		return txErr
+	assignment, err := appusecases.AssignApplication(c.Request().Context(), d.assignmentDeps(), appusecases.AssignApplicationInput{
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
+		SubjectType: req.SubjectType, SubjectID: req.SubjectID, Visibility: req.Visibility, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -452,12 +437,10 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.assignmentDeps()
-		deps.TransactionalEmit = command.Emit
-		return appusecases.UnassignApplication(command.Context, deps, actor.ID, c.Param("application_id"), domain.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC())
-	})
-	if err != nil {
+	if err := appusecases.UnassignApplication(
+		c.Request().Context(), d.assignmentDeps(), actor.ID, c.Param("application_id"),
+		domain.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC(),
+	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -511,13 +494,8 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var policy *domain.AppSignInPolicy
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.signInPolicyDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		policy, txErr = appusecases.UpdateSignInPolicy(command.Context, deps, appusecases.UpdateSignInPolicyInput{ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), Rules: req.Rules, Now: time.Now().UTC()})
-		return txErr
+	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -552,13 +530,8 @@ func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var policy *domain.TenantDefaultSignInPolicy
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.signInPolicyDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		policy, txErr = appusecases.UpdateDefaultSignInPolicy(command.Context, deps, appusecases.UpdateDefaultSignInPolicyInput{ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC()})
-		return txErr
+	policy, err := appusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateDefaultSignInPolicyInput{
+		ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)

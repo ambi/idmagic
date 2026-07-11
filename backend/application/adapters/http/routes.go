@@ -7,12 +7,10 @@ package http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
@@ -35,7 +33,6 @@ type Deps struct {
 	ClientRepo                  oauthports.OAuth2ClientRepository
 	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo                  samlports.SamlServiceProviderRepository
-	CommandRunner               sharedeventlog.CommandRunner
 }
 
 // RegisterRoutes は Application カタログの admin / account エンドポイントを登録する。
@@ -68,15 +65,4 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/account/applications/order", d.handleGetMyApplicationOrder)
 	g.PUT("/api/account/applications/order", d.handleReorderMyApplications)
 	g.GET("/application-icons/:application_id/:object_key", d.handleGetApplicationIcon)
-}
-
-func (d Deps) runCommand(c *echo.Context, command func(sharedeventlog.Command) error) error {
-	ctx, cancel := d.OperationContext(c.Request().Context())
-	defer cancel()
-	return d.CommandRunner.Run(ctx, command)
-}
-
-func withApplicationEmit(deps appusecases.ApplicationDeps, command sharedeventlog.Command) appusecases.ApplicationDeps {
-	deps.TransactionalEmit = command.Emit
-	return deps
 }

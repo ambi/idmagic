@@ -166,11 +166,11 @@ invariants:
     description: "永続化される状態モデルは作成時刻を持つ。作成後に現在状態が更新されるモデルは更新時刻も持つ。作成後は不可変で、消費または削除のみされる記録モデルは更新時刻を持たない。issued_at / granted_at / occurred_at / expires_at / revoked_at / first_seen / last_seen などのドメイン時刻は作成時刻を置き換えない。イベントログは履歴・監査の真実だが、created_at / updated_at は現在状態の検索・表示・同期・運用確認のためのモデル属性である。"
     target: PersistedStateModel
     always: "persisted_model has created_at and (mutable_persisted_model implies has updated_at) and (immutable_record implies not has updated_at)"
-  EventLogAtomicWithBusinessState:
-    description: "public_integration / audit_only に分類された DomainEvent を伴う業務コマンドは、対応する業務状態の更新と EventLogRecord の追記を同一 PostgreSQL transaction で commit する。業務更新か EventLogRecord 追記のいずれかが失敗すれば両方 rollback し、一方だけが確定した中間状態を残さない。Kafka publish、SMTP 送信、外部 SaaS 呼出、CSV 全件処理などの transaction 外 I/O はこの transaction に含めない。"
+  EventLogFailureIsObservable:
+    description: "業務状態の commit 後に行う audit_only DomainEvent の記録は best-effort とする。記録に失敗しても業務操作を rollback しないが、失敗は event type と tenant を含む構造化ログと運用シグナルへ記録し、reconciliation の入力として残す。"
     target: EventLogRecord
-    assuming: "command.emits_classification in [public_integration, audit_only]"
-    always: "business_state_committed(command) == event_log_record_committed(command)"
+    assuming: "command.emits_classification == audit_only and event_log_write_failed(command)"
+    eventually: "event_log_failure_observed(command)"
   EventDeliveryRetainsFailedEventLog:
     description: "Kafka publish が失敗しても対象 EventLogRecord は削除・変更されない。EventDeliveryRecord.status のみ failed に遷移し、再試行対象として残る。"
     target: EventLogRecord
@@ -404,9 +404,19 @@ objectives:
     policy: append_only
     retention: 7y
     reference: GDPR Art. 30
+  EventLogBestEffortRecovery:
+    kind: security
+    description: "audit_only の event log 記録失敗は業務操作を失敗させない。失敗を構造化ログと運用シグナルで観測し、定期 reconciliation が業務状態の revision / updated_at と event log を照合して不足候補を検出する。復元記録には reconciliation 起源を残す。"
+    policy: best_effort_with_reconciliation
+    target: EventLogRecord
+    value:
+      business_operation_availability: prioritized
+      failure_observable: true
+      reconciliation: required
+      reconstructed_record_origin: reconciliation
 scenarios:
-  業務更新と event log 追記が同一 transaction で確定する:
-    goal: 単件 mutation が成功したとき、業務状態の更新と EventLogRecord の追記が同一 commit になる。
+  業務更新後に event log を best-effort で記録する:
+    goal: 単件 mutation は event log 基盤の一時障害で失敗させず、記録失敗を運用上検知できる。
     primary_actor: Administrator
     scope: System
     level: user_goal
@@ -415,9 +425,9 @@ scenarios:
     main_success:
       - "管理者 \"operator\" がユーザー \"alice\" の属性を更新する"
       - 更新後の User に変更が反映されている
-      - 同一 correlation_id を持つ EventLogRecord (classification=audit_only または public_integration) が commit されている
-  event log への追記が失敗すると業務更新も rollback される:
-    goal: EventLogRecord の追記が失敗したとき、対応する業務状態の更新も確定させない。
+      - audit_only EventLogRecord の記録が試行される
+  event log への追記が失敗しても業務更新は継続する:
+    goal: EventLogRecord の記録失敗は業務操作の可用性を下げず、失敗を reconciliation 可能な形で観測する。
     primary_actor: Administrator
     scope: System
     level: user_goal
@@ -426,13 +436,13 @@ scenarios:
     main_success:
       - "管理者 \"operator\" がユーザー \"alice\" の属性を更新する"
       - 更新後の User に変更が反映されている
-      - EventLogRecord が commit されている
+      - audit_only EventLogRecord の記録が試行される
     extensions:
-      - condition: EventLogRecord への追記が transaction 内で失敗する
+      - condition: EventLogRecord への追記が失敗する
         steps:
-          - 業務状態の更新も同一 transaction 内で rollback される
-          - "ユーザー \"alice\" は更新前の状態のまま"
-          - エラー InternalError を返す
+          - "ユーザー \"alice\" の更新は成功する"
+          - event type と tenant を含む記録失敗が構造化ログと運用シグナルに残る
+          - reconciliation が不足候補として検出できる
   relay は Kafka 障害時に delivery を再試行する:
     goal: Kafka broker 障害中に publish できなかった EventDeliveryRecord が pending のまま残り、復旧後に再試行される。
     primary_actor: System

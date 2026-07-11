@@ -9,7 +9,6 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 
 	"github.com/labstack/echo/v5"
 )
@@ -58,13 +57,8 @@ func (d Deps) handleCreateCategory(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var category *domain.ApplicationCategory
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.categoryDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		category, txErr = appusecases.CreateCategory(command.Context, deps, appusecases.CreateCategoryInput{ActorUserID: actor.ID, Name: req.Name, Position: req.Position, Now: time.Now().UTC()})
-		return txErr
+	category, err := appusecases.CreateCategory(c.Request().Context(), d.categoryDeps(), appusecases.CreateCategoryInput{
+		ActorUserID: actor.ID, Name: req.Name, Position: req.Position, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)
@@ -88,13 +82,8 @@ func (d Deps) handleUpdateCategory(c *echo.Context) error {
 	if req.Name == "" {
 		name = nil
 	}
-	var category *domain.ApplicationCategory
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.categoryDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		category, txErr = appusecases.UpdateCategory(command.Context, deps, appusecases.UpdateCategoryInput{ActorUserID: actor.ID, CategoryID: c.Param("category_id"), Name: name, Position: req.Position, Now: time.Now().UTC()})
-		return txErr
+	category, err := appusecases.UpdateCategory(c.Request().Context(), d.categoryDeps(), appusecases.UpdateCategoryInput{
+		ActorUserID: actor.ID, CategoryID: c.Param("category_id"), Name: name, Position: req.Position, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)
@@ -110,12 +99,9 @@ func (d Deps) handleDeleteCategory(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.categoryDeps()
-		deps.TransactionalEmit = command.Emit
-		return appusecases.DeleteCategory(command.Context, deps, actor.ID, c.Param("category_id"), time.Now().UTC())
-	})
-	if err != nil {
+	if err := appusecases.DeleteCategory(
+		c.Request().Context(), d.categoryDeps(), actor.ID, c.Param("category_id"), time.Now().UTC(),
+	); err != nil {
 		return d.writeCategoryError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -134,13 +120,8 @@ func (d Deps) handleSetApplicationCategories(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	var app *domain.Application
-	err = d.runCommand(c, func(command sharedeventlog.Command) error {
-		deps := d.categoryDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		app, txErr = appusecases.SetApplicationCategories(command.Context, deps, appusecases.SetApplicationCategoriesInput{ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC()})
-		return txErr
+	app, err := appusecases.SetApplicationCategories(c.Request().Context(), d.categoryDeps(), appusecases.SetApplicationCategoriesInput{
+		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)

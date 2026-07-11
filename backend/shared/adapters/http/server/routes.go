@@ -21,7 +21,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
-	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/txrunner"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
@@ -247,12 +246,6 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:     d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
-		CommandRunner: sharedeventlog.CommandRunner{
-			Transactions:  d.TxRunner,
-			Recorder:      d.EventLogRecorder,
-			LegacyEmit:    d.Emit,
-			CorrelationID: logging.RequestIDFromContext,
-		},
 	})
 
 	audithttp.RegisterRoutes(g, audithttp.Deps{
@@ -320,12 +313,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdentityManagement.GroupRepo, d.IdentityManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, sharedeventlog.CommandRunner{
-		Transactions:  d.TxRunner,
-		Recorder:      d.EventLogRecorder,
-		LegacyEmit:    d.Emit,
-		CorrelationID: logging.RequestIDFromContext,
-	})
+	d.Application.Register(g, d.Deps, authenticator, d.IdentityManagement.GroupRepo, d.IdentityManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
 	d.Scim.Register(g, d.Deps, authenticator, d.IdentityManagement.UserRepo, d.IdentityManagement.GroupRepo, d.Emit)
 }

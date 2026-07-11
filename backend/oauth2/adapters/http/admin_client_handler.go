@@ -11,7 +11,6 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -121,17 +120,8 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 	for _, responseType := range req.ResponseTypes {
 		registration.ResponseTypes = append(registration.ResponseTypes, spec.ResponseType(responseType))
 	}
-	ctx, cancel := d.OperationContext(c.Request().Context())
-	defer cancel()
-	var result *oauthusecases.RegisterClientResult
-	err = d.CommandRunner.Run(ctx, func(command sharedeventlog.Command) error {
-		deps := d.adminClientDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		result, txErr = oauthusecases.CreateAdminOAuth2Client(command.Context, deps, oauthusecases.CreateAdminOAuth2ClientInput{
-			ActorUserID: actor.ID, Registration: registration, Now: time.Now().UTC(),
-		})
-		return txErr
+	result, err := oauthusecases.CreateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), oauthusecases.CreateAdminOAuth2ClientInput{
+		ActorUserID: actor.ID, Registration: registration, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
@@ -155,20 +145,11 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	ctx, cancel := d.OperationContext(c.Request().Context())
-	defer cancel()
-	var client *oauthdomain.OAuth2Client
-	err = d.CommandRunner.Run(ctx, func(command sharedeventlog.Command) error {
-		deps := d.adminClientDeps()
-		deps.TransactionalEmit = command.Emit
-		var txErr error
-		client, txErr = oauthusecases.UpdateAdminOAuth2Client(command.Context, deps, oauthusecases.UpdateAdminOAuth2ClientInput{
-			ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
-			RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
-			Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
-			Now: time.Now().UTC(),
-		})
-		return txErr
+	client, err := oauthusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), oauthusecases.UpdateAdminOAuth2ClientInput{
+		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
+		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
+		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
+		Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
@@ -184,14 +165,9 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	ctx, cancel := d.OperationContext(c.Request().Context())
-	defer cancel()
-	err = d.CommandRunner.Run(ctx, func(command sharedeventlog.Command) error {
-		deps := d.adminClientDeps()
-		deps.TransactionalEmit = command.Emit
-		return oauthusecases.DeleteAdminOAuth2Client(command.Context, deps, actor.ID, c.Param("client_id"), time.Now().UTC())
-	})
-	if err != nil {
+	if err := oauthusecases.DeleteAdminOAuth2Client(
+		c.Request().Context(), d.adminClientDeps(), actor.ID, c.Param("client_id"), time.Now().UTC(),
+	); err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")

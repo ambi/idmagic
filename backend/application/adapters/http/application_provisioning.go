@@ -17,7 +17,6 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
@@ -123,11 +122,9 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 
 	switch req.Type {
 	case "weblink":
-		var app *domain.Application
-		err := d.runCommand(c, func(command sharedeventlog.Command) error {
-			var txErr error
-			app, txErr = appusecases.CreateApplication(command.Context, withApplicationEmit(d.applicationDeps(), command), appusecases.CreateApplicationInput{ActorUserID: actor.ID, Name: req.Name, Kind: domain.ApplicationWeblink, LaunchURL: req.LaunchURL, Now: now})
-			return txErr
+		app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
+			ActorUserID: actor.ID, Name: req.Name, Kind: domain.ApplicationWeblink,
+			LaunchURL: req.LaunchURL, Now: now,
 		})
 		if err != nil {
 			return d.writeApplicationError(c, err)

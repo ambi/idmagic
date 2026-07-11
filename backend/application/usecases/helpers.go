@@ -20,14 +20,6 @@ func emit(sink func(spec.DomainEvent), event spec.DomainEvent) {
 	}
 }
 
-func emitTransactional(transactional func(spec.DomainEvent) error, legacy func(spec.DomainEvent), event spec.DomainEvent) error {
-	if transactional != nil {
-		return transactional(event)
-	}
-	emit(legacy, event)
-	return nil
-}
-
 func adminNow(now time.Time) time.Time {
 	if now.IsZero() {
 		return time.Now().UTC()

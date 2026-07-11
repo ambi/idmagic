@@ -169,7 +169,11 @@ func Run() error {
 				if rec.TenantID != "" {
 					appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
 				}
-				_ = deps.Audit.AuditEventRepo.Append(appendCtx, rec)
+				if err := deps.Audit.AuditEventRepo.Append(appendCtx, rec); err != nil {
+					logger.Error(appendCtx, "audit event append failed; reconciliation required", "error", err, "event_type", event.EventType(), "tenant_id", rec.TenantID)
+				}
+			} else {
+				logger.Error(eventCtx, "audit event conversion failed; reconciliation required", "error", err, "event_type", event.EventType())
 			}
 		}
 	}

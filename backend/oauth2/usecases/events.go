@@ -13,17 +13,6 @@ func emit(f func(spec.DomainEvent), e spec.DomainEvent) {
 	f(e)
 }
 
-// emitTransactional propagates failures from the transaction-bound event log
-// so the command transaction can roll back.  Legacy callers keep their
-// fire-and-forget callback until they are migrated individually.
-func emitTransactional(transactional func(spec.DomainEvent) error, legacy func(spec.DomainEvent), event spec.DomainEvent) error {
-	if transactional != nil {
-		return transactional(event)
-	}
-	emit(legacy, event)
-	return nil
-}
-
 func senderConstraintTag(sc *domain.SenderConstraint) string {
 	if sc == nil {
 		return "none"

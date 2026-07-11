@@ -20,9 +20,8 @@ import (
 var ErrClientNotFound = errors.New("client not found")
 
 type AdminOAuth2ClientDeps struct {
-	ClientRepo        oauthports.OAuth2ClientRepository
-	Emit              func(spec.DomainEvent)
-	TransactionalEmit func(spec.DomainEvent) error
+	ClientRepo oauthports.OAuth2ClientRepository
+	Emit       func(spec.DomainEvent)
 }
 
 type CreateAdminOAuth2ClientInput struct {
@@ -42,11 +41,9 @@ func CreateAdminOAuth2Client(
 	if err != nil {
 		return nil, err
 	}
-	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.AdminOAuth2ClientCreated{
+	emit(deps.Emit, &domain.AdminOAuth2ClientCreated{
 		At: adminNow(in.Now), TenantID: result.Client.TenantID, ActorUserID: in.ActorUserID, ClientID: result.Client.ClientID,
-	}); err != nil {
-		return nil, err
-	}
+	})
 	return result, nil
 }
 
@@ -112,12 +109,10 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 	if err := deps.ClientRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.AdminOAuth2ClientUpdated{
+	emit(deps.Emit, &domain.AdminOAuth2ClientUpdated{
 		At: adminNow(in.Now), TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: client.ClientID,
 		ChangedFields: changed,
-	}); err != nil {
-		return nil, err
-	}
+	})
 	return &updated, nil
 }
 
@@ -138,11 +133,9 @@ func DeleteAdminOAuth2Client(
 	if err := deps.ClientRepo.Delete(ctx, tenantID, clientID); err != nil {
 		return err
 	}
-	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.AdminOAuth2ClientDeleted{
+	emit(deps.Emit, &domain.AdminOAuth2ClientDeleted{
 		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ClientID: clientID,
-	}); err != nil {
-		return err
-	}
+	})
 	return nil
 }
 
