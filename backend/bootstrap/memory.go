@@ -20,6 +20,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/memory"
 )
@@ -30,8 +32,10 @@ func assembleMemory() (*Dependencies, error) {
 		return nil, err
 	}
 	return &Dependencies{
-		TenantRepo:     memory.NewTenantRepository(),
-		AttrSchemaRepo: idmmemory.NewTenantUserAttributeSchemaRepository(),
+		Tenancy: tenancy.Module{
+			TenantRepo:     tenancymemory.NewTenantRepository(),
+			AttrSchemaRepo: idmmemory.NewTenantUserAttributeSchemaRepository(),
+		},
 		IdentityManagement: identitymanagement.Module{
 			UserRepo:  idmmemory.NewUserRepository(),
 			GroupRepo: idmmemory.NewGroupRepository(),

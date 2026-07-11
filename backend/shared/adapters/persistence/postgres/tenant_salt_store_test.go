@@ -5,12 +5,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 func saltTenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &spec.Tenant{ID: id}, "https://issuer.example", "")
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://issuer.example", "")
 }
 
 func TestTenantSaltStoreGeneratesAndIsStable(t *testing.T) {

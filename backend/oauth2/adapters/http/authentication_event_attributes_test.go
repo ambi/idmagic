@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -22,7 +24,7 @@ func TestEmitAuthenticationFailureAddsPIISafeAttributes(t *testing.T) {
 	e := echo.New()
 	e.POST("/x", func(c *echo.Context) error {
 		req := c.Request().WithContext(tenancy.WithTenant(
-			c.Request().Context(), &spec.Tenant{ID: "acme"}, "", "",
+			c.Request().Context(), &tenancydomain.Tenant{ID: "acme"}, "", "",
 		))
 		c.SetRequest(req)
 		d.emitAuthenticationFailure(c, " Alice ", "invalid_credentials")
@@ -42,7 +44,7 @@ func TestEmitAuthenticationFailureAddsPIISafeAttributes(t *testing.T) {
 	if !ok {
 		t.Fatalf("emitted %#v, want AuthenticationFailed", emitted)
 	}
-	salt, err := store.GetSalt(tenancy.WithTenant(context.Background(), &spec.Tenant{ID: "acme"}, "", ""))
+	salt, err := store.GetSalt(tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", ""))
 	if err != nil {
 		t.Fatal(err)
 	}

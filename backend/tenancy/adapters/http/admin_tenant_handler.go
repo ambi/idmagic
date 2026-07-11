@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -22,8 +24,8 @@ type tenantCreateRequest struct {
 }
 
 type tenantUpdateRequest struct {
-	DisplayName            *string                      `json:"display_name,omitempty"`
-	PasswordPolicyOverride *spec.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	DisplayName            *string                        `json:"display_name,omitempty"`
+	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 }
 
 func (d Deps) handleListTenants(c *echo.Context) error {
@@ -53,7 +55,7 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 
 // resolveTenantByRealm は admin API path の realm slug を UUID キーのテナントへ解決する
 // (ADR-085)。usecase は UUID キーで扱うため、handler で realm→UUID を写像する。
-func (d Deps) resolveTenantByRealm(c *echo.Context, realm string) (*spec.Tenant, error) {
+func (d Deps) resolveTenantByRealm(c *echo.Context, realm string) (*domain.Tenant, error) {
 	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), realm)
 	if err != nil {
 		return nil, err
@@ -204,7 +206,7 @@ func (d Deps) requireSystemAdmin(c *echo.Context) (*idmdomain.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != spec.DefaultTenantID || !user.IsActive() ||
+	if user == nil || user.TenantID != domain.DefaultTenantID || !user.IsActive() ||
 		!slices.Contains(d.EffectiveRoles(c.Request().Context(), user), "system_admin") {
 		return nil, support.ErrAdminAccessDenied
 	}

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -12,7 +14,7 @@ import (
 )
 
 func TestAdminOAuth2Client(t *testing.T) {
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	clientRepo := oauth2memory.NewClientRepository()
 	var emitted []spec.DomainEvent
 	emitFunc := func(e spec.DomainEvent) {

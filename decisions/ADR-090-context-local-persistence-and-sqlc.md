@@ -162,6 +162,26 @@ tenant_user_attribute_schemas 3）は、tenant_id・id・sub・username・email 
 は満たさない。application (wi-172) 以降 wi-173〜wi-178 まで一貫して動的エスケープハッチが
 0〜4% に収まっており、sqlc 継続の判断はほぼ確定的と言える。
 
+### 実測値（wi-179、tenancy context 横展開・シリーズ最終 WI）
+
+Tenant の全 4 クエリ（FindByID / FindByRealm / FindAll / Save upsert）は、id・realm の固定
+WHERE または固定カラムの INSERT ... ON CONFLICT であり、すべて sqlc 静的生成へ移行できた。
+動的エスケープハッチは 0 件（100%）。tenancy は 9 context から被依存を持つ本シリーズ最も
+基盤的な context だが、Tenant 自体の永続化クエリは他 WI 同様 tenant/id 系の単純な等価条件
+のみで、被依存数の影響は見られなかった（[[wi-179]] Plan で懸念した「動的クエリ比率への
+被依存数の影響」は本シリーズ通じて一貫して観測されなかった）。
+
+`DefaultTenantID`/`DefaultRealm` は `shared/spec` の AuthZEN policy 述語からも参照され、
+tenancy/domain を import すると import cycle になるため `shared/kernel` へ昇格した。これは
+本 ADR が却下した代替案で触れた「真に共有される published language（`TenantRef` 等）」が
+実際に kernel 昇格を要した初めての具体例である。ただし業務ドメイン型そのもの
+（`Tenant` / `TenantStatus` / `PasswordPolicyOverride`）は他 WI と同じく直接
+`tenancy/domain` の cross-context import（`tenancydomain` alias）で足り、kernel 昇格は
+2 定数（ID・slug の sentinel 値）に限定できた。
+
+application (wi-172) から wi-179 まで全 7 WI・shared/spec からの計 4 型移設を通じて、
+動的エスケープハッチは 0〜4% に収まり続けた。sqlc 継続採用の判断は確定とする。
+
 ## 影響
 
 - Go import path: repository 実装が `idmagic/internal/shared/adapters/persistence/...` から

@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -126,7 +128,7 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 	e, keyStore, _ := newKeyAdminServer(t, user)
 	// acme テナントの鍵を 2 本作り JWKS 上に active+verifying を作る。
 	// KeyStore は tenant-aware なので acme の ctx で回転する。
-	acmeCtx := tenancy.WithTenant(context.Background(), &spec.Tenant{ID: "acme"}, "", "")
+	acmeCtx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 	if _, err := keyStore.Rotate(acmeCtx); err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +173,7 @@ func TestAdminKeysGetUnknownKidReturns404(t *testing.T) {
 
 func TestAdminKeysRotateAllowsTenantAdmin(t *testing.T) {
 	// per-tenant 鍵のため、admin は自テナントの鍵を回転できる。
-	admin := keyAdminUser("user_admin", spec.DefaultTenantID, []string{"admin"})
+	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, admin)
 	rec := postRotate(t, e, "/realms/default/api/admin/keys/rotate")
 	if rec.Code != http.StatusOK {
@@ -181,7 +183,7 @@ func TestAdminKeysRotateAllowsTenantAdmin(t *testing.T) {
 
 func TestAdminKeysRotateRejectsNonAdmin(t *testing.T) {
 	// admin / system_admin いずれのロールも持たないユーザーは回転できない。
-	plain := keyAdminUser("user_alice", spec.DefaultTenantID, []string{})
+	plain := keyAdminUser("user_alice", tenancydomain.DefaultTenantID, []string{})
 	e, _, _ := newKeyAdminServer(t, plain)
 	rec := postRotate(t, e, "/realms/default/api/admin/keys/rotate")
 	if rec.Code != http.StatusForbidden {
@@ -196,7 +198,7 @@ func TestAdminKeysRotateRejectsSystemAdminOutsideDefaultPath(t *testing.T) {
 	//      セッションを未認証扱いし 401 を返す (defense-in-depth)
 	//   2. もし 1 を抜けても requireTenantKeyManager が actor.TenantID != request tenant で 403
 	// 期待される挙動は (1) が先に発火するため 401。
-	sysAdmin := keyAdminUser("user_sys", spec.DefaultTenantID, []string{"system_admin"})
+	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e, _, _ := newKeyAdminServer(t, sysAdmin)
 	rec := postRotate(t, e, "/realms/acme/api/admin/keys/rotate")
 	if rec.Code != http.StatusUnauthorized {
@@ -205,7 +207,7 @@ func TestAdminKeysRotateRejectsSystemAdminOutsideDefaultPath(t *testing.T) {
 }
 
 func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
-	sysAdmin := keyAdminUser("user_sys", spec.DefaultTenantID, []string{"system_admin"})
+	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e, keyStore, events := newKeyAdminServer(t, sysAdmin)
 	prevActive, err := keyStore.GetActiveKey(context.Background())
 	if err != nil {
@@ -236,13 +238,13 @@ func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 		t.Fatalf("event type=%T, want *spec.SigningKeyRotated", (*events)[0])
 	}
 	// wi-36 から繰り延べた残課題: 回転イベントは帰属テナントを持つ。
-	if rotated.TenantID != spec.DefaultTenantID {
-		t.Fatalf("SigningKeyRotated.TenantID=%q want %q", rotated.TenantID, spec.DefaultTenantID)
+	if rotated.TenantID != tenancydomain.DefaultTenantID {
+		t.Fatalf("SigningKeyRotated.TenantID=%q want %q", rotated.TenantID, tenancydomain.DefaultTenantID)
 	}
 }
 
 func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
-	sysAdmin := keyAdminUser("user_sys", spec.DefaultTenantID, []string{"system_admin"})
+	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e, _, _ := newKeyAdminServer(t, sysAdmin)
 	rec := getAdminKeys(e, "/realms/default/api/admin/keys/health")
 	if rec.Code != http.StatusOK {
@@ -265,7 +267,7 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 }
 
 func TestAdminKeysHealthRejectsPlainAdmin(t *testing.T) {
-	admin := keyAdminUser("user_admin", spec.DefaultTenantID, []string{"admin"})
+	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, admin)
 	rec := getAdminKeys(e, "/realms/default/api/admin/keys/health")
 	if rec.Code != http.StatusForbidden {

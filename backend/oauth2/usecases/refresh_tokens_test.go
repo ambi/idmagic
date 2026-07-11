@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -129,7 +131,7 @@ func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	// tenant context が無いと FindByID は default を期待するが、Seed では明示せず
 	// oauth2memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。
 	res, err := RefreshTokens(
-		tenancy.WithTenant(context.Background(), &spec.Tenant{ID: f.record.TenantID, Status: spec.TenantStatusActive}, "", ""),
+		tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", ""),
 		f.deps,
 		RefreshInput{ClientID: "client", RefreshToken: f.token, ProofJKT: "matching-jkt"},
 		now,

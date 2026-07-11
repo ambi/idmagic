@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -19,15 +21,15 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
+	"github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 
 	"github.com/labstack/echo/v5"
 )
 
 func newUserAttributeSchemaServer(
-	t *testing.T, actor *idmdomain.User, tenants ...*spec.Tenant,
+	t *testing.T, actor *idmdomain.User, tenants ...*domain.Tenant,
 ) (*echo.Echo, *idmmemory.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmmemory.NewUserRepository()

@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -66,7 +68,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	if in.TokenEndpointAuthMethod == domain.AuthMethodPrivateKeyJwt {
 		candidate := domain.OAuth2Client{
-			TenantID: spec.DefaultTenantID, ClientID: "validation", ClientType: in.ClientType,
+			TenantID: tenancydomain.DefaultTenantID, ClientID: "validation", ClientType: in.ClientType,
 			RedirectURIs:             []string{"https://validation.invalid/callback"},
 			GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 			TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,

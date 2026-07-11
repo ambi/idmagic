@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -48,7 +50,7 @@ func newDevFederationSigner() (*samltoken.Signer, error) {
 func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository) error {
 	now := time.Now().UTC()
 	rp := &domain.WsFedRelyingParty{
-		TenantID:    spec.DefaultTenantID,
+		TenantID:    tenancydomain.DefaultTenantID,
 		Wtrealm:     "urn:idmagic:demo-rp",
 		DisplayName: "Demo WS-Federation RP",
 		ReplyURLs:   []string{"https://rp.example/wsfed"},
@@ -71,7 +73,7 @@ func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 func seedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository) error {
 	now := time.Now().UTC()
 	sp := &samldomain.SamlServiceProvider{
-		TenantID:    spec.DefaultTenantID,
+		TenantID:    tenancydomain.DefaultTenantID,
 		EntityID:    "urn:idmagic:demo-sp",
 		DisplayName: "Demo SAML SP",
 		ACSURLs:     []string{"https://sp.example/saml/acs"},

@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -28,7 +30,7 @@ type AuthorizationCodeInput struct {
 
 func GenerateAuthorizationCode(in AuthorizationCodeInput) (*AuthorizationCodeRecord, error) {
 	if in.TenantID == "" {
-		in.TenantID = spec.DefaultTenantID
+		in.TenantID = tenancydomain.DefaultTenantID
 	}
 	if in.TTLSeconds == 0 {
 		in.TTLSeconds = 60

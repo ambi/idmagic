@@ -6,17 +6,19 @@
 // 全コンテキストへ配線するが、コンテキスト境界は各 ports が担保する。
 package memory
 
-import "github.com/ambi/idmagic/backend/shared/spec"
+import (
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+)
 
 func DefaultTenant(tenantID *string) {
 	if *tenantID == "" {
-		*tenantID = spec.DefaultTenantID
+		*tenantID = tenancydomain.DefaultTenantID
 	}
 }
 
 func TenantKey(tenantID, id string) string {
 	if tenantID == "" {
-		tenantID = spec.DefaultTenantID
+		tenantID = tenancydomain.DefaultTenantID
 	}
 	return tenantID + "|" + id
 }

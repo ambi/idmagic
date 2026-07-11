@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -48,7 +50,7 @@ func seedDemoData(
 	secretHash := oauthdomain.HashClientSecret(envDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
 	now := time.Now().UTC()
 	if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: seedDemoClientID,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: seedDemoClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{
 			"http://localhost:3000/callback",
@@ -80,7 +82,7 @@ func seedDemoData(
 	email := "alice@example.com"
 	totpSecret := envDefault("DEMO_TOTP_SECRET", "")
 	if err := users.Save(ctx, &idmdomain.User{
-		ID: seedUserAliceID, TenantID: spec.DefaultTenantID,
+		ID: seedUserAliceID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		Roles:     []string{"admin"},
@@ -99,7 +101,7 @@ func seedDemoData(
 	// 用意し、既定テナントに所属する。
 	rootEmail := "root@example.com"
 	if err := users.Save(ctx, &idmdomain.User{
-		ID: seedUserRootID, TenantID: spec.DefaultTenantID,
+		ID: seedUserRootID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "root", PasswordHash: hash,
 		Email: &rootEmail, EmailVerified: true,
 		Roles:     []string{"admin", "system_admin"},
@@ -142,7 +144,7 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 	for _, p := range portals {
 		name := p.name
 		if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
-			TenantID: spec.DefaultTenantID, ClientID: p.clientID,
+			TenantID: tenancydomain.DefaultTenantID, ClientID: p.clientID,
 			ClientName: &name, ClientType: spec.ClientPublic,
 			RedirectURIs: []string{
 				"http://localhost:3000/callback",
@@ -188,7 +190,7 @@ func seedDemoApplications(
 	}
 	for _, s := range seeds {
 		if err := apps.Save(ctx, &appdomain.Application{
-			TenantID: spec.DefaultTenantID, ApplicationID: s.id, Name: s.name,
+			TenantID: tenancydomain.DefaultTenantID, ApplicationID: s.id, Name: s.name,
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 			LaunchURL: s.launchURL, Bindings: []appdomain.ProtocolBinding{s.binding},
 			CreatedAt: now, UpdatedAt: now,
@@ -199,7 +201,7 @@ func seedDemoApplications(
 			continue
 		}
 		if err := assignments.Save(ctx, &appdomain.ApplicationAssignment{
-			TenantID: spec.DefaultTenantID, ApplicationID: s.id,
+			TenantID: tenancydomain.DefaultTenantID, ApplicationID: s.id,
 			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: seedUserAliceID,
 			Visibility: appdomain.AssignmentVisible, CreatedAt: now,
 		}); err != nil {
@@ -217,7 +219,7 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 		return nil
 	}
 	return types.Save(ctx, &oauthdomain.AuthorizationDetailType{
-		TenantID:    spec.DefaultTenantID,
+		TenantID:    tenancydomain.DefaultTenantID,
 		Type:        "payment_initiation",
 		Description: "口座から指定上限までの送金開始 (RFC 9396 例)",
 		Schema: oauthdomain.AuthorizationDetailsSchema{
@@ -243,11 +245,11 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 	supportDesc := "カスタマーサポートチーム"
 	demoGroups := []*idmdomain.Group{
 		{
-			ID: seedGroupEngineeringID, TenantID: spec.DefaultTenantID, Name: "engineering",
+			ID: seedGroupEngineeringID, TenantID: tenancydomain.DefaultTenantID, Name: "engineering",
 			Description: &engineeringDesc, Roles: []string{"catalog:read"}, CreatedAt: now,
 		},
 		{
-			ID: seedGroupSupportID, TenantID: spec.DefaultTenantID, Name: "support",
+			ID: seedGroupSupportID, TenantID: tenancydomain.DefaultTenantID, Name: "support",
 			Description: &supportDesc, Roles: []string{"invoice:read"}, CreatedAt: now,
 		},
 	}

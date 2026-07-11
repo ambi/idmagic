@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -17,7 +19,7 @@ import (
 func accountConsentCtx() context.Context {
 	return tenancy.WithTenant(
 		context.Background(),
-		&spec.Tenant{ID: spec.DefaultTenantID, Status: spec.TenantStatusActive},
+		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Status: tenancydomain.TenantStatusActive},
 		"http://idp.test", "",
 	)
 }
@@ -25,7 +27,7 @@ func accountConsentCtx() context.Context {
 func saveConsent(t *testing.T, repo *oauth2memory.ConsentRepository, sub, client string, state domain.ConsentState) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := repo.Save(accountConsentCtx(), spec.DefaultTenantID, &domain.Consent{
+	if err := repo.Save(accountConsentCtx(), tenancydomain.DefaultTenantID, &domain.Consent{
 		UserID: sub, ClientID: client, Scopes: []string{"openid"},
 		State: state, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {

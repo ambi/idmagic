@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	oauthpg "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
@@ -14,6 +16,7 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancypg "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 )
 
 // 本パッケージは pgfixtures が依存する User/Group repository 自身を所有するため、
@@ -42,18 +45,18 @@ func newUUID(t *testing.T) string {
 }
 
 // seedTenant はテナントを作成して返す。FK 親が必要なテストの前提として使う。
-func seedTenant(t *testing.T, db sharedpg.DB) *spec.Tenant {
+func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	t.Helper()
 	now := testClock()
-	tenant := &spec.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID:          newUUID(t),
 		Realm:       uniqueID("tenant"),
 		DisplayName: "Test Tenant",
-		Status:      spec.TenantStatusActive,
+		Status:      tenancydomain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&sharedpg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

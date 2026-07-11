@@ -6,19 +6,20 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func userInfoFixture(t *testing.T) *idmmemory.UserRepository {
 	t.Helper()
 	repo := idmmemory.NewUserRepository()
 	repo.Seed(&idmdomain.User{
-		ID: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol",
+		ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "carol",
 		Name: new("Carol Q"), Email: new("carol@example.com"), EmailVerified: true,
 		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		Attributes: map[string]idmdomain.AttributeValue{

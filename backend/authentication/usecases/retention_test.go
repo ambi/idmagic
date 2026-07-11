@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
@@ -19,8 +21,8 @@ func daysAgo(now time.Time, d int) time.Time {
 func seedAudit(t *testing.T, store *oauthmemory.AuditEventStore, id, eventType string, at time.Time) {
 	t.Helper()
 	if err := store.Append(context.Background(), &oauthports.AuditEventRecord{
-		ID: id, TenantID: spec.DefaultTenantID, Type: eventType, OccurredAt: at,
-		Payload: map[string]any{"tenantId": spec.DefaultTenantID},
+		ID: id, TenantID: tenancydomain.DefaultTenantID, Type: eventType, OccurredAt: at,
+		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -84,18 +86,18 @@ func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := oauthmemory.NewAuditEventStore(0)
 	oldFailure := &oauthports.AuditEventRecord{
-		ID: "fail-8", TenantID: spec.DefaultTenantID,
+		ID: "fail-8", TenantID: tenancydomain.DefaultTenantID,
 		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
 		Payload: map[string]any{
-			"tenantId":     spec.DefaultTenantID,
+			"tenantId":     tenancydomain.DefaultTenantID,
 			"username":     "alice",
 			"usernameHash": "hash-alice",
 		},
 	}
 	freshFailure := &oauthports.AuditEventRecord{
-		ID: "fail-6", TenantID: spec.DefaultTenantID,
+		ID: "fail-6", TenantID: tenancydomain.DefaultTenantID,
 		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 6),
-		Payload: map[string]any{"tenantId": spec.DefaultTenantID, "username": "bob"},
+		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID, "username": "bob"},
 	}
 	if err := store.Append(ctx, oldFailure); err != nil {
 		t.Fatal(err)
@@ -155,10 +157,10 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := authnmemory.NewAuthEventBucketStore()
 	// 91 日前の窓と直近の窓を作る。
-	if _, err := store.Record(ctx, "failed_login", spec.DefaultTenantID, "old-key", daysAgo(now, 91)); err != nil {
+	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "old-key", daysAgo(now, 91)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Record(ctx, "failed_login", spec.DefaultTenantID, "fresh-key", now); err != nil {
+	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "fresh-key", now); err != nil {
 		t.Fatal(err)
 	}
 	res, err := usecases.RunRetentionSweep(ctx, nil, store, usecases.DefaultRetentionPolicy(), now)
@@ -168,7 +170,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	if res.Buckets != 1 {
 		t.Fatalf("deleted buckets=%d, want 1", res.Buckets)
 	}
-	buckets, err := store.List(ctx, spec.DefaultTenantID, 0)
+	buckets, err := store.List(ctx, tenancydomain.DefaultTenantID, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

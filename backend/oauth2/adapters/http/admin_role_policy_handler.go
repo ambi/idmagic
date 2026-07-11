@@ -6,9 +6,10 @@ import (
 	"slices"
 	"strings"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -99,7 +100,7 @@ func (d Deps) handleListAdminRolePolicies(c *echo.Context) error {
 	roles, err := usecases.ListRolePolicies(
 		d.SCL,
 		actor.Roles,
-		support.RequestTenantID(c) == spec.DefaultTenantID && actor.TenantID == spec.DefaultTenantID,
+		support.RequestTenantID(c) == tenancydomain.DefaultTenantID && actor.TenantID == tenancydomain.DefaultTenantID,
 	)
 	if err != nil {
 		return err

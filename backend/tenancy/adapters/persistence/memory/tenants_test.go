@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func TestTenantRepository(t *testing.T) {
@@ -13,7 +13,7 @@ func TestTenantRepository(t *testing.T) {
 	repo := NewTenantRepository()
 
 	t.Run("Save and FindByID", func(t *testing.T) {
-		tenant := &spec.Tenant{
+		tenant := &domain.Tenant{
 			ID:          "tenant-1",
 			DisplayName: "Tenant One",
 			Status:      "Active",
@@ -48,8 +48,8 @@ func TestTenantRepository(t *testing.T) {
 
 	t.Run("FindAll", func(t *testing.T) {
 		// すでに tenant-1 が存在する
-		t3 := &spec.Tenant{ID: "tenant-3", DisplayName: "Tenant Three"}
-		t2 := &spec.Tenant{ID: "tenant-2", DisplayName: "Tenant Two"}
+		t3 := &domain.Tenant{ID: "tenant-3", DisplayName: "Tenant Three"}
+		t2 := &domain.Tenant{ID: "tenant-2", DisplayName: "Tenant Two"}
 
 		_ = repo.Save(ctx, t3)
 		_ = repo.Save(ctx, t2)

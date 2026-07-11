@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
@@ -14,12 +15,12 @@ func TestWsFedRelyingPartyRepository(t *testing.T) {
 	rp := &domain.WsFedRelyingParty{Wtrealm: "urn:federation:MicrosoftOnline", ReplyURLs: []string{"https://login.microsoftonline.com/login.srf"}}
 	repo.Seed(rp)
 
-	got, err := repo.FindByWtrealm(ctx, spec.DefaultTenantID, rp.Wtrealm)
-	if err != nil || got == nil || got.TenantID != spec.DefaultTenantID {
+	got, err := repo.FindByWtrealm(ctx, tenancydomain.DefaultTenantID, rp.Wtrealm)
+	if err != nil || got == nil || got.TenantID != tenancydomain.DefaultTenantID {
 		t.Fatalf("FindByWtrealm = %+v, %v", got, err)
 	}
 	got.ReplyURLs[0] = "https://evil.example"
-	again, _ := repo.FindByWtrealm(ctx, spec.DefaultTenantID, rp.Wtrealm)
+	again, _ := repo.FindByWtrealm(ctx, tenancydomain.DefaultTenantID, rp.Wtrealm)
 	if again.ReplyURLs[0] != "https://login.microsoftonline.com/login.srf" {
 		t.Fatal("mutation leaked from returned clone")
 	}
@@ -27,11 +28,11 @@ func TestWsFedRelyingPartyRepository(t *testing.T) {
 	if err := repo.Save(ctx, &domain.WsFedRelyingParty{Wtrealm: "urn:federation:Another"}); err != nil {
 		t.Fatal(err)
 	}
-	list, err := repo.ListByTenant(ctx, spec.DefaultTenantID)
+	list, err := repo.ListByTenant(ctx, tenancydomain.DefaultTenantID)
 	if err != nil || len(list) != 2 || list[0].Wtrealm != "urn:federation:Another" {
 		t.Fatalf("ListByTenant = %+v, %v", list, err)
 	}
-	if err := repo.Delete(ctx, spec.DefaultTenantID, "urn:federation:Another"); err != nil {
+	if err := repo.Delete(ctx, tenancydomain.DefaultTenantID, "urn:federation:Another"); err != nil {
 		t.Fatal(err)
 	}
 }

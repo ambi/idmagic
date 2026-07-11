@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -13,7 +15,7 @@ import (
 )
 
 func TestAdminConsents(t *testing.T) {
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	consentRepo := oauth2memory.NewConsentRepository()
 	var emitted []spec.DomainEvent
 	emitFunc := func(e spec.DomainEvent) {
@@ -43,7 +45,7 @@ func TestAdminConsents(t *testing.T) {
 			ClientID: "client-1",
 			Scopes:   []string{"openid"},
 		}
-		_ = consentRepo.Save(ctx, spec.DefaultTenantID, consent)
+		_ = consentRepo.Save(ctx, tenancydomain.DefaultTenantID, consent)
 
 		list, err = ListConsents(ctx, deps)
 		if err != nil {

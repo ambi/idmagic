@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type contextKey string
@@ -15,14 +15,14 @@ const (
 	urlPrefixKey contextKey = "tenant-url-prefix"
 )
 
-func WithTenant(ctx context.Context, tenant *spec.Tenant, issuer, urlPrefix string) context.Context {
+func WithTenant(ctx context.Context, tenant *domain.Tenant, issuer, urlPrefix string) context.Context {
 	ctx = context.WithValue(ctx, tenantKey, tenant)
 	ctx = context.WithValue(ctx, issuerKey, strings.TrimSuffix(issuer, "/"))
 	return context.WithValue(ctx, urlPrefixKey, strings.TrimSuffix(urlPrefix, "/"))
 }
 
-func Tenant(ctx context.Context) *spec.Tenant {
-	tenant, _ := ctx.Value(tenantKey).(*spec.Tenant)
+func Tenant(ctx context.Context) *domain.Tenant {
+	tenant, _ := ctx.Value(tenantKey).(*domain.Tenant)
 	return tenant
 }
 
@@ -30,7 +30,7 @@ func TenantID(ctx context.Context) string {
 	if tenant := Tenant(ctx); tenant != nil && tenant.ID != "" {
 		return tenant.ID
 	}
-	return spec.DefaultTenantID
+	return domain.DefaultTenantID
 }
 
 func Issuer(ctx context.Context, fallback string) string {

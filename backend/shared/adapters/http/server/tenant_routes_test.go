@@ -8,13 +8,16 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -32,9 +35,9 @@ func (r *fixedAuthnResolver) Resolve(
 }
 
 func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
-	tenants := memory.NewTenantRepository()
-	if err := tenants.Save(context.Background(), &spec.Tenant{
-		ID: "acme", Realm: "acme", DisplayName: "Acme", Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
+	tenants := tenancymemory.NewTenantRepository()
+	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
+		ID: "acme", Realm: "acme", DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -59,11 +62,11 @@ func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 }
 
 func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
-	tenants := memory.NewTenantRepository()
+	tenants := tenancymemory.NewTenantRepository()
 	now := time.Now().UTC()
-	for _, tenant := range []*spec.Tenant{
-		{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now},
-		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: spec.TenantStatusDisabled, CreatedAt: now, DisabledAt: &now},
+	for _, tenant := range []*tenancydomain.Tenant{
+		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
+		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: tenancydomain.TenantStatusDisabled, CreatedAt: now, DisabledAt: &now},
 	} {
 		if err := tenants.Save(context.Background(), tenant); err != nil {
 			t.Fatal(err)
@@ -93,21 +96,21 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 }
 
 func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
-	tenants := memory.NewTenantRepository()
-	if err := tenants.Save(context.Background(), &spec.Tenant{
-		ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default",
-		Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
+	tenants := tenancymemory.NewTenantRepository()
+	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
+		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
+		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	users := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
 	users.Seed(&idmdomain.User{
-		ID: "ops", TenantID: spec.DefaultTenantID, PreferredUsername: "ops",
+		ID: "ops", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "ops",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&idmdomain.User{
-		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	resolver := &fixedAuthnResolver{sub: "ops"}
@@ -131,11 +134,11 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 // 別テナントのセッションがリクエストに紛れ込んだ場合、resolveAuthentication が
 // 未認証として弾くこと (cookie path 分離が破られたケースの defense-in-depth)。
 func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
-	tenants := memory.NewTenantRepository()
+	tenants := tenancymemory.NewTenantRepository()
 	now := time.Now().UTC()
-	for _, tenant := range []*spec.Tenant{
-		{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default", Status: spec.TenantStatusActive, CreatedAt: now},
-		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: spec.TenantStatusActive, CreatedAt: now},
+	for _, tenant := range []*tenancydomain.Tenant{
+		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
+		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
 	} {
 		if err := tenants.Save(context.Background(), tenant); err != nil {
 			t.Fatal(err)

@@ -25,6 +25,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	valkeystore "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
 	"github.com/ambi/idmagic/backend/shared/resilience"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/postgres"
 )
@@ -100,8 +102,10 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	}
 
 	return &Dependencies{
-		TenantRepo:     &postgres.TenantRepository{Pool: resilientDB},
-		AttrSchemaRepo: &idmpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+		Tenancy: tenancy.Module{
+			TenantRepo:     &tenancypostgres.TenantRepository{Pool: resilientDB},
+			AttrSchemaRepo: &idmpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+		},
 		IdentityManagement: identitymanagement.Module{
 			UserRepo:  &idmpostgres.UserRepository{Pool: resilientDB},
 			GroupRepo: &idmpostgres.GroupRepository{Pool: resilientDB},

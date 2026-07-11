@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -440,7 +442,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
 	userRepo.Seed(&idmdomain.User{
 		ID:                "admin-1",
-		TenantID:          spec.DefaultTenantID,
+		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: "admin@contoso.com",
 		Roles:             []string{"admin"},
 		Attributes: map[string]idmdomain.AttributeValue{

@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -21,14 +23,14 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
+	"github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 
 	"github.com/labstack/echo/v5"
 )
 
-func newSettingsServer(t *testing.T, actor *idmdomain.User, tenants ...*spec.Tenant) (*echo.Echo, *memory.TenantRepository, *[]spec.DomainEvent) {
+func newSettingsServer(t *testing.T, actor *idmdomain.User, tenants ...*domain.Tenant) (*echo.Echo, *memory.TenantRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
@@ -69,13 +71,13 @@ func settingsActor(sub, tenantID string, roles []string) *idmdomain.User {
 	}
 }
 
-func activeTenant(id, displayName string) *spec.Tenant {
+func activeTenant(id, displayName string) *domain.Tenant {
 	realm := id
-	if id == spec.DefaultTenantID {
-		realm = spec.DefaultRealm
+	if id == domain.DefaultTenantID {
+		realm = domain.DefaultRealm
 	}
-	return &spec.Tenant{
-		ID: id, Realm: realm, DisplayName: displayName, Status: spec.TenantStatusActive,
+	return &domain.Tenant{
+		ID: id, Realm: realm, DisplayName: displayName, Status: domain.TenantStatusActive,
 		CreatedAt: time.Now().UTC(),
 	}
 }
@@ -92,7 +94,7 @@ func TestAdminSettingsGetRejectsNonAdmin(t *testing.T) {
 func TestAdminSettingsGetReturnsCurrentTenant(t *testing.T) {
 	minLength := 16
 	tenant := activeTenant("acme", "Acme")
-	tenant.PasswordPolicyOverride = &spec.PasswordPolicyOverride{MinLength: &minLength}
+	tenant.PasswordPolicyOverride = &domain.PasswordPolicyOverride{MinLength: &minLength}
 	e, _, _ := newSettingsServer(t, settingsActor("admin", "acme", []string{"admin"}), tenant)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/settings", http.NoBody))
@@ -120,8 +122,8 @@ func TestAdminSettingsGetReturnsCurrentTenant(t *testing.T) {
 func TestAdminSettingsGetAllowsSystemAdmin(t *testing.T) {
 	e, _, _ := newSettingsServer(
 		t,
-		settingsActor("ops", spec.DefaultTenantID, []string{"system_admin"}),
-		activeTenant(spec.DefaultTenantID, "Default"),
+		settingsActor("ops", domain.DefaultTenantID, []string{"system_admin"}),
+		activeTenant(domain.DefaultTenantID, "Default"),
 	)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/settings", http.NoBody))

@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
@@ -25,7 +26,7 @@ func (d Deps) resolvePasswordPolicy(ctx context.Context) authusecases.PasswordPo
 		MaxLength:    authusecases.PasswordPolicyMaxLength,
 		HistoryDepth: authusecases.PasswordPolicyHistoryDepth,
 	}
-	var tenant *spec.Tenant
+	var tenant *tenancydomain.Tenant
 	if d.TenantRepo != nil {
 		if id := tenancy.TenantID(ctx); id != "" {
 			if found, err := d.TenantRepo.FindByID(ctx, id); err == nil {

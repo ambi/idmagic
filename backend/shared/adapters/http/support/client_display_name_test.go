@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -23,17 +25,17 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 
 	named := "Admin Console"
 	clients.Seed(&oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: "client-named",
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-named",
 		ClientName: &named, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})
 	// client_name が空白のみのクライアントは Application カタログ名へフォールバックする。
 	blank := "   "
 	clients.Seed(&oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: "client-catalog",
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-catalog",
 		ClientName: &blank, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})
 	if err := apps.Save(ctx, &appdomain.Application{
-		TenantID: spec.DefaultTenantID, ApplicationID: "app-1", Name: "Catalog App",
+		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "Catalog App",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 		Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: "client-catalog"}},
 		CreatedAt: now, UpdatedAt: now,
@@ -54,13 +56,13 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := r.Resolve(ctx, spec.DefaultTenantID, tc.clientID); got != tc.want {
+			if got := r.Resolve(ctx, tenancydomain.DefaultTenantID, tc.clientID); got != tc.want {
 				t.Fatalf("Resolve(%q) = %q, want %q", tc.clientID, got, tc.want)
 			}
 		})
 	}
 
-	all := r.ResolveAll(ctx, spec.DefaultTenantID, []string{"client-named", "client-catalog", "client-named"})
+	all := r.ResolveAll(ctx, tenancydomain.DefaultTenantID, []string{"client-named", "client-catalog", "client-named"})
 	if all["client-named"] != "Admin Console" || all["client-catalog"] != "Catalog App" {
 		t.Fatalf("ResolveAll mismatch: %v", all)
 	}
@@ -71,7 +73,7 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 
 func TestClientDisplayNameResolverNilSafe(t *testing.T) {
 	var r *support.ClientDisplayNameResolver
-	if got := r.Resolve(context.Background(), spec.DefaultTenantID, "abc"); got != "abc" {
+	if got := r.Resolve(context.Background(), tenancydomain.DefaultTenantID, "abc"); got != "abc" {
 		t.Fatalf("nil resolver must fall back to client_id, got %q", got)
 	}
 }

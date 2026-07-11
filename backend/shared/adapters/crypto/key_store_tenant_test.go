@@ -4,13 +4,15 @@ import (
 	"context"
 	"testing"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 func tenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &spec.Tenant{ID: id}, "", "")
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "", "")
 }
 
 // TenantJwksIsolation 不変条件: テナント指定 JWKS に載る鍵はすべて当該テナントに属する。

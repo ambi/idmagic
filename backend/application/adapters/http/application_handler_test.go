@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -35,11 +37,11 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 	users := idmmemory.NewUserRepository()
 	now := time.Now().UTC()
 	users.Seed(&idmdomain.User{
-		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&idmdomain.User{
-		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
+		ID: "regular", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()

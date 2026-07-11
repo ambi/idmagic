@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -212,7 +214,7 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (oaut
 	}
 	// system_admin が default tenant 経路で全テナント横断する場合のみ all_tenants を許可する。
 	if slices.Contains(actor.Roles, "system_admin") &&
-		actor.TenantID == spec.DefaultTenantID &&
+		actor.TenantID == tenancydomain.DefaultTenantID &&
 		c.QueryParam("all_tenants") == "true" {
 		q.AllTenants = true
 		q.TenantID = ""
@@ -300,7 +302,7 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]oauthports.AuditFilterExpres
 // auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。
 // system_admin で default テナント在籍なら全件 OK、それ以外は所属テナントのみ。
 func auditEventVisibleTo(rec *oauthports.AuditEventRecord, actor *idmdomain.User) bool {
-	if slices.Contains(actor.Roles, "system_admin") && actor.TenantID == spec.DefaultTenantID {
+	if slices.Contains(actor.Roles, "system_admin") && actor.TenantID == tenancydomain.DefaultTenantID {
 		return true
 	}
 	return rec.TenantID == actor.TenantID

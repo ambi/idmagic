@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -15,7 +17,7 @@ import (
 func seedSession(t *testing.T, store *memory.SessionStore, id, sub string, authTime time.Time) {
 	t.Helper()
 	if err := store.Save(context.Background(), &domain.LoginSession{
-		ID: id, TenantID: spec.DefaultTenantID, UserID: sub, AuthTime: authTime.Unix(),
+		ID: id, TenantID: tenancydomain.DefaultTenantID, UserID: sub, AuthTime: authTime.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: authTime.Add(time.Hour),
 	}); err != nil {

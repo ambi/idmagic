@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -14,7 +16,6 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -110,7 +111,7 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	e, groupRepo := newAdminGroupHandler(t)
 	ctx := httptest.NewRequest(http.MethodGet, "/", http.NoBody).Context()
-	group := &idmdomain.Group{ID: "group_admins", TenantID: spec.DefaultTenantID, Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
+	group := &idmdomain.Group{ID: "group_admins", TenantID: tenancydomain.DefaultTenantID, Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
 	if err := groupRepo.Save(ctx, group); err != nil {
 		t.Fatal(err)
 	}

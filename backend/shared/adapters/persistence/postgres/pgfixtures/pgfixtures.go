@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmpg "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
@@ -22,6 +24,7 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancypg "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 )
 
 // TestClock は決定的なタイムスタンプ生成に用いる基準時刻。
@@ -45,18 +48,18 @@ func NewUUID(t *testing.T) string {
 }
 
 // SeedTenant はテナントを作成して返す。FK 親が必要なテストの前提として使う。
-func SeedTenant(t *testing.T, db sharedpg.DB) *spec.Tenant {
+func SeedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	t.Helper()
 	now := TestClock()
-	tenant := &spec.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID:          NewUUID(t),
 		Realm:       UniqueID("tenant"),
 		DisplayName: "Test Tenant",
-		Status:      spec.TenantStatusActive,
+		Status:      tenancydomain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&sharedpg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

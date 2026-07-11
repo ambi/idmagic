@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -36,18 +38,26 @@ func newUUID(t *testing.T) string {
 }
 
 // seedTenant はテナントを作成して返す。FK 親が必要なテストの前提として使う。
-func seedTenant(t *testing.T, db DB) *spec.Tenant {
+// TenantRepository は tenancy/adapters/persistence/postgres へ移設済み (wi-179) で、本
+// パッケージの内部テストから import すると postgres -> tenancy/postgres -> postgres の
+// import cycle になるため、seedClient 同様 FK 充足専用の最小限フィクスチャとして
+// 生 SQL で直接 INSERT する。
+func seedTenant(t *testing.T, db DB) *tenancydomain.Tenant {
 	t.Helper()
 	now := testClock()
-	tenant := &spec.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID:          newUUID(t),
 		Realm:       uniqueID("tenant"),
 		DisplayName: "Test Tenant",
-		Status:      spec.TenantStatusActive,
+		Status:      tenancydomain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	_, err := db.Exec(context.Background(), `
+INSERT INTO tenants (id,realm,display_name,status,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6)`,
+		tenant.ID, tenant.Realm, tenant.DisplayName, string(tenant.Status), tenant.CreatedAt, tenant.UpdatedAt)
+	if err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

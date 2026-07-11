@@ -3,12 +3,12 @@ package domain
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func sampleRP() WsFedRelyingParty {
 	return WsFedRelyingParty{
-		TenantID:  spec.DefaultTenantID,
+		TenantID:  tenancydomain.DefaultTenantID,
 		Wtrealm:   "urn:federation:MicrosoftOnline",
 		ReplyURLs: []string{"https://login.microsoftonline.com/login.srf", "https://account.activedirectory.windowsazure.com/"},
 	}

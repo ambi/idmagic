@@ -5,8 +5,11 @@ import (
 	"errors"
 	"testing"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -39,7 +42,7 @@ func (f *fakeKeyStore) Healthy(ctx context.Context) bool { return true }
 
 func TestListTenantKeyHealth(t *testing.T) {
 	ctx := context.Background()
-	tenantRepo := memory.NewTenantRepository()
+	tenantRepo := tenancymemory.NewTenantRepository()
 	keyStore := &fakeKeyStore{}
 
 	deps := TenantKeyHealthDeps{
@@ -48,8 +51,8 @@ func TestListTenantKeyHealth(t *testing.T) {
 	}
 
 	// テナントを 2 つ作成
-	_ = tenantRepo.Save(ctx, &spec.Tenant{ID: "tenant-a"})
-	_ = tenantRepo.Save(ctx, &spec.Tenant{ID: "tenant-b"})
+	_ = tenantRepo.Save(ctx, &tenancydomain.Tenant{ID: "tenant-a"})
+	_ = tenantRepo.Save(ctx, &tenancydomain.Tenant{ID: "tenant-b"})
 
 	t.Run("Succeeds", func(t *testing.T) {
 		keyStore.keys = []*ports.SigningKey{

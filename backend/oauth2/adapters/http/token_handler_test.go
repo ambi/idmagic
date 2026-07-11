@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -35,7 +39,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 	// confidential client
 	secretHash := domain.HashClientSecret("secret-conf")
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID:                spec.DefaultTenantID,
+		TenantID:                tenancydomain.DefaultTenantID,
 		ClientID:                "client-conf",
 		ClientSecretHash:        &secretHash,
 		ClientType:              spec.ClientConfidential,
@@ -50,7 +54,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 
 	// public client
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID:                spec.DefaultTenantID,
+		TenantID:                tenancydomain.DefaultTenantID,
 		ClientID:                "client-pub",
 		ClientType:              spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/cb"},
@@ -72,7 +76,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 	deps := httpadapter.Deps{
 		Deps: support.Deps{
 			Issuer:     "http://test",
-			TenantRepo: memory.NewTenantRepository(),
+			TenantRepo: tenancymemory.NewTenantRepository(),
 		},
 		OAuth2:              oauth2.Module{ClientRepo: clientRepo},
 		RefreshStore:        memory.NewRefreshTokenStore(),
@@ -81,10 +85,10 @@ func newTokenServer(t *testing.T) tokenFixture {
 		TokenIssuer:         tokenIssuer,
 		TokenIntrospector:   tokenIssuer,
 	}
-	_ = deps.TenantRepo.Save(context.Background(), &spec.Tenant{
-		ID:     spec.DefaultTenantID,
-		Realm:  spec.DefaultRealm,
-		Status: spec.TenantStatusActive,
+	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
+		ID:     tenancydomain.DefaultTenantID,
+		Realm:  tenancydomain.DefaultRealm,
+		Status: tenancydomain.TenantStatusActive,
 	})
 
 	httpadapter.Register(e, deps)

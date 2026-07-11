@@ -223,16 +223,6 @@ const (
 	SenderConstraintMTLS SenderConstraintType = "mtls"
 )
 
-type TenantStatus string
-
-const (
-	TenantStatusActive   TenantStatus = "active"
-	TenantStatusDisabled TenantStatus = "disabled"
-)
-
-func (s TenantStatus) Valid() bool {
-	return s == TenantStatusActive || s == TenantStatusDisabled
-}
-
 // AgentStatus / AgentKind / UserStatus / RequiredAction / AttributeType / AttrVisibility は
 // identitymanagement/domain へ移設した (wi-178, ADR-089/ADR-093)。
+// TenantStatus は tenancy/domain へ移設した (wi-179, ADR-089/ADR-093)。

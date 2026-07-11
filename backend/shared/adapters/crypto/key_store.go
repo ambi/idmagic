@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -101,7 +103,7 @@ type InMemoryKeyStore struct {
 func NewInMemoryKeyStore() (*InMemoryKeyStore, error) {
 	ks := &InMemoryKeyStore{byTenant: map[string]*tenantKeys{}}
 	// default テナントの鍵を先に作る (後方互換)。
-	if _, err := ks.rotateInternal(spec.DefaultTenantID); err != nil {
+	if _, err := ks.rotateInternal(tenancydomain.DefaultTenantID); err != nil {
 		return nil, err
 	}
 	return ks, nil

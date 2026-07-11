@@ -5,7 +5,10 @@ package domain
 // Tenant.PasswordPolicyOverride の non-nil フィールドのみが global を上書きし、
 // 残りは SCL 値をそのまま使う。
 
-import "github.com/ambi/idmagic/backend/shared/spec"
+import (
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+)
 
 type PasswordPolicySnapshot struct {
 	MinLength    int
@@ -16,7 +19,7 @@ type PasswordPolicySnapshot struct {
 // ResolvePasswordPolicy は global SCL 値 + tenant override をマージして返す。
 // tenant が nil または override が空なら global そのまま。SCL ロード基盤の所有は
 // shared に残る (ADR-089 item 3) ため、SCL は引数として受け取る。
-func ResolvePasswordPolicy(scl *spec.SCL, tenant *spec.Tenant, defaults PasswordPolicySnapshot) PasswordPolicySnapshot {
+func ResolvePasswordPolicy(scl *spec.SCL, tenant *tenancydomain.Tenant, defaults PasswordPolicySnapshot) PasswordPolicySnapshot {
 	snapshot := defaults
 	if minLength, ok := scl.ObjectiveInt("PasswordPolicy", "min_length"); ok {
 		snapshot.MinLength = minLength

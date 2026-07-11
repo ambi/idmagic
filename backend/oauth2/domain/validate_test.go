@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -29,7 +31,7 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	badConsent.Scopes = nil
 
 	validDetailType := AuthorizationDetailType{
-		TenantID: spec.DefaultTenantID, Type: "payment", DisplayTemplate: "{{.amount}}", State: DetailTypeEnabled,
+		TenantID: tenancydomain.DefaultTenantID, Type: "payment", DisplayTemplate: "{{.amount}}", State: DetailTypeEnabled,
 		Schema:    AuthorizationDetailsSchema{Rules: []AuthorizationDetailFieldRule{{Name: "amount", Semantics: DetailFieldExact}}},
 		CreatedAt: now, UpdatedAt: now,
 	}

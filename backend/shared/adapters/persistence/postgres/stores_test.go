@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -44,15 +45,23 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	// signing_keys.tenant_id は tenants(id) を参照する。NewKeyStore は default テナントの
 	// active 鍵を bootstrap するため、default テナント行を用意しておく。
 	now := testClock()
-	defaultTenant := &spec.Tenant{
-		ID:          spec.DefaultTenantID,
-		Realm:       spec.DefaultRealm,
+	defaultTenant := &tenancydomain.Tenant{
+		ID:          tenancydomain.DefaultTenantID,
+		Realm:       tenancydomain.DefaultRealm,
 		DisplayName: "Default",
-		Status:      spec.TenantStatusActive,
+		Status:      tenancydomain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&TenantRepository{Pool: db}).Save(context.Background(), defaultTenant); err != nil {
+	// TenantRepository は tenancy/adapters/persistence/postgres へ移設済み (wi-179) で、本
+	// パッケージの内部テストから import すると import cycle になるため、seedTenant 同様
+	// 生 SQL で直接 INSERT する。
+	_, err := db.Exec(context.Background(), `
+INSERT INTO tenants (id,realm,display_name,status,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6)`,
+		defaultTenant.ID, defaultTenant.Realm, defaultTenant.DisplayName, string(defaultTenant.Status),
+		defaultTenant.CreatedAt, defaultTenant.UpdatedAt)
+	if err != nil {
 		t.Fatalf("seed default tenant: %v", err)
 	}
 	ctx := tenancy.WithTenant(context.Background(), defaultTenant, "", "")

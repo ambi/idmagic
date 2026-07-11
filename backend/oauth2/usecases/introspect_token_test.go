@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -22,7 +24,7 @@ func (f *fakeIntrospector) IntrospectAccessToken(ctx context.Context, token stri
 }
 
 func TestIntrospectToken(t *testing.T) {
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	refreshStore := memory.NewRefreshTokenStore()
 	denylist := memory.NewAccessTokenDenylist()
 	introspector := &fakeIntrospector{}
@@ -40,7 +42,7 @@ func TestIntrospectToken(t *testing.T) {
 		hash := domain.HashRefreshToken(tokenVal)
 		rec := &domain.RefreshTokenRecord{
 			ID:                "rt-1",
-			TenantID:          spec.DefaultTenantID,
+			TenantID:          tenancydomain.DefaultTenantID,
 			ClientID:          "client-1",
 			UserID:            "user-1",
 			Scopes:            []string{"openid", "profile"},
@@ -89,7 +91,7 @@ func TestIntrospectToken(t *testing.T) {
 		}
 
 		// 2. Absolute Expired
-		rec.TenantID = spec.DefaultTenantID
+		rec.TenantID = tenancydomain.DefaultTenantID
 		rec.AbsoluteExpiresAt = now.Add(-1 * time.Minute)
 		_ = refreshStore.Save(ctx, rec)
 		resp, _ = IntrospectToken(ctx, deps, IntrospectInput{Token: tokenVal}, now)

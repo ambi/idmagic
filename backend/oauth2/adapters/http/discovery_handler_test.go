@@ -9,10 +9,13 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
@@ -46,10 +49,10 @@ func TestDiscoveryRoutesIncludeRFC8414Alias(t *testing.T) {
 // SCL scenario "テナントごとに別の署名鍵で発行する" / TenantJwksIsolation 不変条件。
 // /realms/{tenant_id}/jwks は当該テナントの鍵だけを返す。
 func TestPerTenantJwksIsolation(t *testing.T) {
-	tenants := memory.NewTenantRepository()
+	tenants := tenancymemory.NewTenantRepository()
 	for _, id := range []string{"tenant-a", "tenant-b"} {
-		if err := tenants.Save(context.Background(), &spec.Tenant{
-			ID: id, Realm: id, DisplayName: id, Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
+		if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
+			ID: id, Realm: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -59,8 +62,8 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 各テナントで token 発行相当 (GetActiveKey) を起こし鍵を作る。
-	ctxA := tenancy.WithTenant(context.Background(), &spec.Tenant{ID: "tenant-a"}, "", "")
-	ctxB := tenancy.WithTenant(context.Background(), &spec.Tenant{ID: "tenant-b"}, "", "")
+	ctxA := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctxB := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	keyA, err := keyStore.GetActiveKey(ctxA)
 	if err != nil {
 		t.Fatal(err)

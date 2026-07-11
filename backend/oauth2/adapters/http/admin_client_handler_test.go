@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -82,7 +84,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", update.Code, update.Body.String())
 	}
-	stored, err := clients.FindByID(context.Background(), spec.DefaultTenantID, created.Client.ClientID)
+	stored, err := clients.FindByID(context.Background(), tenancydomain.DefaultTenantID, created.Client.ClientID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +99,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	if deleted.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
 	}
-	stored, err = clients.FindByID(context.Background(), spec.DefaultTenantID, created.Client.ClientID)
+	stored, err = clients.FindByID(context.Background(), tenancydomain.DefaultTenantID, created.Client.ClientID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,11 +152,11 @@ func newAdminOAuth2ClientHandler(
 	clients := oauth2memory.NewClientRepository()
 	now := time.Now().UTC()
 	users.Seed(&idmdomain.User{
-		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&idmdomain.User{
-		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
+		ID: "regular", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	events := []spec.DomainEvent{}

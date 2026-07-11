@@ -5,20 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func TestTenantRepositorySaveAndFind(t *testing.T) {
-	db := requireDB(t)
+	db := pgtest.Require(t)
 	repo := &TenantRepository{Pool: db}
 	ctx := context.Background()
 
 	now := time.Now().UTC().Truncate(time.Second)
-	tenant := &spec.Tenant{
+	tenant := &domain.Tenant{
 		ID:          "11111111-1111-1111-1111-111111111111",
 		Realm:       "acme",
 		DisplayName: "Acme",
-		Status:      spec.TenantStatusActive,
+		Status:      domain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -33,7 +34,7 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 	if got == nil {
 		t.Fatal("tenant not found after save")
 	}
-	if got.DisplayName != "Acme" || got.Status != spec.TenantStatusActive || got.Realm != "acme" {
+	if got.DisplayName != "Acme" || got.Status != domain.TenantStatusActive || got.Realm != "acme" {
 		t.Fatalf("unexpected tenant: %+v", got)
 	}
 
@@ -70,7 +71,7 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 }
 
 func TestTenantRepositoryFindByIDMissing(t *testing.T) {
-	db := requireDB(t)
+	db := pgtest.Require(t)
 	repo := &TenantRepository{Pool: db}
 
 	got, err := repo.FindByID(context.Background(), "00000000-0000-0000-0000-0000000000ff")

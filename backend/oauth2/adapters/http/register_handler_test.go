@@ -8,13 +8,15 @@ import (
 	"strings"
 	"testing"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -30,14 +32,14 @@ func newRegisterServer() registerFixture {
 	deps := httpadapter.Deps{
 		Deps: support.Deps{
 			Issuer:     "http://test",
-			TenantRepo: memory.NewTenantRepository(),
+			TenantRepo: tenancymemory.NewTenantRepository(),
 		},
 		OAuth2: oauth2.Module{ClientRepo: clientRepo},
 	}
-	_ = deps.TenantRepo.Save(context.Background(), &spec.Tenant{
-		ID:     spec.DefaultTenantID,
-		Realm:  spec.DefaultRealm,
-		Status: spec.TenantStatusActive,
+	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
+		ID:     tenancydomain.DefaultTenantID,
+		Realm:  tenancydomain.DefaultRealm,
+		Status: tenancydomain.TenantStatusActive,
 	})
 
 	httpadapter.Register(e, deps)

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -83,7 +85,7 @@ func TestUpdateUserRejectsUndefinedAttribute(t *testing.T) {
 func TestUpdateUserAcceptsTenantCustomAttribute(t *testing.T) {
 	ctx, deps, schemaRepo := attrTestDeps(t)
 	if err := schemaRepo.Save(ctx, &idmdomain.TenantUserAttributeSchema{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		Attributes: []idmdomain.UserAttributeDef{
 			{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region")},
 		},

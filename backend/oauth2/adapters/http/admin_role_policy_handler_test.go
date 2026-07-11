@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
 )
 
 func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
@@ -70,7 +70,7 @@ func TestAdminRolePoliciesHideSystemAdminPermissionsFromAdmin(t *testing.T) {
 func TestAdminRolePoliciesIncludeControlPlanePermissionsForSystemAdmin(t *testing.T) {
 	e, _, _ := newKeyAdminServer(
 		t,
-		keyAdminUser("ops", spec.DefaultTenantID, []string{"system_admin"}),
+		keyAdminUser("ops", tenancydomain.DefaultTenantID, []string{"system_admin"}),
 	)
 	rec := getAdminRolePolicies(e, "/realms/default/api/admin/policy/roles")
 	if rec.Code != http.StatusOK {

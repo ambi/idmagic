@@ -3,31 +3,13 @@ package spec
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
 	z "github.com/Oudwins/zog"
 )
 
-var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
-
-var tenantSchema = z.Struct(z.Shape{
-	"ID": z.String().Min(1).Required(),
-	"Realm": z.String().Min(1).Max(63).TestFunc(
-		func(value *string, _ z.Ctx) bool {
-			return value != nil && tenantIDPattern.MatchString(*value) && *value != "admin"
-		},
-		z.Message("tenant realm must be a URL-safe slug and must not be admin"),
-	).Required(),
-	"DisplayName": z.String().Min(1).Max(200).Required(),
-	"Status": z.StringLike[TenantStatus]().TestFunc(
-		func(value *TenantStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("tenant status is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
+// tenantSchema / tenantIDPattern は tenancy/domain へ移設した (wi-179, ADR-089/ADR-093)。
 
 var authorizationRequestSchema = z.Struct(z.Shape{
 	"ID": z.String().UUID().Required(),

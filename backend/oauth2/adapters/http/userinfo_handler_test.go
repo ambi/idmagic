@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -97,7 +99,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 
 	userRepo := idmmemory.NewUserRepository()
 	userRepo.Seed(&idmdomain.User{
-		ID: "user_alice", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
+		ID: "user_alice", PreferredUsername: "alice", TenantID: tenancydomain.DefaultTenantID,
 		CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -202,42 +204,42 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 
 // newSingleTenantRepo は指定 ID の Active テナントだけを返す最小の TenantRepository。
 type singleTenantRepo struct {
-	tenant *spec.Tenant
+	tenant *tenancydomain.Tenant
 }
 
 func newSingleTenantRepo() *singleTenantRepo {
 	now := time.Now().UTC()
-	return &singleTenantRepo{tenant: &spec.Tenant{
-		ID: "acme", Realm: "acme", Status: spec.TenantStatusActive, CreatedAt: now,
+	return &singleTenantRepo{tenant: &tenancydomain.Tenant{
+		ID: "acme", Realm: "acme", Status: tenancydomain.TenantStatusActive, CreatedAt: now,
 	}}
 }
 
-func (r *singleTenantRepo) FindByID(_ context.Context, id string) (*spec.Tenant, error) {
+func (r *singleTenantRepo) FindByID(_ context.Context, id string) (*tenancydomain.Tenant, error) {
 	if r.tenant.ID == id {
 		return r.tenant, nil
 	}
-	if id == spec.DefaultTenantID {
-		return &spec.Tenant{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, Status: spec.TenantStatusActive}, nil
+	if id == tenancydomain.DefaultTenantID {
+		return &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive}, nil
 	}
 	return nil, nil
 }
 
-func (r *singleTenantRepo) FindByRealm(_ context.Context, realm string) (*spec.Tenant, error) {
+func (r *singleTenantRepo) FindByRealm(_ context.Context, realm string) (*tenancydomain.Tenant, error) {
 	if r.tenant.Realm == realm {
 		return r.tenant, nil
 	}
-	if realm == spec.DefaultRealm {
-		return &spec.Tenant{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, Status: spec.TenantStatusActive}, nil
+	if realm == tenancydomain.DefaultRealm {
+		return &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive}, nil
 	}
 	return nil, nil
 }
 
-func (r *singleTenantRepo) FindAll(_ context.Context) ([]*spec.Tenant, error) {
-	return []*spec.Tenant{r.tenant}, nil
+func (r *singleTenantRepo) FindAll(_ context.Context) ([]*tenancydomain.Tenant, error) {
+	return []*tenancydomain.Tenant{r.tenant}, nil
 }
 
-func (r *singleTenantRepo) Save(_ context.Context, _ *spec.Tenant) error { return nil }
-func (r *singleTenantRepo) Delete(_ context.Context, _ string) error     { return nil }
+func (r *singleTenantRepo) Save(_ context.Context, _ *tenancydomain.Tenant) error { return nil }
+func (r *singleTenantRepo) Delete(_ context.Context, _ string) error              { return nil }
 
 // fakeDenylist は AccessToken denylist を任意の jti セットで再現する。
 type fakeDenylist struct {
@@ -262,7 +264,7 @@ func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDeny
 	now := time.Now().UTC()
 	userRepo.Seed(&idmdomain.User{
 		ID: "user_alice", PreferredUsername: "alice",
-		TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
 	deps := httpadapter.Deps{

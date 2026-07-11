@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestUserValidateAcceptsAttributes(t *testing.T) {
@@ -112,7 +113,7 @@ func TestBuiltinUserAttributeDefsCoverOIDCAndOrg(t *testing.T) {
 
 func sampleSchema() idmdomain.TenantUserAttributeSchema {
 	return idmdomain.TenantUserAttributeSchema{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		Attributes: []idmdomain.UserAttributeDef{
 			{Key: "region", Type: idmdomain.AttributeTypeString, Required: true, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region"), PII: false},
 			{Key: "tags", Type: idmdomain.AttributeTypeStringArray, MultiValued: true, Visibility: idmdomain.AttrVisibilityAdminReadable, PII: true},

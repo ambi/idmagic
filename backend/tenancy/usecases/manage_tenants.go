@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -23,7 +25,7 @@ var (
 // PasswordPolicyOverride にゼロ値を渡すと override を解除する (global default 継承)。
 type UpdateInput struct {
 	DisplayName            *string
-	PasswordPolicyOverride *spec.PasswordPolicyOverride
+	PasswordPolicyOverride *domain.PasswordPolicyOverride
 }
 
 // PolicyFloor は password_policy_override が下回ってはならない global 値。
@@ -35,7 +37,7 @@ type PolicyFloor struct {
 }
 
 func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now time.Time) error {
-	tenant, err := repo.FindByID(ctx, spec.DefaultTenantID)
+	tenant, err := repo.FindByID(ctx, domain.DefaultTenantID)
 	if err != nil {
 		return err
 	}
@@ -43,15 +45,15 @@ func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now t
 		return nil
 	}
 	now = normalizeNow(now)
-	return repo.Save(ctx, &spec.Tenant{
-		ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, DisplayName: "Default",
-		Status: spec.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+	return repo.Save(ctx, &domain.Tenant{
+		ID: domain.DefaultTenantID, Realm: domain.DefaultRealm, DisplayName: "Default",
+		Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	})
 }
 
 // Create は admin が指定した realm (URL slug) で新規テナントを作成する。不変 UUID キー
 // (id) はサーバが採番する (ADR-085)。realm の重複は ErrTenantConflict。
-func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displayName string, now time.Time) (*spec.Tenant, error) {
+func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displayName string, now time.Time) (*domain.Tenant, error) {
 	displayName = strings.TrimSpace(displayName)
 	if displayName == "" {
 		return nil, ErrDisplayNameEmpty
@@ -60,8 +62,8 @@ func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displ
 	if err != nil {
 		return nil, err
 	}
-	tenant := &spec.Tenant{
-		ID: id, Realm: strings.TrimSpace(realm), DisplayName: displayName, Status: spec.TenantStatusActive,
+	tenant := &domain.Tenant{
+		ID: id, Realm: strings.TrimSpace(realm), DisplayName: displayName, Status: domain.TenantStatusActive,
 		CreatedAt: normalizeNow(now), UpdatedAt: normalizeNow(now),
 	}
 	if err := tenant.Validate(); err != nil {
@@ -87,7 +89,7 @@ func Update(
 	input UpdateInput,
 	floor PolicyFloor,
 	now time.Time,
-) (*spec.Tenant, error) {
+) (*domain.Tenant, error) {
 	tenant, err := repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -122,8 +124,8 @@ func Update(
 	return &updated, nil
 }
 
-func normalizeOverride(o spec.PasswordPolicyOverride) *spec.PasswordPolicyOverride {
-	result := spec.PasswordPolicyOverride{}
+func normalizeOverride(o domain.PasswordPolicyOverride) *domain.PasswordPolicyOverride {
+	result := domain.PasswordPolicyOverride{}
 	anyOverride := false
 	if o.MinLength != nil && *o.MinLength > 0 {
 		v := *o.MinLength
@@ -146,7 +148,7 @@ func normalizeOverride(o spec.PasswordPolicyOverride) *spec.PasswordPolicyOverri
 	return &result
 }
 
-func enforcePolicyFloor(o spec.PasswordPolicyOverride, floor PolicyFloor) error {
+func enforcePolicyFloor(o domain.PasswordPolicyOverride, floor PolicyFloor) error {
 	if o.MinLength != nil && floor.MinLength > 0 && *o.MinLength < floor.MinLength {
 		return ErrPolicyOverrideWeaker
 	}
@@ -159,8 +161,8 @@ func enforcePolicyFloor(o spec.PasswordPolicyOverride, floor PolicyFloor) error 
 	return nil
 }
 
-func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id string, disabled bool, now time.Time) (*spec.Tenant, error) {
-	if id == spec.DefaultTenantID && disabled {
+func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id string, disabled bool, now time.Time) (*domain.Tenant, error) {
+	if id == domain.DefaultTenantID && disabled {
 		return nil, ErrDefaultTenant
 	}
 	tenant, err := repo.FindByID(ctx, id)
@@ -174,10 +176,10 @@ func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id stri
 	t := normalizeNow(now)
 	updated.UpdatedAt = t
 	if disabled {
-		updated.Status = spec.TenantStatusDisabled
+		updated.Status = domain.TenantStatusDisabled
 		updated.DisabledAt = &t
 	} else {
-		updated.Status = spec.TenantStatusActive
+		updated.Status = domain.TenantStatusActive
 		updated.DisabledAt = nil
 	}
 	if err := repo.Save(ctx, &updated); err != nil {

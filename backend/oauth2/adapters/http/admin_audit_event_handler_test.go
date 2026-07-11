@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -100,7 +102,7 @@ func TestAdminAuditEventsScopesToOwnTenant(t *testing.T) {
 	now := time.Now().UTC()
 	events := []*oauthports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now.Add(-time.Minute)),
-		auditEvent(spec.DefaultTenantID, "UserAuthenticated", "ops", now.Add(-30*time.Second)),
+		auditEvent(tenancydomain.DefaultTenantID, "UserAuthenticated", "ops", now.Add(-30*time.Second)),
 		auditEvent("acme", "AccessTokenIssued", "alice", now),
 	}
 	e := newAuditAdminServer(t, user, events)
@@ -130,7 +132,7 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 	now := time.Now().UTC()
 	events := []*oauthports.AuditEventRecord{
 		auditEvent("acme", "X", "a", now),
-		auditEvent(spec.DefaultTenantID, "X", "b", now),
+		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
 	}
 	e := newAuditAdminServer(t, admin, events)
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?all_tenants=true")
@@ -147,11 +149,11 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 }
 
 func TestAdminAuditEventsAllTenantsHonoredForSystemAdminAtDefault(t *testing.T) {
-	sysAdmin := auditUser("user_system_admin", spec.DefaultTenantID, []string{"system_admin"})
+	sysAdmin := auditUser("user_system_admin", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	now := time.Now().UTC()
 	events := []*oauthports.AuditEventRecord{
 		auditEvent("acme", "X", "a", now),
-		auditEvent(spec.DefaultTenantID, "X", "b", now),
+		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
 	}
 	e := newAuditAdminServer(t, sysAdmin, events)
 	rec := getAdminAuditEvents(e, "/realms/default/api/admin/audit_events?all_tenants=true")
@@ -170,7 +172,7 @@ func TestAdminAuditEventsAllTenantsHonoredForSystemAdminAtDefault(t *testing.T) 
 func TestAdminAuditEventsGetReturns404ForCrossTenant(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
-	foreign := auditEvent(spec.DefaultTenantID, "X", "alice", now)
+	foreign := auditEvent(tenancydomain.DefaultTenantID, "X", "alice", now)
 	e := newAuditAdminServer(t, user, []*oauthports.AuditEventRecord{foreign})
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/"+foreign.ID)
 	if rec.Code != http.StatusNotFound {

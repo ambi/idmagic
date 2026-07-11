@@ -5,6 +5,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -32,11 +34,11 @@ func (d Deps) requireTenantAdmin(c *echo.Context) (*idmdomain.User, error) {
 }
 
 type AdminSettingsResponse struct {
-	TenantID               string                       `json:"tenant_id"`
-	Realm                  string                       `json:"realm"`
-	DisplayName            string                       `json:"display_name"`
-	PasswordPolicyOverride *spec.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
-	PasswordPolicyDefaults passwordPolicyDefaults       `json:"password_policy_defaults"`
+	TenantID               string                         `json:"tenant_id"`
+	Realm                  string                         `json:"realm"`
+	DisplayName            string                         `json:"display_name"`
+	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	PasswordPolicyDefaults passwordPolicyDefaults         `json:"password_policy_defaults"`
 }
 
 type passwordPolicyDefaults struct {
@@ -46,8 +48,8 @@ type passwordPolicyDefaults struct {
 }
 
 type adminSettingsUpdateRequest struct {
-	DisplayName            *string                      `json:"display_name,omitempty"`
-	PasswordPolicyOverride *spec.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	DisplayName            *string                        `json:"display_name,omitempty"`
+	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 }
 
 func (d Deps) handleGetAdminSettings(c *echo.Context) error {
@@ -99,7 +101,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, d.toAdminSettingsResponse(tenant))
 }
 
-func (d Deps) toAdminSettingsResponse(t *spec.Tenant) AdminSettingsResponse {
+func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 	floor := d.tenantPolicyFloor()
 	return AdminSettingsResponse{
 		TenantID:               t.ID,

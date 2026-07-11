@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -55,7 +57,7 @@ func Run() error {
 	defer stop()
 
 	hasher := crypto.NewArgon2idPasswordHasher()
-	if err := tenantusecases.EnsureDefault(ctx, deps.TenantRepo, time.Now().UTC()); err != nil {
+	if err := tenantusecases.EnsureDefault(ctx, deps.Tenancy.TenantRepo, time.Now().UTC()); err != nil {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
 	if os.Getenv("SKIP_DEMO_SEED") == "" {
@@ -165,7 +167,7 @@ func Run() error {
 			if rec, err := newAuditEventRecord(event); err == nil {
 				appendCtx := eventCtx
 				if rec.TenantID != "" {
-					appendCtx = tenancy.WithTenant(eventCtx, &spec.Tenant{ID: rec.TenantID}, "", "")
+					appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
 				}
 				_ = deps.OAuth2.AuditEventRepo.Append(appendCtx, rec)
 			}
@@ -184,7 +186,7 @@ func Run() error {
 			ValkeyPing:                deps.ValkeyPing,
 			ShuttingDown:              shuttingDown,
 			StartupComplete:           startupComplete,
-			TenantRepo:                deps.TenantRepo,
+			TenantRepo:                deps.Tenancy.TenantRepo,
 			HealthInfo: httpsupport.HealthInfo{
 				Persistence:   runtime.Persistence,
 				EventSink:     runtime.EventSink,
@@ -192,7 +194,7 @@ func Run() error {
 				AuthZEN:       runtime.AuthZEN,
 			},
 		},
-		AttrSchemaRepo:     deps.AttrSchemaRepo,
+		Tenancy:            deps.Tenancy,
 		IdentityManagement: deps.IdentityManagement,
 		Authentication:     deps.Authentication,
 		OAuth2:             deps.OAuth2,

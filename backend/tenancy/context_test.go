@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 // WithTenant で格納したテナントが Tenant / TenantID から取り出せる。
 func TestWithTenantAndAccessors(t *testing.T) {
-	tenant := &spec.Tenant{ID: "acme"}
+	tenant := &domain.Tenant{ID: "acme"}
 	ctx := tenancy.WithTenant(context.Background(), tenant, "https://acme.example.com/", "/realms/acme/")
 
 	if got := tenancy.Tenant(ctx); got == nil || got.ID != "acme" {
@@ -31,16 +32,16 @@ func TestWithTenantAndAccessors(t *testing.T) {
 // テナント未設定の context では TenantID は DefaultTenantID を返す。
 func TestTenantIDDefaults(t *testing.T) {
 	ctx := context.Background()
-	if got := tenancy.TenantID(ctx); got != spec.DefaultTenantID {
-		t.Errorf("TenantID() = %q, want %q", got, spec.DefaultTenantID)
+	if got := tenancy.TenantID(ctx); got != domain.DefaultTenantID {
+		t.Errorf("TenantID() = %q, want %q", got, domain.DefaultTenantID)
 	}
 	if got := tenancy.Tenant(ctx); got != nil {
 		t.Errorf("Tenant() = %v, want nil", got)
 	}
 	// ID が空のテナントも default にフォールバックする。
-	ctx = tenancy.WithTenant(ctx, &spec.Tenant{ID: ""}, "", "")
-	if got := tenancy.TenantID(ctx); got != spec.DefaultTenantID {
-		t.Errorf("TenantID() with empty id = %q, want %q", got, spec.DefaultTenantID)
+	ctx = tenancy.WithTenant(ctx, &domain.Tenant{ID: ""}, "", "")
+	if got := tenancy.TenantID(ctx); got != domain.DefaultTenantID {
+		t.Errorf("TenantID() with empty id = %q, want %q", got, domain.DefaultTenantID)
 	}
 }
 

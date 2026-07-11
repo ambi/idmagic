@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmpg "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
@@ -12,6 +14,7 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancypg "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 )
 
 // testClock は決定的なタイムスタンプ生成に用いる基準時刻。
@@ -31,18 +34,18 @@ func newUUID(t *testing.T) string {
 // 本パッケージ (scim/postgres) を import しており、本パッケージの内部テストから pgfixtures を
 // 使うと postgres -> pgfixtures -> postgres の import cycle になるため (ADR-090, wi-172 と同じ制約)。
 
-func seedTenant(t *testing.T, db sharedpg.DB) *spec.Tenant {
+func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	t.Helper()
 	now := testClock()
-	tenant := &spec.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID:          newUUID(t),
 		Realm:       "tenant-" + newUUID(t)[:8],
 		DisplayName: "Test Tenant",
-		Status:      spec.TenantStatusActive,
+		Status:      tenancydomain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&sharedpg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

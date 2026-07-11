@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/jackc/pgx/v5"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -24,11 +26,11 @@ func NewKeyStore(ctx context.Context, pool DB) (*KeyStore, error) {
 	var exists bool
 	if err := pool.QueryRow(ctx,
 		"SELECT EXISTS(SELECT 1 FROM signing_keys WHERE active AND tenant_id=$1)",
-		spec.DefaultTenantID).Scan(&exists); err != nil {
+		tenancydomain.DefaultTenantID).Scan(&exists); err != nil {
 		return nil, err
 	}
 	if !exists {
-		if _, err := store.rotateForTenant(ctx, spec.DefaultTenantID); err != nil {
+		if _, err := store.rotateForTenant(ctx, tenancydomain.DefaultTenantID); err != nil {
 			return nil, err
 		}
 	}

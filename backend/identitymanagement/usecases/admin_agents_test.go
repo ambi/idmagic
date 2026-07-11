@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -26,18 +28,18 @@ func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent
 	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{"https://app.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
 	userRepo.Seed(&idmdomain.User{
-		ID: "operator", TenantID: spec.DefaultTenantID, PreferredUsername: "operator",
+		ID: "operator", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "operator",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&idmdomain.User{
-		ID: "user_new", TenantID: spec.DefaultTenantID, PreferredUsername: "user-new",
+		ID: "user_new", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user-new",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 	events := &[]spec.DomainEvent{}
@@ -58,13 +60,13 @@ func agentEventTypes(events []spec.DomainEvent) []string {
 	return out
 }
 
-// defaultTenantCtx は tenancy.TenantID が spec.DefaultTenantID を返す素の context。
+// defaultTenantCtx は tenancy.TenantID が tenancydomain.DefaultTenantID を返す素の context。
 func defaultTenantCtx() context.Context {
 	return context.Background()
 }
 
 func tenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &spec.Tenant{ID: id}, "https://idp.example", "")
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://idp.example", "")
 }
 
 func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
@@ -350,7 +352,7 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
 	}
 
-	found, err := deps.AgentRepo.FindByClientID(ctx, spec.DefaultTenantID, "svc_client")
+	found, err := deps.AgentRepo.FindByClientID(ctx, tenancydomain.DefaultTenantID, "svc_client")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +371,7 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 	if err := idmusecases.UnbindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
 		t.Fatal(err)
 	}
-	found, err = deps.AgentRepo.FindByClientID(ctx, spec.DefaultTenantID, "svc_client")
+	found, err = deps.AgentRepo.FindByClientID(ctx, tenancydomain.DefaultTenantID, "svc_client")
 	if err != nil {
 		t.Fatal(err)
 	}

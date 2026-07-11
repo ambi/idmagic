@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -111,7 +113,7 @@ func TestDeviceAuthorizationRejectsUndeclaredScope(t *testing.T) {
 func TestDeviceFlowDeny(t *testing.T) {
 	f := newDeviceFixture()
 	t0 := time.Now().UTC()
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 
 	auth, err := RequestDeviceAuthorization(
 		ctx,

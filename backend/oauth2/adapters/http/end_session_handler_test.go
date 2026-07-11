@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -32,7 +34,7 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	clientRepo.Seed(&oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: logoutClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{logoutRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},

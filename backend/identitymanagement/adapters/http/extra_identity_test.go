@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -61,12 +63,12 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 		{
 			ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 			Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
-			TenantID: spec.DefaultTenantID,
+			TenantID: tenancydomain.DefaultTenantID,
 		},
 		{
 			ID: "regular", PreferredUsername: "regular", PasswordHash: "unused",
 			CreatedAt: now, UpdatedAt: now,
-			TenantID: spec.DefaultTenantID,
+			TenantID: tenancydomain.DefaultTenantID,
 		},
 	} {
 		repo.Seed(user)
@@ -95,7 +97,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 	clientName := "Agent Client"
 	_ = h.clients.Save(context.Background(), &oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
 		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		IDTokenSignedResponseAlg: spec.SigAlgPS256,
@@ -311,7 +313,7 @@ func TestAccountDataExport(t *testing.T) {
 	// Seed client and consent
 	clientName := "Client One"
 	client := &oauthdomain.OAuth2Client{
-		TenantID: spec.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
 	}
 	h.clients.Seed(client)
 
@@ -321,7 +323,7 @@ func TestAccountDataExport(t *testing.T) {
 		Scopes: []string{"openid", "profile"}, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 		State: oauthdomain.ConsentGranted,
 	}
-	_ = h.consents.Save(context.Background(), spec.DefaultTenantID, consent)
+	_ = h.consents.Save(context.Background(), tenancydomain.DefaultTenantID, consent)
 
 	// Test Export for regular user
 	request := httptest.NewRequest(http.MethodGet, "/api/account/data_export", http.NoBody)
@@ -438,7 +440,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 
 	// Seed a group
 	group := &idmdomain.Group{
-		ID: "group-1", Name: "Group One", TenantID: spec.DefaultTenantID,
+		ID: "group-1", Name: "Group One", TenantID: tenancydomain.DefaultTenantID,
 	}
 	_ = groupRepo.Save(context.Background(), group)
 

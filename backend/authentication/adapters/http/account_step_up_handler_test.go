@@ -16,6 +16,10 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -36,13 +40,13 @@ import (
 
 const stepUpTestPassword = "demo-password-1234"
 
-func activeTenant(id, displayName string) *spec.Tenant {
+func activeTenant(id, displayName string) *tenancydomain.Tenant {
 	realm := id
-	if id == spec.DefaultTenantID {
-		realm = spec.DefaultRealm
+	if id == tenancydomain.DefaultTenantID {
+		realm = tenancydomain.DefaultRealm
 	}
-	return &spec.Tenant{
-		ID: id, Realm: realm, DisplayName: displayName, Status: spec.TenantStatusActive,
+	return &tenancydomain.Tenant{
+		ID: id, Realm: realm, DisplayName: displayName, Status: tenancydomain.TenantStatusActive,
 		CreatedAt: time.Now().UTC(),
 	}
 }
@@ -59,7 +63,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 		t.Fatal(err)
 	}
 	userRepo.Seed(&idmdomain.User{
-		ID: "user-1", PreferredUsername: "alice", TenantID: spec.DefaultTenantID,
+		ID: "user-1", PreferredUsername: "alice", TenantID: tenancydomain.DefaultTenantID,
 		PasswordHash: hash, MfaEnrolled: true,
 		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
@@ -76,8 +80,8 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 		t.Fatal(err)
 	}
 
-	tenantRepo := memory.NewTenantRepository()
-	if err := tenantRepo.Save(ctx, activeTenant(spec.DefaultTenantID, "Default")); err != nil {
+	tenantRepo := tenancymemory.NewTenantRepository()
+	if err := tenantRepo.Save(ctx, activeTenant(tenancydomain.DefaultTenantID, "Default")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -108,7 +112,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 func seedSession(t *testing.T, store *memory.SessionStore, id string, authTime time.Time) string {
 	t.Helper()
 	sess := &authdomain.LoginSession{
-		ID: id, TenantID: spec.DefaultTenantID, UserID: "user-1",
+		ID: id, TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
 		AuthTime: authTime.Unix(), AMR: []string{"pwd"},
 		ACR:       authusecases.DeriveACR([]string{"pwd"}),
 		ExpiresAt: time.Now().Add(time.Hour),

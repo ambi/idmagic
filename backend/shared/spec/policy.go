@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"slices"
 	"time"
+
+	"github.com/ambi/idmagic/backend/shared/kernel"
 )
 
 type AuthZSubject struct {
@@ -339,7 +341,7 @@ var ruleEvaluators = map[string]ruleEvaluator{
 		return r.Subject.Type == "User" && slices.Contains(r.Subject.Properties.Roles, "system_admin")
 	},
 	"actor_is_control_plane_user": func(r AuthZRequest) bool {
-		return r.Subject.Type == "User" && r.Subject.Properties.TenantID == DefaultTenantID
+		return r.Subject.Type == "User" && r.Subject.Properties.TenantID == kernel.DefaultTenantID
 	},
 	"actor_is_active": func(r AuthZRequest) bool {
 		return r.Subject.Type == "User" && r.Subject.Properties.DisabledAt == nil

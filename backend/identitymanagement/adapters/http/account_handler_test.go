@@ -12,6 +12,10 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -20,7 +24,6 @@ import (
 	idmhttp "github.com/ambi/idmagic/backend/identitymanagement/adapters/http"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -32,8 +35,8 @@ func newAccountServer(t *testing.T, user *idmdomain.User) *echo.Echo {
 	if user != nil {
 		userRepo.Seed(user)
 	}
-	tenantRepo := memory.NewTenantRepository()
-	if err := tenantRepo.Save(context.Background(), activeTenant(spec.DefaultTenantID, "Default")); err != nil {
+	tenantRepo := tenancymemory.NewTenantRepository()
+	if err := tenantRepo.Save(context.Background(), activeTenant(tenancydomain.DefaultTenantID, "Default")); err != nil {
 		t.Fatal(err)
 	}
 	resolver := &fakeAuthnResolver{}
@@ -59,7 +62,7 @@ func accountUser() *idmdomain.User {
 	now := time.Now().UTC()
 	name := "Dave Q"
 	return &idmdomain.User{
-		ID: "user-1", PreferredUsername: "dave", TenantID: spec.DefaultTenantID, Name: &name,
+		ID: "user-1", PreferredUsername: "dave", TenantID: tenancydomain.DefaultTenantID, Name: &name,
 		PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHQ$aGFzaGhhc2g",
 		Lifecycle:    idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		Attributes: map[string]idmdomain.AttributeValue{
@@ -184,13 +187,13 @@ func (f *fakeAuthnResolver) Resolve(_ context.Context, _ authdomain.Headers) (*a
 	return f.ctx, nil
 }
 
-func activeTenant(id, displayName string) *spec.Tenant {
+func activeTenant(id, displayName string) *tenancydomain.Tenant {
 	realm := id
-	if id == spec.DefaultTenantID {
-		realm = spec.DefaultRealm
+	if id == tenancydomain.DefaultTenantID {
+		realm = tenancydomain.DefaultRealm
 	}
-	return &spec.Tenant{
-		ID: id, Realm: realm, DisplayName: displayName, Status: spec.TenantStatusActive,
+	return &tenancydomain.Tenant{
+		ID: id, Realm: realm, DisplayName: displayName, Status: tenancydomain.TenantStatusActive,
 		CreatedAt: time.Now().UTC(),
 	}
 }

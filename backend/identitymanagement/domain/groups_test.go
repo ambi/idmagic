@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestEffectiveRolesUnionSortedDedup(t *testing.T) {
@@ -32,11 +33,11 @@ func TestEffectiveRolesEmptyGroupsEqualsUserRoles(t *testing.T) {
 
 func TestGroupValidate(t *testing.T) {
 	now := time.Now().UTC()
-	valid := idmdomain.Group{ID: "group_x", TenantID: spec.DefaultTenantID, Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now, UpdatedAt: now}
+	valid := idmdomain.Group{ID: "group_x", TenantID: tenancydomain.DefaultTenantID, Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now, UpdatedAt: now}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid group rejected: %v", err)
 	}
-	missingName := idmdomain.Group{ID: "group_x", TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now}
+	missingName := idmdomain.Group{ID: "group_x", TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now}
 	if err := missingName.Validate(); err == nil {
 		t.Fatal("group without name was accepted")
 	}

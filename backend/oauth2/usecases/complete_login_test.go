@@ -5,13 +5,15 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestCompleteLogin(t *testing.T) {
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	requestStore := memory.NewAuthorizationRequestStore()
 	codeStore := memory.NewAuthorizationCodeStore()
 
@@ -26,7 +28,7 @@ func TestCompleteLogin(t *testing.T) {
 	t.Run("Succeeds", func(t *testing.T) {
 		req := &domain.AuthorizationRequest{
 			ID:                  reqID,
-			TenantID:            spec.DefaultTenantID,
+			TenantID:            tenancydomain.DefaultTenantID,
 			ClientID:            "client-1",
 			Scope:               "openid profile",
 			RedirectURI:         "https://example.com/cb",
@@ -97,7 +99,7 @@ func TestCompleteLogin(t *testing.T) {
 	t.Run("RequestExpired", func(t *testing.T) {
 		req := &domain.AuthorizationRequest{
 			ID:        "44444444-4444-4444-4444-444444444444",
-			TenantID:  spec.DefaultTenantID,
+			TenantID:  tenancydomain.DefaultTenantID,
 			State:     spec.AuthFlowReceived,
 			ExpiresAt: now.Add(-1 * time.Minute),
 		}
@@ -124,7 +126,7 @@ func TestCompleteLogin(t *testing.T) {
 	t.Run("AlreadyProcessedState", func(t *testing.T) {
 		req := &domain.AuthorizationRequest{
 			ID:        "55555555-5555-5555-5555-555555555555",
-			TenantID:  spec.DefaultTenantID,
+			TenantID:  tenancydomain.DefaultTenantID,
 			State:     spec.AuthFlowCodeIssued,
 			ExpiresAt: now.Add(10 * time.Minute),
 		}

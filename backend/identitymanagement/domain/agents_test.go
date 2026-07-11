@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // wi-129: 純粋ドメイン (enum Valid / Validate / コンストラクタ / 状態機械) のカバレッジ補強。
@@ -68,7 +69,7 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	now := time.Now().UTC()
 
 	validAgent := idmdomain.Agent{
-		ID: "agent_1", TenantID: spec.DefaultTenantID, Name: "bot", Kind: idmdomain.AgentKindAutonomous,
+		ID: "agent_1", TenantID: tenancydomain.DefaultTenantID, Name: "bot", Kind: idmdomain.AgentKindAutonomous,
 		OwnerUserID: "user_1", Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
 	badAgent := validAgent
@@ -77,7 +78,7 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	validBinding := idmdomain.AgentCredentialBinding{AgentID: "agent_1", ClientID: "demo", CreatedAt: now}
 	badBinding := idmdomain.AgentCredentialBinding{CreatedAt: now}
 
-	validGroup := idmdomain.Group{ID: "group_1", TenantID: spec.DefaultTenantID, Name: "eng", CreatedAt: now, UpdatedAt: now}
+	validGroup := idmdomain.Group{ID: "group_1", TenantID: tenancydomain.DefaultTenantID, Name: "eng", CreatedAt: now, UpdatedAt: now}
 	badGroup := validGroup
 	badGroup.Name = ""
 

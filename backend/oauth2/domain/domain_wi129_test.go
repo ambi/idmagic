@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,7 +24,7 @@ func TestGenerateAuthorizationCode_Defaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
-	if rec.TenantID != spec.DefaultTenantID {
+	if rec.TenantID != tenancydomain.DefaultTenantID {
 		t.Errorf("TenantID 既定値が未補完: %q", rec.TenantID)
 	}
 	if rec.State != spec.AuthCodeRecordIssued {

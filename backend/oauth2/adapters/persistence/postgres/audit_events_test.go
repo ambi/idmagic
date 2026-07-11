@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
@@ -58,7 +60,7 @@ func TestOutboxEventSinkEmit(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := sink.Emit(context.Background(), &oauthdomain.ClientRegistered{
-		At: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), TenantID: spec.DefaultTenantID, ClientID: clientID, ClientType: spec.ClientConfidential,
+		At: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientType: spec.ClientConfidential,
 	}); err != nil {
 		t.Fatalf("emit: %v", err)
 	}

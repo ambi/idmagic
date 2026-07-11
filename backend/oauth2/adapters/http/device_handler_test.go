@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -34,8 +38,8 @@ type deviceFixture struct {
 }
 
 func tenantContext(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &spec.Tenant{
-		ID: id, DisplayName: id, Status: spec.TenantStatusActive, CreatedAt: time.Now().UTC(),
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
+		ID: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }
 
@@ -43,7 +47,7 @@ func newDeviceServer() deviceFixture {
 	clientRepo := oauth2memory.NewClientRepository()
 	// テスト用クライアントをシード
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID:                spec.DefaultTenantID,
+		TenantID:                tenancydomain.DefaultTenantID,
 		ClientID:                "device-client",
 		ClientType:              spec.ClientPublic,
 		RedirectURIs:            []string{"https://device.example/cb"},
@@ -64,17 +68,17 @@ func newDeviceServer() deviceFixture {
 	deps := httpadapter.Deps{
 		Deps: support.Deps{
 			Issuer:     "http://test",
-			TenantRepo: memory.NewTenantRepository(),
+			TenantRepo: tenancymemory.NewTenantRepository(),
 		},
 		OAuth2:          oauth2.Module{ClientRepo: clientRepo},
 		DeviceCodeStore: deviceStore,
 		AuthnResolver:   authn,
 	}
 	// default tenant をシード
-	_ = deps.TenantRepo.Save(context.Background(), &spec.Tenant{
-		ID:     spec.DefaultTenantID,
-		Realm:  spec.DefaultRealm,
-		Status: spec.TenantStatusActive,
+	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
+		ID:     tenancydomain.DefaultTenantID,
+		Realm:  tenancydomain.DefaultRealm,
+		Status: tenancydomain.TenantStatusActive,
 	})
 
 	httpadapter.Register(e, deps)
@@ -89,7 +93,7 @@ func newDeviceServer() deviceFixture {
 
 func TestDeviceAuthorizationAPI(t *testing.T) {
 	fix := newDeviceServer()
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 
 	// 1. handleDeviceAuthorization (POST /device_authorization)
 	t.Run("DeviceAuthorization_Succeeds", func(t *testing.T) {

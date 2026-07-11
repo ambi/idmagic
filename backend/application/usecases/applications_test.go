@@ -4,16 +4,17 @@ import (
 	"context"
 	"testing"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 func tenantContext() context.Context {
-	return tenancy.WithTenant(context.Background(), &spec.Tenant{ID: "acme"}, "https://idp.example", "")
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "https://idp.example", "")
 }
 
 func newDeps() (appusecases.ApplicationDeps, appusecases.AssignmentDeps) {

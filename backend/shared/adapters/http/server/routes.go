@@ -18,8 +18,9 @@ import (
 	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
@@ -32,6 +33,8 @@ import (
 type Deps struct {
 	support.Deps
 
+	Tenancy tenancy.Module
+	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
 	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
 	IdentityManagement identitymanagement.Module
 	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdentityManagement.Module のみを設定する。
@@ -85,6 +88,7 @@ func Register(e *echo.Echo, d Deps) {
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
 	d.IdentityManagement = mergeLegacyIdentityManagementDeps(d.IdentityManagement, d)
+	d.Tenancy = mergeLegacyTenancyDeps(d.Tenancy, d)
 	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
 
@@ -96,19 +100,19 @@ func Register(e *echo.Echo, d Deps) {
 		AuthnResolver:     d.Authentication.AuthnResolver,
 	}
 
-	controlPlane := e.Group("/realms/"+spec.DefaultRealm, d.ResolveControlPlaneTenant)
+	controlPlane := e.Group("/realms/"+tenancydomain.DefaultRealm, d.ResolveControlPlaneTenant)
 	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
-		AttrSchemaRepo: d.AttrSchemaRepo,
+		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
 		UserRepo:       d.IdentityManagement.UserRepo,
 	})
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
-		AttrSchemaRepo: d.AttrSchemaRepo,
+		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
 		UserRepo:       d.IdentityManagement.UserRepo,
 	})
 
@@ -210,6 +214,13 @@ func mergeLegacyOAuth2Deps(module oauth2.Module, d Deps) oauth2.Module {
 	return module
 }
 
+func mergeLegacyTenancyDeps(module tenancy.Module, d Deps) tenancy.Module {
+	if module.AttrSchemaRepo == nil {
+		module.AttrSchemaRepo = d.AttrSchemaRepo
+	}
+	return module
+}
+
 func mergeLegacyIdentityManagementDeps(module identitymanagement.Module, d Deps) identitymanagement.Module {
 	if module.UserRepo == nil {
 		module.UserRepo = d.UserRepo
@@ -263,7 +274,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo:                  d.IdentityManagement.AgentRepo,
 		TokenIntrospector:          d.OAuth2.TokenIntrospector,
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
-		AttrSchemaRepo:             d.AttrSchemaRepo,
+		AttrSchemaRepo:             d.Tenancy.AttrSchemaRepo,
 		AuthEventBucketStore:       d.Authentication.AuthEventBucketStore,
 		Authorizer:                 d.OAuth2.Authorizer,
 		SentinelPasswordHash:       d.Authentication.SentinelPasswordHash,
@@ -282,7 +293,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
 		ConsentRepo:               d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver: clientDisplayNames,
-		AttrSchemaRepo:            d.AttrSchemaRepo,
+		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
 		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
 		AuthEventBucketStore:      d.Authentication.AuthEventBucketStore,
 		TenantRepo:                d.TenantRepo,
@@ -303,7 +314,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo:             d.IdentityManagement.AgentRepo,
 		ClientRepo:            d.OAuth2.ClientRepo,
 		ScimRepo:              d.Scim.Repo,
-		AttrSchemaRepo:        d.AttrSchemaRepo,
+		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,
 		ConsentRepo:           d.OAuth2.ConsentRepo,
 		RefreshStore:          d.OAuth2.RefreshStore,
 		DeviceCodeStore:       d.OAuth2.DeviceCodeStore,
@@ -318,7 +329,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
-		AttrSchemaRepo: d.AttrSchemaRepo,
+		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
 		UserRepo:       d.IdentityManagement.UserRepo,
 	})
 

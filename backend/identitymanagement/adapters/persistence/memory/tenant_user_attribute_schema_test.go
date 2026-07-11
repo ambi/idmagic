@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -86,7 +87,7 @@ func TestTenantUserAttributeSchemaRepositoryDefaultsTenant(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("expected default-tenant schema, got %v, %v", got, err)
 	}
-	if got.TenantID != spec.DefaultTenantID {
-		t.Fatalf("expected tenant_id %q, got %q", spec.DefaultTenantID, got.TenantID)
+	if got.TenantID != tenancydomain.DefaultTenantID {
+		t.Fatalf("expected tenant_id %q, got %q", tenancydomain.DefaultTenantID, got.TenantID)
 	}
 }

@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -179,7 +181,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 	}
 	if requireMFA {
 		if err := applicationRepo.Save(context.Background(), &appdomain.Application{
-			TenantID: spec.DefaultTenantID, ApplicationID: "app-demo", Name: "Demo App",
+			TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-demo", Name: "Demo App",
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 			Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: demoClientID}},
 			CreatedAt: now, UpdatedAt: now,
@@ -187,14 +189,14 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			t.Fatalf("seed application: %v", err)
 		}
 		if err := assignmentRepo.Save(context.Background(), &appdomain.ApplicationAssignment{
-			TenantID: spec.DefaultTenantID, ApplicationID: "app-demo",
+			TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-demo",
 			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "user_alice",
 			Visibility: appdomain.AssignmentVisible, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed assignment: %v", err)
 		}
 		if err := defaultSignInPolicyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
-			TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 			Rules: []appdomain.SignInRule{{
 				RuleID: "default", Name: "Require MFA", Enabled: true,
 				RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},

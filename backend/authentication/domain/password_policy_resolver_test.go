@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,8 +24,8 @@ func TestResolvePasswordPolicy(t *testing.T) {
 
 	t.Run("override only specified fields", func(t *testing.T) {
 		minLength := 16
-		tenant := &spec.Tenant{
-			PasswordPolicyOverride: &spec.PasswordPolicyOverride{MinLength: &minLength},
+		tenant := &tenancydomain.Tenant{
+			PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MinLength: &minLength},
 		}
 		base := ResolvePasswordPolicy(scl, nil, defaults)
 		snap := ResolvePasswordPolicy(scl, tenant, defaults)
@@ -38,8 +40,8 @@ func TestResolvePasswordPolicy(t *testing.T) {
 	t.Run("zero or negative override ignored", func(t *testing.T) {
 		zero := 0
 		neg := -1
-		tenant := &spec.Tenant{
-			PasswordPolicyOverride: &spec.PasswordPolicyOverride{
+		tenant := &tenancydomain.Tenant{
+			PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{
 				MinLength:    &zero,
 				MaxLength:    &neg,
 				HistoryDepth: &zero,

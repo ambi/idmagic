@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -33,7 +35,7 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 		consent  oauthdomain.Consent
 	}{
 		{
-			tenantID: spec.DefaultTenantID,
+			tenantID: tenancydomain.DefaultTenantID,
 			consent: oauthdomain.Consent{
 				UserID: "alice", ClientID: "portal",
 				Scopes: []string{"openid", "profile"}, State: oauthdomain.ConsentGranted,
@@ -97,7 +99,7 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	if revokeResponse.Code != http.StatusNoContent {
 		t.Fatalf("revoke status=%d body=%s", revokeResponse.Code, revokeResponse.Body.String())
 	}
-	revoked, err := consents.Find(context.Background(), spec.DefaultTenantID, "alice", "portal")
+	revoked, err := consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "portal")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,15 +154,15 @@ func newAdminConsentHandler() (*echo.Echo, *oauth2memory.ConsentRepository, *[]s
 	consents := oauth2memory.NewConsentRepository()
 	now := time.Now().UTC()
 	users.Seed(&idmdomain.User{
-		ID: "admin", TenantID: spec.DefaultTenantID, PreferredUsername: "admin",
+		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&idmdomain.User{
-		ID: "regular", TenantID: spec.DefaultTenantID, PreferredUsername: "regular",
+		ID: "regular", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	users.Seed(&idmdomain.User{
-		ID: "alice", TenantID: spec.DefaultTenantID, PreferredUsername: "alice-name",
+		ID: "alice", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice-name",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
 	events := []spec.DomainEvent{}

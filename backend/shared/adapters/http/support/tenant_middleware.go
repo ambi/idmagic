@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
@@ -12,7 +13,7 @@ import (
 
 func (d Deps) ResolveDefaultTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		return d.resolveTenant(c, next, spec.DefaultRealm, true)
+		return d.resolveTenant(c, next, tenancydomain.DefaultRealm, true)
 	}
 }
 
@@ -27,7 +28,7 @@ func (d Deps) ResolvePathTenant(next echo.HandlerFunc) echo.HandlerFunc {
 // 等の control-plane 経路で使う。
 func (d Deps) ResolveControlPlaneTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		return d.resolveTenant(c, next, spec.DefaultRealm, false)
+		return d.resolveTenant(c, next, tenancydomain.DefaultRealm, false)
 	}
 }
 
@@ -39,10 +40,10 @@ func (d Deps) resolveTenant(c *echo.Context, next echo.HandlerFunc, realm string
 		urlPrefix = "/realms/" + realm
 	}
 	if d.TenantRepo == nil {
-		if realm != spec.DefaultRealm {
+		if realm != tenancydomain.DefaultRealm {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "tenant_not_found"})
 		}
-		tenant := &spec.Tenant{ID: spec.DefaultTenantID, Realm: spec.DefaultRealm, Status: spec.TenantStatusActive}
+		tenant := &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive}
 		issuer := tenantIssuer(d.Issuer, tenant.Realm)
 		if bare && d.LegacyBareIssuer {
 			issuer = strings.TrimSuffix(d.Issuer, "/")
@@ -57,7 +58,7 @@ func (d Deps) resolveTenant(c *echo.Context, next echo.HandlerFunc, realm string
 	if tenant == nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "tenant_not_found"})
 	}
-	if tenant.Status != spec.TenantStatusActive || tenant.DisabledAt != nil {
+	if tenant.Status != tenancydomain.TenantStatusActive || tenant.DisabledAt != nil {
 		return c.JSON(http.StatusBadRequest, OAuthErrorBody("invalid_request", "tenant is unavailable"))
 	}
 	issuer := tenantIssuer(d.Issuer, tenant.Realm)

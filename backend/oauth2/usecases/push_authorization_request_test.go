@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -14,7 +16,7 @@ import (
 )
 
 func TestPushAuthorizationRequest(t *testing.T) {
-	ctx := tenantContext(spec.DefaultTenantID)
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	clientRepo := oauth2memory.NewClientRepository()
 	parStore := memory.NewPARStore()
 	authzDetailRepo := oauth2memory.NewAuthorizationDetailTypeRepository()
@@ -35,7 +37,7 @@ func TestPushAuthorizationRequest(t *testing.T) {
 
 	// テスト用クライアントを登録
 	client := &domain.OAuth2Client{
-		TenantID:      spec.DefaultTenantID,
+		TenantID:      tenancydomain.DefaultTenantID,
 		ClientID:      "client-1",
 		RedirectURIs:  []string{"https://example.com/cb"},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},

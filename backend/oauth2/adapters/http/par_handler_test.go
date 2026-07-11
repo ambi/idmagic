@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -37,7 +39,7 @@ func newPARTestServer(t *testing.T) *echo.Echo {
 	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{parRedirectURI},
@@ -146,7 +148,7 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{parRedirectURI},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},
@@ -171,7 +173,7 @@ func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing
 	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(parClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{parRedirectURI},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},

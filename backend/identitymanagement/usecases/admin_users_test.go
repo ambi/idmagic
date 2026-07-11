@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -183,19 +185,19 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Seed cascade artifacts.
-	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &oauthdomain.Consent{
+	_ = consentRepo.Save(ctx, tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: user.ID, ClientID: "client-a",
 		Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
 	_ = refreshStore.Save(ctx, &oauthdomain.RefreshTokenRecord{
-		ID: "rt-1", TenantID: spec.DefaultTenantID, Hash: "hash-1",
+		ID: "rt-1", TenantID: tenancydomain.DefaultTenantID, Hash: "hash-1",
 		FamilyID: "fam-1", ClientID: "client-a", UserID: user.ID,
 		Scopes: []string{"openid"}, IssuedAt: now,
 		ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.AddDate(0, 0, 30),
 	})
 	_ = sessionStore.Save(ctx, &authdomain.LoginSession{
-		ID: "sess-1", TenantID: spec.DefaultTenantID, UserID: user.ID,
+		ID: "sess-1", TenantID: tenancydomain.DefaultTenantID, UserID: user.ID,
 		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: now.Add(time.Hour),
 	})
@@ -229,7 +231,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		t.Fatalf("FindBySub returned deleted user")
 	}
 	// Cascade verification.
-	if remaining, _ := consentRepo.FindAll(ctx, spec.DefaultTenantID); len(remaining) != 0 {
+	if remaining, _ := consentRepo.FindAll(ctx, tenancydomain.DefaultTenantID); len(remaining) != 0 {
 		t.Fatalf("consent cascade leaked: %+v", remaining)
 	}
 	if rec, _ := refreshStore.FindByHash(ctx, "hash-1"); rec != nil {
@@ -332,7 +334,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
 		Roles: []string{"support"}, CreatedAt: now, UpdatedAt: now,
 	})
-	_ = consentRepo.Save(ctx, spec.DefaultTenantID, &oauthdomain.Consent{
+	_ = consentRepo.Save(ctx, tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice-1", ClientID: "client-a",
 		Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
@@ -356,7 +358,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 	if user.Email != nil && *user.Email == "deleted:alice-1" {
 		t.Fatal("PII was anonymized on soft-delete")
 	}
-	if remaining, _ := consentRepo.FindAll(ctx, spec.DefaultTenantID); len(remaining) != 1 {
+	if remaining, _ := consentRepo.FindAll(ctx, tenancydomain.DefaultTenantID); len(remaining) != 1 {
 		t.Fatalf("consent must be preserved on soft-delete, got %+v", remaining)
 	}
 	// 冪等: 再 soft-delete は追加イベントを出さない。

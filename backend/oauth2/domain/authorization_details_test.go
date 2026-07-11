@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -10,7 +12,7 @@ import (
 // actions は集合包含、creditorAccount は enum、instructedAmount は上限 (単調減少)。
 func paymentType() AuthorizationDetailType {
 	return AuthorizationDetailType{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		Type:     "payment_initiation",
 		State:    DetailTypeEnabled,
 		Schema: AuthorizationDetailsSchema{

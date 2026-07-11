@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -55,7 +57,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	secretHash := domain.HashClientSecret(authClientSec)
 	now := time.Now().UTC()
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: authClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{authRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
@@ -68,7 +70,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	})
 	// first-party クライアント (ADR-061): consent をスキップする検証用。
 	clientRepo.Seed(&domain.OAuth2Client{
-		TenantID: spec.DefaultTenantID,
+		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: authFirstPartyClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{authRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
@@ -83,11 +85,11 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	if authn != nil {
 		userRepo.Seed(&idmdomain.User{
 			ID: authn.UserID, PreferredUsername: "alice",
-			TenantID: spec.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 		})
 	}
 	if consent != nil {
-		_ = consentRepo.Save(context.Background(), spec.DefaultTenantID, consent)
+		_ = consentRepo.Save(context.Background(), tenancydomain.DefaultTenantID, consent)
 	}
 	e := echo.New()
 	deps := httpadapter.Deps{

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -20,7 +22,7 @@ func newGroupDeps(t *testing.T) (idmusecases.AdminGroupDeps, *[]spec.DomainEvent
 	userRepo := idmmemory.NewUserRepository()
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&idmdomain.User{
-		ID: "user_alice", TenantID: spec.DefaultTenantID, PreferredUsername: "alice",
+		ID: "user_alice", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	})
 	userRepo.Seed(&idmdomain.User{

@@ -3,12 +3,12 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type TenantRepository interface {
-	FindByID(ctx context.Context, id string) (*spec.Tenant, error)
-	FindByRealm(ctx context.Context, realm string) (*spec.Tenant, error)
-	FindAll(ctx context.Context) ([]*spec.Tenant, error)
-	Save(ctx context.Context, tenant *spec.Tenant) error
+	FindByID(ctx context.Context, id string) (*domain.Tenant, error)
+	FindByRealm(ctx context.Context, realm string) (*domain.Tenant, error)
+	FindAll(ctx context.Context) ([]*domain.Tenant, error)
+	Save(ctx context.Context, tenant *domain.Tenant) error
 }

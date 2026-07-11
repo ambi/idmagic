@@ -7,12 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func idTokenClaims(t *testing.T, token string) map[string]any {
@@ -37,7 +38,7 @@ func idTokenTestUser() *idmdomain.User {
 	nick := "cici"
 	phone := "+819012345678"
 	return &idmdomain.User{
-		ID: "user-1", TenantID: spec.DefaultTenantID, PreferredUsername: "carol", Name: &name,
+		ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "carol", Name: &name,
 		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		Attributes: map[string]idmdomain.AttributeValue{
 			"nickname":     {Type: idmdomain.AttributeTypeString, String: &nick},
