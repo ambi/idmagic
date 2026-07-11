@@ -16,10 +16,11 @@ import (
 )
 
 type AssignmentDeps struct {
-	Repo           ports.ApplicationRepository
-	AssignmentRepo ports.AssignmentRepository
-	OrderingRepo   ports.ApplicationOrderingRepository
-	Emit           func(spec.DomainEvent)
+	Repo              ports.ApplicationRepository
+	AssignmentRepo    ports.AssignmentRepository
+	OrderingRepo      ports.ApplicationOrderingRepository
+	Emit              func(spec.DomainEvent)
+	TransactionalEmit func(spec.DomainEvent) error
 }
 
 type AssignApplicationInput struct {
@@ -66,10 +67,12 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 	if err := deps.AssignmentRepo.Save(ctx, assignment); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationAssigned{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationAssigned{
 		At: assignment.CreatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
 		SubjectType: string(in.SubjectType), SubjectID: subjectID,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return assignment, nil
 }
 
@@ -78,10 +81,12 @@ func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, 
 	if err := deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, subjectType, subjectID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ApplicationUnassigned{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationUnassigned{
 		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID,
 		SubjectType: string(subjectType), SubjectID: subjectID,
-	})
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 

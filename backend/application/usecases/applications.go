@@ -28,11 +28,12 @@ var (
 const MaxApplicationIconBytes = 256 * 1024
 
 type ApplicationDeps struct {
-	Repo           ports.ApplicationRepository
-	IconStore      ports.ApplicationIconStore
-	AssignmentRepo ports.AssignmentRepository
-	PolicyRepo     ports.SignInPolicyRepository
-	Emit           func(spec.DomainEvent)
+	Repo              ports.ApplicationRepository
+	IconStore         ports.ApplicationIconStore
+	AssignmentRepo    ports.AssignmentRepository
+	PolicyRepo        ports.SignInPolicyRepository
+	Emit              func(spec.DomainEvent)
+	TransactionalEmit func(spec.DomainEvent) error
 }
 
 type CreateApplicationInput struct {
@@ -67,7 +68,9 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 	if err := deps.Repo.Save(ctx, app); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id})
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id}); err != nil {
+		return nil, err
+	}
 	return app, nil
 }
 
@@ -118,9 +121,11 @@ func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateAppli
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, ChangedFields: changed,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -144,7 +149,9 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 	if err := deps.Repo.Delete(ctx, tenantID, applicationID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -198,9 +205,11 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationIconUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationIconUpdated{
 		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, Action: "uploaded",
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -228,9 +237,11 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserI
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationIconUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationIconUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, Action: "deleted",
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -290,9 +301,11 @@ func AttachBinding(ctx context.Context, deps ApplicationDeps, in AttachBindingIn
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ProtocolBindingAttached{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ProtocolBindingAttached{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, BindingType: string(in.Binding.Type),
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -313,8 +326,10 @@ func DetachBinding(ctx context.Context, deps ApplicationDeps, actorUserID, appli
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ProtocolBindingDetached{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ProtocolBindingDetached{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, BindingType: string(bindingType),
-	})
+	}); err != nil {
+		return err
+	}
 	return nil
 }

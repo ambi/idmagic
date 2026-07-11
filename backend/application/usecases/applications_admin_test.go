@@ -16,6 +16,17 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+func TestCreateApplicationReturnsTransactionalEmitFailure(t *testing.T) {
+	want := errors.New("event log unavailable")
+	_, err := appusecases.CreateApplication(tenantContext(), appusecases.ApplicationDeps{
+		Repo:              appmemory.NewApplicationRepository(),
+		TransactionalEmit: func(spec.DomainEvent) error { return want },
+	}, appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationWeblink, LaunchURL: "https://example.com"})
+	if !errors.Is(err, want) {
+		t.Fatalf("CreateApplication error = %v, want transactional emitter error", err)
+	}
+}
+
 func fullAppDeps() appusecases.ApplicationDeps {
 	return appusecases.ApplicationDeps{
 		Repo:           appmemory.NewApplicationRepository(),

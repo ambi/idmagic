@@ -27,9 +27,10 @@ var (
 )
 
 type CategoryDeps struct {
-	Repo    ports.ApplicationCategoryRepository
-	AppRepo ports.ApplicationRepository
-	Emit    func(spec.DomainEvent)
+	Repo              ports.ApplicationCategoryRepository
+	AppRepo           ports.ApplicationRepository
+	Emit              func(spec.DomainEvent)
+	TransactionalEmit func(spec.DomainEvent) error
 }
 
 func ListCategories(ctx context.Context, deps CategoryDeps) ([]*domain.ApplicationCategory, error) {
@@ -65,7 +66,9 @@ func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInp
 	if err := deps.Repo.Save(ctx, category); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id})
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id}); err != nil {
+		return nil, err
+	}
 	return category, nil
 }
 
@@ -121,9 +124,11 @@ func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInp
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationCategoryUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationCategoryUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: category.CategoryID,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -142,7 +147,9 @@ func DeleteCategory(ctx context.Context, deps CategoryDeps, actorUserID, categor
 	if err := deps.AppRepo.RemoveCategory(ctx, tenantID, categoryID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID})
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -191,9 +198,11 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 	if err := deps.AppRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ApplicationUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
 		ApplicationID: app.ApplicationID, ChangedFields: []string{"category_ids"},
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }

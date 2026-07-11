@@ -320,7 +320,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdentityManagement.GroupRepo, d.IdentityManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdentityManagement.GroupRepo, d.IdentityManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, sharedeventlog.CommandRunner{
+		Transactions:  d.TxRunner,
+		Recorder:      d.EventLogRecorder,
+		LegacyEmit:    d.Emit,
+		CorrelationID: logging.RequestIDFromContext,
+	})
 
 	d.Scim.Register(g, d.Deps, authenticator, d.IdentityManagement.UserRepo, d.IdentityManagement.GroupRepo, d.Emit)
 }

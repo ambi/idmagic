@@ -10,6 +10,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
@@ -52,6 +53,7 @@ func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	groupRepo idmports.GroupRepository, userRepo idmports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
+	commandRunner sharedeventlog.CommandRunner,
 ) {
 	apphttp.RegisterRoutes(g, apphttp.Deps{
 		Deps:                        deps,
@@ -68,5 +70,6 @@ func (m Module) Register(
 		ClientRepo:                  clientRepo,
 		WsFedRPRepo:                 wsFedRPRepo,
 		SamlSPRepo:                  samlSPRepo,
+		CommandRunner:               commandRunner,
 	})
 }

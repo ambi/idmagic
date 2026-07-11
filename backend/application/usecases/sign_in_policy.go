@@ -24,10 +24,11 @@ var (
 )
 
 type SignInPolicyDeps struct {
-	AppRepo     ports.ApplicationRepository
-	PolicyRepo  ports.SignInPolicyRepository
-	DefaultRepo ports.DefaultSignInPolicyRepository
-	Emit        func(spec.DomainEvent)
+	AppRepo           ports.ApplicationRepository
+	PolicyRepo        ports.SignInPolicyRepository
+	DefaultRepo       ports.DefaultSignInPolicyRepository
+	Emit              func(spec.DomainEvent)
+	TransactionalEmit func(spec.DomainEvent) error
 }
 
 type UpdateSignInPolicyInput struct {
@@ -90,9 +91,11 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 			return nil, err
 		}
 	}
-	emit(deps.Emit, &domain.AppSignInPolicyUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.AppSignInPolicyUpdated{
 		At: policy.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return policy, nil
 }
 
@@ -153,9 +156,11 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 			return nil, err
 		}
 	}
-	emit(deps.Emit, &domain.TenantDefaultSignInPolicyUpdated{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.TenantDefaultSignInPolicyUpdated{
 		At: policy.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
-	})
+	}); err != nil {
+		return nil, err
+	}
 	return policy, nil
 }
 
