@@ -145,4 +145,19 @@ describe('useStepUpGuard', () => {
 
     expect(screen.getByLabelText('認証アプリの 6 桁コード')).toHaveValue('')
   })
+
+  it('renders the passkey prompt instead of a credential field for webauthn', async () => {
+    stubStepUpFetch(['webauthn'])
+    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+
+    render(<StepUpHarness action={action} />)
+    fireEvent.click(screen.getByRole('button', { name: '実行' }))
+
+    await screen.findByRole('dialog')
+    expect(
+      screen.getByText('登録済みのパスキー (指紋・顔認証・セキュリティキー) で本人確認します。'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('現在のパスワード')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'パスキーで認証' })).toBeEnabled()
+  })
 })
