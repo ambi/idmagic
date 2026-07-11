@@ -187,6 +187,24 @@ type GroupMember struct {
 	CreatedAt time.Time
 }
 
+type Job struct {
+	ID             string
+	TenantID       string
+	Kind           string
+	Status         string
+	Params         []byte
+	Result         []byte
+	Error          pgtype.Text
+	Attempts       int32
+	MaxAttempts    int32
+	DedupKey       pgtype.Text
+	LeaseOwner     pgtype.Text
+	LeaseExpiresAt pgtype.Timestamptz
+	RunAt          time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 type MfaFactor struct {
 	UserID     string
 	Type       string

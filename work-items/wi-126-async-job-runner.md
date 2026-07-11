@@ -148,10 +148,9 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
       complete / fail / retry / cancel / list / get) を定義する。
 - [x] T008 [Go usecase] enqueue・claim・handler registry・worker pool
       (poll / concurrency / backoff / drain) を実装し単体テストする。
-- [ ] T009 [Adapter] memory (in-process) と postgres (SKIP LOCKED) の JobRepository を
-      実装し、リース排他・失効再取得・冪等をテストする。memory 側は Phase C で前倒し
-      実装済み (下記 Progress 参照)。残るは postgres (SKIP LOCKED) 実装のみ。
-- [ ] T010 [Schema] `jobs` テーブルを deploy/schema/postgres.sql に追加する。
+- [x] T009 [Adapter] memory (in-process) と postgres (SKIP LOCKED) の JobRepository を
+      実装し、リース排他・失効再取得・冪等をテストする。
+- [x] T010 [Schema] `jobs` テーブルを deploy/schema/postgres.sql に追加する。
 - [ ] T011 [Infra] `idmagic-worker` entry point を追加し、ローカル compose で API・relay・
       worker を分離起動できるようにする。API から retention sweep の goroutine を除去する。
 - [ ] T012 [Smoke] retention sweep を最初の worker consumer として移管し、no-op / echo job
@@ -329,4 +328,54 @@ T008 と、T009 のうち memory adapter 分を実施。
 - **対象外 (今回は触れない)**: T009 postgres (SKIP LOCKED) adapter、T010
   schema、T011 `idmagic-worker` infra、T012 smoke test、T013 は次フェーズ。
 
-残り T009 (postgres 分)〜T013 (Phase D〜F) は pending。
+## 2026-07-12 — Phase D (postgres SKIP LOCKED adapter + schema) 完了
+
+T009 (postgres 分) と T010 を実施。postgres adapter は `jobs` テーブルが無いと
+テストできないため、本来 Phase E 予定だった T010 (schema) をここへ前倒しした。
+
+- **T010 schema** (`deploy/schema/postgres.sql`): `jobs` テーブルを追加
+  (`id UUID PK`, `tenant_id UUID NOT NULL FK tenants(id)`, `kind`/`status TEXT`
+  (`status` は `CHECK (... IN (...))`)、`params JSONB NOT NULL`、
+  `result JSONB`、`error TEXT`、`attempts`/`max_attempts INT`、
+  `dedup_key`/`lease_owner TEXT`、`lease_expires_at`/`run_at`/`created_at`/
+  `updated_at TIMESTAMPTZ`)。claim 用に `jobs_claimable_idx`
+  (`status='queued'` 部分インデックス) と `jobs_lease_expiry_idx`
+  (`status='running'` 部分インデックス)、`JobHandlerIdempotency` 用に
+  `jobs_tenant_dedup_key_active_idx`
+  (`(tenant_id, dedup_key)` の非終端状態限定部分 UNIQUE、
+  `signing_keys_single_active_idx` と同型) を追加。
+- **T009 postgres adapter** (`backend/jobs/adapters/persistence/postgres/`):
+  `sqlc.yaml` に `jobs` エントリを追加し `queries/jobs.sql` を作成、
+  `just sqlc-generate` で `sqlcgen/` を生成。claim は `kafka_relay.go` の
+  明示トランザクション方式ではなく、`WITH claimable AS (SELECT ... FOR UPDATE
+  SKIP LOCKED) UPDATE ... FROM claimable ... RETURNING` という単一の atomic
+  文で実装（claim と Running 確定の間に外部副作用が無いため、明示
+  トランザクションが不要と判断）。claim 対象は `status='queued' AND
+  run_at<=now` に加え、`status='running'` かつ lease 失効した行も含める
+  （lease 失効再取得。ステータス遷移は発生しないため `TransitionJobLifecycle`
+  は呼ばない）。dedup は `ON CONFLICT (tenant_id, dedup_key) WHERE ... DO
+  NOTHING` + 0 行時のフォールバック SELECT。Heartbeat/Complete/Fail は
+  lease 所有権を `WHERE` 条件に持つ conditional UPDATE で、0 行時は
+  `GetJob` で存在確認して `ErrJobNotFound` と `ErrJobLeaseLost` を判別する
+  （postgres の 1 発 UPDATE では両者を区別できないため）。
+- **実 DB テストで発見した不具合 2件**:
+  1. `ClaimBatch` はテナント横断（worker はテナント境界に紐付かない設計）
+     のため、embedded-postgres が全テスト共有の 1 インスタンスであることと
+     組み合わさり、あるテストが claim し忘れた `Queued` ジョブを別テストの
+     `ClaimBatch` が拾ってしまいテストが不安定化した。各テスト冒頭で
+     `TRUNCATE jobs` する `resetJobsTable` ヘルパーを追加して解消。
+  2. `Result` (JSONB) の往復比較を生バイト列で行うと、PostgreSQL の JSONB
+     正規化 (`{"ok":true}` → `{"ok": true}`) で失敗する。デコードした値同士の
+     比較に変更。
+  memory adapter と同型の 15 テストケースを移植し、加えて
+  `TestClaimBatch_ConcurrentClaimIsExclusive` で実際の `FOR UPDATE SKIP
+  LOCKED` SQL（memory 版の mutex 近似ではなく）によるリース排他を
+  `-race` で検証。
+- **検証**: `just sqlc-generate`、`GOCACHE=/tmp/idmagic-cache go build ./...`、
+  `just verify-go`（`go test -race` 全パッケージ green、embedded-postgres
+  ベースの `backend/jobs/adapters/persistence/postgres` 含む。`just lint-go`
+  0 issues）すべて green。
+- **対象外 (今回は触れない)**: T011 `idmagic-worker` infra、T012 smoke test、
+  T013 は次フェーズ。
+
+残り T011〜T013 (Phase E〜F) は pending。

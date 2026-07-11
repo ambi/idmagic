@@ -656,3 +656,40 @@ CREATE TABLE scim_group_refs (
     CONSTRAINT scim_group_refs_group_id_fkey
         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
+
+-- jobs (wi-126, ADR-098/099/100): durable async job queue. tenant-owned aggregate
+-- (ARCHITECTURE.md tenant_id 4-category rule), so tenant_id is required even for
+-- an aggregate with no natural-key parent. status/kind are closed vocabularies
+-- normative in spec/contexts/jobs.yaml, enforced here via CHECK. params/result are
+-- opaque per-JobKind payloads (ADR-100: plain JSONB, no at-rest encryption in this
+-- WI; terminal rows are purged after a TTL by the worker's relocated retention
+-- sweep, not by a dedicated Job).
+CREATE TABLE jobs (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'canceled')),
+    params JSONB NOT NULL,
+    result JSONB,
+    error TEXT,
+    attempts INT NOT NULL DEFAULT 0,
+    max_attempts INT NOT NULL,
+    dedup_key TEXT,
+    lease_owner TEXT,
+    lease_expires_at TIMESTAMPTZ,
+    run_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT jobs_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+-- Claim scan (ADR-098 SKIP LOCKED): due StatusQueued jobs ordered by run_at, plus
+-- StatusRunning jobs whose lease expired (JobLeaseExclusivity reclaim).
+CREATE INDEX jobs_claimable_idx ON jobs (run_at) WHERE status = 'queued';
+CREATE INDEX jobs_lease_expiry_idx ON jobs (lease_expires_at) WHERE status = 'running';
+
+-- JobHandlerIdempotency: at most one non-terminal Job per (tenant_id, dedup_key).
+CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
+    ON jobs (tenant_id, dedup_key)
+    WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running');
