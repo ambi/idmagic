@@ -14,7 +14,7 @@ import (
 
 // startRetentionSweep は保持期間 sweep の goroutine を起動する。
 func startRetentionSweep(ctx context.Context, deps *Dependencies, interval time.Duration) {
-	audit, _ := deps.AuditEventRepo.(authusecases.AuditEventPurger)
+	audit, _ := deps.OAuth2.AuditEventRepo.(authusecases.AuditEventPurger)
 	buckets, _ := deps.AuthEventBucketStore.(authusecases.AuthEventBucketPurger)
 	if audit == nil && buckets == nil {
 		return

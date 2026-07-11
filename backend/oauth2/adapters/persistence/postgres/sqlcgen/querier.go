@@ -9,10 +9,16 @@ import (
 )
 
 type Querier interface {
+	AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) error
+	AppendAuditEventSearchAttribute(ctx context.Context, arg AppendAuditEventSearchAttributeParams) error
+	AppendOutboxEvent(ctx context.Context, arg AppendOutboxEventParams) error
+	DeleteAuditEventsBeforeExceptTypes(ctx context.Context, arg DeleteAuditEventsBeforeExceptTypesParams) (int64, error)
+	DeleteAuditEventsByTypeBefore(ctx context.Context, arg DeleteAuditEventsByTypeBeforeParams) (int64, error)
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
 	DeleteConsentsForSub(ctx context.Context, userID string) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
+	GetAuditEventByID(ctx context.Context, id string) (*AuditEvent, error)
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
 	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Client, error)
 	GetConsent(ctx context.Context, arg GetConsentParams) (*Consent, error)
@@ -23,6 +29,7 @@ type Querier interface {
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
+	RedactAuthenticationFailureUsernames(ctx context.Context, arg RedactAuthenticationFailureUsernamesParams) (int64, error)
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error

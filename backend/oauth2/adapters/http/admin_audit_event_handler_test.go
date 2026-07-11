@@ -15,7 +15,9 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
+	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -32,7 +34,7 @@ func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.Au
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
-	auditStore := memory.NewAuditEventStore(0)
+	auditStore := oauthmemory.NewAuditEventStore(0)
 	for _, ev := range events {
 		_ = auditStore.Append(context.Background(), ev)
 	}
@@ -49,7 +51,7 @@ func newAuditAdminServer(t *testing.T, actor *spec.User, events []*oauthports.Au
 
 			TenantRepo: newSingleTenantRepo(),
 		}, UserRepo: userRepo,
-		AuditEventRepo: auditStore, AuthnResolver: resolver,
+		OAuth2: oauth2.Module{AuditEventRepo: auditStore}, AuthnResolver: resolver,
 	})
 	return e
 }

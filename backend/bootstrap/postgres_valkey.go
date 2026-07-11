@@ -82,7 +82,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	case "console":
 		sink = eventsink.NewConsoleSink()
 	case "outbox":
-		sink = &postgres.OutboxEventSink{Pool: resilientDB}
+		sink = &oauth2postgres.OutboxEventSink{Pool: resilientDB}
 	default:
 		pool.Close()
 		_ = valkeyClient.Close()
@@ -112,6 +112,8 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			DpopReplayStore:            &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
 			ClientAssertionReplayStore: &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
 			AccessTokenDenylist:        &oauth2valkey.AccessTokenDenylist{Client: valkeyClient},
+			AuditEventRepo:             &oauth2postgres.AuditEventRepository{Pool: resilientDB},
+			EventSink:                  sink,
 		},
 		SessionStore:           &valkeystore.SessionStore{Client: valkeyClient},
 		WebAuthnCredentialRepo: &postgres.WebAuthnCredentialRepository{Pool: resilientDB},
@@ -122,8 +124,6 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		},
 		KeyStore:             selectKeyStore(keyStore),
 		TenantSaltStore:      postgres.NewTenantSaltStore(resilientDB),
-		EventSink:            sink,
-		AuditEventRepo:       &postgres.AuditEventRepository{Pool: resilientDB},
 		AuthEventBucketStore: &postgres.AuthEventBucketStore{Pool: resilientDB},
 		WsFedRPRepo:          &postgres.WsFedRelyingPartyRepository{Pool: resilientDB},
 		SamlSPRepo:           &postgres.SamlServiceProviderRepository{Pool: resilientDB},

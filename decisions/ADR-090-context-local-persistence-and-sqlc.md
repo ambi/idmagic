@@ -102,6 +102,18 @@ oauth2 context の横展開第一弾（client / consent / authorization detail t
 application の 96%/4% と合わせ、sqlc 継続採用をさらに裏付ける。監査ログ検索など可変 WHERE
 候補が本命の [[wi-182]]（audit/outbox）で再度実測し、bob 再評価の要否を判断する。
 
+### 実測値（wi-182、oauth2 context 横展開・audit event / outbox）
+
+audit event / outbox では全 8 クエリ中、`AppendAuditEvent`、sidecar 属性追加、
+`GetAuditEventByID`、保持期間削除 2 件、username redact、outbox 追加の 7 件（88%）を
+sqlc の静的生成へ移行した。admin audit 検索の `List` だけ（1 件、12%）はテナント・時刻・
+event type・user・検索属性（eq / in / contains）・フリーテキストの任意組合せで WHERE と
+プレースホルダ数が変化するため、ADR-090 のエスケープハッチとして同一 context の薄い pgx
+実装に残した。
+
+動的クエリは audit 検索という最も可変性の高い候補でも少数であり、oauth2 context 全体の
+sqlc 継続判断を維持する。bob への切替条件である「動的クエリが支配的」は満たさない。
+
 ## 影響
 
 - Go import path: repository 実装が `idmagic/internal/shared/adapters/persistence/...` から

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres/sqlcgen"
+	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -34,7 +36,7 @@ var eventTopics = map[string]string{
 }
 
 // OutboxEventSink はドメインイベントを outbox テーブルへ書き出す EventSink 実装。
-type OutboxEventSink struct{ Pool DB }
+type OutboxEventSink struct{ Pool sharedpg.DB }
 
 func (s *OutboxEventSink) Emit(ctx context.Context, event spec.DomainEvent) error {
 	topic := eventTopics[event.EventType()]
@@ -45,7 +47,7 @@ func (s *OutboxEventSink) Emit(ctx context.Context, event spec.DomainEvent) erro
 	if err != nil {
 		return err
 	}
-	_, err = s.Pool.Exec(ctx, `INSERT INTO outbox(event_type,topic,payload) VALUES ($1,$2,$3)`,
-		event.EventType(), topic, string(payload))
-	return err
+	return sqlcgen.New(s.Pool).AppendOutboxEvent(ctx, sqlcgen.AppendOutboxEventParams{
+		EventType: event.EventType(), Topic: topic, Payload: payload,
+	})
 }

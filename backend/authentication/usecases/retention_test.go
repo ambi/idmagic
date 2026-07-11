@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/usecases"
+	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -15,7 +16,7 @@ func daysAgo(now time.Time, d int) time.Time {
 	return now.Add(-time.Duration(d) * 24 * time.Hour)
 }
 
-func seedAudit(t *testing.T, store *memory.AuditEventStore, id, eventType string, at time.Time) {
+func seedAudit(t *testing.T, store *oauthmemory.AuditEventStore, id, eventType string, at time.Time) {
 	t.Helper()
 	if err := store.Append(context.Background(), &oauthports.AuditEventRecord{
 		ID: id, TenantID: spec.DefaultTenantID, Type: eventType, OccurredAt: at,
@@ -25,7 +26,7 @@ func seedAudit(t *testing.T, store *memory.AuditEventStore, id, eventType string
 	}
 }
 
-func remainingAuditIDs(t *testing.T, store *memory.AuditEventStore) map[string]bool {
+func remainingAuditIDs(t *testing.T, store *oauthmemory.AuditEventStore) map[string]bool {
 	t.Helper()
 	recs, err := store.List(context.Background(), oauthports.AuditEventQuery{Limit: 1000})
 	if err != nil {
@@ -41,7 +42,7 @@ func remainingAuditIDs(t *testing.T, store *memory.AuditEventStore) map[string]b
 func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := memory.NewAuditEventStore(0)
+	store := oauthmemory.NewAuditEventStore(0)
 
 	// 失敗詳細 30 日: 29 日前は残り 31 日前は消える。
 	seedAudit(t, store, "fail-29", (&spec.AuthenticationFailed{}).EventType(), daysAgo(now, 29))
@@ -81,7 +82,7 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := memory.NewAuditEventStore(0)
+	store := oauthmemory.NewAuditEventStore(0)
 	oldFailure := &oauthports.AuditEventRecord{
 		ID: "fail-8", TenantID: spec.DefaultTenantID,
 		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
@@ -126,7 +127,7 @@ func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
 func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := memory.NewAuditEventStore(0)
+	store := oauthmemory.NewAuditEventStore(0)
 	// global cap 30 日: 成功も impersonation も 31 日前は消える。
 	seedAudit(t, store, "ok-31", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 31))
 	seedAudit(t, store, "ok-29", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 29))

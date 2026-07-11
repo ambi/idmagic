@@ -52,7 +52,6 @@ type Deps struct {
 	Authorizer                 oauthports.Authorizer
 	KeyStore                   oauthports.KeyStore
 	TenantSaltStore            oauthports.TenantSaltStore
-	AuditEventRepo             oauthports.AuditEventRepository
 	AuthEventBucketStore       authnports.AuthEventBucketStore
 	JWKResolver                *crypto.JWKResolver
 	PasswordHasher             authnports.PasswordHasher
@@ -168,7 +167,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps:                       d.Deps,
 		Authenticator:              authenticator,
 		ApplicationGate:            appGate,
-		AuditEventRepo:             d.AuditEventRepo,
+		AuditEventRepo:             d.OAuth2.AuditEventRepo,
 		AuthzDetailTypeRepo:        d.OAuth2.AuthzDetailTypeRepo,
 		ClientRepo:                 d.OAuth2.ClientRepo,
 		ConsentRepo:                d.OAuth2.ConsentRepo,
@@ -205,7 +204,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	authhttp.RegisterRoutes(g, authhttp.Deps{
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
-		AuditEventRepo:            d.AuditEventRepo,
+		AuditEventRepo:            d.OAuth2.AuditEventRepo,
 		UserRepo:                  d.UserRepo,
 		PasswordHasher:            d.PasswordHasher,
 		PasswordHistoryRepo:       d.PasswordHistoryRepo,

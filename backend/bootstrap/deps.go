@@ -46,8 +46,6 @@ type Dependencies struct {
 	NewLoginAttemptThrottle func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
 	KeyStore                oauthports.KeyStore
 	TenantSaltStore         oauthports.TenantSaltStore
-	EventSink               oauthports.EventSink
-	AuditEventRepo          oauthports.AuditEventRepository
 	AuthEventBucketStore    authnports.AuthEventBucketStore
 	WsFedRPRepo             wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo              samlports.SamlServiceProviderRepository

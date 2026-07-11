@@ -27,4 +27,6 @@ type Module struct {
 	TokenIssuer                oauthports.TokenIssuer
 	TokenIntrospector          oauthports.TokenIntrospector
 	Authorizer                 oauthports.Authorizer
+	AuditEventRepo             oauthports.AuditEventRepository
+	EventSink                  oauthports.EventSink
 }

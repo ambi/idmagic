@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/usecases"
+	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 	ctx := context.Background()
-	store := memory.NewAuditEventStore(0)
+	store := oauthmemory.NewAuditEventStore(0)
 	base := time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC)
 
 	// 古い順に追加する (memory store は挿入順の降順で返す)。
@@ -61,7 +61,7 @@ func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 
 func TestListSignInActivityClampsLimit(t *testing.T) {
 	ctx := context.Background()
-	store := memory.NewAuditEventStore(0)
+	store := oauthmemory.NewAuditEventStore(0)
 	base := time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC)
 	for i := range usecases.SignInActivityMaxLimit + 20 {
 		if err := store.Append(ctx, &oauthports.AuditEventRecord{

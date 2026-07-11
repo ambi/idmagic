@@ -151,16 +151,16 @@ func Run() error {
 	emit := func(event spec.DomainEvent) {
 		eventCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		if err := deps.EventSink.Emit(eventCtx, event); err != nil {
+		if err := deps.OAuth2.EventSink.Emit(eventCtx, event); err != nil {
 			logger.Error(eventCtx, "event sink emit failed", "error", err)
 		}
-		if deps.AuditEventRepo != nil {
+		if deps.OAuth2.AuditEventRepo != nil {
 			if rec, err := newAuditEventRecord(event); err == nil {
 				appendCtx := eventCtx
 				if rec.TenantID != "" {
 					appendCtx = tenancy.WithTenant(eventCtx, &spec.Tenant{ID: rec.TenantID}, "", "")
 				}
-				_ = deps.AuditEventRepo.Append(appendCtx, rec)
+				_ = deps.OAuth2.AuditEventRepo.Append(appendCtx, rec)
 			}
 		}
 	}
@@ -190,7 +190,6 @@ func Run() error {
 		UserRepo:                deps.UserRepo,
 		OAuth2:                  deps.OAuth2,
 		KeyStore:                deps.KeyStore,
-		AuditEventRepo:          deps.AuditEventRepo,
 		TenantSaltStore:         deps.TenantSaltStore,
 		AuthEventBucketStore:    deps.AuthEventBucketStore,
 		JWKResolver:             jwkResolver,

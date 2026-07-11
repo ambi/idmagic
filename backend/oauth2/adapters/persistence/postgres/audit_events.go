@@ -8,14 +8,18 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -24,11 +28,11 @@ const (
 	auditMaxListLimit     = 1000
 )
 
-type AuditEventRepository struct{ Pool DB }
+type AuditEventRepository struct{ Pool sharedpg.DB }
 
 const auditEventSelect = `SELECT id,tenant_id,type,occurred_at,payload FROM audit_events`
 
-func scanAuditEvent(row RowScanner) (*ports.AuditEventRecord, error) {
+func scanAuditEvent(row sharedpg.RowScanner) (*ports.AuditEventRecord, error) {
 	var rec ports.AuditEventRecord
 	err := row.Scan(&rec.ID, &rec.TenantID, &rec.Type, &rec.OccurredAt, &rec.Payload)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -47,9 +51,11 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 	if rec == nil || rec.ID == "" || rec.Type == "" {
 		return nil
 	}
-	var userID *string
+	var userID pgtype.UUID
 	if s, ok := rec.Payload["userId"].(string); ok && s != "" {
-		userID = &s
+		if err := userID.Scan(s); err != nil {
+			return err
+		}
 	}
 	payload := rec.Payload
 	if payload == nil {
@@ -60,11 +66,15 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `
-INSERT INTO audit_events (id,tenant_id,type,user_id,occurred_at,payload)
-VALUES ($1,$2,$3,$4,$5,$6)
-ON CONFLICT (id) DO NOTHING`,
-		rec.ID, rec.TenantID, rec.Type, userID, rec.OccurredAt, payload); err != nil {
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	queries := sqlcgen.New(r.Pool).WithTx(tx)
+	if err := queries.AppendAuditEvent(ctx, sqlcgen.AppendAuditEventParams{
+		ID: rec.ID, TenantID: rec.TenantID, Type: rec.Type, UserID: userID,
+		OccurredAt: rec.OccurredAt, Payload: payloadJSON,
+	}); err != nil {
 		return err
 	}
 	// wi-145: sidecar 検索属性を書く。attr_name は AuditSearchRegistry の Field。冪等 (ON CONFLICT)。
@@ -72,11 +82,9 @@ ON CONFLICT (id) DO NOTHING`,
 		if value == "" {
 			continue
 		}
-		if _, err := tx.Exec(ctx, `
-INSERT INTO audit_event_search_attributes (event_id,tenant_id,attr_name,attr_value,occurred_at)
-VALUES ($1,$2,$3,$4,$5)
-ON CONFLICT (event_id,attr_name) DO NOTHING`,
-			rec.ID, rec.TenantID, name, value, rec.OccurredAt); err != nil {
+		if err := queries.AppendAuditEventSearchAttribute(ctx, sqlcgen.AppendAuditEventSearchAttributeParams{
+			EventID: rec.ID, TenantID: rec.TenantID, AttrName: name, AttrValue: value, OccurredAt: rec.OccurredAt,
+		}); err != nil {
 			return err
 		}
 	}
@@ -176,7 +184,25 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 }
 
 func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.AuditEventRecord, error) {
-	return scanAuditEvent(r.Pool.QueryRow(ctx, auditEventSelect+" WHERE id=$1", id))
+	row, err := sqlcgen.New(r.Pool).GetAuditEventByID(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return auditEventFromRow(row)
+}
+
+func auditEventFromRow(row *sqlcgen.AuditEvent) (*ports.AuditEventRecord, error) {
+	rec := &ports.AuditEventRecord{ID: row.ID, TenantID: row.TenantID, Type: row.Type, OccurredAt: row.OccurredAt}
+	if err := json.Unmarshal(row.Payload, &rec.Payload); err != nil {
+		return nil, err
+	}
+	if rec.Payload == nil {
+		rec.Payload = map[string]any{}
+	}
+	return rec, nil
 }
 
 // rawStorableAttrNames は q フリーテキストの照合対象となる raw 保存属性の attr_name 一覧。
@@ -205,19 +231,19 @@ func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports
 		if before.IsZero() {
 			continue
 		}
-		tag, err := r.Pool.Exec(ctx, "DELETE FROM audit_events WHERE type=$1 AND occurred_at < $2", t, before)
+		count, err := sqlcgen.New(r.Pool).DeleteAuditEventsByTypeBefore(ctx, sqlcgen.DeleteAuditEventsByTypeBeforeParams{Type: t, OccurredAt: before})
 		if err != nil {
 			return deleted, err
 		}
-		deleted += tag.RowsAffected()
+		deleted += count
 	}
 	if !cutoff.Default.IsZero() {
-		tag, err := r.Pool.Exec(ctx,
-			"DELETE FROM audit_events WHERE occurred_at < $1 AND type <> ALL($2)", cutoff.Default, excluded)
+		count, err := sqlcgen.New(r.Pool).DeleteAuditEventsBeforeExceptTypes(ctx,
+			sqlcgen.DeleteAuditEventsBeforeExceptTypesParams{OccurredAt: cutoff.Default, Column2: excluded})
 		if err != nil {
 			return deleted, err
 		}
-		deleted += tag.RowsAffected()
+		deleted += count
 	}
 	return deleted, nil
 }
@@ -225,16 +251,10 @@ func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports
 // RedactAuthenticationFailureUsernames は ADR-046 の短期平文 username 保持を実装する。
 // 失敗イベント自体と usernameHash は残し、payload.username だけ JSON null にする。
 func (r *AuditEventRepository) RedactAuthenticationFailureUsernames(ctx context.Context, before time.Time) (int64, error) {
-	tag, err := r.Pool.Exec(ctx, `
-UPDATE audit_events
-SET payload = jsonb_set(payload, '{username}', 'null'::jsonb, true)
-WHERE type = $1
-  AND occurred_at < $2
-  AND payload ? 'username'
-  AND payload->>'username' IS NOT NULL`,
-		(&spec.AuthenticationFailed{}).EventType(), before.UTC())
+	count, err := sqlcgen.New(r.Pool).RedactAuthenticationFailureUsernames(ctx,
+		sqlcgen.RedactAuthenticationFailureUsernamesParams{Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: before.UTC()})
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	return count, nil
 }
