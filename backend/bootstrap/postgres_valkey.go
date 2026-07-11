@@ -15,6 +15,8 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
 	samlpostgres "github.com/ambi/idmagic/backend/saml/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/backend/scim"
+	scimpostgres "github.com/ambi/idmagic/backend/scim/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	valkeystore "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
@@ -94,7 +96,6 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	}
 
 	return &Dependencies{
-		ScimRepo:                &postgres.ScimRepository{Pool: resilientDB},
 		TenantRepo:              &postgres.TenantRepository{Pool: resilientDB},
 		AttrSchemaRepo:          &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
 		UserRepo:                &postgres.UserRepository{Pool: resilientDB},
@@ -131,6 +132,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		AuthEventBucketStore: &postgres.AuthEventBucketStore{Pool: resilientDB},
 		WsFederation:         wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml:                 saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
+		Scim:                 scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

@@ -12,7 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
-	scimports "github.com/ambi/idmagic/backend/scim/ports"
+	"github.com/ambi/idmagic/backend/scim"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
@@ -22,7 +22,6 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
-	ScimRepo                scimports.ScimRepository
 	TenantRepo              tenantports.TenantRepository
 	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository
 	UserRepo                idmports.UserRepository
@@ -49,6 +48,7 @@ type Dependencies struct {
 	AuthEventBucketStore    authnports.AuthEventBucketStore
 	WsFederation            wsfederation.Module
 	Saml                    saml.Module
+	Scim                    scim.Module
 	Application             application.Module
 	Close                   func()
 	DbPing                  func(context.Context) error

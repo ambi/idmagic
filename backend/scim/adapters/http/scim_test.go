@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
+	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -22,7 +23,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
 	groupRepo := memory.NewGroupRepository()
-	scimRepo := memory.NewScimRepository()
+	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
 
@@ -220,7 +221,7 @@ func TestScimGroupSync(t *testing.T) {
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
 	groupRepo := memory.NewGroupRepository()
-	scimRepo := memory.NewScimRepository()
+	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
 

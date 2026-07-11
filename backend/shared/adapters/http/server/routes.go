@@ -13,9 +13,7 @@ import (
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
-	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
-	scimports "github.com/ambi/idmagic/backend/scim/ports"
-	scimusecases "github.com/ambi/idmagic/backend/scim/usecases"
+	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -32,7 +30,6 @@ import (
 type Deps struct {
 	support.Deps
 
-	ScimRepo       scimports.ScimRepository
 	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
 	UserRepo       idmports.UserRepository
 	OAuth2         oauth2.Module
@@ -67,6 +64,7 @@ type Deps struct {
 	AuthnResolver              authdomain.AuthenticationContextResolver
 	WsFederation               wsfederation.Module
 	Saml                       saml.Module
+	Scim                       scim.Module
 	FederationSigner           *samltoken.Signer
 	Application                application.Module
 
@@ -228,7 +226,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		GroupRepo:             d.GroupRepo,
 		AgentRepo:             d.AgentRepo,
 		ClientRepo:            d.OAuth2.ClientRepo,
-		ScimRepo:              d.ScimRepo,
+		ScimRepo:              d.Scim.Repo,
 		AttrSchemaRepo:        d.AttrSchemaRepo,
 		ConsentRepo:           d.OAuth2.ConsentRepo,
 		RefreshStore:          d.OAuth2.RefreshStore,
@@ -255,10 +253,5 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.Application.Register(g, d.Deps, authenticator, d.GroupRepo, d.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
-	scimUsecasesInst := scimusecases.NewUsecases(d.ScimRepo, d.UserRepo, d.GroupRepo, d.Emit)
-	scimhttp.RegisterRoutes(g, scimhttp.Deps{
-		Deps:          d.Deps,
-		Authenticator: authenticator,
-		Usecases:      scimUsecasesInst,
-	})
+	d.Scim.Register(g, d.Deps, authenticator, d.UserRepo, d.GroupRepo, d.Emit)
 }

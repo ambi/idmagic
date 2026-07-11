@@ -11,6 +11,8 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/scim"
+	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -24,7 +26,6 @@ func assembleMemory() (*Dependencies, error) {
 		return nil, err
 	}
 	return &Dependencies{
-		ScimRepo:                memory.NewScimRepository(),
 		TenantRepo:              memory.NewTenantRepository(),
 		AttrSchemaRepo:          memory.NewTenantUserAttributeSchemaRepository(),
 		UserRepo:                memory.NewUserRepository(),
@@ -61,6 +62,7 @@ func assembleMemory() (*Dependencies, error) {
 		AuthEventBucketStore: memory.NewAuthEventBucketStore(),
 		WsFederation:         wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		Saml:                 saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Scim:                 scim.Module{Repo: scimmemory.NewScimRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

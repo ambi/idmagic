@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: low
 created_at: 2026-07-11
@@ -45,14 +45,14 @@ created_at: 2026-07-11
 
 ## Tasks
 
-- [ ] T001 [Domain] `internal/scim/domain` 内の `shared/spec` 残存参照を棚卸しし、
+- [x] T001 [Domain] `internal/scim/domain` 内の `shared/spec` 残存参照を棚卸しし、
   scim 自身の型でないもの（Tenant/User 等）は published language 経由の参照に整理する。
-- [ ] T002 [Persistence] scim 固有 repo 実装を `scim/adapters/persistence/{postgres,memory}` へ同居。
-- [ ] T003 [Persistence] scim postgres 実装を sqlc 生成へ置換。
-- [ ] T004 [DI] `scim/module.go` を新設し Module パターン化。
-- [ ] T005 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から scim 分を撤去。
-- [ ] T006 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
-- [ ] T007 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
+- [x] T002 [Persistence] scim 固有 repo 実装を `scim/adapters/persistence/{postgres,memory}` へ同居。
+- [x] T003 [Persistence] scim postgres 実装を sqlc 生成へ置換。
+- [x] T004 [DI] `scim/module.go` を新設し Module パターン化。
+- [x] T005 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から scim 分を撤去。
+- [x] T006 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
+- [x] T007 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
 
 ## Verification
 
@@ -71,3 +71,32 @@ created_at: 2026-07-11
   が動的 WHERE を要求する可能性があり、[[ADR-090]] のエスケープハッチ判断が必要になる点。
 - 軽減：T003 で filter クエリの実装状況を確認し、動的な場合は早めに手書き pgx
   エスケープハッチへ倒す（narg/COALESCE で吸収できない場合）。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: `scim_models.go` は元々 `shared/spec` 非依存で domain 移設は不要と確認した。
+  `shared/adapters/persistence/{postgres,memory}` の SCIM token/user-ref/group-ref
+  repository を `backend/scim/adapters/persistence/{postgres,memory}` へ同居し、postgres 側
+  の全 12 クエリを sqlc 生成（`sqlcgen`）へ置換した。`scim/module.go` を新設して
+  `Deps`/`bootstrap` から `ScimRepo` フィールドを撤去し、`scim.Module{Repo: ...}` 経由の
+  DI・ルート登録に統一した（IdentityManagement の HTTP handler が必要とする `ScimRepo` は
+  `d.Scim.Repo` として同一の port 型で受け渡す）。SCIM `filter` query parameter は
+  UserRepository 側のアプリケーション内フィルタで処理されており、scim 自身の repository に
+  可変 WHERE クエリは存在しなかった。振る舞い・HTTP route・DB schema・公開 API は変更していない。
+- **Affected Guarantees State**: preserved
+- **Verification Results**:
+  - `just format-go` / `just build-go` — passed
+  - `just test-go` / `just verify-go`（lint 0 issues, race 含む全テスト green） — passed
+  - `just yaml-check` / `just check-ids` — passed（184 file / 272 record id OK）
+  - `just sqlc-generate` — passed（再実行後の生成差分なし）
+  - memory backend での起動スモーク（`/health` 200、未登録トークンで SCIM endpoint 401）— passed
+  - locality 指標：`grep -r "shared/spec" backend/scim --include="*.go" | grep -v _test.go` は
+    `module.go`（`spec.DomainEvent` 型のみ）・`usecases.go`（IdentityManagement 未移設の
+    User/Group/DomainEvent 参照）の 2 件のみで、scim 自身の型の残存参照はゼロ。
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: macOS local workspace, Go 1.26.5
+  - 実行主体: Claude Code
+  - 対象ソース版: `bf5989cb`（コミット前、work-items/wi-176 着手時点）
+  - 保存先: 外部成果物なし。静的 sqlc query は 12 件、動的エスケープは 0 件。

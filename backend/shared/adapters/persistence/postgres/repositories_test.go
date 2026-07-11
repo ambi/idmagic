@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -268,67 +267,5 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 
 	if err := repo.Delete(ctx, tenant.ID, group.ID); err != nil {
 		t.Fatalf("delete group: %v", err)
-	}
-}
-
-func TestScimRepositoryTokensAndRefs(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	user := seedUser(t, db, tenant.ID)
-	group := seedGroup(t, db, tenant.ID)
-	repo := &ScimRepository{Pool: db}
-	ctx := context.Background()
-
-	now := testClock()
-	token := &ports.ScimToken{
-		ID: newUUID(t), TenantID: tenant.ID, TokenHash: uniqueID("hash"),
-		Description: "provisioning", CreatedAt: now, ExpiresAt: new(now.Add(time.Hour)),
-	}
-	if err := repo.SaveToken(ctx, token); err != nil {
-		t.Fatalf("save token: %v", err)
-	}
-	found, err := repo.FindToken(ctx, token.TokenHash)
-	if err != nil || found == nil || found.ID != token.ID {
-		t.Fatalf("find token: %v %+v", err, found)
-	}
-	tokens, err := repo.ListTokens(ctx, tenant.ID)
-	if err != nil || len(tokens) != 1 {
-		t.Fatalf("list tokens: %v len=%d", err, len(tokens))
-	}
-
-	userRef := &ports.ScimUserRef{TenantID: tenant.ID, ScimID: uniqueID("scim-user"), UserID: user.ID}
-	if err := repo.SaveUserRef(ctx, userRef); err != nil {
-		t.Fatalf("save user ref: %v", err)
-	}
-	byScim, err := repo.FindUserRefByScimID(ctx, tenant.ID, userRef.ScimID)
-	if err != nil || byScim == nil || byScim.UserID != user.ID {
-		t.Fatalf("find user ref by scim id: %v %+v", err, byScim)
-	}
-	byUser, err := repo.FindUserRefByUserID(ctx, tenant.ID, user.ID)
-	if err != nil || byUser == nil || byUser.ScimID != userRef.ScimID {
-		t.Fatalf("find user ref by user id: %v %+v", err, byUser)
-	}
-
-	groupRef := &ports.ScimGroupRef{TenantID: tenant.ID, ScimID: uniqueID("scim-group"), GroupID: group.ID}
-	if err := repo.SaveGroupRef(ctx, groupRef); err != nil {
-		t.Fatalf("save group ref: %v", err)
-	}
-	gByScim, err := repo.FindGroupRefByScimID(ctx, tenant.ID, groupRef.ScimID)
-	if err != nil || gByScim == nil || gByScim.GroupID != group.ID {
-		t.Fatalf("find group ref by scim id: %v %+v", err, gByScim)
-	}
-	gByGroup, err := repo.FindGroupRefByGroupID(ctx, tenant.ID, group.ID)
-	if err != nil || gByGroup == nil || gByGroup.ScimID != groupRef.ScimID {
-		t.Fatalf("find group ref by group id: %v %+v", err, gByGroup)
-	}
-
-	if err := repo.DeleteUserRef(ctx, tenant.ID, userRef.ScimID); err != nil {
-		t.Fatalf("delete user ref: %v", err)
-	}
-	if err := repo.DeleteGroupRef(ctx, tenant.ID, groupRef.ScimID); err != nil {
-		t.Fatalf("delete group ref: %v", err)
-	}
-	if err := repo.DeleteToken(ctx, tenant.ID, token.ID); err != nil {
-		t.Fatalf("delete token: %v", err)
 	}
 }
