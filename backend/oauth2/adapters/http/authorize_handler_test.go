@@ -28,7 +28,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -93,12 +92,12 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	}
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps:         support.Deps{Issuer: "http://test"},
-		OAuth2:       oauth2.Module{ClientRepo: clientRepo, ConsentRepo: consentRepo},
-		UserRepo:     userRepo,
-		RequestStore: memory.NewAuthorizationRequestStore(),
-		CodeStore:    memory.NewAuthorizationCodeStore(),
-		PARStore:     memory.NewPARStore(),
+		Deps: support.Deps{Issuer: "http://test"},
+		OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, ConsentRepo: consentRepo,
+			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(), PARStore: oauth2memory.NewPARStore(),
+		},
+		UserRepo: userRepo,
 	}
 	if authn != nil {
 		deps.AuthnResolver = &fakeAuthnResolver{ctx: authn}

@@ -8,10 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
 // PasswordResetTokenStore (Authentication)
-type PasswordResetTokenStore struct{ Pool DB }
+type PasswordResetTokenStore struct{ Pool sharedpg.DB }
 
 func (s *PasswordResetTokenStore) Save(
 	ctx context.Context,

@@ -15,7 +15,6 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -28,8 +27,8 @@ type deviceFixture struct {
 func newDeviceFixture() deviceFixture {
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmmemory.NewUserRepository()
-	deviceStore := memory.NewDeviceCodeStore()
-	refreshStore := memory.NewRefreshTokenStore()
+	deviceStore := oauth2memory.NewDeviceCodeStore()
+	refreshStore := oauth2memory.NewRefreshTokenStore()
 	now := time.Now().UTC()
 	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: "device-client", ClientType: spec.ClientPublic,

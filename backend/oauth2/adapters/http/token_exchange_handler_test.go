@@ -19,7 +19,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -53,11 +52,10 @@ func newTokenExchangeServer(t *testing.T) string {
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:         support.Deps{Issuer: "http://test"},
-		OAuth2:       oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()},
-		UserRepo:     idmmemory.NewUserRepository(),
-		RefreshStore: memory.NewRefreshTokenStore(),
-		KeyStore:     keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
+		Deps:     support.Deps{Issuer: "http://test"},
+		OAuth2:   oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore()},
+		UserRepo: idmmemory.NewUserRepository(),
+		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	})
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)

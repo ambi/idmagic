@@ -3,42 +3,11 @@ package postgres
 import (
 	"context"
 	"testing"
-	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
-
-func TestPasswordResetTokenStoreSaveAndConsume(t *testing.T) {
-	db := requireDB(t)
-	tenant := seedTenant(t, db)
-	user := seedUser(t, db, tenant.ID)
-	store := &PasswordResetTokenStore{Pool: db}
-	ctx := context.Background()
-
-	now := testClock()
-	record := authnports.PasswordResetTokenRecord{
-		Sub:       user.ID,
-		TokenHash: uniqueID("reset"),
-		CreatedAt: now,
-		ExpiresAt: now.Add(time.Hour),
-	}
-	if err := store.Save(ctx, record); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-
-	got, err := store.Consume(ctx, record.TokenHash, now.Add(time.Minute))
-	if err != nil || got == nil || got.Sub != user.ID {
-		t.Fatalf("consume: %v %+v", err, got)
-	}
-
-	again, err := store.Consume(ctx, record.TokenHash, now.Add(time.Minute))
-	if err != nil || again != nil {
-		t.Fatalf("second consume should be nil: %v %+v", err, again)
-	}
-}
 
 func TestKeyStoreRotateAndLookup(t *testing.T) {
 	db := requireDB(t)

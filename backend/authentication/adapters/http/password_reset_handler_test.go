@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -21,7 +22,6 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/adapters/notification"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/policy"
 
 	"github.com/labstack/echo/v5"
@@ -85,7 +85,7 @@ func newPasswordResetHandler(
 	t.Helper()
 	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	tokenStore := memory.NewPasswordResetTokenStore()
+	tokenStore := authnmemory.NewPasswordResetTokenStore()
 	sender := &notification.NoopEmailSender{}
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("current-password-1")
@@ -104,7 +104,7 @@ func newPasswordResetHandler(
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: userRepo, PasswordHasher: hasher,
-		PasswordHistoryRepo: historyRepo, PasswordResetTokenStore: tokenStore,
+		PasswordHistoryRepo: historyRepo, Authentication: authentication.Module{PasswordResetTokenStore: tokenStore},
 		EmailSender: sender, BreachedPasswordChecker: policy.NoopBreachedPasswordChecker{},
 	})
 	return e, userRepo, sender, hasher

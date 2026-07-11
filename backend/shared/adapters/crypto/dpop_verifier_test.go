@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 )
 
 func dpopTestKey(t *testing.T) (*rsa.PrivateKey, map[string]any) {

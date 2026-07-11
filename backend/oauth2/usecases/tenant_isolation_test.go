@@ -15,7 +15,6 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -38,7 +37,7 @@ func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 	})
 	_, err := Authorize(tenantContext("acme"), AuthorizeDeps{
-		ClientRepo: clients, RequestStore: memory.NewAuthorizationRequestStore(),
+		ClientRepo: clients, RequestStore: oauth2memory.NewAuthorizationRequestStore(),
 	}, AuthorizeRequestInput{
 		ClientID: "web-app", RedirectURI: "https://app.example/callback",
 		ResponseType: string(spec.ResponseTypeCode), Scope: "openid",
@@ -48,7 +47,7 @@ func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 }
 
 func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
-	codes := memory.NewAuthorizationCodeStore()
+	codes := oauth2memory.NewAuthorizationCodeStore()
 	if err := codes.Save(context.Background(), &domain.AuthorizationCodeRecord{
 		Code: "AC1", TenantID: "acme", AuthorizationRequestID: "7856cb4e-7405-4d24-9c04-475cbb13f6f1",
 		ClientID: "web-app", UserID: "user", RedirectURI: "https://app.example/callback",
@@ -84,7 +83,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 		PasswordHash: "hash", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})
 
-	store := memory.NewRefreshTokenStore()
+	store := oauth2memory.NewRefreshTokenStore()
 	gen, err := domain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +117,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
 
-	deviceStore := memory.NewDeviceCodeStore()
+	deviceStore := oauth2memory.NewDeviceCodeStore()
 	deviceCode := "DEVCODE-acme-1234567890"
 	sub := "user"
 	authTime := now.Unix()
@@ -141,7 +140,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 
 	_, err := ExchangeDeviceCode(tenantContext(tenancydomain.DefaultTenantID), ExchangeDeviceCodeDeps{
 		ClientRepo: clients, UserRepo: users, DeviceCodeStore: deviceStore,
-		RefreshStore: memory.NewRefreshTokenStore(), TokenIssuer: &fakeTokenIssuer{},
+		RefreshStore: oauth2memory.NewRefreshTokenStore(), TokenIssuer: &fakeTokenIssuer{},
 	}, ExchangeDeviceCodeInput{ClientID: "tv-app", DeviceCode: deviceCode}, now.Add(20*time.Second))
 	assertOAuthErrorCode(t, err, "invalid_grant")
 }

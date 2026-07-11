@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 // =====================================================================
@@ -34,7 +35,7 @@ func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*domain.
 func (s *RefreshTokenStore) Save(_ context.Context, rec *domain.RefreshTokenRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	DefaultTenant(&rec.TenantID)
+	sharedmem.DefaultTenant(&rec.TenantID)
 	stored := cloneRefreshToken(rec)
 	s.byHash[stored.Hash] = stored
 	s.byID[stored.ID] = stored
@@ -52,7 +53,7 @@ func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *d
 		return nil, nil
 	}
 	parent.Rotated = true
-	DefaultTenant(&newRec.TenantID)
+	sharedmem.DefaultTenant(&newRec.TenantID)
 	stored := cloneRefreshToken(newRec)
 	s.byHash[stored.Hash] = stored
 	s.byID[stored.ID] = stored

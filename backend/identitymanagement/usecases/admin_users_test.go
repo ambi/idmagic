@@ -20,7 +20,6 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -164,9 +163,9 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
-	refreshStore := memory.NewRefreshTokenStore()
-	deviceStore := memory.NewDeviceCodeStore()
-	sessionStore := memory.NewSessionStore()
+	refreshStore := oauth2memory.NewRefreshTokenStore()
+	deviceStore := oauth2memory.NewDeviceCodeStore()
+	sessionStore := authnmemory.NewSessionStore()
 	mfaRepo := authnmemory.NewMfaFactorRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	var events []spec.DomainEvent
@@ -318,7 +317,7 @@ func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, 
 	consentRepo := oauth2memory.NewConsentRepository()
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, ConsentRepo: consentRepo,
-		RefreshStore: memory.NewRefreshTokenStore(), SessionStore: memory.NewSessionStore(),
+		RefreshStore: oauth2memory.NewRefreshTokenStore(), SessionStore: authnmemory.NewSessionStore(),
 		MfaFactorRepo: authnmemory.NewMfaFactorRepository(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit: func(event spec.DomainEvent) { *events = append(*events, event) },
 	}

@@ -21,7 +21,6 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -47,12 +46,11 @@ func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Deps:              support.Deps{Issuer: "http://test"},
-		OAuth2:            oauth2.Module{ClientRepo: clientRepo},
+		OAuth2:            oauth2.Module{ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore()},
 		TokenIntrospector: intro,
-		RefreshStore:      memory.NewRefreshTokenStore(),
 	}
 	if denylist != nil {
-		deps.AccessTokenDenylist = denylist
+		deps.OAuth2.AccessTokenDenylist = denylist
 	}
 	httpadapter.Register(e, deps)
 	return e

@@ -21,7 +21,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
@@ -31,7 +30,7 @@ import (
 type deviceFixture struct {
 	e           *echo.Echo
 	clientRepo  *oauth2memory.OAuth2ClientRepository
-	deviceStore *memory.DeviceCodeStore
+	deviceStore *oauth2memory.DeviceCodeStore
 	authn       *fakeAuthnResolver
 	userCode    string
 	deviceCode  string
@@ -59,7 +58,7 @@ func newDeviceServer() deviceFixture {
 		CreatedAt:               time.Now().UTC(),
 	})
 
-	deviceStore := memory.NewDeviceCodeStore()
+	deviceStore := oauth2memory.NewDeviceCodeStore()
 	authn := &fakeAuthnResolver{
 		ctx: &authdomain.AuthenticationContext{UserID: "user-1"},
 	}
@@ -70,9 +69,8 @@ func newDeviceServer() deviceFixture {
 			Issuer:     "http://test",
 			TenantRepo: tenancymemory.NewTenantRepository(),
 		},
-		OAuth2:          oauth2.Module{ClientRepo: clientRepo},
-		DeviceCodeStore: deviceStore,
-		AuthnResolver:   authn,
+		OAuth2:        oauth2.Module{ClientRepo: clientRepo, DeviceCodeStore: deviceStore},
+		AuthnResolver: authn,
 	}
 	// default tenant をシード
 	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{

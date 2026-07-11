@@ -10,6 +10,7 @@ import (
 	apppostgres "github.com/ambi/idmagic/backend/application/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
+	authnvalkey "github.com/ambi/idmagic/backend/authentication/adapters/persistence/valkey"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/identitymanagement"
 	idmpostgres "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
@@ -23,7 +24,7 @@ import (
 	scimpostgres "github.com/ambi/idmagic/backend/scim/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	valkeystore "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
+	sharedvalkey "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
@@ -47,7 +48,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		QueryTimeout:    envDuration("DB_QUERY_TIMEOUT", 5*time.Second),
 	}
 
-	valkeyCfg := valkeystore.ValkeyConfig{
+	valkeyCfg := sharedvalkey.ValkeyConfig{
 		DialTimeout:  envDuration("VALKEY_DIAL_TIMEOUT", 5*time.Second),
 		ReadTimeout:  envDuration("VALKEY_READ_TIMEOUT", 2*time.Second),
 		WriteTimeout: envDuration("VALKEY_WRITE_TIMEOUT", 2*time.Second),
@@ -76,7 +77,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	}
 	resilientDB := postgres.NewResilientDB(pool, dbBreaker, dbCfg.QueryTimeout)
 
-	valkeyClient, err := valkeystore.Open(ctx, valkeyURL, valkeyCfg, valkeyBreaker)
+	valkeyClient, err := sharedvalkey.Open(ctx, valkeyURL, valkeyCfg, valkeyBreaker)
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -114,14 +115,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		Authentication: authentication.Module{
 			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
 			PasswordHistoryRepo:     &authnpostgres.PasswordHistoryRepository{Pool: resilientDB},
-			PasswordResetTokenStore: &postgres.PasswordResetTokenStore{Pool: resilientDB},
+			PasswordResetTokenStore: &authnpostgres.PasswordResetTokenStore{Pool: resilientDB},
 			EmailChangeTokenStore:   &authnpostgres.EmailChangeTokenStore{Pool: resilientDB},
-			SessionStore:            &valkeystore.SessionStore{Client: valkeyClient},
+			SessionStore:            &authnvalkey.SessionStore{Client: valkeyClient},
 			WebAuthnCredentialRepo:  &authnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
-			WebAuthnSessionStore:    &valkeystore.WebAuthnSessionStore{Client: valkeyClient},
+			WebAuthnSessionStore:    &authnvalkey.WebAuthnSessionStore{Client: valkeyClient},
 			RecoveryCodeRepo:        &authnpostgres.RecoveryCodeRepository{Pool: resilientDB},
 			NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
-				return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
+				return &authnvalkey.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
 			},
 			AuthEventBucketStore: &authnpostgres.AuthEventBucketStore{Pool: resilientDB},
 		},

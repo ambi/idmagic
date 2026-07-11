@@ -22,7 +22,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -52,10 +51,10 @@ func newPARTestServer(t *testing.T) *echo.Echo {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
-		PARStore:     memory.NewPARStore(),
-		RequestStore: memory.NewAuthorizationRequestStore(),
-		CodeStore:    memory.NewAuthorizationCodeStore(),
+		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{
+			ClientRepo: clientRepo,
+			PARStore:   oauth2memory.NewPARStore(), RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
+		},
 	})
 	return e
 }
@@ -123,7 +122,7 @@ func TestPushAuthorizationRequestRoundTripsToAuthorize(t *testing.T) {
 func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	// PAR record を tenant=acme で保存して、/authorize は default tenant (bare 経路) に
 	// 投げる。handleAuthorize は consumed.TenantID != support.RequestTenantID(c) を理由に拒否する。
-	store := memory.NewPARStore()
+	store := oauth2memory.NewPARStore()
 	// 別テナントの PAR レコードを直接 store に保存。
 	rec := &domain.PARRecord{
 		TenantID:   "acme",
@@ -157,10 +156,10 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 	})
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
-		PARStore:     store,
-		RequestStore: memory.NewAuthorizationRequestStore(),
-		CodeStore:    memory.NewAuthorizationCodeStore(),
+		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{
+			ClientRepo: clientRepo,
+			PARStore:   store, RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
+		},
 	})
 	out := getAuthorize(e, url.Values{"request_uri": {rec.RequestURI}, "client_id": {parClientID}})
 	if out.Code == http.StatusSeeOther ||
@@ -181,13 +180,13 @@ func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing
 		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "openid",
 		CreatedAt: time.Now().UTC(),
 	})
-	store := &ctxCheckingPARStore{PARStore: memory.NewPARStore()}
+	store := &ctxCheckingPARStore{PARStore: oauth2memory.NewPARStore()}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
-		PARStore:     store,
-		RequestStore: memory.NewAuthorizationRequestStore(),
-		CodeStore:    memory.NewAuthorizationCodeStore(),
+		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{
+			ClientRepo: clientRepo,
+			PARStore:   store, RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
+		},
 	})
 
 	form := url.Values{
@@ -215,7 +214,7 @@ func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing
 }
 
 type ctxCheckingPARStore struct {
-	*memory.PARStore
+	*oauth2memory.PARStore
 	saveCtxErr error
 }
 

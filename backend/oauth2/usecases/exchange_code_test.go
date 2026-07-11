@@ -16,7 +16,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -40,8 +39,8 @@ func (f *fakeTokenIssuer) IDTokenTTLSeconds() int     { return 3600 }
 
 type exchangeFixture struct {
 	deps         ExchangeCodeDeps
-	codeStore    *memory.AuthorizationCodeStore
-	refreshStore *memory.RefreshTokenStore
+	codeStore    *oauth2memory.AuthorizationCodeStore
+	refreshStore *oauth2memory.RefreshTokenStore
 	code         *domain.AuthorizationCodeRecord
 	issuer       *fakeTokenIssuer
 }
@@ -50,8 +49,8 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmmemory.NewUserRepository()
-	codeStore := memory.NewAuthorizationCodeStore()
-	refreshStore := memory.NewRefreshTokenStore()
+	codeStore := oauth2memory.NewAuthorizationCodeStore()
+	refreshStore := oauth2memory.NewRefreshTokenStore()
 	issuer := &fakeTokenIssuer{}
 
 	now := time.Now().UTC()

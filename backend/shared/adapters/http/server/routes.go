@@ -45,41 +45,30 @@ type Deps struct {
 	// Deprecated: wi-177 移行中のテスト用互換入力。bootstrap は Authentication.Module のみを設定する。
 	MfaFactorRepo           authnports.MfaFactorRepository
 	PasswordHistoryRepo     authnports.PasswordHistoryRepository
-	PasswordResetTokenStore authnports.PasswordResetTokenStore
 	EmailChangeTokenStore   authnports.EmailChangeTokenStore
 	AuthEventBucketStore    authnports.AuthEventBucketStore
 	PasswordHasher          authnports.PasswordHasher
 	EmailSender             authnports.EmailSender
 	BreachedPasswordChecker authnports.BreachedPasswordChecker
-	LoginAttemptThrottle    authnports.LoginAttemptThrottle
 	SentinelPasswordHash    string
 	SessionManager          *authusecases.SessionManager
 	AuthnResolver           authdomain.AuthenticationContextResolver
 	WebAuthnRP              *gowebauthn.WebAuthn
 	WebAuthnCredentialRepo  authnports.WebAuthnCredentialRepository
-	WebAuthnSessionStore    authnports.WebAuthnSessionStore
 	RecoveryCodeRepo        authnports.RecoveryCodeRepository
 	OAuth2                  oauth2.Module
 	// Deprecated: 移行中のテスト用互換入力。bootstrap は OAuth2.Module のみを設定する。
-	RequestStore               oauthports.AuthorizationRequestStore
-	CodeStore                  oauthports.AuthorizationCodeStore
-	PARStore                   oauthports.PARStore
-	RefreshStore               oauthports.RefreshTokenStore
-	DeviceCodeStore            oauthports.DeviceCodeStore
-	DpopReplayStore            oauthports.DpopReplayStore
-	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
-	AccessTokenDenylist        oauthports.AccessTokenDenylist
-	TokenIssuer                oauthports.TokenIssuer
-	TokenIntrospector          oauthports.TokenIntrospector
-	Authorizer                 oauthports.Authorizer
-	KeyStore                   oauthports.KeyStore
-	TenantSaltStore            oauthports.TenantSaltStore
-	JWKResolver                *crypto.JWKResolver
-	WsFederation               wsfederation.Module
-	Saml                       saml.Module
-	Scim                       scim.Module
-	FederationSigner           *samltoken.Signer
-	Application                application.Module
+	TokenIssuer       oauthports.TokenIssuer
+	TokenIntrospector oauthports.TokenIntrospector
+	Authorizer        oauthports.Authorizer
+	KeyStore          oauthports.KeyStore
+	TenantSaltStore   oauthports.TenantSaltStore
+	JWKResolver       *crypto.JWKResolver
+	WsFederation      wsfederation.Module
+	Saml              saml.Module
+	Scim              scim.Module
+	FederationSigner  *samltoken.Signer
+	Application       application.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -129,9 +118,6 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 	if module.PasswordHistoryRepo == nil {
 		module.PasswordHistoryRepo = d.PasswordHistoryRepo
 	}
-	if module.PasswordResetTokenStore == nil {
-		module.PasswordResetTokenStore = d.PasswordResetTokenStore
-	}
 	if module.EmailChangeTokenStore == nil {
 		module.EmailChangeTokenStore = d.EmailChangeTokenStore
 	}
@@ -146,9 +132,6 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 	}
 	if module.BreachedPasswordChecker == nil {
 		module.BreachedPasswordChecker = d.BreachedPasswordChecker
-	}
-	if module.LoginAttemptThrottle == nil {
-		module.LoginAttemptThrottle = d.LoginAttemptThrottle
 	}
 	if module.SentinelPasswordHash == "" {
 		module.SentinelPasswordHash = d.SentinelPasswordHash
@@ -165,9 +148,6 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 	if module.WebAuthnCredentialRepo == nil {
 		module.WebAuthnCredentialRepo = d.WebAuthnCredentialRepo
 	}
-	if module.WebAuthnSessionStore == nil {
-		module.WebAuthnSessionStore = d.WebAuthnSessionStore
-	}
 	if module.RecoveryCodeRepo == nil {
 		module.RecoveryCodeRepo = d.RecoveryCodeRepo
 	}
@@ -178,30 +158,6 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 }
 
 func mergeLegacyOAuth2Deps(module oauth2.Module, d Deps) oauth2.Module {
-	if module.RequestStore == nil {
-		module.RequestStore = d.RequestStore
-	}
-	if module.CodeStore == nil {
-		module.CodeStore = d.CodeStore
-	}
-	if module.PARStore == nil {
-		module.PARStore = d.PARStore
-	}
-	if module.RefreshStore == nil {
-		module.RefreshStore = d.RefreshStore
-	}
-	if module.DeviceCodeStore == nil {
-		module.DeviceCodeStore = d.DeviceCodeStore
-	}
-	if module.DpopReplayStore == nil {
-		module.DpopReplayStore = d.DpopReplayStore
-	}
-	if module.ClientAssertionReplayStore == nil {
-		module.ClientAssertionReplayStore = d.ClientAssertionReplayStore
-	}
-	if module.AccessTokenDenylist == nil {
-		module.AccessTokenDenylist = d.AccessTokenDenylist
-	}
 	if module.TokenIssuer == nil {
 		module.TokenIssuer = d.TokenIssuer
 	}

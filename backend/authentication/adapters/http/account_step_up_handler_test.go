@@ -32,7 +32,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -51,7 +50,7 @@ func activeTenant(id, displayName string) *tenancydomain.Tenant {
 	}
 }
 
-func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.DomainEvent) {
+func newStepUpServer(t *testing.T) (*echo.Echo, *authnmemory.SessionStore, *[]spec.DomainEvent) {
 	t.Helper()
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -85,7 +84,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 		t.Fatal(err)
 	}
 
-	store := memory.NewSessionStore()
+	store := authnmemory.NewSessionStore()
 	sm := authusecases.NewSessionManager(store)
 	var events []spec.DomainEvent
 
@@ -109,7 +108,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 
 // seedSession は指定した auth_time を持つ有効なセッション (step_up 未実施) を直接書き込み、
 // その cookie 値 (session id) を返す。
-func seedSession(t *testing.T, store *memory.SessionStore, id string, authTime time.Time) string {
+func seedSession(t *testing.T, store *authnmemory.SessionStore, id string, authTime time.Time) string {
 	t.Helper()
 	sess := &authdomain.LoginSession{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",

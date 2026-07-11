@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -26,7 +27,7 @@ func NewAuthorizationCodeStore() *AuthorizationCodeStore {
 func (s *AuthorizationCodeStore) Save(_ context.Context, code *domain.AuthorizationCodeRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	DefaultTenant(&code.TenantID)
+	sharedmem.DefaultTenant(&code.TenantID)
 	s.codes[code.Code] = cloneAuthorizationCode(code)
 	return nil
 }

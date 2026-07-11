@@ -17,7 +17,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -35,7 +34,7 @@ func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDe
 		UserRepo:       userRepo,
 		CredentialRepo: authnmemory.NewWebAuthnCredentialRepository(),
 		MfaFactorRepo:  authnmemory.NewMfaFactorRepository(),
-		SessionStore:   memory.NewWebAuthnSessionStore(),
+		SessionStore:   authnmemory.NewWebAuthnSessionStore(),
 		Emit:           func(e spec.DomainEvent) { events = append(events, e) },
 	}
 	return deps, userRepo, &events

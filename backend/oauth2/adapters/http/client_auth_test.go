@@ -22,7 +22,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -220,7 +219,7 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 	})
 	deps := Deps{
 		Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo,
-		ClientAssertionReplayStore: memory.NewClientAssertionReplayStore(),
+		ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 	}
 	e := echo.New()
 	e.POST("/test", func(c *echo.Context) error {

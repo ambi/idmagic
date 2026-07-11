@@ -14,8 +14,8 @@ var AssuranceManifest = map[string][]AssuranceVerification{
 		{File: "backend/oauth2/domain/pkce_test.go", Check: "TestPKCES256RejectsMismatch"},
 	},
 	"AuthorizationCodeStoreContract": {
-		{File: "backend/shared/adapters/persistence/memory/memory_test.go", Check: "TestAuthorizationCodeRedeemIsAtomic"},
-		{File: "backend/shared/adapters/persistence/valkey/valkey_test.go", Check: "TestAuthorizationCodeRedeemOnce"},
+		{File: "backend/oauth2/adapters/persistence/memory/memory_test.go", Check: "TestAuthorizationCodeRedeemIsAtomic"},
+		{File: "backend/oauth2/adapters/persistence/valkey/valkey_test.go", Check: "TestAuthorizationCodeRedeemOnce"},
 	},
 	"AuthorizationPolicyTests": {
 		{File: "backend/oauth2/usecases/exchange_code_test.go", Check: "TestExchangeCodePKCEFailureDoesNotConsumeCode"},
@@ -42,7 +42,7 @@ var AssuranceManifest = map[string][]AssuranceVerification{
 		{File: "backend/authentication/usecases/password_policy_test.go", Check: "TestValidatePasswordRejectsTooShort"},
 	},
 	"ResetTokenStorageTests": {
-		{File: "backend/shared/adapters/persistence/memory/password_reset_token_store_test.go", Check: "TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently"},
+		{File: "backend/authentication/adapters/persistence/memory/password_reset_token_store_test.go", Check: "TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently"},
 		{File: "backend/authentication/usecases/password_reset_test.go", Check: "TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword"},
 	},
 	"PersistenceSecretContracts": {

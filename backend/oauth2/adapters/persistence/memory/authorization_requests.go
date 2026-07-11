@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -26,7 +27,7 @@ func NewAuthorizationRequestStore() *AuthorizationRequestStore {
 func (s *AuthorizationRequestStore) Save(_ context.Context, req *domain.AuthorizationRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	DefaultTenant(&req.TenantID)
+	sharedmem.DefaultTenant(&req.TenantID)
 	s.requests[req.ID] = req
 	return nil
 }

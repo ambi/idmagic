@@ -20,13 +20,12 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/notification"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 	userRepo := idmmemory.NewUserRepository()
-	tokenStore := memory.NewPasswordResetTokenStore()
+	tokenStore := authnmemory.NewPasswordResetTokenStore()
 	emailSender := &notification.NoopEmailSender{}
 	email := "alice@example.com"
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
@@ -64,7 +63,7 @@ func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 	var events []spec.DomainEvent
 	sender := &notification.NoopEmailSender{}
 	err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
-		UserRepo: idmmemory.NewUserRepository(), TokenStore: memory.NewPasswordResetTokenStore(),
+		UserRepo: idmmemory.NewUserRepository(), TokenStore: authnmemory.NewPasswordResetTokenStore(),
 		EmailSender: sender, Emit: func(event spec.DomainEvent) { events = append(events, event) },
 		Issuer: "http://idp.test",
 	}, usecases.RequestPasswordResetInput{Email: "unknown@example.com"})
@@ -83,7 +82,7 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	ctx := context.Background()
 	userRepo := idmmemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	tokenStore := memory.NewPasswordResetTokenStore()
+	tokenStore := authnmemory.NewPasswordResetTokenStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	currentHash, err := hasher.Hash("current-password-1")
 	if err != nil {
@@ -130,7 +129,7 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 }
 
 func TestResetPasswordWithTokenRejectsExpiredToken(t *testing.T) {
-	store := memory.NewPasswordResetTokenStore()
+	store := authnmemory.NewPasswordResetTokenStore()
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	if err := store.Save(context.Background(), authnports.PasswordResetTokenRecord{
 		Sub: "user-alice", TokenHash: hashToken("expired"),

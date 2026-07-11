@@ -21,7 +21,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -78,12 +77,10 @@ func newTokenServer(t *testing.T) tokenFixture {
 			Issuer:     "http://test",
 			TenantRepo: tenancymemory.NewTenantRepository(),
 		},
-		OAuth2:              oauth2.Module{ClientRepo: clientRepo},
-		RefreshStore:        memory.NewRefreshTokenStore(),
-		AccessTokenDenylist: memory.NewAccessTokenDenylist(),
-		KeyStore:            keyStore,
-		TokenIssuer:         tokenIssuer,
-		TokenIntrospector:   tokenIssuer,
+		OAuth2:            oauth2.Module{ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist()},
+		KeyStore:          keyStore,
+		TokenIssuer:       tokenIssuer,
+		TokenIntrospector: tokenIssuer,
 	}
 	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID:     tenancydomain.DefaultTenantID,

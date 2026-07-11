@@ -11,14 +11,13 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestPushAuthorizationRequest(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	clientRepo := oauth2memory.NewClientRepository()
-	parStore := memory.NewPARStore()
+	parStore := oauth2memory.NewPARStore()
 	authzDetailRepo := oauth2memory.NewAuthorizationDetailTypeRepository()
 
 	var emitted []spec.DomainEvent

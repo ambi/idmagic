@@ -9,7 +9,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -30,7 +29,7 @@ func newAuthorizeDeps(requirePAR bool) AuthorizeDeps {
 		CreatedAt:                          time.Now(),
 	})
 	return AuthorizeDeps{
-		ClientRepo: repo, RequestStore: memory.NewAuthorizationRequestStore(),
+		ClientRepo: repo, RequestStore: oauth2memory.NewAuthorizationRequestStore(),
 	}
 }
 

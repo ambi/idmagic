@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -21,10 +22,10 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/memory"
@@ -111,12 +112,12 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, WsFederation: wsfederation.Module{RPRepo: rpRepo},
-		UserRepo:                   userRepo,
-		PasswordHasher:             hasher,
-		SentinelPasswordHash:       sentinel,
-		ClientAssertionReplayStore: memory.NewClientAssertionReplayStore(),
-		FederationSigner:           devSigner(t),
-		AuthnResolver:              stubResolver{ctx: authn},
+		UserRepo:             userRepo,
+		PasswordHasher:       hasher,
+		SentinelPasswordHash: sentinel,
+		OAuth2:               oauth2.Module{ClientAssertionReplayStore: memory.NewClientAssertionReplayStore()},
+		FederationSigner:     devSigner(t),
+		AuthnResolver:        stubResolver{ctx: authn},
 	})
 	return e, captured
 }

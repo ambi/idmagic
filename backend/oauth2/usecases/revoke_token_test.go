@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 type staticIntrospector struct {

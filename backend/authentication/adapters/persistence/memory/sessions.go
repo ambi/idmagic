@@ -6,6 +6,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 // =====================================================================
@@ -34,7 +35,7 @@ func (s *SessionStore) now() time.Time {
 func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	DefaultTenant(&sess.TenantID)
+	sharedmem.DefaultTenant(&sess.TenantID)
 	s.sessions[sess.ID] = sess
 	return nil
 }

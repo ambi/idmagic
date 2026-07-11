@@ -22,17 +22,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -112,8 +113,8 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://test"}, UserRepo: userRepo,
+		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
 		TokenIntrospector: intro,
-		DpopReplayStore:   memory.NewDpopReplayStore(),
 	})
 
 	call := func(authHeader, proof string) *httptest.ResponseRecorder {
@@ -185,8 +186,8 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 			Issuer:     "http://test",
 			TenantRepo: tenantRepo,
 		}, UserRepo: userRepo,
+		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
 		TokenIntrospector: intro,
-		DpopReplayStore:   memory.NewDpopReplayStore(),
 	})
 
 	htu := "http://test/realms/acme/userinfo"
@@ -269,11 +270,11 @@ func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDeny
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://test"}, UserRepo: userRepo,
+		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
 		TokenIntrospector: intro,
-		DpopReplayStore:   memory.NewDpopReplayStore(),
 	}
 	if denylist != nil {
-		deps.AccessTokenDenylist = denylist
+		deps.OAuth2.AccessTokenDenylist = denylist
 	}
 	httpadapter.Register(e, deps)
 	return e

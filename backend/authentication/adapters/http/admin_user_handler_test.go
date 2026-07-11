@@ -11,14 +11,15 @@ import (
 	"time"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/oauth2"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
+	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -45,7 +46,8 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, RequestStore: requestStore,
+		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo,
+		OAuth2:         oauth2.Module{RequestStore: requestStore},
 		PasswordHasher: hasher,
 	})
 	csrf, csrfCookie := passwordResetCSRF(t, e)

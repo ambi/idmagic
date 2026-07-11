@@ -19,7 +19,6 @@ import (
 	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -44,11 +43,11 @@ func assembleMemory() (*Dependencies, error) {
 		Authentication: authentication.Module{
 			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),
 			PasswordHistoryRepo:     authnmemory.NewPasswordHistoryRepository(),
-			PasswordResetTokenStore: memory.NewPasswordResetTokenStore(),
+			PasswordResetTokenStore: authnmemory.NewPasswordResetTokenStore(),
 			EmailChangeTokenStore:   authnmemory.NewEmailChangeTokenStore(),
-			SessionStore:            memory.NewSessionStore(),
+			SessionStore:            authnmemory.NewSessionStore(),
 			WebAuthnCredentialRepo:  authnmemory.NewWebAuthnCredentialRepository(),
-			WebAuthnSessionStore:    memory.NewWebAuthnSessionStore(),
+			WebAuthnSessionStore:    authnmemory.NewWebAuthnSessionStore(),
 			RecoveryCodeRepo:        authnmemory.NewRecoveryCodeRepository(),
 			NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
 				return authnmemory.NewLoginAttemptThrottle(configs)
@@ -59,14 +58,14 @@ func assembleMemory() (*Dependencies, error) {
 			ClientRepo:                 oauth2memory.NewClientRepository(),
 			ConsentRepo:                oauth2memory.NewConsentRepository(),
 			AuthzDetailTypeRepo:        oauth2memory.NewAuthorizationDetailTypeRepository(),
-			RequestStore:               memory.NewAuthorizationRequestStore(),
-			CodeStore:                  memory.NewAuthorizationCodeStore(),
-			PARStore:                   memory.NewPARStore(),
+			RequestStore:               oauth2memory.NewAuthorizationRequestStore(),
+			CodeStore:                  oauth2memory.NewAuthorizationCodeStore(),
+			PARStore:                   oauth2memory.NewPARStore(),
 			RefreshStore:               oauth2memory.NewRefreshTokenStore(),
-			DeviceCodeStore:            memory.NewDeviceCodeStore(),
-			DpopReplayStore:            memory.NewDpopReplayStore(),
-			ClientAssertionReplayStore: memory.NewClientAssertionReplayStore(),
-			AccessTokenDenylist:        memory.NewAccessTokenDenylist(),
+			DeviceCodeStore:            oauth2memory.NewDeviceCodeStore(),
+			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
+			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
+			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
 			AuditEventRepo:             oauth2memory.NewAuditEventStore(0),
 			EventSink:                  eventsink.NewConsoleSink(),
 		},

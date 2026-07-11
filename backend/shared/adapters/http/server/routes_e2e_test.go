@@ -37,7 +37,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -66,8 +65,8 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 	userRepo := idmmemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
-	requestStore := memory.NewAuthorizationRequestStore()
-	codeStore := memory.NewAuthorizationCodeStore()
+	requestStore := oauth2memory.NewAuthorizationRequestStore()
+	codeStore := oauth2memory.NewAuthorizationCodeStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
@@ -101,7 +100,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())
+	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
@@ -112,10 +111,12 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 			Issuer: "http://test",
 
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()}, UserRepo: userRepo,
+		}, OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
+			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
+			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
+		}, UserRepo: userRepo,
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
-		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
-		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 	})
@@ -134,8 +135,8 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 	userRepo := idmmemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
-	requestStore := memory.NewAuthorizationRequestStore()
-	codeStore := memory.NewAuthorizationCodeStore()
+	requestStore := oauth2memory.NewAuthorizationRequestStore()
+	codeStore := oauth2memory.NewAuthorizationCodeStore()
 	applicationRepo := appmemory.NewApplicationRepository()
 	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
 	signInPolicyRepo := appmemory.NewSignInPolicyRepository()
@@ -211,7 +212,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())
+	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
@@ -221,10 +222,12 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			Issuer: "http://test",
 
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository()}, UserRepo: userRepo,
+		}, OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
+			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
+			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
+		}, UserRepo: userRepo,
 		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
-		RequestStore: requestStore, CodeStore: codeStore, PARStore: memory.NewPARStore(),
-		RefreshStore: memory.NewRefreshTokenStore(), DeviceCodeStore: memory.NewDeviceCodeStore(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		Application: application.Module{
@@ -1042,7 +1045,7 @@ func TestHealthProbes(t *testing.T) {
 	userRepo := idmmemory.NewUserRepository()
 	keyStore, _ := crypto.NewInMemoryKeyStore()
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	sessionManager := authusecases.NewSessionManager(memory.NewSessionStore())
+	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	startupComplete := &atomic.Bool{}

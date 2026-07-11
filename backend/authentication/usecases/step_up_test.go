@@ -14,7 +14,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -87,7 +86,7 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *SessionManager,
 	var events []spec.DomainEvent
 	// in-memory SessionStore は既定で実時計により期限切れ判定するため、固定 now の
 	// テストでセッションが失効しないよう時計を now に固定する。
-	sessionStore := memory.NewSessionStore()
+	sessionStore := authnmemory.NewSessionStore()
 	sessionStore.Clock = func() time.Time { return now }
 	sm := NewSessionManager(sessionStore)
 	deps := StepUpDeps{

@@ -8,12 +8,6 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
-// RefreshTokenStore は OAuth2 token/grant の memory store を context 側から公開する。
-// 実装本体は shared memory の同期プリミティブを再利用する。
-type RefreshTokenStore = sharedmem.RefreshTokenStore
-
-func NewRefreshTokenStore() *RefreshTokenStore { return sharedmem.NewRefreshTokenStore() }
-
 // OAuth2ClientRepository (OAuth2)
 type OAuth2ClientRepository struct {
 	mu      sync.RWMutex
