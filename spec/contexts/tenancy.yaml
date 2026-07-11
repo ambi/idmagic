@@ -754,7 +754,7 @@ interfaces:
         method: DELETE
         path: "/api/admin/tenant/branding/assets/{kind}"
   GetTenantBrandingAsset:
-    description: "保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。Content-Type は検証済み\n形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は\n未存在として扱う。\n"
+    description: "保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。アップロード後に返す URL は、\n解決済み realm prefix を含むこの interface へ同一 origin で到達可能であり、管理画面プレビューと\nhosted UI はその URL を画像として取得・描画できる。Content-Type は検証済み形式に固定し、\nX-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。\n"
     input:
       kind:
         type: TenantBrandingAssetKind
@@ -783,6 +783,10 @@ invariants:
     description: TenantBranding のロゴ / favicon は tenant_id + kind + object_key で参照し、別テナントの object は同じ key でも取得できない。
     target: TenantBranding
     always: branding_asset_served implies request.tenant_id == asset.tenant_id
+  TenantBrandingUploadedAssetIsDisplayable:
+    description: "ロゴのアップロードが成功して branding response に logo_url が含まれるとき、その URL は\n同じ realm の公開 asset interface から検証済み画像として取得でき、管理画面プレビューと hosted UI\nで描画可能である。gateway / reverse proxy は realm 配下の asset path を SPA fallback に渡さない。\n"
+    target: TenantBranding
+    always: branding.logo_url_present implies (asset_url.realm == request.realm and asset_response.status == 200 and asset_response.content_type in ["image/png","image/jpeg","image/webp","image/gif"])
   TenantBrandingFailsOpen:
     description: "GetTenantBranding は branding 未設定・値不正・アセット欠損のいずれでも例外を投げず\nシステム既定にフォールバックする。hosted login / consent / device の各エンドポイントは\nbranding 解決の失敗によって停止しない。\n反例: 不正な branding 設定が login エンドポイント自体を 500 で落とす。\n"
     target: TenantBranding
@@ -855,9 +859,15 @@ scenarios:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の branding 設定を開いている"
     main_success:
       - "管理者 \"operator\" が PNG ロゴをアップロードする"
+      - アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る
+      - 管理画面のロゴプレビューにアップロードした PNG が表示される
       - "管理者 \"operator\" が primary_color / accent_color / support_url / footer_text を設定する"
       - 未認証の利用者が login 画面を開く
-      - login 画面に設定したロゴ・配色・サポートリンク・フッターテキストが表示される
+      - login / consent / account portal に設定したロゴが表示され、login 画面には配色・サポートリンク・フッターテキストも表示される
+    extensions:
+      - condition: realm 配下の logo_url が gateway で backend に転送されない
+        steps:
+          - 画像取得は成功せず、管理者は設定の成功応答だけでは表示可能と判断しない
   不正な branding 入力は拒否されシステム既定にフォールバックする:
     goal: XSS / open redirect につながる branding 入力を構造的に拒否し、login エンドポイントを止めない。
     primary_actor: Administrator

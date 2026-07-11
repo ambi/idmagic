@@ -21,7 +21,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '^/realms/[^/]+/(api|scim|authorize|token|revoke|introspect|userinfo|register|par|device_authorization|end_session|\\.well-known|jwks)(/|\\?|$)':
+      '^/realms/[^/]+/(api|scim|authorize|token|revoke|introspect|userinfo|register|par|device_authorization|end_session|\\.well-known|jwks|tenant-branding-assets)(/|\\?|$)':
         'http://localhost:8081',
       '/api': 'http://localhost:8081',
       '/authorize': 'http://localhost:8081',
@@ -35,6 +35,7 @@ export default defineConfig({
       '/end_session': 'http://localhost:8081',
       '/.well-known': 'http://localhost:8081',
       '/jwks': 'http://localhost:8081',
+      '/tenant-branding-assets': 'http://localhost:8081',
       '/health': 'http://localhost:8081',
     },
   },

@@ -8175,9 +8175,8 @@
         },
         "product_name": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 80,
-          "description": "sign-in 画面等に出す表示名。未設定ならシステム既定 (IdMagic) を表示する。"
+          "description": "sign-in 画面等に出す表示名。空文字列は未設定を意味し、システム既定 (IdMagic) を表示する。"
         },
         "logo_object_key": {
           "type": "string",

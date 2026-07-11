@@ -1,4 +1,5 @@
 import { IconFingerprint } from '@tabler/icons-react'
+import { safeTenantBrandingAssetURL } from '../lib/tenantBranding'
 import { cn } from '../lib/utils'
 
 type BrandProps = {
@@ -11,6 +12,7 @@ type BrandProps = {
 
 export function Brand({ compact = false, inverse = false, productName, logoURL }: BrandProps) {
   const name = productName?.trim() || 'IdMagic'
+  const safeLogoURL = safeTenantBrandingAssetURL(logoURL)
   return (
     <div
       className={cn(
@@ -26,8 +28,8 @@ export function Brand({ compact = false, inverse = false, productName, logoURL }
             : 'border-slate-200 bg-white text-blue-700 shadow-blue-950/5',
         )}
       >
-        {logoURL ? (
-          <img src={logoURL} alt="" className="size-full object-contain p-1.5" />
+        {safeLogoURL ? (
+          <img src={safeLogoURL} alt="" className="size-full object-contain p-1.5" />
         ) : (
           <>
             <IconFingerprint size={25} stroke={1.7} aria-hidden="true" />

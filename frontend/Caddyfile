@@ -5,7 +5,7 @@
 :8080 {
 	encode zstd gzip
 
-	@realmBackend path_regexp realmBackend ^/realms/[^/]+/(api(?:/.*)?|authorize|token|revoke|introspect|userinfo|register|par|device_authorization|end_session|\.well-known(?:/.*)?|jwks)$
+	@realmBackend path_regexp realmBackend ^/realms/[^/]+/(api(?:/.*)?|authorize|token|revoke|introspect|userinfo|register|par|device_authorization|end_session|\.well-known(?:/.*)?|jwks|tenant-branding-assets(?:/.*)?)$
 
 	handle @realmBackend {
 		reverse_proxy {$BACKEND_ADDRESS:http://idp:8081}
@@ -24,6 +24,7 @@
  /end_session \
  /.well-known/* \
  /jwks \
+	/tenant-branding-assets/* \
  /health
 
 	handle @backend {
