@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -17,7 +19,7 @@ func newRequiredActionFixture(t *testing.T) (context.Context, idmusecases.AdminU
 	t.Helper()
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	events := &[]spec.DomainEvent{}
 	deps := idmusecases.AdminUserDeps{

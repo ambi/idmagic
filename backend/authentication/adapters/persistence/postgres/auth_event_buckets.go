@@ -10,7 +10,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres/sqlcgen"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
 const (
@@ -18,7 +20,9 @@ const (
 	authEventBucketMaxListLimit     = 1000
 )
 
-type AuthEventBucketStore struct{ Pool DB }
+type AuthEventBucketStore struct{ Pool sharedpg.DB }
+
+func (s *AuthEventBucketStore) queries() *sqlcgen.Queries { return sqlcgen.New(s.Pool) }
 
 func (s *AuthEventBucketStore) Record(
 	ctx context.Context,
@@ -28,21 +32,9 @@ func (s *AuthEventBucketStore) Record(
 ) (authnports.AuthEventBucketResult, error) {
 	nowUTC := now.UTC()
 	windowStart := nowUTC.Truncate(authnports.AuthEventBucketWindow)
-	var (
-		count     int64
-		firstSeen time.Time
-		lastSeen  time.Time
-		inserted  bool
-	)
-	err := s.Pool.QueryRow(
-		ctx, `
-INSERT INTO authentication_event_buckets (tenant_id,kind,key_hash,window_start,count,first_seen,last_seen)
-VALUES ($1,$2,$3,$4,1,$5,$5)
-ON CONFLICT (tenant_id,kind,key_hash,window_start)
-DO UPDATE SET count = authentication_event_buckets.count + 1, last_seen = EXCLUDED.last_seen, updated_at = now()
-RETURNING count, first_seen, last_seen, (xmax = 0)`,
-		tenantID, string(kind), keyHash, windowStart, nowUTC,
-	).Scan(&count, &firstSeen, &lastSeen, &inserted)
+	row, err := s.queries().RecordAuthEventBucket(ctx, sqlcgen.RecordAuthEventBucketParams{
+		TenantID: tenantID, Kind: string(kind), KeyHash: keyHash, WindowStart: windowStart, FirstSeen: nowUTC,
+	})
 	if err != nil {
 		return authnports.AuthEventBucketResult{}, err
 	}
@@ -52,23 +44,18 @@ RETURNING count, first_seen, last_seen, (xmax = 0)`,
 			Kind:        kind,
 			KeyHash:     keyHash,
 			WindowStart: windowStart,
-			Count:       int(count),
-			FirstSeen:   firstSeen.UTC(),
-			LastSeen:    lastSeen.UTC(),
+			Count:       int(row.Count),
+			FirstSeen:   row.FirstSeen.UTC(),
+			LastSeen:    row.LastSeen.UTC(),
 		},
-		FirstInWindow: inserted,
+		FirstInWindow: row.Inserted,
 	}, nil
 }
 
 // DeleteOlderThan は window_start が before より前の bucket を削除し、削除件数を返す
 // (ADR-045 の保持期間 sweep / 既定 90 日)。idempotent。
 func (s *AuthEventBucketStore) DeleteOlderThan(ctx context.Context, before time.Time) (int64, error) {
-	tag, err := s.Pool.Exec(ctx,
-		"DELETE FROM authentication_event_buckets WHERE window_start < $1", before.UTC())
-	if err != nil {
-		return 0, err
-	}
-	return tag.RowsAffected(), nil
+	return s.queries().DeleteAuthEventBucketsOlderThan(ctx, before.UTC())
 }
 
 func (s *AuthEventBucketStore) List(
@@ -82,34 +69,23 @@ func (s *AuthEventBucketStore) List(
 	if limit > authEventBucketMaxListLimit {
 		limit = authEventBucketMaxListLimit
 	}
-	rows, err := s.Pool.Query(ctx, `
-SELECT tenant_id,kind,key_hash,window_start,count,first_seen,last_seen
-FROM authentication_event_buckets
-WHERE ($1 = '' OR tenant_id = $1)
-ORDER BY window_start DESC, count DESC
-LIMIT $2`, tenantID, limit)
+	rows, err := s.queries().ListAuthEventBuckets(ctx, sqlcgen.ListAuthEventBucketsParams{
+		Column1: tenantID, Limit: int32(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []authnports.AuthEventBucket{}
-	for rows.Next() {
-		var (
-			b     authnports.AuthEventBucket
-			kind  string
-			count int64
-		)
-		if err := rows.Scan(
-			&b.TenantID, &kind, &b.KeyHash, &b.WindowStart, &count, &b.FirstSeen, &b.LastSeen,
-		); err != nil {
-			return nil, err
-		}
-		b.Kind = authnports.AuthEventBucketKind(kind)
-		b.Count = int(count)
-		b.WindowStart = b.WindowStart.UTC()
-		b.FirstSeen = b.FirstSeen.UTC()
-		b.LastSeen = b.LastSeen.UTC()
-		out = append(out, b)
+	out := make([]authnports.AuthEventBucket, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, authnports.AuthEventBucket{
+			TenantID:    row.TenantID,
+			Kind:        authnports.AuthEventBucketKind(row.Kind),
+			KeyHash:     row.KeyHash,
+			WindowStart: row.WindowStart.UTC(),
+			Count:       int(row.Count),
+			FirstSeen:   row.FirstSeen.UTC(),
+			LastSeen:    row.LastSeen.UTC(),
+		})
 	}
-	return out, rows.Err()
+	return out, nil
 }

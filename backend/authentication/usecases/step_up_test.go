@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -72,8 +74,8 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *SessionManager,
 	if err != nil {
 		t.Fatal(err)
 	}
-	mfaRepo := memory.NewMfaFactorRepository()
-	if err := mfaRepo.Save(ctx, &spec.MfaFactor{
+	mfaRepo := authnmemory.NewMfaFactorRepository()
+	if err := mfaRepo.Save(ctx, &domain.MfaFactor{
 		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -79,7 +81,7 @@ func newPasswordResetHandler(
 ) (*echo.Echo, *memory.UserRepository, *notification.NoopEmailSender, *crypto.Argon2idPasswordHasher) {
 	t.Helper()
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	tokenStore := memory.NewPasswordResetTokenStore()
 	sender := &notification.NoopEmailSender{}
 	hasher := crypto.NewArgon2idPasswordHasher()

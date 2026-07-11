@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -276,7 +278,7 @@ func newAdminUserHandler(
 ) (*echo.Echo, *memory.UserRepository) {
 	t.Helper()
 	repo := memory.NewUserRepository()
-	history := memory.NewPasswordHistoryRepository()
+	history := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
 	for _, user := range []*spec.User{
@@ -301,7 +303,7 @@ func newAdminUserHandler(
 			ClientRepo:  oauth2memory.NewClientRepository(),
 			ConsentRepo: oauth2memory.NewConsentRepository(),
 		},
-		EmailChangeTokenStore: memory.NewEmailChangeTokenStore(),
+		EmailChangeTokenStore: authnmemory.NewEmailChangeTokenStore(),
 		EmailSender:           mockEmailSender{},
 	})
 	return e, repo

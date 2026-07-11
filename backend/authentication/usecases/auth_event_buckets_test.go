@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {
 	ctx := context.Background()
-	store := memory.NewAuthEventBucketStore()
+	store := authnmemory.NewAuthEventBucketStore()
 	base := time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC)
 
 	for _, rec := range []struct {

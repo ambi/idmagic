@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -19,7 +20,7 @@ import (
 // テナント解決失敗時はサイレントに global default にフォールバックする
 // (パスワードポリシーで認証経路を落とすのは過剰)。
 func (d Deps) resolvePasswordPolicy(ctx context.Context) authusecases.PasswordPolicySnapshot {
-	defaults := spec.PasswordPolicySnapshot{
+	defaults := domain.PasswordPolicySnapshot{
 		MinLength:    authusecases.PasswordPolicyMinLength,
 		MaxLength:    authusecases.PasswordPolicyMaxLength,
 		HistoryDepth: authusecases.PasswordPolicyHistoryDepth,
@@ -39,7 +40,7 @@ func (d Deps) resolvePasswordPolicy(ctx context.Context) authusecases.PasswordPo
 			HistoryDepth: defaults.HistoryDepth,
 		}
 	}
-	resolved := d.SCL.ResolvePasswordPolicy(tenant, defaults)
+	resolved := domain.ResolvePasswordPolicy(d.SCL, tenant, defaults)
 	return authusecases.PasswordPolicySnapshot{
 		MinLength:    resolved.MinLength,
 		MaxLength:    resolved.MaxLength,

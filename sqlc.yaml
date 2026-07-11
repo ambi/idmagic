@@ -70,6 +70,23 @@ sql:
             nullable: false
   - engine: "postgresql"
     schema: "deploy/schema/postgres.sql"
+    queries: "backend/authentication/adapters/persistence/postgres/queries"
+    gen:
+      go:
+        package: "sqlcgen"
+        out: "backend/authentication/adapters/persistence/postgres/sqlcgen"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_result_struct_pointers: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "string"
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+            nullable: false
+  - engine: "postgresql"
+    schema: "deploy/schema/postgres.sql"
     queries: "backend/scim/adapters/persistence/postgres/queries"
     gen:
       go:

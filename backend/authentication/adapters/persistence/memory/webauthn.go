@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 // =====================================================================
@@ -14,20 +14,20 @@ import (
 
 type WebAuthnCredentialRepository struct {
 	mu          sync.RWMutex
-	credentials map[string]*spec.WebAuthnCredential // key: credential_id
+	credentials map[string]*domain.WebAuthnCredential // key: credential_id
 }
 
 func NewWebAuthnCredentialRepository() *WebAuthnCredentialRepository {
-	return &WebAuthnCredentialRepository{credentials: map[string]*spec.WebAuthnCredential{}}
+	return &WebAuthnCredentialRepository{credentials: map[string]*domain.WebAuthnCredential{}}
 }
 
 func (r *WebAuthnCredentialRepository) ListBySub(
 	_ context.Context,
 	sub string,
-) ([]*spec.WebAuthnCredential, error) {
+) ([]*domain.WebAuthnCredential, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*spec.WebAuthnCredential{}
+	out := []*domain.WebAuthnCredential{}
 	for _, c := range r.credentials {
 		if c.UserID == sub {
 			out = append(out, cloneWebAuthnCredential(c))
@@ -39,7 +39,7 @@ func (r *WebAuthnCredentialRepository) ListBySub(
 func (r *WebAuthnCredentialRepository) FindByCredentialID(
 	_ context.Context,
 	credentialID string,
-) (*spec.WebAuthnCredential, error) {
+) (*domain.WebAuthnCredential, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneWebAuthnCredential(r.credentials[credentialID]), nil
@@ -47,7 +47,7 @@ func (r *WebAuthnCredentialRepository) FindByCredentialID(
 
 func (r *WebAuthnCredentialRepository) Save(
 	_ context.Context,
-	credential *spec.WebAuthnCredential,
+	credential *domain.WebAuthnCredential,
 ) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -95,7 +95,7 @@ func (r *WebAuthnCredentialRepository) DeleteAllForSub(_ context.Context, sub st
 	return nil
 }
 
-func cloneWebAuthnCredential(c *spec.WebAuthnCredential) *spec.WebAuthnCredential {
+func cloneWebAuthnCredential(c *domain.WebAuthnCredential) *domain.WebAuthnCredential {
 	if c == nil {
 		return nil
 	}

@@ -106,32 +106,6 @@ var agentCredentialBindingSchema = z.Struct(z.Shape{
 	"CreatedAt": z.Time().Required(),
 })
 
-var mfaFactorSchema = z.Struct(z.Shape{
-	"UserID": z.String().Required(),
-	"Type": z.StringLike[MfaFactorType]().TestFunc(
-		func(value *MfaFactorType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("mfa factor type is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	factor, ok := value.(*MfaFactor)
-	return ok && (factor.Type != MfaFactorTOTP ||
-		factor.Secret != nil && *factor.Secret != "")
-}, z.Message("totp factor requires secret"))
-
-var webAuthnCredentialSchema = z.Struct(z.Shape{
-	"CredentialID": z.String().Required(),
-	"UserID":       z.String().Required(),
-	"PublicKey":    z.String().Required(),
-	"CreatedAt":    z.Time().Required(),
-})
-
-var recoveryCodeSchema = z.Struct(z.Shape{
-	"UserID":      z.String().Required(),
-	"CodeHash":    z.String().Required(),
-	"GeneratedAt": z.Time().Required(),
-})
-
 var authorizationRequestSchema = z.Struct(z.Shape{
 	"ID": z.String().UUID().Required(),
 	"State": z.StringLike[AuthorizationCodeFlowState]().TestFunc(
@@ -182,20 +156,6 @@ var authorizationCodeRecordSchema = z.Struct(z.Shape{
 func ValidateAuthorizationCodeRecord(value any) error {
 	return validate(authorizationCodeRecordSchema, value)
 }
-
-var loginSessionSchema = z.Struct(z.Shape{
-	"ID":        z.String().UUID().Required(),
-	"UserID":    z.String().Required(),
-	"AMR":       z.Slice(z.String()).Min(1).Required(),
-	"ACR":       z.String().Required(),
-	"ExpiresAt": z.Time().Required(),
-})
-
-var loginRequestSchema = z.Struct(z.Shape{
-	"RequestID": z.String().UUID().Required(),
-	"Username":  z.String().Required(),
-	"Password":  z.String().Required(),
-})
 
 var refreshTokenRecordSchema = z.Struct(z.Shape{
 	"ID":                z.String().UUID().Required(),

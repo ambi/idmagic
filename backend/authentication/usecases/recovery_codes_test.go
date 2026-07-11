@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -23,7 +25,7 @@ func newRecoveryDeps(t *testing.T) (usecases.RecoveryCodesDeps, *[]spec.DomainEv
 	var events []spec.DomainEvent
 	deps := usecases.RecoveryCodesDeps{
 		UserRepo:         userRepo,
-		RecoveryCodeRepo: memory.NewRecoveryCodeRepository(),
+		RecoveryCodeRepo: authnmemory.NewRecoveryCodeRepository(),
 		Emit:             func(e spec.DomainEvent) { events = append(events, e) },
 	}
 	return deps, &events

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 func TestSessionStore(t *testing.T) {
@@ -13,7 +13,7 @@ func TestSessionStore(t *testing.T) {
 	store := NewSessionStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		sess := &spec.LoginSession{
+		sess := &authdomain.LoginSession{
 			ID:                    "sess-1",
 			TenantID:              "tenant-1",
 			UserID:                "user-1",
@@ -51,7 +51,7 @@ func TestSessionStore(t *testing.T) {
 	})
 
 	t.Run("Expiration with Clock", func(t *testing.T) {
-		sessExpired := &spec.LoginSession{
+		sessExpired := &authdomain.LoginSession{
 			ID:                    "sess-expired",
 			TenantID:              "tenant-1",
 			UserID:                "user-1",
@@ -85,19 +85,19 @@ func TestSessionStore(t *testing.T) {
 
 	t.Run("ListBySub", func(t *testing.T) {
 		// すでに user-1 / sess-1 がある
-		sessPending := &spec.LoginSession{
+		sessPending := &authdomain.LoginSession{
 			ID:                    "sess-pending",
 			UserID:                "user-1",
 			AuthenticationPending: true, // Pending
 			ExpiresAt:             time.Now().Add(1 * time.Hour),
 		}
-		sessOtherSub := &spec.LoginSession{
+		sessOtherSub := &authdomain.LoginSession{
 			ID:                    "sess-other",
 			UserID:                "user-other",
 			AuthenticationPending: false,
 			ExpiresAt:             time.Now().Add(1 * time.Hour),
 		}
-		sessWillExpire := &spec.LoginSession{
+		sessWillExpire := &authdomain.LoginSession{
 			ID:                    "sess-will-expire",
 			UserID:                "user-1",
 			AuthenticationPending: false,

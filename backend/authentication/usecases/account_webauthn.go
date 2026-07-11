@@ -14,6 +14,7 @@ import (
 	"github.com/go-webauthn/webauthn/protocol"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -154,7 +155,7 @@ func ListWebAuthnCredentials(
 	ctx context.Context,
 	deps WebAuthnDeps,
 	sub string,
-) ([]*spec.WebAuthnCredential, error) {
+) ([]*domain.WebAuthnCredential, error) {
 	if _, err := loadSelfUser(ctx, deps.UserRepo, sub); err != nil {
 		return nil, err
 	}

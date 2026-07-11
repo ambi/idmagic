@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -117,7 +118,7 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 		return ErrInvalidTOTPCode
 	}
 	label := totpFactorLabel
-	factor := &spec.MfaFactor{
+	factor := &domain.MfaFactor{
 		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: &secret, Label: &label, CreatedAt: now,
 	}
 	if err := factor.Validate(); err != nil {

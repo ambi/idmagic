@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -18,7 +20,7 @@ func accountTestDeps(t *testing.T) (context.Context, idmusecases.AccountProfileD
 	schemaRepo := memory.NewTenantUserAttributeSchemaRepository()
 	adminDeps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, AttrSchemaRepo: schemaRepo,
-		PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: memory.NewPasswordHistoryRepository(),
+		PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit: func(spec.DomainEvent) {},
 	}
 	ctx := context.Background()

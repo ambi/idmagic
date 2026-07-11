@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-11
@@ -56,19 +56,19 @@ context へ適用する。authentication は `spec/scl.yaml` context_map 上で 
 
 ## Tasks
 
-- [ ] T001 [Domain] `shared/spec/authentication.go` / `password_policy_resolver.go` の
+- [x] T001 [Domain] `shared/spec/authentication.go` / `password_policy_resolver.go` の
   業務型を `authentication/domain/` へ移設し参照更新。
-- [ ] T002 [Kernel] authentication が他 3 context（OAuth2/WsFederation/Saml）と共有する型を
+- [x] T002 [Kernel] authentication が他 3 context（OAuth2/WsFederation/Saml）と共有する型を
   選別し、adapter 境界変換 or `shared/kernel` 昇格を判定。
-- [ ] T003 [Persistence] authentication 固有 repo 実装を
+- [x] T003 [Persistence] authentication 固有 repo 実装を
   `authentication/adapters/persistence/{postgres,memory}` へ同居。
-- [ ] T004 [Persistence] authentication postgres 実装を sqlc 生成へ置換。
-- [ ] T005 [DI] `authentication/module.go` を新設し Module パターン化。
-- [ ] T006 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から authentication 分を撤去。
-- [ ] T007 [Cross-context] OAuth2/WsFederation/Saml 側の `AuthenticationContext` 等の
+- [x] T004 [Persistence] authentication postgres 実装を sqlc 生成へ置換。
+- [x] T005 [DI] `authentication/module.go` を新設し Module パターン化。
+- [x] T006 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から authentication 分を撤去。
+- [x] T007 [Cross-context] OAuth2/WsFederation/Saml 側の `AuthenticationContext` 等の
   import path を更新（第 2 波）。
-- [ ] T008 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
-- [ ] T009 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
+- [x] T008 [Measure] 動的クエリ比率を実測し [[ADR-090]] に追記。
+- [x] T009 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
 
 ## Verification
 
@@ -89,3 +89,20 @@ context へ適用する。authentication は `spec/scl.yaml` context_map 上で 
 - 軽減：[[wi-173]]〜[[wi-175]] 完了後に着手し、依存元の import が単純な path 付け替えで
   済む状態（adapter 境界の変換パターン）を維持する。各依存元 context の既存 E2E を
   T007 の後に必ず実行する。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: authentication 固有の業務型を `backend/authentication/domain` へ移し、MFA・password history・WebAuthn・recovery code・email change token・authentication event bucket の memory / postgres adapter を同 context へ同居させた。postgres 側の 24 クエリはすべて sqlc 生成へ置換した。OAuth2 / WsFederation / SAML は authentication が公開する `AuthenticationContext` を直接 import しており、共有 kernel は新設不要と判断した。`authentication.Module` に context 固有の port と実行時依存を集約し、bootstrap の通常経路と server の route 組立は Module 経由へ統一した。既存の直接 `server.Deps` 指定はテスト移行用の deprecated 互換入力として Module へ正規化する。
+- **Affected Guarantees State**: preserved
+- **Verification Results**:
+  - `just format-go` / `just build-go` — passed
+  - `just test-go` — passed
+  - `just yaml-check` / `just check-ids` — passed（184 files / 272 IDs）
+  - `just sqlc-generate` — passed（再実行後の生成差分なし）
+  - locality 指標：`rg "internal/shared/spec" backend/authentication` — 0
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: macOS local workspace
+  - 実行主体: Codex
+  - 保存先: 外部成果物なし。authentication postgres の静的 sqlc query は 24 件、動的エスケープは 0 件。

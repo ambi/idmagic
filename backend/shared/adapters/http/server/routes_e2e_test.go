@@ -17,12 +17,15 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -55,8 +58,8 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *memory.UserReposi
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
-	mfaFactorRepo := memory.NewMfaFactorRepository()
-	passwordHistoryRepo := memory.NewPasswordHistoryRepository()
+	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
+	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
 	codeStore := memory.NewAuthorizationCodeStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
@@ -123,8 +126,8 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
-	mfaFactorRepo := memory.NewMfaFactorRepository()
-	passwordHistoryRepo := memory.NewPasswordHistoryRepository()
+	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
+	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
 	codeStore := memory.NewAuthorizationCodeStore()
 	applicationRepo := appmemory.NewApplicationRepository()
@@ -164,7 +167,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 		t.Fatalf("seed password history: %v", err)
 	}
 	if totpSecret != "" {
-		if err := mfaFactorRepo.Save(context.Background(), &spec.MfaFactor{
+		if err := mfaFactorRepo.Save(context.Background(), &authdomain.MfaFactor{
 			UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed mfa factor: %v", err)

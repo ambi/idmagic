@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/ambi/idmagic/backend/application"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -22,37 +22,22 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
-	TenantRepo              tenantports.TenantRepository
-	AttrSchemaRepo          tenantports.TenantUserAttributeSchemaRepository
-	UserRepo                idmports.UserRepository
-	GroupRepo               idmports.GroupRepository
-	AgentRepo               idmports.AgentRepository
-	MfaFactorRepo           authnports.MfaFactorRepository
-	PasswordHistoryRepo     authnports.PasswordHistoryRepository
-	PasswordResetTokenStore authnports.PasswordResetTokenStore
-	EmailChangeTokenStore   authnports.EmailChangeTokenStore
-	OAuth2                  oauth2.Module
-	SessionStore            authnports.SessionStore
-	// WebAuthn / Passkey と backup recovery code (wi-26 / ADR-087)。WebAuthnRP は env config
-	// 由来で、未設定なら nil (WebAuthn 無効)。session store / repo は永続層に応じて差し替える。
-	WebAuthnRP             *gowebauthn.WebAuthn
-	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
-	WebAuthnSessionStore   authnports.WebAuthnSessionStore
-	RecoveryCodeRepo       authnports.RecoveryCodeRepository
-	// NewLoginAttemptThrottle は SCL 由来のしきい値から throttle adapter を生成する。
-	// memory ランタイムはプロセスメモリ版、postgres_valkey ランタイムは Valkey 共有版を返す
-	// (ADR-077: 複数レプリカで閾値がクラスタ全体で一つになるよう共有ストア化する)。
-	NewLoginAttemptThrottle func(authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle
-	KeyStore                oauthports.KeyStore
-	TenantSaltStore         oauthports.TenantSaltStore
-	AuthEventBucketStore    authnports.AuthEventBucketStore
-	WsFederation            wsfederation.Module
-	Saml                    saml.Module
-	Scim                    scim.Module
-	Application             application.Module
-	Close                   func()
-	DbPing                  func(context.Context) error
-	ValkeyPing              func(context.Context) error
+	TenantRepo      tenantports.TenantRepository
+	AttrSchemaRepo  tenantports.TenantUserAttributeSchemaRepository
+	UserRepo        idmports.UserRepository
+	GroupRepo       idmports.GroupRepository
+	AgentRepo       idmports.AgentRepository
+	Authentication  authentication.Module
+	OAuth2          oauth2.Module
+	KeyStore        oauthports.KeyStore
+	TenantSaltStore oauthports.TenantSaltStore
+	WsFederation    wsfederation.Module
+	Saml            saml.Module
+	Scim            scim.Module
+	Application     application.Module
+	Close           func()
+	DbPing          func(context.Context) error
+	ValkeyPing      func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。
@@ -92,7 +77,7 @@ func assemble(ctx context.Context) (*Dependencies, error) {
 	if err != nil {
 		return nil, err
 	}
-	deps.WebAuthnRP = rp
+	deps.Authentication.WebAuthnRP = rp
 	return deps, nil
 }
 

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -34,7 +36,7 @@ func sha256Hex(value string) string {
 type identityTestHandler struct {
 	echo     *echo.Echo
 	users    *memory.UserRepository
-	tokens   *memory.EmailChangeTokenStore
+	tokens   *authnmemory.EmailChangeTokenStore
 	groups   *memory.GroupRepository
 	clients  *oauth2memory.OAuth2ClientRepository
 	consents *oauth2memory.ConsentRepository
@@ -43,12 +45,12 @@ type identityTestHandler struct {
 func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	t.Helper()
 	repo := memory.NewUserRepository()
-	tokenStore := memory.NewEmailChangeTokenStore()
+	tokenStore := authnmemory.NewEmailChangeTokenStore()
 	groupRepo := memory.NewGroupRepository()
 	clientRepo := oauth2memory.NewClientRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 
-	history := memory.NewPasswordHistoryRepository()
+	history := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
 	for _, user := range []*spec.User{

@@ -5,6 +5,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/authentication"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
@@ -26,15 +28,25 @@ func assembleMemory() (*Dependencies, error) {
 		return nil, err
 	}
 	return &Dependencies{
-		TenantRepo:              memory.NewTenantRepository(),
-		AttrSchemaRepo:          memory.NewTenantUserAttributeSchemaRepository(),
-		UserRepo:                memory.NewUserRepository(),
-		GroupRepo:               memory.NewGroupRepository(),
-		AgentRepo:               memory.NewAgentRepository(),
-		MfaFactorRepo:           memory.NewMfaFactorRepository(),
-		PasswordHistoryRepo:     memory.NewPasswordHistoryRepository(),
-		PasswordResetTokenStore: memory.NewPasswordResetTokenStore(),
-		EmailChangeTokenStore:   memory.NewEmailChangeTokenStore(),
+		TenantRepo:     memory.NewTenantRepository(),
+		AttrSchemaRepo: memory.NewTenantUserAttributeSchemaRepository(),
+		UserRepo:       memory.NewUserRepository(),
+		GroupRepo:      memory.NewGroupRepository(),
+		AgentRepo:      memory.NewAgentRepository(),
+		Authentication: authentication.Module{
+			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),
+			PasswordHistoryRepo:     authnmemory.NewPasswordHistoryRepository(),
+			PasswordResetTokenStore: memory.NewPasswordResetTokenStore(),
+			EmailChangeTokenStore:   authnmemory.NewEmailChangeTokenStore(),
+			SessionStore:            memory.NewSessionStore(),
+			WebAuthnCredentialRepo:  authnmemory.NewWebAuthnCredentialRepository(),
+			WebAuthnSessionStore:    memory.NewWebAuthnSessionStore(),
+			RecoveryCodeRepo:        authnmemory.NewRecoveryCodeRepository(),
+			NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
+				return authnmemory.NewLoginAttemptThrottle(configs)
+			},
+			AuthEventBucketStore: authnmemory.NewAuthEventBucketStore(),
+		},
 		OAuth2: oauth2.Module{
 			ClientRepo:                 oauth2memory.NewClientRepository(),
 			ConsentRepo:                oauth2memory.NewConsentRepository(),
@@ -50,19 +62,11 @@ func assembleMemory() (*Dependencies, error) {
 			AuditEventRepo:             oauth2memory.NewAuditEventStore(0),
 			EventSink:                  eventsink.NewConsoleSink(),
 		},
-		SessionStore:           memory.NewSessionStore(),
-		WebAuthnCredentialRepo: memory.NewWebAuthnCredentialRepository(),
-		WebAuthnSessionStore:   memory.NewWebAuthnSessionStore(),
-		RecoveryCodeRepo:       memory.NewRecoveryCodeRepository(),
-		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
-			return memory.NewLoginAttemptThrottle(configs)
-		},
-		KeyStore:             selectKeyStore(oauthports.KeyStore(keyStore)),
-		TenantSaltStore:      crypto.NewInMemoryTenantSaltStore(),
-		AuthEventBucketStore: memory.NewAuthEventBucketStore(),
-		WsFederation:         wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		Saml:                 saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
-		Scim:                 scim.Module{Repo: scimmemory.NewScimRepository()},
+		KeyStore:        selectKeyStore(oauthports.KeyStore(keyStore)),
+		TenantSaltStore: crypto.NewInMemoryTenantSaltStore(),
+		WsFederation:    wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		Saml:            saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Scim:            scim.Module{Repo: scimmemory.NewScimRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -62,14 +63,14 @@ func GenerateRecoveryCodes(
 		return nil, err
 	}
 	plain := make([]string, 0, recoveryCodeCount)
-	stored := make([]*spec.RecoveryCode, 0, recoveryCodeCount)
+	stored := make([]*domain.RecoveryCode, 0, recoveryCodeCount)
 	for range recoveryCodeCount {
 		code, err := generateRecoveryCode()
 		if err != nil {
 			return nil, err
 		}
 		plain = append(plain, code)
-		stored = append(stored, &spec.RecoveryCode{
+		stored = append(stored, &domain.RecoveryCode{
 			UserID: sub, CodeHash: hashRecoveryCode(code), GeneratedAt: now,
 		})
 	}

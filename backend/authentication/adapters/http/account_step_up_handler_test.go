@@ -16,7 +16,10 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	authhttp "github.com/ambi/idmagic/backend/authentication/adapters/http"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -62,8 +65,8 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 	if err != nil {
 		t.Fatal(err)
 	}
-	mfaRepo := memory.NewMfaFactorRepository()
-	if err := mfaRepo.Save(ctx, &spec.MfaFactor{
+	mfaRepo := authnmemory.NewMfaFactorRepository()
+	if err := mfaRepo.Save(ctx, &authdomain.MfaFactor{
 		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
@@ -89,8 +92,8 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 		AttrSchemaRepo:        memory.NewTenantUserAttributeSchemaRepository(),
 		MfaFactorRepo:         mfaRepo,
 		PasswordHasher:        hasher,
-		PasswordHistoryRepo:   memory.NewPasswordHistoryRepository(),
-		EmailChangeTokenStore: memory.NewEmailChangeTokenStore(),
+		PasswordHistoryRepo:   authnmemory.NewPasswordHistoryRepository(),
+		EmailChangeTokenStore: authnmemory.NewEmailChangeTokenStore(),
 		SessionManager:        sm, AuthnResolver: sm,
 	})
 	return e, store, &events
@@ -100,7 +103,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *memory.SessionStore, *[]spec.Do
 // その cookie 値 (session id) を返す。
 func seedSession(t *testing.T, store *memory.SessionStore, id string, authTime time.Time) string {
 	t.Helper()
-	sess := &spec.LoginSession{
+	sess := &authdomain.LoginSession{
 		ID: id, TenantID: spec.DefaultTenantID, UserID: "user-1",
 		AuthTime: authTime.Unix(), AMR: []string{"pwd"},
 		ACR:       authusecases.DeriveACR([]string{"pwd"}),

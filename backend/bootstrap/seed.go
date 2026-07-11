@@ -7,6 +7,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
@@ -118,7 +119,7 @@ func seedDemoData(
 		return nil
 	}
 	label := "Demo TOTP"
-	return mfaFactors.Save(ctx, &spec.MfaFactor{
+	return mfaFactors.Save(ctx, &authdomain.MfaFactor{
 		UserID: seedUserAliceID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
 	})
 }

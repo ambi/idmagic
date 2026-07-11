@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -502,13 +503,13 @@ func (d *AccessTokenDenylist) IsRevoked(ctx context.Context, jti string) (bool, 
 
 type SessionStore struct{ Client *goredis.Client }
 
-func (s *SessionStore) Save(ctx context.Context, session *spec.LoginSession) error {
+func (s *SessionStore) Save(ctx context.Context, session *authdomain.LoginSession) error {
 	session.TenantID = tenancy.TenantID(ctx)
 	return setJSON(ctx, s.Client, tenantKey(ctx, "session:"+session.ID), session, ttlUntil(session.ExpiresAt))
 }
 
-func (s *SessionStore) Find(ctx context.Context, id string) (*spec.LoginSession, error) {
-	var session spec.LoginSession
+func (s *SessionStore) Find(ctx context.Context, id string) (*authdomain.LoginSession, error) {
+	var session authdomain.LoginSession
 	if err := getJSON(ctx, s.Client, tenantKey(ctx, "session:"+id), &session); err != nil {
 		return nil, err
 	}
@@ -522,12 +523,12 @@ func (s *SessionStore) Delete(ctx context.Context, id string) error {
 	return s.Client.Del(ctx, tenantKey(ctx, "session:"+id)).Err()
 }
 
-func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*spec.LoginSession, error) {
+func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*authdomain.LoginSession, error) {
 	pattern := tenantKey(ctx, "session:*")
 	iter := s.Client.Scan(ctx, 0, pattern, 100).Iterator()
-	out := []*spec.LoginSession{}
+	out := []*authdomain.LoginSession{}
 	for iter.Next(ctx) {
-		var session spec.LoginSession
+		var session authdomain.LoginSession
 		if err := getJSON(ctx, s.Client, iter.Val(), &session); err != nil {
 			return nil, err
 		}
@@ -547,7 +548,7 @@ func (s *SessionStore) DeleteAllForSub(ctx context.Context, sub string) error {
 	iter := s.Client.Scan(ctx, 0, pattern, 100).Iterator()
 	for iter.Next(ctx) {
 		key := iter.Val()
-		var session spec.LoginSession
+		var session authdomain.LoginSession
 		if err := getJSON(ctx, s.Client, key, &session); err != nil {
 			return err
 		}

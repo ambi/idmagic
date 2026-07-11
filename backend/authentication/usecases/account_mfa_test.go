@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -21,7 +23,7 @@ func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *memory.UserRepository, 
 	})
 	var events []spec.DomainEvent
 	deps := usecases.AccountMfaDeps{
-		UserRepo: userRepo, MfaFactorRepo: memory.NewMfaFactorRepository(),
+		UserRepo: userRepo, MfaFactorRepo: authnmemory.NewMfaFactorRepository(),
 		Emit:   func(e spec.DomainEvent) { events = append(events, e) },
 		Issuer: "http://idp.test",
 	}

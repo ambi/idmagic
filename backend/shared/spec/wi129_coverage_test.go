@@ -141,15 +141,6 @@ func TestEnumValid(t *testing.T) {
 // Validate() happy / failure
 // ---------------------------------------------------------------
 
-func mustUUID(t *testing.T) string {
-	t.Helper()
-	id, err := NewUUIDv4()
-	if err != nil {
-		t.Fatalf("NewUUIDv4: %v", err)
-	}
-	return id
-}
-
 func TestValidateHappyAndFailure(t *testing.T) {
 	now := time.Now().UTC()
 
@@ -162,17 +153,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 
 	validBinding := AgentCredentialBinding{AgentID: "agent_1", ClientID: "demo", CreatedAt: now}
 	badBinding := AgentCredentialBinding{CreatedAt: now}
-
-	validMfa := MfaFactor{UserID: "user_1", Type: MfaFactorWebAuthn, CreatedAt: now}
-	// TOTP は secret 必須なので secret 無しは失敗する。
-	badMfa := MfaFactor{UserID: "user_1", Type: MfaFactorTOTP, CreatedAt: now}
-
-	validSession := LoginSession{ID: mustUUID(t), UserID: "user_1", AMR: []string{"pwd"}, ACR: "1", ExpiresAt: now}
-	badSession := validSession
-	badSession.AMR = nil
-
-	validLoginReq := LoginRequest{RequestID: mustUUID(t), Username: "alice", Password: "pw"}
-	badLoginReq := LoginRequest{RequestID: "not-a-uuid", Username: "alice", Password: "pw"}
 
 	validGroup := Group{ID: "group_1", TenantID: DefaultTenantID, Name: "eng", CreatedAt: now, UpdatedAt: now}
 	badGroup := validGroup
@@ -194,12 +174,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 		{"agent bad", badAgent, true},
 		{"binding ok", validBinding, false},
 		{"binding bad", badBinding, true},
-		{"mfa ok", validMfa, false},
-		{"mfa bad", badMfa, true},
-		{"session ok", validSession, false},
-		{"session bad", badSession, true},
-		{"login req ok", validLoginReq, false},
-		{"login req bad", badLoginReq, true},
 		{"group ok", validGroup, false},
 		{"group bad", badGroup, true},
 		{"member ok", validMember, false},

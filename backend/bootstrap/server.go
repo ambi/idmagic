@@ -59,7 +59,7 @@ func Run() error {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
 	if os.Getenv("SKIP_DEMO_SEED") == "" {
-		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.UserRepo, deps.MfaFactorRepo, deps.PasswordHistoryRepo, deps.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
+		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.UserRepo, deps.Authentication.MfaFactorRepo, deps.Authentication.PasswordHistoryRepo, deps.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
 			return fmt.Errorf("seed demo data: %w", err)
 		}
 		if err := seedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
@@ -99,7 +99,7 @@ func Run() error {
 		}
 		return value
 	}
-	loginThrottle := deps.NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
+	loginThrottle := deps.Authentication.NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
 		Account: authnports.LoginThrottleConfig{
 			MaxFailures:    objectiveInt("per_account", "max_failures"),
 			WindowSeconds:  objectiveInt("per_account", "window_seconds"),
@@ -115,12 +115,19 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	sessionManager := authusecases.NewSessionManager(deps.SessionStore)
+	sessionManager := authusecases.NewSessionManager(deps.Authentication.SessionStore)
 	tokenSigner := crypto.NewJWTSigner(issuer, deps.KeyStore)
 	jwkResolver := crypto.NewJWKResolver()
 	deps.OAuth2.TokenIssuer = tokenSigner
 	deps.OAuth2.TokenIntrospector = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
+	deps.Authentication.PasswordHasher = hasher
+	deps.Authentication.EmailSender = emailSender
+	deps.Authentication.BreachedPasswordChecker = breachedChecker
+	deps.Authentication.LoginAttemptThrottle = loginThrottle
+	deps.Authentication.SentinelPasswordHash = sentinelPasswordHash
+	deps.Authentication.SessionManager = sessionManager
+	deps.Authentication.AuthnResolver = sessionManager
 
 	e := echo.New()
 	// Echo フレームワークのログも同じ構造化ハンドラ (ADR-018 の field 規約) に載せる。
@@ -185,35 +192,20 @@ func Run() error {
 				AuthZEN:       runtime.AuthZEN,
 			},
 		},
-		AttrSchemaRepo:          deps.AttrSchemaRepo,
-		UserRepo:                deps.UserRepo,
-		OAuth2:                  deps.OAuth2,
-		KeyStore:                deps.KeyStore,
-		TenantSaltStore:         deps.TenantSaltStore,
-		AuthEventBucketStore:    deps.AuthEventBucketStore,
-		JWKResolver:             jwkResolver,
-		PasswordHasher:          hasher,
-		GroupRepo:               deps.GroupRepo,
-		AgentRepo:               deps.AgentRepo,
-		MfaFactorRepo:           deps.MfaFactorRepo,
-		PasswordHistoryRepo:     deps.PasswordHistoryRepo,
-		PasswordResetTokenStore: deps.PasswordResetTokenStore,
-		EmailChangeTokenStore:   deps.EmailChangeTokenStore,
-		EmailSender:             emailSender,
-		BreachedPasswordChecker: breachedChecker,
-		LoginAttemptThrottle:    loginThrottle,
-		SentinelPasswordHash:    sentinelPasswordHash,
-		SessionManager:          sessionManager,
-		AuthnResolver:           sessionManager,
-		WsFederation:            deps.WsFederation,
-		Saml:                    deps.Saml,
-		Scim:                    deps.Scim,
-		FederationSigner:        federationSigner,
-		Application:             deps.Application,
-		WebAuthnRP:              deps.WebAuthnRP,
-		WebAuthnCredentialRepo:  deps.WebAuthnCredentialRepo,
-		WebAuthnSessionStore:    deps.WebAuthnSessionStore,
-		RecoveryCodeRepo:        deps.RecoveryCodeRepo,
+		AttrSchemaRepo:   deps.AttrSchemaRepo,
+		UserRepo:         deps.UserRepo,
+		Authentication:   deps.Authentication,
+		OAuth2:           deps.OAuth2,
+		KeyStore:         deps.KeyStore,
+		TenantSaltStore:  deps.TenantSaltStore,
+		JWKResolver:      jwkResolver,
+		GroupRepo:        deps.GroupRepo,
+		AgentRepo:        deps.AgentRepo,
+		WsFederation:     deps.WsFederation,
+		Saml:             deps.Saml,
+		Scim:             deps.Scim,
+		FederationSigner: federationSigner,
+		Application:      deps.Application,
 	})
 
 	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))

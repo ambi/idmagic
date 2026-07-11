@@ -11,6 +11,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -111,7 +112,7 @@ func RevokeOtherSessions(
 
 func emitSessionEnded(
 	emit func(spec.DomainEvent),
-	sess *spec.LoginSession,
+	sess *domain.LoginSession,
 	actorUserID string,
 	reason spec.SessionEndReason,
 	now time.Time,

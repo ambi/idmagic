@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -76,7 +78,7 @@ func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	tokenStore := memory.NewPasswordResetTokenStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	currentHash, err := hasher.Hash("current-password-1")

@@ -6,9 +6,12 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
@@ -18,7 +21,7 @@ import (
 func TestCreateUpdateAndDisableUser(t *testing.T) {
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	var events []spec.DomainEvent
 	deps := idmusecases.AdminUserDeps{
@@ -82,7 +85,7 @@ func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: crypto.NewArgon2idPasswordHasher(),
-		PasswordHistoryRepo: memory.NewPasswordHistoryRepository(),
+		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	user, err := idmusecases.CreateUser(ctx, deps, idmusecases.CreateUserInput{
@@ -141,7 +144,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 	})
 	_, err := idmusecases.CreateUser(context.Background(), idmusecases.AdminUserDeps{
 		UserRepo: repo, PasswordHasher: crypto.NewArgon2idPasswordHasher(),
-		PasswordHistoryRepo: memory.NewPasswordHistoryRepository(),
+		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}, idmusecases.CreateUserInput{
 		PreferredUsername: "bob", Password: "initial-password-9182",
 	})
@@ -153,12 +156,12 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	ctx := context.Background()
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 	refreshStore := memory.NewRefreshTokenStore()
 	deviceStore := memory.NewDeviceCodeStore()
 	sessionStore := memory.NewSessionStore()
-	mfaRepo := memory.NewMfaFactorRepository()
+	mfaRepo := authnmemory.NewMfaFactorRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	var events []spec.DomainEvent
 	deps := idmusecases.AdminUserDeps{
@@ -187,13 +190,13 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		Scopes: []string{"openid"}, IssuedAt: now,
 		ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.AddDate(0, 0, 30),
 	})
-	_ = sessionStore.Save(ctx, &spec.LoginSession{
+	_ = sessionStore.Save(ctx, &authdomain.LoginSession{
 		ID: "sess-1", TenantID: spec.DefaultTenantID, UserID: user.ID,
 		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: now.Add(time.Hour),
 	})
 	totpSecret := "JBSWY3DPEHPK3PXP"
-	_ = mfaRepo.Save(ctx, &spec.MfaFactor{
+	_ = mfaRepo.Save(ctx, &authdomain.MfaFactor{
 		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
 	})
 
@@ -310,7 +313,7 @@ func softDeleteTestDeps(events *[]spec.DomainEvent) (idmusecases.AdminUserDeps, 
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: userRepo, ConsentRepo: consentRepo,
 		RefreshStore: memory.NewRefreshTokenStore(), SessionStore: memory.NewSessionStore(),
-		MfaFactorRepo: memory.NewMfaFactorRepository(), PasswordHistoryRepo: memory.NewPasswordHistoryRepository(),
+		MfaFactorRepo: authnmemory.NewMfaFactorRepository(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit: func(event spec.DomainEvent) { *events = append(*events, event) },
 	}
 	return deps, consentRepo, userRepo

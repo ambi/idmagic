@@ -8,6 +8,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/backend/authentication"
+	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
@@ -96,15 +98,25 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	}
 
 	return &Dependencies{
-		TenantRepo:              &postgres.TenantRepository{Pool: resilientDB},
-		AttrSchemaRepo:          &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
-		UserRepo:                &postgres.UserRepository{Pool: resilientDB},
-		GroupRepo:               &postgres.GroupRepository{Pool: resilientDB},
-		AgentRepo:               &postgres.AgentRepository{Pool: resilientDB},
-		MfaFactorRepo:           &postgres.MfaFactorRepository{Pool: resilientDB},
-		PasswordHistoryRepo:     &postgres.PasswordHistoryRepository{Pool: resilientDB},
-		PasswordResetTokenStore: &postgres.PasswordResetTokenStore{Pool: resilientDB},
-		EmailChangeTokenStore:   &postgres.EmailChangeTokenStore{Pool: resilientDB},
+		TenantRepo:     &postgres.TenantRepository{Pool: resilientDB},
+		AttrSchemaRepo: &postgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+		UserRepo:       &postgres.UserRepository{Pool: resilientDB},
+		GroupRepo:      &postgres.GroupRepository{Pool: resilientDB},
+		AgentRepo:      &postgres.AgentRepository{Pool: resilientDB},
+		Authentication: authentication.Module{
+			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
+			PasswordHistoryRepo:     &authnpostgres.PasswordHistoryRepository{Pool: resilientDB},
+			PasswordResetTokenStore: &postgres.PasswordResetTokenStore{Pool: resilientDB},
+			EmailChangeTokenStore:   &authnpostgres.EmailChangeTokenStore{Pool: resilientDB},
+			SessionStore:            &valkeystore.SessionStore{Client: valkeyClient},
+			WebAuthnCredentialRepo:  &authnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
+			WebAuthnSessionStore:    &valkeystore.WebAuthnSessionStore{Client: valkeyClient},
+			RecoveryCodeRepo:        &authnpostgres.RecoveryCodeRepository{Pool: resilientDB},
+			NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
+				return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
+			},
+			AuthEventBucketStore: &authnpostgres.AuthEventBucketStore{Pool: resilientDB},
+		},
 		OAuth2: oauth2.Module{
 			ClientRepo:                 &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
 			ConsentRepo:                &oauth2postgres.ConsentRepository{Pool: resilientDB},
@@ -120,19 +132,11 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			AuditEventRepo:             &oauth2postgres.AuditEventRepository{Pool: resilientDB},
 			EventSink:                  sink,
 		},
-		SessionStore:           &valkeystore.SessionStore{Client: valkeyClient},
-		WebAuthnCredentialRepo: &postgres.WebAuthnCredentialRepository{Pool: resilientDB},
-		WebAuthnSessionStore:   &valkeystore.WebAuthnSessionStore{Client: valkeyClient},
-		RecoveryCodeRepo:       &postgres.RecoveryCodeRepository{Pool: resilientDB},
-		NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
-			return &valkeystore.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
-		},
-		KeyStore:             selectKeyStore(keyStore),
-		TenantSaltStore:      postgres.NewTenantSaltStore(resilientDB),
-		AuthEventBucketStore: &postgres.AuthEventBucketStore{Pool: resilientDB},
-		WsFederation:         wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
-		Saml:                 saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
-		Scim:                 scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
+		KeyStore:        selectKeyStore(keyStore),
+		TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),
+		WsFederation:    wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
+		Saml:            saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
+		Scim:            scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

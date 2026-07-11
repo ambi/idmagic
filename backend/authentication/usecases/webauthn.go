@@ -12,6 +12,7 @@ import (
 	"github.com/go-webauthn/webauthn/protocol"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -85,7 +86,7 @@ func (u *webauthnUser) WebAuthnDisplayName() string {
 func (u *webauthnUser) WebAuthnCredentials() []gowebauthn.Credential { return u.credentials }
 
 // loadWebAuthnUser は user と登録済み credential をまとめて go-webauthn の User に適合させる。
-func loadWebAuthnUser(user *spec.User, stored []*spec.WebAuthnCredential) (*webauthnUser, error) {
+func loadWebAuthnUser(user *spec.User, stored []*domain.WebAuthnCredential) (*webauthnUser, error) {
 	credentials := make([]gowebauthn.Credential, 0, len(stored))
 	for _, c := range stored {
 		converted, err := toWebAuthnCredential(c)
@@ -98,7 +99,7 @@ func loadWebAuthnUser(user *spec.User, stored []*spec.WebAuthnCredential) (*weba
 }
 
 // toWebAuthnCredential は spec.WebAuthnCredential を go-webauthn の Credential へ変換する。
-func toWebAuthnCredential(c *spec.WebAuthnCredential) (gowebauthn.Credential, error) {
+func toWebAuthnCredential(c *domain.WebAuthnCredential) (gowebauthn.Credential, error) {
 	id, err := base64.RawURLEncoding.DecodeString(c.CredentialID)
 	if err != nil {
 		return gowebauthn.Credential{}, err
@@ -133,7 +134,7 @@ func toWebAuthnCredential(c *spec.WebAuthnCredential) (gowebauthn.Credential, er
 }
 
 // fromWebAuthnCredential は go-webauthn の Credential を spec.WebAuthnCredential へ変換する。
-func fromWebAuthnCredential(userID string, c *gowebauthn.Credential, label *string, now time.Time) *spec.WebAuthnCredential {
+func fromWebAuthnCredential(userID string, c *gowebauthn.Credential, label *string, now time.Time) *domain.WebAuthnCredential {
 	transports := make([]string, 0, len(c.Transport))
 	for _, t := range c.Transport {
 		transports = append(transports, string(t))
@@ -143,7 +144,7 @@ func fromWebAuthnCredential(userID string, c *gowebauthn.Credential, label *stri
 		encoded := base64.RawURLEncoding.EncodeToString(c.Authenticator.AAGUID)
 		aaguid = &encoded
 	}
-	return &spec.WebAuthnCredential{
+	return &domain.WebAuthnCredential{
 		CredentialID:   base64.RawURLEncoding.EncodeToString(c.ID),
 		UserID:         userID,
 		PublicKey:      base64.RawURLEncoding.EncodeToString(c.PublicKey),

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -76,7 +76,7 @@ func driveRecordLoginFailure(t *testing.T, d Deps, username string, times int) (
 func TestRecordLoginFailureAggregatesWhenLocked(t *testing.T) {
 	d := Deps{
 		LoginAttemptThrottle: fakeLockedThrottle{},
-		AuthEventBucketStore: memory.NewAuthEventBucketStore(),
+		AuthEventBucketStore: authnmemory.NewAuthEventBucketStore(),
 	}
 	aggregated, emitted := driveRecordLoginFailure(t, d, "alice", 3)
 	if !aggregated {

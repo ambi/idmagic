@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -15,7 +17,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	t.Parallel()
 
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
@@ -83,7 +85,7 @@ func TestChangePasswordRejectsCurrentPasswordMismatch(t *testing.T) {
 	t.Parallel()
 
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
@@ -114,7 +116,7 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 	t.Parallel()
 
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
@@ -153,7 +155,7 @@ func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	t.Parallel()
 
 	userRepo := memory.NewUserRepository()
-	historyRepo := memory.NewPasswordHistoryRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	initialHash, err := hasher.Hash("demo-password-1234")
 	if err != nil {

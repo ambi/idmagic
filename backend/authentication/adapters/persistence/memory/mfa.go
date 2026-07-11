@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -14,17 +15,17 @@ import (
 
 type MfaFactorRepository struct {
 	mu      sync.RWMutex
-	factors map[string]*spec.MfaFactor
+	factors map[string]*domain.MfaFactor
 }
 
 func NewMfaFactorRepository() *MfaFactorRepository {
-	return &MfaFactorRepository{factors: map[string]*spec.MfaFactor{}}
+	return &MfaFactorRepository{factors: map[string]*domain.MfaFactor{}}
 }
 
-func (r *MfaFactorRepository) ListBySub(_ context.Context, sub string) ([]*spec.MfaFactor, error) {
+func (r *MfaFactorRepository) ListBySub(_ context.Context, sub string) ([]*domain.MfaFactor, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*spec.MfaFactor{}
+	out := []*domain.MfaFactor{}
 	for _, factor := range r.factors {
 		if factor.UserID == sub {
 			out = append(out, cloneMfaFactor(factor))
@@ -37,13 +38,13 @@ func (r *MfaFactorRepository) Find(
 	_ context.Context,
 	sub string,
 	factorType spec.MfaFactorType,
-) (*spec.MfaFactor, error) {
+) (*domain.MfaFactor, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneMfaFactor(r.factors[mfaFactorKey(sub, factorType)]), nil
 }
 
-func (r *MfaFactorRepository) Save(_ context.Context, factor *spec.MfaFactor) error {
+func (r *MfaFactorRepository) Save(_ context.Context, factor *domain.MfaFactor) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.factors[mfaFactorKey(factor.UserID, factor.Type)] = cloneMfaFactor(factor)
@@ -73,7 +74,7 @@ func mfaFactorKey(sub string, factorType spec.MfaFactorType) string {
 	return sub + "|" + string(factorType)
 }
 
-func cloneMfaFactor(factor *spec.MfaFactor) *spec.MfaFactor {
+func cloneMfaFactor(factor *domain.MfaFactor) *domain.MfaFactor {
 	if factor == nil {
 		return nil
 	}

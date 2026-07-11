@@ -14,7 +14,7 @@ import (
 	"github.com/go-webauthn/webauthn/protocol"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 const webAuthnLoginKeyPrefix = "login:"
@@ -67,7 +67,7 @@ func FinishWebAuthnAssertion(
 	sub string,
 	body []byte,
 	now time.Time,
-) (*spec.WebAuthnCredential, error) {
+) (*domain.WebAuthnCredential, error) {
 	if deps.RP == nil {
 		return nil, ErrWebAuthnNotConfigured
 	}

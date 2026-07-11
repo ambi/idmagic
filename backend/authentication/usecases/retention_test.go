@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -153,7 +153,7 @@ func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := memory.NewAuthEventBucketStore()
+	store := authnmemory.NewAuthEventBucketStore()
 	// 91 日前の窓と直近の窓を作る。
 	if _, err := store.Record(ctx, "failed_login", spec.DefaultTenantID, "old-key", daysAgo(now, 91)); err != nil {
 		t.Fatal(err)

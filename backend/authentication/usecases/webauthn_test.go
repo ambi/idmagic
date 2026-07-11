@@ -7,8 +7,11 @@ import (
 	"testing"
 	"time"
 
+	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
+	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -26,8 +29,8 @@ func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDe
 	deps := usecases.WebAuthnDeps{
 		RP:             rp,
 		UserRepo:       userRepo,
-		CredentialRepo: memory.NewWebAuthnCredentialRepository(),
-		MfaFactorRepo:  memory.NewMfaFactorRepository(),
+		CredentialRepo: authnmemory.NewWebAuthnCredentialRepository(),
+		MfaFactorRepo:  authnmemory.NewMfaFactorRepository(),
 		SessionStore:   memory.NewWebAuthnSessionStore(),
 		Emit:           func(e spec.DomainEvent) { events = append(events, e) },
 	}
@@ -37,7 +40,7 @@ func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDe
 func seedCredential(t *testing.T, deps usecases.WebAuthnDeps, credentialID string) {
 	t.Helper()
 	ctx := context.Background()
-	err := deps.CredentialRepo.Save(ctx, &spec.WebAuthnCredential{
+	err := deps.CredentialRepo.Save(ctx, &domain.WebAuthnCredential{
 		CredentialID: base64.RawURLEncoding.EncodeToString([]byte(credentialID)),
 		UserID:       "user-alice",
 		PublicKey:    base64.RawURLEncoding.EncodeToString([]byte("cose-key")),
@@ -85,7 +88,7 @@ func TestRemoveWebAuthnCredentialKeepsMfaWhenTotpRemains(t *testing.T) {
 	deps, userRepo, events := newWebAuthnDeps(t, nil)
 	seedCredential(t, deps, "cred-1")
 	secret := "JBSWY3DPEHPK3PXP"
-	if err := deps.MfaFactorRepo.Save(ctx, &spec.MfaFactor{
+	if err := deps.MfaFactorRepo.Save(ctx, &domain.MfaFactor{
 		UserID: "user-alice", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: time.Now(),
 	}); err != nil {
 		t.Fatal(err)

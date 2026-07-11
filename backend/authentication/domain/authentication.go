@@ -1,20 +1,39 @@
-package spec
+package domain
 
-// Authentication bounded context の双子定義。MFA factor とログインセッション / 要求。
+// Authentication bounded context の業務型。MFA factor とログインセッション / 要求。
 
-import "time"
+import (
+	"time"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
+
+	z "github.com/Oudwins/zog"
+)
 
 type MfaFactor struct {
-	UserID     string        `json:"user_id"`
-	Type       MfaFactorType `json:"type"`
-	Secret     *string       `json:"secret,omitempty"`
-	Label      *string       `json:"label,omitempty"`
-	CreatedAt  time.Time     `json:"created_at"`
-	LastUsedAt *time.Time    `json:"last_used_at,omitempty"`
+	UserID     string             `json:"user_id"`
+	Type       spec.MfaFactorType `json:"type"`
+	Secret     *string            `json:"secret,omitempty"`
+	Label      *string            `json:"label,omitempty"`
+	CreatedAt  time.Time          `json:"created_at"`
+	LastUsedAt *time.Time         `json:"last_used_at,omitempty"`
 }
 
+var mfaFactorSchema = z.Struct(z.Shape{
+	"UserID": z.String().Required(),
+	"Type": z.StringLike[spec.MfaFactorType]().TestFunc(
+		func(value *spec.MfaFactorType, _ z.Ctx) bool { return value.Valid() },
+		z.Message("mfa factor type is not in enum"),
+	).Required(),
+	"CreatedAt": z.Time().Required(),
+}).TestFunc(func(value any, _ z.Ctx) bool {
+	factor, ok := value.(*MfaFactor)
+	return ok && (factor.Type != spec.MfaFactorTOTP ||
+		factor.Secret != nil && *factor.Secret != "")
+}, z.Message("totp factor requires secret"))
+
 func (m MfaFactor) Validate() error {
-	return validate(mfaFactorSchema, &m)
+	return spec.Validate(mfaFactorSchema, &m)
 }
 
 // WebAuthnCredential は登録済みの WebAuthn / Passkey credential 1 件 (wi-26 / ADR-087)。
@@ -34,8 +53,15 @@ type WebAuthnCredential struct {
 	LastUsedAt     *time.Time `json:"last_used_at,omitempty"`
 }
 
+var webAuthnCredentialSchema = z.Struct(z.Shape{
+	"CredentialID": z.String().Required(),
+	"UserID":       z.String().Required(),
+	"PublicKey":    z.String().Required(),
+	"CreatedAt":    z.Time().Required(),
+})
+
 func (c WebAuthnCredential) Validate() error {
-	return validate(webAuthnCredentialSchema, &c)
+	return spec.Validate(webAuthnCredentialSchema, &c)
 }
 
 // RecoveryCode は TOTP / WebAuthn 喪失時の backup recovery code 1 件 (wi-26 / ADR-087)。
@@ -47,8 +73,14 @@ type RecoveryCode struct {
 	ConsumedAt  *time.Time `json:"consumed_at,omitempty"`
 }
 
+var recoveryCodeSchema = z.Struct(z.Shape{
+	"UserID":      z.String().Required(),
+	"CodeHash":    z.String().Required(),
+	"GeneratedAt": z.Time().Required(),
+})
+
 func (c RecoveryCode) Validate() error {
-	return validate(recoveryCodeSchema, &c)
+	return spec.Validate(recoveryCodeSchema, &c)
 }
 
 type LoginSession struct {
@@ -65,8 +97,16 @@ type LoginSession struct {
 	StepUpAt int64 `json:"step_up_at,omitempty"`
 }
 
+var loginSessionSchema = z.Struct(z.Shape{
+	"ID":        z.String().UUID().Required(),
+	"UserID":    z.String().Required(),
+	"AMR":       z.Slice(z.String()).Min(1).Required(),
+	"ACR":       z.String().Required(),
+	"ExpiresAt": z.Time().Required(),
+})
+
 func (s LoginSession) Validate() error {
-	return validate(loginSessionSchema, &s)
+	return spec.Validate(loginSessionSchema, &s)
 }
 
 type LoginRequest struct {
@@ -76,6 +116,12 @@ type LoginRequest struct {
 	Csrf      string `json:"csrf"`
 }
 
+var loginRequestSchema = z.Struct(z.Shape{
+	"RequestID": z.String().UUID().Required(),
+	"Username":  z.String().Required(),
+	"Password":  z.String().Required(),
+})
+
 func (r LoginRequest) Validate() error {
-	return validate(loginRequestSchema, &r)
+	return spec.Validate(loginRequestSchema, &r)
 }

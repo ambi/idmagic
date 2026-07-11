@@ -46,7 +46,7 @@ func (m *SessionManager) CreateWithPending(
 	if err != nil {
 		return nil, err
 	}
-	sess := &spec.LoginSession{
+	sess := &domain.LoginSession{
 		ID:                    id,
 		TenantID:              tenancy.TenantID(ctx),
 		UserID:                sub,
