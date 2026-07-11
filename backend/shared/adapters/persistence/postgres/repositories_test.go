@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -19,7 +20,7 @@ func TestRefreshTokenStoreSaveFindRotate(t *testing.T) {
 
 	now := testClock()
 	family := newUUID(t)
-	rec := &spec.RefreshTokenRecord{
+	rec := &domain.RefreshTokenRecord{
 		ID:                newUUID(t),
 		TenantID:          tenant.ID,
 		Hash:              uniqueID("hash"),
@@ -40,7 +41,7 @@ func TestRefreshTokenStoreSaveFindRotate(t *testing.T) {
 		t.Fatalf("find by hash: %v %+v", err, got)
 	}
 
-	next := &spec.RefreshTokenRecord{
+	next := &domain.RefreshTokenRecord{
 		ID:                newUUID(t),
 		TenantID:          tenant.ID,
 		Hash:              uniqueID("hash"),

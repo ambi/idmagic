@@ -59,7 +59,7 @@ func NormalizeUserCode(input string) string {
 	return b.String()
 }
 
-func IsDeviceExpired(rec *spec.DeviceAuthorization, now time.Time) bool {
+func IsDeviceExpired(rec *DeviceAuthorization, now time.Time) bool {
 	if rec.State == spec.DeviceFlowExpired {
 		return true
 	}

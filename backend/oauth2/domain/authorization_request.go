@@ -4,8 +4,6 @@ package domain
 import (
 	"strings"
 	"time"
-
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // AuthorizationRequestPolicy は prompt / max_age / id_token_hint 等の OIDC 規定値による
@@ -39,7 +37,7 @@ func NeedsReauthentication(p AuthorizationRequestPolicy, authTime, now time.Time
 	return false
 }
 
-func ParsePrompt(req *spec.AuthorizationRequest) AuthorizationRequestPolicy {
+func ParsePrompt(req *AuthorizationRequest) AuthorizationRequestPolicy {
 	return AuthorizationRequestPolicy{
 		Prompt:      req.Prompt,
 		MaxAge:      req.MaxAge,

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -13,7 +14,7 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	store := NewAuthorizationCodeStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		code := &spec.AuthorizationCodeRecord{
+		code := &domain.AuthorizationCodeRecord{
 			Code:        "auth-code-123",
 			TenantID:    "tenant-1",
 			State:       spec.AuthCodeRecordIssued,
@@ -87,7 +88,7 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	})
 
 	t.Run("LinkFamily", func(t *testing.T) {
-		code := &spec.AuthorizationCodeRecord{
+		code := &domain.AuthorizationCodeRecord{
 			Code:  "auth-code-link",
 			State: spec.AuthCodeRecordIssued,
 		}

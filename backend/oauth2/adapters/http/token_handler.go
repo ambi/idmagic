@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -127,11 +128,11 @@ func (d Deps) handleToken(c *echo.Context) error {
 				return writeOAuthError(c, usecases.NewOAuthError("invalid_scope", "宣言外のスコープ"))
 			}
 		}
-		var sc *spec.SenderConstraint
+		var sc *domain.SenderConstraint
 		if dpopJKT != "" {
-			sc = &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: dpopJKT}
+			sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: dpopJKT}
 		} else if clientStub.MTLSThumbprintS256 != "" {
-			sc = &spec.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
+			sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
 		}
 		// ADR-048: client に Agent が束縛されている場合、Active 以外 (Disabled / Killed)
 		// なら新規トークンを発行しない (fail-closed)。束縛があれば agent_id を token に載せる。

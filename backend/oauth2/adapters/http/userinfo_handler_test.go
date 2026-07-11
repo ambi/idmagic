@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -99,7 +100,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid profile",
 		ClientID:         "demo-client",
-		SenderConstraint: &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
+		SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
 	}}
 
 	e := echo.New()
@@ -166,7 +167,7 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_bob", Scope: "openid", ClientID: "tenant-client",
-		SenderConstraint: &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
+		SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
 	}}
 
 	// "acme" テナントを返す TenantRepository をその場で組む。
@@ -311,7 +312,7 @@ func TestUserInfoMTLSBoundRequiresMatchingThumbprint(t *testing.T) {
 	// 期待 thumbprint と異なる証明書を提示すると invalid_token。
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
-		SenderConstraint: &spec.SenderConstraint{
+		SenderConstraint: &domain.SenderConstraint{
 			Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint-not-matching-any-real-cert",
 		},
 	}}

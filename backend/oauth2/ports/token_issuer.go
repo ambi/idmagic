@@ -12,7 +12,7 @@ type AccessTokenInput struct {
 	Client           *domain.OAuth2Client
 	Sub              string
 	Scopes           []string
-	SenderConstraint *spec.SenderConstraint
+	SenderConstraint *domain.SenderConstraint
 	AuthTime         int64
 	AMR              []string
 	ACR              string

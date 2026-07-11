@@ -11,6 +11,7 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
+	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/valkey"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
@@ -100,18 +101,18 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		PasswordResetTokenStore: &postgres.PasswordResetTokenStore{Pool: resilientDB},
 		EmailChangeTokenStore:   &postgres.EmailChangeTokenStore{Pool: resilientDB},
 		OAuth2: oauth2.Module{
-			ClientRepo:          &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
-			ConsentRepo:         &oauth2postgres.ConsentRepository{Pool: resilientDB},
-			AuthzDetailTypeRepo: &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
+			ClientRepo:                 &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
+			ConsentRepo:                &oauth2postgres.ConsentRepository{Pool: resilientDB},
+			AuthzDetailTypeRepo:        &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
+			RequestStore:               &oauth2valkey.AuthorizationRequestStore{Client: valkeyClient},
+			CodeStore:                  &oauth2valkey.AuthorizationCodeStore{Client: valkeyClient},
+			PARStore:                   &oauth2valkey.PARStore{Client: valkeyClient},
+			RefreshStore:               &oauth2postgres.RefreshTokenStore{Pool: resilientDB},
+			DeviceCodeStore:            &oauth2valkey.DeviceCodeStore{Client: valkeyClient},
+			DpopReplayStore:            &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
+			ClientAssertionReplayStore: &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
+			AccessTokenDenylist:        &oauth2valkey.AccessTokenDenylist{Client: valkeyClient},
 		},
-		RequestStore:           &valkeystore.AuthorizationRequestStore{Client: valkeyClient},
-		CodeStore:              &valkeystore.AuthorizationCodeStore{Client: valkeyClient},
-		PARStore:               &valkeystore.PARStore{Client: valkeyClient},
-		RefreshStore:           &postgres.RefreshTokenStore{Pool: resilientDB},
-		DeviceCodeStore:        &valkeystore.DeviceCodeStore{Client: valkeyClient},
-		DpopReplay:             &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
-		ClientAssertionReplay:  &valkeystore.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
-		AccessTokenDenylist:    &valkeystore.AccessTokenDenylist{Client: valkeyClient},
 		SessionStore:           &valkeystore.SessionStore{Client: valkeyClient},
 		WebAuthnCredentialRepo: &postgres.WebAuthnCredentialRepository{Pool: resilientDB},
 		WebAuthnSessionStore:   &valkeystore.WebAuthnSessionStore{Client: valkeyClient},

@@ -118,11 +118,11 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	}
 	rec = redeemed
 
-	var sc *spec.SenderConstraint
+	var sc *domain.SenderConstraint
 	if in.DpopJKT != "" {
-		sc = &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.DpopJKT}
+		sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.DpopJKT}
 	} else if in.MTLSX5TS256 != "" {
-		sc = &spec.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.MTLSX5TS256}
+		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.MTLSX5TS256}
 	}
 
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{

@@ -43,7 +43,7 @@ func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 
 func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 	codes := memory.NewAuthorizationCodeStore()
-	if err := codes.Save(context.Background(), &spec.AuthorizationCodeRecord{
+	if err := codes.Save(context.Background(), &domain.AuthorizationCodeRecord{
 		Code: "AC1", TenantID: "acme", AuthorizationRequestID: "7856cb4e-7405-4d24-9c04-475cbb13f6f1",
 		ClientID: "web-app", UserID: "user", RedirectURI: "https://app.example/callback",
 		CodeChallenge: "challenge", CodeChallengeMethod: spec.CodeChallengeMethodS256,
@@ -116,7 +116,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 	deviceCode := "DEVCODE-acme-1234567890"
 	sub := "user"
 	authTime := now.Unix()
-	rec := &spec.DeviceAuthorization{
+	rec := &domain.DeviceAuthorization{
 		DeviceCodeHash:  domain.HashDeviceCode(deviceCode),
 		TenantID:        "acme", // テナント "acme" 発行
 		UserCode:        "ABCD-EFGH",

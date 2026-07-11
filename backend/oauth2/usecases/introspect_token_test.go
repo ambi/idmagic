@@ -38,7 +38,7 @@ func TestIntrospectToken(t *testing.T) {
 	t.Run("RefreshTokenSucceeds", func(t *testing.T) {
 		tokenVal := "refresh-token-val"
 		hash := domain.HashRefreshToken(tokenVal)
-		rec := &spec.RefreshTokenRecord{
+		rec := &domain.RefreshTokenRecord{
 			ID:                "rt-1",
 			TenantID:          spec.DefaultTenantID,
 			ClientID:          "client-1",
@@ -48,7 +48,7 @@ func TestIntrospectToken(t *testing.T) {
 			ExpiresAt:         now.Add(10 * time.Minute),
 			AbsoluteExpiresAt: now.Add(24 * time.Hour),
 			Hash:              hash,
-			SenderConstraint: &spec.SenderConstraint{
+			SenderConstraint: &domain.SenderConstraint{
 				Type:    spec.SenderConstraintDPoP,
 				JKT:     "jkt-val",
 				X5TS256: "x5t-val",
@@ -76,7 +76,7 @@ func TestIntrospectToken(t *testing.T) {
 		hash := domain.HashRefreshToken(tokenVal)
 
 		// 1. Tenant ID Mismatch
-		rec := &spec.RefreshTokenRecord{
+		rec := &domain.RefreshTokenRecord{
 			ID:                "rt-inactive",
 			TenantID:          "another-tenant",
 			Hash:              hash,
@@ -118,7 +118,7 @@ func TestIntrospectToken(t *testing.T) {
 			Exp:       now.Add(10 * time.Minute).Unix(),
 			Iat:       now.Add(-10 * time.Minute).Unix(),
 			TokenType: "Bearer",
-			SenderConstraint: &spec.SenderConstraint{
+			SenderConstraint: &domain.SenderConstraint{
 				Type:    spec.SenderConstraintDPoP,
 				JKT:     "jkt-val",
 				X5TS256: "x5t-val",

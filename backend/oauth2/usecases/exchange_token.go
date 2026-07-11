@@ -195,11 +195,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 
 	// --- sender constraint (DPoP / mTLS) ---
-	var sc *spec.SenderConstraint
+	var sc *domain.SenderConstraint
 	if in.ProofJKT != "" {
-		sc = &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
+		sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
 	} else if in.ProofX5TS256 != "" {
-		sc = &spec.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
+		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
 	}
 
 	// --- 発行 (DELEGATION ONLY: sub = subject.sub, aud = [resource], act 必須) ---

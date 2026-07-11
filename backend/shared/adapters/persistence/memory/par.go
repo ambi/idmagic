@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // =====================================================================
@@ -14,14 +14,14 @@ import (
 
 type PARStore struct {
 	mu      sync.Mutex
-	records map[string]*spec.PARRecord
+	records map[string]*domain.PARRecord
 }
 
 func NewPARStore() *PARStore {
-	return &PARStore{records: map[string]*spec.PARRecord{}}
+	return &PARStore{records: map[string]*domain.PARRecord{}}
 }
 
-func (s *PARStore) Save(_ context.Context, rec *spec.PARRecord) error {
+func (s *PARStore) Save(_ context.Context, rec *domain.PARRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	DefaultTenant(&rec.TenantID)
@@ -29,13 +29,13 @@ func (s *PARStore) Save(_ context.Context, rec *spec.PARRecord) error {
 	return nil
 }
 
-func (s *PARStore) Find(_ context.Context, requestURI string) (*spec.PARRecord, error) {
+func (s *PARStore) Find(_ context.Context, requestURI string) (*domain.PARRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.records[requestURI], nil
 }
 
-func (s *PARStore) Consume(_ context.Context, requestURI string) (*spec.PARRecord, error) {
+func (s *PARStore) Consume(_ context.Context, requestURI string) (*domain.PARRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.records[requestURI]

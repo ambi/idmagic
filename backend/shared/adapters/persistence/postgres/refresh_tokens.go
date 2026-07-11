@@ -5,24 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // RefreshTokenStore (OAuth2)
 type RefreshTokenStore struct{ Pool DB }
 
-func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*spec.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*domain.RefreshTokenRecord, error) {
 	return scanRefresh(s.Pool.QueryRow(ctx, refreshSelect+" WHERE hash=$1", hash))
 }
 
-func (s *RefreshTokenStore) Save(ctx context.Context, rec *spec.RefreshTokenRecord) error {
+func (s *RefreshTokenStore) Save(ctx context.Context, rec *domain.RefreshTokenRecord) error {
 	return insertRefresh(ctx, s.Pool, rec)
 }
 
-func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *spec.RefreshTokenRecord) (*spec.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *domain.RefreshTokenRecord) (*domain.RefreshTokenRecord, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -62,8 +61,8 @@ func (s *RefreshTokenStore) DeleteAllForSub(ctx context.Context, sub string) err
 const refreshSelect = `SELECT id::text,tenant_id,hash,family_id::text,parent_id::text,client_id,user_id,scopes,
 issued_at,expires_at,absolute_expires_at,revoked,rotated,sender_constraint FROM refresh_tokens`
 
-func scanRefresh(row RowScanner) (*spec.RefreshTokenRecord, error) {
-	var rec spec.RefreshTokenRecord
+func scanRefresh(row RowScanner) (*domain.RefreshTokenRecord, error) {
+	var rec domain.RefreshTokenRecord
 	var parentID *string
 	var scopes, constraint []byte
 	err := row.Scan(&rec.ID, &rec.TenantID, &rec.Hash, &rec.FamilyID, &parentID, &rec.ClientID, &rec.UserID,
@@ -89,7 +88,7 @@ func scanRefresh(row RowScanner) (*spec.RefreshTokenRecord, error) {
 
 func insertRefresh(ctx context.Context, db interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-}, rec *spec.RefreshTokenRecord,
+}, rec *domain.RefreshTokenRecord,
 ) error {
 	scopes, err := json.Marshal(rec.Scopes)
 	if err != nil {

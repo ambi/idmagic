@@ -19,7 +19,7 @@ const (
 
 type GeneratedRefreshToken struct {
 	Token  string
-	Record *spec.RefreshTokenRecord
+	Record *RefreshTokenRecord
 }
 
 func HashRefreshToken(token string) string {
@@ -27,7 +27,7 @@ func HashRefreshToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *spec.SenderConstraint, now time.Time) (*GeneratedRefreshToken, error) {
+func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, now time.Time) (*GeneratedRefreshToken, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -44,7 +44,7 @@ func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *spec
 	if err != nil {
 		return nil, err
 	}
-	rec := &spec.RefreshTokenRecord{
+	rec := &RefreshTokenRecord{
 		ID:                id,
 		Hash:              HashRefreshToken(token),
 		FamilyID:          familyID,
@@ -62,7 +62,7 @@ func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *spec
 	return &GeneratedRefreshToken{Token: token, Record: rec}, nil
 }
 
-func RotateRefreshToken(parent *spec.RefreshTokenRecord, now time.Time) (*GeneratedRefreshToken, error) {
+func RotateRefreshToken(parent *RefreshTokenRecord, now time.Time) (*GeneratedRefreshToken, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -81,7 +81,7 @@ func RotateRefreshToken(parent *spec.RefreshTokenRecord, now time.Time) (*Genera
 		expires = parent.AbsoluteExpiresAt
 	}
 	parentID := parent.ID
-	rec := &spec.RefreshTokenRecord{
+	rec := &RefreshTokenRecord{
 		ID:                id,
 		Hash:              HashRefreshToken(token),
 		FamilyID:          parent.FamilyID,
@@ -100,11 +100,11 @@ func RotateRefreshToken(parent *spec.RefreshTokenRecord, now time.Time) (*Genera
 	return &GeneratedRefreshToken{Token: token, Record: rec}, nil
 }
 
-func IsRefreshTokenReplay(rec *spec.RefreshTokenRecord) bool {
+func IsRefreshTokenReplay(rec *RefreshTokenRecord) bool {
 	return rec.Rotated || rec.Revoked
 }
 
-func IsRefreshTokenAbsoluteExpired(rec *spec.RefreshTokenRecord, now time.Time) bool {
+func IsRefreshTokenAbsoluteExpired(rec *RefreshTokenRecord, now time.Time) bool {
 	if now.IsZero() {
 		now = time.Now()
 	}

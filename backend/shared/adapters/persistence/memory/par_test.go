@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 func TestPARStore(t *testing.T) {
@@ -13,7 +13,7 @@ func TestPARStore(t *testing.T) {
 	store := NewPARStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		rec := &spec.PARRecord{
+		rec := &domain.PARRecord{
 			RequestURI: "urn:ietf:params:oauth:request_uri:123",
 			TenantID:   "tenant-1",
 			ClientID:   "client-1",
@@ -72,7 +72,7 @@ func TestPARStore(t *testing.T) {
 		}
 
 		// 期限切れレコードの Consume
-		expiredRec := &spec.PARRecord{
+		expiredRec := &domain.PARRecord{
 			RequestURI: "urn:expired",
 			ExpiresAt:  time.Now().Add(-1 * time.Minute),
 			Used:       false,

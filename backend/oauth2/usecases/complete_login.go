@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -29,8 +30,8 @@ type CompleteLoginInput struct {
 }
 
 type CompleteLoginOutput struct {
-	Request *spec.AuthorizationRequest
-	Code    *spec.AuthorizationCodeRecord
+	Request *domain.AuthorizationRequest
+	Code    *domain.AuthorizationCodeRecord
 }
 
 // CompleteLogin は認証・同意確認済みのリクエストに対して状態機械を回し、
@@ -77,7 +78,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		return nil, err
 	}
 	now := time.Now().UTC()
-	record := &spec.AuthorizationCodeRecord{
+	record := &domain.AuthorizationCodeRecord{
 		Code:                   codeValue,
 		TenantID:               req.TenantID,
 		AuthorizationRequestID: req.ID,

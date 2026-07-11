@@ -11,6 +11,7 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -184,7 +185,7 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 func (d Deps) finishSecondFactor(
 	c *echo.Context,
 	sessionID string,
-	req *spec.AuthorizationRequest,
+	req *domain.AuthorizationRequest,
 	amr string,
 	directAdminLogin bool,
 	returnTo string,

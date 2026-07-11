@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -197,7 +198,7 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*p
 		res.Iat = int64(v)
 	}
 	if cnf, ok := payload["cnf"].(map[string]any); ok {
-		sc := &spec.SenderConstraint{}
+		sc := &domain.SenderConstraint{}
 		if jkt, ok := cnf["jkt"].(string); ok {
 			sc.Type = spec.SenderConstraintDPoP
 			sc.JKT = jkt

@@ -34,10 +34,11 @@ import (
 type Deps struct {
 	support.Deps
 
-	ScimRepo                   scimports.ScimRepository
-	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
-	UserRepo                   idmports.UserRepository
-	OAuth2                     oauth2.Module
+	ScimRepo       scimports.ScimRepository
+	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	UserRepo       idmports.UserRepository
+	OAuth2         oauth2.Module
+	// Deprecated: 移行中のテスト用互換入力。bootstrap は OAuth2.Module のみを設定する。
 	RequestStore               oauthports.AuthorizationRequestStore
 	CodeStore                  oauthports.AuthorizationCodeStore
 	PARStore                   oauthports.PARStore
@@ -46,13 +47,13 @@ type Deps struct {
 	DpopReplayStore            oauthports.DpopReplayStore
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	AccessTokenDenylist        oauthports.AccessTokenDenylist
-	KeyStore                   oauthports.KeyStore
-	TenantSaltStore            oauthports.TenantSaltStore
 	TokenIssuer                oauthports.TokenIssuer
 	TokenIntrospector          oauthports.TokenIntrospector
+	Authorizer                 oauthports.Authorizer
+	KeyStore                   oauthports.KeyStore
+	TenantSaltStore            oauthports.TenantSaltStore
 	AuditEventRepo             oauthports.AuditEventRepository
 	AuthEventBucketStore       authnports.AuthEventBucketStore
-	Authorizer                 oauthports.Authorizer
 	JWKResolver                *crypto.JWKResolver
 	PasswordHasher             authnports.PasswordHasher
 	GroupRepo                  idmports.GroupRepository
@@ -80,6 +81,7 @@ type Deps struct {
 }
 
 func Register(e *echo.Echo, d Deps) {
+	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
 
@@ -87,7 +89,7 @@ func Register(e *echo.Echo, d Deps) {
 		UserRepo:          d.UserRepo,
 		GroupRepo:         d.GroupRepo,
 		SessionManager:    d.SessionManager,
-		TokenIntrospector: d.TokenIntrospector,
+		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		AuthnResolver:     d.AuthnResolver,
 	}
 
@@ -113,12 +115,49 @@ func Register(e *echo.Echo, d Deps) {
 	e.GET("/startupz", d.handleStartupz)
 }
 
+func mergeLegacyOAuth2Deps(module oauth2.Module, d Deps) oauth2.Module {
+	if module.RequestStore == nil {
+		module.RequestStore = d.RequestStore
+	}
+	if module.CodeStore == nil {
+		module.CodeStore = d.CodeStore
+	}
+	if module.PARStore == nil {
+		module.PARStore = d.PARStore
+	}
+	if module.RefreshStore == nil {
+		module.RefreshStore = d.RefreshStore
+	}
+	if module.DeviceCodeStore == nil {
+		module.DeviceCodeStore = d.DeviceCodeStore
+	}
+	if module.DpopReplayStore == nil {
+		module.DpopReplayStore = d.DpopReplayStore
+	}
+	if module.ClientAssertionReplayStore == nil {
+		module.ClientAssertionReplayStore = d.ClientAssertionReplayStore
+	}
+	if module.AccessTokenDenylist == nil {
+		module.AccessTokenDenylist = d.AccessTokenDenylist
+	}
+	if module.TokenIssuer == nil {
+		module.TokenIssuer = d.TokenIssuer
+	}
+	if module.TokenIntrospector == nil {
+		module.TokenIntrospector = d.TokenIntrospector
+	}
+	if module.Authorizer == nil {
+		module.Authorizer = d.Authorizer
+	}
+	return module
+}
+
 func registerTenantRoutes(g *echo.Group, d Deps) {
 	authenticator := &support.Authenticator{
 		UserRepo:          d.UserRepo,
 		GroupRepo:         d.GroupRepo,
 		SessionManager:    d.SessionManager,
-		TokenIntrospector: d.TokenIntrospector,
+		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		AuthnResolver:     d.AuthnResolver,
 	}
 
@@ -137,25 +176,25 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		KeyStore:                   d.KeyStore,
 		TenantSaltStore:            d.TenantSaltStore,
 		TenantRepo:                 d.TenantRepo,
-		PARStore:                   d.PARStore,
-		RequestStore:               d.RequestStore,
+		PARStore:                   d.OAuth2.PARStore,
+		RequestStore:               d.OAuth2.RequestStore,
 		UserRepo:                   d.UserRepo,
 		PasswordHasher:             d.PasswordHasher,
 		LoginAttemptThrottle:       d.LoginAttemptThrottle,
 		MfaFactorRepo:              d.MfaFactorRepo,
-		CodeStore:                  d.CodeStore,
+		CodeStore:                  d.OAuth2.CodeStore,
 		JWKResolver:                d.JWKResolver,
-		ClientAssertionReplayStore: d.ClientAssertionReplayStore,
-		DeviceCodeStore:            d.DeviceCodeStore,
-		DpopReplayStore:            d.DpopReplayStore,
-		RefreshStore:               d.RefreshStore,
-		TokenIssuer:                d.TokenIssuer,
+		ClientAssertionReplayStore: d.OAuth2.ClientAssertionReplayStore,
+		DeviceCodeStore:            d.OAuth2.DeviceCodeStore,
+		DpopReplayStore:            d.OAuth2.DpopReplayStore,
+		RefreshStore:               d.OAuth2.RefreshStore,
+		TokenIssuer:                d.OAuth2.TokenIssuer,
 		AgentRepo:                  d.AgentRepo,
-		TokenIntrospector:          d.TokenIntrospector,
-		AccessTokenDenylist:        d.AccessTokenDenylist,
+		TokenIntrospector:          d.OAuth2.TokenIntrospector,
+		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
 		AttrSchemaRepo:             d.AttrSchemaRepo,
 		AuthEventBucketStore:       d.AuthEventBucketStore,
-		Authorizer:                 d.Authorizer,
+		Authorizer:                 d.OAuth2.Authorizer,
 		SentinelPasswordHash:       d.SentinelPasswordHash,
 		WebAuthnRP:                 d.WebAuthnRP,
 		WebAuthnCredentialRepo:     d.WebAuthnCredentialRepo,
@@ -195,8 +234,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ScimRepo:              d.ScimRepo,
 		AttrSchemaRepo:        d.AttrSchemaRepo,
 		ConsentRepo:           d.OAuth2.ConsentRepo,
-		RefreshStore:          d.RefreshStore,
-		DeviceCodeStore:       d.DeviceCodeStore,
+		RefreshStore:          d.OAuth2.RefreshStore,
+		DeviceCodeStore:       d.OAuth2.DeviceCodeStore,
 		MfaFactorRepo:         d.MfaFactorRepo,
 		PasswordHasher:        d.PasswordHasher,
 		PasswordHistoryRepo:   d.PasswordHistoryRepo,
@@ -219,7 +258,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WsFedRPRepo:                d.WsFedRPRepo,
 		UserRepo:                   d.UserRepo,
 		FederationSigner:           d.FederationSigner,
-		ClientAssertionReplayStore: d.ClientAssertionReplayStore,
+		ClientAssertionReplayStore: d.OAuth2.ClientAssertionReplayStore,
 		LoginAttemptThrottle:       d.LoginAttemptThrottle,
 		PasswordHasher:             d.PasswordHasher,
 		SentinelPasswordHash:       d.SentinelPasswordHash,

@@ -75,7 +75,7 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 			return nil, NewOAuthError("invalid_scope", "宣言外のスコープが含まれています")
 		}
 	}
-	rec := &spec.DeviceAuthorization{
+	rec := &domain.DeviceAuthorization{
 		TenantID:        tenantID,
 		DeviceCodeHash:  domain.HashDeviceCode(deviceCode),
 		UserCode:        domain.NormalizeUserCode(userCode),
@@ -292,11 +292,11 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, NewOAuthError("invalid_grant", "ユーザーは無効化されています")
 	}
 
-	var sc *spec.SenderConstraint
+	var sc *domain.SenderConstraint
 	if in.ProofJKT != "" {
-		sc = &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
+		sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
 	} else if in.ProofX5TS256 != "" {
-		sc = &spec.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
+		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
 	}
 
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{

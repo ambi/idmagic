@@ -85,7 +85,7 @@ func TestGenerateAuthorizationCode_ValidationError(t *testing.T) {
 
 func TestIsCodeExpired(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	rec := &spec.AuthorizationCodeRecord{ExpiresAt: now.Add(time.Minute)}
+	rec := &AuthorizationCodeRecord{ExpiresAt: now.Add(time.Minute)}
 	if IsCodeExpired(rec, now) {
 		t.Error("期限内なのに期限切れ判定")
 	}
@@ -93,18 +93,18 @@ func TestIsCodeExpired(t *testing.T) {
 		t.Error("期限後なのに有効判定")
 	}
 	// now がゼロ値なら現在時刻で評価 (過去の ExpiresAt は期限切れ)。
-	past := &spec.AuthorizationCodeRecord{ExpiresAt: time.Now().Add(-time.Hour)}
+	past := &AuthorizationCodeRecord{ExpiresAt: time.Now().Add(-time.Hour)}
 	if !IsCodeExpired(past, time.Time{}) {
 		t.Error("ゼロ now で過去期限が期限切れ判定されない")
 	}
 }
 
 func TestIsCodeRedeemed(t *testing.T) {
-	if IsCodeRedeemed(&spec.AuthorizationCodeRecord{}) {
+	if IsCodeRedeemed(&AuthorizationCodeRecord{}) {
 		t.Error("未使用コードが redeemed 判定")
 	}
 	ts := time.Now()
-	if !IsCodeRedeemed(&spec.AuthorizationCodeRecord{RedeemedAt: &ts}) {
+	if !IsCodeRedeemed(&AuthorizationCodeRecord{RedeemedAt: &ts}) {
 		t.Error("使用済みコードが未使用判定")
 	}
 }
@@ -136,7 +136,7 @@ func TestNeedsReauthentication(t *testing.T) {
 }
 
 func TestParsePrompt(t *testing.T) {
-	p := ParsePrompt(&spec.AuthorizationRequest{Prompt: new("login"), MaxAge: new(30)})
+	p := ParsePrompt(&AuthorizationRequest{Prompt: new("login"), MaxAge: new(30)})
 	if p.Prompt == nil || *p.Prompt != "login" {
 		t.Errorf("Prompt が引き継がれていない: %v", p.Prompt)
 	}
@@ -224,10 +224,10 @@ func TestNormalizeUserCode(t *testing.T) {
 func TestIsDeviceExpired(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	// State が expired なら常に true。
-	if !IsDeviceExpired(&spec.DeviceAuthorization{State: spec.DeviceFlowExpired, ExpiresAt: now.Add(time.Hour)}, now) {
+	if !IsDeviceExpired(&DeviceAuthorization{State: spec.DeviceFlowExpired, ExpiresAt: now.Add(time.Hour)}, now) {
 		t.Error("expired state は常に期限切れ")
 	}
-	active := &spec.DeviceAuthorization{State: spec.DeviceFlowIssued, ExpiresAt: now.Add(time.Minute)}
+	active := &DeviceAuthorization{State: spec.DeviceFlowIssued, ExpiresAt: now.Add(time.Minute)}
 	if IsDeviceExpired(active, now) {
 		t.Error("期限内なのに期限切れ判定")
 	}
@@ -235,7 +235,7 @@ func TestIsDeviceExpired(t *testing.T) {
 		t.Error("期限後なのに有効判定")
 	}
 	// now ゼロ値なら現在時刻評価。
-	past := &spec.DeviceAuthorization{State: spec.DeviceFlowIssued, ExpiresAt: time.Now().Add(-time.Hour)}
+	past := &DeviceAuthorization{State: spec.DeviceFlowIssued, ExpiresAt: time.Now().Add(-time.Hour)}
 	if !IsDeviceExpired(past, time.Time{}) {
 		t.Error("ゼロ now で過去期限が期限切れ判定されない")
 	}
@@ -255,7 +255,7 @@ func TestHashRefreshToken_Stable(t *testing.T) {
 
 func TestGenerateInitialRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	sc := &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "jkt-1"}
+	sc := &SenderConstraint{Type: SenderConstraintDPoP, JKT: "jkt-1"}
 	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, now)
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
@@ -319,7 +319,7 @@ func TestRotateRefreshToken(t *testing.T) {
 // RotateRefreshToken は absolute_expires_at を超えないよう ExpiresAt を打ち切る。
 func TestRotateRefreshToken_CappedByAbsolute(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	parent := &spec.RefreshTokenRecord{
+	parent := &RefreshTokenRecord{
 		ID:                "00000000-0000-4000-8000-0000000000a1",
 		Hash:              HashRefreshToken("x"),
 		FamilyID:          "00000000-0000-4000-8000-0000000000f1",
@@ -340,27 +340,27 @@ func TestRotateRefreshToken_CappedByAbsolute(t *testing.T) {
 }
 
 func TestIsRefreshTokenReplay(t *testing.T) {
-	if IsRefreshTokenReplay(&spec.RefreshTokenRecord{}) {
+	if IsRefreshTokenReplay(&RefreshTokenRecord{}) {
 		t.Error("未使用は replay ではない")
 	}
-	if !IsRefreshTokenReplay(&spec.RefreshTokenRecord{Rotated: true}) {
+	if !IsRefreshTokenReplay(&RefreshTokenRecord{Rotated: true}) {
 		t.Error("Rotated は replay")
 	}
-	if !IsRefreshTokenReplay(&spec.RefreshTokenRecord{Revoked: true}) {
+	if !IsRefreshTokenReplay(&RefreshTokenRecord{Revoked: true}) {
 		t.Error("Revoked は replay")
 	}
 }
 
 func TestIsRefreshTokenAbsoluteExpired(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	rec := &spec.RefreshTokenRecord{AbsoluteExpiresAt: now.Add(time.Hour)}
+	rec := &RefreshTokenRecord{AbsoluteExpiresAt: now.Add(time.Hour)}
 	if IsRefreshTokenAbsoluteExpired(rec, now) {
 		t.Error("期限内なのに期限切れ判定")
 	}
 	if !IsRefreshTokenAbsoluteExpired(rec, now.Add(2*time.Hour)) {
 		t.Error("期限後なのに有効判定")
 	}
-	past := &spec.RefreshTokenRecord{AbsoluteExpiresAt: time.Now().Add(-time.Hour)}
+	past := &RefreshTokenRecord{AbsoluteExpiresAt: time.Now().Add(-time.Hour)}
 	if !IsRefreshTokenAbsoluteExpired(past, time.Time{}) {
 		t.Error("ゼロ now で過去期限が期限切れ判定されない")
 	}

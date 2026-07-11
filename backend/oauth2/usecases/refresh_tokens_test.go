@@ -20,10 +20,10 @@ import (
 type refreshFixture struct {
 	deps   RefreshDeps
 	token  string
-	record *spec.RefreshTokenRecord
+	record *domain.RefreshTokenRecord
 }
 
-func newRefreshFixture(t *testing.T, sc *spec.SenderConstraint, now time.Time, ttl time.Duration) refreshFixture {
+func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time, ttl time.Duration) refreshFixture {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := memory.NewUserRepository()
@@ -84,7 +84,7 @@ func TestRefreshTokensRejectsAbsoluteTTLExpired(t *testing.T) {
 
 func TestRefreshTokensRejectsDPoPSenderConstraintMismatch(t *testing.T) {
 	now := time.Now().UTC()
-	sc := &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "expected-jkt"}
+	sc := &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "expected-jkt"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	_, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
 		ClientID:     "client",
@@ -102,7 +102,7 @@ func TestRefreshTokensRejectsDPoPSenderConstraintMismatch(t *testing.T) {
 
 func TestRefreshTokensRejectsMTLSSenderConstraintMismatch(t *testing.T) {
 	now := time.Now().UTC()
-	sc := &spec.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint"}
+	sc := &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	_, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
 		ClientID:     "client",
@@ -120,7 +120,7 @@ func TestRefreshTokensRejectsMTLSSenderConstraintMismatch(t *testing.T) {
 
 func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	now := time.Now().UTC()
-	sc := &spec.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "matching-jkt"}
+	sc := &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "matching-jkt"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	// tenant context が無いと FindByID は default を期待するが、Seed では明示せず
 	// oauth2memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。

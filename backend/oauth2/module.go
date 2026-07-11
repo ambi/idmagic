@@ -13,7 +13,18 @@ import (
 // Module は oauth2 context が所有する repository の束。bootstrap は永続化 backend
 // (memory / postgres_valkey) に応じてこれらを組み立て、Module へ渡すだけでよい。
 type Module struct {
-	ClientRepo          oauthports.OAuth2ClientRepository
-	ConsentRepo         oauthports.ConsentRepository
-	AuthzDetailTypeRepo oauthports.AuthorizationDetailTypeRepository
+	ClientRepo                 oauthports.OAuth2ClientRepository
+	ConsentRepo                oauthports.ConsentRepository
+	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
+	RequestStore               oauthports.AuthorizationRequestStore
+	CodeStore                  oauthports.AuthorizationCodeStore
+	PARStore                   oauthports.PARStore
+	RefreshStore               oauthports.RefreshTokenStore
+	DeviceCodeStore            oauthports.DeviceCodeStore
+	DpopReplayStore            oauthports.DpopReplayStore
+	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
+	AccessTokenDenylist        oauthports.AccessTokenDenylist
+	TokenIssuer                oauthports.TokenIssuer
+	TokenIntrospector          oauthports.TokenIntrospector
+	Authorizer                 oauthports.Authorizer
 }

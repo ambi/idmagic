@@ -26,7 +26,7 @@ type AuthorizationCodeInput struct {
 	Now                    time.Time
 }
 
-func GenerateAuthorizationCode(in AuthorizationCodeInput) (*spec.AuthorizationCodeRecord, error) {
+func GenerateAuthorizationCode(in AuthorizationCodeInput) (*AuthorizationCodeRecord, error) {
 	if in.TenantID == "" {
 		in.TenantID = spec.DefaultTenantID
 	}
@@ -40,7 +40,7 @@ func GenerateAuthorizationCode(in AuthorizationCodeInput) (*spec.AuthorizationCo
 	if _, err := rand.Read(b); err != nil {
 		return nil, err
 	}
-	rec := &spec.AuthorizationCodeRecord{
+	rec := &AuthorizationCodeRecord{
 		Code:                   base64.RawURLEncoding.EncodeToString(b),
 		TenantID:               in.TenantID,
 		AuthorizationRequestID: in.AuthorizationRequestID,
@@ -62,13 +62,13 @@ func GenerateAuthorizationCode(in AuthorizationCodeInput) (*spec.AuthorizationCo
 	return rec, nil
 }
 
-func IsCodeExpired(rec *spec.AuthorizationCodeRecord, now time.Time) bool {
+func IsCodeExpired(rec *AuthorizationCodeRecord, now time.Time) bool {
 	if now.IsZero() {
 		now = time.Now()
 	}
 	return !now.Before(rec.ExpiresAt)
 }
 
-func IsCodeRedeemed(rec *spec.AuthorizationCodeRecord) bool {
+func IsCodeRedeemed(rec *AuthorizationCodeRecord) bool {
 	return rec.RedeemedAt != nil
 }

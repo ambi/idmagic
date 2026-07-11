@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -173,13 +174,13 @@ func (s *WebAuthnSessionStore) Take(
 
 type AuthorizationRequestStore struct{ Client *goredis.Client }
 
-func (s *AuthorizationRequestStore) Save(ctx context.Context, req *spec.AuthorizationRequest) error {
+func (s *AuthorizationRequestStore) Save(ctx context.Context, req *domain.AuthorizationRequest) error {
 	req.TenantID = tenancy.TenantID(ctx)
 	return setJSON(ctx, s.Client, tenantKey(ctx, "auth_request:"+req.ID), req, ttlUntil(req.ExpiresAt))
 }
 
-func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*spec.AuthorizationRequest, error) {
-	var req spec.AuthorizationRequest
+func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*domain.AuthorizationRequest, error) {
+	var req domain.AuthorizationRequest
 	if err := getJSON(ctx, s.Client, tenantKey(ctx, "auth_request:"+id), &req); err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*spec.
 }
 
 func (s *AuthorizationRequestStore) UpdateState(ctx context.Context, id string, state spec.AuthorizationCodeFlowState) error {
-	return s.update(ctx, id, func(req *spec.AuthorizationRequest) error {
+	return s.update(ctx, id, func(req *domain.AuthorizationRequest) error {
 		next, err := spec.TransitionAuthorizationCodeFlow(req.State, eventForTargetState(state))
 		if err != nil {
 			return err
@@ -207,7 +208,7 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 	amr []string,
 	acr string,
 ) error {
-	return s.update(ctx, id, func(req *spec.AuthorizationRequest) error {
+	return s.update(ctx, id, func(req *domain.AuthorizationRequest) error {
 		req.UserID, req.AuthTime = &sub, &authTime
 		req.AMR, req.ACR = amr, &acr
 		return nil
@@ -217,11 +218,11 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 func (s *AuthorizationRequestStore) update(
 	ctx context.Context,
 	id string,
-	change func(*spec.AuthorizationRequest) error,
+	change func(*domain.AuthorizationRequest) error,
 ) error {
 	key := tenantKey(ctx, "auth_request:"+id)
 	return s.Client.Watch(ctx, func(tx *goredis.Tx) error {
-		var req spec.AuthorizationRequest
+		var req domain.AuthorizationRequest
 		if err := getJSON(ctx, tx, key, &req); err != nil {
 			return err
 		}
@@ -272,13 +273,13 @@ func eventForTargetState(to spec.AuthorizationCodeFlowState) spec.AuthorizationC
 
 type AuthorizationCodeStore struct{ Client *goredis.Client }
 
-func (s *AuthorizationCodeStore) Save(ctx context.Context, rec *spec.AuthorizationCodeRecord) error {
+func (s *AuthorizationCodeStore) Save(ctx context.Context, rec *domain.AuthorizationCodeRecord) error {
 	rec.TenantID = tenancy.TenantID(ctx)
 	return setJSON(ctx, s.Client, tenantKey(ctx, "auth_code:"+rec.Code), rec, ttlUntil(rec.ExpiresAt))
 }
 
-func (s *AuthorizationCodeStore) Find(ctx context.Context, code string) (*spec.AuthorizationCodeRecord, error) {
-	var rec spec.AuthorizationCodeRecord
+func (s *AuthorizationCodeStore) Find(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+	var rec domain.AuthorizationCodeRecord
 	if err := getJSON(ctx, s.Client, tenantKey(ctx, "auth_code:"+code), &rec); err != nil {
 		return nil, err
 	}
@@ -299,7 +300,7 @@ redis.call('SET', KEYS[1], cjson.encode(rec), 'KEEPTTL')
 return cjson.encode(rec)
 `)
 
-func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now time.Time) (*spec.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now time.Time) (*domain.AuthorizationCodeRecord, error) {
 	result, err := redeemCode.Run(ctx, s.Client, []string{tenantKey(ctx, "auth_code:"+code)}, now.UTC().Format(time.RFC3339Nano)).Text()
 	if errors.Is(err, goredis.Nil) {
 		return nil, nil
@@ -307,7 +308,7 @@ func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now ti
 	if err != nil {
 		return nil, err
 	}
-	var rec spec.AuthorizationCodeRecord
+	var rec domain.AuthorizationCodeRecord
 	if err := json.Unmarshal([]byte(result), &rec); err != nil {
 		return nil, err
 	}
@@ -317,7 +318,7 @@ func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now ti
 func (s *AuthorizationCodeStore) LinkFamily(ctx context.Context, code, familyID string) error {
 	key := tenantKey(ctx, "auth_code:"+code)
 	return s.Client.Watch(ctx, func(tx *goredis.Tx) error {
-		var rec spec.AuthorizationCodeRecord
+		var rec domain.AuthorizationCodeRecord
 		if err := getJSON(ctx, tx, key, &rec); err != nil {
 			return err
 		}
@@ -340,13 +341,13 @@ func (s *AuthorizationCodeStore) LinkFamily(ctx context.Context, code, familyID 
 
 type PARStore struct{ Client *goredis.Client }
 
-func (s *PARStore) Save(ctx context.Context, rec *spec.PARRecord) error {
+func (s *PARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
 	rec.TenantID = tenancy.TenantID(ctx)
 	return setJSON(ctx, s.Client, tenantKey(ctx, "par:"+rec.RequestURI), rec, ttlUntil(rec.ExpiresAt))
 }
 
-func (s *PARStore) Find(ctx context.Context, uri string) (*spec.PARRecord, error) {
-	var rec spec.PARRecord
+func (s *PARStore) Find(ctx context.Context, uri string) (*domain.PARRecord, error) {
+	var rec domain.PARRecord
 	if err := getJSON(ctx, s.Client, tenantKey(ctx, "par:"+uri), &rec); err != nil {
 		return nil, err
 	}
@@ -366,7 +367,7 @@ redis.call('SET', KEYS[1], cjson.encode(rec), 'KEEPTTL')
 return cjson.encode(rec)
 `)
 
-func (s *PARStore) Consume(ctx context.Context, uri string) (*spec.PARRecord, error) {
+func (s *PARStore) Consume(ctx context.Context, uri string) (*domain.PARRecord, error) {
 	result, err := consumePAR.Run(ctx, s.Client, []string{tenantKey(ctx, "par:"+uri)}).Text()
 	if errors.Is(err, goredis.Nil) {
 		return nil, nil
@@ -374,7 +375,7 @@ func (s *PARStore) Consume(ctx context.Context, uri string) (*spec.PARRecord, er
 	if err != nil {
 		return nil, err
 	}
-	var rec spec.PARRecord
+	var rec domain.PARRecord
 	if err := json.Unmarshal([]byte(result), &rec); err != nil {
 		return nil, err
 	}
@@ -383,7 +384,7 @@ func (s *PARStore) Consume(ctx context.Context, uri string) (*spec.PARRecord, er
 
 type DeviceCodeStore struct{ Client *goredis.Client }
 
-func (s *DeviceCodeStore) Save(ctx context.Context, rec *spec.DeviceAuthorization) error {
+func (s *DeviceCodeStore) Save(ctx context.Context, rec *domain.DeviceAuthorization) error {
 	rec.TenantID = tenancy.TenantID(ctx)
 	ttl := ttlUntil(rec.ExpiresAt)
 	pipe := s.Client.TxPipeline()
@@ -397,8 +398,8 @@ func (s *DeviceCodeStore) Save(ctx context.Context, rec *spec.DeviceAuthorizatio
 	return err
 }
 
-func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string) (*spec.DeviceAuthorization, error) {
-	var rec spec.DeviceAuthorization
+func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string) (*domain.DeviceAuthorization, error) {
+	var rec domain.DeviceAuthorization
 	if err := getJSON(ctx, s.Client, tenantKey(ctx, "device:"+hash), &rec); err != nil {
 		return nil, err
 	}
@@ -408,7 +409,7 @@ func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string)
 	return &rec, nil
 }
 
-func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, code string) (*spec.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, code string) (*domain.DeviceAuthorization, error) {
 	hash, err := s.Client.Get(ctx, tenantKey(ctx, "device:user_code:"+code)).Result()
 	if errors.Is(err, goredis.Nil) {
 		return nil, nil
@@ -419,7 +420,7 @@ func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, code string) (*spe
 	return s.FindByDeviceCodeHash(ctx, hash)
 }
 
-func (s *DeviceCodeStore) Update(ctx context.Context, rec *spec.DeviceAuthorization) error {
+func (s *DeviceCodeStore) Update(ctx context.Context, rec *domain.DeviceAuthorization) error {
 	key := tenantKey(ctx, "device:"+rec.DeviceCodeHash)
 	ttl, err := s.Client.TTL(ctx, key).Result()
 	if err != nil {
@@ -447,7 +448,7 @@ func (s *DeviceCodeStore) DeleteAllForSub(ctx context.Context, sub string) error
 		if strings.HasPrefix(key, userCodePrefix) {
 			continue
 		}
-		var rec spec.DeviceAuthorization
+		var rec domain.DeviceAuthorization
 		if err := getJSON(ctx, s.Client, key, &rec); err != nil {
 			return err
 		}
@@ -464,7 +465,7 @@ func (s *DeviceCodeStore) DeleteAllForSub(ctx context.Context, sub string) error
 	return iter.Err()
 }
 
-func (s *DeviceCodeStore) Exchange(ctx context.Context, hash string) (*spec.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) Exchange(ctx context.Context, hash string) (*domain.DeviceAuthorization, error) {
 	result, err := exchangeDevice.Run(ctx, s.Client, []string{tenantKey(ctx, "device:"+hash)}).Text()
 	if errors.Is(err, goredis.Nil) {
 		return nil, nil
@@ -472,7 +473,7 @@ func (s *DeviceCodeStore) Exchange(ctx context.Context, hash string) (*spec.Devi
 	if err != nil {
 		return nil, err
 	}
-	var rec spec.DeviceAuthorization
+	var rec domain.DeviceAuthorization
 	if err := json.Unmarshal([]byte(result), &rec); err != nil {
 		return nil, err
 	}

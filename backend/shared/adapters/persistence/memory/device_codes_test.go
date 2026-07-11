@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -13,7 +14,7 @@ func TestDeviceCodeStore(t *testing.T) {
 	store := NewDeviceCodeStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		rec := &spec.DeviceAuthorization{
+		rec := &domain.DeviceAuthorization{
 			DeviceCodeHash:  "hash-123",
 			TenantID:        "tenant-1",
 			UserCode:        "USER-CODE-1",
@@ -107,7 +108,7 @@ func TestDeviceCodeStore(t *testing.T) {
 	t.Run("DeleteAllForSub", func(t *testing.T) {
 		// 追加データを作成
 		sub := "user-delete"
-		recDelete := &spec.DeviceAuthorization{
+		recDelete := &domain.DeviceAuthorization{
 			DeviceCodeHash: "hash-delete",
 			UserCode:       "USER-CODE-DEL",
 			UserID:         &sub,

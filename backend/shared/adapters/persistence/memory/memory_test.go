@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestAuthorizationCodeRedeemIsAtomic(t *testing.T) {
 	store := NewAuthorizationCodeStore()
-	code := &spec.AuthorizationCodeRecord{Code: "code", State: spec.AuthCodeRecordIssued}
+	code := &domain.AuthorizationCodeRecord{Code: "code", State: spec.AuthCodeRecordIssued}
 	if err := store.Save(context.Background(), code); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +38,7 @@ func TestAuthorizationCodeRedeemIsAtomic(t *testing.T) {
 
 func TestDeviceCodeExchangeIsAtomic(t *testing.T) {
 	store := NewDeviceCodeStore()
-	rec := &spec.DeviceAuthorization{
+	rec := &domain.DeviceAuthorization{
 		DeviceCodeHash: "hash", UserCode: "CODE", State: spec.DeviceFlowApproved,
 	}
 	if err := store.Save(context.Background(), rec); err != nil {

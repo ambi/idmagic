@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -15,14 +16,14 @@ import (
 
 type AuthorizationRequestStore struct {
 	mu       sync.RWMutex
-	requests map[string]*spec.AuthorizationRequest
+	requests map[string]*domain.AuthorizationRequest
 }
 
 func NewAuthorizationRequestStore() *AuthorizationRequestStore {
-	return &AuthorizationRequestStore{requests: map[string]*spec.AuthorizationRequest{}}
+	return &AuthorizationRequestStore{requests: map[string]*domain.AuthorizationRequest{}}
 }
 
-func (s *AuthorizationRequestStore) Save(_ context.Context, req *spec.AuthorizationRequest) error {
+func (s *AuthorizationRequestStore) Save(_ context.Context, req *domain.AuthorizationRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	DefaultTenant(&req.TenantID)
@@ -30,7 +31,7 @@ func (s *AuthorizationRequestStore) Save(_ context.Context, req *spec.Authorizat
 	return nil
 }
 
-func (s *AuthorizationRequestStore) Find(_ context.Context, id string) (*spec.AuthorizationRequest, error) {
+func (s *AuthorizationRequestStore) Find(_ context.Context, id string) (*domain.AuthorizationRequest, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.requests[id], nil

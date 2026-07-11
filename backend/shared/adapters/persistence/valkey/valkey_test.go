@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/alicebob/miniredis/v2"
@@ -20,7 +21,7 @@ func testClient(t *testing.T) *goredis.Client {
 func TestAuthorizationCodeRedeemOnce(t *testing.T) {
 	client := testClient(t)
 	store := &AuthorizationCodeStore{Client: client}
-	rec := &spec.AuthorizationCodeRecord{
+	rec := &domain.AuthorizationCodeRecord{
 		Code: "code", State: spec.AuthCodeRecordIssued,
 		ExpiresAt: time.Now().Add(time.Minute),
 	}
@@ -43,7 +44,7 @@ func TestAuthorizationCodeRedeemOnce(t *testing.T) {
 func TestPARAndReplayStoresAreSingleUse(t *testing.T) {
 	client := testClient(t)
 	parStore := &PARStore{Client: client}
-	par := &spec.PARRecord{
+	par := &domain.PARRecord{
 		RequestURI: "urn:test", ClientID: "client",
 		IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute),
 	}
@@ -67,7 +68,7 @@ func TestPARAndReplayStoresAreSingleUse(t *testing.T) {
 func TestDeviceExchangeOnce(t *testing.T) {
 	client := testClient(t)
 	store := &DeviceCodeStore{Client: client}
-	rec := &spec.DeviceAuthorization{
+	rec := &domain.DeviceAuthorization{
 		DeviceCodeHash: "hash", UserCode: "CODE", ClientID: "client",
 		State: spec.DeviceFlowApproved, IntervalSeconds: 5,
 		IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute),

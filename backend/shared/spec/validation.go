@@ -154,6 +154,11 @@ var authorizationRequestSchema = z.Struct(z.Shape{
 	"ExpiresAt": z.Time().Required(),
 })
 
+// ValidateAuthorizationRequest は oauth2 domain の認可要求検証を共有する。
+func ValidateAuthorizationRequest(value any) error {
+	return validate(authorizationRequestSchema, value)
+}
+
 var authorizationCodeRecordSchema = z.Struct(z.Shape{
 	"Code":                   z.String().Required(),
 	"AuthorizationRequestID": z.String().UUID().Required(),
@@ -172,6 +177,11 @@ var authorizationCodeRecordSchema = z.Struct(z.Shape{
 	"IssuedAt":  z.Time().Required(),
 	"ExpiresAt": z.Time().Required(),
 })
+
+// ValidateAuthorizationCodeRecord は oauth2 domain の認可コード検証を共有する。
+func ValidateAuthorizationCodeRecord(value any) error {
+	return validate(authorizationCodeRecordSchema, value)
+}
 
 var loginSessionSchema = z.Struct(z.Shape{
 	"ID":        z.String().UUID().Required(),
@@ -198,12 +208,18 @@ var refreshTokenRecordSchema = z.Struct(z.Shape{
 	"AbsoluteExpiresAt": z.Time().Required(),
 })
 
+// ValidateRefreshTokenRecord は oauth2 domain の refresh token 検証を共有する。
+func ValidateRefreshTokenRecord(value any) error { return validate(refreshTokenRecordSchema, value) }
+
 var parRecordSchema = z.Struct(z.Shape{
 	"RequestURI": z.String().Required(),
 	"ClientID":   z.String().Required(),
 	"IssuedAt":   z.Time().Required(),
 	"ExpiresAt":  z.Time().Required(),
 })
+
+// ValidatePARRecord は oauth2 domain の PAR レコード検証を共有する。
+func ValidatePARRecord(value any) error { return validate(parRecordSchema, value) }
 
 var deviceAuthorizationSchema = z.Struct(z.Shape{
 	"DeviceCodeHash": z.String().Required(),
@@ -217,6 +233,9 @@ var deviceAuthorizationSchema = z.Struct(z.Shape{
 	"IssuedAt":        z.Time().Required(),
 	"ExpiresAt":       z.Time().Required(),
 })
+
+// ValidateDeviceAuthorization は oauth2 domain の device authorization 検証を共有する。
+func ValidateDeviceAuthorization(value any) error { return validate(deviceAuthorizationSchema, value) }
 
 func validate(schema *z.StructSchema, value any) error {
 	return zogError(schema.Validate(value))

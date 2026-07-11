@@ -123,7 +123,7 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	// 投げる。handleAuthorize は consumed.TenantID != support.RequestTenantID(c) を理由に拒否する。
 	store := memory.NewPARStore()
 	// 別テナントの PAR レコードを直接 store に保存。
-	rec := &spec.PARRecord{
+	rec := &domain.PARRecord{
 		TenantID:   "acme",
 		RequestURI: "urn:ietf:params:oauth:request_uri:cross-tenant",
 		ClientID:   parClientID,
@@ -217,7 +217,7 @@ type ctxCheckingPARStore struct {
 	saveCtxErr error
 }
 
-func (s *ctxCheckingPARStore) Save(ctx context.Context, rec *spec.PARRecord) error {
+func (s *ctxCheckingPARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
 	s.saveCtxErr = ctx.Err()
 	return s.PARStore.Save(ctx, rec)
 }

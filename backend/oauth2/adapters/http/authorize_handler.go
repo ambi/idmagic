@@ -6,10 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -243,92 +241,6 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 		Kind: "consent", CSRFToken: csrf, ClientName: name, Scopes: strings.Fields(req.Scope),
 		AuthorizationDetails: d.renderConsentDetails(c, req.AuthorizationDetails),
 	})
-}
-
-// renderConsentDetails は authorization_details を登録 type の表示テンプレートで
-// 人間可読に整形する。テンプレートの {field} を detail の値で置換し、テンプレートが
-// 無い/未登録 type のときはフィールドを 1 行ずつ列挙する (ADR-050)。
-func (d Deps) renderConsentDetails(c *echo.Context, details []spec.AuthorizationDetail) []consentDetailView {
-	if len(details) == 0 {
-		return nil
-	}
-	tenantID := support.RequestTenantID(c)
-	views := make([]consentDetailView, 0, len(details))
-	for _, detail := range details {
-		view := consentDetailView{Type: detail.Type, Lines: detailValueLines(detail)}
-		if d.AuthzDetailTypeRepo != nil {
-			if t, err := d.AuthzDetailTypeRepo.FindByType(c.Request().Context(), tenantID, detail.Type); err == nil && t != nil {
-				view.Description = t.Description
-				view.Summary = fillDisplayTemplate(t.DisplayTemplate, detail)
-			}
-		}
-		if view.Summary == "" {
-			view.Summary = strings.Join(view.Lines, " / ")
-		}
-		views = append(views, view)
-	}
-	return views
-}
-
-// detailValueLines は detail の各フィールドを "name: value" 形式で列挙する。
-func detailValueLines(detail spec.AuthorizationDetail) []string {
-	lines := []string{}
-	add := func(name string, values []string) {
-		if len(values) > 0 {
-			lines = append(lines, name+": "+strings.Join(values, ", "))
-		}
-	}
-	add("actions", detail.Actions)
-	add("locations", detail.Locations)
-	add("datatypes", detail.Datatypes)
-	add("privileges", detail.Privileges)
-	if detail.Identifier != "" {
-		lines = append(lines, "identifier: "+detail.Identifier)
-	}
-	for k, v := range detail.Fields {
-		lines = append(lines, fmt.Sprintf("%s: %v", k, v))
-	}
-	return lines
-}
-
-// fillDisplayTemplate は表示テンプレート中の {field} を detail の値で置換する。
-func fillDisplayTemplate(template string, detail spec.AuthorizationDetail) string {
-	if template == "" {
-		return ""
-	}
-	replace := func(name string) string {
-		switch name {
-		case "actions":
-			return strings.Join(detail.Actions, ", ")
-		case "locations":
-			return strings.Join(detail.Locations, ", ")
-		case "datatypes":
-			return strings.Join(detail.Datatypes, ", ")
-		case "privileges":
-			return strings.Join(detail.Privileges, ", ")
-		case "identifier":
-			return detail.Identifier
-		}
-		if v, ok := detail.Fields[name]; ok {
-			return fmt.Sprintf("%v", v)
-		}
-		return "{" + name + "}"
-	}
-	out := template
-	for {
-		start := strings.IndexByte(out, '{')
-		if start < 0 {
-			break
-		}
-		end := strings.IndexByte(out[start:], '}')
-		if end < 0 {
-			break
-		}
-		end += start
-		name := out[start+1 : end]
-		out = out[:start] + replace(name) + out[end+1:]
-	}
-	return out
 }
 
 func (d Deps) handleLoginAPI(c *echo.Context) error {
@@ -680,7 +592,7 @@ type authorizationNext struct {
 
 func (d Deps) completeAfterAuthn(
 	c *echo.Context,
-	req *spec.AuthorizationRequest,
+	req *oauthdomain.AuthorizationRequest,
 	client *oauthdomain.OAuth2Client,
 	authn *authdomain.AuthenticationContext,
 ) (authorizationNext, error) {
@@ -752,7 +664,7 @@ func (d Deps) clientIsFirstParty(ctx context.Context, clientID string) bool {
 func (d Deps) issueCodeURL(
 	ctx context.Context,
 	c *echo.Context,
-	req *spec.AuthorizationRequest,
+	req *oauthdomain.AuthorizationRequest,
 	authn *authdomain.AuthenticationContext,
 	authTime time.Time,
 ) (string, error) {
@@ -838,7 +750,7 @@ func (d Deps) issueCodeURL(
 	return u.String(), nil
 }
 
-func authorizationErrorURL(req *spec.AuthorizationRequest, iss, code, description string) string {
+func authorizationErrorURL(req *oauthdomain.AuthorizationRequest, iss, code, description string) string {
 	u, _ := url.Parse(req.RedirectURI)
 	query := u.Query()
 	query.Set("error", code)
@@ -919,74 +831,6 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 	}
 	u.RawQuery = query.Encode()
 	return c.Redirect(http.StatusFound, u.String())
-}
-
-func (d Deps) transactionRequest(c *echo.Context) (*spec.AuthorizationRequest, error) {
-	cookie, err := c.Cookie(authorizationTransactionCookie)
-	if err != nil || cookie.Value == "" {
-		return nil, errors.New("認可トランザクションがありません")
-	}
-	req, err := d.RequestStore.Find(c.Request().Context(), cookie.Value)
-	if err != nil {
-		return nil, err
-	}
-	if req == nil || req.TenantID != support.RequestTenantID(c) ||
-		time.Now().After(req.ExpiresAt) || req.State != spec.AuthFlowReceived {
-		return nil, errors.New("認可トランザクションが無効または期限切れです")
-	}
-	return req, nil
-}
-
-// validReturnTo は login 後に戻ってよい同一オリジンの内部パスかを判定する。
-// 管理 UI (/admin 配下) と WS-Federation passive エンドポイント (/wsfed) を許可する (wi-61)。
-func validReturnTo(c *echo.Context, returnTo string) bool {
-	if strings.Contains(returnTo, "\\") {
-		return false
-	}
-	parsed, err := url.Parse(returnTo)
-	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.Fragment != "" {
-		return false
-	}
-	if path.Clean(parsed.Path) != parsed.Path {
-		return false
-	}
-	adminRoot := support.TenantRoute(c, "/admin")
-	wsfedRoot := support.TenantRoute(c, "/wsfed")
-	return parsed.Path == adminRoot ||
-		strings.HasPrefix(parsed.Path, adminRoot+"/") ||
-		parsed.Path == wsfedRoot
-}
-
-func (d Deps) setTransactionCookie(c *echo.Context, requestID string) {
-	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure is enabled for HTTPS issuers; local HTTP development intentionally disables it.
-		Name: authorizationTransactionCookie, Value: requestID, Path: support.TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		MaxAge: 600,
-	})
-}
-
-func (d Deps) clearTransactionCookie(c *echo.Context) {
-	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure is enabled for HTTPS issuers; local HTTP development intentionally disables it.
-		Name: authorizationTransactionCookie, Path: support.TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		MaxAge: -1,
-	})
-}
-
-func (d Deps) setSessionCookie(c *echo.Context, sessionID string) {
-	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure is enabled for HTTPS issuers; local HTTP development intentionally disables it.
-		Name: authusecases.SessionCookie, Value: sessionID, Path: support.TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		MaxAge: authusecases.SessionTTLSeconds,
-	})
-}
-
-func (d Deps) clearSessionCookie(c *echo.Context) {
-	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure is enabled for HTTPS issuers; local HTTP development intentionally disables it.
-		Name: authusecases.SessionCookie, Path: support.TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		MaxAge: -1,
-	})
 }
 
 func (d Deps) emitAuthenticationFailure(c *echo.Context, username, reason string) {

@@ -185,39 +185,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	badTenant := validTenant
 	badTenant.Realm = "admin" // admin は予約語で realm として拒否される。
 
-	validAuthReq := AuthorizationRequest{
-		ID: mustUUID(t), State: AuthFlowReceived, ClientID: "demo",
-		RedirectURI: "https://app.example.com/cb", ResponseType: ResponseTypeCode,
-		CodeChallenge: "abc", CodeChallengeMethod: CodeChallengeMethodS256, CreatedAt: now, ExpiresAt: now,
-	}
-	badAuthReq := validAuthReq
-	badAuthReq.RedirectURI = "not-a-url"
-
-	validCodeRec := AuthorizationCodeRecord{
-		Code: "c", AuthorizationRequestID: mustUUID(t), ClientID: "demo", UserID: "user_1",
-		RedirectURI: "https://app.example.com/cb", CodeChallenge: "abc", CodeChallengeMethod: CodeChallengeMethodS256,
-		State: AuthCodeRecordIssued, IssuedAt: now, ExpiresAt: now,
-	}
-	badCodeRec := validCodeRec
-	badCodeRec.State = AuthorizationCodeRecordState("x")
-
-	validRefresh := RefreshTokenRecord{
-		ID: mustUUID(t), Hash: "h", FamilyID: mustUUID(t), ClientID: "demo", UserID: "user_1",
-		IssuedAt: now, ExpiresAt: now, AbsoluteExpiresAt: now,
-	}
-	badRefresh := validRefresh
-	badRefresh.FamilyID = "not-a-uuid"
-
-	validPAR := PARRecord{RequestURI: "urn:x", ClientID: "demo", IssuedAt: now, ExpiresAt: now}
-	badPAR := PARRecord{ClientID: "demo", IssuedAt: now, ExpiresAt: now}
-
-	validDevice := DeviceAuthorization{
-		DeviceCodeHash: "h", UserCode: "ABCD", ClientID: "demo", State: DeviceFlowIssued,
-		IntervalSeconds: 5, IssuedAt: now, ExpiresAt: now,
-	}
-	badDevice := validDevice
-	badDevice.IntervalSeconds = 0 // GT(0) 違反。
-
 	cases := []struct {
 		name    string
 		v       interface{ Validate() error }
@@ -239,16 +206,6 @@ func TestValidateHappyAndFailure(t *testing.T) {
 		{"member bad", badMember, true},
 		{"tenant ok", validTenant, false},
 		{"tenant bad", badTenant, true},
-		{"auth req ok", validAuthReq, false},
-		{"auth req bad", badAuthReq, true},
-		{"code record ok", validCodeRec, false},
-		{"code record bad", badCodeRec, true},
-		{"refresh ok", validRefresh, false},
-		{"refresh bad", badRefresh, true},
-		{"par ok", validPAR, false},
-		{"par bad", badPAR, true},
-		{"device ok", validDevice, false},
-		{"device bad", badDevice, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

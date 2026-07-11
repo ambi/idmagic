@@ -39,7 +39,7 @@ type AuthorizeRequestInput struct {
 }
 
 type AuthorizeRequestOutput struct {
-	Request *spec.AuthorizationRequest
+	Request *domain.AuthorizationRequest
 	Client  *domain.OAuth2Client
 }
 
@@ -107,7 +107,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		return nil, err
 	}
 	now := time.Now().UTC()
-	req := &spec.AuthorizationRequest{
+	req := &domain.AuthorizationRequest{
 		TenantID:             tenantID,
 		ID:                   id,
 		State:                spec.AuthFlowReceived,

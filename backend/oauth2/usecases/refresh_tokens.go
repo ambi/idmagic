@@ -140,7 +140,7 @@ func evaluateRefreshPolicy(
 	ctx context.Context,
 	authorizer ports.Authorizer,
 	client *domain.OAuth2Client,
-	record *spec.RefreshTokenRecord,
+	record *domain.RefreshTokenRecord,
 	in RefreshInput,
 	now time.Time,
 ) (spec.AuthZResponse, error) {
@@ -173,7 +173,7 @@ func evaluateRefreshPolicy(
 	return authorizer.Authorize(ctx, req)
 }
 
-func authZSenderConstraint(sc *spec.SenderConstraint) *spec.AuthZSenderConstraint {
+func authZSenderConstraint(sc *domain.SenderConstraint) *spec.AuthZSenderConstraint {
 	if sc == nil {
 		return nil
 	}

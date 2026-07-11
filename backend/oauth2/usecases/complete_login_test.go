@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -23,7 +24,7 @@ func TestCompleteLogin(t *testing.T) {
 	reqID := "11111111-2222-3333-4444-555555555555"
 
 	t.Run("Succeeds", func(t *testing.T) {
-		req := &spec.AuthorizationRequest{
+		req := &domain.AuthorizationRequest{
 			ID:                  reqID,
 			TenantID:            spec.DefaultTenantID,
 			ClientID:            "client-1",
@@ -73,7 +74,7 @@ func TestCompleteLogin(t *testing.T) {
 	})
 
 	t.Run("MismatchedTenant", func(t *testing.T) {
-		req := &spec.AuthorizationRequest{
+		req := &domain.AuthorizationRequest{
 			ID:        "33333333-3333-3333-3333-333333333333",
 			TenantID:  "another-tenant",
 			State:     spec.AuthFlowReceived,
@@ -94,7 +95,7 @@ func TestCompleteLogin(t *testing.T) {
 	})
 
 	t.Run("RequestExpired", func(t *testing.T) {
-		req := &spec.AuthorizationRequest{
+		req := &domain.AuthorizationRequest{
 			ID:        "44444444-4444-4444-4444-444444444444",
 			TenantID:  spec.DefaultTenantID,
 			State:     spec.AuthFlowReceived,
@@ -121,7 +122,7 @@ func TestCompleteLogin(t *testing.T) {
 	})
 
 	t.Run("AlreadyProcessedState", func(t *testing.T) {
-		req := &spec.AuthorizationRequest{
+		req := &domain.AuthorizationRequest{
 			ID:        "55555555-5555-5555-5555-555555555555",
 			TenantID:  spec.DefaultTenantID,
 			State:     spec.AuthFlowCodeIssued,

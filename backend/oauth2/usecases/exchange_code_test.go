@@ -38,7 +38,7 @@ type exchangeFixture struct {
 	deps         ExchangeCodeDeps
 	codeStore    *memory.AuthorizationCodeStore
 	refreshStore *memory.RefreshTokenStore
-	code         *spec.AuthorizationCodeRecord
+	code         *domain.AuthorizationCodeRecord
 	issuer       *fakeTokenIssuer
 }
 
@@ -71,7 +71,7 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 
 	verifier := "verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	sum := sha256.Sum256([]byte(verifier))
-	code := &spec.AuthorizationCodeRecord{
+	code := &domain.AuthorizationCodeRecord{
 		Code:                   "authorization-code",
 		AuthorizationRequestID: "00000000-0000-4000-8000-000000000001",
 		ClientID:               "client",

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
-
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
@@ -182,7 +181,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 		Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
 	})
-	_ = refreshStore.Save(ctx, &spec.RefreshTokenRecord{
+	_ = refreshStore.Save(ctx, &oauthdomain.RefreshTokenRecord{
 		ID: "rt-1", TenantID: spec.DefaultTenantID, Hash: "hash-1",
 		FamilyID: "fam-1", ClientID: "client-a", UserID: user.ID,
 		Scopes: []string{"openid"}, IssuedAt: now,

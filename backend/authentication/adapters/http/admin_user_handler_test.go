@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -33,7 +34,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 		Lifecycle: spec.UserLifecycle{Status: spec.UserStatusDisabled, StatusChangedAt: &now},
 		CreatedAt: now, UpdatedAt: now,
 	})
-	if err := requestStore.Save(context.Background(), &spec.AuthorizationRequest{
+	if err := requestStore.Save(context.Background(), &domain.AuthorizationRequest{
 		ID: "transaction", State: spec.AuthFlowReceived, ExpiresAt: now.Add(time.Minute),
 	}); err != nil {
 		t.Fatal(err)

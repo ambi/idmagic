@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // =====================================================================
@@ -14,24 +14,24 @@ import (
 
 type RefreshTokenStore struct {
 	mu     sync.Mutex
-	byHash map[string]*spec.RefreshTokenRecord
-	byID   map[string]*spec.RefreshTokenRecord
+	byHash map[string]*domain.RefreshTokenRecord
+	byID   map[string]*domain.RefreshTokenRecord
 }
 
 func NewRefreshTokenStore() *RefreshTokenStore {
 	return &RefreshTokenStore{
-		byHash: map[string]*spec.RefreshTokenRecord{},
-		byID:   map[string]*spec.RefreshTokenRecord{},
+		byHash: map[string]*domain.RefreshTokenRecord{},
+		byID:   map[string]*domain.RefreshTokenRecord{},
 	}
 }
 
-func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*spec.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*domain.RefreshTokenRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return cloneRefreshToken(s.byHash[hash]), nil
 }
 
-func (s *RefreshTokenStore) Save(_ context.Context, rec *spec.RefreshTokenRecord) error {
+func (s *RefreshTokenStore) Save(_ context.Context, rec *domain.RefreshTokenRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	DefaultTenant(&rec.TenantID)
@@ -41,7 +41,7 @@ func (s *RefreshTokenStore) Save(_ context.Context, rec *spec.RefreshTokenRecord
 	return nil
 }
 
-func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *spec.RefreshTokenRecord) (*spec.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *domain.RefreshTokenRecord) (*domain.RefreshTokenRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	parent, ok := s.byID[parentID]
@@ -82,7 +82,7 @@ func (s *RefreshTokenStore) DeleteAllForSub(_ context.Context, sub string) error
 	return nil
 }
 
-func cloneRefreshToken(in *spec.RefreshTokenRecord) *spec.RefreshTokenRecord {
+func cloneRefreshToken(in *domain.RefreshTokenRecord) *domain.RefreshTokenRecord {
 	if in == nil {
 		return nil
 	}

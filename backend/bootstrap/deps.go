@@ -33,14 +33,6 @@ type Dependencies struct {
 	PasswordResetTokenStore authnports.PasswordResetTokenStore
 	EmailChangeTokenStore   authnports.EmailChangeTokenStore
 	OAuth2                  oauth2.Module
-	RequestStore            oauthports.AuthorizationRequestStore
-	CodeStore               oauthports.AuthorizationCodeStore
-	PARStore                oauthports.PARStore
-	RefreshStore            oauthports.RefreshTokenStore
-	DeviceCodeStore         oauthports.DeviceCodeStore
-	DpopReplay              oauthports.DpopReplayStore
-	ClientAssertionReplay   oauthports.ClientAssertionReplayStore
-	AccessTokenDenylist     oauthports.AccessTokenDenylist
 	SessionStore            authnports.SessionStore
 	// WebAuthn / Passkey と backup recovery code (wi-26 / ADR-087)。WebAuthnRP は env config
 	// 由来で、未設定なら nil (WebAuthn 無効)。session store / repo は永続層に応じて差し替える。

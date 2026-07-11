@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -15,14 +16,14 @@ import (
 
 type AuthorizationCodeStore struct {
 	mu    sync.Mutex
-	codes map[string]*spec.AuthorizationCodeRecord
+	codes map[string]*domain.AuthorizationCodeRecord
 }
 
 func NewAuthorizationCodeStore() *AuthorizationCodeStore {
-	return &AuthorizationCodeStore{codes: map[string]*spec.AuthorizationCodeRecord{}}
+	return &AuthorizationCodeStore{codes: map[string]*domain.AuthorizationCodeRecord{}}
 }
 
-func (s *AuthorizationCodeStore) Save(_ context.Context, code *spec.AuthorizationCodeRecord) error {
+func (s *AuthorizationCodeStore) Save(_ context.Context, code *domain.AuthorizationCodeRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	DefaultTenant(&code.TenantID)
@@ -30,13 +31,13 @@ func (s *AuthorizationCodeStore) Save(_ context.Context, code *spec.Authorizatio
 	return nil
 }
 
-func (s *AuthorizationCodeStore) Find(_ context.Context, code string) (*spec.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Find(_ context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return cloneAuthorizationCode(s.codes[code]), nil
 }
 
-func (s *AuthorizationCodeStore) Redeem(_ context.Context, code string, now time.Time) (*spec.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Redeem(_ context.Context, code string, now time.Time) (*domain.AuthorizationCodeRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.codes[code]
@@ -68,7 +69,7 @@ func (s *AuthorizationCodeStore) LinkFamily(_ context.Context, code, familyID st
 	return nil
 }
 
-func cloneAuthorizationCode(in *spec.AuthorizationCodeRecord) *spec.AuthorizationCodeRecord {
+func cloneAuthorizationCode(in *domain.AuthorizationCodeRecord) *domain.AuthorizationCodeRecord {
 	if in == nil {
 		return nil
 	}

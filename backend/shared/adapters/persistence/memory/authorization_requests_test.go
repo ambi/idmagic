@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -13,7 +14,7 @@ func TestAuthorizationRequestStore(t *testing.T) {
 	store := NewAuthorizationRequestStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		req := &spec.AuthorizationRequest{
+		req := &domain.AuthorizationRequest{
 			ID:          "auth-req-123",
 			TenantID:    "tenant-1",
 			State:       spec.AuthFlowReceived,

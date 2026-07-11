@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-11
@@ -73,17 +73,17 @@ oauth2 の認可コア（authorize/token エンドポイント）を扱うため
 
 ## Tasks
 
-- [ ] T001 [Domain] token/grant 系業務型を `oauth2/domain/` へ移設し参照更新。
-- [ ] T002 [Persistence] `refresh_tokens.go` を
+- [x] T001 [Domain] token/grant 系業務型を `oauth2/domain/` へ移設し参照更新。
+- [x] T002 [Persistence] `refresh_tokens.go` を
   `oauth2/adapters/persistence/{postgres,memory}` へ同居。
-- [ ] T003 [Persistence] `refresh_tokens.go` postgres 実装を sqlc 生成へ置換。
-- [ ] T004 [Persistence] valkey backed token/grant store を
+- [x] T003 [Persistence] `refresh_tokens.go` postgres 実装を sqlc 生成へ置換。
+- [x] T004 [Persistence] valkey backed token/grant store を
   `oauth2/adapters/persistence/valkey` へ切り出し。
-- [ ] T005 [Adapters] `authorize_handler.go` を feature 単位ファイルへ分割。
-- [ ] T006 [DI] `oauth2/module.go` を拡張し token/grant 分を Module 化。
-- [ ] T007 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から
+- [x] T005 [Adapters] `authorize_handler.go` を feature 単位ファイルへ分割。
+- [x] T006 [DI] `oauth2/module.go` を拡張し token/grant 分を Module 化。
+- [x] T007 [DI] 中央 `server/routes.go` `Deps` と `bootstrap/deps.go` から
   token/grant 分を撤去。
-- [ ] T008 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
+- [x] T008 [Verify] `just verify-go` / `just test-go` green、locality 指標を確認。
 
 ## Verification
 
@@ -103,3 +103,24 @@ oauth2 の認可コア（authorize/token エンドポイント）を扱うため
 - 軽減：valkey 切り出しと `authorize_handler.go` 分割を別コミットに分け、
   各段階で `just test-go`（既存 E2E 含む）を通す。[[wi-173]] の型紙を厳密に
   踏襲し独自判断を増やさない。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**: token/grant domain 型、refresh token の sqlc-backed persistence、Valkey
+  adapter 窓口、OAuth2 Module の DI 集約を context 内へ配置した。authorize handler は
+  consent details と transaction/Cookie 操作を feature ファイルへ分離した。
+- **Affected Guarantees State**: HTTP route、DB schema、公開 API と OAuth2/OIDC の振る舞いは不変。
+- **Verification Results**:
+  - `just format-go` — passed
+  - `just verify-go` — passed (lint 0 issues, `go test -race ./...`)
+  - `just test-go` — passed
+  - `just sqlc-generate` — passed and generated output was idempotent
+  - `just check-ids` / `just yaml-check-scl` — passed
+  - `just yaml-check` — blocked by pre-existing `wi-168` missing `completion`; wi-181 itself validates
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: ローカル開発環境
+  - 実行主体: Codex
+  - 対象ソース版: main（コミット前）
+  - 保存先: 外部成果物なし。上記検証結果を本記録に要約。

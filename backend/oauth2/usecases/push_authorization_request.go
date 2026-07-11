@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -54,7 +55,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 		return nil, err
 	}
 	requestURI := "urn:ietf:params:oauth:request_uri:" + id
-	rec := &spec.PARRecord{
+	rec := &domain.PARRecord{
 		TenantID:   tenantID,
 		RequestURI: requestURI,
 		ClientID:   in.ClientID,

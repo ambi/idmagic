@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -16,7 +17,7 @@ type IntrospectionResult struct {
 	Exp              int64
 	Iat              int64
 	TokenType        string
-	SenderConstraint *spec.SenderConstraint
+	SenderConstraint *domain.SenderConstraint
 	// Aud / Act / MayAct は RFC 8693 トークン交換のために検証済みペイロードから抽出する。
 	// Aud は単一文字列でも配列でも常に []string に正規化する。
 	Aud    []string
