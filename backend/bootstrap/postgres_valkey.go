@@ -16,6 +16,8 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/identitymanagement"
 	idmpostgres "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/backend/jobs"
+	jobspostgres "github.com/ambi/idmagic/backend/jobs/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/valkey"
@@ -152,6 +154,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml:         saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}},
 		Scim:         scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
+		Jobs:         jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

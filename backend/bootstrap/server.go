@@ -212,8 +212,6 @@ func Run() error {
 		Application:        deps.Application,
 	})
 
-	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
-
 	// 起動準備がすべて完了したので、startupComplete を true に設定する
 	startupComplete.Store(true)
 

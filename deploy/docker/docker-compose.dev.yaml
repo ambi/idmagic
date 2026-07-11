@@ -99,3 +99,21 @@ services:
       postgres: { condition: service_healthy }
       schema: { condition: service_completed_successfully }
       kafka: { condition: service_started }
+
+  worker:
+    image: idmagic:dev
+    entrypoint: ["/app/idmagic-worker"]
+    environment:
+      PERSISTENCE: postgres_valkey
+      DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
+      VALKEY_URL: valkey://valkey:6379/0
+      EVENT_SINK: outbox
+      OBSERVABILITY: otel
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: idmagic-worker
+    depends_on:
+      postgres: { condition: service_healthy }
+      schema: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+      otel-collector: { condition: service_started }
