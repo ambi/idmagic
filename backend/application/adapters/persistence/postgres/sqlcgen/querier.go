@@ -15,15 +15,15 @@ type Querier interface {
 	DeleteApplicationAssignmentsByApplication(ctx context.Context, arg DeleteApplicationAssignmentsByApplicationParams) error
 	DeleteApplicationCategory(ctx context.Context, arg DeleteApplicationCategoryParams) error
 	DeleteApplicationIconsByApplication(ctx context.Context, arg DeleteApplicationIconsByApplicationParams) error
-	GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*ApplicationSignInPolicy, error)
+	GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*GetAppSignInPolicyRow, error)
 	GetApplicationByID(ctx context.Context, arg GetApplicationByIDParams) (*Application, error)
 	GetApplicationCategoryByID(ctx context.Context, arg GetApplicationCategoryByIDParams) (*ApplicationCategory, error)
-	GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*ApplicationIcon, error)
+	GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*GetApplicationIconRow, error)
 	GetApplicationOrdering(ctx context.Context, userID string) (*ApplicationOrdering, error)
 	GetTenantDefaultSignInPolicy(ctx context.Context, tenantID string) (*TenantDefaultSignInPolicy, error)
-	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ApplicationSignInPolicy, error)
-	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ApplicationAssignment, error)
-	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ApplicationAssignment, error)
+	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
+	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error)
+	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error)
 	ListApplicationCategoriesByTenant(ctx context.Context, tenantID string) ([]*ApplicationCategory, error)
 	ListApplicationsByTenant(ctx context.Context, tenantID string) ([]*Application, error)
 	RemoveApplicationCategory(ctx context.Context, arg RemoveApplicationCategoryParams) error

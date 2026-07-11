@@ -1,11 +1,11 @@
 -- name: InsertEventLog :exec
-INSERT INTO event_logs (event_id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, payload)
+INSERT INTO event_logs (id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, payload)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: GetEventLogByID :one
-SELECT event_id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, created_at, payload
+SELECT id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, created_at, payload
 FROM event_logs
-WHERE event_id = $1;
+WHERE id = $1;
 
 -- name: InsertEventDelivery :exec
 INSERT INTO event_deliveries (event_id)

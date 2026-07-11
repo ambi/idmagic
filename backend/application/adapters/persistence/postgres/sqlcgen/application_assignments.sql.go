@@ -11,8 +11,9 @@ import (
 )
 
 const deleteApplicationAssignment = `-- name: DeleteApplicationAssignment :exec
-DELETE FROM application_assignments
-WHERE tenant_id = $1 AND application_id = $2 AND subject_type = $3 AND subject_id = $4
+DELETE FROM application_assignments aa
+WHERE aa.application_id = $2 AND aa.subject_type = $3 AND aa.subject_id = $4
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
 `
 
 type DeleteApplicationAssignmentParams struct {
@@ -33,7 +34,8 @@ func (q *Queries) DeleteApplicationAssignment(ctx context.Context, arg DeleteApp
 }
 
 const deleteApplicationAssignmentsByApplication = `-- name: DeleteApplicationAssignmentsByApplication :exec
-DELETE FROM application_assignments WHERE tenant_id = $1 AND application_id = $2
+DELETE FROM application_assignments aa WHERE aa.application_id = $2
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
 `
 
 type DeleteApplicationAssignmentsByApplicationParams struct {
@@ -47,10 +49,10 @@ func (q *Queries) DeleteApplicationAssignmentsByApplication(ctx context.Context,
 }
 
 const listApplicationAssignmentsByApplication = `-- name: ListApplicationAssignmentsByApplication :many
-SELECT tenant_id, application_id, subject_type, subject_id, visibility, created_at, updated_at
-FROM application_assignments
-WHERE tenant_id = $1 AND application_id = $2
-ORDER BY subject_type, subject_id
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.application_id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+ORDER BY aa.subject_type, aa.subject_id
 `
 
 type ListApplicationAssignmentsByApplicationParams struct {
@@ -58,15 +60,25 @@ type ListApplicationAssignmentsByApplicationParams struct {
 	ApplicationID string
 }
 
-func (q *Queries) ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ApplicationAssignment, error) {
+type ListApplicationAssignmentsByApplicationRow struct {
+	TenantID      string
+	ApplicationID string
+	SubjectType   string
+	SubjectID     string
+	Visibility    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error) {
 	rows, err := q.db.Query(ctx, listApplicationAssignmentsByApplication, arg.TenantID, arg.ApplicationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ApplicationAssignment
+	var items []*ListApplicationAssignmentsByApplicationRow
 	for rows.Next() {
-		var i ApplicationAssignment
+		var i ListApplicationAssignmentsByApplicationRow
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.ApplicationID,
@@ -87,20 +99,30 @@ func (q *Queries) ListApplicationAssignmentsByApplication(ctx context.Context, a
 }
 
 const listApplicationAssignmentsByTenant = `-- name: ListApplicationAssignmentsByTenant :many
-SELECT tenant_id, application_id, subject_type, subject_id, visibility, created_at, updated_at
-FROM application_assignments
-WHERE tenant_id = $1
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.application_id = aa.application_id
+WHERE a.tenant_id = $1
 `
 
-func (q *Queries) ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ApplicationAssignment, error) {
+type ListApplicationAssignmentsByTenantRow struct {
+	TenantID      string
+	ApplicationID string
+	SubjectType   string
+	SubjectID     string
+	Visibility    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error) {
 	rows, err := q.db.Query(ctx, listApplicationAssignmentsByTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ApplicationAssignment
+	var items []*ListApplicationAssignmentsByTenantRow
 	for rows.Next() {
-		var i ApplicationAssignment
+		var i ListApplicationAssignmentsByTenantRow
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.ApplicationID,
@@ -122,15 +144,14 @@ func (q *Queries) ListApplicationAssignmentsByTenant(ctx context.Context, tenant
 
 const upsertApplicationAssignment = `-- name: UpsertApplicationAssignment :exec
 
-INSERT INTO application_assignments (tenant_id, application_id, subject_type, subject_id, visibility, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-ON CONFLICT (tenant_id, application_id, subject_type, subject_id) DO UPDATE SET
+INSERT INTO application_assignments (application_id, subject_type, subject_id, visibility, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (application_id, subject_type, subject_id) DO UPDATE SET
   visibility = EXCLUDED.visibility,
   updated_at = EXCLUDED.updated_at
 `
 
 type UpsertApplicationAssignmentParams struct {
-	TenantID      string
 	ApplicationID string
 	SubjectType   string
 	SubjectID     string
@@ -144,7 +165,6 @@ type UpsertApplicationAssignmentParams struct {
 // (動的クエリのエスケープハッチ、ADR-090)。手書き pgx として applications.go に残す。
 func (q *Queries) UpsertApplicationAssignment(ctx context.Context, arg UpsertApplicationAssignmentParams) error {
 	_, err := q.db.Exec(ctx, upsertApplicationAssignment,
-		arg.TenantID,
 		arg.ApplicationID,
 		arg.SubjectType,
 		arg.SubjectID,

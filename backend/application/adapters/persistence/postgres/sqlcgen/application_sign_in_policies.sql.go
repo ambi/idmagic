@@ -11,7 +11,8 @@ import (
 )
 
 const deleteAppSignInPolicy = `-- name: DeleteAppSignInPolicy :exec
-DELETE FROM application_sign_in_policies WHERE tenant_id = $1 AND application_id = $2
+DELETE FROM application_sign_in_policies p WHERE p.application_id = $2
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
 `
 
 type DeleteAppSignInPolicyParams struct {
@@ -25,9 +26,9 @@ func (q *Queries) DeleteAppSignInPolicy(ctx context.Context, arg DeleteAppSignIn
 }
 
 const getAppSignInPolicy = `-- name: GetAppSignInPolicy :one
-SELECT tenant_id, application_id, rules, created_at, updated_at
-FROM application_sign_in_policies
-WHERE tenant_id = $1 AND application_id = $2
+SELECT a.tenant_id, p.application_id, p.rules, p.created_at, p.updated_at
+FROM application_sign_in_policies p JOIN applications a ON a.application_id = p.application_id
+WHERE a.tenant_id = $1 AND p.application_id = $2
 `
 
 type GetAppSignInPolicyParams struct {
@@ -35,9 +36,17 @@ type GetAppSignInPolicyParams struct {
 	ApplicationID string
 }
 
-func (q *Queries) GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*ApplicationSignInPolicy, error) {
+type GetAppSignInPolicyRow struct {
+	TenantID      string
+	ApplicationID string
+	Rules         []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*GetAppSignInPolicyRow, error) {
 	row := q.db.QueryRow(ctx, getAppSignInPolicy, arg.TenantID, arg.ApplicationID)
-	var i ApplicationSignInPolicy
+	var i GetAppSignInPolicyRow
 	err := row.Scan(
 		&i.TenantID,
 		&i.ApplicationID,
@@ -67,20 +76,28 @@ func (q *Queries) GetTenantDefaultSignInPolicy(ctx context.Context, tenantID str
 }
 
 const listAppSignInPoliciesByTenant = `-- name: ListAppSignInPoliciesByTenant :many
-SELECT tenant_id, application_id, rules, created_at, updated_at
-FROM application_sign_in_policies
-WHERE tenant_id = $1
+SELECT a.tenant_id, p.application_id, p.rules, p.created_at, p.updated_at
+FROM application_sign_in_policies p JOIN applications a ON a.application_id = p.application_id
+WHERE a.tenant_id = $1
 `
 
-func (q *Queries) ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ApplicationSignInPolicy, error) {
+type ListAppSignInPoliciesByTenantRow struct {
+	TenantID      string
+	ApplicationID string
+	Rules         []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error) {
 	rows, err := q.db.Query(ctx, listAppSignInPoliciesByTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ApplicationSignInPolicy
+	var items []*ListAppSignInPoliciesByTenantRow
 	for rows.Next() {
-		var i ApplicationSignInPolicy
+		var i ListAppSignInPoliciesByTenantRow
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.ApplicationID,
@@ -99,15 +116,14 @@ func (q *Queries) ListAppSignInPoliciesByTenant(ctx context.Context, tenantID st
 }
 
 const upsertAppSignInPolicy = `-- name: UpsertAppSignInPolicy :exec
-INSERT INTO application_sign_in_policies (tenant_id, application_id, rules, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (tenant_id, application_id) DO UPDATE SET
+INSERT INTO application_sign_in_policies (application_id, rules, created_at, updated_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (application_id) DO UPDATE SET
   rules = EXCLUDED.rules,
   updated_at = EXCLUDED.updated_at
 `
 
 type UpsertAppSignInPolicyParams struct {
-	TenantID      string
 	ApplicationID string
 	Rules         []byte
 	CreatedAt     time.Time
@@ -116,7 +132,6 @@ type UpsertAppSignInPolicyParams struct {
 
 func (q *Queries) UpsertAppSignInPolicy(ctx context.Context, arg UpsertAppSignInPolicyParams) error {
 	_, err := q.db.Exec(ctx, upsertAppSignInPolicy,
-		arg.TenantID,
 		arg.ApplicationID,
 		arg.Rules,
 		arg.CreatedAt,

@@ -113,7 +113,7 @@ func (q *Queries) RemoveApplicationCategory(ctx context.Context, arg RemoveAppli
 const upsertApplication = `-- name: UpsertApplication :exec
 INSERT INTO applications (tenant_id, application_id, name, kind, status, icon_url, icon_object_key, launch_url, bindings, category_ids, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-ON CONFLICT (tenant_id, application_id) DO UPDATE SET
+ON CONFLICT (application_id) DO UPDATE SET
   name = EXCLUDED.name,
   kind = EXCLUDED.kind,
   status = EXCLUDED.status,

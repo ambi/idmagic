@@ -77,7 +77,7 @@ func (s *RefreshTokenStore) DeleteAllForSub(ctx context.Context, sub string) err
 
 func refreshFromRow(row *sqlcgen.GetRefreshTokenByHashRow) (*domain.RefreshTokenRecord, error) {
 	rec := &domain.RefreshTokenRecord{
-		ID: row.ID, TenantID: row.TenantID, Hash: row.Hash, FamilyID: row.FamilyID,
+		ID: row.ID, Hash: row.Hash, FamilyID: row.FamilyID,
 		ClientID: row.ClientID, UserID: row.UserID, IssuedAt: row.IssuedAt, ExpiresAt: row.ExpiresAt,
 		AbsoluteExpiresAt: row.AbsoluteExpiresAt, Revoked: row.Revoked, Rotated: row.Rotated,
 	}
@@ -109,9 +109,9 @@ func refreshInsertParams(rec *domain.RefreshTokenRecord) (sqlcgen.InsertRefreshT
 		_ = parentID.Scan(*rec.ParentID)
 	}
 	return sqlcgen.InsertRefreshTokenParams{
-		ID: rec.ID, TenantID: rec.TenantID, Hash: rec.Hash, FamilyID: rec.FamilyID,
+		ID: rec.ID, Hash: rec.Hash, FamilyID: rec.FamilyID,
 		ParentID: parentID, ClientID: rec.ClientID, UserID: rec.UserID, Scopes: scopes, IssuedAt: rec.IssuedAt,
 		ExpiresAt: rec.ExpiresAt, AbsoluteExpiresAt: rec.AbsoluteExpiresAt, Revoked: rec.Revoked, Rotated: rec.Rotated,
-		Column14: string(constraint),
+		Column13: string(constraint),
 	}, nil
 }

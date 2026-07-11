@@ -11,7 +11,8 @@ import (
 )
 
 const deleteApplicationIconsByApplication = `-- name: DeleteApplicationIconsByApplication :exec
-DELETE FROM application_icons WHERE tenant_id = $1 AND application_id = $2
+DELETE FROM application_icons i WHERE i.application_id = $2
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
 `
 
 type DeleteApplicationIconsByApplicationParams struct {
@@ -25,9 +26,9 @@ func (q *Queries) DeleteApplicationIconsByApplication(ctx context.Context, arg D
 }
 
 const getApplicationIcon = `-- name: GetApplicationIcon :one
-SELECT tenant_id, application_id, object_key, content_type, size_bytes, data, created_at, updated_at
-FROM application_icons
-WHERE tenant_id = $1 AND application_id = $2 AND object_key = $3
+SELECT a.tenant_id, i.application_id, i.object_key, i.content_type, i.size_bytes, i.data, i.created_at, i.updated_at
+FROM application_icons i JOIN applications a ON a.application_id = i.application_id
+WHERE a.tenant_id = $1 AND i.application_id = $2 AND i.object_key = $3
 `
 
 type GetApplicationIconParams struct {
@@ -36,9 +37,20 @@ type GetApplicationIconParams struct {
 	ObjectKey     string
 }
 
-func (q *Queries) GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*ApplicationIcon, error) {
+type GetApplicationIconRow struct {
+	TenantID      string
+	ApplicationID string
+	ObjectKey     string
+	ContentType   string
+	SizeBytes     int32
+	Data          []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*GetApplicationIconRow, error) {
 	row := q.db.QueryRow(ctx, getApplicationIcon, arg.TenantID, arg.ApplicationID, arg.ObjectKey)
-	var i ApplicationIcon
+	var i GetApplicationIconRow
 	err := row.Scan(
 		&i.TenantID,
 		&i.ApplicationID,
@@ -53,9 +65,9 @@ func (q *Queries) GetApplicationIcon(ctx context.Context, arg GetApplicationIcon
 }
 
 const upsertApplicationIcon = `-- name: UpsertApplicationIcon :exec
-INSERT INTO application_icons (tenant_id, application_id, object_key, content_type, size_bytes, data, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (tenant_id, application_id, object_key) DO UPDATE SET
+INSERT INTO application_icons (application_id, object_key, content_type, size_bytes, data, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (application_id, object_key) DO UPDATE SET
   content_type = EXCLUDED.content_type,
   size_bytes = EXCLUDED.size_bytes,
   data = EXCLUDED.data,
@@ -63,7 +75,6 @@ ON CONFLICT (tenant_id, application_id, object_key) DO UPDATE SET
 `
 
 type UpsertApplicationIconParams struct {
-	TenantID      string
 	ApplicationID string
 	ObjectKey     string
 	ContentType   string
@@ -75,7 +86,6 @@ type UpsertApplicationIconParams struct {
 
 func (q *Queries) UpsertApplicationIcon(ctx context.Context, arg UpsertApplicationIconParams) error {
 	_, err := q.db.Exec(ctx, upsertApplicationIcon,
-		arg.TenantID,
 		arg.ApplicationID,
 		arg.ObjectKey,
 		arg.ContentType,

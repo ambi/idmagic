@@ -10,7 +10,7 @@ import (
 
 type Querier interface {
 	GetEventDeliveryByID(ctx context.Context, eventID string) (*EventDelivery, error)
-	GetEventLogByID(ctx context.Context, eventID string) (*EventLog, error)
+	GetEventLogByID(ctx context.Context, id string) (*EventLog, error)
 	InsertEventDelivery(ctx context.Context, eventID string) error
 	InsertEventLog(ctx context.Context, arg InsertEventLogParams) error
 }

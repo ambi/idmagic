@@ -1426,15 +1426,11 @@ models:
         type: Timestamp
   RefreshTokenRecord:
     kind: entity
-    description: リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant_id / client_id / sub は同一テナントの既存 Tenant / OAuth2Client / User と整合する。
+    description: リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant は global ID の User / OAuth2Client から導出し、token 行に冗長保持しない。use case は両者の tenant-local invariant を検証する。
     identity: id
     fields:
       id:
         type: UUID
-      tenant_id:
-        type: String
-        default: default
-        description: 所属テナント ID。/token のリプレイ検出を join なしで効かせるため明示する。
       hash:
         type: String
         description: SHA-256 ハッシュ。

@@ -128,6 +128,24 @@ If the dry-run contains destructive or long-locking changes, stop and create a
 separate rollout plan. Do not add `--enable-drop` to automated production jobs
 without explicit approval for that release.
 
+### Identifier normalization rollout (wi-189)
+
+The identifier normalization changes primary keys and removes redundant tenant
+columns. Treat it as a reviewed, maintenance-window schema migration, not as a
+rolling mixed-schema deployment. Before applying the declarative schema:
+
+1. Take a verified backup and stop writers.
+2. Review the `psqldef --dry-run` DDL, including each replaced primary key and
+   foreign key.
+3. Verify that every existing `applications.application_id` is globally unique,
+   then apply the reviewed plan while writers remain stopped.
+4. Run `psqldef --check` and the application repository smoke tests before
+   reopening writes.
+
+Rollback is restore-from-backup plus redeploying the prior schema and binary.
+There is no compatibility-read period: a process using the old composite-key
+schema must not run against the normalized schema.
+
 ## Empty database bootstrap
 
 For a new PostgreSQL database, apply `postgres.sql` directly with the same

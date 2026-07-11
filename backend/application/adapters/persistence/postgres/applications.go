@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -149,14 +150,14 @@ func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, ca
 // SignInPolicyRepository は Application sign-in policy を PostgreSQL に永続化する (ADR-079)。
 type SignInPolicyRepository struct{ Pool sharedpg.DB }
 
-func signInPolicyFromRow(row *sqlcgen.ApplicationSignInPolicy) (*domain.AppSignInPolicy, error) {
+func signInPolicyFromFields(tenantID, applicationID string, rules []byte, createdAt, updatedAt time.Time) (*domain.AppSignInPolicy, error) {
 	policy := &domain.AppSignInPolicy{
-		TenantID: row.TenantID, ApplicationID: row.ApplicationID,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		TenantID: tenantID, ApplicationID: applicationID,
+		CreatedAt: createdAt, UpdatedAt: updatedAt,
 		Rules: []domain.SignInRule{},
 	}
-	if len(row.Rules) > 0 {
-		if err := json.Unmarshal(row.Rules, &policy.Rules); err != nil {
+	if len(rules) > 0 {
+		if err := json.Unmarshal(rules, &policy.Rules); err != nil {
 			return nil, err
 		}
 	}
@@ -173,7 +174,7 @@ func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationI
 	if err != nil {
 		return nil, err
 	}
-	return signInPolicyFromRow(row)
+	return signInPolicyFromFields(row.TenantID, row.ApplicationID, row.Rules, row.CreatedAt, row.UpdatedAt)
 }
 
 func (r *SignInPolicyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
@@ -183,7 +184,7 @@ func (r *SignInPolicyRepository) ListByTenant(ctx context.Context, tenantID stri
 	}
 	out := make([]*domain.AppSignInPolicy, 0, len(rows))
 	for _, row := range rows {
-		policy, err := signInPolicyFromRow(row)
+		policy, err := signInPolicyFromFields(row.TenantID, row.ApplicationID, row.Rules, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -202,7 +203,7 @@ func (r *SignInPolicyRepository) Save(ctx context.Context, policy *domain.AppSig
 		return err
 	}
 	return sqlcgen.New(r.Pool).UpsertAppSignInPolicy(ctx, sqlcgen.UpsertAppSignInPolicyParams{
-		TenantID: policy.TenantID, ApplicationID: policy.ApplicationID, Rules: encoded,
+		ApplicationID: policy.ApplicationID, Rules: encoded,
 		CreatedAt: policy.CreatedAt, UpdatedAt: policy.UpdatedAt,
 	})
 }
@@ -255,7 +256,7 @@ type ApplicationIconStore struct{ Pool sharedpg.DB }
 
 func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.ApplicationIcon) error {
 	return sqlcgen.New(s.Pool).UpsertApplicationIcon(ctx, sqlcgen.UpsertApplicationIconParams{
-		TenantID: icon.TenantID, ApplicationID: icon.ApplicationID, ObjectKey: icon.ObjectKey,
+		ApplicationID: icon.ApplicationID, ObjectKey: icon.ObjectKey,
 		ContentType: icon.ContentType, SizeBytes: int32(icon.SizeBytes), Data: icon.Data, //nolint:gosec // G115: icon size is bounded by upload limits, well under int32 max
 		CreatedAt: icon.CreatedAt, UpdatedAt: icon.UpdatedAt,
 	})
@@ -287,15 +288,10 @@ func (s *ApplicationIconStore) DeleteByApplication(ctx context.Context, tenantID
 // ApplicationAssignmentRepository は Application 割当を PostgreSQL に永続化する (wi-69)。
 type ApplicationAssignmentRepository struct{ Pool sharedpg.DB }
 
-func assignmentFromRow(row *sqlcgen.ApplicationAssignment) *domain.ApplicationAssignment {
+func assignmentFromFields(tenantID, applicationID, subjectType, subjectID, visibility string, createdAt, updatedAt time.Time) *domain.ApplicationAssignment {
 	return &domain.ApplicationAssignment{
-		TenantID:      row.TenantID,
-		ApplicationID: row.ApplicationID,
-		SubjectType:   domain.AssignmentSubjectType(row.SubjectType),
-		SubjectID:     row.SubjectID,
-		Visibility:    domain.AssignmentVisibility(row.Visibility),
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
+		TenantID: tenantID, ApplicationID: applicationID, SubjectType: domain.AssignmentSubjectType(subjectType),
+		SubjectID: subjectID, Visibility: domain.AssignmentVisibility(visibility), CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }
 
@@ -306,7 +302,7 @@ func (r *ApplicationAssignmentRepository) ListByTenant(ctx context.Context, tena
 	}
 	out := make([]*domain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, assignmentFromRow(row))
+		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
 	return out, nil
 }
@@ -320,7 +316,7 @@ func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context,
 	}
 	out := make([]*domain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, assignmentFromRow(row))
+		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
 	return out, nil
 }
@@ -340,9 +336,9 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 	}
 	// (subject_type, subject_id) のペアを UNNEST で突き合わせる。subject_id は UUID 列の
 	// ため、パラメータは text[] のまま列側を text にキャストして比較する (ADR-084)。
-	const assignmentSelect = `SELECT tenant_id,application_id,subject_type,subject_id,visibility,created_at,updated_at FROM application_assignments`
+	const assignmentSelect = `SELECT a.tenant_id,aa.application_id,aa.subject_type,aa.subject_id,aa.visibility,aa.created_at,aa.updated_at FROM application_assignments aa JOIN applications a ON a.application_id=aa.application_id`
 	rows, err := r.Pool.Query(ctx, assignmentSelect+`
- WHERE tenant_id=$1 AND (subject_type,subject_id::text) IN (
+ WHERE a.tenant_id=$1 AND (aa.subject_type,aa.subject_id::text) IN (
    SELECT subject_type, subject_id FROM UNNEST($2::text[], $3::text[]) AS s(subject_type, subject_id)
  )`, tenantID, types, ids)
 	if err != nil {
@@ -362,7 +358,7 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 
 func (r *ApplicationAssignmentRepository) Save(ctx context.Context, a *domain.ApplicationAssignment) error {
 	return sqlcgen.New(r.Pool).UpsertApplicationAssignment(ctx, sqlcgen.UpsertApplicationAssignmentParams{
-		TenantID: a.TenantID, ApplicationID: a.ApplicationID, SubjectType: string(a.SubjectType),
+		ApplicationID: a.ApplicationID, SubjectType: string(a.SubjectType),
 		SubjectID: a.SubjectID, Visibility: string(a.Visibility), CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	})
 }

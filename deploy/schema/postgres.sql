@@ -199,7 +199,6 @@ CREATE TABLE refresh_tokens (
     hash TEXT NOT NULL,
     family_id UUID NOT NULL,
     parent_id UUID,
-    tenant_id UUID NOT NULL,
     client_id UUID NOT NULL,
     user_id UUID NOT NULL,
     scopes JSONB NOT NULL,
@@ -214,8 +213,6 @@ CREATE TABLE refresh_tokens (
     CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
     CONSTRAINT refresh_tokens_parent_id_fkey
         FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,
-    CONSTRAINT refresh_tokens_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT refresh_tokens_client_fkey
         FOREIGN KEY (client_id)
         REFERENCES clients(client_id) ON DELETE RESTRICT,
@@ -225,8 +222,8 @@ CREATE TABLE refresh_tokens (
 );
 
 CREATE INDEX refresh_tokens_family_id_idx ON refresh_tokens (family_id);
-CREATE INDEX refresh_tokens_tenant_user_idx ON refresh_tokens (tenant_id, user_id);
-CREATE INDEX refresh_tokens_tenant_client_idx ON refresh_tokens (tenant_id, client_id);
+CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens (user_id);
+CREATE INDEX refresh_tokens_client_id_idx ON refresh_tokens (client_id);
 
 CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,
@@ -268,7 +265,7 @@ CREATE INDEX outbox_unpublished_idx ON outbox (id) WHERE published_at IS NULL;
 -- audit and Kafka delivery. Rows are inserted once, in the same transaction as the
 -- business mutation they record, and are never updated.
 CREATE TABLE event_logs (
-    event_id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL,
     type TEXT NOT NULL,
     classification TEXT NOT NULL
@@ -286,10 +283,10 @@ CREATE INDEX event_logs_type_idx ON event_logs (type);
 
 -- event_deliveries (ADR-094, wi-184): mutable Kafka delivery progress for
 -- classification='public_integration' event_logs rows only. No payload column;
--- the relay joins back to event_logs by event_id and publishes event_id as the
+-- the relay joins back to event_logs by id and publishes that value as event_id,
 -- consumer idempotency key.
 CREATE TABLE event_deliveries (
-    event_id UUID PRIMARY KEY REFERENCES event_logs (event_id),
+    event_id UUID PRIMARY KEY REFERENCES event_logs (id),
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'failed')),
     attempts INT NOT NULL DEFAULT 0,
     last_error TEXT,
@@ -300,7 +297,7 @@ CREATE TABLE event_deliveries (
 CREATE INDEX event_deliveries_pending_idx ON event_deliveries (event_id) WHERE status = 'pending';
 
 CREATE TABLE password_history (
-    id BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     encoded TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -485,7 +482,7 @@ CREATE TABLE authorization_detail_types (
 
 CREATE TABLE applications (
     tenant_id UUID NOT NULL,
-    application_id UUID NOT NULL,
+    application_id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     kind TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -496,13 +493,11 @@ CREATE TABLE applications (
     category_ids TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, application_id),
     CONSTRAINT applications_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE application_icons (
-    tenant_id UUID NOT NULL,
     application_id UUID NOT NULL,
     object_key TEXT NOT NULL,
     content_type TEXT NOT NULL,
@@ -510,22 +505,20 @@ CREATE TABLE application_icons (
     data BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, application_id, object_key),
+    PRIMARY KEY (application_id, object_key),
     CONSTRAINT application_icons_application_fkey
-        FOREIGN KEY (tenant_id, application_id)
-        REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
+        FOREIGN KEY (application_id)
+        REFERENCES applications (application_id) ON DELETE CASCADE
 );
 
 CREATE TABLE application_sign_in_policies (
-    tenant_id UUID NOT NULL,
-    application_id UUID NOT NULL,
+    application_id UUID PRIMARY KEY,
     rules JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, application_id),
     CONSTRAINT application_sign_in_policies_application_fkey
-        FOREIGN KEY (tenant_id, application_id)
-        REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
+        FOREIGN KEY (application_id)
+        REFERENCES applications (application_id) ON DELETE CASCADE
 );
 
 CREATE TABLE tenant_default_sign_in_policies (
@@ -538,23 +531,22 @@ CREATE TABLE tenant_default_sign_in_policies (
 );
 
 CREATE TABLE application_assignments (
-    tenant_id UUID NOT NULL,
     application_id UUID NOT NULL,
     subject_type TEXT NOT NULL,
     subject_id UUID NOT NULL,
     visibility TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, application_id, subject_type, subject_id),
+    PRIMARY KEY (application_id, subject_type, subject_id),
     CHECK (subject_type IN ('user', 'group')),
     CHECK (visibility IN ('visible', 'hidden')),
     CONSTRAINT application_assignments_application_fkey
-        FOREIGN KEY (tenant_id, application_id)
-        REFERENCES applications (tenant_id, application_id) ON DELETE CASCADE
+        FOREIGN KEY (application_id)
+        REFERENCES applications (application_id) ON DELETE CASCADE
 );
 
 CREATE INDEX application_assignments_subject_idx
-    ON application_assignments (tenant_id, subject_type, subject_id);
+    ON application_assignments (subject_type, subject_id);
 
 CREATE TABLE saml_service_providers (
     tenant_id UUID NOT NULL,

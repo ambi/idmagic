@@ -2054,13 +2054,10 @@
     "AppSignInPolicy": {
       "type": "object",
       "properties": {
-        "tenant_id": {
-          "type": "string",
-          "default": "default"
-        },
         "application_id": {
           "type": "string",
-          "format": "uuid"
+          "format": "uuid",
+          "description": "親 Application の global UUID foreign key。tenant 境界は親 Application から導出する。"
         },
         "rules": {
           "type": "array",
@@ -2079,7 +2076,6 @@
       },
       "additionalProperties": false,
       "required": [
-        "tenant_id",
         "application_id",
         "rules",
         "created_at",
@@ -2200,7 +2196,7 @@
         "application_id": {
           "type": "string",
           "format": "uuid",
-          "description": "Application 識別子。"
+          "description": "PostgreSQL の global UUID primary key。tenant_id は所属境界であり、識別子の一部ではない。"
         },
         "name": {
           "type": "string",
@@ -2302,15 +2298,10 @@
     "ApplicationAssignment": {
       "type": "object",
       "properties": {
-        "tenant_id": {
-          "type": "string",
-          "default": "default",
-          "description": "所属テナント ID。"
-        },
         "application_id": {
           "type": "string",
           "format": "uuid",
-          "description": "対象 Application。"
+          "description": "親 Application の global UUID foreign key。tenant 境界は親 Application の tenant_id と actor tenant の照合で fail-closed に検証する。"
         },
         "subject_type": {
           "$ref": "#/$defs/AssignmentSubjectType",
@@ -2332,7 +2323,6 @@
       },
       "additionalProperties": false,
       "required": [
-        "tenant_id",
         "application_id",
         "subject_type",
         "subject_id",
@@ -5239,7 +5229,7 @@
         "event_id": {
           "type": "string",
           "format": "uuid",
-          "description": "対象 EventLogRecord.event_id。"
+          "description": "対象 EventLogRecord.id。Kafka header の外部語彙 event_id と同じ UUID 値を保持する。"
         },
         "status": {
           "$ref": "#/$defs/EventDeliveryStatus"
@@ -5282,10 +5272,10 @@
     "EventLogRecord": {
       "type": "object",
       "properties": {
-        "event_id": {
+        "id": {
           "type": "string",
           "format": "uuid",
-          "description": "EventDeliveryRecord および Kafka message header の冪等キーとして安定して再利用される。"
+          "description": "event_logs の内部 primary key。Kafka message header と EventDeliveryRecord の event_id はこの値に写像される。"
         },
         "tenant_id": {
           "type": "string",
@@ -5318,7 +5308,7 @@
         "created_at": {
           "type": "string",
           "format": "date-time",
-          "description": "event_log への追記時刻 (PersistedModelTimestamps)。occurred_at とは独立。"
+          "description": "event_logs への追記時刻 (PersistedModelTimestamps)。occurred_at とは独立。"
         },
         "payload": {
           "description": "分類ごとに固定された必須属性を満たす構造化本文。PII は発行元 context の方針に従い redact / hash する。"
@@ -5326,7 +5316,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "event_id",
+        "id",
         "tenant_id",
         "type",
         "classification",
@@ -5335,7 +5325,7 @@
         "created_at",
         "payload"
       ],
-      "description": "PostgreSQL の event_log 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。\n"
+      "description": "PostgreSQL の event_logs 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。外部語彙 event_id は Kafka header と EventDeliveryRecord の参照名として維持し、その値は id に写像する。\n"
     },
     "ExpiredTokenError": {
       "type": "object",
@@ -7082,11 +7072,6 @@
           "type": "string",
           "format": "uuid"
         },
-        "tenant_id": {
-          "type": "string",
-          "default": "default",
-          "description": "所属テナント ID。/token のリプレイ検出を join なしで効かせるため明示する。"
-        },
         "hash": {
           "type": "string",
           "description": "SHA-256 ハッシュ。"
@@ -7143,7 +7128,6 @@
       "additionalProperties": false,
       "required": [
         "id",
-        "tenant_id",
         "hash",
         "family_id",
         "client_id",
@@ -7156,7 +7140,7 @@
         "expires_at",
         "absolute_expires_at"
       ],
-      "description": "リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant_id / client_id / sub は同一テナントの既存 Tenant / OAuth2Client / User と整合する。"
+      "description": "リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant は global ID の User / OAuth2Client から導出し、token 行に冗長保持しない。use case は両者の tenant-local invariant を検証する。"
     },
     "RefreshTokenReuseDetected": {
       "type": "object",

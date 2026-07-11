@@ -20,7 +20,7 @@ func (q *Queries) DeletePasswordHistoryForSub(ctx context.Context, userID string
 }
 
 const insertPasswordHistory = `-- name: InsertPasswordHistory :exec
-INSERT INTO password_history (user_id, encoded, created_at) VALUES ($1, $2, $3)
+INSERT INTO password_history (id, user_id, encoded, created_at) VALUES (gen_random_uuid(), $1, $2, $3)
 `
 
 type InsertPasswordHistoryParams struct {

@@ -91,12 +91,12 @@ glossary:
 models:
   EventLogRecord:
     kind: entity
-    identity: event_id
-    description: "PostgreSQL の event_logs 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。\n"
+    identity: id
+    description: "PostgreSQL の event_logs 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。外部語彙 event_id は Kafka header と EventDeliveryRecord の参照名として維持し、その値は id に写像する。\n"
     fields:
-      event_id:
+      id:
         type: UUID
-        description: EventDeliveryRecord および Kafka message header の冪等キーとして安定して再利用される。
+        description: event_logs の内部 primary key。Kafka message header と EventDeliveryRecord の event_id はこの値に写像される。
       tenant_id:
         type: String
         description: イベントが帰属するテナント ID。
@@ -132,7 +132,7 @@ models:
     fields:
       event_id:
         type: UUID
-        description: 対象 EventLogRecord.event_id。
+        description: 対象 EventLogRecord.id。Kafka header の外部語彙 event_id と同じ UUID 値を保持する。
       status:
         type: EventDeliveryStatus
       attempts:

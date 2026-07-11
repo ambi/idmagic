@@ -47,7 +47,6 @@ type Application struct {
 }
 
 type ApplicationAssignment struct {
-	TenantID      string
 	ApplicationID string
 	SubjectType   string
 	SubjectID     string
@@ -66,7 +65,6 @@ type ApplicationCategory struct {
 }
 
 type ApplicationIcon struct {
-	TenantID      string
 	ApplicationID string
 	ObjectKey     string
 	ContentType   string
@@ -84,7 +82,6 @@ type ApplicationOrdering struct {
 }
 
 type ApplicationSignInPolicy struct {
-	TenantID      string
 	ApplicationID string
 	Rules         []byte
 	CreatedAt     time.Time
@@ -184,7 +181,7 @@ type EventDelivery struct {
 }
 
 type EventLog struct {
-	EventID        string
+	ID             string
 	TenantID       string
 	Type           string
 	Classification string
@@ -236,7 +233,7 @@ type Outbox struct {
 }
 
 type PasswordHistory struct {
-	ID        int64
+	ID        string
 	UserID    string
 	Encoded   string
 	CreatedAt time.Time
@@ -261,7 +258,6 @@ type RefreshToken struct {
 	Hash              string
 	FamilyID          string
 	ParentID          pgtype.UUID
-	TenantID          string
 	ClientID          string
 	UserID            string
 	Scopes            []byte

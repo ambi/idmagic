@@ -33,16 +33,16 @@ func (q *Queries) GetEventDeliveryByID(ctx context.Context, eventID string) (*Ev
 }
 
 const getEventLogByID = `-- name: GetEventLogByID :one
-SELECT event_id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, created_at, payload
+SELECT id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, created_at, payload
 FROM event_logs
-WHERE event_id = $1
+WHERE id = $1
 `
 
-func (q *Queries) GetEventLogByID(ctx context.Context, eventID string) (*EventLog, error) {
-	row := q.db.QueryRow(ctx, getEventLogByID, eventID)
+func (q *Queries) GetEventLogByID(ctx context.Context, id string) (*EventLog, error) {
+	row := q.db.QueryRow(ctx, getEventLogByID, id)
 	var i EventLog
 	err := row.Scan(
-		&i.EventID,
+		&i.ID,
 		&i.TenantID,
 		&i.Type,
 		&i.Classification,
@@ -67,12 +67,12 @@ func (q *Queries) InsertEventDelivery(ctx context.Context, eventID string) error
 }
 
 const insertEventLog = `-- name: InsertEventLog :exec
-INSERT INTO event_logs (event_id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, payload)
+INSERT INTO event_logs (id, tenant_id, type, classification, actor, subject, correlation_id, occurred_at, payload)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type InsertEventLogParams struct {
-	EventID        string
+	ID             string
 	TenantID       string
 	Type           string
 	Classification string
@@ -85,7 +85,7 @@ type InsertEventLogParams struct {
 
 func (q *Queries) InsertEventLog(ctx context.Context, arg InsertEventLogParams) error {
 	_, err := q.db.Exec(ctx, insertEventLog,
-		arg.EventID,
+		arg.ID,
 		arg.TenantID,
 		arg.Type,
 		arg.Classification,

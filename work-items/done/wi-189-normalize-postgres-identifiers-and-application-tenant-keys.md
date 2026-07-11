@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-11
@@ -81,15 +81,15 @@ event_id も Kafka header の名前と永続レコードの主キー名を混同
 
 ## Tasks
 
-- [ ] T001 [SCL] OAuth2、Application、System context の identity・tenant isolation・event header
+- [x] T001 [SCL] OAuth2、Application、System context の identity・tenant isolation・event header
   mapping を更新し、導出成果物を再生成する。
-- [ ] T002 [Schema] schema と migration / rollout 方針を実装する。Application の global primary key、
+- [x] T002 [Schema] schema と migration / rollout 方針を実装する。Application の global primary key、
   child FK、RefreshToken / PasswordHistory / EventLog の列・索引・制約を更新する。
-- [ ] T003 [Persistence] SQL query、sqlc 生成物、Postgres / memory adapter、domain record を新しい
+- [x] T003 [Persistence] SQL query、sqlc 生成物、Postgres / memory adapter、domain record を新しい
   identity と FK 契約へ更新する。
-- [ ] T004 [App] Application の tenant guard と assignment subject の tenant consistency を use case /
+- [x] T004 [App] Application の tenant guard と assignment subject の tenant consistency を use case /
   repository 境界で実装し、Kafka header `event_id` の互換を確認する。
-- [ ] T005 [Verify] cross-tenant insert / read / mutation、token rotation / revocation、password history の
+- [x] T005 [Verify] cross-tenant insert / read / mutation、token rotation / revocation、password history の
   同時刻順序、event delivery / Kafka header の回帰テストを追加して全検証を通す。
 
 ## Verification
@@ -117,3 +117,32 @@ negative test を先に追加して fail-closed を固定する。
 Kafka の `event_id` は外部の冪等性契約であり、DB primary key の列名を `id` にしても値・header 名を
 変えない。既存データが存在する環境では、rename / FK 再作成の deploy 順序と rollback 可否を先に
 確定する。
+
+## Completion
+
+- **Completed At**: 2026-07-11
+- **Summary**:
+  Application の識別子を global UUID primary key に正規化し、icon、assignment、sign-in policy は
+  親 Application の foreign key のみで参照するようにした。リポジトリの tenant-scoped read / delete は
+  親 Application への join / exists guard を通し、冗長な child tenant key に依存しない fail-closed
+  境界へ変更した。RefreshToken の永続 tenant_id とその索引を除去し、EventLog の内部 primary key を
+  `id` に変更しながら、Kafka / EventDelivery の `event_id` 値は同一 UUID のまま維持した。Password
+  history は UUID primary key を DB 生成し、既存の `(user_id, created_at DESC, id DESC)` 順序を維持した。
+- **Affected Guarantees State**:
+  Application child は親の global UUID foreign key により参照整合性を維持し、tenant-scoped 操作は
+  親 tenant と actor tenant の一致を要求する。RefreshToken の tenant 所属は global User / OAuth2Client
+  から導出され、event delivery と Kafka の冪等性キーは `event_logs.id` と同じ UUID 値である。
+  既存 DB の適用は writer 停止・バックアップ・DDL review を伴う maintenance-window migration とし、
+  rollback は旧 schema / binary とバックアップの復元で行う。
+- **Verification Results**:
+  - `just yaml-check-scl` — passed
+  - `just scl-render` — passed
+  - `just sqlc-generate` — passed
+  - `just test-go` — passed
+  - `just verify` — passed
+- **Evidence**:
+  - 実行日: 2026-07-11
+  - 実行環境: ローカル開発環境
+  - 実行主体: Codex (GPT-5)
+  - 対象ソース版: main（コミット前）
+  - 保存先: 外部成果物なし。`just verify` の成功結果と本 completion に要約を記録。

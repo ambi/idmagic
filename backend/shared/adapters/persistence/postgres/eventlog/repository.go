@@ -49,7 +49,7 @@ func (r *Repository) Append(ctx context.Context, rec sharedeventlog.Record) erro
 		return err
 	}
 	return sqlcgen.New(r.db(ctx)).InsertEventLog(ctx, sqlcgen.InsertEventLogParams{
-		EventID:        rec.EventID,
+		ID:             rec.EventID,
 		TenantID:       rec.TenantID,
 		Type:           rec.Type,
 		Classification: string(rec.Classification),
@@ -81,7 +81,7 @@ func (r *Repository) FindByID(ctx context.Context, eventID string) (*sharedevent
 		return nil, err
 	}
 	return &sharedeventlog.Record{
-		EventID:        row.EventID,
+		EventID:        row.ID,
 		TenantID:       row.TenantID,
 		Type:           row.Type,
 		Classification: sharedeventlog.Classification(row.Classification),

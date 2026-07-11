@@ -6,7 +6,7 @@ ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
 -- name: InsertPasswordHistory :exec
-INSERT INTO password_history (user_id, encoded, created_at) VALUES ($1, $2, $3);
+INSERT INTO password_history (id, user_id, encoded, created_at) VALUES (gen_random_uuid(), $1, $2, $3);
 
 -- name: DeletePasswordHistoryForSub :exec
 DELETE FROM password_history WHERE user_id = $1;

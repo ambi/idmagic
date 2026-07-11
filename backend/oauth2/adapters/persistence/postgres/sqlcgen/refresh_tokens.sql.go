@@ -23,7 +23,7 @@ func (q *Queries) DeleteRefreshTokensForSub(ctx context.Context, userID string) 
 }
 
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
-SELECT id::text, tenant_id, hash, family_id::text, COALESCE(parent_id::text, '') AS parent_id, client_id, user_id,
+SELECT id::text, hash, family_id::text, COALESCE(parent_id::text, '') AS parent_id, client_id, user_id,
   scopes, issued_at, expires_at, absolute_expires_at, revoked, rotated, sender_constraint
 FROM refresh_tokens
 WHERE hash = $1
@@ -31,7 +31,6 @@ WHERE hash = $1
 
 type GetRefreshTokenByHashRow struct {
 	ID                string
-	TenantID          string
 	Hash              string
 	FamilyID          string
 	ParentID          interface{}
@@ -51,7 +50,6 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, hash string) (*GetR
 	var i GetRefreshTokenByHashRow
 	err := row.Scan(
 		&i.ID,
-		&i.TenantID,
 		&i.Hash,
 		&i.FamilyID,
 		&i.ParentID,
@@ -89,16 +87,15 @@ func (q *Queries) GetRefreshTokenRotationState(ctx context.Context, id string) (
 
 const insertRefreshToken = `-- name: InsertRefreshToken :exec
 INSERT INTO refresh_tokens (
-  id, tenant_id, hash, family_id, parent_id, client_id, user_id, scopes, issued_at,
+  id, hash, family_id, parent_id, client_id, user_id, scopes, issued_at,
   expires_at, absolute_expires_at, revoked, rotated, sender_constraint
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULLIF($14, 'null')::jsonb
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb
 )
 `
 
 type InsertRefreshTokenParams struct {
 	ID                string
-	TenantID          string
 	Hash              string
 	FamilyID          string
 	ParentID          pgtype.UUID
@@ -110,13 +107,12 @@ type InsertRefreshTokenParams struct {
 	AbsoluteExpiresAt time.Time
 	Revoked           bool
 	Rotated           bool
-	Column14          interface{}
+	Column13          interface{}
 }
 
 func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error {
 	_, err := q.db.Exec(ctx, insertRefreshToken,
 		arg.ID,
-		arg.TenantID,
 		arg.Hash,
 		arg.FamilyID,
 		arg.ParentID,
@@ -128,7 +124,7 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 		arg.AbsoluteExpiresAt,
 		arg.Revoked,
 		arg.Rotated,
-		arg.Column14,
+		arg.Column13,
 	)
 	return err
 }
