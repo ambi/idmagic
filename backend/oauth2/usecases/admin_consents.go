@@ -19,8 +19,9 @@ import (
 var ErrConsentNotFound = errors.New("consent not found")
 
 type ConsentDeps struct {
-	ConsentRepo oauthports.ConsentRepository
-	Emit        func(spec.DomainEvent)
+	ConsentRepo       oauthports.ConsentRepository
+	Emit              func(spec.DomainEvent)
+	TransactionalEmit func(spec.DomainEvent) error
 }
 
 func ListConsents(ctx context.Context, deps ConsentDeps) ([]*domain.Consent, error) {
@@ -54,8 +55,10 @@ func RevokeConsent(
 	if err := deps.ConsentRepo.Revoke(ctx, tenancy.TenantID(ctx), sub, clientID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ConsentRevokedEvent{
+	if err := emitTransactional(deps.TransactionalEmit, deps.Emit, &domain.ConsentRevokedEvent{
 		At: adminNow(now), TenantID: tenancy.TenantID(ctx), ActorUserID: actorUserID, UserID: sub, ClientID: clientID,
-	})
+	}); err != nil {
+		return err
+	}
 	return nil
 }

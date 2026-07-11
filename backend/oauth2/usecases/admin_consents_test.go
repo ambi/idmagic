@@ -115,3 +115,21 @@ func TestAdminConsents(t *testing.T) {
 		}
 	})
 }
+
+func TestRevokeConsentReturnsTransactionalEmitFailure(t *testing.T) {
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	repo := oauth2memory.NewConsentRepository()
+	if err := repo.Save(ctx, tenancydomain.DefaultTenantID, &domain.Consent{UserID: "user-1", ClientID: "client-1"}); err != nil {
+		t.Fatal(err)
+	}
+	want := errors.New("event log unavailable")
+	err := RevokeConsent(ctx, ConsentDeps{
+		ConsentRepo: repo,
+		TransactionalEmit: func(spec.DomainEvent) error {
+			return want
+		},
+	}, "admin-1", "user-1", "client-1", time.Now())
+	if !errors.Is(err, want) {
+		t.Fatalf("RevokeConsent error = %v, want transactional emitter error", err)
+	}
+}

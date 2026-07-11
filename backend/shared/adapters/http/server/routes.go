@@ -21,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/txrunner"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
@@ -246,6 +247,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:     d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
+		CommandRunner: sharedeventlog.CommandRunner{
+			Transactions:  d.TxRunner,
+			Recorder:      d.EventLogRecorder,
+			LegacyEmit:    d.Emit,
+			CorrelationID: logging.RequestIDFromContext,
+		},
 	})
 
 	audithttp.RegisterRoutes(g, audithttp.Deps{

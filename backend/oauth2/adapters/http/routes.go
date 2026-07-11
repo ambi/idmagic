@@ -15,6 +15,7 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -61,6 +62,7 @@ type Deps struct {
 	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore   authnports.WebAuthnSessionStore
 	RecoveryCodeRepo       authnports.RecoveryCodeRepository
+	CommandRunner          sharedeventlog.CommandRunner
 }
 
 // RegisterRoutes はテナント解決済みグループに oauth2 コンテキストのエンドポイントを

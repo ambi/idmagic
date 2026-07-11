@@ -10,6 +10,7 @@ import (
 
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharedeventlog "github.com/ambi/idmagic/backend/shared/eventlog"
 
 	"github.com/labstack/echo/v5"
 )
@@ -92,10 +93,14 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := oauthusecases.RevokeConsent(
-		c.Request().Context(), d.ConsentDeps(), actor.ID,
-		c.Param("sub"), c.Param("client_id"), time.Now().UTC(),
-	); err != nil {
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	err = d.CommandRunner.Run(ctx, func(command sharedeventlog.Command) error {
+		deps := d.ConsentDeps()
+		deps.TransactionalEmit = command.Emit
+		return oauthusecases.RevokeConsent(command.Context, deps, actor.ID, c.Param("sub"), c.Param("client_id"), time.Now().UTC())
+	})
+	if err != nil {
 		return d.WriteConsentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")

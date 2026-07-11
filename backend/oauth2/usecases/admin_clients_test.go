@@ -199,3 +199,24 @@ func TestAdminOAuth2Client(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateAdminOAuth2ClientReturnsTransactionalEmitFailure(t *testing.T) {
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	want := errors.New("event log unavailable")
+	_, err := CreateAdminOAuth2Client(ctx, AdminOAuth2ClientDeps{
+		ClientRepo: oauth2memory.NewClientRepository(),
+		TransactionalEmit: func(spec.DomainEvent) error {
+			return want
+		},
+	}, CreateAdminOAuth2ClientInput{
+		ActorUserID: "admin-1",
+		Registration: RegisterClientInput{
+			RedirectURIs:  []string{"https://example.com/cb"},
+			GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},
+			ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
+		},
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("CreateAdminOAuth2Client error = %v, want transactional emitter error", err)
+	}
+}

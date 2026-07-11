@@ -43,6 +43,7 @@ modules:
 
 - `backend/` と `frontend/` の成果物境界および Go entry point の配置は [ADR-092](decisions/ADR-092-backend-and-frontend-top-level-directories.md) に従う。
 - technical shared context と context-owned adapter の分離、および context 固有の永続化 adapter の同居は [ADR-070](decisions/ADR-070-technical-shared-context-for-cross-context-adapters.md) と [ADR-090](decisions/ADR-090-context-local-persistence-and-sqlc.md) に従う。
+- transaction-bound event log の command envelope は `backend/shared/eventlog` に集約し、各 context の adapter は業務 command のみを渡す（[ADR-095](decisions/ADR-095-command-envelope-for-transactional-events.md)）。
 
 ## 読む順序
 
