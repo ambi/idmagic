@@ -14025,6 +14025,15 @@
         ],
         "description": "RFC 8414 / OIDC Discovery 1.0 メタデータ。"
       },
+      "DomainEventClassification": {
+        "type": "string",
+        "enum": [
+          "public_integration",
+          "audit_only",
+          "telemetry"
+        ],
+        "description": "DomainEvent の三分類。分類が EventLog への記録要否と Kafka publish 要否を決定する。"
+      },
       "EmailChangeRequested": {
         "type": "object",
         "properties": {
@@ -14199,6 +14208,110 @@
           "metadata_exchange_uri"
         ],
         "description": "Microsoft Entra domain federation 用 profile。IssuerUri、sourceAnchor 属性、 passive / active / MEX endpoint を束ね、UPN / ImmutableID / persistent NameID の claim preset を WS-Fed RP に適用する。"
+      },
+      "EventDeliveryRecord": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "対象 EventLogRecord.event_id。"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EventDeliveryStatus"
+          },
+          "attempts": {
+            "type": "integer",
+            "description": "publish 試行回数。"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "delivered_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Kafka broker への publish 成功時刻。ack 後の relay 停止による重複配送は許容する。"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "status",
+          "attempts",
+          "updated_at"
+        ],
+        "description": "EventLogRecord 1 行を Kafka へ配送するための可変な進行状態。本文は持たず event_id で参照する。"
+      },
+      "EventDeliveryStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "delivered",
+          "failed"
+        ],
+        "description": "EventDeliveryRecord の配送状態。"
+      },
+      "EventLogRecord": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "EventDeliveryRecord および Kafka message header の冪等キーとして安定して再利用される。"
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "イベントが帰属するテナント ID。"
+          },
+          "type": {
+            "type": "string",
+            "description": "DomainEvent のワイヤ名 (例 AccessTokenIssued)。"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/DomainEventClassification"
+          },
+          "actor": {
+            "type": "string",
+            "description": "操作を実行した主体の識別子。起動時イベントなど主体を持たない場合は省略する。"
+          },
+          "subject": {
+            "type": "string",
+            "description": "操作対象の識別子 (例 対象 User の sub)。"
+          },
+          "correlation_id": {
+            "type": "string",
+            "description": "同一 HTTP request / command に属するイベントを束ねる相関 ID。"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "業務上イベントが確定した時刻。"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "event_log への追記時刻 (PersistedModelTimestamps)。occurred_at とは独立。"
+          },
+          "payload": {
+            "description": "分類ごとに固定された必須属性を満たす構造化本文。PII は発行元 context の方針に従い redact / hash する。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "tenant_id",
+          "type",
+          "classification",
+          "correlation_id",
+          "occurred_at",
+          "created_at",
+          "payload"
+        ],
+        "description": "PostgreSQL の event_log 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。\n"
       },
       "ExpiredTokenError": {
         "type": "object",
