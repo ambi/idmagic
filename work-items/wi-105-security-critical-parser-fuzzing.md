@@ -39,6 +39,22 @@ Go プロジェクト自身が stdlib のパーサをファジングしている
 - OSS-Fuzz 等外部継続ファジング基盤への登録（将来検討）。
 - プロトコル準拠テスト（WI-33 が扱う conformance CI）。
 
+## Plan
+- targetは現行実装の境界へ置く: SAML AuthnRequest/LogoutRequest/metadata/XML signature、WS-Trust SOAP、JWT/JWE/DPoP/client assertion、OAuth redirect URI/PAR/authorization_details/PKCE。HTTP server全体をfuzzして原因を曖昧にしない。
+- 各targetは「panicしない」だけでなく、parse→serialize→parseの保持、既知valid acceptance、署名/issuer/audience/destination/redirect strictness、size/depth/time上限をoracleにする。暗号署名自体をランダムinputごとに生成して速度を浪費しない。
+- corpusはSCL scenario/既存unit fixture、最小valid、過去のmalformed regression、protocol official vectorから作り、secret/実tenant dataを含めない。crash inputは最小化して通常regression testへ昇格する。
+- PR CIは各targetのseed replayと短時間fuzz、nightlyはtargetごとの時間budget、週次は長時間/raceを回す。Go version/corpus/artifact hashを記録し、failure artifactを信頼できないinputとして扱う。
+- XML/entity expansion、JWT segment、JSON nesting、URL length等のpre-parse body limitもtargetに含め、OOM/hangをprocess timeoutだけに頼らずguardで防ぐ。
+
+## Tasks
+- [ ] T001 [Matrix] parser function、trust boundary、existing fixture、oracle、max size/depth/timeをtarget matrixにし、重複targetを除く。
+- [ ] T002 [XML] SAML request/logout/metadata/signatureとWS-Trust envelopeのfuzz target/corpus/resource guardを追加する。
+- [ ] T003 [JWT/Crypto] JWT/JWE、DPoP、private_key_jwt/client assertionのstructure/claim verifier targetとalgorithm-confusion corpusを追加する。
+- [ ] T004 [OAuth Input] redirect URI、authorization_details/PAR、PKCE、form/query parserのtargetとroundtrip/strict-match oracleを追加する。
+- [ ] T005 [Regression] crash/mismatchをminimizeしてnamed regression testへ保存するhelper/recipeを追加し、corpus provenanceを記録する。
+- [ ] T006 [CI] seed replay、PR短時間、nightly budget、weekly race workflowとartifact retention/timeoutを追加する。
+- [ ] T007 [Verify/Docs] 全targetを固定seedで再現し、panic/OOM/hang/valid rejectionのtriage・security disclosure手順を記載する。
+
 ## Verification
 - `just test-go-race`
 - `just test-go-fuzz ./internal/saml/... 30s`

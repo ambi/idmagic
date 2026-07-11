@@ -47,6 +47,21 @@ branding を追加する。任意 CSS / HTML 差し込みは injection 面が大
 - email テンプレートのブランディング (別途検討)。
 - i18n / 多言語ブランディング文言。
 
+## Plan
+- Tenant aggregate に `Branding` value（display name、logo asset reference、primary/accent colors、support URL、login message）を置き、realm path で tenant 解決後に public read model を返す。CSS/HTML/JSの任意入力は受け付けない。
+- logo は Application icon の [[ADR-073-application-icon-upload-storage]] と同じ validated blob storage/magic-byte/size/content-type/nosniff 方針を再利用するが、asset ownership/key は tenant branding と分ける。
+- color は構文だけでなく foreground/background contrast を検証し、未設定/不正/asset欠損では system defaultへ落とす。branding failure で login endpoint を停止させない。
+- auth shell、account portal、email template の順に同じ public branding DTO を使用する。admin console 自体の業務画面配色は tenant branding で変えず、realm identity の表示だけに留める。
+- cache は tenant branding version/ETag で無効化し、cross-tenant/CDN cache key 混同を防ぐ。
+
+## Tasks
+- [ ] T001 [SCL] tenancy の Branding/Asset、public read/admin update/upload/delete interfaces、validation/invariants/scenarios を追加して再生成する。
+- [ ] T002 [Domain/Persistence] constrained Branding value、version、tenant repository fields と asset reference migration を実装する。
+- [ ] T003 [Asset] application icon storageを抽象化してtenant branding logo adapterを追加し、magic byte/size/nosniffを共通contract testする。
+- [ ] T004 [HTTP] public realm branding + ETag、admin update/logo routes、権限/tenant resolution/cache header を追加する。
+- [ ] T005 [UI/Email] auth/account shell と email template に safe tokenized theme を適用し、admin preview/editor を追加する。
+- [ ] T006 [Verify] XSS/CSS injection、contrast、broken asset、ETag invalidation、realm切替、default fallback、visual/a11y regression を検証する。
+
 ## Verification
 - `just test-go`
 - `just lint-go`

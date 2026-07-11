@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-126-async-job-runner]
 status: pending
 authors: ["tn"]
 risk: medium
@@ -38,6 +38,22 @@ created_at: 2026-07-03
 - 継続同期 ([[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]])。
 - export (既存の account data export とは別物)。
 - 巨大ファイルの非同期 / ストリーミング処理、スケジュール実行。
+
+## Plan
+- [[ADR-094-transactional-event-log-and-audit-projection]] がCSV全件処理を単一transaction外と明記するため、upload/stage、parse+dry-run、confirm、chunk apply、resultの状態機械にする。HTTP request内で全件適用しない。
+- core runtimeは [[wi-126-async-job-runner]] を完了前提として利用する。wi-126未完了の同期fallbackを本番機能として作らず、必要なら depends_onを更新して着手順を固定する。
+- CSV schemaはversion、UTF-8/BOM、header、最大bytes/rows/field length、user attributes/groups、create/update modeを明示する。password/hashをimportせず、初期password設定/招待は別の安全なrequired actionにする。
+- dry-runで全行を正規化・validateし、row number、stable error code、masked inputを結果に保存する。confirm時はupload digestとdry-run versionを照合し、差し替えを防ぐ。
+- applyは行/chunk idempotency keyで再実行可能にし、Identity Management create/update、group membership、password policy、quotaを既存use case経由で適用する。all-or-nothingではなく行結果を確定する。
+
+## Tasks
+- [ ] T001 [Dependency/ADR] wi-126 Job contract、blob staging/retention、partial-success/idempotency、CSV schema versionを確定する。
+- [ ] T002 [SCL] UserImport lifecycle、row/result models、Upload/Preview/Confirm/GetResult interfaces、events/limits/invariants/scenariosを追加して再生成する。
+- [ ] T003 [Parser] streaming CSV parser、header/version/encoding/size/row/field validationとsafe error rendererを実装しfuzz testを追加する。
+- [ ] T004 [Staging] tenant-scoped upload/result storage、digest/TTL、job repository referencesとcleanupを実装する。
+- [ ] T005 [Jobs] dry-run handlerとchunked apply handlerを実装し、Identity Management/group/quota use case、row/chunk idempotency、progress/cancelを接続する。
+- [ ] T006 [HTTP/UI] template download、upload、mapping/preview、confirm、progress、masked error/result CSVを追加する。
+- [ ] T007 [Verify] malformed/CSV injection/oversize、duplicate rows、concurrent update、retry after crash、partial failure/cancel、tenant blob swapを検証する。
 
 ## Verification
 - `just test-go`

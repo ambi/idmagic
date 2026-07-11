@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain]
 status: pending
 authors: ["tn"]
 risk: high
@@ -41,6 +41,20 @@ k8s SA token / クラウド federation token) を検証し、
 - SPIRE server / agent の同梱・運用 (idmagic は relying party / federation 側)。
 - X.509-SVID (mTLS) ベースの bootstrap (まず JWT、X.509 は将来)。
 - Transaction Tokens による内部サービス間伝播 (将来 WI、Txn-Tokens draft)。
+
+## Plan
+- [[ADR-053-workload-identity-federation-for-agent-runtimes]] の suggested decision を、実装済み Agent credential binding と RFC 8693 token exchange に合わせて accepted にする。idmagic 自身が SPIRE server/node attestor を再実装せず、信頼済み workload issuer の JWT-SVID/X.509-SVID を検証して Agent principal へ交換する。
+- tenant-scoped trust bundle は trust domain、issuer/JWKSまたはCA、許可 SPIFFE ID pattern、束縛 agent_id、最大 token TTL を保持する。SPIFFE ID 文字列だけで agent を自動作成せず、事前登録済み binding を必須にする。
+- JWT-SVID は署名・audience・exp・sub、X.509-SVID は chain・SAN URI・key usage・revocation/expiry を検証する。検証結果を subject token として既存 token exchange use case に渡し、requested audience/RAR を downscope する。
+- bundle refresh は last-known-good と期限を持ち、期限切れ/ambiguous match/disabled agent は fail-closed。発行 access token は短命で、wi-58 の kill/revocation signal を introspection/denylist に接続可能にする。
+
+## Tasks
+- [ ] T001 [ADR/SCL] ADR-053 の supported SVID、trust/binding model、exchange contract、events/invariants/scenarios を確定して再生成する。
+- [ ] T002 [Domain] WorkloadTrustBundle と AgentWorkloadBinding を実装し、pattern overlap、tenant uniqueness、disabled lifecycle をテストする。
+- [ ] T003 [Verification Adapters] JWT-SVID verifier と X.509-SVID verifier、bundle cache/refresh を実装し、alg/chain/SAN/audience/clock skew を検証する。
+- [ ] T004 [Usecase] verified workload identity を既存 token exchange/actor chain/RAR downscope に接続し、agent status と audience policy を再評価する。
+- [ ] T005 [Admin] trust bundle/binding CRUD、metadata refresh/test と credential 非表示の管理 API を追加する。
+- [ ] T006 [Verify] SPIRE fixture を用いた交換、spoofed SPIFFE ID、expired bundle/SVID、binding collision、kill 後の拒否、tenant 越境を検証する。
 
 ## Verification
 - `just test-go`

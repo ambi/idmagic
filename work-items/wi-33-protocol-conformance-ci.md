@@ -35,6 +35,22 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 - 全ブラウザ E2E。SPA E2E は `wi-22`。
 - SAML conformance。SAML WI の後続で扱う。
 
+## Plan
+- 対象を OIDC Core authorization-code、OAuth 2.0 基本 endpoint、FAPI 2.0 Security Profile smoke に分ける。外部 conformance suite の全 certification を PR ごとに回すのではなく、ローカル deterministic test、PR smoke、夜間 full suite の三段階にする。
+- suite は `just` recipe から disposable stack と専用 realm/client/user を seed し、公開 issuer URL が必要な場合だけ CI service/tunnel を使う。固定 client secret や管理者 token を repository/artifact に残さない。
+- expected failure は protocol、test ID、根拠 ADR/SCL、owner、expiry を持つ allowlist とし、未知 failure と解消済み allowlist の残存を CI failure にする。
+- conformance が見つけた製品契約差異は本 WI 内で場当たり修正せず、先に該当 context SCL を変更してから実装する。suite wrapper と結果正規化だけを本 WI の恒久資産にする。
+
+## Tasks
+- [ ] T001 [Matrix] 現行 discovery metadata、grant、PAR/DPoP/FAPI 実装を suite test ID に対応付け、PR/nightly 対象と既知 gap を一覧化する。
+- [ ] T002 [Harness] disposable stack の起動、realm/client/user seed、issuer TLS、cleanup、結果取得を行う recipe と wrapper を追加する。
+- [ ] T003 [OIDC/OAuth] Core/OAuth smoke profile を設定し、machine-readable result を JUnit/JSON artifact に正規化する。
+- [ ] T004 [FAPI] FAPI profile の必要 certificate/key/redirect/PAR 設定を CI secret から注入し、対象 test を夜間 workflow に組み込む。
+- [ ] T005 [Exceptions] test ID・根拠・期限付き allowlist validator を実装し、未知 failure/期限切れ/予期せぬ pass を失敗させる。
+- [ ] T006 [SCL Follow-up] suite で判明した外部契約差異ごとに該当 SCL 節を更新し、実装修正と regression test を追加する。
+- [ ] T007 [CI/Docs] PR smoke/nightly workflow、artifact retention、failure triage とローカル再現手順を記載する。
+- [ ] T008 [Verify] clean environment で連続実行し、seed 衝突・secret 漏洩・flaky test がないことを確認する。
+
 ## Verification
 - `just test-go`
 - `just lint-go`

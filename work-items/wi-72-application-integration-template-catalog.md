@@ -44,6 +44,21 @@ Okta Integration Network も Entra ID のアプリギャラリーも、よく使
 - SAML SP テンプレート本体 ([[wi-29-saml2-idp]] 実装後に binding 種別を追加)。
 - Application 本体・割当 ([[wi-69-application-catalog-aggregate-and-assignment]])。
 
+## Plan
+- [[ADR-064-protocol-contexts-and-application-catalog]] と [[ADR-066-application-as-single-editor-surface]] に従い、template は Application Catalog の seed capability とし、OAuth2/SAML/WS-Fed の別々の作成 UI を復活させない。
+- catalog entry は stable key/version、表示 metadata、application kind、protocol binding blueprint、入力 field schema/default/validation、documentation URL を持つ。secret、tenant ID、実 client/RP ID は含めない。
+- catalog 自体は versioned static artifact から開始し、tenant override/marketplace は scope 外にする。template 更新は既に作成済み Application を自動変更せず、作成時の template key/version を provenance として記録する。
+- instantiate は field validation→Application create→protocol binding provisioning を既存 application provisioning use case の transaction/compensation semantics で実行し、OIDC secret は既存契約どおり一度だけ返す。
+- UI は browse/search/category/details/configure/review の wizard とし、protocol advanced editor は作成後の Application editor に委ねる。
+
+## Tasks
+- [ ] T001 [SCL] ApplicationTemplate/FieldSchema/BindingBlueprint、List/Get/Instantiate interfaces、provenance/invariants/scenarios を追加して再生成する。
+- [ ] T002 [Catalog] versioned static catalog format、schema validator、duplicate key/version check と初期 OIDC/SAML/WS-Fed/weblink/service entries を追加する。
+- [ ] T003 [Usecase] template input を既存 CreateApplication/ProvisionBinding command に変換し、失敗時 compensation と一回 secret response を実装する。
+- [ ] T004 [HTTP] list/search/get/instantiate endpoint、category/filter、template version conflict error を追加する。
+- [ ] T005 [UI] gallery/detail/configure/review wizard と作成後 Application editor への遷移、一回 secret 表示を実装する。
+- [ ] T006 [Verify] 全 template の schema fixture、version provenance、invalid field、protocol provisioning rollback、tenant permission と snapshot/accessibility を検証する。
+
 ## Verification
 - `just test-go`
 - `just lint-go`

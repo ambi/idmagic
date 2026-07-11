@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-51-rich-authorization-requests-agent-scopes]
 status: pending
 authors: ["tn"]
 risk: medium
@@ -40,6 +40,20 @@ discovery / DCR を整備し、エージェントと MCP クライアントが i
 - MCP サーバー (ツール側) 実装そのもの (idmagic は認可サーバー / metadata 提供側)。
 - Cross-App Access / Enterprise-Managed Authorization 拡張 ([[wi-57-cross-app-access-identity-assertion-grant]])。
 - MCP transport (stdio / HTTP streaming) の実装。
+
+## Plan
+- [[ADR-055-mcp-authorization-server]] を正本に、既存 OAuth2 authorization server の RFC 8414 metadata、PKCE、PAR、Resource Indicators、RAR、token exchange を再利用する。MCP 専用 token issuer/consent store は作らない。
+- MCP Resource Server を Application/service binding として登録し、canonical resource URI、allowed scopes、authorization_details schema、audience policy を所有させる。Protected Resource Metadata から authorization server を発見できるようにする。
+- authorization request/token exchange の `resource` を必須 audience に変換し、access token の `aud` と scope/RAR を対象 MCP server に限定する。MCP server 側が issuer/audience を検証できる metadata/introspection contract を提供する。
+- Dynamic Client Registration は既存 RegisterClient contract の policy-controlled profile とし、software statement/redirect URI/client type 制約を満たさない登録を拒否する。Enterprise-managed authorization policy は admin が resource/client/agent 単位で設定する。
+
+## Tasks
+- [ ] T001 [ADR/SCL] ADR-055 を現行 OAuth2 interfacesへ確定し、MCP resource registration、metadata、resource-bound authorization/consent/policy scenarios を追加して再生成する。
+- [ ] T002 [Application] MCP resource binding と canonical resource URI uniqueness、allowed scope/RAR schema、enterprise policy を実装する。
+- [ ] T003 [Metadata] RFC 9728 Protected Resource Metadata と既存 RFC 8414/OIDC metadata の MCP 必須項目を tenant prefix 付きで公開する。
+- [ ] T004 [OAuth2] authorize/PAR/token/token-exchange で resource indicator を検証し、audience-bound token と consent を発行する。
+- [ ] T005 [Registration/Admin] constrained dynamic registration と MCP resource/client policy 管理 API を実装する。
+- [ ] T006 [Interop/Verify] MCP SDK/client/server fixture で discovery→PKCE→token→resource access を通し、wrong resource/audience、scope escalation、public-client secret、tenant 混同を検証する。
 
 ## Verification
 - `just test-go`

@@ -42,6 +42,21 @@ created_at: 2026-07-03
 - 汎用ポリシー言語 (Rego / Cedar 等) の導入。
 - cross-tenant delegation。
 
+## Plan
+- 既存roles/effective group roleはcoarse global/tenant roleなので維持し、`DelegatedAdminAssignment` を principal、permission set、resource scope、expiryとして追加する。role名を増やすだけでscopeを表現しない。
+- 初期resource scopeはtenant内のgroup subtree/explicit groups、applications set、user attribute条件のうち実装可能な閉集合をADRで確定する。任意式は採らず、scope evaluatorをresource typeごとに型付けする。
+- authorizationは既存admin permission gateで「操作種別」を確認後、full adminなら許可、delegated assignmentなら対象resource scopeを評価する。list/searchも同じscopeでfilterし、detail/mutationだけ制限して存在を漏らす構成にしない。
+- assignment管理はfull admin専用で自己昇格、委任の再委任、system/global resourceを禁止する。expiry/revoke後はsession cacheを更新し、監査にassignment ID/versionとscope decisionを残す。
+- UI navigation/count/exportもscope済みAPIだけを使い、権限外resourceへのリンクや総件数を表示しない。
+
+## Tasks
+- [ ] T001 [ADR/SCL] 初期scope種類、permission集合、list filtering、再委任禁止を決定し、assignment/interfaces/events/invariants/scenariosを再生成する。
+- [ ] T002 [Domain] typed ResourceScope、Assignment lifecycle/expiry、scope evaluatorとfull-admin/delegated decision合成を実装する。
+- [ ] T003 [Persistence] assignment repository/index、group/application reference integrity、revoke/versionをmemory/PostgreSQLへ追加する。
+- [ ] T004 [Authorization] user/group/application/audit等Scope記載resourceのlist/get/mutation policyとquery filterを順次接続する。
+- [ ] T005 [Management UI] full-admin専用assignment CRUD、principal/permission/scope picker、effective access previewを追加する。
+- [ ] T006 [Verify] list count/ID enumeration、scope移動/削除、expiry/cache、自己昇格/再委任、複数assignment合成、tenant越境を検証する。
+
 ## Verification
 - `just test-go`
 - `just lint-go`

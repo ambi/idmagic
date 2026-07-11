@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-52-ciba-async-human-approval, wi-58-continuous-access-evaluation-agent-revocation, wi-184-transactional-event-log-foundation]
 status: pending
 authors: ["tn"]
 risk: medium
@@ -41,6 +41,22 @@ rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]]) を持つが、エ
 - 課金・コスト計測基盤そのものの構築 (予算上限の評価フックの提供まで)。
 - 異常検知エンジン ([[wi-58-continuous-access-evaluation-agent-revocation]] のシグナル源)。
 - SIEM への外部エクスポート (まず内部監査・検索)。
+
+## Plan
+- [[ADR-058-agent-governance-guardrails-audit-inventory]] を、既存 Agent aggregate/admin UI、token `agent_id`/`act`、RAR、kill 操作へ合わせて accepted にする。Agent の第二正本は作らず、governance は policy と cross-context read model を所有する。
+- guardrail は agent/owner/application/resource ごとの allowed action/RAR、rate/budget、delegation depth、human-approval requirement を versioned policy として保持し、token issue/exchange と brokered action の前に AuthZEN 形式で評価する。
+- threshold 超過は deny または wi-52 CIBA approval-required に分岐する。wi-52 未完了時は approval-required を暗黙 allow にせず拒否する。
+- inventory は Agent event、credential binding、token exchange、authorization decision、kill/revocation event を wi-184 event log から投影し、agent→owner→client→recent actor chain→effective policy を検索できるようにする。
+- audit detail は correlation/request ID、policy version、decision reason、actor chain ID を持ち、token/RARの機密値は schema-approved 要約だけ保存する。
+
+## Tasks
+- [ ] T001 [ADR/SCL] ADR-058 の policy language、evaluation points、CIBA fallback、inventory/events/permissions/scenarios を確定して再生成する。
+- [ ] T002 [Domain] GuardrailPolicy、version、decision/reason と inventory projection model を実装する。
+- [ ] T003 [Persistence] policy repository と event-log cursor/read-model tables を追加し、rebuild/idempotent projection を実装する。
+- [ ] T004 [Enforcement] token issue/exchange、agent credential、brokered action に evaluator を接続し、Agent status/RAR/actor chain/rate result を合成する。
+- [ ] T005 [CIBA/Revocation] approval-required を wi-52へ、emergency deny/kill を wi-58へ接続し、依存未提供時の fail-closed path をテストする。
+- [ ] T006 [Admin UI] agent detail に owner/client/effective guardrail/recent delegation/decision/kill を統合し、検索/filter と専用権限を追加する。
+- [ ] T007 [Verify] policy version race、depth/rate超過、approval fallback、projection rebuild、missing event、PII masking、tenant isolation を検証する。
 
 ## Verification
 - `just test-go`

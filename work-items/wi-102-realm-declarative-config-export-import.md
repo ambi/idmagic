@@ -41,6 +41,22 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 - 秘密鍵・パスワード・client secret 平文の export。
 - 双方向リアルタイム同期。
 
+## Plan
+- [[ADR-032-tenant-as-first-class-aggregate]] と [[ADR-064-protocol-contexts-and-application-catalog]] の所有境界を保ち、Tenancyが全設定を直接更新せず、context別exporter/importer portをorchestrateする。manifestはtop-level realm identity/versionとcontext sectionから成る。
+- export対象をtenant settings、attribute schema、groups/roles、Applications+protocol bindings/policies、upstream/provisioning metadata等のScope記載集合に固定する。users、consents、sessions、audit/events、secret/private key、generated IDsは除外またはlogical referenceにする。
+- manifest JSON Schema/versionを公開し、stable logical keyでsection間参照を解決する。secretは`${secretRef}`等のopaque referenceだけを許し、export/import response/logに値を出さない。
+- importはparse/schema validate→reference graph/cycle→current snapshotとのredacted semantic diff→plan→explicit applyの二段階にする。context順序はtenant→schema→groups/roles→applications→bindings/policiesで、各commandは既存use case/permission/eventを通す。
+- applyはmanifest digest+operation keyで再実行可能にし、全realm巨大transactionではなくdependency stageごとにcheckpointする。失敗後のresume/compensateと削除policy（default preserve、explicit prune）を明示する。
+
+## Tasks
+- [ ] T001 [Inventory/ADR] context別export対象/除外/secretRef/logical key、merge/prune、transaction/checkpoint semanticsを決定する。
+- [ ] T002 [SCL/Schema] RealmManifest/Plan/Operation/Result、Export/PlanImport/Apply interfaces/events/invariantsを追加しJSON Schemaと派生物を生成する。
+- [ ] T003 [Context Ports] tenancy/identity/application/oauth2/saml/wsfederation等にcanonical export DTOとvalidate/apply command adapterを追加する。
+- [ ] T004 [Planner] version migration、reference graph、redacted semantic diff、dependency order、manifest digest/idempotencyを実装する。
+- [ ] T005 [Executor] stage checkpoint/resume、existing usecase経由apply、explicit prune、failure result/compensationを実装する。
+- [ ] T006 [HTTP/CLI] streamed export、plan upload、review/apply/statusとGitOps向けnoninteractive commandをjust recipe経由で追加する。
+- [ ] T007 [Verify] export→empty realm import→re-export、version upgrade、rename/reference、partial resume、prune、cross-tenant/secret injection、redactionを検証する。
+
 ## Verification
 - `just test-go-race`
 - `just lint-go`

@@ -32,6 +32,24 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 - Hybrid Azure AD Join のデバイス登録対応。Okta 同様の既知制約として未提供 (ADR-065)。
 - Entra Connect (オンプレ同期) の同梱。sourceAnchor の供給はオンプレ側責務とする。
 
+## Plan
+- depends_on の wi-61〜65 が完了してから開始する純粋な外部検証 WI とし、製品コード変更を Tasks に含めない。未完の wi-65 が完了するまでは passive/active/metadata/domain profile だけを先行 rehearsal できるが、本 WI は完了にしない。
+- 検証用 Entra tenant、verified test domain、test users、sourceAnchor、federation certificate を専用化し、Global Administrator 操作と domain federation 切替は時間窓・承認者・rollback command を記録する。
+- Microsoft Graph/Entra の現在の federation 設定を開始前に export し、idmagic metadata/profile の issuer/passive/active/MEX/certificate と機械的に比較する。credential・domain・実 user PII は evidence 本文に埋めない。
+- シナリオを passive browser、WS-Trust usernamemixed/MEX、metadata refresh/cert、複数domain routing、domain-joined SPNEGO に分け、各々 correlation ID、idmagic audit、Entra sign-in log、token claim 要約を証跡にする。
+- 失敗は environment/configuration/product defect に triage し、製品修正は SCL-first の別 WI に切り出す。最後に元の managed/federated 設定へ必ず rollback して確認する。
+
+## Tasks
+- [ ] T001 [Gate] wi-61〜65 の completion/verification を確認し、未完機能を試験結果の代替で済ませない。
+- [ ] T002 [Safety] Entra tenant/domain/user/sourceAnchor/certificate、管理権限、実施窓、連絡先、現在設定 export と rollback 手順を peer review する。
+- [ ] T003 [Metadata] idmagic metadata/MEX と Entra 登録値の issuer、URL、token type、certificate を比較し、refresh/rotation を確認する。
+- [ ] T004 [Passive] browser sign-in と wrong realm/reply/sourceAnchor negative case を実行し、UPN/ImmutableID/persistent NameID と両側 log を採取する。
+- [ ] T005 [Active] WS-Trust usernamemixed/MEX から M365 token acquisition までを実行し、invalid To/Action/credential の fail-closed を確認する。
+- [ ] T006 [Routing] 複数 verified domain が各 profile/issuerUriへ解決され、別 tenant/domain に混線しないことを確認する。
+- [ ] T007 [Silent SSO] domain-joined test machine から SPNEGO→passive flow を実行し、fallback と未提供 Hybrid Join 診断も確認する。
+- [ ] T008 [Evidence/Restore] version、時刻、主体、手順、要約値、artifact hash を記録し、設定を rollback して managed/federated 状態とサインインを再確認する。
+- [ ] T009 [Triage] product defect は該当 SCL節・再現証跡を付けた別 WI として起票し、本 WI の手順書に既知の落とし穴を反映する。
+
 ## Verification
 - 手動 (実テナント): test Entra テナントの検証済みドメインを idmagic に federation 設定し、 ブラウザサインイン (passive) が成功し、token に UPN / ImmutableID が含まれることを確認する。
 - 手動 (実テナント): rich client / active 認証 (WS-Trust) で Microsoft 365 にサインインできることを確認する。

@@ -39,6 +39,22 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 - 外部設定サービス（Consul / etcd 等）連携。
 - 既存の環境変数キー名の一斉改名（互換維持を優先）。
 
+## Plan
+- 現在API serverと`backend/relay/config.go`等に散在する`os.Getenv`/default/parseをinventoryし、process別`APIConfig`/`RelayConfig`と共有`PersistenceConfig`/`HTTPConfig`/`ObservabilityConfig`へ集約する。domain/usecaseへconfig packageを持ち込まない。
+- sourceはenvironmentをproduction正本、明示config fileをlocal/deploy補助、compiled defaultを安全な値とし、precedenceを固定する。unknown key検出はfileで厳格、environmentはprefix allowlistを検査する。
+- field metadataとしてname/type/default/required/secret/process/description/example/deprecationをcodeに一度定義し、loader/validator/reference generatorが共有する。secret valueはerror、dump、reference、startup logで常にredactする。
+- single-field parse後にruntime cross-field validation（postgres_valkeyにはDB+Valkey必須、TLS組合せ、issuer URL、timeout/body limit、OTel exporter等）を行い、network listenerやmigration開始前に全errorをまとめて返す。
+- 旧environment名は期限付きalias/deprecation warningを経て削除し、compose/workflow/deploy manifestとREADMEを同一変更で移行する。
+
+## Tasks
+- [ ] T001 [Inventory/ADR] 全entry point/env read、default、secret、deploy consumerを一覧化し、source precedence、unknown/deprecation、redactionを決定する。
+- [ ] T002 [Config Core] typed field metadata、env/file/default loader、parse error aggregation、secret wrapper/redacted formattingを実装する。
+- [ ] T003 [Validation] process別configとpersistence/TLS/issuer/timeout/OTel等のcross-field validatorを実装し、listener生成前に呼ぶ。
+- [ ] T004 [Migration] API、relay、今後のworker/rotator entry pointを順次loaderへ移し、直接`os.Getenv`を禁止するarchitecture test/lintを追加する。
+- [ ] T005 [Generation] field metadataからMarkdown reference、example env/config schemaを生成するjust recipeと生成差分checkを追加する。
+- [ ] T006 [Deploy/Docs] compose、CI、deployment examples、READMEを新名称へ移行しdeprecated aliasの削除期日を記載する。
+- [ ] T007 [Verify] missing/malformed/unknown/conflicting values、all runtime modes、secret redaction snapshot、generated reference freshnessを検証する。
+
 ## Verification
 - `just test-go-race`
 - `just lint-go`

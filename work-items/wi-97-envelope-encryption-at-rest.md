@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-126-async-job-runner]
 status: pending
 authors: ["tn"]
 risk: high
@@ -48,6 +48,23 @@ fail-closed な復号を実現する。署名鍵そのものの鍵管理は
 - Postgres TDE / ディスク暗号化 (インフラ層の責務)。
 - 転送時暗号化 (既存 TLS)。
 - フルの BYOK / customer-managed key の管理 UI (将来拡張)。
+
+## Plan
+- 署名用KeyStore/Vault Transitはsign/verify用途なのでDEK wrapへ流用せず、`EnvelopeCrypto` port（GenerateDataKey/Wrap/Unwrap/Encrypt/Decrypt）をshared technical adapterに追加する。providerはKMS/Vault Transit等を差し替え可能にする。
+- tenantごとにversioned wrapped DEKを保持し、record encryptionはAEAD（nonce、ciphertext、tag、key version）とAAD `(tenant, context, table, record id, field)` を固定する。ciphertextのtenant/table間copyで復号できないようにする。
+- 初期対象をScope記載のclient/provider secret、SMTP/connector credential、sensitive user attributes等にinventoryし、fieldごとにowner context repositoryでencrypt/decryptする。domain model全体をreflectionで暗号化しない。
+- rotationは新DEKをactiveにしてnew writeを切替え、旧version decryptを保ちながらbackground re-encryption jobを再開可能に進める。全参照が移行するまで旧DEKをdestroyしない。
+- migrationはdual-read（encrypted優先、legacy plaintext fallback）→backfill→plaintext write停止→検証→plaintext列除去の段階導入にし、ログ/error/event/backupからplaintextを排除する。
+
+## Tasks
+- [ ] T001 [Inventory/ADR] 暗号化対象field/owner、provider/AEAD、AAD、DEK cache/fail mode、rotation/destroy、backup recoveryを決定する。
+- [ ] T002 [SCL] encryption objectives、TenantDataKey lifecycle、rotate/health interfaces、key-loss/fail-closed invariantsを追加して再生成する。
+- [ ] T003 [Crypto] EnvelopeCrypto port、provider adapter、AEAD envelope format、zeroization/cacheを実装しknown-answer/tamper/AAD testsを追加する。
+- [ ] T004 [Key Persistence] wrapped tenant DEK/version/status repository、bootstrap/rotate/disable use caseをmemory/PostgreSQLへ実装する。
+- [ ] T005 [Repositories] 対象contextを一つずつdual-read/writeへ移行し、plaintextをevent/log/error DTOへ渡さないcontract testを追加する。
+- [ ] T006 [Migration Job] resumable backfill/re-encryption、per-field progress/checkpoint、verification queryと旧key destroy gateを実装する。
+- [ ] T007 [Operations] provider config validation、system key health/rotation status、runbook/backup restore手順を追加する。
+- [ ] T008 [Verify] ciphertext swap/tamper、wrong tenant/AAD/key version、provider outage/restart、rotation中read/write、log/DB/backup plaintext scanを検証する。
 
 ## Verification
 - `just test-go`

@@ -44,6 +44,21 @@ created_at: 2026-06-21
 - SMS による電話番号検証の実送信 (検証コード生成までで、配信は通知 WI)。
 - 連絡先を使った step-up / 通知 ([[wi-43-account-portal-step-up-auth]] / 通知 WI)。
 
+## Plan
+- `User` の primary email/phone を直接増殖させず、Identity Management 所有の `RecoveryContact`（kind、normalized value、verified_at、status）として1:N管理する。ログイン識別子・通知先・recovery 手段の役割を混同しない。
+- [[ADR-042-end-user-account-portal-scope]] と [[ADR-043-account-portal-csrf-and-step-up]] に従い、追加、再送、verify、primary化、削除を account portal の step-up + CSRF 対象にする。最後の利用可能な recovery contact 削除ルールは既存 MFA/recovery code と合成する。
+- verification challenge は contact/action/browser transaction/tenant/user/TTL に束縛した hash のみを保存し、一回消費にする。email は [[ADR-035-smtp-email-sender-adapter]] の EmailSender、電話は provider port だけ定義し、本 WI で vendor 固定しない。
+- verified secondary email の login alias/recovery利用は tenant policy で別々に opt-in し、未検証値はどちらにも使わない。値重複の許否と account enumeration 応答を SCL invariant にする。
+
+## Tasks
+- [ ] T001 [SCL] identity-management/authentication に RecoveryContact、challenge lifecycle、self-service interfaces、step-up、alias/recovery policy、events/scenarios を追加して再生成する。
+- [ ] T002 [Domain] contact normalization、状態遷移、重複/最後の手段 invariant と verification challenge model を実装する。
+- [ ] T003 [Persistence] contact/challenge の memory/PostgreSQL repository、tenant/user key、hash/TTL index と migration を追加する。
+- [ ] T004 [Usecases] add/send/verify/resend/remove/set-primary を実装し、EmailSender/phone sender、clock、token generator、audit outbox を注入する。
+- [ ] T005 [Authentication] verified contact の alias/recovery lookup を tenant policy 下で既存 login/password-reset flow に接続し、uniform response を維持する。
+- [ ] T006 [Account HTTP/UI] step-up/CSRF 付き endpoint、masked list、追加・確認コード・削除画面を追加する。
+- [ ] T007 [Verify] Unicode/phone normalization、重複、token replay/expiry、送信失敗、最後の回復手段、tenant 越境と account enumeration を検証する。
+
 ## Verification
 - `just test-go`
 - `just lint-go`

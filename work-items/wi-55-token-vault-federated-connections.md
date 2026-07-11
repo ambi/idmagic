@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-97-envelope-encryption-at-rest]
 status: pending
 authors: ["tn"]
 risk: high
@@ -42,6 +42,22 @@ scope で絞って仲介する Token Vault を導入する。
 - 各 provider 固有 API のラッパー / SDK 同梱。
 - エージェントの外部 API 呼び出しそのもののプロキシ実装 (token 仲介まで)。
 - 暗号鍵管理の新設 (既存 KMS / KeyStore を流用)。
+
+## Plan
+- [[ADR-054-token-vault-for-agent-third-party-access]] に従い、login 用 upstream federation（wi-30）とは別に、Agent が外部 API を代理利用する `FederatedConnection` と user consent/grant を所有する context を作る。
+- connector 定義（authorization/token endpoint、client credential reference、allowed scopes/resources）と user connection（external subject、encrypted token set、expiry、status）を分離する。access/refresh token は [[wi-97-envelope-encryption-at-rest]] の crypto port を使える設計にし、それ以前の実装では production persistence を有効化しない。
+- Agent は raw token の read API を持たず、vault の `ExecuteAuthorizedRequest` または短命の handle 経由で外部 API を呼ぶ。actor chain、agent status、RAR、user grant、target host/path/method を毎回再評価する。
+- OAuth callback は state/PKCE/redirect を tenant/user/connector に束縛し、refresh は single-flight と refresh-token rotation を扱う。invalid_grant は connection を reauthorization-required に遷移させる。
+- outbound HTTP は connector allowlist、DNS/IP/redirect 制限、response size/time limit を持ち、token・response body を監査へ保存しない。
+
+## Tasks
+- [ ] T001 [Dependency/ADR] ADR-054 を確定し、wi-97 crypto port の利用条件、raw-token非公開、proxy allowlist、refresh failure semantics を固定する。
+- [ ] T002 [SCL/Architecture] connection/connector/grant lifecycle、authorize/callback/execute/revoke interfaces、events/invariants を追加し、新 context を ARCHITECTURE に同期する。
+- [ ] T003 [Domain/Persistence] Connector、FederatedConnection、ExternalGrant、encrypted TokenSet repository と tenant/user/connector key を実装する。
+- [ ] T004 [OAuth Client] PKCE/state 付き authorization、callback code exchange、single-flight refresh、reauthorization transition を実装する。
+- [ ] T005 [Broker] Agent/actor/RAR policy を評価する execute use case と hardened outbound HTTP adapter を実装し、raw token response を禁止する。
+- [ ] T006 [Account/Admin UI] connector 管理、user consent/connect/revoke、agent 利用履歴を追加する。
+- [ ] T007 [Verify] state replay、refresh race/rotation、SSRF/redirect、scope escalation、killed agent、暗号文tenant swap、監査の秘密非露出を検証する。
 
 ## Verification
 - `just test-go`

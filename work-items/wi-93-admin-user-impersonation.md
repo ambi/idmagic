@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-43-account-portal-step-up-auth, wi-44-authentication-event-store-and-search]
 status: pending
 authors: ["tn"]
 risk: high
@@ -40,6 +40,21 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
 - 恒久的な delegated access ([[wi-94-delegated-administration]] とは別)。
 - cross-tenant impersonation。
 - impersonation 中のパスワード / MFA 変更・アカウント削除。
+
+## Plan
+- 既に authentication SCL/events に `ImpersonationStarted/Ended` があるため語彙を再利用し、通常admin sessionとは別の `ImpersonationSession` を発行する。元actor sessionを保持し、subject sessionへroleをコピーしない。
+- 開始は専用permission、step-up、ticket/reason、短いTTLを必須にし、self、system_admin、同等以上privilege、別tenant、disabled/deleted userを拒否する。対象userのeffective roleをそのまま上限とする。
+- portal OIDC token/sessionに `act`/impersonator claimとsession typeを載せ、全backend authorization/auditがactorとsubjectを分離して受け取る。token exchangeのdelegation/impersonationとは操作目的が異なるため混同しない。
+- frontendは全画面固定banner、対象/actor、残り時間、終了操作を表示し、危険操作（role変更、impersonation開始、secret/key管理等）はimpersonated sessionから禁止する。
+- start/end/expiryと実行操作のauditはADR-046に従い短縮・PII masking対象外の必須証跡とし、本人へのsecurity notification（wi-90）を接続する。
+
+## Tasks
+- [ ] T001 [SCL] 既存eventsを核にsession model、Start/End interfaces、permission/prohibited-actions/invariants/scenariosを追加して再生成する。
+- [ ] T002 [Domain/Persistence] ImpersonationSession、actor/subject/original session、TTL/end reasonとrepositoryを実装する。
+- [ ] T003 [Usecases] step-up/target privilege/reasonを検証するstart、idempotent end/expire、notification/auditを実装する。
+- [ ] T004 [OIDC/Authz] portal session/tokenのactor claim解決と、shared policy contextのactor/subject分離、禁止action gateを実装する。
+- [ ] T005 [Admin UI] user detailの開始dialog、全route固定banner/timeout、元sessionへ戻る終了導線を追加する。
+- [ ] T006 [Verify] self/system-admin/cross-tenant拒否、role変化中session、token refresh、expiry/end replay、危険操作、audit/notificationをE2E検証する。
 
 ## Verification
 - `just test-go`

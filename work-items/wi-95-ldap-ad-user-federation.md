@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-126-async-job-runner]
 status: pending
 authors: ["tn"]
 risk: high
@@ -83,6 +83,22 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
   ([[wi-65-kerberos-spnego-inbound-silent-sso]])。
 - ネストを含むグループの完全同期（初期は明示した最小限のグループ・属性に留める）。
 - outbound provisioning (SCIM は [[wi-31-scim2-provisioning]] / [[wi-45-outbound-scim-provisioning]])。
+
+## Plan
+- SaaS APIから閉域LDAPへ直接接続させず、outbound-poll型の `idmagic-directory-connector` processを新規deploy unitとし、idmagicとの通信は短命のconnector credential/mTLSで行う。このprocess追加をADRとARCHITECTUREに記録する。
+- server側はtenant-scoped DirectoryConnection、attribute/group mapping、sync cursor、external object linkを所有する。connectorへ暗号化済みbind secretを返さず、閉域側secret storeから参照するbootstrap方式を採る。
+- initial full sync→paged delta sync→disable/delete reconciliationを分離し、`(connection, external objectGUID/entryUUID)`を不変linkにする。rename/DN変更を新規userと誤認しない。
+- inbound SCIMのIdentity Management use case/soft-delete policyを再利用し、LDAP固有属性やgroup nestingはconnector adapterでcanonical commandへ変換する。conflictは自動上書きせずquarantineにする。
+- password bindによるinteractive federationはprovisioning syncと別trust boundaryなので初期scopeを明確化し、含める場合もraw passwordをserver/event/logへ残さない。
+
+## Tasks
+- [ ] T001 [ADR/Architecture] connector deployment/trust/secret/bootstrap、sync保証、interactive auth範囲を決定しARCHITECTUREを同期する。
+- [ ] T002 [SCL] DirectoryConnection、cursor/link/quarantine lifecycle、connector/admin interfaces/events/invariants/scenariosを追加して再生成する。
+- [ ] T003 [Server Domain] connection/mapping/link/sync batch use caseとmemory/PostgreSQL repositoryを実装し、Identity Management commandsへ接続する。
+- [ ] T004 [Connector] LDAPS/StartTLS、paged search、AD DirSyncまたはmodifyTimestamp cursor、objectGUID/entryUUID、nested group解決を実装する。
+- [ ] T005 [Transport/Security] connector registration、credential rotation、mTLS/short-lived token、batch upload/ack/resumeを実装する。
+- [ ] T006 [Admin UI] setup bundle、mapping、connection test、sync status/error/quarantine/retryを追加する。
+- [ ] T007 [Verify] Samba/OpenLDAP fixtureでfull/delta/rename/delete/group nesting、TLS failure、cursor replay、conflict、secret非露出、tenant越境を検証する。
 
 ## Verification
 - `just test-go`

@@ -48,6 +48,21 @@ opt-out 設定を追加する。
 - admin がテンプレートを編集する機能 (ブランディング / 別 WI)。
 - 位置情報 (GeoIP) に基づく詳細なリスクスコアリング。
 
+## Plan
+- depends_on の wi-6 EmailSender と wi-44 AuthenticationEvent store/search を入力にし、認証 transaction 内でSMTP送信しない。wi-184 の durable event log→notification projector→delivery outbox の順で非同期化する。
+- event catalog を new sign-in、password/email/MFA/recovery変更、session revoke、impersonation に限定し、severity、dedup window、mandatory/user-configurable、templateを versioned policy とする。impersonation/credential removal等の高危険通知は opt-out不可にする。
+- 宛先は event 発生時の verified primary/security contact snapshot reference を解決し、変更された新アドレスだけに通知しない。delivery payload/ログにIP全文・token・credential値を入れず、既存 salted location/device summary を使う。
+- user preference は account portalで管理するが mandatory eventを無効化できない。メールの「心当たりがない」リンクは認証不要で状態変更せず、安全な security review/login 導線へ送る。
+- retry/dead-letter は EmailSender error classに従い、認証成功自体は巻き戻さない。delivery statusと元event correlationを監査可能にする。
+
+## Tasks
+- [ ] T001 [Catalog/SCL] 対象 authentication events、severity/mandatory/dedup、preference/delivery models/interfaces/events/scenarios を追加して再生成する。
+- [ ] T002 [Projection] durable event log cursorから NotificationIntent を冪等生成し、recipient snapshot rule と dedup keyを実装する。
+- [ ] T003 [Persistence/Worker] preference、intent/delivery state、retry/dead-letter repository と email delivery workerを実装する。
+- [ ] T004 [Templates] event別subject/body、安全なdevice/location summary、branding/i18n token、security review URLを追加する。
+- [ ] T005 [Account API/UI] mandatory表示付き preference と notification history/security review 導線を追加する。
+- [ ] T006 [Verify] event catalog全件、duplicate/replay、SMTP一時/恒久障害、email変更競合、mandatory opt-out拒否、PII/secret非露出を検証する。
+
 ## Verification
 - `just test-go`
 - `just lint-go`

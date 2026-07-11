@@ -29,6 +29,23 @@ created_at: 2026-07-05
 - 個別のバックエンド/フロントエンドのテストコードの実装自体（これは `wi-129` や `wi-130` で段階的に実装する）。
 - 静的コード解析（linter）のルール自体の厳格化。
 
+## Plan
+- 現在`just test-go-cover`とfrontend unit coverage、`.github/workflows/idmagic-ci.yaml`は存在するが、report生成と閾値gate/成果物管理が分離している。まずbaselineをpackage/layer別に計測し、generated code・command bootstrap等の除外根拠を固定する。
+- repository全体のline coverage単一値ではなく、Go context domain/usecases/adapters、frontend presentation/hooks/api、変更差分coverage、critical packageの最低値を組み合わせる。高い既存coverageを低い全体thresholdで相殺しない。
+- 初回gateは現在baseline以下に退行しない値から導入し、段階的target/dateをpolicyに置く。例外はpackage/path、根拠、owner、expiryを持ち、CI設定の手編集で恒久除外しない。
+- unit coverageだけでなく`just yaml-check`、race、PostgreSQL contract、UI E2E/conformance等のrequired check matrixを変更種類に対応付ける。ただし重いnightly checkを全PRの無条件blockにはしない。
+- local/CIは同じjust recipeとpinned tool versionを使い、coverage artifactはsource commit、tool version、commandを記録する。生成された`frontend/coverage`や`.gocache`をworktreeに残さない。
+
+## Tasks
+- [ ] T001 [Baseline] clean worktreeでGo/UI coverageをpackage/path別に取得し、generated/fixture/bootstrap除外候補と現行CI check時間/flakinessを記録する。
+- [ ] T002 [Policy] layer/critical package/diff thresholds、段階target、test pyramid、exception owner/expiry、required/nightly check matrixを文書化する。
+- [ ] T003 [Go Tooling] coverprofileを正規化・mergeしpackage/layer thresholdと除外を検証するjust recipeを追加する。
+- [ ] T004 [UI Tooling] Vitest coverage JSONからpath group/diff thresholdを検証し、coverage出力をtmp/artifactへ隔離するrecipeを追加する。
+- [ ] T005 [Exceptions] machine-readable exception file/schemaとexpiry/unknown path validatorを実装し、減少理由をCI summaryへ出す。
+- [ ] T006 [CI] PR required checks、nightly race/integration/E2E、coverage summary/artifact、base branch比較をworkflowへ追加する。
+- [ ] T007 [Guardrail Tests] threshold未満、期限切れ例外、generated-only変更、new package 0%、base report欠落をfixtureで意図的に失敗させる。
+- [ ] T008 [Verify/Rollout] current baselineでgreen、意図的退行でred、local/CI数値一致を確認し、段階引上げ日程と運用手順を記載する。
+
 ## Verification
 - `just verify` がローカルで正常に実行され、カバレッジが検証されること。
 - `AGENTS.md` や `GEMINI.md` にテストポリシーに関する記載が正しく追加されていること。

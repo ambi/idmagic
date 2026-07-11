@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-6-real-email-sender-adapter]
 status: pending
 authors: ["tn"]
 risk: medium
@@ -48,6 +48,21 @@ self-service registration を標準機能として持つ:
 - CAPTCHA / bot mitigation ([[wi-27-endpoint-rate-limit-and-bot-mitigation]])。
 - 招待ベースのオンボーディング (invite flow)。
 - progressive profiling / 多段の追加属性収集。
+
+## Plan
+- registration は Identity Management の User 作成能力を再利用するが、未検証 user を先に作らず `PendingRegistration` を Authentication が所有する。tenant policy が disabled の realm では route 自体を発見可能にしても一律拒否する。
+- request は normalized email、tenant、terms/policy version、TTL、one-time token hash を保持する。応答は既存 user/新規 request/重複 request で均一化し、wi-27 の endpoint limiter と既存 login throttle の correlation hash を再利用する。
+- email verify 成功時だけ、Identity Management の create-user command、password policy/HIBP/history、default group/required action を1 transactionで適用する。既存 user と競合した場合は account を上書きせず recovery 導線へ送る。
+- tenant policy は allowed email domain、admin approval requirement、default groups、initial authentication method を持つ。admin approval を有効にした場合は Verified→PendingApproval→Activated の状態を追加する。
+- frontend は realm-aware signup→check-email→verify→password/enrollment→login の導線を既存 auth shell/branding 上に置き、管理 UI は tenant settings で policy を編集する。
+
+## Tasks
+- [ ] T001 [SCL] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/invariants/scenarios を追加して再生成する。
+- [ ] T002 [Domain/Store] registration/token model、normalization、memory/ValkeyまたはPostgreSQL store、TTL/one-time consume を実装する。
+- [ ] T003 [Usecases] start/resend/verify/approve/expire を EmailSender、limiter、password policy、Identity Management user creationへ接続する。
+- [ ] T004 [HTTP] realm-scoped signup/verify endpoints と uniform response、CSRF/browser transaction、secure cookie を追加する。
+- [ ] T005 [UI] signup/check-email/expired/approval/complete 画面と tenant policy 管理を追加する。
+- [ ] T006 [Verify] existing/disabled/deleted user、domain policy、token replay/expiry、concurrent verify、default group、enumeration/load を検証する。
 
 ## Verification
 - `just test-go`

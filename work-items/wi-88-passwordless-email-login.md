@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-6-real-email-sender-adapter]
 status: pending
 authors: ["tn"]
 risk: medium
@@ -47,6 +47,21 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 - passwordless-only テナントポリシー (password を無効化する強制)。
 - WebAuthn / passkey ([[wi-26-webauthn-passkey-and-recovery-codes]])。
 - step-up での email factor 利用 (初期は first-factor login に限定)。
+
+## Plan
+- magic link と email OTP は `EmailLoginChallenge` の delivery/verification variant とし、tenant policy で一方または両方を許可する。challenge は login transaction、normalized verified email、user、TTL、attempt count に束縛する。
+- OTP/token は hash のみを Valkey shared state に保存し、一回消費・再送時旧challenge失効にする。開始応答と送信時間は user 存在/状態で差を出さず、EmailSender と wi-27 limiter を使う。
+- magic link が別 browser で開かれた場合は token だけで完了させず、短い code confirmation または元 browser との transaction binding を要求して forwarding/phishing の被害を抑える。
+- 成功結果の `amr=email` と `acr` を明示し、Application sign-in policy が MFA/step-up を要求する場合は既存 second-factor flow へ進める。passwordless を WebAuthn と同じ phishing-resistant 強度に扱わない。
+- account disabled/deleted、email変更、password/credential global revoke で未消費 challenge を無効化する。
+
+## Tasks
+- [ ] T001 [SCL] EmailLoginChallenge states、tenant method policy、Start/Complete interfaces、amr/acr、events/invariants/scenarios を追加して再生成する。
+- [ ] T002 [Domain/Store] challenge、OTP/token hash、attempt/resend/expiry と memory/Valkey adapter を実装する。
+- [ ] T003 [Usecases] uniform start、EmailSender template、magic-link/OTP consume、login session handoff、credential-change revoke を実装する。
+- [ ] T004 [HTTP/UI] realm-aware email start、check-email、OTP入力、cross-browser confirmation、expired/restart 導線を追加する。
+- [ ] T005 [Policy] `amr=email` を Application/tenant sign-in policy と second-factor selection に接続する。
+- [ ] T006 [Verify] replay/resend race、forwarded link、brute force、enumeration timing、disabled user、MFA-required app、multi-replica を検証する。
 
 ## Verification
 - `just test-go`
