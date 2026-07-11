@@ -237,6 +237,151 @@ models:
       attributes:
         type: "UserAttributeDef[]"
         description: 新しい custom 定義一覧。空配列で全削除。
+  TenantBrandingAssetKind:
+    kind: enum
+    description: TenantBranding が持つ画像アセットの種別。
+    values:
+      - Logo
+      - Favicon
+  TenantBranding:
+    kind: entity
+    description: "テナント単位の hosted UI ブランディング設定 (wi-89, ADR-096)。Tenant 集約には埋め込まず、\nTenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で\n独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら\n「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。\n色・リンク・テキストは限定トークンのみを受け付け、任意 CSS / HTML は構造的に受け付けない。\n"
+    identity: tenant_id
+    fields:
+      tenant_id:
+        type: String
+        description: 所属テナント ID。
+      product_name:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 80
+        description: sign-in 画面等に出す表示名。空文字列は未設定を意味し、システム既定 (IdMagic) を表示する。
+      logo_object_key:
+        type: String
+        optional: true
+        description: テナント境界内に保存されたロゴ画像 object の opaque key。管理者は直接入力せず UploadTenantBrandingAsset (kind=Logo) を経由する。
+      logo_url:
+        type: String
+        optional: true
+        description: IdP が保存済みロゴから生成する内部配信 URL。
+      favicon_object_key:
+        type: String
+        optional: true
+        description: テナント境界内に保存された favicon 画像 object の opaque key。UploadTenantBrandingAsset (kind=Favicon) を経由する。
+      favicon_url:
+        type: String
+        optional: true
+        description: IdP が保存済み favicon から生成する内部配信 URL。
+      primary_color:
+        type: String
+        optional: true
+        constraints:
+          - pattern: "^#[0-9a-fA-F]{6}$"
+        description: "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。既定の背景/前景に対する WCAG AA コントラスト比 (4.5:1) を満たさない値は保存時に拒否する。"
+      accent_color:
+        type: String
+        optional: true
+        constraints:
+          - pattern: "^#[0-9a-fA-F]{6}$"
+        description: "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。primary_color と同じコントラスト検証を行う。"
+      support_url:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 2048
+          - pattern: "^https://"
+        description: サポート / ヘルプリンク。https scheme のみ許可する allowlist。
+      legal_url:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 2048
+          - pattern: "^https://"
+        description: 利用規約 / プライバシー等の法務リンク。https scheme のみ許可する allowlist。
+      footer_text:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 280
+        description: footer に表示する補足テキスト (著作権表示等)。プレーンテキストとして描画側の既定エスケープでのみ表示する。
+      created_at:
+        type: Timestamp
+      updated_at:
+        type: Timestamp
+        description: 更新のたびに進む。公開レスポンスの version / ETag として使う。
+  TenantBrandingResponse:
+    kind: value_object
+    description: "GetTenantBranding / UpdateTenantBranding / asset upload・削除が返す公開安全な projection。\n未設定フィールドはシステム既定を表す (クライアント側で `IdMagic` 等のデフォルトに解決する)。\n"
+    fields:
+      product_name:
+        type: String
+        optional: true
+      logo_url:
+        type: String
+        optional: true
+      favicon_url:
+        type: String
+        optional: true
+      primary_color:
+        type: String
+        optional: true
+      accent_color:
+        type: String
+        optional: true
+      support_url:
+        type: String
+        optional: true
+      legal_url:
+        type: String
+        optional: true
+      footer_text:
+        type: String
+        optional: true
+      updated_at:
+        type: Timestamp
+        optional: true
+        description: branding が一度でも設定されていれば version / ETag として使う。未設定なら省略する。
+  TenantBrandingUpdateRequest:
+    kind: value_object
+    description: 管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。
+    fields:
+      product_name:
+        type: String
+        optional: true
+      primary_color:
+        type: String
+        optional: true
+      accent_color:
+        type: String
+        optional: true
+      support_url:
+        type: String
+        optional: true
+      legal_url:
+        type: String
+        optional: true
+      footer_text:
+        type: String
+        optional: true
+  TenantBrandingUploadResponse:
+    kind: value_object
+    description: 画像アセットのアップロードまたは削除後の branding 表現。
+    fields:
+      branding:
+        type: TenantBrandingResponse
+  TenantBrandingUpdated:
+    kind: event
+    description: テナント内 admin が branding (テキスト / 色 / リンク / 画像アセット) を更新した。
+    payload:
+      occurredAt:
+        type: Timestamp
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      changedFields:
+        type: "String[]"
   TenantCreateRequest:
     kind: value_object
     description: "管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。"
@@ -543,6 +688,105 @@ interfaces:
         method: PUT
         path: /api/admin/tenant/user_attribute_schema
         request_form: body
+  GetTenantBranding:
+    description: "解決済みテナントの hosted UI ブランディングを取得する公開 interface。認証を要求しない\n(login / consent / device 画面が未認証のうちに読む)。branding 未設定・値不正・アセット欠損の\nいずれでもシステム既定にフォールバックし、常に成功する。対象テナントは realm 解決 (ResolveTenant)\nで既に確定しているため入力を取らない。\n"
+    output:
+      branding:
+        type: TenantBrandingResponse
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/branding
+  UpdateTenantBranding:
+    description: "テナント内 admin が自身のテナントの branding (製品名 / 色 / サポートリンク / 法務リンク /\nフッターテキスト) を更新する。画像アセットは別 interface で扱う。色は hex 形式とコントラスト比、\nリンクは https scheme のみを use case 側で検証し、満たさない値は拒否する。\n"
+    input:
+      request:
+        type: TenantBrandingUpdateRequest
+    output:
+      branding:
+        type: TenantBrandingResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - TenantBrandingUpdated
+    bindings:
+      - kind: http
+        method: PUT
+        path: /api/admin/tenant/branding
+        request_form: body
+  UploadTenantBrandingAsset:
+    description: 管理者が branding のロゴまたは favicon 画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。
+    input:
+      kind:
+        type: TenantBrandingAssetKind
+      file:
+        type: String
+    output:
+      response:
+        type: TenantBrandingUploadResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - TenantBrandingUpdated
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/tenant/branding/assets/{kind}"
+        request_form: form
+  DeleteTenantBrandingAsset:
+    description: 管理者が branding の保存済みロゴまたは favicon を削除する。削除後は該当アセットの URL を返さない。
+    input:
+      kind:
+        type: TenantBrandingAssetKind
+    output:
+      response:
+        type: TenantBrandingUploadResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - TenantBrandingUpdated
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/tenant/branding/assets/{kind}"
+  GetTenantBrandingAsset:
+    description: "保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。Content-Type は検証済み\n形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は\n未存在として扱う。\n"
+    input:
+      kind:
+        type: TenantBrandingAssetKind
+      object_key:
+        type: String
+    output:
+      file:
+        type: String
+    errors:
+      - InvalidRequestError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: "/tenant-branding-assets/{kind}/{object_key}"
+invariants:
+  TenantBrandingSafeTokens:
+    description: "TenantBranding の色 / リンク / テキストは限定トークンのみを許容する。色は `#rrggbb` かつ\n既定の背景/前景に対する WCAG AA コントラスト比 (4.5:1) を満たし、リンクは https scheme のみ、\nテキストは長さ上限内のプレーンテキストのみを保存できる。\n反例: 任意 CSS 宣言や `javascript:` リンク、非 https リンクが branding として保存される。\n"
+    target: TenantBranding
+    always: branding_persisted implies (colors_valid_and_contrast_ok and links_https_only and text_within_length_limits)
+  TenantBrandingSafeAssetServing:
+    description: TenantBranding のロゴ / favicon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
+    target: TenantBranding
+    always: branding_asset_uploaded implies (content_type in ["image/png","image/jpeg","image/webp","image/gif"] and size_bytes <= 262144 and response_nosniff == true)
+  TenantBrandingAssetTenantIsolation:
+    description: TenantBranding のロゴ / favicon は tenant_id + kind + object_key で参照し、別テナントの object は同じ key でも取得できない。
+    target: TenantBranding
+    always: branding_asset_served implies request.tenant_id == asset.tenant_id
+  TenantBrandingFailsOpen:
+    description: "GetTenantBranding は branding 未設定・値不正・アセット欠損のいずれでも例外を投げず\nシステム既定にフォールバックする。hosted login / consent / device の各エンドポイントは\nbranding 解決の失敗によって停止しない。\n反例: 不正な branding 設定が login エンドポイント自体を 500 で落とす。\n"
+    target: TenantBranding
+    never: branding_resolution_failed and login_endpoint_unavailable
 permissions:
   AdminTenantsManage:
     description: テナントの作成・更新・無効化・再有効化・一覧取得。system_admin ロールに限定する。
@@ -558,6 +802,11 @@ permissions:
     description: "所属テナントの管理設定を更新する。tenant 内 admin に解放し、設定対象は\nactor.tenant_id に固定する。password_policy_override は global\nPasswordPolicy より弱い場合 use case 側で reject する。\n"
     actor: User
     resource: Tenant
+    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+  BrandingUpdate:
+    description: "所属テナントの hosted UI branding (テキスト / 色 / リンク / 画像アセット) を更新する。\ntenant 内 admin に解放し、設定対象は actor.tenant_id に固定する。閲覧 (GetTenantBranding /\nGetTenantBrandingAsset) は presentational のみのため public とし、permission を設けない。\n"
+    actor: User
+    resource: TenantBranding
     allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
   管理者は監査ログを期間で絞り込み参照・エクスポートできる:
@@ -597,6 +846,38 @@ scenarios:
       - condition: default テナントの無効化を試みる
         steps:
           - default テナントの disable は InvalidRequestError で拒否される
+  管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に反映される:
+    goal: 管理者がテナントのロゴ・配色・サポートリンクを設定し、未認証の login 画面がそれを表示する。
+    primary_actor: Administrator
+    scope: Tenancy
+    level: user_goal
+    preconditions:
+      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の branding 設定を開いている"
+    main_success:
+      - "管理者 \"operator\" が PNG ロゴをアップロードする"
+      - "管理者 \"operator\" が primary_color / accent_color / support_url / footer_text を設定する"
+      - 未認証の利用者が login 画面を開く
+      - login 画面に設定したロゴ・配色・サポートリンク・フッターテキストが表示される
+  不正な branding 入力は拒否されシステム既定にフォールバックする:
+    goal: XSS / open redirect につながる branding 入力を構造的に拒否し、login エンドポイントを止めない。
+    primary_actor: Administrator
+    scope: Tenancy
+    level: user_goal
+    preconditions:
+      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の branding 設定を開いている"
+    main_success:
+      - "管理者 \"operator\" が branding を一度も設定していないテナントで login 画面を開く"
+      - login 画面はシステム既定 (IdMagic) のブランディングを表示する
+    extensions:
+      - condition: "管理者 \"operator\" が support_url に javascript: スキームを指定して保存を試みる"
+        steps:
+          - InvalidRequestError で拒否され保存されない
+      - condition: "管理者 \"operator\" がコントラスト比を満たさない primary_color を指定して保存を試みる"
+        steps:
+          - InvalidRequestError で拒否され保存されない
+      - condition: 管理者が SVG ファイルをロゴとしてアップロードしようとする
+        steps:
+          - InvalidRequestError で拒否され保存されない
   リクエストのテナントは realm prefix から解決される:
     goal: HTTP リクエストの realm prefix から対象テナントを解決する。
     primary_actor: OAuth2Client

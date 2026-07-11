@@ -13,6 +13,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
+	"github.com/ambi/idmagic/backend/shared/mediavalidation"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -234,27 +235,22 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserI
 	return &updated, nil
 }
 
+// DetectApplicationIconContentType は backend/shared/mediavalidation の magic byte
+// 判定に委譲し、Application icon 固有のエラー値にマップする (wi-89, ADR-096: Tenant
+// branding asset と検証ロジックを共有する)。
 func DetectApplicationIconContentType(data []byte) (string, error) {
-	if len(data) == 0 {
-		return "", ErrApplicationIconRequired
-	}
-	if len(data) > MaxApplicationIconBytes {
-		return "", ErrApplicationIconTooLarge
-	}
+	contentType, err := mediavalidation.DetectImageContentType(data, MaxApplicationIconBytes)
 	switch {
-	case len(data) >= 8 &&
-		data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G' &&
-		data[4] == '\r' && data[5] == '\n' && data[6] == 0x1a && data[7] == '\n':
-		return "image/png", nil
-	case len(data) >= 3 && data[0] == 0xff && data[1] == 0xd8 && data[2] == 0xff:
-		return "image/jpeg", nil
-	case len(data) >= 12 && string(data[0:4]) == "RIFF" && string(data[8:12]) == "WEBP":
-		return "image/webp", nil
-	case len(data) >= 6 && (string(data[0:6]) == "GIF87a" || string(data[0:6]) == "GIF89a"):
-		return "image/gif", nil
-	default:
+	case errors.Is(err, mediavalidation.ErrImageRequired):
+		return "", ErrApplicationIconRequired
+	case errors.Is(err, mediavalidation.ErrImageTooLarge):
+		return "", ErrApplicationIconTooLarge
+	case errors.Is(err, mediavalidation.ErrImageFormat):
 		return "", fmt.Errorf("%w", ErrApplicationIconFormat)
+	case err != nil:
+		return "", err
 	}
+	return contentType, nil
 }
 
 type AttachBindingInput struct {

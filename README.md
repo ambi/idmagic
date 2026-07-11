@@ -21,7 +21,7 @@ and a foundation for identity platform experiments.
   federation presets.
 - Multi-tenant identity model with realm-scoped routes, per-tenant signing keys,
   admin console, account portal, groups, roles, application catalog, consent
-  management, and audit views.
+  management, audit views, and per-tenant hosted login/account branding.
 - Adapter-oriented runtime: in-memory local mode, PostgreSQL, Valkey, Kafka
   outbox relay, OpenTelemetry, SMTP, AuthZEN, and Vault Transit signing.
 - React admin/account/auth UI built with Vite, TanStack Router, Tailwind CSS,
@@ -137,6 +137,31 @@ adapters are selected with environment variables:
 | `WEBAUTHN_RP_ORIGINS` | comma-separated origins | Allowed browser origins for WebAuthn ceremonies, e.g. `http://localhost:5173` |
 | `WEBAUTHN_RP_DISPLAY_NAME` | display name | WebAuthn relying-party display name shown by authenticators |
 | `SKIP_DEMO_SEED` | `true` | disable demo seed data |
+
+### Tenant Branding
+
+Tenant admins can customize the hosted login / consent / device / account
+portal surfaces from Admin Console → Settings → Branding (ADR-096): product
+name, logo, favicon, primary/accent colors, a support link, a legal link, and
+footer text. This is intentionally a *safe subset*, not a general theming
+system:
+
+- Colors are limited to two `#rrggbb` tokens injected only as CSS custom
+  properties (`--tenant-brand-primary` / `--tenant-brand-accent`); arbitrary
+  CSS/HTML/JS is never accepted. Colors are also validated against a minimum
+  WCAG AA contrast ratio (4.5:1) at save time.
+- Links (support / legal) accept `https://` only; other schemes
+  (`javascript:`, `data:`, plain `http://`) are rejected.
+- Logo/favicon uploads reuse the same validated-blob pipeline as Application
+  icons (ADR-073): PNG/JPEG/WebP/GIF only, verified by magic byte (not file
+  extension or declared content-type), 256 KiB max, no SVG. Delivery
+  responses pin `Content-Type` and set `X-Content-Type-Options: nosniff`.
+- An unconfigured or partially-configured tenant falls back to IdMagic's
+  default branding; a branding read failure never blocks the login endpoint.
+- The admin console's own UI chrome is unaffected — only the public-facing
+  hosted surfaces (`GET /api/branding`, `GET
+  /tenant-branding-assets/{kind}/{object_key}`) read tenant branding.
+  Email-template branding and custom CSS/HTML injection are out of scope.
 
 ### WebAuthn / Passkeys
 

@@ -130,6 +130,7 @@ export function DeviceCodeFormPresentation({
           <Button
             type="button"
             size="lg"
+            className="tenant-primary-cta"
             disabled={!isComplete || submitting}
             onClick={() => onSubmit('allow')}
           >

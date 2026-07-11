@@ -65,6 +65,9 @@ var rolePermissionInterfaces = map[string][]string{
 	"ManageScimSettings": {
 		"ListScimTokens", "CreateScimToken", "RevokeScimToken",
 	},
+	"BrandingUpdate": {
+		"UpdateTenantBranding", "UploadTenantBrandingAsset", "DeleteTenantBrandingAsset",
+	},
 }
 
 func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]RolePolicy, error) {

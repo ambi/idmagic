@@ -154,7 +154,12 @@ export function LoginFormPresentation({
             </button>
           </div>
         </div>
-        <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="tenant-primary-cta mt-1 w-full"
+          disabled={submitting}
+        >
           {submitting ? '確認しています…' : 'ログインして続行'}
           <IconArrowRight size={18} aria-hidden="true" />
         </Button>

@@ -57,6 +57,8 @@ describe('auth-flow pages', () => {
       'fetch',
       vi
         .fn()
+        // AuthShell が mount 時に取得する /api/branding を最初に消費する。
+        .mockResolvedValueOnce(response(200, {}))
         .mockResolvedValueOnce(
           response(401, { error: 'invalid_credentials', message: '認証情報が違います' }),
         )

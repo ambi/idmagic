@@ -13,6 +13,7 @@ import {
 import { Link } from '@tanstack/react-router'
 import { useEffect, type ReactNode } from 'react'
 import { logout } from '../api'
+import { tenantBrandStyle, useTenantBranding } from '../lib/useTenantBranding'
 import { cn } from '../lib/utils'
 import { preloadPageChunks } from '../router'
 import { Brand } from './Brand'
@@ -71,8 +72,9 @@ export function AccountShell({
   useEffect(() => {
     preloadPageChunks()
   }, [])
+  const branding = useTenantBranding()
   return (
-    <div className="app-surface">
+    <div className="app-surface" style={tenantBrandStyle(branding)}>
       <header className="app-header">
         <div className="flex h-16 items-center justify-between px-5 lg:px-7">
           <div className="flex items-center gap-5">
@@ -81,7 +83,7 @@ export function AccountShell({
               aria-label="アカウント"
               className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
             >
-              <Brand compact />
+              <Brand compact productName={branding.product_name} logoURL={branding.logo_url} />
             </Link>
             <div className="hidden h-6 w-px bg-slate-200/80 sm:block" />
             <span className="hidden items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-1.5 text-sm font-medium text-slate-600 shadow-xs sm:flex">
@@ -150,7 +152,7 @@ export function AccountShell({
                 className={cn(
                   'flex h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-[background-color,color,box-shadow]',
                   item.key === active
-                    ? 'bg-slate-950 text-white shadow-sm'
+                    ? 'tenant-primary-cta bg-slate-950 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-xs',
                 )}
                 aria-current={item.key === active ? 'page' : undefined}

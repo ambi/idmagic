@@ -193,7 +193,13 @@ export function ConsentActionsPresentation({
         </p>
       ) : null}
       <div className="flex flex-col gap-2.5">
-        <Button type="button" size="lg" disabled={submitting} onClick={() => onConsent('allow')}>
+        <Button
+          type="button"
+          size="lg"
+          className="tenant-primary-cta"
+          disabled={submitting}
+          onClick={() => onConsent('allow')}
+        >
           {submitting ? '処理しています…' : '許可して続行'}
           <IconArrowRight size={18} aria-hidden="true" />
         </Button>

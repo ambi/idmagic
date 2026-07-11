@@ -16,18 +16,27 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	TenantRepo     tenantports.TenantRepository
-	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
-	UserRepo       idmports.UserRepository
+	TenantRepo         tenantports.TenantRepository
+	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
+	BrandingRepo       tenantports.TenantBrandingRepository
+	BrandingAssetStore tenantports.TenantBrandingAssetStore
+	UserRepo           idmports.UserRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・
-// ユーザ属性スキーマのエンドポイントを登録する。
+// ユーザ属性スキーマ・branding のエンドポイントを登録する。branding の閲覧系
+// (GetTenantBranding / GetTenantBrandingAsset) は未認証の login 画面等が読むため
+// public とする (wi-89, ADR-096)。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/settings", d.handleGetAdminSettings)
 	g.PATCH("/api/admin/settings", d.handleUpdateAdminSettings)
 	g.GET("/api/admin/tenant/user_attribute_schema", d.handleGetUserAttributeSchema)
 	g.PUT("/api/admin/tenant/user_attribute_schema", d.handleUpdateUserAttributeSchema)
+	g.GET("/api/branding", d.handleGetBranding)
+	g.PUT("/api/admin/tenant/branding", d.handleUpdateBranding)
+	g.POST("/api/admin/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)
+	g.DELETE("/api/admin/tenant/branding/assets/:kind", d.handleDeleteBrandingAsset)
+	g.GET("/tenant-branding-assets/:kind/:object_key", d.handleGetBrandingAsset)
 }
 
 // RegisterControlPlaneRoutes はテナント CRUD (system_admin 専用 of テナント横断操作)

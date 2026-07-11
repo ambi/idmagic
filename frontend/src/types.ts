@@ -407,6 +407,29 @@ export type AdminSettings = {
   }
 }
 
+export type Branding = {
+  product_name?: string
+  logo_url?: string
+  favicon_url?: string
+  primary_color?: string
+  accent_color?: string
+  support_url?: string
+  legal_url?: string
+  footer_text?: string
+  updated_at?: string
+}
+
+export type BrandingUpdateInput = {
+  product_name?: string
+  primary_color?: string
+  accent_color?: string
+  support_url?: string
+  legal_url?: string
+  footer_text?: string
+}
+
+export type TenantBrandingAssetKind = 'logo' | 'favicon'
+
 export type AttributeType = 'string' | 'number' | 'boolean' | 'date' | 'string_array'
 
 export type AttrVisibility = 'private' | 'self_readable' | 'admin_readable' | 'claim_exposed'

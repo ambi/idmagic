@@ -78,6 +78,52 @@ CREATE TABLE tenants (
     )
 );
 
+-- tenant_brandings (wi-89, ADR-096): 1:1 hosted UI branding config per tenant, kept
+-- in its own table rather than columns on tenants so per-feature config growth does
+-- not bloat the core tenant row (same reasoning as tenant_user_attribute_schemas).
+-- Absence of a row, or all-NULL columns, means branding is unset and callers fall
+-- back to system defaults.
+CREATE TABLE tenant_brandings (
+    tenant_id UUID PRIMARY KEY,
+    product_name TEXT,
+    logo_object_key TEXT,
+    logo_url TEXT,
+    favicon_object_key TEXT,
+    favicon_url TEXT,
+    primary_color TEXT,
+    accent_color TEXT,
+    support_url TEXT,
+    legal_url TEXT,
+    footer_text TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT tenant_brandings_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT tenant_brandings_primary_color_format CHECK (primary_color IS NULL OR primary_color ~ '^#[0-9a-fA-F]{6}$'),
+    CONSTRAINT tenant_brandings_accent_color_format CHECK (accent_color IS NULL OR accent_color ~ '^#[0-9a-fA-F]{6}$'),
+    CONSTRAINT tenant_brandings_support_url_format CHECK (support_url IS NULL OR support_url ~ '^https://'),
+    CONSTRAINT tenant_brandings_legal_url_format CHECK (legal_url IS NULL OR legal_url ~ '^https://')
+);
+
+-- tenant_branding_assets (wi-89, ADR-096): validated logo / favicon blobs for
+-- tenant branding. Same shape as application_icons (ADR-073) but kept in a
+-- separate table / object_key space so branding asset ownership never crosses
+-- with Application icon storage. kind distinguishes logo vs favicon within one
+-- tenant.
+CREATE TABLE tenant_branding_assets (
+    tenant_id UUID NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('logo', 'favicon')),
+    object_key TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    data BYTEA NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, kind, object_key),
+    CONSTRAINT tenant_branding_assets_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
 CREATE TABLE clients (
     tenant_id UUID NOT NULL,
     client_id UUID PRIMARY KEY,

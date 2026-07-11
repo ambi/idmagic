@@ -1,6 +1,7 @@
 export * from './api/account'
 export * from './api/admin'
 export * from './api/authFlow'
+export * from './api/branding'
 export * from './api/core'
 export * from './api/oidc'
 export * from './api/webauthn'

@@ -9,10 +9,15 @@ import (
 )
 
 type Querier interface {
+	DeleteTenantBrandingAssetsByKind(ctx context.Context, arg DeleteTenantBrandingAssetsByKindParams) error
 	FindAllTenants(ctx context.Context) ([]*Tenant, error)
+	FindTenantBrandingByTenant(ctx context.Context, tenantID string) (*TenantBranding, error)
 	FindTenantByID(ctx context.Context, id string) (*Tenant, error)
 	FindTenantByRealm(ctx context.Context, realm string) (*Tenant, error)
+	GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*TenantBrandingAsset, error)
 	SaveTenant(ctx context.Context, arg SaveTenantParams) error
+	SaveTenantBranding(ctx context.Context, arg SaveTenantBrandingParams) error
+	UpsertTenantBrandingAsset(ctx context.Context, arg UpsertTenantBrandingAssetParams) error
 }
 
 var _ Querier = (*Queries)(nil)

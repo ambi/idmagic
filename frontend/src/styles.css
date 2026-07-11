@@ -109,6 +109,19 @@
     @apply mb-12 hidden;
   }
 
+  /* tenant-primary-cta: hosted login/consent/device の主要 CTA だけをテナント
+     branding の primary color で塗る (wi-89, ADR-096)。branding 未設定時は既定の
+     slate-950 のまま。Tailwind の utilities layer がこの components layer より
+     後勝ちのため、意図的に !important で上書きする。 */
+  .tenant-primary-cta {
+    /* biome-ignore lint/complexity/noImportantStyles: deliberate escape hatch, utilities layer otherwise wins */
+    background-color: var(--tenant-brand-primary, #020617) !important;
+  }
+
+  .tenant-primary-cta:hover {
+    filter: brightness(1.15);
+  }
+
   /* solo: 認証済み self-service 画面向け。プロモ枠の aside を出さない単一カラム。 */
   .auth-frame--solo {
     @apply mx-auto min-h-0 w-full max-w-[34rem] grid-cols-1;

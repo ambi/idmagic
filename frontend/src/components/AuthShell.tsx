@@ -1,5 +1,6 @@
 import { IconCircleCheckFilled, IconHelpCircle, IconLock, IconSparkles } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
+import { tenantBrandStyle, useTenantBranding } from '../lib/useTenantBranding'
 import { Brand } from './Brand'
 
 type AuthShellProps = {
@@ -22,13 +23,19 @@ export function AuthShell({
   asideText = 'IdMagic は、利用者とアプリケーションを保護するエンタープライズ認証基盤です。',
   aside = true,
 }: AuthShellProps) {
+  const branding = useTenantBranding()
+  const footerLinks = [
+    branding.support_url ? { label: 'サポート', href: branding.support_url } : null,
+    branding.legal_url ? { label: '利用規約・プライバシー', href: branding.legal_url } : null,
+  ].filter((link): link is { label: string; href: string } => link !== null)
+
   return (
-    <div className="auth-background">
+    <div className="auth-background" style={tenantBrandStyle(branding)}>
       <div className="auth-container">
         <div className={aside ? 'auth-frame' : 'auth-frame auth-frame--solo'}>
           {aside ? (
             <aside className="auth-aside">
-              <Brand inverse />
+              <Brand inverse productName={branding.product_name} logoURL={branding.logo_url} />
 
               <div className="auth-aside-copy">
                 <div className="flex w-fit items-center gap-2 rounded-lg border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-semibold text-blue-100 shadow-sm backdrop-blur-sm">
@@ -68,7 +75,7 @@ export function AuthShell({
 
           <main className="auth-main">
             <div className="mobile-brand text-slate-950">
-              <Brand />
+              <Brand productName={branding.product_name} logoURL={branding.logo_url} />
             </div>
             <div className="mb-7 flex items-center justify-between border-b border-slate-100 pb-4">
               <span className="flex items-center gap-2 text-xs font-semibold text-slate-600">
@@ -87,6 +94,18 @@ export function AuthShell({
                 <IconHelpCircle size={14} aria-hidden="true" />
                 問題がある場合は管理者へお問い合わせください
               </span>
+              {footerLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="font-medium text-blue-700 hover:underline"
+                >
+                  {link.label}
+                </a>
+              ))}
+              {branding.footer_text ? <span>{branding.footer_text}</span> : null}
             </footer>
           </main>
         </div>

@@ -290,11 +290,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
-		Deps:           d.Deps,
-		Authenticator:  authenticator,
-		TenantRepo:     d.TenantRepo,
-		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-		UserRepo:       d.IdentityManagement.UserRepo,
+		Deps:               d.Deps,
+		Authenticator:      authenticator,
+		TenantRepo:         d.TenantRepo,
+		AttrSchemaRepo:     d.Tenancy.AttrSchemaRepo,
+		BrandingRepo:       d.Tenancy.BrandingRepo,
+		BrandingAssetStore: d.Tenancy.BrandingAssetStore,
+		UserRepo:           d.IdentityManagement.UserRepo,
 	})
 
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner,

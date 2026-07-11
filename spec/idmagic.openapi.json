@@ -562,6 +562,308 @@
         }
       }
     },
+    "/api/branding": {
+      "get": {
+        "operationId": "GetTenantBranding",
+        "summary": "解決済みテナントの hosted UI ブランディングを取得する公開 interface。認証を要求しない",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "branding": {
+                      "$ref": "#/components/schemas/TenantBrandingResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "branding"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/tenant/branding": {
+      "put": {
+        "operationId": "UpdateTenantBranding",
+        "summary": "テナント内 admin が自身のテナントの branding (製品名 / 色 / サポートリンク / 法務リンク /",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/TenantBrandingUpdateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "branding": {
+                      "$ref": "#/components/schemas/TenantBrandingResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "branding"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/tenant/branding/assets/{kind}": {
+      "post": {
+        "operationId": "UploadTenantBrandingAsset",
+        "summary": "管理者が branding のロゴまたは favicon 画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "$ref": "#/components/schemas/TenantBrandingAssetKind"
+                  },
+                  "file": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/TenantBrandingUploadResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteTenantBrandingAsset",
+        "summary": "管理者が branding の保存済みロゴまたは favicon を削除する。削除後は該当アセットの URL を返さない。",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TenantBrandingAssetKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/TenantBrandingUploadResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenant-branding-assets/{kind}/{object_key}": {
+      "get": {
+        "operationId": "GetTenantBrandingAsset",
+        "summary": "保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。Content-Type は検証済み",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "object_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TenantBrandingAssetKind"
+            }
+          },
+          {
+            "name": "object_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "file"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/account/summary": {
       "get": {
         "operationId": "GetAccountSummary",
@@ -17141,6 +17443,191 @@
           "updated_at"
         ],
         "description": "テナント (realm) 集約。Client / User / Consent / ポリシー / ブランディングはこの境界に閉じる。`default` テナントは起動時に自動作成され、削除・無効化とも不可。live aggregate は tenant_id で既存 Tenant を参照し、履歴・イベント用途の record は監査保持のため tenant 外部キーを持たない場合がある。"
+      },
+      "TenantBranding": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "description": "所属テナント ID。"
+          },
+          "product_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "sign-in 画面等に出す表示名。未設定ならシステム既定 (IdMagic) を表示する。"
+          },
+          "logo_object_key": {
+            "type": "string",
+            "description": "テナント境界内に保存されたロゴ画像 object の opaque key。管理者は直接入力せず UploadTenantBrandingAsset (kind=Logo) を経由する。"
+          },
+          "logo_url": {
+            "type": "string",
+            "description": "IdP が保存済みロゴから生成する内部配信 URL。"
+          },
+          "favicon_object_key": {
+            "type": "string",
+            "description": "テナント境界内に保存された favicon 画像 object の opaque key。UploadTenantBrandingAsset (kind=Favicon) を経由する。"
+          },
+          "favicon_url": {
+            "type": "string",
+            "description": "IdP が保存済み favicon から生成する内部配信 URL。"
+          },
+          "primary_color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "description": "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。既定の背景/前景に対する WCAG AA コントラスト比 (4.5:1) を満たさない値は保存時に拒否する。"
+          },
+          "accent_color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "description": "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。primary_color と同じコントラスト検証を行う。"
+          },
+          "support_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^https://",
+            "description": "サポート / ヘルプリンク。https scheme のみ許可する allowlist。"
+          },
+          "legal_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^https://",
+            "description": "利用規約 / プライバシー等の法務リンク。https scheme のみ許可する allowlist。"
+          },
+          "footer_text": {
+            "type": "string",
+            "maxLength": 280,
+            "description": "footer に表示する補足テキスト (著作権表示等)。プレーンテキストとして描画側の既定エスケープでのみ表示する。"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "更新のたびに進む。公開レスポンスの version / ETag として使う。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "テナント単位の hosted UI ブランディング設定 (wi-89, ADR-096)。Tenant 集約には埋め込まず、\nTenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で\n独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら\n「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。\n色・リンク・テキストは限定トークンのみを受け付け、任意 CSS / HTML は構造的に受け付けない。\n"
+      },
+      "TenantBrandingAssetKind": {
+        "type": "string",
+        "enum": [
+          "Logo",
+          "Favicon"
+        ],
+        "description": "TenantBranding が持つ画像アセットの種別。"
+      },
+      "TenantBrandingResponse": {
+        "type": "object",
+        "properties": {
+          "product_name": {
+            "type": "string"
+          },
+          "logo_url": {
+            "type": "string"
+          },
+          "favicon_url": {
+            "type": "string"
+          },
+          "primary_color": {
+            "type": "string"
+          },
+          "accent_color": {
+            "type": "string"
+          },
+          "support_url": {
+            "type": "string"
+          },
+          "legal_url": {
+            "type": "string"
+          },
+          "footer_text": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "branding が一度でも設定されていれば version / ETag として使う。未設定なら省略する。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "GetTenantBranding / UpdateTenantBranding / asset upload・削除が返す公開安全な projection。\n未設定フィールドはシステム既定を表す (クライアント側で `IdMagic` 等のデフォルトに解決する)。\n"
+      },
+      "TenantBrandingUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "product_name": {
+            "type": "string"
+          },
+          "primary_color": {
+            "type": "string"
+          },
+          "accent_color": {
+            "type": "string"
+          },
+          "support_url": {
+            "type": "string"
+          },
+          "legal_url": {
+            "type": "string"
+          },
+          "footer_text": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。"
+      },
+      "TenantBrandingUpdated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "changedFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "changedFields"
+        ],
+        "description": "テナント内 admin が branding (テキスト / 色 / リンク / 画像アセット) を更新した。"
+      },
+      "TenantBrandingUploadResponse": {
+        "type": "object",
+        "properties": {
+          "branding": {
+            "$ref": "#/components/schemas/TenantBrandingResponse"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "branding"
+        ],
+        "description": "画像アセットのアップロードまたは削除後の branding 表現。"
       },
       "TenantCreateRequest": {
         "type": "object",

@@ -37,6 +37,8 @@ func TestPostgresSchemaTimestampColumnPolicy(t *testing.T) {
 	schema := string(sql)
 	allTables := []string{
 		"tenants",
+		"tenant_brandings",
+		"tenant_branding_assets",
 		"clients",
 		"users",
 		"mfa_factors",
@@ -77,6 +79,8 @@ func TestPostgresSchemaTimestampColumnPolicy(t *testing.T) {
 
 	updatedTables := []string{
 		"tenants",
+		"tenant_brandings",
+		"tenant_branding_assets",
 		"clients",
 		"users",
 		"mfa_factors",

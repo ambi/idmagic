@@ -9,6 +9,8 @@ import (
 
 // Module は tenancy context が所有する永続化 port の束。
 type Module struct {
-	TenantRepo     ports.TenantRepository
-	AttrSchemaRepo ports.TenantUserAttributeSchemaRepository
+	TenantRepo         ports.TenantRepository
+	AttrSchemaRepo     ports.TenantUserAttributeSchemaRepository
+	BrandingRepo       ports.TenantBrandingRepository
+	BrandingAssetStore ports.TenantBrandingAssetStore
 }

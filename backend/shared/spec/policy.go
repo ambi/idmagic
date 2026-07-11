@@ -127,6 +127,7 @@ const (
 	ActionMyApplicationsRead                   = "account:applications_read"
 	ActionScimProvision                        = "scim:provision"
 	ActionManageScimSettings                   = "admin:scim_settings_manage"
+	ActionAdminBrandingUpdate                  = "admin:branding_update"
 )
 
 // PascalCase (SCL permissions のキー) → AuthZ action 名。
@@ -169,6 +170,7 @@ var actionNameMapping = map[string]string{
 	"MyApplicationsRead":                   ActionMyApplicationsRead,
 	"ScimProvision":                        ActionScimProvision,
 	"ManageScimSettings":                   ActionManageScimSettings,
+	"BrandingUpdate":                       ActionAdminBrandingUpdate,
 }
 
 func ActionNameForPermission(permissionName string) (string, bool) {
@@ -281,6 +283,9 @@ var actionRules = map[string][]string{
 	ActionScimProvision: {},
 	ActionManageScimSettings: {
 		"actor_is_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
+	},
+	ActionAdminBrandingUpdate: {
+		"actor_is_admin_or_system_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
 	},
 }
 

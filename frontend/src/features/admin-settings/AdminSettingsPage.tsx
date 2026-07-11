@@ -1,4 +1,4 @@
-import { IconMail, IconShieldLock, IconTag, IconUsers } from '@tabler/icons-react'
+import { IconMail, IconPalette, IconShieldLock, IconTag, IconUsers } from '@tabler/icons-react'
 import { type FormEvent, useState, useEffect } from 'react'
 import {
   AuthenticationAPIError,
@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { cn } from '../../lib/utils'
 import type { AdminSettings, ScimToken } from '../../types'
+import { BrandingTab } from './BrandingTab'
 
 const DEFAULT_REALM = 'default'
 
@@ -35,7 +36,7 @@ export function passwordPolicyOverride(
   return policy
 }
 
-type TabKey = 'general' | 'password-policy' | 'email' | 'scim'
+type TabKey = 'general' | 'password-policy' | 'branding' | 'email' | 'scim'
 
 type Tab = {
   key: TabKey
@@ -57,6 +58,12 @@ const tabs: Tab[] = [
     label: 'パスワードポリシー',
     description: 'テナント単位の上書き値。空欄のフィールドは IdMagic の標準値が適用されます。',
     icon: IconShieldLock,
+  },
+  {
+    key: 'branding',
+    label: 'ブランディング',
+    description: 'ロゴ・配色・サポート/法務リンクなど hosted UI の見た目を設定します。',
+    icon: IconPalette,
   },
   {
     key: 'scim',
@@ -153,6 +160,7 @@ export function AdminSettingsPage({
               onSaved={(next) => setSettings(next)}
             />
           ) : null}
+          {active === 'branding' ? <BrandingTab csrfToken={csrfToken} /> : null}
           {active === 'scim' ? <ScimTab csrfToken={csrfToken} tenantID={settings.realm} /> : null}
           {active === 'email' ? (
             <Card className="p-6">
