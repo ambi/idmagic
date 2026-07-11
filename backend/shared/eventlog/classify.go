@@ -8,22 +8,133 @@ import (
 )
 
 // classification is the ADR-094 DomainEvent -> Classification catalog.
-// wi-184 T003 seeds it with the events emitted by the mutations already
-// migrated to the transaction runner (identitymanagement admin user
-// create/update/disable/enable, authentication ChangePassword); wi-184 T004
-// makes this exhaustive and CI-checked so every DomainEvent has a routing
-// decision. Values mirror the current outbox eventTopics map
-// (backend/oauth2/adapters/persistence/postgres/outbox.go): only
-// PasswordChanged is routed to Kafka today, so it is the only
-// public_integration entry here — the rest currently only reach the audit
-// trail.
+// wi-184 T004 makes this exhaustive: TestAllDomainEventTypesAreClassified
+// (classify_coverage_test.go) scans every DomainEvent implementation under
+// backend/ and fails if any EventType() string has no entry here, so a new
+// DomainEvent added anywhere in the codebase is a hard CI failure until its
+// routing is decided — not a silent gap.
+//
+// The mapping below preserves today's actual routing rather than inventing
+// new judgment calls: an event already reaching Kafka via the outbox
+// eventTopics map (backend/oauth2/adapters/persistence/postgres/outbox.go)
+// is public_integration; everything else is audit_only, matching that it
+// already reaches the audit trail today through the unconditional
+// AuditEventRepo.Append in bootstrap/server.go's fire-and-forget emit.
+// wi-184 T005+ can promote entries to public_integration deliberately, and
+// a future pass can carve out true high-frequency telemetry — neither is
+// decided here.
 var classification = map[string]Classification{
-	"UserCreated":               ClassificationAuditOnly,
-	"UserUpdated":               ClassificationAuditOnly,
-	"UserDisabled":              ClassificationAuditOnly,
-	"UserEnabled":               ClassificationAuditOnly,
-	"UserRequiredActionCleared": ClassificationAuditOnly,
-	"PasswordChanged":           ClassificationPublicIntegration,
+	// public_integration: currently routed to Kafka via the outbox eventTopics
+	// map (backend/oauth2/adapters/persistence/postgres/outbox.go).
+	"AccessTokenIssued":                ClassificationPublicIntegration,
+	"AgentCredentialBound":             ClassificationPublicIntegration,
+	"AgentCredentialUnbound":           ClassificationPublicIntegration,
+	"AgentDeleted":                     ClassificationPublicIntegration,
+	"AgentDisabled":                    ClassificationPublicIntegration,
+	"AgentEnabled":                     ClassificationPublicIntegration,
+	"AgentKilled":                      ClassificationPublicIntegration,
+	"AgentOwnerChanged":                ClassificationPublicIntegration,
+	"AgentRegistered":                  ClassificationPublicIntegration,
+	"AgentUpdated":                     ClassificationPublicIntegration,
+	"AuthenticationFailed":             ClassificationPublicIntegration,
+	"AuthorizationCodeIssued":          ClassificationPublicIntegration,
+	"AuthorizationCodeRedeemed":        ClassificationPublicIntegration,
+	"ClientRegistered":                 ClassificationPublicIntegration,
+	"ConsentGranted":                   ClassificationPublicIntegration,
+	"ConsentRevoked":                   ClassificationPublicIntegration,
+	"DeviceAuthorizationApproved":      ClassificationPublicIntegration,
+	"DeviceAuthorizationDenied":        ClassificationPublicIntegration,
+	"DeviceAuthorizationRequested":     ClassificationPublicIntegration,
+	"GroupCreated":                     ClassificationPublicIntegration,
+	"GroupDeleted":                     ClassificationPublicIntegration,
+	"GroupMemberAdded":                 ClassificationPublicIntegration,
+	"GroupMemberRemoved":               ClassificationPublicIntegration,
+	"GroupUpdated":                     ClassificationPublicIntegration,
+	"LoginThrottled":                   ClassificationPublicIntegration,
+	"PARStored":                        ClassificationPublicIntegration,
+	"PasswordChanged":                  ClassificationPublicIntegration,
+	"RefreshTokenIssued":               ClassificationPublicIntegration,
+	"RefreshTokenReuseDetected":        ClassificationPublicIntegration,
+	"RefreshTokenRotated":              ClassificationPublicIntegration,
+	"SigningKeyRotated":                ClassificationPublicIntegration,
+	"TenantCreated":                    ClassificationPublicIntegration,
+	"TenantDisabled":                   ClassificationPublicIntegration,
+	"TenantEnabled":                    ClassificationPublicIntegration,
+	"TenantUpdated":                    ClassificationPublicIntegration,
+	"TenantUserAttributeSchemaUpdated": ClassificationPublicIntegration,
+	"TokenExchanged":                   ClassificationPublicIntegration,
+	"TokenExchangeRejected":            ClassificationPublicIntegration,
+	"TokenIntrospected":                ClassificationPublicIntegration,
+	"TokenRevoked":                     ClassificationPublicIntegration,
+	"UserAuthenticated":                ClassificationPublicIntegration,
+	// audit_only: not currently routed to Kafka; still reaches the audit trail
+	// today via the fire-and-forget AuditEventRepo.Append in bootstrap/server.go.
+	"AdminOAuth2ClientCreated":         ClassificationAuditOnly,
+	"AdminOAuth2ClientDeleted":         ClassificationAuditOnly,
+	"AdminOAuth2ClientUpdated":         ClassificationAuditOnly,
+	"AppAccessDeniedByPolicy":          ClassificationAuditOnly,
+	"ApplicationAssigned":              ClassificationAuditOnly,
+	"ApplicationCategoryCreated":       ClassificationAuditOnly,
+	"ApplicationCategoryDeleted":       ClassificationAuditOnly,
+	"ApplicationCategoryUpdated":       ClassificationAuditOnly,
+	"ApplicationCreated":               ClassificationAuditOnly,
+	"ApplicationDeleted":               ClassificationAuditOnly,
+	"ApplicationIconUpdated":           ClassificationAuditOnly,
+	"ApplicationUnassigned":            ClassificationAuditOnly,
+	"ApplicationUpdated":               ClassificationAuditOnly,
+	"AppSignInPolicyUpdated":           ClassificationAuditOnly,
+	"AppStepUpRequired":                ClassificationAuditOnly,
+	"AuthenticationEventAggregated":    ClassificationAuditOnly,
+	"AuthenticationStepCompleted":      ClassificationAuditOnly,
+	"AuthenticationStepFailed":         ClassificationAuditOnly,
+	"AuthorizationDetailsConsented":    ClassificationAuditOnly,
+	"AuthorizationDetailsRejected":     ClassificationAuditOnly,
+	"AuthorizationDetailsRequested":    ClassificationAuditOnly,
+	"BackupCodeConsumed":               ClassificationAuditOnly,
+	"EmailChanged":                     ClassificationAuditOnly,
+	"EmailChangeRequested":             ClassificationAuditOnly,
+	"EmailSent":                        ClassificationAuditOnly,
+	"EntraFederationConfigured":        ClassificationAuditOnly,
+	"FederatedAuthenticated":           ClassificationAuditOnly,
+	"FederationLinked":                 ClassificationAuditOnly,
+	"FederationUnlinked":               ClassificationAuditOnly,
+	"MfaChallengeFailed":               ClassificationAuditOnly,
+	"MfaChallengeIssued":               ClassificationAuditOnly,
+	"MfaChallengeSucceeded":            ClassificationAuditOnly,
+	"MfaFactorEnrolled":                ClassificationAuditOnly,
+	"MfaFactorRemoved":                 ClassificationAuditOnly,
+	"PasswordResetRequested":           ClassificationAuditOnly,
+	"ProtocolBindingAttached":          ClassificationAuditOnly,
+	"ProtocolBindingDetached":          ClassificationAuditOnly,
+	"RecoveryCodesGenerated":           ClassificationAuditOnly,
+	"RecoveryCodesRevoked":             ClassificationAuditOnly,
+	"SamlLogout":                       ClassificationAuditOnly,
+	"SamlSignInIssued":                 ClassificationAuditOnly,
+	"SamlSignInRejected":               ClassificationAuditOnly,
+	"SessionEnded":                     ClassificationAuditOnly,
+	"SessionImpersonationEnded":        ClassificationAuditOnly,
+	"SessionImpersonationStarted":      ClassificationAuditOnly,
+	"SessionRefreshed":                 ClassificationAuditOnly,
+	"SessionStarted":                   ClassificationAuditOnly,
+	"StepUpCompleted":                  ClassificationAuditOnly,
+	"StepUpRequested":                  ClassificationAuditOnly,
+	"TenantDefaultSignInPolicyUpdated": ClassificationAuditOnly,
+	"UserCreated":                      ClassificationAuditOnly,
+	"UserDeleted":                      ClassificationAuditOnly,
+	"UserDisabled":                     ClassificationAuditOnly,
+	"UserEnabled":                      ClassificationAuditOnly,
+	"UserRequiredActionCleared":        ClassificationAuditOnly,
+	"UserRequiredActionSet":            ClassificationAuditOnly,
+	"UserRestored":                     ClassificationAuditOnly,
+	"UserSoftDeleted":                  ClassificationAuditOnly,
+	"UserUpdated":                      ClassificationAuditOnly,
+	"WebAuthnCredentialRegistered":     ClassificationAuditOnly,
+	"WebAuthnCredentialRemoved":        ClassificationAuditOnly,
+	"WsFedSignInIssued":                ClassificationAuditOnly,
+	"WsFedSignInRejected":              ClassificationAuditOnly,
+	"WsFedSignOut":                     ClassificationAuditOnly,
+	"WsTrustTokenIssued":               ClassificationAuditOnly,
+	"WsTrustTokenRejected":             ClassificationAuditOnly,
 }
 
 // ToRecord converts event into a Record ready for Recorder.Append. eventID
