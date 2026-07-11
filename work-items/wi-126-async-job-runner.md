@@ -252,4 +252,28 @@ T006〜T007 を実施。
   registry/worker pool、memory/postgres adapter、schema、`idmagic-worker`、
   smoke test) は次フェーズ。
 
+## 2026-07-12 — Phase B 追補: SCL vocabulary 漏れの修正
+
+前回の Phase B 検証はパッケージスコープ (`./backend/jobs/...`) のみで、
+リポジトリ全体の `just verify-go` は未実行だった。今回それを実行したところ
+`backend/shared/spec` の `TestCurrentSCLIsInternallyCoherent` が
+`state JobLifecycle: event Claim is missing from vocabulary` で red だった。
+
+- **原因**: `spec/contexts/jobs.yaml` の `states.JobLifecycle` は
+  `transitions[].from/event/to` に `Queued`/`Running`/`Claim` 等の PascalCase
+  識別子を使うが、対応する `glossary` エントリが無かった。coherence
+  検証 (`backend/shared/spec/coherence.go` `validateStates`) は状態機械の
+  全 state / event 識別子が `glossary`（`vocabulary` として集約）に
+  登録されていることを要求する（`backend/spec/contexts/oauth2.yaml` の
+  `states.AuthorizationCodeFlow` も同様に `Received`/`StartAuthentication` 等を
+  glossary へ個別登録している）。
+- **修正**: `spec/contexts/jobs.yaml` の `glossary` に状態 5 件
+  (`Queued`/`Running`/`Succeeded`/`Failed`/`Canceled`) とイベント 5 件
+  (`Claim`/`Complete`/`Fail`/`Retry`/`Cancel`) を追加（各 `definition` +
+  snake_case の `aliases`、oauth2.yaml の書式に合わせた）。Go 側
+  (`backend/jobs/domain/job.go`) の変更は無し。
+- **検証**: `just yaml-check`、`just verify-go`（lint 0 issues、
+  `go test -race ./...` 全パッケージ green、`backend/shared/spec` の
+  coherence テスト含む）、`just verify`（UI ビルド含む）すべて green。
+
 残り T008〜T013 (Phase C〜F) は pending。
