@@ -25,7 +25,8 @@
 --   password_reset_tokens, email_change_tokens, group_members. Kept for per-tenant
 --   search: refresh_tokens (tenant token indexes).
 -- - append-only / audit / outbox / throttling: decide by emit-time tenant, query
---   boundary, and retention (audit_events, authentication_event_buckets, outbox).
+--   boundary, and retention (audit_events, authentication_event_buckets, outbox,
+--   event_logs).
 
 -- Timestamp policy:
 -- - Every table has created_at.
@@ -40,22 +41,24 @@
 --   with a spec/UI/ops limit get TEXT + CHECK(char_length) or varchar(N)
 --   (the limits themselves are decided in wi-128).
 -- - JSONB is for external-spec-derived metadata, claim/policy config, and
---   append-only audit/outbox payloads. Values needing join/filter/FK/uniqueness
---   or a lifecycle state machine are not kept inside JSONB (users.lifecycle is
---   the flagged normalization candidate).
+--   append-only audit/outbox/event_logs payloads. Values needing join/filter/FK/
+--   uniqueness or a lifecycle state machine are not kept inside JSONB
+--   (users.lifecycle is the flagged normalization candidate).
 -- - TIMESTAMPTZ stores microsecond precision as the source of truth; do not round
 --   in schema. Second-precision rounding happens only at external protocol
 --   boundaries (SCIM/SAML/WS-Fed formatting).
 -- - Ids that idmagic generates internally use UUID: users.id, clients.client_id,
---   groups.id, agents.id, audit_events.id, scim_tokens.id, and the already-UUID
+--   groups.id, agents.id, audit_events.id, scim_tokens.id, event_logs.event_id,
+--   event_deliveries.event_id, and the already-UUID
 --   refresh_tokens/applications/application_categories keys, plus every FK column
 --   that references them (user_id, owner_user_id, group_id, agent_id, client_id,
 --   subject_id). Go keeps these as string; base.go registers a text codec for the
 --   uuid OID so UUID columns read/write as string. Ids whose value is decided
 --   externally stay TEXT: entity_id, wtrealm, scim_id, kid. tenants.id is a UUID
 --   surrogate key; the mutable URL slug lives in tenants.realm (ADR-085). Non-FK
---   tenant_id columns (audit_events, authentication_event_buckets) stay TEXT and
---   hold the UUID as string (audit_events also carries a '' tenantless sentinel).
+--   tenant_id columns (audit_events, authentication_event_buckets, event_logs)
+--   stay TEXT and hold the UUID as string (audit_events also carries a ''
+--   tenantless sentinel).
 -- - Finite value sets default to TEXT + CHECK; PostgreSQL enums are avoided due to
 --   migration friction. CHECK-less finite columns are constraint-addition
 --   candidates, added per-column with matching Go validation, not in bulk.
@@ -260,6 +263,41 @@ CREATE TABLE outbox (
 );
 
 CREATE INDEX outbox_unpublished_idx ON outbox (id) WHERE published_at IS NULL;
+
+-- event_logs (ADR-094, wi-184): immutable append-only record, source of truth for
+-- audit and Kafka delivery. Rows are inserted once, in the same transaction as the
+-- business mutation they record, and are never updated.
+CREATE TABLE event_logs (
+    event_id UUID PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    classification TEXT NOT NULL
+        CHECK (classification IN ('public_integration', 'audit_only', 'telemetry')),
+    actor TEXT,
+    subject TEXT,
+    correlation_id TEXT NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX event_logs_tenant_occurred_idx ON event_logs (tenant_id, occurred_at DESC);
+CREATE INDEX event_logs_type_idx ON event_logs (type);
+
+-- event_deliveries (ADR-094, wi-184): mutable Kafka delivery progress for
+-- classification='public_integration' event_logs rows only. No payload column;
+-- the relay joins back to event_logs by event_id and publishes event_id as the
+-- consumer idempotency key.
+CREATE TABLE event_deliveries (
+    event_id UUID PRIMARY KEY REFERENCES event_logs (event_id),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'failed')),
+    attempts INT NOT NULL DEFAULT 0,
+    last_error TEXT,
+    delivered_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX event_deliveries_pending_idx ON event_deliveries (event_id) WHERE status = 'pending';
 
 CREATE TABLE password_history (
     id BIGSERIAL PRIMARY KEY,

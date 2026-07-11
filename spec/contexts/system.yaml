@@ -71,7 +71,7 @@ glossary:
   EventLog:
     definition: "業務コマンドが確定した事実を記録する不変 (append-only) の event 原本。行は追記後に更新されず、\n監査原本と Kafka 配送の両方の情報源になる。public_integration / audit_only に分類された\nDomainEvent は、対応する業務状態の更新と同一 PostgreSQL transaction で commit される。\n"
     aliases:
-      - event_log
+      - event_logs
       - イベントログ
     not_to_confuse_with:
       - term: EventDelivery
@@ -92,7 +92,7 @@ models:
   EventLogRecord:
     kind: entity
     identity: event_id
-    description: "PostgreSQL の event_log 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。\n"
+    description: "PostgreSQL の event_logs 1 行。業務コマンドの commit と同一 transaction で追記され、\n追記後は更新されない (PersistedModelTimestamps の immutable_record)。tenant、actor、subject、\noccurred_at、correlation_id を持ち、payload は分類ごとに固定された必須属性を満たす。\n"
     fields:
       event_id:
         type: UUID
@@ -121,7 +121,7 @@ models:
         description: 業務上イベントが確定した時刻。
       created_at:
         type: Timestamp
-        description: event_log への追記時刻 (PersistedModelTimestamps)。occurred_at とは独立。
+        description: event_logs への追記時刻 (PersistedModelTimestamps)。occurred_at とは独立。
       payload:
         type: JSON
         description: 分類ごとに固定された必須属性を満たす構造化本文。PII は発行元 context の方針に従い redact / hash する。

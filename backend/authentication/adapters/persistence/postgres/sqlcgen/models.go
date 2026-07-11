@@ -174,6 +174,28 @@ type EmailChangeToken struct {
 	ExpiresAt time.Time
 }
 
+type EventDelivery struct {
+	EventID     string
+	Status      string
+	Attempts    int32
+	LastError   pgtype.Text
+	DeliveredAt pgtype.Timestamptz
+	UpdatedAt   time.Time
+}
+
+type EventLog struct {
+	EventID        string
+	TenantID       string
+	Type           string
+	Classification string
+	Actor          pgtype.Text
+	Subject        pgtype.Text
+	CorrelationID  string
+	OccurredAt     time.Time
+	CreatedAt      time.Time
+	Payload        []byte
+}
+
 type Group struct {
 	ID          string
 	TenantID    string
