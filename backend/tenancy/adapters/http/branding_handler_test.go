@@ -160,6 +160,20 @@ func TestUpdateBrandingRejectsNonHTTPSSupportURL(t *testing.T) {
 	}
 }
 
+func TestUpdateBrandingAcceptsLowContrastColor(t *testing.T) {
+	e, repo, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
+	resp := patchBranding(t, e, http.MethodPut, "/realms/acme/api/admin/tenant/branding", map[string]any{
+		"primary_color": "#eeeeee",
+	})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	saved, err := repo.FindByTenant(context.Background(), "acme")
+	if err != nil || saved == nil || saved.PrimaryColor != "#eeeeee" {
+		t.Fatalf("low-contrast color was not persisted: %+v err=%v", saved, err)
+	}
+}
+
 func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	e, repo, assetStore, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}

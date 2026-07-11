@@ -17475,12 +17475,12 @@
           "primary_color": {
             "type": "string",
             "pattern": "^#[0-9a-fA-F]{6}$",
-            "description": "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。既定の背景/前景に対する WCAG AA コントラスト比 (4.5:1) を満たさない値は保存時に拒否する。"
+            "description": "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
           },
           "accent_color": {
             "type": "string",
             "pattern": "^#[0-9a-fA-F]{6}$",
-            "description": "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。primary_color と同じコントラスト検証を行う。"
+            "description": "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
           },
           "support_url": {
             "type": "string",

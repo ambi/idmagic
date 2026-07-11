@@ -68,12 +68,16 @@ func TestUpdateBrandingRejectsNonHTTPSLinks(t *testing.T) {
 	}
 }
 
-func TestUpdateBrandingRejectsLowContrastColor(t *testing.T) {
+func TestUpdateBrandingPersistsLowContrastColor(t *testing.T) {
 	repo := tenancymemory.NewTenantBrandingRepository()
-	if _, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{
+	branding, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{
 		PrimaryColor: new("#eeeeee"),
-	}, time.Now().UTC()); !errors.Is(err, ErrInvalidBranding) {
-		t.Fatalf("expected ErrInvalidBranding for low-contrast color, got %v", err)
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("expected low-contrast color to be saved, got %v", err)
+	}
+	if branding.PrimaryColor != "#eeeeee" {
+		t.Fatalf("primary_color=%q, want #eeeeee", branding.PrimaryColor)
 	}
 }
 

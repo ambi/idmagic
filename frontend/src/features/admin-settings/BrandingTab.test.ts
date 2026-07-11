@@ -14,8 +14,9 @@ describe('branding tab presentation helpers', () => {
     expect(brandingSupportURLError('javascript:alert(1)')).not.toBeNull()
   })
 
-  it('rejects malformed hex colors', () => {
+  it('accepts any #rrggbb color and rejects malformed values', () => {
     expect(brandingColorError('#0f172a')).toBeNull()
+    expect(brandingColorError('#eeeeee')).toBeNull()
     expect(brandingColorError('#fff')).not.toBeNull()
     expect(brandingColorError('red')).not.toBeNull()
   })

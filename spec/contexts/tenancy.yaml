@@ -278,13 +278,13 @@ models:
         optional: true
         constraints:
           - pattern: "^#[0-9a-fA-F]{6}$"
-        description: "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。既定の背景/前景に対する WCAG AA コントラスト比 (4.5:1) を満たさない値は保存時に拒否する。"
+        description: "ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
       accent_color:
         type: String
         optional: true
         constraints:
           - pattern: "^#[0-9a-fA-F]{6}$"
-        description: "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。primary_color と同じコントラスト検証を行う。"
+        description: "ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、配色の可読性はテナントが判断する。"
       support_url:
         type: String
         optional: true
@@ -699,7 +699,7 @@ interfaces:
         method: GET
         path: /api/branding
   UpdateTenantBranding:
-    description: "テナント内 admin が自身のテナントの branding (製品名 / 色 / サポートリンク / 法務リンク /\nフッターテキスト) を更新する。画像アセットは別 interface で扱う。色は hex 形式とコントラスト比、\nリンクは https scheme のみを use case 側で検証し、満たさない値は拒否する。\n"
+    description: "テナント内 admin が自身のテナントの branding (製品名 / 色 / サポートリンク / 法務リンク /\nフッターテキスト) を更新する。画像アセットは別 interface で扱う。色は `#rrggbb` 形式のみを\n検証し、コントラスト比を理由に拒否しない。リンクは https scheme のみを use case 側で検証し、\n満たさない値は拒否する。\n"
     input:
       request:
         type: TenantBrandingUpdateRequest
@@ -772,9 +772,9 @@ interfaces:
         path: "/tenant-branding-assets/{kind}/{object_key}"
 invariants:
   TenantBrandingSafeTokens:
-    description: "TenantBranding の色 / リンク / テキストは限定トークンのみを許容する。色は `#rrggbb` かつ\n既定の背景/前景に対する WCAG AA コントラスト比 (4.5:1) を満たし、リンクは https scheme のみ、\nテキストは長さ上限内のプレーンテキストのみを保存できる。\n反例: 任意 CSS 宣言や `javascript:` リンク、非 https リンクが branding として保存される。\n"
+    description: "TenantBranding の色 / リンク / テキストは限定トークンのみを許容する。色は `#rrggbb`\n形式、リンクは https scheme のみ、テキストは長さ上限内のプレーンテキストのみを保存できる。\n色のコントラスト比は保存可否に用いず、配色の可読性はテナントが判断する。\n反例: 任意 CSS 宣言や `javascript:` リンク、非 https リンクが branding として保存される。\n"
     target: TenantBranding
-    always: branding_persisted implies (colors_valid_and_contrast_ok and links_https_only and text_within_length_limits)
+    always: branding_persisted implies (colors_are_hex_tokens and links_https_only and text_within_length_limits)
   TenantBrandingSafeAssetServing:
     description: TenantBranding のロゴ / favicon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
     target: TenantBranding
@@ -882,9 +882,9 @@ scenarios:
       - condition: "管理者 \"operator\" が support_url に javascript: スキームを指定して保存を試みる"
         steps:
           - InvalidRequestError で拒否され保存されない
-      - condition: "管理者 \"operator\" がコントラスト比を満たさない primary_color を指定して保存を試みる"
+      - condition: "管理者 \"operator\" が低コントラストの `#eeeeee` を primary_color に指定して保存を試みる"
         steps:
-          - InvalidRequestError で拒否され保存されない
+          - 保存に成功し、取得した branding と login 画面に `#eeeeee` が反映される
       - condition: 管理者が SVG ファイルをロゴとしてアップロードしようとする
         steps:
           - InvalidRequestError で拒否され保存されない
@@ -937,10 +937,12 @@ user_experience:
         - service_error
     AdminSettings:
       route: /admin/settings
-      purpose: 管理者がパスワードポリシーなど所属テナントの設定を参照・更新する。
+      purpose: 管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。
       interfaces:
         - GetAdminSettings
         - UpdateAdminSettings
+        - GetTenantBranding
+        - UpdateTenantBranding
       states:
         - ready
         - loading

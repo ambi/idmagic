@@ -148,8 +148,8 @@ system:
 
 - Colors are limited to two `#rrggbb` tokens injected only as CSS custom
   properties (`--tenant-brand-primary` / `--tenant-brand-accent`); arbitrary
-  CSS/HTML/JS is never accepted. Colors are also validated against a minimum
-  WCAG AA contrast ratio (4.5:1) at save time.
+  CSS/HTML/JS is never accepted. Any value in that format can be saved; each
+  tenant is responsible for choosing a readable color combination.
 - Links (support / legal) accept `https://` only; other schemes
   (`javascript:`, `data:`, plain `http://`) are rejected.
 - Logo/favicon uploads reuse the same validated-blob pipeline as Application

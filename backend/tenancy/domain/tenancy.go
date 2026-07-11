@@ -3,10 +3,7 @@
 package domain
 
 import (
-	"math"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	z "github.com/Oudwins/zog"
@@ -130,55 +127,16 @@ var (
 	tenantBrandingHTTPSPattern    = regexp.MustCompile(`^https://`)
 )
 
-// tenantBrandingContrastBackground は AuthShell のカード背景色。ブランドカラーの WCAG AA
-// コントラスト比 (4.5:1) をこの背景に対して検証する (ADR-096 決定 3)。
-const tenantBrandingContrastBackground = "#ffffff"
-
 // validTenantBrandingColor は空文字列 (未設定) を許容しつつ、値がある場合は `#rrggbb`
-// 形式かつ既定背景に対する WCAG AA コントラスト比 (4.5:1) を満たすことを要求する。
+// 形式であることを要求する。コントラスト比は保存制約ではない (ADR-097)。
 func validTenantBrandingColor(value string) bool {
-	if value == "" {
-		return true
-	}
-	if !tenantBrandingHexColorPattern.MatchString(value) {
-		return false
-	}
-	return contrastRatio(value, tenantBrandingContrastBackground) >= 4.5
+	return value == "" || tenantBrandingHexColorPattern.MatchString(value)
 }
 
 // validTenantBrandingLink は空文字列 (未設定) を許容しつつ、値がある場合は https scheme
 // のみを allowlist する (ADR-096 決定 5)。
 func validTenantBrandingLink(value string) bool {
 	return value == "" || tenantBrandingHTTPSPattern.MatchString(value)
-}
-
-// contrastRatio は 2 色の WCAG 2.x 相対輝度からコントラスト比を計算する。
-func contrastRatio(hexA, hexB string) float64 {
-	la, lb := relativeLuminance(hexA), relativeLuminance(hexB)
-	if la < lb {
-		la, lb = lb, la
-	}
-	return (la + 0.05) / (lb + 0.05)
-}
-
-func relativeLuminance(hex string) float64 {
-	r, g, b := hexRGB(hex)
-	return 0.2126*linearizeSRGB(r) + 0.7152*linearizeSRGB(g) + 0.0722*linearizeSRGB(b)
-}
-
-func hexRGB(hex string) (r, g, b float64) {
-	v, err := strconv.ParseUint(strings.TrimPrefix(hex, "#"), 16, 32)
-	if err != nil {
-		return 0, 0, 0
-	}
-	return float64((v>>16)&0xff) / 255, float64((v>>8)&0xff) / 255, float64(v&0xff) / 255
-}
-
-func linearizeSRGB(c float64) float64 {
-	if c <= 0.03928 {
-		return c / 12.92
-	}
-	return math.Pow((c+0.055)/1.055, 2.4)
 }
 
 var tenantBrandingSchema = z.Struct(z.Shape{
@@ -190,11 +148,11 @@ var tenantBrandingSchema = z.Struct(z.Shape{
 	"FaviconURL":       z.String(),
 	"PrimaryColor": z.String().TestFunc(
 		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingColor(*value) },
-		z.Message("primary_color must be #rrggbb and meet WCAG AA contrast against the default background"),
+		z.Message("primary_color must be #rrggbb"),
 	),
 	"AccentColor": z.String().TestFunc(
 		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingColor(*value) },
-		z.Message("accent_color must be #rrggbb and meet WCAG AA contrast against the default background"),
+		z.Message("accent_color must be #rrggbb"),
 	),
 	"SupportURL": z.String().Max(2048).TestFunc(
 		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingLink(*value) },

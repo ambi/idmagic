@@ -50,7 +50,7 @@ func (d Deps) writeBrandingError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, tenantusecases.ErrInvalidBranding):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_branding",
-			"ブランディング設定が不正です (色はコントラスト比を満たす#rrggbb形式、リンクはhttpsのみ有効です)")
+			"ブランディング設定が不正です (色は#rrggbb形式、リンクはhttpsのみ有効です)")
 	case errors.Is(err, tenantusecases.ErrInvalidBrandingAssetKind):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind は logo または favicon を指定してください")
 	case errors.Is(err, tenantusecases.ErrBrandingAssetRequired):
