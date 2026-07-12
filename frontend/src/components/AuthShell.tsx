@@ -2,6 +2,7 @@ import { IconCircleCheckFilled, IconHelpCircle, IconLock, IconSparkles } from '@
 import type { ReactNode } from 'react'
 import { tenantBrandStyle, useTenantBranding } from '../lib/useTenantBranding'
 import { Brand } from './Brand'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 type AuthShellProps = {
   children: ReactNode
@@ -81,9 +82,12 @@ export function AuthShell({
                 <IconLock size={14} className="text-emerald-600" aria-hidden="true" />
                 セキュアな認証
               </span>
-              <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-normal text-emerald-700">
-                Protected
-              </span>
+              <div className="flex items-center gap-2">
+                <LanguageSwitcher />
+                <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-normal text-emerald-700">
+                  Protected
+                </span>
+              </div>
             </div>
 
             {children}

@@ -309,6 +309,22 @@ export async function clickButtonByText(view: Bun.WebView, text: string): Promis
   }
 }
 
+// i18n 対象の利用者向け操作は、サポート済み locale のいずれで描画されても同じ振る舞いを
+// 検証する。文言の一致そのものではなく、操作可能なボタンがあることを確認する。
+export async function clickButtonByAnyText(view: Bun.WebView, texts: string[]): Promise<void> {
+  const clicked = await view.evaluate(`(() => {
+    const texts = ${JSON.stringify(texts)}
+    const target = [...document.querySelectorAll('button')]
+      .find((button) => texts.some((text) => (button.textContent ?? '').includes(text)))
+    if (!target) return false
+    target.click()
+    return true
+  })()`)
+  if (clicked !== true) {
+    throw new Error(`button not found: ${texts.join(' / ')}`)
+  }
+}
+
 export async function clickLinkByText(view: Bun.WebView, text: string): Promise<void> {
   const clicked = await view.evaluate(`(() => {
     const target = [...document.querySelectorAll('a')]

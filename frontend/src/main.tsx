@@ -3,6 +3,7 @@ import './styles.css'
 import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { LocaleProvider } from './lib/i18n'
 import { createAppRouter } from './router'
 
 const root = document.getElementById('root')
@@ -15,6 +16,8 @@ if (!root) {
 const router = createAppRouter()
 createRoot(root).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <LocaleProvider>
+      <RouterProvider router={router} />
+    </LocaleProvider>
   </StrictMode>,
 )

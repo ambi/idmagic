@@ -19,16 +19,13 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { totpPageDictionary } from './TotpPage.i18n'
 
 type SecondFactorMethod = 'totp' | 'webauthn' | 'recovery_code'
 
 const methodOrder: SecondFactorMethod[] = ['totp', 'webauthn', 'recovery_code']
-
-const methodLabels: Record<SecondFactorMethod, string> = {
-  totp: '認証アプリ',
-  webauthn: 'パスキー',
-  recovery_code: 'リカバリコード',
-}
 
 export function availableSecondFactorMethods(methods?: string[]): SecondFactorMethod[] {
   const available = methodOrder.filter((method) => (methods ?? ['totp']).includes(method))
@@ -46,6 +43,13 @@ export function TotpPage({
   returnTo?: string
   secondFactorMethods?: string[]
 }) {
+  const t = useDictionary(totpPageDictionary)
+  const tCommon = useDictionary(commonDictionary)
+  const methodLabels: Record<SecondFactorMethod, string> = {
+    totp: t.methodTotp,
+    webauthn: t.methodWebauthn,
+    recovery_code: t.methodRecoveryCode,
+  }
   const methods = availableSecondFactorMethods(secondFactorMethods)
   const [method, setMethod] = useState<SecondFactorMethod>(methods[0])
   const [code, setCode] = useState('')
@@ -64,7 +68,7 @@ export function TotpPage({
     try {
       continueBrowserFlow(await submitTOTP(csrfToken, code.trim(), returnTo))
     } catch (cause) {
-      fail(cause, '認証サービスに接続できませんでした。')
+      fail(cause, tCommon.networkError)
     }
   }
 
@@ -75,7 +79,7 @@ export function TotpPage({
     try {
       continueBrowserFlow(await submitRecoveryCode(csrfToken, code.trim(), returnTo))
     } catch (cause) {
-      fail(cause, '認証サービスに接続できませんでした。')
+      fail(cause, tCommon.networkError)
     }
   }
 
@@ -86,10 +90,10 @@ export function TotpPage({
       continueBrowserFlow(await loginWithPasskey(csrfToken, returnTo))
     } catch (cause) {
       if (cause instanceof DOMException) {
-        fail(cause, 'パスキー認証がキャンセルされました。')
+        fail(cause, t.passkeyCancelled)
         return
       }
-      fail(cause, 'パスキー認証に失敗しました。')
+      fail(cause, t.passkeyFailed)
     }
   }
 
@@ -103,11 +107,9 @@ export function TotpPage({
     <AuthShell>
       <div className="flex flex-col gap-7">
         <header className="flex flex-col gap-2.5">
-          <p className="eyebrow">二要素認証</p>
-          <h2 className="page-title">本人確認</h2>
-          <p className="page-description">
-            サインインを完了するために、二段階目の本人確認を行ってください。
-          </p>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h2 className="page-title">{t.title}</h2>
+          <p className="page-description">{t.description}</p>
         </header>
 
         {error ? (
@@ -118,14 +120,14 @@ export function TotpPage({
               aria-hidden="true"
             />
             <div>
-              <p className="font-semibold">確認できません</p>
+              <p className="font-semibold">{t.errorTitle}</p>
               <p className="mt-1 text-sm leading-5 text-red-800">{error}</p>
             </div>
           </Alert>
         ) : null}
 
         {methods.length > 1 ? (
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="本人確認の方法">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label={t.methodTabsLabel}>
             {methods.map((option) => (
               <Button
                 key={option}
@@ -146,7 +148,7 @@ export function TotpPage({
           <form onSubmit={handleTotp}>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="code">確認コード</Label>
+                <Label htmlFor="code">{t.codeLabel}</Label>
                 <div className="relative">
                   <IconKey
                     aria-hidden="true"
@@ -171,7 +173,7 @@ export function TotpPage({
                 </div>
               </div>
               <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
-                {submitting ? '確認しています…' : 'コードを確認'}
+                {submitting ? t.verifying : t.verifyCode}
                 <IconArrowRight size={18} aria-hidden="true" />
               </Button>
             </div>
@@ -180,9 +182,7 @@ export function TotpPage({
 
         {method === 'webauthn' ? (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-slate-600">
-              登録済みのパスキー (指紋・顔認証・セキュリティキー) で本人確認します。
-            </p>
+            <p className="text-sm text-slate-600">{t.webauthnDescription}</p>
             <Button
               type="button"
               size="lg"
@@ -191,7 +191,7 @@ export function TotpPage({
               onClick={handlePasskey}
             >
               <IconFingerprint size={18} aria-hidden="true" />
-              {submitting ? '認証しています…' : 'パスキーで認証'}
+              {submitting ? t.authenticating : t.authenticateWithPasskey}
             </Button>
           </div>
         ) : null}
@@ -200,7 +200,7 @@ export function TotpPage({
           <form onSubmit={handleRecovery}>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="recovery">リカバリコード</Label>
+                <Label htmlFor="recovery">{t.recoveryLabel}</Label>
                 <div className="relative">
                   <IconLifebuoy
                     aria-hidden="true"
@@ -220,12 +220,10 @@ export function TotpPage({
                     onChange={(event) => setCode(event.target.value)}
                   />
                 </div>
-                <p className="text-xs text-slate-500">
-                  認証アプリやパスキーが使えない場合に、保存済みのリカバリコードを 1 つ入力します。
-                </p>
+                <p className="text-xs text-slate-500">{t.recoveryHint}</p>
               </div>
               <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
-                {submitting ? '確認しています…' : 'リカバリコードを確認'}
+                {submitting ? t.verifying : t.verifyRecoveryCode}
                 <IconArrowRight size={18} aria-hidden="true" />
               </Button>
             </div>
@@ -238,7 +236,7 @@ export function TotpPage({
             size={17}
             aria-hidden="true"
           />
-          <p>パスキーは端末に紐づき、フィッシングに強い認証方法です。</p>
+          <p>{t.passkeyFooterNote}</p>
         </div>
       </div>
     </AuthShell>

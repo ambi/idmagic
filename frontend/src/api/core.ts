@@ -1,3 +1,6 @@
+import { commonDictionary } from '../lib/i18n/common.i18n'
+import { getCurrentLocale } from '../lib/i18n/currentLocale'
+
 type APIError = {
   error?: string
   message?: string
@@ -42,7 +45,8 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   })
   const body = (await response.json().catch(() => ({}))) as T & APIError
   if (!response.ok) {
-    const message = body.message ?? body.error_description ?? '認証サービスに接続できませんでした。'
+    const message =
+      body.message ?? body.error_description ?? commonDictionary[getCurrentLocale()].networkError
     if (response.status === 401) {
       throw new UnauthenticatedError(message, body.error)
     }

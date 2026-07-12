@@ -1,0 +1,51 @@
+import { defineDictionary } from '../../lib/i18n'
+
+export const totpPageDictionary = defineDictionary(
+  {
+    eyebrow: '二要素認証',
+    title: '本人確認',
+    description: 'サインインを完了するために、二段階目の本人確認を行ってください。',
+    errorTitle: '確認できません',
+    methodTabsLabel: '本人確認の方法',
+    methodTotp: '認証アプリ',
+    methodWebauthn: 'パスキー',
+    methodRecoveryCode: 'リカバリコード',
+    codeLabel: '確認コード',
+    verifying: '確認しています…',
+    verifyCode: 'コードを確認',
+    webauthnDescription: '登録済みのパスキー (指紋・顔認証・セキュリティキー) で本人確認します。',
+    authenticating: '認証しています…',
+    authenticateWithPasskey: 'パスキーで認証',
+    recoveryLabel: 'リカバリコード',
+    recoveryHint:
+      '認証アプリやパスキーが使えない場合に、保存済みのリカバリコードを 1 つ入力します。',
+    verifyRecoveryCode: 'リカバリコードを確認',
+    passkeyFooterNote: 'パスキーは端末に紐づき、フィッシングに強い認証方法です。',
+    passkeyCancelled: 'パスキー認証がキャンセルされました。',
+    passkeyFailed: 'パスキー認証に失敗しました。',
+  },
+  {
+    eyebrow: 'Two-factor authentication',
+    title: 'Verify your identity',
+    description: 'Complete a second verification step to finish signing in.',
+    errorTitle: "Can't verify",
+    methodTabsLabel: 'Verification method',
+    methodTotp: 'Authenticator app',
+    methodWebauthn: 'Passkey',
+    methodRecoveryCode: 'Recovery code',
+    codeLabel: 'Verification code',
+    verifying: 'Verifying…',
+    verifyCode: 'Verify code',
+    webauthnDescription:
+      'Verify your identity with a registered passkey (fingerprint, face, or security key).',
+    authenticating: 'Authenticating…',
+    authenticateWithPasskey: 'Authenticate with passkey',
+    recoveryLabel: 'Recovery code',
+    recoveryHint:
+      'Enter one saved recovery code if you cannot use your authenticator app or passkey.',
+    verifyRecoveryCode: 'Verify recovery code',
+    passkeyFooterNote: 'Passkeys are bound to your device and resistant to phishing.',
+    passkeyCancelled: 'Passkey authentication was cancelled.',
+    passkeyFailed: 'Passkey authentication failed.',
+  },
+)

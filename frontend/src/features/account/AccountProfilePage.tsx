@@ -1,6 +1,11 @@
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, updateAccountProfile } from '../../api'
 import { attributeGroupKey, attributeGroupTitle, attributeLabel } from '../../lib/utils'
+import { useDictionary } from '../../lib/i18n'
+import {
+  domainLabelsDictionary,
+  type DomainLabelsDictionary,
+} from '../../lib/i18n/domainLabels.i18n'
 import { AccountShell } from '../../components/AccountShell'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
@@ -349,14 +354,14 @@ function ReadField({
   )
 }
 
-function groupedAttributes(defs: UserAttributeDef[]) {
+function groupedAttributes(defs: UserAttributeDef[], t: DomainLabelsDictionary) {
   const groups = new Map<ReturnType<typeof attributeGroupKey>, UserAttributeDef[]>()
   for (const def of defs) {
     const key = attributeGroupKey(def)
     groups.set(key, [...(groups.get(key) ?? []), def])
   }
   return (['profile', 'organization', 'custom'] as const)
-    .map((key) => ({ key, title: attributeGroupTitle(key), defs: groups.get(key) ?? [] }))
+    .map((key) => ({ key, title: attributeGroupTitle(key, t), defs: groups.get(key) ?? [] }))
     .filter((group) => group.defs.length > 0)
 }
 
@@ -379,7 +384,8 @@ function ProfileAttributeGroups({
       visibility: 'self_readable',
       pii: false,
     }))
-  const groups = groupedAttributes([...defs, ...readOnlyDefs])
+  const t = useDictionary(domainLabelsDictionary)
+  const groups = groupedAttributes([...defs, ...readOnlyDefs], t)
   if (groups.length === 0) return null
   return (
     <>
@@ -412,7 +418,8 @@ function EditableAttributeGroups({
   values: AttributeDraft
   onChange: (key: string, next: string) => void
 }) {
-  const groups = groupedAttributes(defs)
+  const t = useDictionary(domainLabelsDictionary)
+  const groups = groupedAttributes(defs, t)
   if (groups.length === 0) return null
   return (
     <div className="grid gap-4 rounded-lg border border-slate-200 p-4">

@@ -11,8 +11,11 @@ import { AuthShell } from '../../components/AuthShell'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
+import { devicePageDictionary } from './DevicePage.i18n'
 
 export function DevicePage({ csrfToken, userCode }: { csrfToken: string; userCode: string }) {
+  const t = useDictionary(devicePageDictionary)
   const normalizedCode = userCode.replace(/-/g, '').toUpperCase()
   const [code, setCode] = useState(normalizedCode)
   const [error, setError] = useState('')
@@ -28,30 +31,21 @@ export function DevicePage({ csrfToken, userCode }: { csrfToken: string; userCod
         window.location.assign('/status?state=authentication-required')
         return
       }
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'デバイス要求を処理できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.deviceError)
       setSubmitting(false)
     }
   }
 
   return (
-    <AuthShell
-      asideTitle="新しいデバイスを、安全な確認手順で接続。"
-      asideText="表示されたコードと接続先を確認し、自分が開始した操作だけを承認してください。"
-    >
+    <AuthShell asideTitle={t.asideTitle} asideText={t.asideText}>
       <div className="flex flex-col gap-7">
         <header className="flex flex-col gap-2.5">
           <div className="mb-1 flex size-12 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-700">
             <IconDeviceDesktopCheck size={25} aria-hidden="true" />
           </div>
-          <p className="eyebrow">デバイス認可</p>
-          <h2 className="page-title">デバイスを接続</h2>
-          <p className="page-description">
-            接続するデバイスに表示されている8文字のコードを入力してください。
-          </p>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h2 className="page-title">{t.title}</h2>
+          <p className="page-description">{t.description}</p>
         </header>
 
         <DeviceCodeFormPresentation

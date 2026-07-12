@@ -107,6 +107,15 @@ just verify-ui
 just test-ui-e2e
 ```
 
+## UI display languages
+
+The hosted authentication, account, and admin UI support Japanese (`ja`) and English (`en`) only.
+Add user-visible copy to the dictionary that is local to its feature (for example,
+`frontend/src/features/auth-flow/LoginPage.i18n.ts`) and provide both locale values in
+the same change. Use `defineDictionary` so TypeScript rejects missing or extra keys;
+run `just verify-ui` before committing. Do not add another locale without a separately
+specified product decision.
+
 ## Configuration
 
 Local defaults use in-memory persistence and console email output. Production

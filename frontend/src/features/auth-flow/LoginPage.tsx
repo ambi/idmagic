@@ -14,8 +14,13 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { useDictionary } from '../../lib/i18n'
+import { loginPageDictionary } from './LoginPage.i18n'
 
 export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo?: string }) {
+  const t = useDictionary(loginPageDictionary)
+  const tCommon = useDictionary(commonDictionary)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -34,11 +39,7 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
       )
       continueBrowserFlow(result)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '認証サービスに接続できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : tCommon.networkError)
       setSubmitting(false)
     }
   }
@@ -47,11 +48,9 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
     <AuthShell>
       <div className="flex flex-col gap-7">
         <header className="flex flex-col gap-2.5">
-          <p className="eyebrow">サインイン</p>
-          <h2 className="page-title">アカウントにログイン</h2>
-          <p className="page-description">
-            組織から発行された認証情報を入力して、安全に続行してください。
-          </p>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h2 className="page-title">{t.title}</h2>
+          <p className="page-description">{t.description}</p>
         </header>
 
         {error ? (
@@ -62,7 +61,7 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
               aria-hidden="true"
             />
             <div>
-              <p className="font-semibold">ログインできません</p>
+              <p className="font-semibold">{t.errorTitle}</p>
               <p className="mt-1 text-sm leading-5 text-red-800">{error}</p>
             </div>
           </Alert>
@@ -77,9 +76,7 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
 
         <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
           <IconShieldLock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
-          <p>
-            認証情報は保護された接続で送信されます。共有端末では、利用後に必ずログアウトしてください。
-          </p>
+          <p>{t.securityNote}</p>
         </div>
       </div>
     </AuthShell>
@@ -97,11 +94,12 @@ export function LoginFormPresentation({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onTogglePassword: () => void
 }) {
+  const t = useDictionary(loginPageDictionary)
   return (
     <form onSubmit={onSubmit}>
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="username">ユーザー名</Label>
+          <Label htmlFor="username">{t.usernameLabel}</Label>
           <div className="relative">
             <IconAt
               aria-hidden="true"
@@ -111,7 +109,7 @@ export function LoginFormPresentation({
             <Input
               id="username"
               name="username"
-              placeholder="例: your.name"
+              placeholder={t.usernamePlaceholder}
               className="pl-10"
               autoComplete="username"
               spellCheck={false}
@@ -122,7 +120,7 @@ export function LoginFormPresentation({
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="password">パスワード</Label>
+          <Label htmlFor="password">{t.passwordLabel}</Label>
           <div className="relative">
             <IconLock
               aria-hidden="true"
@@ -133,7 +131,7 @@ export function LoginFormPresentation({
               id="password"
               type={showPassword ? 'text' : 'password'}
               name="password"
-              placeholder="パスワードを入力"
+              placeholder={t.passwordPlaceholder}
               className="px-10"
               autoComplete="current-password"
               required
@@ -143,7 +141,7 @@ export function LoginFormPresentation({
               type="button"
               onClick={onTogglePassword}
               className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
-              aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+              aria-label={showPassword ? t.hidePassword : t.showPassword}
               aria-pressed={showPassword}
             >
               {showPassword ? (
@@ -160,12 +158,12 @@ export function LoginFormPresentation({
           className="tenant-primary-cta mt-1 w-full"
           disabled={submitting}
         >
-          {submitting ? '確認しています…' : 'ログインして続行'}
+          {submitting ? t.submitting : t.submit}
           <IconArrowRight size={18} aria-hidden="true" />
         </Button>
         <div className="flex justify-center">
           <a className="text-xs font-medium text-blue-700 hover:underline" href="/forgot_password">
-            パスワードを忘れた場合
+            {t.forgotPassword}
           </a>
         </div>
       </div>

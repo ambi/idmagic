@@ -55,6 +55,11 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
 import { attributeGroupKey, attributeGroupTitle, attributeLabel, cn } from '../../lib/utils'
+import { useDictionary } from '../../lib/i18n'
+import {
+  domainLabelsDictionary,
+  type DomainLabelsDictionary,
+} from '../../lib/i18n/domainLabels.i18n'
 import {
   type AdminGroup,
   type AdminUser,
@@ -447,6 +452,7 @@ export function AdminUserDetailPage({
   const [notice, setNotice] = useState('')
 
   const attributeDefs = [...schema.builtin, ...schema.attributes]
+  const tLabels = useDictionary(domainLabelsDictionary)
 
   async function reload() {
     setUser(await getAdminUser(user.id))
@@ -666,7 +672,7 @@ export function AdminUserDetailPage({
                 値が設定されている属性を区分ごとに表示します。編集は「編集」から行います。
               </p>
               <div className="mt-4 flex flex-col gap-5">
-                {groupedAttributeDefs(attributeDefs).map((group) => (
+                {groupedAttributeDefs(attributeDefs, tLabels).map((group) => (
                   <AttributeGroup
                     key={group.key}
                     title={group.title}
@@ -956,6 +962,7 @@ function UserRequiredActionsSection({
   onToggle: (action: string, present: boolean) => void
 }) {
   const active = new Set(user.required_actions ?? [])
+  const tLabels = useDictionary(domainLabelsDictionary)
   return (
     <section>
       <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
@@ -982,7 +989,7 @@ function UserRequiredActionsSection({
               )}
             >
               {present ? '✓ ' : '+ '}
-              {requiredActionLabel(action)}
+              {requiredActionLabel(action, tLabels)}
             </button>
           )
         })}
@@ -1282,14 +1289,14 @@ function AdminAttributeField({
   )
 }
 
-function groupedAttributeDefs(defs: UserAttributeDef[]) {
+function groupedAttributeDefs(defs: UserAttributeDef[], t: DomainLabelsDictionary) {
   const groups = new Map<ReturnType<typeof attributeGroupKey>, UserAttributeDef[]>()
   for (const def of defs) {
     const key = attributeGroupKey(def)
     groups.set(key, [...(groups.get(key) ?? []), def])
   }
   return (['profile', 'organization', 'custom'] as const)
-    .map((key) => ({ key, title: attributeGroupTitle(key), defs: groups.get(key) ?? [] }))
+    .map((key) => ({ key, title: attributeGroupTitle(key, t), defs: groups.get(key) ?? [] }))
     .filter((group) => group.defs.length > 0)
 }
 
@@ -1304,7 +1311,8 @@ function AdminAttributeEditorGroups({
   onChange: (key: string, next: string) => void
   readOnly?: boolean
 }) {
-  const groups = groupedAttributeDefs(defs)
+  const t = useDictionary(domainLabelsDictionary)
+  const groups = groupedAttributeDefs(defs, t)
   if (groups.length === 0) return null
   return (
     <section className="grid gap-4 border-t border-slate-200 pt-5">

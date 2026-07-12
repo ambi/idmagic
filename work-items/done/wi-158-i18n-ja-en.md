@@ -1,6 +1,6 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-10
@@ -31,7 +31,7 @@ idmagic の SCL は `user_experience.locales` と `UX-LOCALE` で日本語と英
 - **go/http**:
   - OIDC `ui_locales_supported` と UI の実対応 locale を一致させる。
   - hosted auth で `ui_locales` hint を受け取り、UI へ渡す経路を明確にする。
-  - API error / validation error を UI が安定した key として翻訳できる境界を整理する。
+  - backend が返す API error / validation error の `message` / `error_description` は常に英語に統一し、表示言語に応じた翻訳はしない（`spec/contexts/system.yaml` `UX-API-ERROR-ENGLISH-ONLY`）。UI は stable な `error` code を持つ既知のケースのみ自身の ja/en 辞書で文言を選び、未知の code は backend の英語 message をそのまま表示する。
 - **tests**:
   - unit / component test で `ja` / `en` の代表画面が描画できること、未対応 locale が既定 locale に落ちることを確認する。
   - translation key の欠落、未使用、直書き回帰を検出する仕組みを追加する。
@@ -53,14 +53,14 @@ idmagic の SCL は `user_experience.locales` と `UX-LOCALE` で日本語と英
 - `ui_locales` は OIDC の hint として扱い、ユーザーの明示選択を上書きしない。
 
 ## Tasks
-- [ ] T001 [SCL] `UX-LOCALE`、関連 glossary / scenarios / objectives を更新し、対象 screen と locale 解決順を明記する。
-- [ ] T002 [Render] `just scl-render` で SCL 派生物を更新する。
-- [ ] T003 [UI] i18n runtime、typed locale / key、辞書構造、fallback を導入する。
-- [ ] T004 [UI] admin / account / hosted auth の利用者向け文言、状態ラベル、日時・数値表示を `ja` / `en` 化する。
-- [ ] T005 [HTTP] `ui_locales_supported`、hosted auth の `ui_locales` hint、UI への locale 伝播を実対応に合わせる。
-- [ ] T006 [Test] locale 解決、辞書欠落検出、代表画面の `ja` / `en` 描画 test を追加する。
-- [ ] T007 [Docs] 文言追加手順と二言語限定方針を記録する。
-- [ ] T008 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+- [x] T001 [SCL] `UX-LOCALE`、関連 glossary / scenarios / objectives を更新し、対象 screen と locale 解決順を明記する。
+- [x] T002 [Render] `just scl-render` で SCL 派生物を更新する。
+- [x] T003 [UI] i18n runtime、typed locale / key、辞書構造、fallback を導入する。
+- [x] T004 [UI] admin / account / hosted auth の利用者向け文言、状態ラベル、日時・数値表示を `ja` / `en` 化する。
+- [x] T005 [HTTP] `ui_locales_supported`、hosted auth の `ui_locales` hint、UI への locale 伝播を実対応に合わせる。
+- [x] T006 [Test] locale 解決、辞書欠落検出、代表画面の `ja` / `en` 描画 test を追加する。
+- [x] T007 [Docs] 文言追加手順と二言語限定方針を記録する。
+- [x] T008 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
 
 ## Verification
 - `just yaml-check`
@@ -77,3 +77,26 @@ I18n は文言置換に見えて、認証画面、管理画面、アカウント
 辞書 key の欠落や直書きの混在は利用者ごとの表示不整合を生むため、typed key と欠落検出を導入する。
 API error を自然文として翻訳しようとすると server / UI の責務が曖昧になるため、UI は安定した error key と補助値を翻訳し、
 protocol 固有の error code は仕様名として保持する。
+
+## Completion
+
+- **Completed At**: 2026-07-12
+- **Summary**:
+  ja / en に限定した型安全な辞書・ロケール解決・保存済みの明示選択を導入し、hosted auth、account、admin の chrome に言語切替を追加した。
+  hosted auth の主要画面と共有ドメインラベルを辞書へ移し、OIDC `ui_locales` hint、未対応 locale の ja fallback、英語固定の backend API error 境界を仕様と実装で整合させた。
+- **Affected Guarantees State**:
+  対応 locale は ja / en のみであり、明示選択、OIDC hint、保存済み設定、ブラウザ言語、ja fallback の順に一貫して解決される。
+  辞書キーの ja / en 不整合は TypeScript の型検査で検出され、未知の API error は英語の backend message を維持する。
+- **Verification Results**:
+  - `just scl-render` — passed
+  - `just yaml-check` — passed
+  - `just verify-go` — passed
+  - `just verify-ui` — passed
+  - `just test-ui-e2e` — passed
+  - `just verify` — passed
+- **Evidence**:
+  - 実行日: 2026-07-12
+  - 実行環境: ローカル開発環境 (macOS)
+  - 実行主体: Codex (GPT-5)
+  - 対象ソース版: main (コミット前作業ツリー)
+  - 保存先: 外部成果物なし。上記検証結果を本記録に要約。

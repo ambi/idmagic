@@ -17,6 +17,7 @@ import { tenantBrandStyle, useTenantBranding } from '../lib/useTenantBranding'
 import { cn } from '../lib/utils'
 import { preloadPageChunks } from '../router'
 import { Brand } from './Brand'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,54 +92,57 @@ export function AccountShell({
               マイページ
             </span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
-                aria-label="アカウントメニュー"
-              >
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-semibold text-slate-800">{username}</p>
-                  <p className="text-xs text-slate-500">サインイン中</p>
-                </div>
-                <span className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white shadow-sm">
-                  {username.slice(0, 1).toUpperCase()}
-                </span>
-                <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                <p className="text-xs font-medium text-slate-500">ログイン中</p>
-                <p className="mt-0.5 text-sm font-semibold text-slate-900">{username}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-              {isAdmin ? (
-                <DropdownMenuItem asChild>
-                  {/* 認証オーディエンス境界をまたぐため preload を無効化する。
-                      intent preload で /admin loader が走ると admin セッション未確立時に
-                      OIDC ログインへ画面遷移してしまう (hover だけで遷移する不具合)。 */}
-                  <Link to="/admin" preload={false}>
-                    <IconShieldLock size={17} aria-hidden="true" />
-                    管理コンソール
-                  </Link>
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem asChild>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher className="hidden sm:flex" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => {
-                    void logout('account')
-                  }}
-                  className="w-full text-left text-red-700"
+                  className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+                  aria-label="アカウントメニュー"
                 >
-                  <IconLogout size={17} aria-hidden="true" />
-                  ログアウト
+                  <div className="hidden text-right sm:block">
+                    <p className="text-sm font-semibold text-slate-800">{username}</p>
+                    <p className="text-xs text-slate-500">サインイン中</p>
+                  </div>
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white shadow-sm">
+                    {username.slice(0, 1).toUpperCase()}
+                  </span>
+                  <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
                 </button>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  <p className="text-xs font-medium text-slate-500">ログイン中</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900">{username}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
+                {isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    {/* 認証オーディエンス境界をまたぐため preload を無効化する。
+                      intent preload で /admin loader が走ると admin セッション未確立時に
+                      OIDC ログインへ画面遷移してしまう (hover だけで遷移する不具合)。 */}
+                    <Link to="/admin" preload={false}>
+                      <IconShieldLock size={17} aria-hidden="true" />
+                      管理コンソール
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void logout('account')
+                    }}
+                    className="w-full text-left text-red-700"
+                  >
+                    <IconLogout size={17} aria-hidden="true" />
+                    ログアウト
+                  </button>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 

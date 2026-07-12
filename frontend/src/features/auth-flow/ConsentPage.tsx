@@ -14,26 +14,9 @@ import { AuthenticationAPIError, continueBrowserFlow, submitConsent } from '../.
 import { AuthShell } from '../../components/AuthShell'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useDictionary } from '../../lib/i18n'
 import type { ConsentDetailView } from '../../types'
-
-const scopeDetails: Record<string, { label: string; description: string; icon: typeof IconId }> = {
-  openid: { label: 'アカウント識別子', description: '本人確認に必要な一意のID', icon: IconId },
-  profile: {
-    label: '基本プロフィール',
-    description: '名前、表示名などのプロフィール情報',
-    icon: IconUser,
-  },
-  email: {
-    label: 'メールアドレス',
-    description: '登録済みメールアドレスと確認状態',
-    icon: IconMail,
-  },
-  offline_access: {
-    label: '継続的なアクセス',
-    description: 'サインインしていない間も許可した範囲でアクセス',
-    icon: IconRefresh,
-  },
-}
+import { consentPageDictionary } from './ConsentPage.i18n'
 
 export function ConsentPage({
   csrfToken,
@@ -46,6 +29,26 @@ export function ConsentPage({
   scopes: string[]
   authorizationDetails?: ConsentDetailView[]
 }) {
+  const t = useDictionary(consentPageDictionary)
+  const scopeDetails: Record<string, { label: string; description: string; icon: typeof IconId }> =
+    {
+      openid: { label: t.scopeOpenidLabel, description: t.scopeOpenidDescription, icon: IconId },
+      profile: {
+        label: t.scopeProfileLabel,
+        description: t.scopeProfileDescription,
+        icon: IconUser,
+      },
+      email: {
+        label: t.scopeEmailLabel,
+        description: t.scopeEmailDescription,
+        icon: IconMail,
+      },
+      offline_access: {
+        label: t.scopeOfflineAccessLabel,
+        description: t.scopeOfflineAccessDescription,
+        icon: IconRefresh,
+      },
+    }
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -55,25 +58,18 @@ export function ConsentPage({
     try {
       continueBrowserFlow(await submitConsent(csrfToken, action))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'アクセス要求を処理できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.consentError)
       setSubmitting(false)
     }
   }
 
   return (
-    <AuthShell
-      asideTitle="データ共有は、必要な範囲だけを明確に。"
-      asideText="アクセス要求の内容を確認し、信頼できるアプリケーションにだけ権限を付与してください。"
-    >
+    <AuthShell asideTitle={t.asideTitle} asideText={t.asideText}>
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-2">
-          <p className="eyebrow">アクセス要求</p>
-          <h2 className="page-title">アクセスを許可しますか？</h2>
-          <p className="page-description">要求元と共有される情報を確認してください。</p>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h2 className="page-title">{t.title}</h2>
+          <p className="page-description">{t.description}</p>
         </header>
 
         <Card className="overflow-hidden">
@@ -82,24 +78,24 @@ export function ConsentPage({
               {clientName.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">要求元アプリケーション</p>
+              <p className="text-xs font-medium text-slate-500">{t.requestingApplication}</p>
               <p className="truncate font-semibold text-slate-950">{clientName}</p>
             </div>
             <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-bold text-emerald-700">
               <IconShieldCheck size={13} aria-hidden="true" />
-              登録済み
+              {t.registered}
             </span>
           </div>
 
           <div className="p-4">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.09em] text-slate-500">
-              共有される情報
+              {t.sharedInformation}
             </p>
             <div className="divide-y divide-slate-100">
               {scopes.map((scopeName) => {
                 const detail = scopeDetails[scopeName] ?? {
                   label: scopeName,
-                  description: 'このアプリケーションが要求する追加権限',
+                  description: t.scopeUnknownDescription,
                   icon: IconCheck,
                 }
                 const ScopeIcon = detail.icon
@@ -125,10 +121,10 @@ export function ConsentPage({
           <Card className="overflow-hidden border-blue-200/70">
             <div className="border-b border-slate-200 bg-blue-50/50 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.09em] text-blue-700">
-                細粒度の権限
+                {t.fineGrainedPermissions}
               </p>
               <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                以下の対象・上限に限定して許可します。
+                {t.fineGrainedPermissionsDescription}
               </p>
             </div>
             <div className="divide-y divide-slate-100 p-4">
@@ -163,7 +159,7 @@ export function ConsentPage({
 
         <div className="flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3.5 text-xs leading-5 text-amber-950">
           <IconClock className="mt-0.5 shrink-0 text-amber-700" size={17} aria-hidden="true" />
-          <p>許可は組織のポリシーに従って保存され、後から管理者またはアプリ側で取り消せます。</p>
+          <p>{t.retentionNote}</p>
         </div>
 
         <ConsentActionsPresentation
@@ -185,6 +181,7 @@ export function ConsentActionsPresentation({
   submitting: boolean
   onConsent: (action: 'allow' | 'deny') => void
 }) {
+  const t = useDictionary(consentPageDictionary)
   return (
     <>
       {error ? (
@@ -200,7 +197,7 @@ export function ConsentActionsPresentation({
           disabled={submitting}
           onClick={() => onConsent('allow')}
         >
-          {submitting ? '処理しています…' : '許可して続行'}
+          {submitting ? t.processing : t.allow}
           <IconArrowRight size={18} aria-hidden="true" />
         </Button>
         <Button
@@ -211,7 +208,7 @@ export function ConsentActionsPresentation({
           onClick={() => onConsent('deny')}
         >
           <IconX size={17} aria-hidden="true" />
-          許可しない
+          {t.deny}
         </Button>
       </div>
     </>

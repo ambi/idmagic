@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { domainLabelsDictionary } from './i18n/domainLabels.i18n'
 import { attributeLabel, attributeGroupKey, attributeGroupTitle, cn } from './utils'
 
 describe('cn', () => {
@@ -36,8 +37,16 @@ describe('attributeGroupKey', () => {
 
 describe('attributeGroupTitle', () => {
   it('should return correct Japanese titles', () => {
-    expect(attributeGroupTitle('profile')).toBe('OIDC 標準クレーム')
-    expect(attributeGroupTitle('organization')).toBe('組織情報')
-    expect(attributeGroupTitle('custom')).toBe('カスタム属性')
+    const ja = domainLabelsDictionary.ja
+    expect(attributeGroupTitle('profile', ja)).toBe('OIDC 標準クレーム')
+    expect(attributeGroupTitle('organization', ja)).toBe('組織情報')
+    expect(attributeGroupTitle('custom', ja)).toBe('カスタム属性')
+  })
+
+  it('should return correct English titles', () => {
+    const en = domainLabelsDictionary.en
+    expect(attributeGroupTitle('profile', en)).toBe('OIDC standard claims')
+    expect(attributeGroupTitle('organization', en)).toBe('Organization info')
+    expect(attributeGroupTitle('custom', en)).toBe('Custom attributes')
   })
 })

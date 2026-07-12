@@ -8,6 +8,8 @@ import {
 import type { ReactNode } from 'react'
 import { AccountShell } from '../../components/AccountShell'
 import { Card } from '../../components/ui/card'
+import { useDictionary } from '../../lib/i18n'
+import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import { requiredActionLabel, type AccountSummary } from '../../types'
 
 export function formatAccountSummaryDateTime(value: string | undefined): string {
@@ -35,6 +37,7 @@ export function AccountHomePage({
   isAdmin: boolean
 }) {
   const displayName = summary.name?.trim() || summary.preferred_username
+  const tLabels = useDictionary(domainLabelsDictionary)
   return (
     <AccountShell
       active="home"
@@ -58,7 +61,7 @@ export function AccountHomePage({
                   key={action}
                   className="rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900"
                 >
-                  {requiredActionLabel(action)}
+                  {requiredActionLabel(action, tLabels)}
                 </li>
               ))}
             </ul>

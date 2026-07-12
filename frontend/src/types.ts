@@ -1,3 +1,5 @@
+import type { DomainLabelsDictionary } from './lib/i18n/domainLabels.i18n'
+
 export type ConsentDetailView = {
   type: string
   description?: string
@@ -39,18 +41,18 @@ export const REQUIRED_ACTIONS = [
 
 export type RequiredActionValue = (typeof REQUIRED_ACTIONS)[number]
 
-export const REQUIRED_ACTION_LABELS: Record<string, string> = {
-  update_password: 'パスワードの変更',
-  verify_email: 'メールアドレスの確認',
-  configure_totp: '二要素認証の設定',
-  update_profile: 'プロフィールの更新',
-  terms_and_conditions: '利用規約への同意',
-}
-
-// requiredActionLabel は内部値を利用者向けの日本語表示名へ変換する。未知の値でも
-// 内部表現をそのまま見せず、一般的な文言にフォールバックする。
-export function requiredActionLabel(action: string): string {
-  return REQUIRED_ACTION_LABELS[action] ?? 'その他の必須対応'
+// requiredActionLabel は内部値を利用者向けの表示名(現在locale)へ変換する。未知の値でも
+// 内部表現をそのまま見せず、一般的な文言にフォールバックする。t は呼び出し側が
+// useDictionary(domainLabelsDictionary) で取得したものを渡す。
+export function requiredActionLabel(action: string, t: DomainLabelsDictionary): string {
+  const labels: Record<string, string> = {
+    update_password: t.requiredActionUpdatePassword,
+    verify_email: t.requiredActionVerifyEmail,
+    configure_totp: t.requiredActionConfigureTotp,
+    update_profile: t.requiredActionUpdateProfile,
+    terms_and_conditions: t.requiredActionTermsAndConditions,
+  }
+  return labels[action] ?? t.requiredActionOther
 }
 
 export type AdminOAuth2Client = {

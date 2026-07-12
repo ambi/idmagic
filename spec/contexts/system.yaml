@@ -4,6 +4,28 @@
 system: idmagic
 spec_version: "2.0"
 context: System
+glossary:
+  Locale:
+    definition: UI表示言語を一意に決めるBCP47言語タグ。idmagicは "ja" と "en" のみをサポート対象とし、それ以外は未対応 locale として扱う。
+    aliases:
+      - locale tag
+      - 表示言語コード
+  DisplayLanguage:
+    definition: EndUser または Administrator が言語切り替え UI で明示的に選択した Locale。選択はブラウザに保存され、以後のアクセスで保存済み設定として優先される。
+    aliases:
+      - 表示言語
+      - 言語設定
+    not_to_confuse_with:
+      - term: Locale
+        reason: Locale は言語タグそのもの、DisplayLanguage は利用者が選び保存した Locale の値。
+  FallbackLocale:
+    definition: 要求された Locale が未対応、または対応 Locale の辞書に該当 translation key が欠落している場合に表示へ用いる既定 Locale。idmagicでは "ja" を既定とする。
+    aliases:
+      - 既定 locale
+      - default locale
+    not_to_confuse_with:
+      - term: DisplayLanguage
+        reason: DisplayLanguage は利用者が選択した値。FallbackLocale はその選択や辞書が使えない場合の受け皿。
 standards:
   WCAG22:
     title: Web Content Accessibility Guidelines 2.2
@@ -72,6 +94,55 @@ invariants:
     description: "永続化される状態モデルは作成時刻を持つ。作成後に現在状態が更新されるモデルは更新時刻も持つ。作成後は不可変で、消費または削除のみされる記録モデルは更新時刻を持たない。issued_at / granted_at / occurred_at / expires_at / revoked_at / first_seen / last_seen などのドメイン時刻は作成時刻を置き換えない。イベントログは履歴・監査の真実だが、created_at / updated_at は現在状態の検索・表示・同期・運用確認のためのモデル属性である。"
     target: PersistedStateModel
     always: "persisted_model has created_at and (mutable_persisted_model implies has updated_at) and (immutable_record implies not has updated_at)"
+scenarios:
+  明示的に選択した表示言語でホスト認証画面が描画される:
+    goal: EndUser が言語切り替え UIで Locale を明示的に選択し、対応する文言でホスト認証画面が表示される。
+    primary_actor: EndUser
+    scope: System
+    level: user_goal
+    preconditions:
+      - "未認証セッションで Login 画面を表示している"
+    main_success:
+      - "EndUser が表示言語 \"en\" を選択する"
+      - Login 画面の文言が en 辞書で表示される
+      - 選択した Locale がブラウザに保存され、以後のアクセスで保存済み設定として優先される
+  未対応localeは既定localeにフォールバックする:
+    goal: ブラウザ言語が未対応 Locale であっても、既定 locale の辞書で画面が表示される。
+    primary_actor: EndUser
+    scope: System
+    level: user_goal
+    preconditions:
+      - "ブラウザの言語設定が \"fr\" である"
+      - "表示言語の明示選択も保存済み設定も存在しない"
+    main_success:
+      - "EndUser が Login 画面を表示する"
+      - 画面の文言は既定 locale \"ja\" の辞書で表示される
+  OIDC ui_localesヒントにより表示言語が決まる:
+    goal: 認可リクエストの ui_locales ヒントに従い、明示選択も保存済み設定も無い場合にホスト認証画面の表示言語が決まる。
+    primary_actor: ResourceOwner
+    scope: System
+    level: user_goal
+    preconditions:
+      - "未認証セッションで表示言語の明示選択も保存済み設定も存在しない"
+    main_success:
+      - "\"web-app\" として ui_locales \"en\" で認可リクエストを送信する"
+      - Login 画面の文言は en 辞書で表示される
+    extensions:
+      - condition: 表示言語が既に明示選択済みの場合はui_localesヒントで上書きされない
+        steps:
+          - "EndUser が表示言語 \"ja\" を明示的に選択済みである"
+          - "\"web-app\" として ui_locales \"en\" で認可リクエストを送信する"
+          - Login 画面の文言は ja 辞書で表示される
+  管理者が選択した表示言語で管理画面が表示される:
+    goal: Administrator が選択した Locale で管理画面の文言が表示される。
+    primary_actor: Administrator
+    scope: System
+    level: user_goal
+    preconditions:
+      - "roles に \"admin\" を持つ Administrator が認証済みで AdminDashboard を表示している"
+    main_success:
+      - "Administrator が表示言語 \"en\" を選択する"
+      - AdminDashboard の文言が en 辞書で表示される
 objectives:
   DatabaseResilience:
     kind: security
@@ -277,6 +348,15 @@ objectives:
     value:
       default_drain_grace_period_seconds: 5
       env_drain_grace_period: DRAIN_GRACE_PERIOD_SECONDS
+  TranslationKeyIntegrity:
+    kind: security
+    description: "ja / en 辞書は translation key の完全な対を持つ。ビルドまたはテストで、一方の辞書にのみ存在するkey、コードから参照されるが辞書に存在しない key を検出して失敗させる。どちらの辞書からも参照されない未使用 key は警告として報告する。"
+    policy: translation_key_parity_check
+    target: FrontendI18nDictionary
+    value:
+      fail_on_missing_key: true
+      fail_on_untranslated_key: true
+      warn_on_unused_key: true
 user_experience:
   accessibility:
     standard: WCAG22
@@ -615,7 +695,7 @@ user_experience:
     - id: UX-LOCALE
       category: localization
       adoption: required
-      statement: UI文言はjaとenを提供し、未対応localeは既定localeへフォールバックする。
+      statement: "UI文言はjaとenの辞書で提供する。表示言語(DisplayLanguage)は 明示選択 > OIDCのui_localesヒント > 保存済み設定 > ブラウザ言語 > 既定locale(FallbackLocale=ja) の優先順で解決する。未対応localeおよび辞書keyが欠落しているlocaleは既定locale(ja)にフォールバックする。ui_localesヒントは明示選択済みの表示言語を上書きしない。"
       screens:
         - Home
         - Login
@@ -624,7 +704,33 @@ user_experience:
         - Device
         - Status
         - Callback
+        - ForgotPassword
+        - ResetPassword
+        - ChangePassword
+        - AccountProfile
+        - AccountEmails
+        - AccountEmailVerify
+        - AccountSecurity
+        - AccountActivity
+        - AccountApplications
+        - AccountData
+        - AdminDashboard
+        - AdminUsers
+        - AdminGroups
+        - AdminAgents
+        - AdminApplications
+        - AdminAuthorizationDetailTypes
+        - AdminConsents
+        - AdminKeys
+        - AdminTenants
+        - AdminTenantAttributes
+        - AdminSettings
+        - AdminEntraFederation
       interfaces:
         - GetOpenidConfiguration
       standards:
         - OpenIDConnectDiscovery
+    - id: UX-API-ERROR-ENGLISH-ONLY
+      category: localization
+      adoption: required
+      statement: "バックエンドが返すAPIエラー・validationエラーのmessage/error_descriptionは常に英語で固定し、表示言語(DisplayLanguage)に応じて翻訳しない。UIは stable な error code (例: password_policy, invalid_credentials) を持つ既知のケースについてのみ、その code をkeyとしてUI自身のja/en辞書から文言を選び表示する。UI側で未知のcodeについては、backendのmessage/error_descriptionをそのまま(英語のまま)表示してよい。ネットワーク到達不可時など、backendの応答が無い場合にUIが表示する文言はUI自身の文言なのでja/en化対象である。"

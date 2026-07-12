@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { DomainLabelsDictionary } from './i18n/domainLabels.i18n'
 import type { UserAttributeDef } from '../types'
 
 export function cn(...inputs: ClassValue[]) {
@@ -33,13 +34,15 @@ export function attributeGroupKey(
   return organizationAttributeKeys.has(def.key) ? 'organization' : 'custom'
 }
 
-export function attributeGroupTitle(key: AttributeGroupKey): string {
+// t は呼び出し側 (component) が useDictionary(domainLabelsDictionary) で取得したものを渡す。
+// key → 表示名の変換ロジックはここに残し、文言そのものは辞書側の責務にする。
+export function attributeGroupTitle(key: AttributeGroupKey, t: DomainLabelsDictionary): string {
   switch (key) {
     case 'profile':
-      return 'OIDC 標準クレーム'
+      return t.attributeGroupProfile
     case 'organization':
-      return '組織情報'
+      return t.attributeGroupOrganization
     case 'custom':
-      return 'カスタム属性'
+      return t.attributeGroupCustom
   }
 }

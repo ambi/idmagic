@@ -4,6 +4,7 @@ import { createHmac } from 'node:crypto'
 import { afterAll, beforeAll, expect, test } from 'bun:test'
 import {
   authorizePath,
+  clickButtonByAnyText,
   clickButtonByText,
   clickElementByAriaLabel,
   clickLinkByText,
@@ -161,7 +162,7 @@ test('account connected application consent can be revoked from the browser', as
       }
       await Bun.sleep(150)
     }
-    if (needsConsent) await clickButtonByText(view, '許可して続行')
+    if (needsConsent) await clickButtonByAnyText(view, ['許可して続行', 'Allow and continue'])
     await waitForUrl(view, /localhost:3000\/callback/)
 
     await view.navigate(`${uiOrigin}/account/applications`)
