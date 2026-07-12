@@ -108,7 +108,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	}
 	now := normalizedNow(in.Now)
 	user := &idmdomain.User{
-		ID: "user_" + id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
+		ID: id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
 		Name: in.Name, Email: in.Email, EmailVerified: in.EmailVerified, Roles: roles,
 		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,

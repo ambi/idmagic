@@ -14,6 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
@@ -47,7 +48,7 @@ func RunWorker() error {
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
-	adminDeps := idmusecases.AdminUserDeps{UserRepo: deps.IdentityManagement.UserRepo, AttrSchemaRepo: deps.Tenancy.AttrSchemaRepo, ConsentRepo: deps.OAuth2.ConsentRepo, RefreshStore: deps.OAuth2.RefreshStore, DeviceCodeStore: deps.OAuth2.DeviceCodeStore, MfaFactorRepo: deps.Authentication.MfaFactorRepo, PasswordHasher: deps.Authentication.PasswordHasher, PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo}
+	adminDeps := idmusecases.AdminUserDeps{UserRepo: deps.IdentityManagement.UserRepo, AttrSchemaRepo: deps.Tenancy.AttrSchemaRepo, ConsentRepo: deps.OAuth2.ConsentRepo, RefreshStore: deps.OAuth2.RefreshStore, DeviceCodeStore: deps.OAuth2.DeviceCodeStore, MfaFactorRepo: deps.Authentication.MfaFactorRepo, PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo}
 	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
 	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
 
