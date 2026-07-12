@@ -12,7 +12,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminAuditEvent } from '../../types'
+import {
+  adminAuditEventsDictionary,
+  type AdminAuditEventsDictionary,
+} from './AdminAuditEventsPage.i18n'
 
 const DEFAULT_REALM = 'default'
 
@@ -32,16 +37,39 @@ type AuditFilterRow = {
   value: string
 }
 
-const AUDIT_FILTER_FIELDS: Array<{ value: AuditFilterField; label: string; placeholder: string }> =
-  [
-    { value: 'actor.username', label: 'ユーザー名', placeholder: '例: alice' },
-    { value: 'client.ip', label: 'IP アドレス', placeholder: '例: 203.0.113.42' },
-    { value: 'event.type', label: 'イベント種別', placeholder: '例: AuthenticationFailed' },
-    { value: 'outcome', label: '結果', placeholder: 'success / failure' },
-    { value: 'target.id', label: '対象ユーザー', placeholder: '例: user_...' },
-    { value: 'session.id', label: 'セッション', placeholder: '例: sess_...' },
-    { value: 'transaction.id', label: 'トランザクション', placeholder: '例: tx_...' },
+function auditFilterFields(
+  t: AdminAuditEventsDictionary,
+): Array<{ value: AuditFilterField; label: string; placeholder: string }> {
+  return [
+    {
+      value: 'actor.username',
+      label: t.filterFieldUsername,
+      placeholder: t.filterFieldUsernamePlaceholder,
+    },
+    { value: 'client.ip', label: t.filterFieldIp, placeholder: t.filterFieldIpPlaceholder },
+    {
+      value: 'event.type',
+      label: t.filterFieldEventType,
+      placeholder: t.filterFieldEventTypePlaceholder,
+    },
+    { value: 'outcome', label: t.filterFieldOutcome, placeholder: t.filterFieldOutcomePlaceholder },
+    {
+      value: 'target.id',
+      label: t.filterFieldTargetUser,
+      placeholder: t.filterFieldTargetUserPlaceholder,
+    },
+    {
+      value: 'session.id',
+      label: t.filterFieldSession,
+      placeholder: t.filterFieldSessionPlaceholder,
+    },
+    {
+      value: 'transaction.id',
+      label: t.filterFieldTransaction,
+      placeholder: t.filterFieldTransactionPlaceholder,
+    },
   ]
+}
 
 const FAIL_TYPES = new Set([
   'AuthenticationFailed',
@@ -80,10 +108,8 @@ const KIND_BADGE: Record<EventKind, string> = {
   aggregated: 'bg-amber-50 text-amber-700',
 }
 
-const KIND_LABEL: Record<EventKind, string> = {
-  success: '認証 成功',
-  fail: '認証 失敗',
-  aggregated: '認証 集約',
+function kindLabel(kind: EventKind, t: AdminAuditEventsDictionary): string {
+  return { success: t.kindSuccess, fail: t.kindFail, aggregated: t.kindAggregated }[kind]
 }
 
 export function AdminAuditEventsPage({
@@ -110,6 +136,8 @@ export function AdminAuditEventsPage({
   const [allTenants, setAllTenants] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminAuditEventsDictionary)
+  const { locale } = useLocale()
 
   const canCrossTenant = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
 
@@ -157,9 +185,7 @@ export function AdminAuditEventsPage({
       setSelected(next[0] ?? null)
     } catch (cause) {
       setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '監査イベントを取得できませんでした。',
+        cause instanceof AuthenticationAPIError ? cause.message : t.auditEventsFetchFailedError,
       )
     } finally {
       setBusy(false)
@@ -174,14 +200,14 @@ export function AdminAuditEventsPage({
     <AdminShell
       active="audit-events"
       actorUsername={actorUsername}
-      title="監査イベント"
-      description="テナント内で起きた重要な操作の記録。コンプライアンスや調査の起点として利用します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
       <Card className="p-5">
         <form onSubmit={handleQuery} className="grid gap-4 lg:grid-cols-3">
-          <Field label="イベントカテゴリ">
+          <Field label={t.eventCategoryFieldLabel}>
             <select
               value={category ?? ''}
               onChange={(e) =>
@@ -189,42 +215,42 @@ export function AdminAuditEventsPage({
               }
               className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
             >
-              <option value="">すべてのイベント</option>
-              <optgroup label="認証">
-                <option value="authentication">認証イベント全体</option>
-                <option value="success">認証 成功</option>
-                <option value="fail">認証 失敗</option>
-                <option value="aggregated">認証 集約 (攻撃時)</option>
+              <option value="">{t.allEventsOption}</option>
+              <optgroup label={t.authenticationGroupLabel}>
+                <option value="authentication">{t.authenticationAllOption}</option>
+                <option value="success">{t.kindSuccess}</option>
+                <option value="fail">{t.kindFail}</option>
+                <option value="aggregated">{t.authAggregatedOption}</option>
               </optgroup>
-              <optgroup label="管理操作">
-                <option value="user">ユーザー管理</option>
-                <option value="group">グループ管理</option>
-                <option value="client">クライアント管理</option>
-                <option value="consent">同意</option>
-                <option value="token">トークン・フロー</option>
-                <option value="tenant">テナント管理</option>
-                <option value="key">署名鍵</option>
+              <optgroup label={t.adminOperationsGroupLabel}>
+                <option value="user">{t.userManagementOption}</option>
+                <option value="group">{t.groupManagementOption}</option>
+                <option value="client">{t.clientManagementOption}</option>
+                <option value="consent">{t.consentOption}</option>
+                <option value="token">{t.tokenFlowOption}</option>
+                <option value="tenant">{t.tenantManagementOption}</option>
+                <option value="key">{t.signingKeyOption}</option>
               </optgroup>
             </select>
           </Field>
-          <Field label="対象ユーザー (sub)">
+          <Field label={t.targetUserSubFieldLabel}>
             <Input
               value={sub}
               onChange={(e) => setSub(e.target.value)}
-              placeholder="例: user_..."
+              placeholder={t.filterFieldTargetUserPlaceholder}
             />
           </Field>
-          <Field label="開始日時">
+          <Field label={t.startDateFieldLabel}>
             <Input type="datetime-local" value={after} onChange={(e) => setAfter(e.target.value)} />
           </Field>
-          <Field label="終了日時">
+          <Field label={t.endDateFieldLabel}>
             <Input
               type="datetime-local"
               value={before}
               onChange={(e) => setBefore(e.target.value)}
             />
           </Field>
-          <Field label="最大件数">
+          <Field label={t.maxCountFieldLabel}>
             <Input
               type="number"
               min={1}
@@ -236,18 +262,18 @@ export function AdminAuditEventsPage({
           <div className="grid gap-3 lg:col-span-3">
             <div className="flex items-center justify-between gap-3">
               <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                検索属性
+                {t.searchAttributesLabel}
               </Label>
               <Button type="button" variant="ghost" onClick={addFilter} disabled={busy}>
                 <IconPlus size={16} aria-hidden="true" />
-                条件
+                {t.addCondition}
               </Button>
             </div>
             <div className="grid gap-2">
               {filters.map((filter) => {
+                const fields = auditFilterFields(t)
                 const selectedField =
-                  AUDIT_FILTER_FIELDS.find((field) => field.value === filter.field) ??
-                  AUDIT_FILTER_FIELDS[0]
+                  fields.find((field) => field.value === filter.field) ?? fields[0]
                 return (
                   <div
                     key={filter.id}
@@ -262,7 +288,7 @@ export function AdminAuditEventsPage({
                       }
                       className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
                     >
-                      {AUDIT_FILTER_FIELDS.map((field) => (
+                      {fields.map((field) => (
                         <option key={field.value} value={field.value}>
                           {field.label}
                         </option>
@@ -279,7 +305,7 @@ export function AdminAuditEventsPage({
                       className="h-9 w-9 px-0"
                       onClick={() => removeFilter(filter.id)}
                       disabled={busy}
-                      aria-label="検索条件を削除"
+                      aria-label={t.removeConditionAria}
                     >
                       <IconTrash size={16} aria-hidden="true" />
                     </Button>
@@ -291,11 +317,11 @@ export function AdminAuditEventsPage({
           <div className="flex items-end gap-2 lg:col-span-3">
             <Button type="submit" disabled={busy}>
               <IconSearch size={16} aria-hidden="true" />
-              絞り込み
+              {t.filterAction}
             </Button>
             <Button type="button" variant="ghost" onClick={handleExport} disabled={busy}>
               <IconDownload size={16} aria-hidden="true" />
-              エクスポート
+              {t.exportAction}
             </Button>
           </div>
         </form>
@@ -307,7 +333,7 @@ export function AdminAuditEventsPage({
               onChange={(e) => setAllTenants(e.target.checked)}
               className="size-4 rounded border-slate-300"
             />
-            全テナント横断 (system_admin)
+            {t.crossTenantLabel}
           </label>
         ) : null}
       </Card>
@@ -317,16 +343,16 @@ export function AdminAuditEventsPage({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">発生日時</th>
-                <th className="px-4 py-3">種別</th>
-                <th className="px-4 py-3">テナント</th>
+                <th className="px-4 py-3">{t.tableHeaderOccurredAt}</th>
+                <th className="px-4 py-3">{t.tableHeaderType}</th>
+                <th className="px-4 py-3">{t.tableHeaderTenant}</th>
               </tr>
             </thead>
             <tbody>
               {events.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-12 text-center text-sm text-slate-500">
-                    一致するイベントはありません。
+                    {t.noMatchingEventsNotice}
                   </td>
                 </tr>
               ) : null}
@@ -338,14 +364,16 @@ export function AdminAuditEventsPage({
                     selected?.id === e.id ? 'bg-blue-50/60' : ''
                   }`}
                 >
-                  <td className="px-4 py-3 font-mono text-xs">{formatDate(e.occurred_at)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {formatDate(e.occurred_at, locale)}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-2">
                       {authEventKind(e.type) ? (
                         <span
                           className={`rounded px-2 py-0.5 text-xs font-medium ${KIND_BADGE[authEventKind(e.type) as EventKind]}`}
                         >
-                          {KIND_LABEL[authEventKind(e.type) as EventKind]}
+                          {kindLabel(authEventKind(e.type) as EventKind, t)}
                         </span>
                       ) : null}
                       {e.type}
@@ -360,38 +388,38 @@ export function AdminAuditEventsPage({
 
         <Card className="p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-700">ペイロード</h2>
+            <h2 className="text-sm font-semibold text-slate-700">{t.payloadHeading}</h2>
             {selected ? (
               <Button
                 variant="ghost"
                 onClick={() =>
                   navigator.clipboard?.writeText(JSON.stringify(selected.payload, null, 2))
                 }
-                aria-label="payload をコピー"
+                aria-label={t.copyPayloadAria}
               >
                 <IconRefresh size={14} aria-hidden="true" />
-                コピー
+                {t.copy}
               </Button>
             ) : null}
           </div>
           {selected ? (
             <>
               <dl className="mt-4 grid grid-cols-[80px_minmax(0,1fr)] gap-y-2 text-xs">
-                <dt className="text-slate-500">ID</dt>
+                <dt className="text-slate-500">{t.idLabel}</dt>
                 <dd className="break-all font-mono">{selected.id}</dd>
-                <dt className="text-slate-500">種別</dt>
+                <dt className="text-slate-500">{t.tableHeaderType}</dt>
                 <dd>{selected.type}</dd>
-                <dt className="text-slate-500">テナント</dt>
+                <dt className="text-slate-500">{t.tableHeaderTenant}</dt>
                 <dd className="font-mono">{selected.tenant_id}</dd>
-                <dt className="text-slate-500">日時</dt>
-                <dd>{formatDate(selected.occurred_at)}</dd>
+                <dt className="text-slate-500">{t.dateTimeLabel}</dt>
+                <dd>{formatDate(selected.occurred_at, locale)}</dd>
               </dl>
               <pre className="mt-4 max-h-[420px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50">
                 {JSON.stringify(selected.payload, null, 2)}
               </pre>
             </>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">イベントを選択してください。</p>
+            <p className="mt-4 text-sm text-slate-500">{t.selectEventPrompt}</p>
           )}
         </Card>
       </div>
@@ -410,9 +438,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, locale: 'ja' | 'en'): string {
   try {
-    return new Date(value).toLocaleString()
+    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
   } catch {
     return value
   }

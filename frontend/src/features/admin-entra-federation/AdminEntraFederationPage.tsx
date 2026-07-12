@@ -21,7 +21,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
 import type { WsFedRelyingParty } from '../../types'
+import {
+  adminEntraFederationDictionary,
+  type AdminEntraFederationDictionary,
+} from './AdminEntraFederationPage.i18n'
 
 // Entra domain federation は検証済みドメイン単位の操作。個別アプリの設定ではなく、テナント配下の
 // ドメインをまとめて外部 IdP へ向ける設定なので、Application 編集とは別のテナント設定画面で扱う。
@@ -29,26 +34,28 @@ import type { WsFedRelyingParty } from '../../types'
 // 詳細→編集ポリシー (wi-126 §8): 最初に出るこの画面は「現在 federation 済みのドメイン一覧」
 // (= 現在の設定) を見せるだけにし、追加 (configure) は専用画面 /admin/federation/entra/new に
 // 分離する。一覧画面がそのまま追加フォームを兼ねている状態を無くす。
-const ENDPOINT_LINKS = [
-  {
-    label: 'Federation metadata',
-    href: tenantURL('/federationmetadata/2007-06/federationmetadata.xml'),
-    value: '/federationmetadata/2007-06/federationmetadata.xml',
-    icon: IconDownload,
-  },
-  {
-    label: 'WS-Trust MEX',
-    href: tenantURL('/trust/mex'),
-    value: '/trust/mex',
-    icon: IconServerBolt,
-  },
-  {
-    label: 'WS-Trust usernamemixed',
-    href: tenantURL('/trust/usernamemixed'),
-    value: '/trust/usernamemixed',
-    icon: IconServerBolt,
-  },
-]
+function endpointLinks(t: AdminEntraFederationDictionary) {
+  return [
+    {
+      label: t.federationMetadataLabel,
+      href: tenantURL('/federationmetadata/2007-06/federationmetadata.xml'),
+      value: '/federationmetadata/2007-06/federationmetadata.xml',
+      icon: IconDownload,
+    },
+    {
+      label: t.wsTrustMexLabel,
+      href: tenantURL('/trust/mex'),
+      value: '/trust/mex',
+      icon: IconServerBolt,
+    },
+    {
+      label: t.wsTrustUsernamemixedLabel,
+      href: tenantURL('/trust/usernamemixed'),
+      value: '/trust/usernamemixed',
+      icon: IconServerBolt,
+    },
+  ]
+}
 
 const ADD_PATH = '/admin/federation/entra/new'
 const LIST_PATH = '/admin/federation/entra'
@@ -65,15 +72,18 @@ export function AdminEntraFederationPage({
   const [items, setItems] = useState(relyingParties.filter((rp) => rp.entra_profile))
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminEntraFederationDictionary)
 
   async function handleDelete(rp: WsFedRelyingParty) {
     setError('')
     try {
       await deleteWsFedRelyingParty(csrfToken, rp.wtrealm)
       setItems((prev) => prev.filter((item) => item.wtrealm !== rp.wtrealm))
-      setNotice(`${rp.entra_profile?.domain ?? rp.wtrealm} のフェデレーションを削除しました。`)
+      setNotice(
+        t.federationDeletedNotice.replace('{domain}', rp.entra_profile?.domain ?? rp.wtrealm),
+      )
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : '削除に失敗しました。')
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.deleteFailedError)
     }
   }
 
@@ -81,13 +91,13 @@ export function AdminEntraFederationPage({
     <AdminShell
       active="entra-federation"
       actorUsername={actorUsername}
-      title="Entra ドメインフェデレーション"
-      description="検証済みドメインを Microsoft Entra から本 IdP へフェデレーションします。ドメインごとに UPN / ImmutableID / persistent NameID の claim preset を持つ relying party を作成します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <Button asChild>
           <a href={tenantURL(ADD_PATH)}>
             <IconPlus size={16} aria-hidden="true" />
-            ドメインフェデレーションを追加
+            {t.addDomainFederation}
           </a>
         </Button>
       }
@@ -96,7 +106,7 @@ export function AdminEntraFederationPage({
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
-        {ENDPOINT_LINKS.map(({ label, href, value, icon: Icon }) => (
+        {endpointLinks(t).map(({ label, href, value, icon: Icon }) => (
           <a
             key={value}
             className="flex min-w-0 items-start gap-2 rounded-md border border-slate-200 bg-white p-2.5 text-xs text-slate-600 hover:border-blue-300 hover:text-blue-700"
@@ -123,12 +133,9 @@ export function EntraFederationList({
   items: WsFedRelyingParty[]
   onDelete: (relyingParty: WsFedRelyingParty) => void
 }) {
+  const t = useDictionary(adminEntraFederationDictionary)
   if (items.length === 0) {
-    return (
-      <Card className="p-8 text-center text-sm text-slate-500">
-        まだフェデレーション済みのドメインがありません。「ドメインフェデレーションを追加」から作成してください。
-      </Card>
-    )
+    return <Card className="p-8 text-center text-sm text-slate-500">{t.noFederationsNotice}</Card>
   }
   return (
     <div className="flex flex-col gap-3">
@@ -143,13 +150,16 @@ export function EntraFederationList({
             <div className="min-w-0 text-xs leading-5 text-slate-600">
               <p className="font-semibold text-slate-900">{relyingParty.entra_profile?.domain}</p>
               <p className="truncate font-mono">{relyingParty.wtrealm}</p>
-              <p>sourceAnchor: {relyingParty.entra_profile?.source_anchor_attribute}</p>
+              <p>
+                {t.sourceAnchorPrefix}
+                {relyingParty.entra_profile?.source_anchor_attribute}
+              </p>
             </div>
           </div>
           <Button
             type="button"
             variant="ghost"
-            aria-label={`${relyingParty.wtrealm} を削除`}
+            aria-label={t.deleteAriaLabel.replace('{wtrealm}', relyingParty.wtrealm)}
             onClick={() => onDelete(relyingParty)}
           >
             <IconTrash size={16} aria-hidden="true" />
@@ -177,6 +187,7 @@ export function AdminEntraFederationAddPage({
   const [result, setResult] = useState<ConfigureEntraFederationResponse | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminEntraFederationDictionary)
 
   async function handleConfigure(event: FormEvent) {
     event.preventDefault()
@@ -190,12 +201,10 @@ export function AdminEntraFederationAddPage({
         reply_url: replyURL.trim() || undefined,
       })
       setResult(configured)
-      setNotice(`${configured.profile.domain} のドメインフェデレーションを保存しました。`)
+      setNotice(t.federationSavedNotice.replace('{domain}', configured.profile.domain))
     } catch (cause) {
       setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'Entra federation の保存に失敗しました。',
+        cause instanceof AuthenticationAPIError ? cause.message : t.federationSaveFailedError,
       )
     }
   }
@@ -204,13 +213,13 @@ export function AdminEntraFederationAddPage({
     <AdminShell
       active="entra-federation"
       actorUsername={actorUsername}
-      title="ドメインフェデレーションを追加"
-      description="Microsoft 365 のドメインフェデレーション向けに、検証済みドメインごとに claim preset を作成します。"
+      title={t.addPageTitle}
+      description={t.addPageDescription}
       actions={
         <Button asChild variant="outline">
           <a href={tenantURL(LIST_PATH)}>
             <IconArrowLeft size={16} aria-hidden="true" />
-            フェデレーション一覧
+            {t.federationList}
           </a>
         </Button>
       }
@@ -221,7 +230,7 @@ export function AdminEntraFederationAddPage({
       <Card className="grid gap-4 p-4">
         <form className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]" onSubmit={handleConfigure}>
           <div className="grid gap-1.5">
-            <Label htmlFor="entra_domain">検証済み domain</Label>
+            <Label htmlFor="entra_domain">{t.verifiedDomainLabel}</Label>
             <Input
               id="entra_domain"
               value={domain}
@@ -231,7 +240,7 @@ export function AdminEntraFederationAddPage({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="entra_source_anchor">sourceAnchor 属性</Label>
+            <Label htmlFor="entra_source_anchor">{t.sourceAnchorAttributeLabel}</Label>
             <Input
               id="entra_source_anchor"
               value={sourceAnchor}
@@ -240,16 +249,16 @@ export function AdminEntraFederationAddPage({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="entra_issuer">IssuerUri</Label>
+            <Label htmlFor="entra_issuer">{t.issuerUriLabel}</Label>
             <Input
               id="entra_issuer"
               value={issuer}
-              placeholder="空なら自動生成"
+              placeholder={t.issuerUriPlaceholder}
               onChange={(e) => setIssuer(e.target.value)}
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="entra_reply">wreply URL</Label>
+            <Label htmlFor="entra_reply">{t.replyUrlLabel}</Label>
             <Input
               id="entra_reply"
               value={replyURL}
@@ -257,7 +266,7 @@ export function AdminEntraFederationAddPage({
             />
           </div>
           <div className="flex items-end">
-            <Button type="submit">保存</Button>
+            <Button type="submit">{t.save}</Button>
           </div>
         </form>
         {result ? (
@@ -270,15 +279,12 @@ export function AdminEntraFederationAddPage({
                 </div>
               ))}
             </div>
-            <Alert>
-              Hybrid Azure AD Join のデバイス登録は未提供です。必要な場合は managed/PHS
-              への切替または AD FS 併存を検討してください。
-            </Alert>
+            <Alert>{t.hybridJoinNotProvidedNotice}</Alert>
             <div>
               <Button asChild variant="outline">
                 <a href={tenantURL(LIST_PATH)}>
                   <IconArrowLeft size={16} aria-hidden="true" />
-                  フェデレーション一覧へ戻る
+                  {t.backToFederationList}
                 </a>
               </Button>
             </div>

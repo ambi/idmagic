@@ -68,14 +68,14 @@ test('account profile can be updated from the browser', async () => {
 
     const suffix = String(Date.now())
     const displayName = `Alice E2E ${suffix}`
-    await clickLinkByText(view, '編集')
+    await clickLinkByText(view, 'Edit')
     await waitForPage(view, 'account-profile-edit')
     await setInputValue(view, '#name', displayName)
     await setInputValue(view, '#given-name', 'Alice')
     await setInputValue(view, '#family-name', `Scenario ${suffix}`)
-    await clickButtonByText(view, '保存')
+    await clickButtonByText(view, 'Save')
 
-    await waitForText(view, 'プロフィールを更新しました。')
+    await waitForText(view, 'Your profile has been updated.')
     await waitForText(view, displayName)
   } finally {
     view.close()
@@ -95,7 +95,7 @@ test('account data export is triggered from the browser', async () => {
       }
     })()`)
 
-    await clickButtonByText(view, 'データをダウンロード')
+    await clickButtonByText(view, 'Download data (JSON)')
 
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
@@ -116,11 +116,11 @@ test('admin general settings can be updated from the browser', async () => {
     await navigateAndLogin(view, '/admin/settings', 'admin-settings')
 
     const displayName = `Default organization ${Date.now()}`
-    await clickButtonByText(view, '編集')
+    await clickButtonByText(view, 'Edit')
     await setInputValue(view, '#display-name', displayName)
-    await clickButtonByText(view, '保存')
+    await clickButtonByText(view, 'Save')
 
-    await waitForText(view, '表示名を更新しました。')
+    await waitForText(view, 'Updated the display name.')
     await waitForText(view, displayName)
   } finally {
     view.close()
@@ -131,10 +131,10 @@ test('admin signing key rotation action is available to tenant admins', async ()
   const view = new Bun.WebView({ width: 1280, height: 1800 })
   try {
     await navigateAndLogin(view, '/admin/keys', 'admin-keys')
-    await waitForText(view, '署名鍵')
+    await waitForText(view, 'Signing keys')
     expect(
       await view.evaluate(`(() => [...document.querySelectorAll('button')]
-        .some((button) => (button.textContent ?? '').includes('ローテート')))()`),
+        .some((button) => (button.textContent ?? '').includes('Rotate')))()`),
     ).toBe(true)
   } finally {
     view.close()
@@ -170,9 +170,9 @@ test('account connected application consent can be revoked from the browser', as
     // demo-client は client_name を持たないため、Application カタログ名 "Demo Client" へ
     // 解決される (wi-141)。UUID (ADR-084) は補助表記に留まる。
     await waitForText(view, 'Demo Client')
-    await clickButtonByText(view, 'アクセスを取り消す')
-    await waitForText(view, 'Demo Client へのアクセスを取り消しました。')
-    await waitForText(view, 'アクセスを許可したアプリはありません。')
+    await clickButtonByText(view, 'Revoke access')
+    await waitForText(view, 'Access for “Demo Client” has been revoked.')
+    await waitForText(view, 'No applications have been granted access.')
   } finally {
     view.close()
   }
@@ -183,30 +183,32 @@ test('account TOTP enrollment and removal step-up work from the browser', async 
   try {
     await navigateAndLogin(view, '/account/security', 'account-security')
 
-    await clickButtonByText(view, '認証アプリを設定')
-    await waitForText(view, 'セットアップキー')
+    await clickButtonByText(view, 'Set up authenticator app')
+    await waitForText(view, 'Setup key')
     const secret = String(
       await view.evaluate('document.querySelector("#totp-secret")?.value ?? ""'),
     )
     expect(secret).not.toBe('')
     await setInputValue(view, '#totp-code', totpCode(secret))
-    await clickButtonByText(view, '登録を完了')
-    await waitForText(view, '認証アプリを登録しました。')
+    await clickButtonByText(view, 'Complete enrollment')
+    await waitForText(view, 'Authenticator app enrolled.')
 
     await setInputValue(view, '#remove-code', totpCode(secret))
-    await clickButtonByText(view, '認証アプリを解除')
+    await clickButtonByText(view, 'Remove authenticator app')
 
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
       if (
-        await view.evaluate(`document.body.textContent?.includes('本人確認のため再認証') ?? false`)
+        await view.evaluate(
+          `document.body.textContent?.includes('Re-authenticate to verify your identity') ?? false`,
+        )
       ) {
         await setInputValue(view, '#step-up-credential', demo.password)
-        await clickButtonByText(view, '再認証して続行')
+        await clickButtonByText(view, 'Re-authenticate and continue')
       }
       if (
         await view.evaluate(
-          `document.body.textContent?.includes('認証アプリを解除しました。') ?? false`,
+          `document.body.textContent?.includes('Authenticator app removed.') ?? false`,
         )
       ) {
         return
@@ -228,15 +230,15 @@ test('account session list can revoke a different browser session', async () => 
 
     await first.navigate(`${uiOrigin}/account/activity`)
     await waitForPage(first, 'account-activity')
-    await waitForText(first, '他のセッションを終了')
+    await waitForText(first, 'End other sessions')
     const beforeCount = Number(
       await first.evaluate(`(() => [...document.querySelectorAll('button')]
-        .filter((button) => (button.textContent ?? '').trim() === '終了').length)()`),
+        .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
     )
     expect(beforeCount).toBeGreaterThan(0)
     const clicked = await first.evaluate(`(() => {
       const target = [...document.querySelectorAll('button')]
-        .find((button) => (button.textContent ?? '').trim() === '終了')
+        .find((button) => (button.textContent ?? '').trim() === 'End')
       if (!target) return false
       target.click()
       return true
@@ -246,7 +248,7 @@ test('account session list can revoke a different browser session', async () => 
     while (Date.now() < deadline) {
       const afterCount = Number(
         await first.evaluate(`(() => [...document.querySelectorAll('button')]
-          .filter((button) => (button.textContent ?? '').trim() === '終了').length)()`),
+          .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
       )
       if (afterCount < beforeCount) return
       await Bun.sleep(150)
@@ -273,13 +275,13 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     await setSelectValue(view, 'select', 'authentication')
     await setInputValue(
       view,
-      'input[placeholder="例: user_..."]',
+      'input[placeholder="e.g., user_..."]',
       '00000000-0000-4000-8000-000000000001',
     )
-    await clickButtonByText(view, '絞り込み')
+    await clickButtonByText(view, 'Filter')
     await waitForText(view, 'UserAuthenticated')
 
-    await clickButtonByText(view, 'エクスポート')
+    await clickButtonByText(view, 'Export')
     const exportURL = await view.evaluate('window.__raAuditExportURL ?? ""')
     expect(String(exportURL)).toContain('/api/admin/audit_events/export')
     expect(String(exportURL)).toContain('category=authentication')
@@ -295,20 +297,20 @@ test('admin user attribute schema can add and delete a custom attribute', async 
     await navigateAndLogin(view, '/admin/tenant/attributes', 'admin-tenant-attributes')
 
     const key = `e2e_attr_${Date.now()}`
-    await clickButtonByText(view, '属性を追加')
-    await setInputValue(view, '#attr-label', 'E2E 属性')
+    await clickButtonByText(view, 'Add attribute')
+    await setInputValue(view, '#attr-label', 'E2E attribute')
     await setInputValue(view, '#attr-key', key)
     await setSelectValue(view, '#attr-type', 'string')
     await setSelectValue(view, '#attr-visibility', 'self_readable')
     await setCheckboxValue(view, '#attr-editable', true)
-    await clickButtonByText(view, '保存')
+    await clickButtonByText(view, 'Save')
 
-    await waitForText(view, '属性を追加しました。')
+    await waitForText(view, 'The attribute has been added.')
     await waitForText(view, key)
 
-    await clickElementByAriaLabel(view, `${key} を削除`)
-    await waitForText(view, '属性を削除しました。')
-    await waitForText(view, 'カスタム属性はまだありません。')
+    await clickElementByAriaLabel(view, `Delete ${key}`)
+    await waitForText(view, 'The attribute has been deleted.')
+    await waitForText(view, 'There are no custom attributes yet.')
   } finally {
     view.close()
   }
@@ -320,17 +322,19 @@ test('account email change confirms through the local SMTP sink', async () => {
     await navigateAndLogin(view, '/account/emails', 'account-emails')
 
     const nextEmail = `alice.e2e.${Date.now()}@example.com`
-    await clickButtonByText(view, '変更')
+    await clickButtonByText(view, 'Change')
     await setInputValue(view, '#new-email', nextEmail)
-    await clickButtonByText(view, '確認メールを送信')
+    await clickButtonByText(view, 'Send confirmation email')
 
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
       if (
-        await view.evaluate(`document.body.textContent?.includes('本人確認のため再認証') ?? false`)
+        await view.evaluate(
+          `document.body.textContent?.includes('Re-authenticate to verify your identity') ?? false`,
+        )
       ) {
         await setInputValue(view, '#step-up-credential', demo.password)
-        await clickButtonByText(view, '再認証して続行')
+        await clickButtonByText(view, 'Re-authenticate and continue')
         break
       }
       if (
@@ -347,8 +351,8 @@ test('account email change confirms through the local SMTP sink', async () => {
     const verifyURL = await waitForEmailURL(nextEmail, '/account/email/verify')
     await view.navigate(verifyURL)
     await waitForPage(view, 'email-verify')
-    await clickButtonByText(view, 'メールアドレスを確認する')
-    await waitForText(view, 'メールアドレスを確認しました。')
+    await clickButtonByText(view, 'Confirm email address')
+    await waitForText(view, 'Your email address has been confirmed.')
     demo.email = nextEmail
   } finally {
     view.close()
@@ -365,29 +369,29 @@ test('password reset succeeds through the local SMTP sink without external mail'
     const nextPassword = `reset-password-${suffix}`
 
     await navigateAndLogin(view, '/admin/users', 'admin-users')
-    await clickLinkByText(view, 'ユーザーを追加')
+    await clickLinkByText(view, 'Add user')
     await waitForPage(view, 'admin-user-create')
     await setInputValue(view, 'input[name="preferred_username"]', username)
     await setInputValue(view, 'input[name="name"]', 'Reset E2E')
     await setInputValue(view, 'input[name="email"]', email)
     await setInputValue(view, 'input[name="password"]', initialPassword)
     await setCheckboxValue(view, 'input[name="email_verified"]', true)
-    await clickButtonByText(view, '作成')
+    await clickButtonByText(view, 'Create')
     await waitForPage(view, 'admin-user-detail')
     await waitForText(view, username)
 
     await view.navigate(`${uiOrigin}/forgot_password`)
     await waitForPage(view, 'forgot-password')
     await setInputValue(view, 'input[name="email"]', email)
-    await clickButtonByText(view, 'リセットリンクを送信')
-    await waitForText(view, 'アカウントが確認できた場合')
+    await clickButtonByText(view, 'Send reset link')
+    await waitForText(view, 'If an account exists, we sent a password reset email.')
 
     const resetURL = await waitForEmailURL(email, '/reset_password')
     await view.navigate(resetURL)
     await waitForPage(view, 'reset-password')
     await setInputValue(view, 'input[name="new_password"]', nextPassword)
-    await clickButtonByText(view, 'パスワードを更新')
-    await waitForText(view, 'パスワードを更新しました。')
+    await clickButtonByText(view, 'Update password')
+    await waitForText(view, 'Your password has been updated.')
   } finally {
     view.close()
   }
@@ -401,12 +405,12 @@ test('admin application lifecycle and agent credential binding work from the bro
     const agentName = `e2e-agent-${suffix}`
 
     await navigateAndLogin(view, '/admin/applications', 'admin-applications')
-    await clickButtonByText(view, 'アプリケーションを追加')
+    await clickButtonByText(view, 'Add application')
     await setInputValue(view, '#app-name', appName)
     await setInputValue(view, '#app-redirects', `https://client.example.test/callback/${suffix}`)
     await setInputValue(view, '#app-oidc-scope', 'openid profile email')
-    await clickButtonByText(view, '作成')
-    await waitForText(view, 'クライアントを作成しました。')
+    await clickButtonByText(view, 'Create')
+    await waitForText(view, 'The client has been created.')
 
     const clientID = String(
       await view.evaluate(`(() => {
@@ -418,39 +422,39 @@ test('admin application lifecycle and agent credential binding work from the bro
     )
     expect(clientID).not.toBe('')
 
-    await clickButtonByText(view, '保管しました')
+    await clickButtonByText(view, 'I stored it')
     await waitForUrl(view, /\/admin\/applications\/[^/]+$/)
     const appDetailURL = view.url
     await waitForText(view, appName)
     await waitForText(view, clientID)
-    await clickLinkByText(view, '編集')
+    await clickLinkByText(view, 'Edit')
     await waitForUrl(view, /\/admin\/applications\/[^/]+\/edit$/)
-    await selectDropdownOption(view, '選択…', demo.username)
-    await clickButtonByText(view, '割り当て')
+    await selectDropdownOption(view, 'Select…', demo.username)
+    await clickButtonByText(view, 'Assign')
     await waitForText(view, demo.username)
 
     await view.navigate(`${uiOrigin}/admin/agents`)
     await waitForPage(view, 'admin-agents')
-    await clickButtonByText(view, '登録')
+    await clickButtonByText(view, 'Register')
     await setInputValue(view, '#agent-name', agentName)
     await setInputValue(view, '#agent-description', 'E2E credential binding')
     await setSelectValue(view, '#agent-kind', 'supervised')
     await setInputValue(view, '#agent-roles', 'e2e:read, e2e:write')
     await view.click('form button[type="submit"]')
-    await waitForText(view, 'エージェントを登録しました。')
+    await waitForText(view, 'The agent has been registered.')
     await waitForText(view, agentName)
 
-    await setInputValue(view, 'input[aria-label="バインドする client_id"]', clientID)
-    await clickButtonByText(view, 'バインド')
+    await setInputValue(view, 'input[aria-label="client_id to bind"]', clientID)
+    await clickButtonByText(view, 'Bind')
     await waitForText(view, clientID)
 
-    await clickButtonByText(view, '解除')
-    await waitForText(view, 'バインドされた資格情報はありません。')
+    await clickButtonByText(view, 'Unbind')
+    await waitForText(view, 'No credentials are bound.')
 
     await view.navigate(appDetailURL)
     await waitForText(view, appName)
-    await clickButtonByText(view, '削除')
-    await clickButtonByText(view, '削除を確定')
+    await clickButtonByText(view, 'Delete')
+    await clickButtonByText(view, 'Confirm deletion')
     await waitForPage(view, 'admin-applications')
   } finally {
     view.close()
@@ -465,7 +469,7 @@ test('admin user list opens a user detail page', async () => {
     await view.click('a[href^="/admin/users/"]')
     await waitForPage(view, 'admin-user-detail')
     await waitForUrl(view, /\/admin\/users\/[^/]+$/)
-    await waitForText(view, 'ユーザーID')
+    await waitForText(view, 'User ID')
   } finally {
     view.close()
   }

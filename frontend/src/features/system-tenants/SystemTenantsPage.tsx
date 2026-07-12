@@ -14,7 +14,9 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminTenant } from '../../types'
+import { systemTenantsDictionary } from './SystemTenantsPage.i18n'
 
 export function SystemTenantsPage({
   csrfToken,
@@ -31,11 +33,12 @@ export function SystemTenantsPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(systemTenantsDictionary)
 
   async function refresh(preferredID?: string) {
     const next = await listAdminTenants()
     setTenants(next)
-    const match = preferredID ? next.find((t) => t.id === preferredID) : null
+    const match = preferredID ? next.find((tenant) => tenant.id === preferredID) : null
     setSelected(match ?? next[0] ?? null)
   }
 
@@ -47,11 +50,7 @@ export function SystemTenantsPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'テナント操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.tenantActionFailedError)
     } finally {
       setBusy(false)
     }
@@ -69,7 +68,7 @@ export function SystemTenantsPage({
       form.reset()
       setShowCreate(false)
       await refresh(created.id)
-    }, 'テナントを作成しました。')
+    }, t.tenantCreatedNotice)
   }
 
   async function handleToggleDisabled(target: AdminTenant) {
@@ -79,7 +78,7 @@ export function SystemTenantsPage({
         await setAdminTenantDisabled(csrfToken, target.realm, disabled)
         await refresh(target.id)
       },
-      disabled ? 'テナントを無効化しました。' : 'テナントを再有効化しました。',
+      disabled ? t.tenantDisabledNotice : t.tenantReenabledNotice,
     )
   }
 
@@ -87,22 +86,22 @@ export function SystemTenantsPage({
     <SystemShell
       active="tenants"
       actorUsername={actorUsername}
-      title="テナント"
-      description="IdMagic が分離するテナントの一覧と管理。default は無効化できません。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <>
           <Button
             variant="outline"
             className="size-9 px-0"
-            aria-label="一覧を再読み込み"
-            onClick={() => run(() => refresh(selected?.id), '一覧を更新しました。')}
+            aria-label={t.reloadListAriaLabel}
+            onClick={() => run(() => refresh(selected?.id), t.listRefreshedNotice)}
             disabled={busy}
           >
             <IconRefresh size={16} aria-hidden="true" />
           </Button>
           <Button onClick={() => setShowCreate(true)} disabled={busy}>
             <IconPlus size={16} aria-hidden="true" />
-            新規テナント
+            {t.newTenant}
           </Button>
         </>
       }
@@ -123,17 +122,17 @@ export function SystemTenantsPage({
           tenant={selected}
           csrfToken={csrfToken}
           busy={busy}
-          onSaved={(id) => run(() => refresh(id), 'テナントを更新しました。')}
+          onSaved={(id) => run(() => refresh(id), t.tenantUpdatedNotice)}
         />
       </div>
 
       {showCreate ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
           <Card className="w-full max-w-md p-6">
-            <h2 className="text-base font-semibold text-slate-900">新規テナント</h2>
+            <h2 className="text-base font-semibold text-slate-900">{t.newTenant}</h2>
             <form onSubmit={handleCreate} className="mt-4 grid gap-4">
               <div className="grid gap-1.5">
-                <Label htmlFor="tenant-realm">Realm</Label>
+                <Label htmlFor="tenant-realm">{t.realmLabel}</Label>
                 <Input
                   id="tenant-realm"
                   name="realm"
@@ -141,10 +140,10 @@ export function SystemTenantsPage({
                   pattern="^[a-z0-9][a-z0-9-]{0,62}$"
                   placeholder="acme"
                 />
-                <p className="text-xs text-slate-500">URL-safe slug (a-z 0-9 -)。</p>
+                <p className="text-xs text-slate-500">{t.realmHelp}</p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="tenant-display">表示名</Label>
+                <Label htmlFor="tenant-display">{t.displayNameLabel}</Label>
                 <Input id="tenant-display" name="display_name" required placeholder="Acme Inc." />
               </div>
               <div className="flex justify-end gap-2">
@@ -154,10 +153,10 @@ export function SystemTenantsPage({
                   onClick={() => setShowCreate(false)}
                   disabled={busy}
                 >
-                  キャンセル
+                  {t.cancel}
                 </Button>
                 <Button type="submit" disabled={busy}>
-                  作成
+                  {t.create}
                 </Button>
               </div>
             </form>
@@ -181,14 +180,15 @@ export function TenantTable({
   onSelect: (tenant: AdminTenant) => void
   onToggleDisabled: (tenant: AdminTenant) => void
 }) {
+  const t = useDictionary(systemTenantsDictionary)
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3">Realm</th>
-            <th className="px-4 py-3">表示名</th>
-            <th className="px-4 py-3">状態</th>
+            <th className="px-4 py-3">{t.tableHeaderDisplayName}</th>
+            <th className="px-4 py-3">{t.tableHeaderStatus}</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
@@ -224,7 +224,7 @@ export function TenantTable({
                     ) : (
                       <IconCheck size={14} aria-hidden="true" />
                     )}
-                    {tenant.status === 'active' ? '無効化' : '有効化'}
+                    {tenant.status === 'active' ? t.disable : t.enable}
                   </Button>
                 ) : null}
               </td>
@@ -247,33 +247,35 @@ export function TenantDetailCard({
   busy: boolean
   onSaved: (id: string) => void
 }) {
+  const t = useDictionary(systemTenantsDictionary)
+  const { locale } = useLocale()
   if (!tenant) {
     return (
       <Card className="p-5">
-        <p className="text-sm text-slate-500">テナントを選択してください。</p>
+        <p className="text-sm text-slate-500">{t.selectTenantPrompt}</p>
       </Card>
     )
   }
   return (
     <Card className="p-5">
-      <h2 className="text-sm font-semibold text-slate-700">詳細</h2>
+      <h2 className="text-sm font-semibold text-slate-700">{t.detailsHeading}</h2>
       <dl className="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-y-3 text-sm">
         <dt className="text-slate-500">Realm</dt>
         <dd className="font-mono text-xs">{tenant.realm}</dd>
-        <dt className="text-slate-500">ID</dt>
+        <dt className="text-slate-500">{t.idLabel}</dt>
         <dd className="font-mono text-xs">{tenant.id}</dd>
-        <dt className="text-slate-500">表示名</dt>
+        <dt className="text-slate-500">{t.displayNameLabel}</dt>
         <dd>{tenant.display_name}</dd>
-        <dt className="text-slate-500">状態</dt>
+        <dt className="text-slate-500">{t.tableHeaderStatus}</dt>
         <dd>
           <StatusBadge status={tenant.status} />
         </dd>
-        <dt className="text-slate-500">作成</dt>
-        <dd>{formatDate(tenant.created_at)}</dd>
+        <dt className="text-slate-500">{t.createdLabel}</dt>
+        <dd>{formatDate(tenant.created_at, locale)}</dd>
         {tenant.disabled_at ? (
           <>
-            <dt className="text-slate-500">無効化</dt>
-            <dd>{formatDate(tenant.disabled_at)}</dd>
+            <dt className="text-slate-500">{t.disabledLabel}</dt>
+            <dd>{formatDate(tenant.disabled_at, locale)}</dd>
           </>
         ) : null}
       </dl>
@@ -305,6 +307,7 @@ function TenantEditor({
   )
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  const t = useDictionary(systemTenantsDictionary)
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -323,9 +326,7 @@ function TenantEditor({
       onSaved(tenant.id)
     } catch (cause) {
       setEditError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'テナントを更新できませんでした。',
+        cause instanceof AuthenticationAPIError ? cause.message : t.tenantUpdateFailedError,
       )
     } finally {
       setSaving(false)
@@ -334,10 +335,12 @@ function TenantEditor({
 
   return (
     <form onSubmit={handleSave} className="mt-5 grid gap-3 border-t border-slate-100 pt-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">編集</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {t.editHeading}
+      </p>
       {editError ? <Alert variant="destructive">{editError}</Alert> : null}
       <div className="grid gap-1.5">
-        <Label htmlFor={`name-${tenant.id}`}>表示名</Label>
+        <Label htmlFor={`name-${tenant.id}`}>{t.displayNameLabel}</Label>
         <Input
           id={`name-${tenant.id}`}
           value={displayName}
@@ -345,12 +348,12 @@ function TenantEditor({
         />
       </div>
       <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        パスワードポリシー上書き
+        {t.passwordPolicyOverrideHeading}
       </p>
-      <p className="text-xs text-slate-500">空欄なら global default を継承します。</p>
+      <p className="text-xs text-slate-500">{t.passwordPolicyOverrideHelp}</p>
       <div className="grid grid-cols-3 gap-2">
         <div className="grid gap-1.5">
-          <Label htmlFor={`min-${tenant.id}`}>Min</Label>
+          <Label htmlFor={`min-${tenant.id}`}>{t.minLabel}</Label>
           <Input
             id={`min-${tenant.id}`}
             type="number"
@@ -360,7 +363,7 @@ function TenantEditor({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor={`max-${tenant.id}`}>Max</Label>
+          <Label htmlFor={`max-${tenant.id}`}>{t.maxLabel}</Label>
           <Input
             id={`max-${tenant.id}`}
             type="number"
@@ -370,7 +373,7 @@ function TenantEditor({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor={`hist-${tenant.id}`}>History</Label>
+          <Label htmlFor={`hist-${tenant.id}`}>{t.historyLabel}</Label>
           <Input
             id={`hist-${tenant.id}`}
             type="number"
@@ -381,7 +384,7 @@ function TenantEditor({
         </div>
       </div>
       <Button type="submit" disabled={busy || saving} className="mt-2 justify-self-start">
-        {saving ? '保存中…' : '保存'}
+        {saving ? t.saving : t.save}
       </Button>
     </form>
   )
@@ -399,10 +402,10 @@ export function StatusBadge({ status }: { status: AdminTenant['status'] }) {
   )
 }
 
-function formatDate(value?: string): string {
+function formatDate(value: string | undefined, locale: 'ja' | 'en'): string {
   if (!value) return '—'
   try {
-    return new Date(value).toLocaleString()
+    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
   } catch {
     return value
   }

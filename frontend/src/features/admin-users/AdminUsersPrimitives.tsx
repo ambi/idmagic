@@ -3,8 +3,10 @@ import type { ComponentProps } from 'react'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminUser } from '../../types'
+import { adminUsersDictionary } from './AdminUsersPage.i18n'
 
 export function Metric({
   label,
@@ -51,7 +53,8 @@ export function UserAvatar({ user, large = false }: { user: AdminUser; large?: b
 }
 
 export function RoleList({ roles }: { roles: string[] }) {
-  if (roles.length === 0) return <span className="text-xs text-slate-400">権限なし</span>
+  const t = useDictionary(adminUsersDictionary)
+  if (roles.length === 0) return <span className="text-xs text-slate-400">{t.roleListEmpty}</span>
   return (
     <div className="flex flex-wrap gap-1.5">
       {roles.slice(0, 2).map((role) => (
@@ -88,10 +91,10 @@ export function daysUntil(value?: string): number | null {
   return Math.max(0, Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24)))
 }
 
-const STATUS_BADGE: Record<UserLifecycleStatus, { dot: string; badge: string; label: string }> = {
-  active: { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700', label: '有効' },
-  disabled: { dot: 'bg-red-500', badge: 'bg-red-50 text-red-700', label: '無効' },
-  pending_deletion: { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700', label: '削除予約' },
+const STATUS_BADGE_STYLE: Record<UserLifecycleStatus, { dot: string; badge: string }> = {
+  active: { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
+  disabled: { dot: 'bg-red-500', badge: 'bg-red-50 text-red-700' },
+  pending_deletion: { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' },
 }
 
 export function StatusBadge({
@@ -101,7 +104,13 @@ export function StatusBadge({
   status: UserLifecycleStatus
   compact?: boolean
 }) {
-  const style = STATUS_BADGE[status]
+  const t = useDictionary(adminUsersDictionary)
+  const style = STATUS_BADGE_STYLE[status]
+  const label = {
+    active: t.statusActive,
+    disabled: t.statusDisabled,
+    pending_deletion: t.statusPendingDeletion,
+  }[status]
   return (
     <span
       className={cn(
@@ -111,7 +120,7 @@ export function StatusBadge({
       )}
     >
       <span className={cn('size-1.5 rounded-full', style.dot)} />
-      {style.label}
+      {label}
     </span>
   )
 }
@@ -177,10 +186,10 @@ export function optionalValue(value: FormDataEntryValue | null) {
   return normalized || undefined
 }
 
-export function formatDateTime(value: string) {
+export function formatDateTime(value: string, locale: 'ja' | 'en' = 'en') {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('ja-JP', {
+  return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

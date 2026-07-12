@@ -831,14 +831,18 @@ user_experience:
         - AdminUsers
         - AdminGroups
         - AdminAgents
+        - AdminRoles
         - AdminApplications
         - AdminAuthorizationDetailTypes
+        - AdminSignInPolicy
         - AdminConsents
+        - AdminAuditEvents
         - AdminKeys
         - AdminTenants
         - AdminTenantAttributes
         - AdminSettings
         - AdminEntraFederation
+        - SystemKeyHealth
       interfaces:
         - GetOpenidConfiguration
       standards:

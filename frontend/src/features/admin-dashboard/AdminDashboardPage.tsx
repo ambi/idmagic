@@ -13,8 +13,10 @@ import {
 import { tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Card } from '../../components/ui/card'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminAuditEvent } from '../../types'
+import { adminDashboardDictionary, friendlyEventName } from './AdminDashboardPage.i18n'
 
 export function AdminDashboardPage({
   actorUsername,
@@ -37,6 +39,8 @@ export function AdminDashboardPage({
   auditEventCount24h: number
   recentEvents: AdminAuditEvent[]
 }) {
+  const t = useDictionary(adminDashboardDictionary)
+  const { locale } = useLocale()
   const activeRate = userCount > 0 ? Math.round((activeUserCount / userCount) * 100) : 0
 
   // テナントのセキュリティ状態を評価する擬似スコア
@@ -55,8 +59,8 @@ export function AdminDashboardPage({
     <AdminShell
       active="dashboard"
       actorUsername={actorUsername}
-      title="ダッシュボード"
-      description="アイデンティティとアクセスの状況をリアルタイムで監視・評価します。"
+      title={t.title}
+      description={t.description}
     >
       {/* テナント全体のセキュリティ・ヘルスステータス (Okta / Entra風の大規模カード) */}
       <section className="mb-6">
@@ -69,27 +73,30 @@ export function AdminDashboardPage({
               <div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 ring-1 ring-inset ring-blue-500/20">
                   <IconShieldCheck size={14} />
-                  テナントセキュリティ評価
+                  {t.securityBadge}
                 </span>
-                <h2 className="mt-3 text-2xl font-bold tracking-tight">IdMagic テナント設定</h2>
+                <h2 className="mt-3 text-2xl font-bold tracking-tight">{t.tenantConfigHeading}</h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  テナントの基本的なアイデンティティ設定は完了しています。MFAの強制化や Entra ID
-                  とのドメインフェデレーションを構成することで、セキュリティスコアをさらに向上させることができます。
+                  {t.tenantConfigSummary}
                 </p>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-4 text-xs">
                 <div className="rounded-lg bg-white/5 px-3 py-2 border border-white/10">
-                  <span className="block text-slate-400">テナント状態</span>
-                  <span className="mt-0.5 block font-semibold text-emerald-400">正常稼働中</span>
+                  <span className="block text-slate-400">{t.tenantStatusLabel}</span>
+                  <span className="mt-0.5 block font-semibold text-emerald-400">
+                    {t.tenantStatusValue}
+                  </span>
                 </div>
                 <div className="rounded-lg bg-white/5 px-3 py-2 border border-white/10">
-                  <span className="block text-slate-400">アクティブユーザー率</span>
+                  <span className="block text-slate-400">{t.activeUserRateLabel}</span>
                   <span className="mt-0.5 block font-semibold">{activeRate}%</span>
                 </div>
                 <div className="rounded-lg bg-white/5 px-3 py-2 border border-white/10">
-                  <span className="block text-slate-400">過去24時間の監査イベント</span>
-                  <span className="mt-0.5 block font-semibold">{auditEventCount24h} 件</span>
+                  <span className="block text-slate-400">{t.auditEvents24hLabel}</span>
+                  <span className="mt-0.5 block font-semibold">
+                    {t.countSuffix.replace('{count}', String(auditEventCount24h))}
+                  </span>
                 </div>
               </div>
             </div>
@@ -107,7 +114,8 @@ export function AdminDashboardPage({
                 </div>
               </div>
               <span className="mt-3 text-xs font-semibold text-slate-400">
-                推奨タスク {securityScore === 100 ? 'すべて完了' : '残り 2 件'}
+                {t.recommendedTasksHeading}{' '}
+                {securityScore === 100 ? t.recommendedTasksAllDone : t.recommendedTasksRemaining}
               </span>
             </div>
           </div>
@@ -115,17 +123,20 @@ export function AdminDashboardPage({
       </section>
 
       {/* システムサマリー (ビジュアルと価値を再検討した MetricCards) */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6" aria-label="サマリー">
+      <section
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6"
+        aria-label={t.summarySectionLabel}
+      >
         <DashboardMetricCard
-          label="総ユーザー"
+          label={t.totalUsersLabel}
           value={userCount}
           icon={IconUsers}
           tone="blue"
           extra={
             <div className="mt-3 border-t border-slate-100 pt-3">
               <div className="flex justify-between text-[0.68rem] font-semibold text-slate-500 mb-1">
-                <span>有効率 {activeRate}%</span>
-                <span>無効: {disabledUserCount}</span>
+                <span>{t.activeRateLabel.replace('{rate}', String(activeRate))}</span>
+                <span>{t.disabledLabel.replace('{count}', String(disabledUserCount))}</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div
@@ -137,41 +148,41 @@ export function AdminDashboardPage({
           }
         />
         <DashboardMetricCard
-          label="登録アプリケーション"
+          label={t.registeredApplicationsLabel}
           value={clientCount}
           icon={IconKey}
           tone="violet"
           extra={
             <div className="mt-3 border-t border-slate-100 pt-3">
               <div className="flex justify-between text-[0.68rem] text-slate-500">
-                <span>連携クライアント</span>
-                <span className="font-semibold text-slate-900">{clientCount} 個</span>
+                <span>{t.connectedClientsLabel}</span>
+                <span className="font-semibold text-slate-900">
+                  {t.unitCount.replace('{count}', String(clientCount))}
+                </span>
               </div>
-              <p className="mt-1 text-[0.625rem] text-slate-400">
-                OIDC RP または SAML SP の接続がアクティブです。
-              </p>
+              <p className="mt-1 text-[0.625rem] text-slate-400">{t.clientDescription}</p>
             </div>
           }
         />
         <DashboardMetricCard
-          label="付与済みの同意"
+          label={t.grantedConsentsLabel}
           value={grantedConsentCount}
           icon={IconCheckupList}
           tone="green"
           extra={
             <div className="mt-3 border-t border-slate-100 pt-3">
               <div className="flex justify-between text-[0.68rem] text-slate-500">
-                <span>認可された同意</span>
-                <span className="font-semibold text-slate-900">{grantedConsentCount} 件</span>
+                <span>{t.authorizedConsentsLabel}</span>
+                <span className="font-semibold text-slate-900">
+                  {t.countSuffix.replace('{count}', String(grantedConsentCount))}
+                </span>
               </div>
-              <p className="mt-1 text-[0.625rem] text-slate-400">
-                エンドユーザーがアプリに権限付与しています。
-              </p>
+              <p className="mt-1 text-[0.625rem] text-slate-400">{t.consentDescription}</p>
             </div>
           }
         />
         <DashboardMetricCard
-          label="監査イベント (24h)"
+          label={t.auditEvents24hCardLabel}
           value={auditEventCount24h}
           icon={IconActivity}
           tone="amber"
@@ -185,7 +196,7 @@ export function AdminDashboardPage({
                   )}
                 />
                 <span className="text-slate-500">
-                  {auditEventCount24h > 50 ? 'トラフィック上昇傾向' : 'アクティビティ正常'}
+                  {auditEventCount24h > 50 ? t.trafficRising : t.activityNormal}
                 </span>
               </div>
             </div>
@@ -200,22 +211,22 @@ export function AdminDashboardPage({
           <Card className="overflow-hidden shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">直近の監査イベント</h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  テナント内で過去 24 時間に記録された主要アクションです。
-                </p>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {t.recentAuditEventsHeading}
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">{t.recentAuditEventsDescription}</p>
               </div>
               <a
                 href={tenantURL('/admin/audit_events')}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800"
               >
-                すべて表示
+                {t.viewAll}
                 <IconChevronRight size={14} aria-hidden="true" />
               </a>
             </div>
             {recentEvents.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-slate-500">
-                直近 24 時間に記録された監査イベントはありません。
+                {t.emptyRecentEvents}
               </div>
             ) : (
               <ul className="divide-y divide-slate-100">
@@ -230,10 +241,10 @@ export function AdminDashboardPage({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900">
-                          {friendlyEventName(event.type)}
+                          {friendlyEventName(event.type, locale)}
                         </p>
                         <p className="mt-0.5 truncate text-xs text-slate-500">
-                          {formatDateTime(event.occurred_at)} · {summarizeActor(event)}
+                          {formatDateTime(event.occurred_at, locale)} · {summarizeActor(event)}
                         </p>
                       </div>
                       <IconChevronRight
@@ -253,26 +264,25 @@ export function AdminDashboardPage({
             <div className="flex items-start gap-2.5">
               <IconShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">推奨セキュリティ構成</h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  IdMagic
-                  が推奨する初期セキュリティ構成タスクです。テナントを保護するために実施してください。
-                </p>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {t.recommendedSecurityHeading}
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">{t.recommendedSecurityDescription}</p>
               </div>
             </div>
 
             <ul className="mt-4 grid gap-3.5 sm:grid-cols-2">
               <SecurityTaskCard
-                title="MFA（二要素認証）の強制化"
-                description="不正アクセス防止のため、サインインポリシーでMFA認証を「必須」に設定することを強く推奨します。"
+                title={t.mfaTaskTitle}
+                description={t.mfaTaskDescription}
                 href={tenantURL('/admin/sign-in-policy')}
-                actionLabel="ポリシーを設定"
+                actionLabel={t.setPolicyAction}
               />
               <SecurityTaskCard
-                title="外部 IDP とのドメイン連携"
-                description="Microsoft 365 などの Entra ID ドメインとのフェデレーションを行い、ログイン統合を行います。"
+                title={t.federationTaskTitle}
+                description={t.federationTaskDescription}
                 href={tenantURL('/admin/federation/entra')}
-                actionLabel="フェデレーションを構成"
+                actionLabel={t.configureFederationAction}
               />
             </ul>
           </Card>
@@ -283,39 +293,39 @@ export function AdminDashboardPage({
           <Card className="p-5 shadow-sm bg-slate-50/30">
             <div className="flex items-center gap-2 mb-4">
               <IconLayoutGrid size={18} className="text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-900">管理者クイックリンク</h2>
+              <h2 className="text-sm font-semibold text-slate-900">{t.quickLinksHeading}</h2>
             </div>
             <ul className="grid gap-2">
               <DashboardQuickLink
                 href={tenantURL('/admin/users/new')}
                 icon={IconUserPlus}
-                label="ユーザーを追加"
-                description="新しい組織アカウントを作成します。"
+                label={t.addUserLabel}
+                description={t.addUserDescription}
               />
               <DashboardQuickLink
                 href={tenantURL('/admin/applications')}
                 icon={IconKey}
-                label="アプリケーション管理"
-                description="OIDC クライアントや SAML SP を管理します。"
+                label={t.manageApplicationsLabel}
+                description={t.manageApplicationsDescription}
               />
               <DashboardQuickLink
                 href={tenantURL('/admin/sign-in-policy')}
                 icon={IconShieldLock}
-                label="サインインポリシー"
-                description="パスワードポリシーやMFA要求ルールを設定します。"
+                label={t.signInPolicyLabel}
+                description={t.signInPolicyDescription}
               />
               <DashboardQuickLink
                 href={tenantURL('/admin/audit_events')}
                 icon={IconActivity}
-                label="監査イベントビュー"
-                description="テナント内の全イベントをフィルタ・追跡します。"
+                label={t.auditEventsViewLabel}
+                description={t.auditEventsViewDescription}
               />
               {actorRoles.includes('system_admin') ? (
                 <DashboardQuickLink
                   href="/system"
                   icon={IconShieldCheck}
-                  label="システムコンソール"
-                  description="全テナントの監視とマルチテナント管理を行います。"
+                  label={t.systemConsoleLabel}
+                  description={t.systemConsoleDescription}
                 />
               ) : null}
             </ul>
@@ -439,73 +449,15 @@ function summarizeActor(event: AdminAuditEvent): string {
   return event.tenant_id
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string, locale: 'ja' | 'en') {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('ja-JP', {
+  return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
-}
-
-function friendlyEventName(type: string): string {
-  const map: Record<string, string> = {
-    // ユーザー・グループ関連
-    UserCreated: 'ユーザーの作成',
-    UserUpdated: 'ユーザー情報の更新',
-    UserDeleted: 'ユーザーの削除',
-    UserDisabled: 'ユーザーの無効化',
-    UserEnabled: 'ユーザーの有効化',
-    UserGroupAdded: 'ユーザーをグループに追加',
-    UserGroupRemoved: 'ユーザーをグループから削除',
-    UserRequiredActionSet: '強制アクションの付与',
-    UserRequiredActionCleared: '強制アクションの解除',
-    // 認証・セッション関連
-    UserAuthenticated: 'ユーザー認証の成功',
-    LoginSucceeded: 'サインイン成功',
-    LoginFailed: 'サインイン失敗',
-    LoginThrottled: '連続サインイン失敗によるアカウントロック',
-    RefreshTokenIssued: 'トークン更新',
-    TokenRevoked: 'トークンの無効化',
-    MfaEnrolled: 'MFA（二要素認証）有効化',
-    MfaBypassed: 'MFA一時解除',
-    PasswordResetRequested: 'パスワードリセット要求',
-    PasswordResetCompleted: 'パスワード変更完了',
-    EmailChangeRequested: 'メールアドレス変更要求',
-    EmailChangeConfirmed: 'メールアドレス変更完了',
-    // アプリ関連
-    ClientCreated: 'アプリケーションの登録',
-    ClientUpdated: 'アプリケーション設定の更新',
-    ClientDeleted: 'アプリケーションの削除',
-    ConsentGranted: '同意の付与',
-    ConsentRevoked: '同意の解除',
-    // OAuth/OIDCイベント関連
-    AuthorizationCodeIssued: '認可コードの発行',
-    AuthorizationCodeRedeemed: '認可コードの検証 (トークン交換)',
-    AccessTokenIssued: 'アクセストークンの発行',
-    PARRequestRegistered: 'PAR (Push Authorization Request) 登録',
-    ParRequestRegistered: 'PAR (Push Authorization Request) 登録',
-    DeviceCodeIssued: 'デバイスコードの発行',
-    DeviceCodeAuthorized: 'デバイスコードの認可',
-    RPLogoutInitiated: 'ログアウト要求の開始',
-    RpLogoutInitiated: 'ログアウト要求の開始',
-    // その他
-    AgentCreated: 'エージェントの作成',
-    AgentUpdated: 'エージェント情報の更新',
-    AgentDeleted: 'エージェントの削除',
-    SigningKeyRotated: '署名鍵のローテーション',
-    TenantUpdated: 'テナント設定の更新',
-  }
-
-  // 大文字小文字のゆらぎに対応するため、小文字に直してマッチング
-  const lowerType = type.toLowerCase()
-  const found = Object.entries(map).find(([key]) => key.toLowerCase() === lowerType)
-  if (found) return found[1]
-
-  // マップにない場合のフォールバック: PascalCaseをスペース区切りにする
-  return type.replace(/([A-Z])/g, ' $1').trim()
 }
 
 function eventLink(event: AdminAuditEvent): string {

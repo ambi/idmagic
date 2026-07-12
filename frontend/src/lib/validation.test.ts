@@ -14,25 +14,13 @@ describe('validateReauthMaxAge', () => {
   })
 
   it('should return error for non-integer or decimal numbers', () => {
-    expect(validateReauthMaxAge('1.5')).toEqual({
-      isValid: false,
-      error: '再認証を求めるまでの時間には 1 以上の秒数を入力してください。',
-    })
-    expect(validateReauthMaxAge('abc')).toEqual({
-      isValid: false,
-      error: '再認証を求めるまでの時間には 1 以上の秒数を入力してください。',
-    })
+    expect(validateReauthMaxAge('1.5')).toEqual({ isValid: false })
+    expect(validateReauthMaxAge('abc')).toEqual({ isValid: false })
   })
 
   it('should return error for numbers less than 1', () => {
-    expect(validateReauthMaxAge('0')).toEqual({
-      isValid: false,
-      error: '再認証を求めるまでの時間には 1 以上の秒数を入力してください。',
-    })
-    expect(validateReauthMaxAge('-10')).toEqual({
-      isValid: false,
-      error: '再認証を求めるまでの時間には 1 以上の秒数を入力してください。',
-    })
+    expect(validateReauthMaxAge('0')).toEqual({ isValid: false })
+    expect(validateReauthMaxAge('-10')).toEqual({ isValid: false })
   })
 })
 

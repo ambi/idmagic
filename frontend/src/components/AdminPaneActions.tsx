@@ -1,6 +1,8 @@
 import { IconChevronRight, IconPencil } from '@tabler/icons-react'
 import type { ComponentType } from 'react'
 import { Button } from './ui/button'
+import { adminPaneActionsDictionary } from './AdminPaneActions.i18n'
+import { useDictionary } from '../lib/i18n'
 import { cn } from '../lib/utils'
 
 // PaneAction は右ペインの二次アクション (削除・無効化など) を表す記述子。
@@ -33,12 +35,13 @@ export function AdminPaneActions({
   actions?: PaneAction[]
 }) {
   const hasSecondaryAction = Boolean(editHref || onEdit) || actions.length > 0
+  const t = useDictionary(adminPaneActionsDictionary)
   return (
     <div className="flex flex-wrap items-center gap-2">
       {detailHref ? (
         <Button asChild className={hasSecondaryAction ? 'flex-1' : 'min-w-28'}>
           <a href={detailHref}>
-            詳細
+            {t.detail}
             <IconChevronRight size={16} aria-hidden="true" />
           </a>
         </Button>
@@ -47,13 +50,13 @@ export function AdminPaneActions({
         <Button asChild variant="outline" className="flex-1">
           <a href={editHref}>
             <IconPencil size={16} aria-hidden="true" />
-            編集
+            {t.edit}
           </a>
         </Button>
       ) : onEdit ? (
         <Button type="button" variant="outline" className="flex-1" disabled={busy} onClick={onEdit}>
           <IconPencil size={16} aria-hidden="true" />
-          編集
+          {t.edit}
         </Button>
       ) : null}
       {actions.map((action) => {

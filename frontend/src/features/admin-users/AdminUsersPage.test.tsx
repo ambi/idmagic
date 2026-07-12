@@ -2,7 +2,10 @@ import { afterEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUsersPage, AdminUserCreatePage, AdminUserEditPage } from './AdminUsersPage'
+import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import type { AdminUser, TenantUserAttributeSchema } from '../../types'
+
+const t = adminUsersDictionary.en
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -30,6 +33,45 @@ const user: AdminUser = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
+describe('locale', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('renders the user list in English by default', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/groups')) {
+          return Promise.resolve(
+            response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
+          )
+        }
+        return Promise.resolve(response(200, { users: [] }))
+      }),
+    )
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    expect(screen.getByRole('heading', { name: t.pageTitle })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.disableAccount })).toBeInTheDocument()
+  })
+
+  it('renders in Japanese when explicitly selected', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/groups')) {
+          return Promise.resolve(
+            response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
+          )
+        }
+        return Promise.resolve(response(200, { users: [] }))
+      }),
+    )
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />, { locale: 'ja' })
+    expect(
+      screen.getByRole('heading', { name: adminUsersDictionary.ja.pageTitle }),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('AdminUsersPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
@@ -48,14 +90,12 @@ describe('AdminUsersPage', () => {
     )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アカウントを削除' }))
+    fireEvent.click(screen.getByRole('button', { name: t.deleteAccount }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: '削除を確定' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: t.confirmDelete }))
 
-    expect(
-      await screen.findByText('ユーザーの削除を予約しました。30 日以内なら復元できます。'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('ユーザーを選択すると詳細が表示されます。')).toBeInTheDocument()
+    expect(await screen.findByText(t.userDeleteScheduledNotice)).toBeInTheDocument()
+    expect(screen.getByText(t.selectUserPrompt)).toBeInTheDocument()
   })
 
   it('shows an error and keeps the dialog open when deletion fails', async () => {
@@ -63,18 +103,18 @@ describe('AdminUsersPage', () => {
       'fetch',
       vi.fn((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/users') && init?.method === 'DELETE') {
-          return Promise.resolve(response(409, { message: 'ユーザーを削除できませんでした。' }))
+          return Promise.resolve(response(409, { message: 'Could not delete the user.' }))
         }
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アカウントを削除' }))
+    fireEvent.click(screen.getByRole('button', { name: t.deleteAccount }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: '削除を確定' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: t.confirmDelete }))
 
-    expect(await screen.findByText('ユーザーを削除できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not delete the user.')).toBeInTheDocument()
   })
 
   it('shows an error when disabling a user fails', async () => {
@@ -82,30 +122,30 @@ describe('AdminUsersPage', () => {
       'fetch',
       vi.fn((url: string) => {
         if (url.includes('/disable')) {
-          return Promise.resolve(response(403, { message: '無効化する権限がありません。' }))
+          return Promise.resolve(response(403, { message: 'You are not allowed to disable this.' }))
         }
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アカウントを無効化' }))
+    fireEvent.click(screen.getByRole('button', { name: t.disableAccount }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: '無効化を確定' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: t.disableConfirm }))
 
-    expect(await screen.findByText('無効化する権限がありません。')).toBeInTheDocument()
+    expect(await screen.findByText('You are not allowed to disable this.')).toBeInTheDocument()
   })
 
   it('shows an error when reloading the list fails', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(500, { message: '一覧を取得できませんでした。' }))),
+      vi.fn(() => Promise.resolve(response(500, { message: 'Could not fetch the list.' }))),
     )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '一覧を再読み込み' }))
+    fireEvent.click(screen.getByRole('button', { name: t.reloadAriaLabel }))
 
-    expect(await screen.findByText('一覧を取得できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not fetch the list.')).toBeInTheDocument()
   })
 })
 
@@ -121,11 +161,11 @@ describe('AdminUserCreatePage', () => {
     )
     await renderWithRouter(<AdminUserCreatePage csrfToken="csrf" />)
 
-    fireEvent.change(screen.getByLabelText('ユーザー名'), { target: { value: 'jiro' } })
-    fireEvent.change(screen.getByLabelText('初期パスワード'), {
+    fireEvent.change(screen.getByLabelText(t.username), { target: { value: 'jiro' } })
+    fireEvent.change(screen.getByLabelText(t.initialPasswordLabel), {
       target: { value: 'correct horse battery staple' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '作成' }))
+    fireEvent.click(screen.getByRole('button', { name: t.create }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/admin/users/user-2'))
   })
@@ -134,19 +174,17 @@ describe('AdminUserCreatePage', () => {
     vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(response(409, { message: 'このユーザー名は既に使われています。' })),
-      ),
+      vi.fn(() => Promise.resolve(response(409, { message: 'This username is already in use.' }))),
     )
     await renderWithRouter(<AdminUserCreatePage csrfToken="csrf" />)
 
-    fireEvent.change(screen.getByLabelText('ユーザー名'), { target: { value: 'jiro' } })
-    fireEvent.change(screen.getByLabelText('初期パスワード'), {
+    fireEvent.change(screen.getByLabelText(t.username), { target: { value: 'jiro' } })
+    fireEvent.change(screen.getByLabelText(t.initialPasswordLabel), {
       target: { value: 'correct horse battery staple' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '作成' }))
+    fireEvent.click(screen.getByRole('button', { name: t.create }))
 
-    expect(await screen.findByText('このユーザー名は既に使われています。')).toBeInTheDocument()
+    expect(await screen.findByText('This username is already in use.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 })
@@ -159,14 +197,14 @@ describe('AdminUserEditPage', () => {
     vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: '表示名を更新できませんでした。' }))),
+      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
     )
     await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
 
-    fireEvent.change(screen.getByLabelText('表示名'), { target: { value: 'Jiro Yamada' } })
-    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+    fireEvent.change(screen.getByLabelText(t.displayName), { target: { value: 'Jiro Yamada' } })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
 
-    expect(await screen.findByText('表示名を更新できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not update the name.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 
@@ -178,13 +216,13 @@ describe('AdminUserEditPage', () => {
     )
     await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
 
-    fireEvent.change(screen.getByLabelText('ロール'), { target: { value: 'admin' } })
-    fireEvent.click(screen.getByRole('button', { name: '変更内容を確認' }))
+    fireEvent.change(screen.getByLabelText(t.rolesHeading), { target: { value: 'admin' } })
+    fireEvent.click(screen.getByRole('button', { name: t.confirmChangesHeading }))
 
-    expect(await screen.findByText('ロール変更を含む更新です')).toBeInTheDocument()
+    expect(await screen.findByText(t.roleChangeWarningTitle)).toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: '変更を確定' }))
+    fireEvent.click(screen.getByRole('button', { name: t.confirmChanges }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/admin/users/user-1'))
   })

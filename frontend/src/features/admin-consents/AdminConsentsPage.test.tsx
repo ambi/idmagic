@@ -1,6 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { ConsentStateBadge, filterAdminConsents, NameWithId } from './AdminConsentsPage'
+import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
+import {
+  AdminConsentsPage,
+  ConsentStateBadge,
+  filterAdminConsents,
+  NameWithId,
+} from './AdminConsentsPage'
+import { adminConsentsDictionary } from './AdminConsentsPage.i18n'
 import type { AdminConsent } from '../../types'
 
 const consent: AdminConsent = {
@@ -33,5 +40,27 @@ describe('consent presentation components', () => {
     expect(screen.getByText('taro')).toBeInTheDocument()
     expect(screen.getByText('user-1')).toBeInTheDocument()
     expect(screen.getByText('granted')).toBeInTheDocument()
+  })
+})
+
+describe('AdminConsentsPage', () => {
+  it('renders in English by default', async () => {
+    await renderWithRouterBase(<AdminConsentsPage csrfToken="csrf" consents={[]} />)
+    expect(
+      screen.getByRole('heading', { name: adminConsentsDictionary.en.pageTitle }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(adminConsentsDictionary.en.noMatchingConsentsNotice),
+    ).toBeInTheDocument()
+  })
+
+  it('renders in Japanese when explicitly selected', async () => {
+    await renderWithRouterBase(<AdminConsentsPage csrfToken="csrf" consents={[consent]} />, {
+      locale: 'ja',
+    })
+    expect(
+      screen.getByRole('heading', { name: adminConsentsDictionary.ja.pageTitle }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(adminConsentsDictionary.ja.detailsHeading)).toBeInTheDocument()
   })
 })

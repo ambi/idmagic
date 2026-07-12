@@ -42,6 +42,9 @@ depends_on: [wi-158-i18n-ja-en, wi-197-backend-api-errors-english-only]
 
 ## Completion
 
-- Account feature-local ja/en dictionaries cover account portal state, dialog, and action copy.
-- Account dates use locale-aware formatters where rendered by localized screens.
-- Verified with `just verify-ui`.
+- **Completed At**: 2026-07-12
+- **Summary**:
+  Account feature-local ja/en dictionaries cover account portal state, dialog, and action copy.
+  Account dates use locale-aware formatters where rendered by localized screens.
+- **Verification Results**:
+  - `just verify-ui` — passed

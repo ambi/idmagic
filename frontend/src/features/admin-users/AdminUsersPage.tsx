@@ -55,11 +55,12 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
 import { attributeGroupKey, attributeGroupTitle, attributeLabel, cn } from '../../lib/utils'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import {
   domainLabelsDictionary,
   type DomainLabelsDictionary,
 } from '../../lib/i18n/domainLabels.i18n'
+import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import {
   type AdminGroup,
   type AdminUser,
@@ -107,6 +108,8 @@ export function AdminUsersPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
 
   const selected = users.find((user) => user.id === selectedUserId)
   const activeCount = users.filter((user) => userLifecycleStatus(user) === 'active').length
@@ -140,11 +143,7 @@ export function AdminUsersPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '管理操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -158,7 +157,7 @@ export function AdminUsersPage({
         setShowDisable(false)
         await refresh(user.id)
       },
-      disabled ? 'ユーザーを無効化しました。' : 'ユーザーを再有効化しました。',
+      disabled ? t.userDisabledNotice : t.userEnabledNotice,
     )
   }
 
@@ -182,7 +181,7 @@ export function AdminUsersPage({
         }
         await refresh(user.id)
       },
-      present ? '強制アクションを解除しました。' : '強制アクションを付与しました。',
+      present ? t.requiredActionClearedNotice : t.requiredActionSetNotice,
     )
   }
 
@@ -191,7 +190,7 @@ export function AdminUsersPage({
       await deleteAdminUser(csrfToken, user.id)
       setShowDelete(false)
       await refresh(user.id)
-    }, 'ユーザーの削除を予約しました。30 日以内なら復元できます。')
+    }, t.userDeleteScheduledNotice)
   }
 
   async function handlePurge(user: AdminUser) {
@@ -199,14 +198,14 @@ export function AdminUsersPage({
       await deleteAdminUser(csrfToken, user.id, { purge: true })
       setShowPurge(false)
       await refresh()
-    }, 'ユーザーを完全に削除しました。')
+    }, t.userPurgedNotice)
   }
 
   async function handleRestore(user: AdminUser) {
     await run(async () => {
       await restoreAdminUser(csrfToken, user.id)
       await refresh(user.id)
-    }, 'ユーザーを復元しました。')
+    }, t.userRestoredNotice)
   }
 
   function selectUser(user: AdminUser) {
@@ -218,27 +217,30 @@ export function AdminUsersPage({
       <AdminShell
         active="users"
         actorUsername={actorUsername}
-        title="ユーザー"
-        description="組織のID、アクセスロール、アカウント状態を一元管理します。"
+        title={t.pageTitle}
+        description={t.pageDescription}
         actions={
           <Button asChild>
             <a href={tenantURL('/admin/users/new')}>
               <IconUserPlus size={17} aria-hidden="true" />
-              ユーザーを追加
+              {t.addUser}
             </a>
           </Button>
         }
       >
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="ユーザー概要">
-          <Metric label="総ユーザー" value={users.length} icon={IconUsers} tone="blue" />
+        <section
+          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          aria-label={t.overviewSectionLabel}
+        >
+          <Metric label={t.totalUsers} value={users.length} icon={IconUsers} tone="blue" />
           <Metric
-            label="有効なアカウント"
+            label={t.activeAccounts}
             value={activeCount}
             icon={IconCircleCheck}
             tone="green"
           />
-          <Metric label="管理者" value={adminCount} icon={IconShield} tone="violet" />
-          <Metric label="MFA 登録済み" value={mfaCount} icon={IconKey} tone="amber" />
+          <Metric label={t.admins} value={adminCount} icon={IconShield} tone="violet" />
+          <Metric label={t.mfaEnrolled} value={mfaCount} icon={IconKey} tone="amber" />
         </section>
 
         {error && <Alert>{error}</Alert>}
@@ -256,8 +258,8 @@ export function AdminUsersPage({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="h-10 pl-10"
-                placeholder="名前、メール、ID、ロールで検索"
-                aria-label="ユーザーを検索"
+                placeholder={t.searchPlaceholder}
+                aria-label={t.searchAriaLabel}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -277,10 +279,10 @@ export function AdminUsersPage({
                   >
                     {
                       {
-                        all: 'すべて',
-                        active: '有効',
-                        disabled: '無効',
-                        pending_deletion: '削除予約',
+                        all: t.filterAll,
+                        active: t.statusActive,
+                        disabled: t.statusDisabled,
+                        pending_deletion: t.statusPendingDeletion,
                       }[value]
                     }
                   </button>
@@ -290,8 +292,8 @@ export function AdminUsersPage({
                 variant="outline"
                 className="size-9 px-0"
                 disabled={busy}
-                aria-label="一覧を再読み込み"
-                onClick={() => void run(() => refresh(), '一覧を更新しました。')}
+                aria-label={t.reloadAriaLabel}
+                onClick={() => void run(() => refresh(), t.listRefreshedNotice)}
               >
                 <IconRefresh size={16} aria-hidden="true" />
               </Button>
@@ -303,10 +305,10 @@ export function AdminUsersPage({
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-slate-500">
                   <tr>
-                    <th className="px-5 py-3.5">ユーザー</th>
-                    <th className="px-5 py-3.5">アクセス</th>
-                    <th className="px-5 py-3.5">セキュリティ</th>
-                    <th className="px-5 py-3.5">状態</th>
+                    <th className="px-5 py-3.5">{t.tableHeaderUser}</th>
+                    <th className="px-5 py-3.5">{t.tableHeaderAccess}</th>
+                    <th className="px-5 py-3.5">{t.tableHeaderSecurity}</th>
+                    <th className="px-5 py-3.5">{t.tableHeaderStatus}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -347,7 +349,7 @@ export function AdminUsersPage({
                           >
                             <IconKey size={13} aria-hidden="true" />
                           </span>
-                          {user.mfa_enrolled ? 'MFA' : 'Password'}
+                          {user.mfa_enrolled ? 'MFA' : t.passwordBadge}
                         </div>
                       </td>
                       <td className="px-5 py-4">
@@ -362,10 +364,8 @@ export function AdminUsersPage({
                   <span className="flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                     <IconSearch size={22} aria-hidden="true" />
                   </span>
-                  <p className="mt-4 font-semibold text-slate-800">ユーザーが見つかりません</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    検索語または状態フィルターを変更してください。
-                  </p>
+                  <p className="mt-4 font-semibold text-slate-800">{t.emptyStateTitle}</p>
+                  <p className="mt-1 text-sm text-slate-500">{t.emptyStateDescription}</p>
                 </div>
               )}
             </div>
@@ -387,14 +387,16 @@ export function AdminUsersPage({
                 />
               ) : (
                 <div className="flex h-full min-h-80 items-center justify-center p-8 text-center text-sm text-slate-500">
-                  ユーザーを選択すると詳細が表示されます。
+                  {t.selectUserPrompt}
                 </div>
               )}
             </aside>
           </div>
           <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-5 py-3 text-xs text-slate-500">
-            <span>{filteredUsers.length} 件を表示</span>
-            <span>最終更新: {formatDateTime(new Date().toISOString())}</span>
+            <span>{t.countDisplayed.replace('{count}', String(filteredUsers.length))}</span>
+            <span>
+              {t.lastUpdated.replace('{date}', formatDateTime(new Date().toISOString(), locale))}
+            </span>
           </div>
         </Card>
       </AdminShell>
@@ -453,6 +455,8 @@ export function AdminUserDetailPage({
 
   const attributeDefs = [...schema.builtin, ...schema.attributes]
   const tLabels = useDictionary(domainLabelsDictionary)
+  const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
 
   async function reload() {
     setUser(await getAdminUser(user.id))
@@ -466,11 +470,7 @@ export function AdminUserDetailPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '管理操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -484,7 +484,7 @@ export function AdminUserDetailPage({
         setShowDisable(false)
         await reload()
       },
-      disabled ? 'ユーザーを無効化しました。' : 'ユーザーを再有効化しました。',
+      disabled ? t.userDisabledNotice : t.userEnabledNotice,
     )
   }
 
@@ -502,21 +502,21 @@ export function AdminUserDetailPage({
       await deleteAdminUser(csrfToken, user.id)
       setShowDelete(false)
       await reload()
-    }, 'ユーザーの削除を予約しました。30 日以内なら復元できます。')
+    }, t.userDeleteScheduledNotice)
   }
 
   async function handlePurge() {
     await run(async () => {
       await deleteAdminUser(csrfToken, user.id, { purge: true })
       window.location.assign(tenantURL('/admin/users'))
-    }, 'ユーザーを完全に削除しました。')
+    }, t.userPurgedNotice)
   }
 
   async function handleRestore() {
     await run(async () => {
       await restoreAdminUser(csrfToken, user.id)
       await reload()
-    }, 'ユーザーを復元しました。')
+    }, t.userRestoredNotice)
   }
 
   async function handleRequiredAction(action: string, present: boolean) {
@@ -529,7 +529,7 @@ export function AdminUserDetailPage({
         }
         await reload()
       },
-      present ? '強制アクションを解除しました。' : '強制アクションを付与しました。',
+      present ? t.requiredActionClearedNotice : t.requiredActionSetNotice,
     )
   }
 
@@ -547,12 +547,12 @@ export function AdminUserDetailPage({
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               <IconArrowLeft size={16} aria-hidden="true" />
-              ユーザー一覧
+              {t.backToUserList}
             </a>
             <Button asChild>
               <a href={tenantURL(`/admin/users/${encodeURIComponent(user.id)}/edit`)}>
                 <IconPencil size={16} aria-hidden="true" />
-                編集
+                {t.edit}
               </a>
             </Button>
             <DropdownMenu>
@@ -561,7 +561,7 @@ export function AdminUserDetailPage({
                   type="button"
                   variant="outline"
                   className="size-9 px-0"
-                  aria-label="ユーザー操作"
+                  aria-label={t.userActionsAriaLabel}
                   disabled={busy}
                 >
                   <IconDotsVertical size={18} aria-hidden="true" />
@@ -572,12 +572,12 @@ export function AdminUserDetailPage({
                   <>
                     <DropdownMenuItem onSelect={() => void handleRestore()}>
                       <IconRefresh size={17} aria-hidden="true" />
-                      アカウントを復元
+                      {t.restoreAccount}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
                     <DropdownMenuItem className="text-red-700" onSelect={() => setShowPurge(true)}>
                       <IconTrash size={17} aria-hidden="true" />
-                      完全に削除する
+                      {t.permanentlyDelete}
                     </DropdownMenuItem>
                   </>
                 ) : (
@@ -591,12 +591,12 @@ export function AdminUserDetailPage({
                       ) : (
                         <IconBan size={17} aria-hidden="true" />
                       )}
-                      {user.disabled_at ? 'アカウントを再有効化' : 'アカウントを無効化'}
+                      {user.disabled_at ? t.reEnableAccount : t.disableAccount}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
                     <DropdownMenuItem className="text-red-700" onSelect={() => setShowDelete(true)}>
                       <IconTrash size={17} aria-hidden="true" />
-                      アカウントを削除
+                      {t.deleteAccount}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -618,7 +618,7 @@ export function AdminUserDetailPage({
               <StatusBadge status={userLifecycleStatus(user)} compact />
               {user.scim_source && (
                 <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                  SCIM 同期 ({user.scim_source})
+                  {t.scimSyncBadge.replace('{source}', user.scim_source)}
                 </span>
               )}
             </div>
@@ -630,47 +630,52 @@ export function AdminUserDetailPage({
           <div className="flex flex-col gap-5 xl:col-span-2">
             <Card className="p-5">
               <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-                プロフィール
+                {t.profileHeading}
               </h3>
               <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                <DetailRow icon={IconUser} label="名前" value={user.name || '未設定'} />
-                <DetailRow icon={IconUser} label="名" value={user.given_name || '未設定'} />
-                <DetailRow icon={IconUser} label="姓" value={user.family_name || '未設定'} />
+                <DetailRow icon={IconUser} label={t.name} value={user.name || t.notSet} />
                 <DetailRow
                   icon={IconUser}
-                  label="ユーザー名"
+                  label={t.givenName}
+                  value={user.given_name || t.notSet}
+                />
+                <DetailRow
+                  icon={IconUser}
+                  label={t.familyName}
+                  value={user.family_name || t.notSet}
+                />
+                <DetailRow
+                  icon={IconUser}
+                  label={t.username}
                   value={user.preferred_username}
                   mono
                 />
-                <DetailRow icon={IconMail} label="メール" value={user.email || '未設定'} />
+                <DetailRow icon={IconMail} label={t.email} value={user.email || t.notSet} />
                 <DetailRow
                   icon={IconShieldCheck}
-                  label="メール確認"
-                  value={user.email_verified ? '確認済み' : '未確認'}
+                  label={t.emailVerification}
+                  value={user.email_verified ? t.verified : t.unverified}
                 />
                 <DetailRow
                   icon={IconKey}
-                  label="認証方式"
-                  value={user.mfa_enrolled ? 'Password + MFA' : 'Password'}
+                  label={t.authMethod}
+                  value={user.mfa_enrolled ? `Password + MFA` : t.passwordBadge}
                 />
-                <DetailRow icon={IconUser} label="ユーザーID" value={user.id} mono />
+                <DetailRow icon={IconUser} label={t.userId} value={user.id} mono />
               </dl>
               {user.scim_source && (
                 <div className="mt-4 border-t border-slate-100 pt-4 flex items-center gap-2 text-xs text-blue-700">
                   <IconAlertTriangle size={15} />
-                  <span>
-                    このユーザーは SCIM
-                    同期によりプロビジョニングされているため、プロフィール属性は直接編集できません。
-                  </span>
+                  <span>{t.scimManagedNotice}</span>
                 </div>
               )}
             </Card>
 
             <Card className="p-5">
-              <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">属性</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                値が設定されている属性を区分ごとに表示します。編集は「編集」から行います。
-              </p>
+              <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+                {t.attributesHeading}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">{t.attributesDescription}</p>
               <div className="mt-4 flex flex-col gap-5">
                 {groupedAttributeDefs(attributeDefs, tLabels).map((group) => (
                   <AttributeGroup
@@ -687,49 +692,57 @@ export function AdminUserDetailPage({
           <div className="flex flex-col gap-5">
             <Card className="p-5">
               <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-                ライフサイクル
+                {t.lifecycleHeading}
               </h3>
               <dl className="mt-3 grid gap-3 text-sm">
                 <DetailRow
                   icon={IconCircleCheck}
-                  label="状態"
+                  label={t.statusLabel}
                   value={
-                    { active: '有効', disabled: '無効', pending_deletion: '削除予約' }[
-                      userLifecycleStatus(user)
-                    ]
+                    {
+                      active: t.statusActive,
+                      disabled: t.statusDisabled,
+                      pending_deletion: t.statusPendingDeletion,
+                    }[userLifecycleStatus(user)]
                   }
                 />
                 {userLifecycleStatus(user) === 'pending_deletion' && user.purge_after && (
                   <DetailRow
                     icon={IconClock}
-                    label="完全削除予定"
-                    value={`${formatDateTime(user.purge_after)}${
+                    label={t.purgeScheduled}
+                    value={`${formatDateTime(user.purge_after, locale)}${
                       daysUntil(user.purge_after) !== null
-                        ? ` (あと ${daysUntil(user.purge_after)} 日)`
+                        ? ` ${t.daysRemaining.replace('{days}', String(daysUntil(user.purge_after)))}`
                         : ''
                     }`}
                   />
                 )}
                 <DetailRow
                   icon={IconClock}
-                  label="作成日時"
-                  value={formatDateTime(user.created_at)}
+                  label={t.createdAt}
+                  value={formatDateTime(user.created_at, locale)}
                 />
                 <DetailRow
                   icon={IconClock}
-                  label="更新日時"
-                  value={formatDateTime(user.updated_at)}
+                  label={t.updatedAt}
+                  value={formatDateTime(user.updated_at, locale)}
                 />
                 <DetailRow
                   icon={IconClock}
-                  label="最終ログイン"
-                  value={user.last_login_at ? formatDateTime(user.last_login_at) : '未ログイン'}
+                  label={t.lastLogin}
+                  value={
+                    user.last_login_at
+                      ? formatDateTime(user.last_login_at, locale)
+                      : t.neverLoggedIn
+                  }
                 />
                 <DetailRow
                   icon={IconKey}
-                  label="パスワード変更"
+                  label={t.passwordChanged}
                   value={
-                    user.password_changed_at ? formatDateTime(user.password_changed_at) : '記録なし'
+                    user.password_changed_at
+                      ? formatDateTime(user.password_changed_at, locale)
+                      : t.noRecord
                   }
                 />
               </dl>
@@ -790,6 +803,7 @@ function AttributeGroup({
   defs: UserAttributeDef[]
   user: AdminUser
 }) {
+  const t = useDictionary(adminUsersDictionary)
   const rows = defs
     .map((def) => ({ def, value: user.attributes?.[def.key] }))
     .filter((row): row is { def: UserAttributeDef; value: AttributeValue } => Boolean(row.value))
@@ -797,7 +811,7 @@ function AttributeGroup({
     <div>
       <h4 className="text-[0.68rem] font-bold uppercase tracking-wide text-slate-400">{title}</h4>
       {rows.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-400">設定された項目はありません</p>
+        <p className="mt-2 text-xs text-slate-400">{t.noSetItems}</p>
       ) : (
         <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
           {rows.map(({ def, value }) => (
@@ -837,6 +851,8 @@ function UserDetails({
   onRequiredAction: (action: string, present: boolean) => void
 }) {
   const pending = userLifecycleStatus(user) === 'pending_deletion'
+  const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 bg-white p-5">
@@ -863,9 +879,9 @@ function UserDetails({
             actions={
               pending
                 ? [
-                    { label: 'アカウントを復元', icon: IconRefresh, onClick: onRestore },
+                    { label: t.restoreAccount, icon: IconRefresh, onClick: onRestore },
                     {
-                      label: '完全に削除する',
+                      label: t.permanentlyDelete,
                       icon: IconTrash,
                       onClick: onPurge,
                       tone: 'danger',
@@ -873,13 +889,13 @@ function UserDetails({
                   ]
                 : [
                     {
-                      label: user.disabled_at ? 'アカウントを再有効化' : 'アカウントを無効化',
+                      label: user.disabled_at ? t.reEnableAccount : t.disableAccount,
                       icon: user.disabled_at ? IconCheck : IconBan,
                       onClick: onDisabled,
                       tone: user.disabled_at ? 'default' : 'danger',
                     },
                     {
-                      label: 'アカウントを削除',
+                      label: t.deleteAccount,
                       icon: IconTrash,
                       onClick: onDelete,
                       tone: 'danger',
@@ -893,34 +909,42 @@ function UserDetails({
       <div className="flex flex-1 flex-col gap-6 p-5">
         <section>
           <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-            プロフィール
+            {t.profileHeading}
           </h3>
           <dl className="mt-3 grid gap-3 text-sm">
-            <DetailRow icon={IconMail} label="メール" value={user.email || '未設定'} />
+            <DetailRow icon={IconMail} label={t.email} value={user.email || t.notSet} />
             <DetailRow
               icon={IconShieldCheck}
-              label="メール確認"
-              value={user.email_verified ? '確認済み' : '未確認'}
+              label={t.emailVerification}
+              value={user.email_verified ? t.verified : t.unverified}
             />
             <DetailRow
               icon={IconKey}
-              label="認証方式"
-              value={user.mfa_enrolled ? 'Password + MFA' : 'Password'}
+              label={t.authMethod}
+              value={user.mfa_enrolled ? `Password + MFA` : t.passwordBadge}
             />
-            <DetailRow icon={IconClock} label="作成日時" value={formatDateTime(user.created_at)} />
             <DetailRow
               icon={IconClock}
-              label="最終ログイン"
-              value={user.last_login_at ? formatDateTime(user.last_login_at) : '未ログイン'}
+              label={t.createdAt}
+              value={formatDateTime(user.created_at, locale)}
+            />
+            <DetailRow
+              icon={IconClock}
+              label={t.lastLogin}
+              value={
+                user.last_login_at ? formatDateTime(user.last_login_at, locale) : t.neverLoggedIn
+              }
             />
             <DetailRow
               icon={IconKey}
-              label="パスワード変更"
+              label={t.passwordChanged}
               value={
-                user.password_changed_at ? formatDateTime(user.password_changed_at) : '記録なし'
+                user.password_changed_at
+                  ? formatDateTime(user.password_changed_at, locale)
+                  : t.noRecord
               }
             />
-            <DetailRow icon={IconUser} label="Subject ID" value={user.id} mono />
+            <DetailRow icon={IconUser} label={t.subjectId} value={user.id} mono />
           </dl>
         </section>
 
@@ -936,17 +960,21 @@ function UserDetails({
 // 予定を伝える amber バナー。復元動線 (メニューの「アカウントを復元」) を促す。
 function PendingDeletionNotice({ user }: { user: AdminUser }) {
   const remaining = daysUntil(user.purge_after)
+  const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
   return (
     <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-      <p className="font-semibold">削除予約中</p>
+      <p className="font-semibold">{t.pendingDeletionTitle}</p>
       <p className="mt-1">
         {remaining !== null
-          ? `あと ${remaining} 日で自動的に完全削除 (匿名化) されます。`
-          : '猶予期間の経過後に自動的に完全削除 (匿名化) されます。'}
-        復元期間中もログインとトークン更新は拒否されます。
+          ? t.pendingDeletionRemaining.replace('{days}', String(remaining))
+          : t.pendingDeletionRemainingUnknown}
+        {t.pendingDeletionRestoreNotice}
       </p>
       {user.purge_after && (
-        <p className="mt-1 text-amber-700">完全削除予定: {formatDateTime(user.purge_after)}</p>
+        <p className="mt-1 text-amber-700">
+          {t.purgeScheduledAt.replace('{date}', formatDateTime(user.purge_after, locale))}
+        </p>
       )}
     </div>
   )
@@ -963,14 +991,13 @@ function UserRequiredActionsSection({
 }) {
   const active = new Set(user.required_actions ?? [])
   const tLabels = useDictionary(domainLabelsDictionary)
+  const t = useDictionary(adminUsersDictionary)
   return (
     <section>
       <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-        強制アクション
+        {t.requiredActionsHeading}
       </h3>
-      <p className="mt-1 text-xs text-slate-500">
-        付与すると、次回ログイン時にユーザーへ対応を求めます。
-      </p>
+      <p className="mt-1 text-xs text-slate-500">{t.requiredActionsDescription}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {REQUIRED_ACTIONS.map((action) => {
           const present = active.has(action)
@@ -1005,6 +1032,7 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
   const [adding, setAdding] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState('')
   const { id } = user
+  const t = useDictionary(adminUsersDictionary)
 
   const load = useCallback(async () => {
     try {
@@ -1013,11 +1041,9 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
       setAllGroups(all)
       setError('')
     } catch (err) {
-      setError(
-        err instanceof AuthenticationAPIError ? err.message : 'グループの取得に失敗しました。',
-      )
+      setError(err instanceof AuthenticationAPIError ? err.message : t.groupFetchError)
     }
-  }, [id])
+  }, [id, t.groupFetchError])
 
   useEffect(() => {
     setData(null)
@@ -1033,9 +1059,7 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
       setSelectedGroup('')
       await load()
     } catch (err) {
-      setError(
-        err instanceof AuthenticationAPIError ? err.message : 'グループへの追加に失敗しました。',
-      )
+      setError(err instanceof AuthenticationAPIError ? err.message : t.groupAddError)
     } finally {
       setAdding(false)
     }
@@ -1048,10 +1072,8 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
     <section className="border-t border-slate-200 pt-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">ロールとグループ</h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            実効ロールは明示ロールとグループ由来ロールの和集合です。
-          </p>
+          <h3 className="text-sm font-semibold text-slate-900">{t.rolesAndGroupsHeading}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{t.effectiveRolesDescription}</p>
         </div>
         <IconShield size={18} className="text-slate-400" aria-hidden="true" />
       </div>
@@ -1063,21 +1085,21 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
       )}
 
       <div className="mt-3 space-y-3">
-        <RoleGroup label="明示ロール" roles={user.roles} />
-        <RoleGroup label="グループ由来ロール" roles={data?.group_roles ?? []} />
-        <RoleGroup label="実効ロール" roles={data?.effective_roles ?? user.roles} emphasis />
+        <RoleGroup label={t.explicitRoles} roles={user.roles} />
+        <RoleGroup label={t.groupDerivedRoles} roles={data?.group_roles ?? []} />
+        <RoleGroup label={t.effectiveRoles} roles={data?.effective_roles ?? user.roles} emphasis />
       </div>
 
       <div className="mt-4">
         <div className="flex items-center gap-2">
           <IconUsersGroup size={16} className="text-slate-400" aria-hidden="true" />
           <h4 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-            所属グループ
+            {t.memberGroupsHeading}
           </h4>
         </div>
         <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
           {data && data.groups.length === 0 ? (
-            <span className="text-xs text-slate-400">グループ未所属</span>
+            <span className="text-xs text-slate-400">{t.notInAnyGroup}</span>
           ) : (
             <ul className="flex flex-col gap-2">
               {data?.groups.map((group) => (
@@ -1103,7 +1125,7 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
               disabled={adding}
               className="h-9 flex-1 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
             >
-              <option value="">グループを選択して追加…</option>
+              <option value="">{t.selectGroupPlaceholder}</option>
               {addable.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name}
@@ -1116,7 +1138,7 @@ function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: st
               onClick={() => void handleAdd()}
             >
               <IconUserPlus size={16} aria-hidden="true" />
-              追加
+              {t.add}
             </Button>
           </div>
         )}
@@ -1158,12 +1180,13 @@ function RoleDiff({
   roles: string[]
   tone: 'add' | 'remove'
 }) {
+  const t = useDictionary(adminUsersDictionary)
   return (
     <div>
       <p className="text-xs font-semibold text-slate-500">{title}</p>
       <div className="mt-2 flex min-h-16 flex-wrap content-start gap-1.5 rounded-xl border border-slate-200 bg-white p-3">
         {roles.length === 0 ? (
-          <span className="text-xs text-slate-400">なし</span>
+          <span className="text-xs text-slate-400">{t.roleNone}</span>
         ) : (
           roles.map((role) => (
             <span
@@ -1256,6 +1279,7 @@ function AdminAttributeField({
 }) {
   const id = `user-editor-attr-${def.key}`
   const label = attributeLabel(def)
+  const t = useDictionary(adminUsersDictionary)
   if (def.type === 'boolean') {
     return (
       <label htmlFor={id} className="inline-flex items-center gap-2 text-sm text-slate-700">
@@ -1280,7 +1304,7 @@ function AdminAttributeField({
         id={id}
         type={def.type === 'number' ? 'number' : def.type === 'date' ? 'date' : 'text'}
         value={value}
-        placeholder={def.type === 'string_array' ? 'カンマ区切り' : undefined}
+        placeholder={def.type === 'string_array' ? t.commaSeparated : undefined}
         onChange={(event) => onChange(event.target.value)}
         readOnly={readOnly}
         className={readOnly ? 'bg-slate-50' : undefined}
@@ -1311,16 +1335,17 @@ function AdminAttributeEditorGroups({
   onChange: (key: string, next: string) => void
   readOnly?: boolean
 }) {
-  const t = useDictionary(domainLabelsDictionary)
-  const groups = groupedAttributeDefs(defs, t)
+  const tLabels = useDictionary(domainLabelsDictionary)
+  const t = useDictionary(adminUsersDictionary)
+  const groups = groupedAttributeDefs(defs, tLabels)
   if (groups.length === 0) return null
   return (
     <section className="grid gap-4 border-t border-slate-200 pt-5">
       <div>
         <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-          アカウント情報
+          {t.accountInfoHeading}
         </h3>
-        <p className="mt-1 text-xs leading-5 text-slate-500">保存時に属性全体が置換されます。</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{t.accountInfoDescription}</p>
       </div>
       {groups.map((group) => (
         <fieldset key={group.key} className="grid gap-3 rounded-lg border border-slate-200 p-4">
@@ -1360,6 +1385,7 @@ export function AdminUserEditPage({
   const detailPath = tenantURL(`/admin/users/${encodeURIComponent(user.id)}`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminUsersDictionary)
 
   async function persist(input: UpdateAdminUserInput) {
     setBusy(true)
@@ -1368,11 +1394,7 @@ export function AdminUserEditPage({
       await updateAdminUser(csrfToken, user.id, input)
       window.location.assign(detailPath)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'ユーザーを更新できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.updateFailed)
       setBusy(false)
     }
   }
@@ -1443,13 +1465,13 @@ export function AdminUserEditPage({
     <AdminShell
       active="users"
       actorUsername={actorUsername}
-      title="ユーザーを編集"
+      title={t.editUserTitle}
       description={`${user.name || user.preferred_username} (@${user.preferred_username})`}
       actions={
         <Button asChild variant="outline">
           <a href={detailPath}>
             <IconArrowLeft size={16} aria-hidden="true" />
-            ユーザー詳細
+            {t.userDetail}
           </a>
         </Button>
       }
@@ -1458,10 +1480,10 @@ export function AdminUserEditPage({
       <Card className="mx-auto w-full max-w-3xl overflow-hidden">
         <div className="border-b border-slate-200 px-6 py-5">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
-            プロフィールとアクセス
+            {t.profileAndAccessLabel}
           </p>
           <h2 className="mt-1 text-xl font-semibold">
-            {confirming ? '変更内容を確認' : 'ユーザーを編集'}
+            {confirming ? t.confirmChangesHeading : t.editUserTitle}
           </h2>
         </div>
 
@@ -1478,22 +1500,20 @@ export function AdminUserEditPage({
                     />
                     <div>
                       <p className="text-sm font-semibold text-amber-950">
-                        ロール変更を含む更新です
+                        {t.roleChangeWarningTitle}
                       </p>
                       <p className="mt-1 text-xs leading-5 text-amber-800">
-                        管理者ロールの追加・削除は管理コンソールへのアクセス権に影響します。
+                        {t.roleChangeWarningDescription}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <RoleDiff title="追加されるロール" roles={addedRoles} tone="add" />
-                  <RoleDiff title="削除されるロール" roles={removedRoles} tone="remove" />
+                  <RoleDiff title={t.rolesAdded} roles={addedRoles} tone="add" />
+                  <RoleDiff title={t.rolesRemoved} roles={removedRoles} tone="remove" />
                 </div>
                 {profileChanged && (
-                  <p className="mt-4 text-xs leading-5 text-slate-500">
-                    プロフィールの変更も同じ更新リクエストで保存されます。
-                  </p>
+                  <p className="mt-4 text-xs leading-5 text-slate-500">{t.profileChangeNotice}</p>
                 )}
               </div>
             ) : (
@@ -1503,10 +1523,9 @@ export function AdminUserEditPage({
                     <div className="flex gap-3">
                       <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
                       <div>
-                        <p className="text-sm font-semibold text-blue-950">SCIM 同期ユーザー</p>
+                        <p className="text-sm font-semibold text-blue-950">{t.scimSyncUserTitle}</p>
                         <p className="mt-1 text-xs leading-5 text-blue-800">
-                          このユーザーは {user.scim_source} から自動同期されています。
-                          プロフィール属性とカスタム属性は直接編集できません。
+                          {t.scimSyncUserDescription.replace('{source}', user.scim_source)}
                         </p>
                       </div>
                     </div>
@@ -1515,10 +1534,10 @@ export function AdminUserEditPage({
 
                 <section className="grid gap-4">
                   <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-                    プロフィール
+                    {t.profileHeading}
                   </h3>
                   <div className="grid gap-2">
-                    <Label htmlFor="user-editor-username">ユーザー名</Label>
+                    <Label htmlFor="user-editor-username">{t.username}</Label>
                     <Input
                       id="user-editor-username"
                       value={username}
@@ -1529,12 +1548,10 @@ export function AdminUserEditPage({
                       readOnly={!!user.scim_source}
                       className={user.scim_source ? 'bg-slate-50' : undefined}
                     />
-                    <p className="text-xs leading-5 text-slate-500">
-                      login 時に使われる識別子です。空にはできません。
-                    </p>
+                    <p className="text-xs leading-5 text-slate-500">{t.usernameHelp}</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="user-editor-name">表示名</Label>
+                    <Label htmlFor="user-editor-name">{t.displayName}</Label>
                     <Input
                       id="user-editor-name"
                       value={name}
@@ -1545,7 +1562,7 @@ export function AdminUserEditPage({
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="user-editor-given-name">名 (given_name)</Label>
+                      <Label htmlFor="user-editor-given-name">{t.givenName} (given_name)</Label>
                       <Input
                         id="user-editor-given-name"
                         value={givenName}
@@ -1555,7 +1572,7 @@ export function AdminUserEditPage({
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="user-editor-family-name">姓 (family_name)</Label>
+                      <Label htmlFor="user-editor-family-name">{t.familyName} (family_name)</Label>
                       <Input
                         id="user-editor-family-name"
                         value={familyName}
@@ -1566,7 +1583,7 @@ export function AdminUserEditPage({
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="user-editor-email">メールアドレス</Label>
+                    <Label htmlFor="user-editor-email">{t.emailFieldLabel}</Label>
                     <Input
                       id="user-editor-email"
                       type="email"
@@ -1580,7 +1597,7 @@ export function AdminUserEditPage({
                     />
                     {emailChanged && (
                       <p className="text-xs leading-5 text-amber-700">
-                        メールを変更したため、確認済みフラグを既定で解除しています。
+                        {t.emailChangedVerificationNotice}
                       </p>
                     )}
                   </div>
@@ -1596,29 +1613,25 @@ export function AdminUserEditPage({
                       disabled={!!user.scim_source}
                     />
                     <span>
-                      <span className="block font-semibold text-slate-900">
-                        メール確認済みとして保存
-                      </span>
+                      <span className="block font-semibold text-slate-900">{t.saveAsVerified}</span>
                       <span className="mt-0.5 block text-xs leading-5 text-slate-500">
-                        組織側でメールアドレスの所有確認が完了している場合のみ選択します。
+                        {t.verifiedOwnershipNotice}
                       </span>
                     </span>
                   </label>
                 </section>
                 <section className="grid gap-2 border-t border-slate-200 pt-5">
                   <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-                    ロール
+                    {t.rolesHeading}
                   </h3>
-                  <Label htmlFor="user-editor-roles">ロール</Label>
+                  <Label htmlFor="user-editor-roles">{t.rolesHeading}</Label>
                   <Input
                     id="user-editor-roles"
                     value={roles}
                     onChange={(event) => setRoles(event.target.value)}
                     placeholder="admin, support"
                   />
-                  <p className="text-xs leading-5 text-slate-500">
-                    複数指定する場合はカンマで区切ります。変更時は保存前に差分を確認します。
-                  </p>
+                  <p className="text-xs leading-5 text-slate-500">{t.rolesHelp}</p>
                 </section>
                 <AdminAttributeEditorGroups
                   defs={attributeDefs}
@@ -1632,15 +1645,15 @@ export function AdminUserEditPage({
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
             {confirming ? (
               <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
-                戻る
+                {t.back}
               </Button>
             ) : (
               <Button asChild variant="outline">
-                <a href={detailPath}>キャンセル</a>
+                <a href={detailPath}>{t.cancel}</a>
               </Button>
             )}
             <Button type="submit" disabled={busy || usernameInvalid || !changed}>
-              {confirming ? '変更を確定' : rolesChanged ? '変更内容を確認' : '保存'}
+              {confirming ? t.confirmChanges : rolesChanged ? t.confirmChangesHeading : t.save}
             </Button>
           </div>
         </form>
@@ -1673,6 +1686,7 @@ function DeleteUserDialog({
   const [confirmName, setConfirmName] = useState('')
   const canConfirm = !REQUIRE_USERNAME_CONFIRMATION || confirmName === user.preferred_username
   const purge = mode === 'purge'
+  const t = useDictionary(adminUsersDictionary)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1690,7 +1704,7 @@ function DeleteUserDialog({
       <button
         type="button"
         className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
+        aria-label={t.close}
         onClick={onClose}
       />
       <Card className="relative w-full max-w-lg overflow-hidden shadow-2xl">
@@ -1711,17 +1725,17 @@ function DeleteUserDialog({
                   purge ? 'text-red-700' : 'text-amber-700',
                 )}
               >
-                {purge ? 'Irreversible action' : 'Reversible for 30 days'}
+                {purge ? t.irreversibleAction : t.reversibleFor30Days}
               </p>
               <h2 id="delete-user-title" className="mt-1 text-xl font-semibold">
-                {purge ? 'ユーザーを完全に削除' : 'ユーザーを削除'}
+                {purge ? t.deleteUserPermanently : t.deleteUser}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 {user.name || user.preferred_username} (@{user.preferred_username})
               </p>
             </div>
           </div>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
+          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label={t.close}>
             <IconX size={18} aria-hidden="true" />
           </Button>
         </div>
@@ -1730,35 +1744,31 @@ function DeleteUserDialog({
           <div className="grid gap-5 p-6">
             {purge ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs leading-5 text-red-900">
-                <p className="font-semibold">同時に消えるもの</p>
+                <p className="font-semibold">{t.purgeConsequencesHeading}</p>
                 <ul className="mt-1.5 list-disc pl-5">
-                  <li>付与済みの同意 (Consent)</li>
-                  <li>リフレッシュトークンとアクティブなセッション</li>
-                  <li>MFA factor とパスワード履歴</li>
-                  <li>進行中の device authorization</li>
+                  <li>{t.purgeConsequenceConsents}</li>
+                  <li>{t.purgeConsequenceSessions}</li>
+                  <li>{t.purgeConsequenceMfa}</li>
+                  <li>{t.purgeConsequenceDeviceAuth}</li>
                 </ul>
                 <p className="mt-2">
-                  ユーザーの <code>sub</code> は監査ログのために残りますが、
-                  プロフィール情報は匿名化されます。<strong>元に戻せません。</strong>
+                  {t.purgeSubNoteLead} <code>sub</code> {t.purgeSubNoteMid}
+                  <strong>{t.purgeSubNoteStrong}</strong>
                 </p>
               </div>
             ) : (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
-                <p className="font-semibold">30 日以内なら復元できます。</p>
-                <p className="mt-1.5">
-                  削除予約中もログインとトークン更新は拒否されますが、プロフィール・同意・
-                  セッションなどは温存されます。30 日を過ぎると自動的に完全削除 (匿名化)
-                  され、元に戻せなくなります。
-                </p>
+                <p className="font-semibold">{t.softDeleteRestorableNotice}</p>
+                <p className="mt-1.5">{t.softDeleteDescription}</p>
               </div>
             )}
 
             {REQUIRE_USERNAME_CONFIRMATION && (
               <div className="grid gap-2">
                 <Label htmlFor="delete-user-confirm">
-                  確認のためユーザー名{' '}
+                  {t.confirmUsernamePrefix}{' '}
                   <span className="font-mono text-slate-700">{user.preferred_username}</span>{' '}
-                  を入力してください
+                  {t.confirmUsernameSuffix}
                 </Label>
                 <Input
                   id="delete-user-confirm"
@@ -1773,11 +1783,11 @@ function DeleteUserDialog({
 
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              キャンセル
+              {t.cancel}
             </Button>
             <Button type="submit" variant="destructive" disabled={busy || !canConfirm}>
               <IconTrash size={16} aria-hidden="true" />
-              {purge ? '完全に削除' : '削除を確定'}
+              {purge ? t.purgeConfirm : t.confirmDelete}
             </Button>
           </div>
         </form>
@@ -1800,6 +1810,7 @@ function DisableUserDialog({
   onClose: () => void
   onConfirm: () => void
 }) {
+  const t = useDictionary(adminUsersDictionary)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-5 backdrop-blur-[2px]"
@@ -1810,7 +1821,7 @@ function DisableUserDialog({
       <button
         type="button"
         className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
+        aria-label={t.close}
         onClick={onClose}
       />
       <Card className="relative w-full max-w-lg overflow-hidden shadow-2xl">
@@ -1821,43 +1832,44 @@ function DisableUserDialog({
             </span>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-700">
-                Account access
+                {t.accountAccessBadge}
               </p>
               <h2 id="disable-user-title" className="mt-1 text-xl font-semibold">
-                アカウントを無効化
+                {t.disableAccount}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 {user.name || user.preferred_username} (@{user.preferred_username})
               </p>
             </div>
           </div>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
+          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label={t.close}>
             <IconX size={18} aria-hidden="true" />
           </Button>
         </div>
 
         <div className="grid gap-5 p-6">
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs leading-5 text-red-900">
-            <p className="font-semibold">無効化すると</p>
+            <p className="font-semibold">{t.disableConsequencesHeading}</p>
             <ul className="mt-1.5 list-disc pl-5">
-              <li>新規ログインが拒否されます。</li>
-              <li>既存のセッションが無効になります。</li>
-              <li>リフレッシュトークンによる更新が拒否されます。</li>
+              <li>{t.disableConsequenceLogin}</li>
+              <li>{t.disableConsequenceSessions}</li>
+              <li>{t.disableConsequenceRefresh}</li>
             </ul>
             <p className="mt-2">
-              この操作は <span className="font-semibold">アカウント状態 → 再有効化</span>{' '}
-              から元に戻せます。
+              {t.disableUndoNotePrefix}{' '}
+              <span className="font-semibold">{t.disableUndoNoteEmphasis}</span>{' '}
+              {t.disableUndoNoteSuffix}
             </p>
           </div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-            キャンセル
+            {t.cancel}
           </Button>
           <Button type="button" variant="destructive" disabled={busy} onClick={onConfirm}>
             <IconBan size={16} aria-hidden="true" />
-            無効化を確定
+            {t.disableConfirm}
           </Button>
         </div>
       </Card>
@@ -1875,6 +1887,7 @@ export function AdminUserCreatePage({
   const listPath = tenantURL('/admin/users')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminUsersDictionary)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1899,11 +1912,7 @@ export function AdminUserCreatePage({
       })
       window.location.assign(tenantURL(`/admin/users/${encodeURIComponent(created.id)}`))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'ユーザーを追加できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.createUserFailedError)
       setBusy(false)
     }
   }
@@ -1912,18 +1921,18 @@ export function AdminUserCreatePage({
     <AdminShell
       active="users"
       actorUsername={actorUsername}
-      title="ユーザーを追加"
-      description="新しい組織アカウントを作成します。"
+      title={t.addUser}
+      description={t.createUserDescription}
     >
       <div className="flex items-center gap-3">
         <a
           href={listPath}
           className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-          aria-label="ユーザー一覧に戻る"
+          aria-label={t.backToUserListAria}
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">ユーザーを追加</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.addUser}</h1>
       </div>
 
       <div className="mt-6 max-w-2xl">
@@ -1933,26 +1942,26 @@ export function AdminUserCreatePage({
               {error && <Alert>{error}</Alert>}
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field id="preferred_username" label="ユーザー名" required />
-                <Field id="name" label="表示名" />
+                <Field id="preferred_username" label={t.username} required />
+                <Field id="name" label={t.displayName} />
               </div>
 
-              <Field id="email" label="メールアドレス" type="email" />
+              <Field id="email" label={t.emailFieldLabel} type="email" />
 
               <Field
                 id="password"
-                label="初期パスワード"
+                label={t.initialPasswordLabel}
                 type="password"
                 required
                 minLength={12}
-                description="12文字以上。一般的なパスワードやユーザー名を含む値は使用できません。"
+                description={t.initialPasswordDescription}
               />
 
               <Field
                 id="roles"
-                label="初期ロール"
+                label={t.initialRolesLabel}
                 placeholder="support, admin"
-                description="権限を付与しない場合は空欄にします。複数ある場合はカンマ区切りで入力します。"
+                description={t.initialRolesDescription}
               />
 
               <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 cursor-pointer">
@@ -1962,11 +1971,9 @@ export function AdminUserCreatePage({
                   className="mt-0.5 size-4 rounded border-slate-300"
                 />
                 <span>
-                  <span className="block font-semibold text-slate-900">
-                    メール確認済みとして作成
-                  </span>
+                  <span className="block font-semibold text-slate-900">{t.createAsVerified}</span>
                   <span className="mt-0.5 block text-xs leading-5 text-slate-500">
-                    組織側でメールアドレスの所有確認が完了している場合のみ選択します。
+                    {t.verifiedOwnershipNotice}
                   </span>
                 </span>
               </label>
@@ -1977,11 +1984,11 @@ export function AdminUserCreatePage({
                 href={listPath}
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
               >
-                キャンセル
+                {t.cancel}
               </a>
               <Button type="submit" disabled={busy}>
                 <IconUserPlus size={16} aria-hidden="true" />
-                作成
+                {t.create}
               </Button>
             </div>
           </form>

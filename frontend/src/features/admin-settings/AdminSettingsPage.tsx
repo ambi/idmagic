@@ -14,14 +14,16 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminSettings, ScimToken } from '../../types'
+import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { BrandingTab } from './BrandingTab'
 
 const DEFAULT_REALM = 'default'
 
-export function displayNameError(value: string): string | null {
-  return value.trim() ? null : '表示名を入力してください。'
+export function displayNameError(value: string, t: AdminSettingsDictionary): string | null {
+  return value.trim() ? null : t.displayNameRequiredError
 }
 
 export function passwordPolicyOverride(
@@ -46,39 +48,41 @@ type Tab = {
   disabled?: boolean
 }
 
-const tabs: Tab[] = [
-  {
-    key: 'general',
-    label: '一般',
-    description: 'テナント表示名などの基本情報を管理します。',
-    icon: IconTag,
-  },
-  {
-    key: 'password-policy',
-    label: 'パスワードポリシー',
-    description: 'テナント単位の上書き値。空欄のフィールドは IdMagic の標準値が適用されます。',
-    icon: IconShieldLock,
-  },
-  {
-    key: 'branding',
-    label: 'ブランディング',
-    description: 'ロゴ・配色・サポート/法務リンクなど hosted UI の見た目を設定します。',
-    icon: IconPalette,
-  },
-  {
-    key: 'scim',
-    label: 'SCIM 同期',
-    description: '外部 IDP からのユーザー・グループ同期 (SCIM 2.0) を設定します。',
-    icon: IconUsers,
-  },
-  {
-    key: 'email',
-    label: 'メール送信',
-    description: '別 WI で扱う予定です。現状は環境変数経由で設定します。',
-    icon: IconMail,
-    disabled: true,
-  },
-]
+function tabs(t: AdminSettingsDictionary): Tab[] {
+  return [
+    {
+      key: 'general',
+      label: t.tabGeneralLabel,
+      description: t.tabGeneralDescription,
+      icon: IconTag,
+    },
+    {
+      key: 'password-policy',
+      label: t.tabPasswordPolicyLabel,
+      description: t.tabPasswordPolicyDescription,
+      icon: IconShieldLock,
+    },
+    {
+      key: 'branding',
+      label: t.tabBrandingLabel,
+      description: t.tabBrandingDescription,
+      icon: IconPalette,
+    },
+    {
+      key: 'scim',
+      label: t.tabScimLabel,
+      description: t.tabScimDescription,
+      icon: IconUsers,
+    },
+    {
+      key: 'email',
+      label: t.tabEmailLabel,
+      description: t.tabEmailDescription,
+      icon: IconMail,
+      disabled: true,
+    },
+  ]
+}
 
 export function AdminSettingsPage({
   csrfToken,
@@ -96,29 +100,31 @@ export function AdminSettingsPage({
   const [settings, setSettings] = useState(initial)
   const [active, setActive] = useState<TabKey>('general')
   const isSystemAdminOnDefault = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
+  const t = useDictionary(adminSettingsDictionary)
+  const tabList = tabs(t)
 
   return (
     <AdminShell
       active="settings"
       actorUsername={actorUsername}
-      title="設定"
-      description="このテナントの管理者が触れる設定を集約します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
     >
       {isSystemAdminOnDefault ? (
         <Alert>
           <p className="text-sm text-slate-700">
-            他テナントの設定を編集するには
+            {t.crossTenantNoticePrefix}
             <a href="/system/tenants" className="ml-1 font-medium text-blue-700 hover:underline">
-              システムコンソールのテナント
+              {t.crossTenantNoticeLinkText}
             </a>
-            ページを利用してください。
+            {t.crossTenantNoticeSuffix}
           </p>
         </Alert>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav className="flex flex-col gap-1" aria-label="設定タブ">
-          {tabs.map((tab) => (
+        <nav className="flex flex-col gap-1" aria-label={t.tabsAriaLabel}>
+          {tabList.map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -138,7 +144,7 @@ export function AdminSettingsPage({
               <span className="flex-1">{tab.label}</span>
               {tab.disabled ? (
                 <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  予定
+                  {t.comingSoonBadge}
                 </span>
               ) : null}
             </button>
@@ -164,11 +170,8 @@ export function AdminSettingsPage({
           {active === 'scim' ? <ScimTab csrfToken={csrfToken} tenantID={settings.realm} /> : null}
           {active === 'email' ? (
             <Card className="p-6">
-              <h2 className="text-base font-semibold text-slate-900">メール送信</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                送信先 SMTP の設定は ADR-035 に従い環境変数で管理しています。UI 経由の編集は 別 WI
-                で扱います。
-              </p>
+              <h2 className="text-base font-semibold text-slate-900">{t.emailTabHeading}</h2>
+              <p className="mt-2 text-sm text-slate-600">{t.emailTabDescription}</p>
             </Card>
           ) : null}
         </div>
@@ -191,6 +194,7 @@ function GeneralTab({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminSettingsDictionary)
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -199,23 +203,23 @@ function GeneralTab({
     setNotice('')
     try {
       const trimmed = displayName.trim()
-      const validationError = displayNameError(displayName)
+      const validationError = displayNameError(displayName, t)
       if (validationError) {
         setError(validationError)
         return
       }
       if (trimmed === settings.display_name) {
-        setNotice('変更はありません。')
+        setNotice(t.noChangesNotice)
         return
       }
       const next = await updateAdminSettings(csrfToken, { display_name: trimmed })
       onSaved(next)
       setDisplayName(next.display_name)
       setEditing(false)
-      setNotice('表示名を更新しました。')
+      setNotice(t.displayNameUpdatedNotice)
     } catch (cause) {
       setError(
-        cause instanceof AuthenticationAPIError ? cause.message : '設定を更新できませんでした。',
+        cause instanceof AuthenticationAPIError ? cause.message : t.settingsUpdateFailedError,
       )
     } finally {
       setSaving(false)
@@ -227,12 +231,12 @@ function GeneralTab({
       <header>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">一般</h2>
-            <p className="mt-1 text-sm text-slate-600">テナントの基本情報を確認できます。</p>
+            <h2 className="text-base font-semibold text-slate-900">{t.generalHeading}</h2>
+            <p className="mt-1 text-sm text-slate-600">{t.generalSubheading}</p>
           </div>
           {!editing ? (
             <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-              編集
+              {t.edit}
             </Button>
           ) : null}
         </div>
@@ -242,13 +246,13 @@ function GeneralTab({
         <Toast message={notice} onDismiss={() => setNotice('')} />
         {!editing ? (
           <dl className="grid gap-3 sm:grid-cols-2">
-            <ReadSetting label="テナント ID" value={settings.tenant_id} mono />
-            <ReadSetting label="表示名" value={settings.display_name} />
+            <ReadSetting label={t.tenantIdLabel} value={settings.tenant_id} mono />
+            <ReadSetting label={t.displayNameLabel} value={settings.display_name} />
           </dl>
         ) : (
           <form onSubmit={handleSave} className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="tenant-id">テナント ID</Label>
+              <Label htmlFor="tenant-id">{t.tenantIdLabel}</Label>
               <Input
                 id="tenant-id"
                 value={settings.tenant_id}
@@ -259,18 +263,18 @@ function GeneralTab({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="display-name">表示名</Label>
+              <Label htmlFor="display-name">{t.displayNameLabel}</Label>
               <Input
                 id="display-name"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 maxLength={200}
               />
-              <p className="text-xs text-slate-500">管理画面と承諾画面に表示される名前です。</p>
+              <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={saving}>
-                {saving ? '保存中…' : '保存'}
+                {saving ? t.saving : t.save}
               </Button>
               <Button
                 type="button"
@@ -281,7 +285,7 @@ function GeneralTab({
                   setEditing(false)
                 }}
               >
-                キャンセル
+                {t.cancel}
               </Button>
             </div>
           </form>
@@ -309,6 +313,7 @@ function PasswordPolicyTab({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminSettingsDictionary)
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -325,12 +330,10 @@ function PasswordPolicyTab({
       setMaxLength(next.password_policy_override?.max_length?.toString() ?? '')
       setHistoryDepth(next.password_policy_override?.history_depth?.toString() ?? '')
       setEditing(false)
-      setNotice('パスワードポリシーを更新しました。')
+      setNotice(t.passwordPolicyUpdatedNotice)
     } catch (cause) {
       setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'パスワードポリシーを更新できませんでした。',
+        cause instanceof AuthenticationAPIError ? cause.message : t.passwordPolicyUpdateFailedError,
       )
     } finally {
       setSaving(false)
@@ -342,41 +345,36 @@ function PasswordPolicyTab({
       <header>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">パスワードポリシー</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              テナントに適用されるパスワード要件を確認できます。
-            </p>
+            <h2 className="text-base font-semibold text-slate-900">{t.passwordPolicyHeading}</h2>
+            <p className="mt-1 text-sm text-slate-600">{t.passwordPolicySubheading}</p>
           </div>
           {!editing ? (
             <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-              編集
+              {t.edit}
             </Button>
           ) : null}
         </div>
         <dl className="mt-3 grid grid-cols-3 gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs">
           <div>
-            <dt className="text-slate-500">標準 最小長</dt>
+            <dt className="text-slate-500">{t.standardMinLengthLabel}</dt>
             <dd className="mt-0.5 text-sm font-semibold text-slate-900">
-              {defaults.min_length} 文字
+              {`${defaults.min_length}${t.charsSuffix}`}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">標準 最大長</dt>
+            <dt className="text-slate-500">{t.standardMaxLengthLabel}</dt>
             <dd className="mt-0.5 text-sm font-semibold text-slate-900">
-              {defaults.max_length} 文字
+              {`${defaults.max_length}${t.charsSuffix}`}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">標準 履歴件数</dt>
+            <dt className="text-slate-500">{t.standardHistoryDepthLabel}</dt>
             <dd className="mt-0.5 text-sm font-semibold text-slate-900">
-              {defaults.history_depth} 件
+              {`${defaults.history_depth}${t.countSuffix}`}
             </dd>
           </div>
         </dl>
-        <p className="mt-2 text-xs text-slate-500">
-          標準値より弱い設定 (最小長を下げる / 最大長を上げる / 履歴件数を減らす) は
-          サーバ側で拒否されます。
-        </p>
+        <p className="mt-2 text-xs text-slate-500">{t.weakerPolicyWarning}</p>
       </header>
       <div className="mt-5 grid gap-4">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -384,16 +382,16 @@ function PasswordPolicyTab({
         {!editing ? (
           <dl className="grid gap-3 sm:grid-cols-3">
             <ReadSetting
-              label="最小長"
-              value={`${override?.min_length ?? defaults.min_length} 文字`}
+              label={t.minLengthLabel}
+              value={`${override?.min_length ?? defaults.min_length}${t.charsSuffix}`}
             />
             <ReadSetting
-              label="最大長"
-              value={`${override?.max_length ?? defaults.max_length} 文字`}
+              label={t.maxLengthLabel}
+              value={`${override?.max_length ?? defaults.max_length}${t.charsSuffix}`}
             />
             <ReadSetting
-              label="履歴件数"
-              value={`${override?.history_depth ?? defaults.history_depth} 件`}
+              label={t.historyDepthLabel}
+              value={`${override?.history_depth ?? defaults.history_depth}${t.countSuffix}`}
             />
           </dl>
         ) : (
@@ -401,38 +399,38 @@ function PasswordPolicyTab({
             <div className="grid gap-4 sm:grid-cols-3">
               <PolicyField
                 id="min-length"
-                label="最小長 (min_length)"
+                label={t.minLengthFieldLabel}
                 value={minLength}
                 onChange={setMinLength}
                 min={defaults.min_length}
                 max={defaults.max_length}
                 placeholder={defaults.min_length.toString()}
-                hint={`${defaults.min_length} 以上`}
+                hint={t.atLeastHint.replace('{n}', defaults.min_length.toString())}
               />
               <PolicyField
                 id="max-length"
-                label="最大長 (max_length)"
+                label={t.maxLengthFieldLabel}
                 value={maxLength}
                 onChange={setMaxLength}
                 min={defaults.min_length}
                 max={defaults.max_length}
                 placeholder={defaults.max_length.toString()}
-                hint={`${defaults.max_length} 以下`}
+                hint={t.atMostHint.replace('{n}', defaults.max_length.toString())}
               />
               <PolicyField
                 id="history-depth"
-                label="履歴件数 (history_depth)"
+                label={t.historyDepthFieldLabel}
                 value={historyDepth}
                 onChange={setHistoryDepth}
                 min={defaults.history_depth}
                 max={50}
                 placeholder={defaults.history_depth.toString()}
-                hint={`${defaults.history_depth} 以上`}
+                hint={t.atLeastHint.replace('{n}', defaults.history_depth.toString())}
               />
             </div>
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={saving}>
-                {saving ? '保存中…' : '保存'}
+                {saving ? t.saving : t.save}
               </Button>
               <Button
                 type="button"
@@ -447,7 +445,7 @@ function PasswordPolicyTab({
                   setEditing(false)
                 }}
               >
-                キャンセル
+                {t.cancel}
               </Button>
             </div>
           </form>
@@ -521,14 +519,17 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
   const [tokenExpiry, setTokenExpiry] = useState('7')
   const [generatedToken, setGeneratedToken] = useState('')
   const [creating, setCreating] = useState(false)
+  const t = useDictionary(adminSettingsDictionary)
+  const { locale } = useLocale()
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 初回マウント時のみ取得する
   useEffect(() => {
     async function loadData() {
       try {
         const tList = await listScimTokens()
         setTokens(tList)
       } catch {
-        setError('SCIM アクセストークンを取得できませんでした。')
+        setError(t.scimTokensFetchFailedError)
       } finally {
         setLoading(false)
       }
@@ -542,7 +543,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
     setNotice('')
     setGeneratedToken('')
     if (!tokenDesc.trim()) {
-      setError('トークンの説明を入力してください。')
+      setError(t.tokenDescriptionRequiredError)
       return
     }
     try {
@@ -555,9 +556,9 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
       setCreating(false)
       const tList = await listScimTokens()
       setTokens(tList)
-      setNotice('SCIM アクセストークンを発行しました。')
+      setNotice(t.scimTokenIssuedNotice)
     } catch {
-      setError('トークンを発行できませんでした。')
+      setError(t.tokenIssueFailedError)
     }
   }
 
@@ -566,15 +567,15 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
     setNotice('')
     try {
       await revokeScimToken(csrfToken, id)
-      setTokens(tokens.filter((t) => t.id !== id))
-      setNotice('トークンを失効させました。')
+      setTokens(tokens.filter((token) => token.id !== id))
+      setNotice(t.tokenRevokedNotice)
     } catch {
-      setError('トークンを失効できませんでした。')
+      setError(t.tokenRevokeFailedError)
     }
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500">読み込み中…</div>
+    return <div className="text-sm text-slate-500">{t.loadingNotice}</div>
   }
 
   const endpointUrl = `${window.location.origin}/realms/${tenantID}/scim/v2`
@@ -582,11 +583,8 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
   return (
     <Card className="p-6">
       <header>
-        <h2 className="text-base font-semibold text-slate-900">SCIM 同期</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Okta や Google IAM などからユーザー・グループを自動同期するための設定です。有効な SCIM
-          アクセストークンを発行すると、外部 IDP から同期できるようになります。
-        </p>
+        <h2 className="text-base font-semibold text-slate-900">{t.scimHeading}</h2>
+        <p className="mt-1 text-sm text-slate-600">{t.scimDescription}</p>
       </header>
 
       <div className="mt-6 grid gap-6">
@@ -594,10 +592,10 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
         <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="text-sm font-semibold text-slate-900">接続情報</h3>
+          <h3 className="text-sm font-semibold text-slate-900">{t.connectionInfoHeading}</h3>
           <div className="mt-3 grid gap-3">
             <div>
-              <span className="text-xs text-slate-500">SCIM 2.0 Base URL (エンドポイント)</span>
+              <span className="text-xs text-slate-500">{t.scimBaseUrlLabel}</span>
               <div className="mt-1 flex items-center gap-2">
                 <input
                   readOnly
@@ -609,37 +607,31 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
                   variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(endpointUrl)
-                    setNotice('URLをクリップボードにコピーしました。')
+                    setNotice(t.urlCopiedNotice)
                   }}
                 >
-                  コピー
+                  {t.copy}
                 </Button>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                外部 IDP の SCIM コネクタ設定でこの URL を指定します。
-              </p>
+              <p className="mt-1 text-xs text-slate-500">{t.scimConnectorHelp}</p>
             </div>
           </div>
         </div>
 
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">SCIM アクセストークン</h3>
+            <h3 className="text-sm font-semibold text-slate-900">{t.scimTokenHeading}</h3>
             {!creating ? (
               <Button type="button" variant="outline" onClick={() => setCreating(true)}>
-                トークンを発行
+                {t.issueToken}
               </Button>
             ) : null}
           </div>
 
           {generatedToken ? (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-              <h4 className="text-sm font-bold text-emerald-800">
-                発行された SCIM アクセストークン
-              </h4>
-              <p className="mt-1 text-xs text-emerald-700">
-                セキュリティのため、このトークンは一度しか表示されません。必ずコピーして安全な場所に保管してください。
-              </p>
+              <h4 className="text-sm font-bold text-emerald-800">{t.issuedTokenHeading}</h4>
+              <p className="mt-1 text-xs text-emerald-700">{t.issuedTokenWarning}</p>
               <div className="mt-3 flex items-center gap-2">
                 <input
                   readOnly
@@ -651,37 +643,43 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
                   variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(generatedToken)
-                    setNotice('トークンをコピーしました。')
+                    setNotice(t.tokenCopiedNotice)
                   }}
                 >
-                  コピー
+                  {t.copy}
                 </Button>
               </div>
             </div>
           ) : null}
 
           {tokens.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              有効なアクセストークンがありません。「トークンを発行」から作成してください。
-            </p>
+            <p className="text-sm text-slate-500">{t.noTokensNotice}</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm text-slate-700">
                 <thead className="bg-slate-50 font-semibold text-slate-900">
                   <tr>
-                    <th className="px-4 py-2">説明</th>
-                    <th className="px-4 py-2">作成日時</th>
-                    <th className="px-4 py-2">有効期限</th>
-                    <th className="px-4 py-2">アクション</th>
+                    <th className="px-4 py-2">{t.tableHeaderDescription}</th>
+                    <th className="px-4 py-2">{t.tableHeaderCreatedAt}</th>
+                    <th className="px-4 py-2">{t.tableHeaderExpiresAt}</th>
+                    <th className="px-4 py-2">{t.tableHeaderAction}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {tokens.map((tok) => (
                     <tr key={tok.id}>
                       <td className="px-4 py-3">{tok.description}</td>
-                      <td className="px-4 py-3">{new Date(tok.created_at).toLocaleString()}</td>
                       <td className="px-4 py-3">
-                        {tok.expires_at ? new Date(tok.expires_at).toLocaleString() : 'なし'}
+                        {new Date(tok.created_at).toLocaleString(
+                          locale === 'ja' ? 'ja-JP' : 'en-US',
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {tok.expires_at
+                          ? new Date(tok.expires_at).toLocaleString(
+                              locale === 'ja' ? 'ja-JP' : 'en-US',
+                            )
+                          : t.noneLabel}
                       </td>
                       <td className="px-4 py-3">
                         <Button
@@ -690,7 +688,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => handleRevokeToken(tok.id)}
                         >
-                          失効
+                          {t.revoke}
                         </Button>
                       </td>
                     </tr>
@@ -705,19 +703,19 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
               onSubmit={handleCreateToken}
               className="mt-4 rounded-lg border border-slate-200 p-4"
             >
-              <h4 className="text-sm font-semibold text-slate-900">新規アクセストークンの作成</h4>
+              <h4 className="text-sm font-semibold text-slate-900">{t.newTokenHeading}</h4>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="token-desc">トークンの説明</Label>
+                  <Label htmlFor="token-desc">{t.tokenDescriptionLabel}</Label>
                   <Input
                     id="token-desc"
-                    placeholder="例: Okta-SCIM-Integration"
+                    placeholder={t.tokenDescriptionPlaceholder}
                     value={tokenDesc}
                     onChange={(e) => setTokenDesc(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="token-expiry">有効期間 (日数)</Label>
+                  <Label htmlFor="token-expiry">{t.tokenExpiryLabel}</Label>
                   <Input
                     id="token-expiry"
                     type="number"
@@ -729,7 +727,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-2">
-                <Button type="submit">トークンを発行</Button>
+                <Button type="submit">{t.issueToken}</Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -739,7 +737,7 @@ function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string 
                     setCreating(false)
                   }}
                 >
-                  キャンセル
+                  {t.cancel}
                 </Button>
               </div>
             </form>

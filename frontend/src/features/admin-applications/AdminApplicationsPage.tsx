@@ -53,6 +53,11 @@ import {
   safeApplicationIconURL,
   validateApplicationIconFile,
 } from '../../lib/applicationIcon'
+import { useDictionary, useLocale } from '../../lib/i18n'
+import {
+  adminApplicationsDictionary,
+  type AdminApplicationsDictionary,
+} from './AdminApplicationsPage.i18n'
 import type {
   AdminApplication,
   AdminApplicationDetail,
@@ -71,70 +76,89 @@ type AppType = 'oidc' | 'wsfed' | 'saml' | 'weblink' | 'service'
 
 const TOKEN_TYPE_SAML11: WsFedTokenType = 'urn:oasis:names:tc:SAML:1.0:assertion'
 const TOKEN_TYPE_SAML20: WsFedTokenType = 'urn:oasis:names:tc:SAML:2.0:assertion'
-const WSFED_TOKEN_TYPES: SelectOption[] = [
-  { value: TOKEN_TYPE_SAML11, label: 'SAML 1.1 (Entra / AD FS 既定)' },
-  { value: TOKEN_TYPE_SAML20, label: 'SAML 2.0' },
-]
 
-const APP_TYPES: { type: AppType; label: string; description: string; icon: typeof IconKey }[] = [
-  {
-    type: 'oidc',
-    label: 'OIDC / OAuth2',
-    description: 'OpenID Connect / OAuth2 でログインする最新のアプリ。',
-    icon: IconKey,
-  },
-  {
-    type: 'wsfed',
-    label: 'WS-Federation',
-    description: 'WS-Fed / SAML トークンを使う従来型のアプリ。',
-    icon: IconWorldShare,
-  },
-  {
-    type: 'saml',
-    label: 'SAML 2.0',
-    description: 'SAML 2.0 Web Browser SSO に対応するエンタープライズ向けアプリ。',
-    icon: IconWorldShare,
-  },
-  {
-    type: 'weblink',
-    label: 'Web リンク',
-    description: 'SSO なしで外部 URL を開くだけのブックマーク。',
-    icon: IconLink,
-  },
-  {
-    type: 'service',
-    label: 'サービス (M2M)',
-    description: 'client_credentials で動く API / バックエンド連携。ログイン画面なし。',
-    icon: IconServer,
-  },
-]
+function wsfedTokenTypeOptions(t: AdminApplicationsDictionary): SelectOption[] {
+  return [
+    { value: TOKEN_TYPE_SAML11, label: t.wsfedTokenTypeSaml11 },
+    { value: TOKEN_TYPE_SAML20, label: t.wsfedTokenTypeSaml20 },
+  ]
+}
 
-const NAMEID_FORMATS: SelectOption[] = [
-  { value: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified', label: 'Unspecified' },
-  { value: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress', label: 'Email アドレス' },
-  { value: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent', label: 'Persistent' },
-]
+function appTypeOptions(
+  t: AdminApplicationsDictionary,
+): { type: AppType; label: string; description: string; icon: typeof IconKey }[] {
+  return [
+    { type: 'oidc', label: t.oidcTypeLabel, description: t.oidcTypeDescription, icon: IconKey },
+    {
+      type: 'wsfed',
+      label: t.wsfedTypeLabel,
+      description: t.wsfedTypeDescription,
+      icon: IconWorldShare,
+    },
+    {
+      type: 'saml',
+      label: t.samlTypeLabel,
+      description: t.samlTypeDescription,
+      icon: IconWorldShare,
+    },
+    {
+      type: 'weblink',
+      label: t.weblinkTypeLabel,
+      description: t.weblinkTypeDescription,
+      icon: IconLink,
+    },
+    {
+      type: 'service',
+      label: t.serviceTypeLabel,
+      description: t.serviceTypeDescription,
+      icon: IconServer,
+    },
+  ]
+}
 
-const STATUS_OPTIONS: SelectOption[] = [
-  { value: 'active', label: '有効' },
-  { value: 'disabled', label: '無効' },
-]
+function nameIdFormatOptions(t: AdminApplicationsDictionary): SelectOption[] {
+  return [
+    {
+      value: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+      label: t.nameIdFormatUnspecified,
+    },
+    {
+      value: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+      label: t.nameIdFormatEmail,
+    },
+    {
+      value: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+      label: t.nameIdFormatPersistent,
+    },
+  ]
+}
 
-const SIGN_IN_STRENGTH_OPTIONS: SelectOption[] = [
-  { value: 'Password', label: 'パスワードのみ' },
-  { value: 'Mfa', label: 'MFA 必須' },
-]
+function statusOptions(t: AdminApplicationsDictionary): SelectOption[] {
+  return [
+    { value: 'active', label: t.statusActive },
+    { value: 'disabled', label: t.statusDisabled },
+  ]
+}
 
-// summarizeSignInRule は 1 件のサインインルールを利用者向けの日本語 1 行へ要約する。
+function signInStrengthOptions(t: AdminApplicationsDictionary): SelectOption[] {
+  return [
+    { value: 'Password', label: t.strengthPasswordLabel },
+    { value: 'Mfa', label: t.strengthMfaLabel },
+  ]
+}
+
+// summarizeSignInRule は 1 件のサインインルールを利用者向けの 1 行へ要約する。
 // 内部ルール名は表示せず、テナントデフォルト・実効ポリシーの読み取り専用表示に用いる (wi-115, ADR-081)。
-function summarizeSignInRule(rule: SignInRule): string {
-  const parts: string[] = [rule.required_authn.strength === 'Mfa' ? 'MFA 必須' : 'パスワードのみ']
+function summarizeSignInRule(rule: SignInRule, t: AdminApplicationsDictionary): string {
+  const parts: string[] = [
+    rule.required_authn.strength === 'Mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel,
+  ]
   if (rule.condition.reauth_max_age_seconds) {
-    parts.push(`再認証まで ${rule.condition.reauth_max_age_seconds} 秒`)
+    parts.push(t.reauthSuffix.replace('{seconds}', String(rule.condition.reauth_max_age_seconds)))
   }
   const cidrs = rule.condition.network_allow_cidrs ?? []
   if (cidrs.length > 0) {
-    parts.push(`許可ネットワーク ${cidrs.join(', ')}`)
+    parts.push(t.allowedNetworkPrefix.replace('{cidrs}', cidrs.join(', ')))
   }
   return parts.join(' / ')
 }
@@ -193,7 +217,7 @@ const AUTH_METHODS: SelectOption[] = [
   { value: 'none', label: 'none (public)' },
 ]
 
-const DEFAULT_NAMEID_FORMAT = NAMEID_FORMATS[0].value
+const DEFAULT_NAMEID_FORMAT = 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
 // SAML 2.0 の既定 NameID 形式は persistent (Okta / Entra の既定運用に合わせる)。
 const SAML_DEFAULT_NAMEID_FORMAT = 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent'
 const DEFAULT_NAMEID_SOURCE = 'sub'
@@ -244,6 +268,7 @@ function AppIcon({ app, size = 'md' }: { app: AdminApplication; size?: 'sm' | 'm
 }
 
 function StatusBadge({ status }: { status: AdminApplication['status'] }) {
+  const t = useDictionary(adminApplicationsDictionary)
   const active = status === 'active'
   return (
     <span
@@ -251,25 +276,26 @@ function StatusBadge({ status }: { status: AdminApplication['status'] }) {
         active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
       }`}
     >
-      {active ? '有効' : '無効'}
+      {active ? t.statusActive : t.statusDisabled}
     </span>
   )
 }
 
-function kindLabel(app: AdminApplication): string {
-  if (app.kind === 'weblink') return 'Web リンク'
-  if (app.kind === 'service') return 'サービス (M2M)'
+function kindLabel(app: AdminApplication, t: AdminApplicationsDictionary): string {
+  if (app.kind === 'weblink') return t.weblinkTypeLabel
+  if (app.kind === 'service') return t.serviceTypeLabel
   const binding = app.bindings[0]?.type
-  if (binding === 'wsfed') return 'WS-Federation'
-  if (binding === 'saml') return 'SAML'
-  if (binding === 'oidc') return 'OIDC'
-  return 'フェデレーション'
+  if (binding === 'wsfed') return t.wsfedTypeLabel
+  if (binding === 'saml') return t.samlKindLabel
+  if (binding === 'oidc') return t.oidcKindLabel
+  return t.federationKindLabel
 }
 
 function KindBadge({ app }: { app: AdminApplication }) {
+  const t = useDictionary(adminApplicationsDictionary)
   return (
     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-      {kindLabel(app)}
+      {kindLabel(app, t)}
     </span>
   )
 }
@@ -315,6 +341,7 @@ function UriList({ values }: { values: string[] }) {
 // 表示し、コピーボタンだけを添える。フォームに見せないことで「編集不可」を明示する。
 function CopyableValue({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
+  const t = useDictionary(adminApplicationsDictionary)
   return (
     <div className="flex items-center gap-2">
       <code className="min-w-0 flex-1 break-all rounded-md bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800">
@@ -324,7 +351,7 @@ function CopyableValue({ value }: { value: string }) {
         type="button"
         variant="outline"
         className="size-9 shrink-0 px-0"
-        aria-label="コピー"
+        aria-label={t.copyAria}
         onClick={() => {
           void navigator.clipboard?.writeText(value)
           setCopied(true)
@@ -369,6 +396,7 @@ export function AdminApplicationsPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminApplicationsDictionary)
 
   const selected = applications.find((a) => a.application_id === selectedID) ?? null
 
@@ -390,7 +418,7 @@ export function AdminApplicationsPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(messageOf(cause, '操作を完了できませんでした。'))
+      setError(messageOf(cause, t.genericOpError))
     } finally {
       setBusy(false)
     }
@@ -400,22 +428,22 @@ export function AdminApplicationsPage({
     <AdminShell
       active="applications"
       actorUsername={actorUsername}
-      title="アプリケーション"
-      description="OIDC・WS-Federation・Web リンク・サービス (M2M) を 1 か所で登録し、利用者への割り当てを管理します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <>
           <Button
             variant="outline"
             className="size-9 px-0"
-            aria-label="一覧を再読み込み"
-            onClick={() => run(() => refresh(), '一覧を更新しました。')}
+            aria-label={t.reloadAriaLabel}
+            onClick={() => run(() => refresh(), t.listRefreshedNotice)}
             disabled={busy}
           >
             <IconRefresh size={16} aria-hidden="true" />
           </Button>
           <Button onClick={() => setShowCreate(true)} disabled={busy}>
             <IconPlus size={16} aria-hidden="true" />
-            アプリケーションを追加
+            {t.addApplication}
           </Button>
         </>
       }
@@ -428,7 +456,7 @@ export function AdminApplicationsPage({
           {applications.length === 0 ? (
             <div className="flex min-h-48 flex-col items-center justify-center px-6 text-center text-sm text-slate-500">
               <IconApps size={28} className="text-slate-300" aria-hidden="true" />
-              <p className="mt-3">アプリケーションはまだありません。</p>
+              <p className="mt-3">{t.emptyApplicationsNotice}</p>
             </div>
           ) : (
             <ul>
@@ -466,7 +494,7 @@ export function AdminApplicationsPage({
             run(async () => {
               await deleteAdminApplication(csrfToken, id)
               await refresh()
-            }, 'アプリケーションを削除しました。')
+            }, t.applicationDeletedNotice)
           }
         />
       </div>
@@ -494,11 +522,13 @@ function ApplicationSummaryCard({
   onDelete: (id: string) => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const t = useDictionary(adminApplicationsDictionary)
+  const { locale } = useLocale()
 
   if (!app) {
     return (
       <Card className="flex min-h-48 items-center justify-center p-6 text-sm text-slate-500">
-        アプリケーションを選択してください。
+        {t.selectApplicationPrompt}
       </Card>
     )
   }
@@ -524,7 +554,7 @@ function ApplicationSummaryCard({
             busy={busy}
             actions={[
               {
-                label: 'アプリケーションを削除',
+                label: t.deleteApplication,
                 icon: IconTrash,
                 onClick: () => setConfirmDelete(true),
                 tone: 'danger',
@@ -538,10 +568,10 @@ function ApplicationSummaryCard({
           variant="destructive"
           className="m-5 flex flex-wrap items-center justify-between gap-2"
         >
-          <span>このアプリケーションを削除しますか？割り当ても解除されます。</span>
+          <span>{t.confirmDeleteAppPrompt}</span>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
-              取消
+              {t.dismissConfirm}
             </Button>
             <Button
               variant="destructive"
@@ -549,19 +579,19 @@ function ApplicationSummaryCard({
               onClick={() => onDelete(app.application_id)}
             >
               <IconTrash size={14} aria-hidden="true" />
-              削除を確定
+              {t.confirmDelete}
             </Button>
           </div>
         </Alert>
       ) : null}
       <dl className="grid gap-4 p-5">
-        <ReadOnlyField label="種別">{kindLabel(app)}</ReadOnlyField>
+        <ReadOnlyField label={t.kindFieldLabel}>{kindLabel(app, t)}</ReadOnlyField>
 
-        <ReadOnlyField label="状態">
+        <ReadOnlyField label={t.statusFieldLabel}>
           <StatusBadge status={app.status} />
         </ReadOnlyField>
 
-        <ReadOnlyField label="カテゴリ">
+        <ReadOnlyField label={t.categoryFieldLabel}>
           {app.category_names && app.category_names.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {app.category_names.map((name) => (
@@ -571,11 +601,11 @@ function ApplicationSummaryCard({
               ))}
             </div>
           ) : (
-            <span className="text-slate-400">未設定（カテゴリなし）</span>
+            <span className="text-slate-400">{t.noCategoryNotice}</span>
           )}
         </ReadOnlyField>
 
-        <ReadOnlyField label="接続設定 (Binding)">
+        <ReadOnlyField label={t.bindingFieldLabel}>
           {app.binding_summaries && app.binding_summaries.length > 0 ? (
             <div className="flex flex-col gap-1 font-mono text-xs text-slate-700">
               {app.binding_summaries.map((summary, idx) => (
@@ -584,37 +614,34 @@ function ApplicationSummaryCard({
               ))}
             </div>
           ) : (
-            <span className="text-slate-400">未設定</span>
+            <span className="text-slate-400">{t.notSetLabel}</span>
           )}
         </ReadOnlyField>
 
-        <ReadOnlyField label="割当状況">
+        <ReadOnlyField label={t.assignmentStatusFieldLabel}>
           {app.assigned_subject_count > 0 ? (
             <span className="text-slate-700">
-              {app.assigned_subject_count} 件のユーザー/グループ
+              {t.assignedCount.replace('{count}', String(app.assigned_subject_count))}
             </span>
           ) : (
-            <span className="text-slate-400">未設定（割当なし）</span>
+            <span className="text-slate-400">{t.noAssignmentNotice}</span>
           )}
         </ReadOnlyField>
 
-        <ReadOnlyField label="ログインポリシー">
+        <ReadOnlyField label={t.signInPolicyFieldLabel}>
           {app.sign_in_policy_summary ? (
             <span className="text-slate-700">{app.sign_in_policy_summary}</span>
           ) : (
-            <span className="text-slate-400">未設定</span>
+            <span className="text-slate-400">{t.notSetLabel}</span>
           )}
         </ReadOnlyField>
 
         {app.kind === 'service' ? (
-          <ReadOnlyField label="説明">
-            <p className="text-xs text-slate-500">
-              client_credentials グラントで動く M2M
-              クライアントです。詳細はアプリケーションを開いて確認できます。
-            </p>
+          <ReadOnlyField label={t.serviceDescriptionFieldLabel}>
+            <p className="text-xs text-slate-500">{t.serviceM2mDescription}</p>
           </ReadOnlyField>
         ) : (
-          <ReadOnlyField label="起動 URL">
+          <ReadOnlyField label={t.launchUrlFieldLabel}>
             {app.launch_url ? (
               <a
                 href={app.launch_url}
@@ -626,18 +653,28 @@ function ApplicationSummaryCard({
                 <IconExternalLink size={13} aria-hidden="true" />
               </a>
             ) : (
-              <span className="text-slate-400">未設定</span>
+              <span className="text-slate-400">{t.notSetLabel}</span>
             )}
           </ReadOnlyField>
         )}
 
-        <ReadOnlyField label="登録日時 / 更新日時">
+        <ReadOnlyField label={t.registeredUpdatedFieldLabel}>
           <div className="text-xs text-slate-500">
             <div>
-              登録: {app.created_at ? new Date(app.created_at).toLocaleString('ja-JP') : '不明'}
+              {t.registeredLabel.replace(
+                '{date}',
+                app.created_at
+                  ? new Date(app.created_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+                  : t.unknownDate,
+              )}
             </div>
             <div className="mt-0.5">
-              更新: {app.updated_at ? new Date(app.updated_at).toLocaleString('ja-JP') : '不明'}
+              {t.updatedLabel.replace(
+                '{date}',
+                app.updated_at
+                  ? new Date(app.updated_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+                  : t.unknownDate,
+              )}
             </div>
           </div>
         </ReadOnlyField>
@@ -663,6 +700,8 @@ export function AdminApplicationDetailPage({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminApplicationsDictionary)
+  const { locale } = useLocale()
 
   async function handleDelete() {
     setBusy(true)
@@ -671,7 +710,7 @@ export function AdminApplicationDetailPage({
       await deleteAdminApplication(csrfToken, app.application_id)
       window.location.assign(listURL())
     } catch (cause) {
-      setError(messageOf(cause, 'アプリケーションを削除できませんでした。'))
+      setError(messageOf(cause, t.applicationDeleteFailedError))
       setBusy(false)
     }
   }
@@ -681,7 +720,7 @@ export function AdminApplicationDetailPage({
       active="applications"
       actorUsername={actorUsername}
       title={app.name}
-      description={kindLabel(app)}
+      description={kindLabel(app, t)}
       actions={
         <div className="flex items-center gap-2">
           <a
@@ -689,12 +728,12 @@ export function AdminApplicationDetailPage({
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             <IconArrowLeft size={16} aria-hidden="true" />
-            一覧
+            {t.backToList}
           </a>
           <Button asChild>
             <a href={editURL(app.application_id)}>
               <IconPencil size={16} aria-hidden="true" />
-              編集
+              {t.edit}
             </a>
           </Button>
           <Button
@@ -704,7 +743,7 @@ export function AdminApplicationDetailPage({
             onClick={() => setConfirmDelete(true)}
           >
             <IconTrash size={16} aria-hidden="true" />
-            削除
+            {t.delete}
           </Button>
         </div>
       }
@@ -712,14 +751,14 @@ export function AdminApplicationDetailPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       {confirmDelete ? (
         <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-2">
-          <span>このアプリケーションを削除しますか？割り当ても解除されます。</span>
+          <span>{t.confirmDeleteAppPrompt}</span>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
-              取消
+              {t.dismissConfirm}
             </Button>
             <Button variant="destructive" disabled={busy} onClick={() => void handleDelete()}>
               <IconTrash size={14} aria-hidden="true" />
-              削除を確定
+              {t.confirmDelete}
             </Button>
           </div>
         </Alert>
@@ -743,13 +782,13 @@ export function AdminApplicationDetailPage({
           <div className="grid gap-6 p-5">
             {/* 基本情報セクション */}
             <section className="grid gap-4 sm:grid-cols-2">
-              <ReadOnlyField label="種別">
-                <span>{kindLabel(app)}</span>
+              <ReadOnlyField label={t.kindFieldLabel}>
+                <span>{kindLabel(app, t)}</span>
               </ReadOnlyField>
-              <ReadOnlyField label="状態">
+              <ReadOnlyField label={t.statusFieldLabel}>
                 <StatusBadge status={app.status} />
               </ReadOnlyField>
-              <ReadOnlyField label="カテゴリ">
+              <ReadOnlyField label={t.categoryFieldLabel}>
                 {app.category_names && app.category_names.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {app.category_names.map((name) => (
@@ -762,11 +801,11 @@ export function AdminApplicationDetailPage({
                     ))}
                   </div>
                 ) : (
-                  <span className="text-slate-400">未設定（カテゴリなし）</span>
+                  <span className="text-slate-400">{t.noCategoryNotice}</span>
                 )}
               </ReadOnlyField>
               {app.kind !== 'service' ? (
-                <ReadOnlyField label="起動 URL">
+                <ReadOnlyField label={t.launchUrlFieldLabel}>
                   {app.launch_url ? (
                     <a
                       href={app.launch_url}
@@ -778,21 +817,25 @@ export function AdminApplicationDetailPage({
                       <IconExternalLink size={13} aria-hidden="true" />
                     </a>
                   ) : (
-                    <span className="text-slate-400">未設定</span>
+                    <span className="text-slate-400">{t.notSetLabel}</span>
                   )}
                 </ReadOnlyField>
               ) : null}
             </section>
 
             <section className="grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 text-xs text-slate-500">
-              <ReadOnlyField label="登録日時">
+              <ReadOnlyField label={t.registeredAtFieldLabel}>
                 <span>
-                  {app.created_at ? new Date(app.created_at).toLocaleString('ja-JP') : '不明'}
+                  {app.created_at
+                    ? new Date(app.created_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+                    : t.unknownDate}
                 </span>
               </ReadOnlyField>
-              <ReadOnlyField label="最終更新日時">
+              <ReadOnlyField label={t.lastUpdatedAtFieldLabel}>
                 <span>
-                  {app.updated_at ? new Date(app.updated_at).toLocaleString('ja-JP') : '不明'}
+                  {app.updated_at
+                    ? new Date(app.updated_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+                    : t.unknownDate}
                 </span>
               </ReadOnlyField>
             </section>
@@ -802,48 +845,48 @@ export function AdminApplicationDetailPage({
                 <div className="flex items-center gap-2">
                   <IconKey size={16} className="text-slate-400" aria-hidden="true" />
                   <SectionTitle>
-                    {app.kind === 'service' ? 'サービス (M2M)' : 'OIDC / OAuth2'}
+                    {app.kind === 'service' ? t.serviceKindSectionHeading : t.oidcSectionHeading}
                   </SectionTitle>
                 </div>
-                <CopyableField label="クライアント ID" value={detail.oidc.client_id} />
+                <CopyableField label={t.clientIdFieldLabel} value={detail.oidc.client_id} />
                 {app.kind !== 'service' ? (
-                  <ReadOnlyField label="リダイレクト URI">
+                  <ReadOnlyField label={t.redirectUriFieldLabel}>
                     <UriList values={detail.oidc.redirect_uris} />
                   </ReadOnlyField>
                 ) : null}
-                <ReadOnlyField label="スコープ">
+                <ReadOnlyField label={t.scopeFieldLabel}>
                   <span className="font-mono text-xs">{detail.oidc.scope || '—'}</span>
                 </ReadOnlyField>
-                <ReadOnlyField label="グラント種別">
+                <ReadOnlyField label={t.grantTypesFieldLabel}>
                   <span className="font-mono text-xs">
                     {detail.oidc.grant_types.join(', ') || '—'}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="レスポンス種別">
+                <ReadOnlyField label={t.responseTypesFieldLabel}>
                   <span className="font-mono text-xs">
                     {detail.oidc.response_types.join(', ') || '—'}
                   </span>
                 </ReadOnlyField>
                 <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:grid-cols-3">
-                  <ReadonlyMeta label="クライアント種別" value={detail.oidc.client_type} />
-                  <ReadonlyMeta label="認証方式" value={detail.oidc.token_endpoint_auth_method} />
-                  <ReadonlyMeta label="FAPI プロファイル" value={detail.oidc.fapi_profile} />
+                  <ReadonlyMeta label={t.clientTypeMetaLabel} value={detail.oidc.client_type} />
+                  <ReadonlyMeta
+                    label={t.authMethodMetaLabel}
+                    value={detail.oidc.token_endpoint_auth_method}
+                  />
+                  <ReadonlyMeta label={t.fapiProfileMetaLabel} value={detail.oidc.fapi_profile} />
                 </div>
-                <ReadOnlyField label="セキュリティ">
+                <ReadOnlyField label={t.securityFieldLabel}>
                   <span className="text-xs text-slate-700">
                     {[
-                      detail.oidc.require_pushed_authorization_requests ? 'PAR 必須' : '',
-                      detail.oidc.dpop_bound_access_tokens ? 'DPoP バインド' : '',
+                      detail.oidc.require_pushed_authorization_requests ? t.parRequired : '',
+                      detail.oidc.dpop_bound_access_tokens ? t.dpopBound : '',
                     ]
                       .filter(Boolean)
-                      .join(', ') || '標準'}
+                      .join(', ') || t.standardSecurity}
                   </span>
                 </ReadOnlyField>
                 {app.kind === 'service' ? (
-                  <p className="text-xs text-slate-500">
-                    client_credentials グラントで動く M2M
-                    クライアントです。ログイン画面・利用者割り当ては持ちません。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.m2mNoLoginNotice}</p>
                 ) : null}
               </section>
             ) : null}
@@ -852,35 +895,36 @@ export function AdminApplicationDetailPage({
               <section className="grid gap-3 border-t border-slate-100 pt-5">
                 <div className="flex items-center gap-2">
                   <IconWorldShare size={16} className="text-slate-400" aria-hidden="true" />
-                  <SectionTitle>WS-Federation</SectionTitle>
+                  <SectionTitle>{t.wsFedSectionHeading}</SectionTitle>
                 </div>
-                <CopyableField label="wtrealm" value={detail.wsfed.wtrealm} />
-                <ReadOnlyField label="Reply URL">
+                <CopyableField label={t.wtrealmFieldLabel} value={detail.wsfed.wtrealm} />
+                <ReadOnlyField label={t.replyUrlFieldLabel}>
                   <UriList values={detail.wsfed.reply_urls} />
                 </ReadOnlyField>
-                <ReadOnlyField label="NameID 形式">
+                <ReadOnlyField label={t.nameIdFormatFieldLabel}>
                   <span className="break-all font-mono text-xs">
-                    {NAMEID_FORMATS.find((f) => f.value === detail.wsfed?.name_id_format)?.label ??
-                      detail.wsfed.name_id_format}
+                    {nameIdFormatOptions(t).find((f) => f.value === detail.wsfed?.name_id_format)
+                      ?.label ?? detail.wsfed.name_id_format}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="NameID ソース属性">
+                <ReadOnlyField label={t.nameIdSourceFieldLabel}>
                   <span className="font-mono text-xs">{detail.wsfed.name_id_source}</span>
                 </ReadOnlyField>
-                <ReadOnlyField label="Audience">
+                <ReadOnlyField label={t.audienceFieldLabel}>
                   <span className="font-mono text-xs">
-                    {detail.wsfed.audience || `${detail.wsfed.wtrealm} (既定)`}
+                    {detail.wsfed.audience ||
+                      t.audienceDefaultSuffix.replace('{value}', detail.wsfed.wtrealm)}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="トークン種別">
+                <ReadOnlyField label={t.tokenTypeFieldLabel}>
                   <span className="text-xs">
-                    {WSFED_TOKEN_TYPES.find((t) => t.value === detail.wsfed?.token_type)?.label ??
-                      detail.wsfed.token_type}
+                    {wsfedTokenTypeOptions(t).find((opt) => opt.value === detail.wsfed?.token_type)
+                      ?.label ?? detail.wsfed.token_type}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="claim mapping 規則">
+                <ReadOnlyField label={t.claimMappingRulesFieldLabel}>
                   {detail.wsfed.rules.length === 0 ? (
-                    <span className="text-xs text-slate-400">NameID のみ</span>
+                    <span className="text-xs text-slate-400">{t.nameIdOnlyNotice}</span>
                   ) : (
                     <ul className="flex flex-wrap gap-1.5">
                       {detail.wsfed.rules.map((rule) => (
@@ -902,49 +946,50 @@ export function AdminApplicationDetailPage({
               <section className="grid gap-3 border-t border-slate-100 pt-5">
                 <div className="flex items-center gap-2">
                   <IconWorldShare size={16} className="text-slate-400" aria-hidden="true" />
-                  <SectionTitle>SAML 2.0</SectionTitle>
+                  <SectionTitle>{t.samlSectionHeading}</SectionTitle>
                 </div>
-                <CopyableField label="エンティティ ID (SP)" value={detail.saml.entity_id} />
-                <ReadOnlyField label="ACS URL">
+                <CopyableField label={t.entityIdFieldLabel} value={detail.saml.entity_id} />
+                <ReadOnlyField label={t.acsUrlFieldLabel}>
                   <UriList values={detail.saml.acs_urls} />
                 </ReadOnlyField>
-                <ReadOnlyField label="SLO URL">
+                <ReadOnlyField label={t.sloUrlFieldLabel}>
                   <span className="break-all font-mono text-xs">{detail.saml.slo_url || '—'}</span>
                 </ReadOnlyField>
-                <ReadOnlyField label="NameID 形式">
+                <ReadOnlyField label={t.nameIdFormatFieldLabel}>
                   <span className="break-all font-mono text-xs">
-                    {NAMEID_FORMATS.find((f) => f.value === detail.saml?.name_id_format)?.label ??
-                      detail.saml.name_id_format}
+                    {nameIdFormatOptions(t).find((f) => f.value === detail.saml?.name_id_format)
+                      ?.label ?? detail.saml.name_id_format}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="NameID ソース属性">
+                <ReadOnlyField label={t.nameIdSourceFieldLabel}>
                   <span className="font-mono text-xs">{detail.saml.name_id_source}</span>
                 </ReadOnlyField>
-                <ReadOnlyField label="Audience">
+                <ReadOnlyField label={t.audienceFieldLabel}>
                   <span className="font-mono text-xs">
-                    {detail.saml.audience || `${detail.saml.entity_id} (既定)`}
+                    {detail.saml.audience ||
+                      t.audienceDefaultSuffix.replace('{value}', detail.saml.entity_id)}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="署名">
+                <ReadOnlyField label={t.signatureFieldLabel}>
                   <span className="text-xs">
                     {[
-                      detail.saml.sign_assertion ? 'アサーション署名' : '',
-                      detail.saml.sign_response ? 'レスポンス署名' : '',
+                      detail.saml.sign_assertion ? t.assertionSigned : '',
+                      detail.saml.sign_response ? t.responseSigned : '',
                     ]
                       .filter(Boolean)
-                      .join(' / ') || '署名なし'}
+                      .join(' / ') || t.noSignature}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="要求署名検証">
+                <ReadOnlyField label={t.requestSignatureVerificationFieldLabel}>
                   <span className="text-xs">
                     {detail.saml.want_authn_requests_signed
-                      ? 'AuthnRequest / LogoutRequest 署名必須'
-                      : '任意'}
+                      ? t.authnRequestSignatureRequired
+                      : t.optional}
                   </span>
                 </ReadOnlyField>
-                <ReadOnlyField label="claim mapping 規則">
+                <ReadOnlyField label={t.claimMappingRulesFieldLabel}>
                   {detail.saml.rules.length === 0 ? (
-                    <span className="text-xs text-slate-400">NameID のみ</span>
+                    <span className="text-xs text-slate-400">{t.nameIdOnlyNotice}</span>
                   ) : (
                     <ul className="flex flex-wrap gap-1.5">
                       {detail.saml.rules.map((rule) => (
@@ -966,13 +1011,13 @@ export function AdminApplicationDetailPage({
             <section className="grid gap-3 border-t border-slate-100 pt-5">
               <div className="flex items-center gap-2">
                 <IconKey size={16} className="text-slate-400" aria-hidden="true" />
-                <SectionTitle>ログインポリシー</SectionTitle>
+                <SectionTitle>{t.signInPolicySectionHeading}</SectionTitle>
               </div>
-              <ReadOnlyField label="適用状況">
+              <ReadOnlyField label={t.applicationStatusFieldLabel}>
                 <span className="text-slate-700 font-semibold">{app.sign_in_policy_summary}</span>
               </ReadOnlyField>
               {detail.sign_in_policy && detail.sign_in_policy.effective_rules.length > 0 ? (
-                <ReadOnlyField label="適用ルール">
+                <ReadOnlyField label={t.appliedRulesFieldLabel}>
                   <ul className="mt-1 flex flex-col gap-1.5">
                     {detail.sign_in_policy.effective_rules.map((rule) => (
                       <li
@@ -980,23 +1025,23 @@ export function AdminApplicationDetailPage({
                         className="rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700"
                       >
                         <div className="font-sans font-semibold mb-1">
-                          {rule.name || `ルール ${rule.rule_id}`}
+                          {rule.name || t.ruleNameFallback.replace('{id}', rule.rule_id)}
                         </div>
-                        {summarizeSignInRule(rule)}
+                        {summarizeSignInRule(rule, t)}
                       </li>
                     ))}
                   </ul>
                 </ReadOnlyField>
               ) : (
-                <ReadOnlyField label="適用ルール">
-                  <span className="text-xs text-slate-400">適用ルールなし (常に許可)</span>
+                <ReadOnlyField label={t.appliedRulesFieldLabel}>
+                  <span className="text-xs text-slate-400">{t.noAppliedRulesNotice}</span>
                 </ReadOnlyField>
               )}
             </section>
 
             {app.kind !== 'service' ? (
               <section className="grid gap-3 border-t border-slate-100 pt-5">
-                <SectionTitle>割り当て (ユーザー / グループ)</SectionTitle>
+                <SectionTitle>{t.assignmentsHeading}</SectionTitle>
                 <AssignmentList appID={app.application_id} onError={setError} />
               </section>
             ) : null}
@@ -1082,6 +1127,7 @@ export function AdminApplicationEditPage({
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminApplicationsDictionary)
 
   const nameInvalid = name.trim() === ''
 
@@ -1098,11 +1144,7 @@ export function AdminApplicationEditPage({
     if (validationError) {
       setIconFile(null)
       setRemoveIcon(false)
-      setError(
-        validationError === 'too-large'
-          ? 'アイコン画像は 256 KiB 以下にしてください。'
-          : 'アイコン画像は PNG / JPEG / WebP / GIF を選択してください。',
-      )
+      setError(validationError === 'too-large' ? t.iconTooLargeError : t.iconInvalidTypeError)
       return
     }
     setError('')
@@ -1142,7 +1184,7 @@ export function AdminApplicationEditPage({
       }
       if (iconFile) {
         if (iconFile.size > MAX_APPLICATION_ICON_BYTES) {
-          setError('アイコン画像は 256 KiB 以下にしてください。')
+          setError(t.iconTooLargeError)
           setSaving(false)
           return
         }
@@ -1184,7 +1226,7 @@ export function AdminApplicationEditPage({
           if (!Array.isArray(parsed)) throw new Error('not an array')
           nextRules = parsed
         } catch {
-          setError('claim 規則の JSON が不正です。配列で指定してください。')
+          setError(t.invalidClaimRulesJsonError)
           setSaving(false)
           return
         }
@@ -1214,15 +1256,13 @@ export function AdminApplicationEditPage({
           if (!Array.isArray(parsed)) throw new Error('not an array')
           nextRules = parsed
         } catch {
-          setError('claim 規則の JSON が不正です。配列で指定してください。')
+          setError(t.invalidClaimRulesJsonError)
           setSaving(false)
           return
         }
         const nextACS = parseList(samlACS)
         if (samlWantSignedRequests && samlSigningCert.trim() === '') {
-          setError(
-            'AuthnRequest / LogoutRequest 署名検証用の X.509 証明書 PEM を指定してください。',
-          )
+          setError(t.signingCertRequiredError)
           setSaving(false)
           return
         }
@@ -1239,7 +1279,7 @@ export function AdminApplicationEditPage({
           JSON.stringify(nextRules) !== JSON.stringify(detail.saml.rules ?? [])
         if (changed) {
           if (nextACS.length === 0) {
-            setError('ACS URL を 1 つ以上指定してください。')
+            setError(t.acsUrlRequiredError)
             setSaving(false)
             return
           }
@@ -1263,7 +1303,7 @@ export function AdminApplicationEditPage({
         reauthText !== '' &&
         (reauthMaxAge === undefined || !Number.isFinite(reauthMaxAge) || reauthMaxAge <= 0)
       ) {
-        setError('再認証を求めるまでの時間は正の整数（秒）で指定してください。')
+        setError(t.reauthPositiveIntegerError)
         setSaving(false)
         return
       }
@@ -1293,7 +1333,7 @@ export function AdminApplicationEditPage({
       }
       window.location.assign(detailURL(app.application_id))
     } catch (cause) {
-      setError(messageOf(cause, 'アプリケーションを更新できませんでした。'))
+      setError(messageOf(cause, t.applicationUpdateFailedError))
       setSaving(false)
     }
   }
@@ -1302,15 +1342,15 @@ export function AdminApplicationEditPage({
     <AdminShell
       active="applications"
       actorUsername={actorUsername}
-      title={`${app.name} を編集`}
-      description={kindLabel(app)}
+      title={t.editTitle.replace('{name}', app.name)}
+      description={kindLabel(app, t)}
       actions={
         <a
           href={detailURL(app.application_id)}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
         >
           <IconArrowLeft size={16} aria-hidden="true" />
-          詳細に戻る
+          {t.backToDetail}
         </a>
       }
     >
@@ -1320,9 +1360,9 @@ export function AdminApplicationEditPage({
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-6">
             <section className="grid gap-4">
-              <SectionTitle>基本情報</SectionTitle>
+              <SectionTitle>{t.basicInfoHeading}</SectionTitle>
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-name">名前</Label>
+                <Label htmlFor="edit-name">{t.nameFieldLabel}</Label>
                 <Input
                   id="edit-name"
                   value={name}
@@ -1332,7 +1372,7 @@ export function AdminApplicationEditPage({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-icon-file">アイコン画像</Label>
+                <Label htmlFor="edit-icon-file">{t.iconImageFieldLabel}</Label>
                 <fieldset
                   className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3"
                   onDragOver={(event) => event.preventDefault()}
@@ -1371,16 +1411,16 @@ export function AdminApplicationEditPage({
                         }}
                       >
                         <IconTrash size={16} aria-hidden="true" />
-                        削除
+                        {t.delete}
                       </Button>
                     ) : null}
                   </div>
                 </fieldset>
-                <p className="text-xs text-slate-500">PNG / JPEG / WebP / GIF、256 KiB まで。</p>
+                <p className="text-xs text-slate-500">{t.iconHelpText}</p>
               </div>
               {app.kind !== 'service' ? (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-launch">起動 URL</Label>
+                  <Label htmlFor="edit-launch">{t.launchUrlFieldLabel}</Label>
                   <Input
                     id="edit-launch"
                     value={launchURL}
@@ -1390,11 +1430,11 @@ export function AdminApplicationEditPage({
                 </div>
               ) : null}
               <div className="grid gap-1.5">
-                <Label>状態</Label>
+                <Label>{t.statusFieldLabel}</Label>
                 <Select
                   value={status}
                   onValueChange={(v) => setStatus(v as ApplicationStatus)}
-                  options={STATUS_OPTIONS}
+                  options={statusOptions(t)}
                   className="w-40"
                 />
               </div>
@@ -1405,13 +1445,13 @@ export function AdminApplicationEditPage({
                 <div className="flex items-center gap-2">
                   <IconKey size={16} className="text-slate-400" aria-hidden="true" />
                   <SectionTitle>
-                    {app.kind === 'service' ? 'サービス (M2M)' : 'OIDC / OAuth2'}
+                    {app.kind === 'service' ? t.serviceKindSectionHeading : t.oidcSectionHeading}
                   </SectionTitle>
                 </div>
-                <CopyableField label="クライアント ID" value={detail.oidc.client_id} />
+                <CopyableField label={t.clientIdFieldLabel} value={detail.oidc.client_id} />
                 {app.kind !== 'service' ? (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="edit-redirects">リダイレクト URI</Label>
+                    <Label htmlFor="edit-redirects">{t.redirectUriFieldLabel}</Label>
                     <textarea
                       id="edit-redirects"
                       value={redirects}
@@ -1420,11 +1460,11 @@ export function AdminApplicationEditPage({
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                       placeholder="https://app.example.com/callback"
                     />
-                    <p className="text-xs text-slate-500">改行区切りで複数指定できます。</p>
+                    <p className="text-xs text-slate-500">{t.redirectUriHelp}</p>
                   </div>
                 ) : null}
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-scope">スコープ</Label>
+                  <Label htmlFor="edit-scope">{t.scopeFieldLabel}</Label>
                   <Input
                     id="edit-scope"
                     value={scope}
@@ -1436,7 +1476,7 @@ export function AdminApplicationEditPage({
                 {app.kind !== 'service' ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-1.5">
-                      <Label htmlFor="edit-grant-types">グラント種別</Label>
+                      <Label htmlFor="edit-grant-types">{t.grantTypesFieldLabel}</Label>
                       <Input
                         id="edit-grant-types"
                         value={grantTypes}
@@ -1444,10 +1484,10 @@ export function AdminApplicationEditPage({
                         className="font-mono text-xs"
                         placeholder="authorization_code, refresh_token"
                       />
-                      <p className="text-xs text-slate-500">カンマ区切り。</p>
+                      <p className="text-xs text-slate-500">{t.grantTypesHelp}</p>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="edit-response-types">レスポンス種別</Label>
+                      <Label htmlFor="edit-response-types">{t.responseTypesFieldLabel}</Label>
                       <Input
                         id="edit-response-types"
                         value={responseTypes}
@@ -1455,7 +1495,7 @@ export function AdminApplicationEditPage({
                         className="font-mono text-xs"
                         placeholder="code"
                       />
-                      <p className="text-xs text-slate-500">カンマ区切り。</p>
+                      <p className="text-xs text-slate-500">{t.responseTypesHelp}</p>
                     </div>
                   </div>
                 ) : null}
@@ -1467,7 +1507,7 @@ export function AdminApplicationEditPage({
                       onChange={(e) => setRequirePAR(e.target.checked)}
                       className="size-4"
                     />
-                    PAR (Pushed Authorization Requests) を必須にする
+                    {t.requirePARLabel}
                   </label>
                   <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                     <input
@@ -1476,13 +1516,16 @@ export function AdminApplicationEditPage({
                       onChange={(e) => setDpopBound(e.target.checked)}
                       className="size-4"
                     />
-                    DPoP bound access token を要求する
+                    {t.requireDpopLabel}
                   </label>
                 </div>
                 <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:grid-cols-3">
-                  <ReadonlyMeta label="クライアント種別" value={detail.oidc.client_type} />
-                  <ReadonlyMeta label="認証方式" value={detail.oidc.token_endpoint_auth_method} />
-                  <ReadonlyMeta label="FAPI プロファイル" value={detail.oidc.fapi_profile} />
+                  <ReadonlyMeta label={t.clientTypeMetaLabel} value={detail.oidc.client_type} />
+                  <ReadonlyMeta
+                    label={t.authMethodMetaLabel}
+                    value={detail.oidc.token_endpoint_auth_method}
+                  />
+                  <ReadonlyMeta label={t.fapiProfileMetaLabel} value={detail.oidc.fapi_profile} />
                 </div>
               </section>
             ) : null}
@@ -1491,11 +1534,11 @@ export function AdminApplicationEditPage({
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">
                   <IconWorldShare size={16} className="text-slate-400" aria-hidden="true" />
-                  <SectionTitle>WS-Federation</SectionTitle>
+                  <SectionTitle>{t.wsFedSectionHeading}</SectionTitle>
                 </div>
-                <CopyableField label="wtrealm" value={detail.wsfed.wtrealm} />
+                <CopyableField label={t.wtrealmFieldLabel} value={detail.wsfed.wtrealm} />
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-replies">Reply URL</Label>
+                  <Label htmlFor="edit-replies">{t.replyUrlFieldLabel}</Label>
                   <textarea
                     id="edit-replies"
                     value={replies}
@@ -1506,16 +1549,16 @@ export function AdminApplicationEditPage({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>NameID 形式</Label>
+                  <Label>{t.nameIdFormatFieldLabel}</Label>
                   <Select
                     value={nameIDFormat}
                     onValueChange={setNameIDFormat}
-                    options={NAMEID_FORMATS}
+                    options={nameIdFormatOptions(t)}
                     className="w-full"
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-nameid-source">NameID ソース属性</Label>
+                  <Label htmlFor="edit-nameid-source">{t.nameIdSourceFieldLabel}</Label>
                   <Input
                     id="edit-nameid-source"
                     value={nameIDSource}
@@ -1525,27 +1568,27 @@ export function AdminApplicationEditPage({
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="edit-audience">Audience (任意)</Label>
+                    <Label htmlFor="edit-audience">{t.audienceOptionalFieldLabel}</Label>
                     <Input
                       id="edit-audience"
                       value={audience}
                       onChange={(e) => setAudience(e.target.value)}
                       className="font-mono text-xs"
-                      placeholder="未指定なら wtrealm を使用"
+                      placeholder={t.audiencePlaceholderDefault}
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label>トークン種別 (SAML バージョン)</Label>
+                    <Label>{t.tokenTypeSamlVersionFieldLabel}</Label>
                     <Select
                       value={tokenType}
                       onValueChange={(v) => setTokenType(v as WsFedTokenType)}
-                      options={WSFED_TOKEN_TYPES}
+                      options={wsfedTokenTypeOptions(t)}
                       className="w-full"
                     />
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-wsfed-rules">claim mapping 規則 (JSON)</Label>
+                  <Label htmlFor="edit-wsfed-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
                   <textarea
                     id="edit-wsfed-rules"
                     value={rulesJSON}
@@ -1555,10 +1598,7 @@ export function AdminApplicationEditPage({
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                     placeholder='[{"claim_type":"http://schemas.xmlsoap.org/claims/UPN","source":"user_attribute","source_key":"preferred_username","required":true}]'
                   />
-                  <p className="text-xs text-slate-500">
-                    source は user_attribute / fixed / nameid。required:true の claim
-                    は値が解決できないと fail-closed で sign-in を拒否します。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
               </section>
             ) : null}
@@ -1567,11 +1607,11 @@ export function AdminApplicationEditPage({
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">
                   <IconWorldShare size={16} className="text-slate-400" aria-hidden="true" />
-                  <SectionTitle>SAML 2.0</SectionTitle>
+                  <SectionTitle>{t.samlSectionHeading}</SectionTitle>
                 </div>
-                <CopyableField label="エンティティ ID (SP)" value={detail.saml.entity_id} />
+                <CopyableField label={t.entityIdFieldLabel} value={detail.saml.entity_id} />
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-acs">ACS URL</Label>
+                  <Label htmlFor="edit-saml-acs">{t.acsUrlFieldLabel}</Label>
                   <textarea
                     id="edit-saml-acs"
                     value={samlACS}
@@ -1580,13 +1620,10 @@ export function AdminApplicationEditPage({
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                     placeholder="https://app.example.com/saml/acs"
                   />
-                  <p className="text-xs text-slate-500">
-                    改行区切りで複数指定できます。AuthnRequest の ACS
-                    はこの許可集合に対して検証します (open redirect 防止)。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.acsUrlHelp}</p>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-slo">SLO URL (任意)</Label>
+                  <Label htmlFor="edit-saml-slo">{t.sloUrlOptionalFieldLabel}</Label>
                   <Input
                     id="edit-saml-slo"
                     value={samlSLO}
@@ -1596,17 +1633,17 @@ export function AdminApplicationEditPage({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>NameID 形式</Label>
+                  <Label>{t.nameIdFormatFieldLabel}</Label>
                   <Select
                     value={samlNameIDFormat}
                     onValueChange={setSamlNameIDFormat}
-                    options={NAMEID_FORMATS}
+                    options={nameIdFormatOptions(t)}
                     className="w-full"
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="edit-saml-nameid-source">NameID ソース属性</Label>
+                    <Label htmlFor="edit-saml-nameid-source">{t.nameIdSourceFieldLabel}</Label>
                     <Input
                       id="edit-saml-nameid-source"
                       value={samlNameIDSource}
@@ -1615,13 +1652,13 @@ export function AdminApplicationEditPage({
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="edit-saml-audience">Audience (任意)</Label>
+                    <Label htmlFor="edit-saml-audience">{t.audienceOptionalFieldLabel}</Label>
                     <Input
                       id="edit-saml-audience"
                       value={samlAudience}
                       onChange={(e) => setSamlAudience(e.target.value)}
                       className="font-mono text-xs"
-                      placeholder="未指定ならエンティティ ID を使用"
+                      placeholder={t.audienceEntityDefault}
                     />
                   </div>
                 </div>
@@ -1633,7 +1670,7 @@ export function AdminApplicationEditPage({
                       onChange={(e) => setSamlSignAssertion(e.target.checked)}
                       className="size-4"
                     />
-                    アサーションに署名する
+                    {t.signAssertionLabel}
                   </label>
                   <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                     <input
@@ -1642,7 +1679,7 @@ export function AdminApplicationEditPage({
                       onChange={(e) => setSamlSignResponse(e.target.checked)}
                       className="size-4"
                     />
-                    レスポンス全体に署名する (Okta / Entra の "Sign Response")
+                    {t.signResponseLabel}
                   </label>
                   <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                     <input
@@ -1651,12 +1688,12 @@ export function AdminApplicationEditPage({
                       onChange={(e) => setSamlWantSignedRequests(e.target.checked)}
                       className="size-4"
                     />
-                    AuthnRequest / LogoutRequest 署名を必須にする
+                    {t.wantSignedRequestsLabel}
                   </label>
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="edit-saml-request-signing-cert">
-                    要求署名検証用 X.509 証明書 PEM
+                    {t.requestSigningCertFieldLabel}
                   </Label>
                   <textarea
                     id="edit-saml-request-signing-cert"
@@ -1667,12 +1704,10 @@ export function AdminApplicationEditPage({
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                     placeholder="-----BEGIN CERTIFICATE-----"
                   />
-                  <p className="text-xs text-slate-500">
-                    署名必須のとき、SP の AuthnRequest / LogoutRequest をこの証明書で検証します。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.requestSigningCertHelp}</p>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-rules">claim mapping 規則 (JSON)</Label>
+                  <Label htmlFor="edit-saml-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
                   <textarea
                     id="edit-saml-rules"
                     value={samlRulesJSON}
@@ -1682,10 +1717,7 @@ export function AdminApplicationEditPage({
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                     placeholder='[{"claim_type":"email","source":"user_attribute","source_key":"email","required":true}]'
                   />
-                  <p className="text-xs text-slate-500">
-                    source は user_attribute / fixed / nameid。required:true の claim
-                    は値が解決できないと fail-closed で sign-in を拒否します。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
               </section>
             ) : null}
@@ -1694,7 +1726,7 @@ export function AdminApplicationEditPage({
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">
                   <IconKey size={16} className="text-slate-400" aria-hidden="true" />
-                  <SectionTitle>サインインポリシー</SectionTitle>
+                  <SectionTitle>{t.signInPolicySectionHeading}</SectionTitle>
                 </div>
                 <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                   <input
@@ -1703,39 +1735,34 @@ export function AdminApplicationEditPage({
                     onChange={(e) => setSignInEnabled(e.target.checked)}
                     className="size-4"
                   />
-                  このアプリ独自のサインインポリシーを設定する（テナントデフォルトを上書き）
+                  {t.overrideTenantDefaultLabel}
                 </label>
                 {signInEnabled ? (
                   <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div className="grid gap-1.5">
-                      <Label>要求する認証強度</Label>
+                      <Label>{t.requiredAuthnStrengthFieldLabel}</Label>
                       <Select
                         value={signInStrength}
                         onValueChange={(value) => setSignInStrength(value as RequiredAuthnStrength)}
-                        options={SIGN_IN_STRENGTH_OPTIONS}
+                        options={signInStrengthOptions(t)}
                         className="w-full"
                       />
-                      <p className="text-xs text-slate-500">
-                        「MFA 必須」の場合、単要素セッションはサインイン時に再認証 (step-up)
-                        へ誘導されます。
-                      </p>
+                      <p className="text-xs text-slate-500">{t.mfaStepUpHelp}</p>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="edit-sign-in-reauth">再認証を求めるまでの時間（秒）</Label>
+                      <Label htmlFor="edit-sign-in-reauth">{t.reauthSecondsFieldLabel}</Label>
                       <Input
                         id="edit-sign-in-reauth"
                         type="number"
                         min="1"
                         value={signInReauthMaxAge}
                         onChange={(e) => setSignInReauthMaxAge(e.target.value)}
-                        placeholder="例: 3600"
+                        placeholder={t.reauthSecondsPlaceholder}
                       />
-                      <p className="text-xs text-slate-500">
-                        この秒数を超えた認証は再認証（再ログイン）を求めます。空欄なら無期限です。
-                      </p>
+                      <p className="text-xs text-slate-500">{t.reauthSecondsHelp}</p>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="edit-sign-in-cidrs">許可するネットワーク (CIDR)</Label>
+                      <Label htmlFor="edit-sign-in-cidrs">{t.allowedNetworksFieldLabel}</Label>
                       <textarea
                         id="edit-sign-in-cidrs"
                         value={signInNetworkCIDRs}
@@ -1745,10 +1772,7 @@ export function AdminApplicationEditPage({
                         className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                         placeholder={'10.0.0.0/8\n192.168.1.0/24'}
                       />
-                      <p className="text-xs text-slate-500">
-                        1 行に 1 つの CIDR を入力します。指定するとリスト外の IP
-                        からのサインインは拒否されます。空欄なら制限しません。
-                      </p>
+                      <p className="text-xs text-slate-500">{t.allowedNetworksHelp}</p>
                     </div>
                   </div>
                 ) : null}
@@ -1760,44 +1784,44 @@ export function AdminApplicationEditPage({
                     signInNetworkCIDRs,
                   )
                   const effectiveSummary = signInEnabled
-                    ? summarizeSignInRule(appRule)
+                    ? summarizeSignInRule(appRule, t)
                     : defaultRules
                         .filter((r) => r.enabled)
-                        .map(summarizeSignInRule)
-                        .join('、') || '追加要件なし'
+                        .map((rule) => summarizeSignInRule(rule, t))
+                        .join('、') || t.noAdditionalRequirementsNotice
                   const weaker = signInEnabled && signInRuleWeakerThanDefault(appRule, defaultRules)
                   return (
                     <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4">
                       <div className="grid gap-1">
-                        <p className="text-xs font-semibold text-slate-500">テナントデフォルト</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {t.tenantDefaultLabel}
+                        </p>
                         {defaultRules.filter((r) => r.enabled).length > 0 ? (
                           <ul className="grid gap-1 text-xs text-slate-600">
                             {defaultRules
                               .filter((r) => r.enabled)
                               .map((rule) => (
-                                <li key={rule.rule_id}>{summarizeSignInRule(rule)}</li>
+                                <li key={rule.rule_id}>{summarizeSignInRule(rule, t)}</li>
                               ))}
                           </ul>
                         ) : (
-                          <p className="text-xs text-slate-500">追加要件なし</p>
+                          <p className="text-xs text-slate-500">
+                            {t.noAdditionalRequirementsNotice}
+                          </p>
                         )}
                       </div>
                       <div className="grid gap-1">
                         <p className="text-xs font-semibold text-slate-500">
-                          最終的に適用されるポリシー
+                          {t.effectivePolicyLabel}
                         </p>
                         <p className="text-xs text-slate-600">{effectiveSummary}</p>
                         <p className="text-xs text-slate-400">
-                          {signInEnabled
-                            ? 'このアプリの上書きが適用されます。'
-                            : 'このアプリはテナントデフォルトが適用されます。'}
-                          保存後に確定します。
+                          {signInEnabled ? t.overrideAppliedNotice : t.tenantDefaultAppliedNotice}
+                          {t.savedAfterConfirmSuffix}
                         </p>
                       </div>
                       {weaker ? (
-                        <Alert variant="destructive">
-                          この設定はテナントデフォルトより弱くなっています（認証強度・再認証を求めるまでの時間・許可ネットワークのいずれか）。保存は可能ですが、意図した緩和かご確認ください。
-                        </Alert>
+                        <Alert variant="destructive">{t.weakerThanDefaultWarning}</Alert>
                       ) : null}
                     </div>
                   )
@@ -1807,10 +1831,10 @@ export function AdminApplicationEditPage({
 
             <div className="flex justify-end gap-2 border-t border-slate-200 pt-5">
               <Button asChild variant="outline">
-                <a href={detailURL(app.application_id)}>キャンセル</a>
+                <a href={detailURL(app.application_id)}>{t.cancel}</a>
               </Button>
               <Button type="submit" disabled={saving || nameInvalid}>
-                {saving ? '保存中…' : '保存'}
+                {saving ? t.saving : t.save}
               </Button>
             </div>
           </form>
@@ -1854,6 +1878,7 @@ function CategoryManager({
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const t = useDictionary(adminApplicationsDictionary)
 
   useEffect(() => {
     let cancelled = false
@@ -1863,18 +1888,18 @@ function CategoryManager({
         setCategories(list)
         setLoaded(true)
       })
-      .catch((cause) => onError(messageOf(cause, 'カテゴリを取得できませんでした。')))
+      .catch((cause) => onError(messageOf(cause, t.categoryFetchFailedError)))
     return () => {
       cancelled = true
     }
-  }, [onError])
+  }, [onError, t.categoryFetchFailedError])
 
   async function run(action: () => Promise<void>) {
     setBusy(true)
     try {
       await action()
     } catch (cause) {
-      onError(messageOf(cause, 'カテゴリを更新できませんでした。'))
+      onError(messageOf(cause, t.categoryUpdateFailedError))
     } finally {
       setBusy(false)
     }
@@ -1915,13 +1940,10 @@ function CategoryManager({
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionTitle>カテゴリ</SectionTitle>
-      <p className="text-xs text-slate-500">
-        利用者ポータルでアプリをセクションに分類します。チェックでこのアプリへの付与を切り替え、
-        ごみ箱でカテゴリ定義を削除します。
-      </p>
+      <SectionTitle>{t.categoriesHeading}</SectionTitle>
+      <p className="text-xs text-slate-500">{t.categoriesHelp}</p>
       {loaded && categories.length === 0 ? (
-        <p className="text-sm text-slate-500">カテゴリはまだありません。</p>
+        <p className="text-sm text-slate-500">{t.noCategoriesNotice}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {categories.map((category) => (
@@ -1943,7 +1965,7 @@ function CategoryManager({
                 className="size-9 px-0 text-slate-400 hover:text-red-600"
                 disabled={busy}
                 onClick={() => removeCategory(category.category_id)}
-                aria-label={`カテゴリ ${category.name} を削除`}
+                aria-label={t.deleteCategoryAria.replace('{name}', category.name)}
               >
                 <IconTrash size={16} aria-hidden="true" />
               </Button>
@@ -1955,7 +1977,7 @@ function CategoryManager({
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="新しいカテゴリ名"
+          placeholder={t.newCategoryPlaceholder}
           disabled={busy}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -1965,7 +1987,7 @@ function CategoryManager({
           }}
         />
         <Button type="button" variant="secondary" onClick={addCategory} disabled={busy}>
-          追加
+          {t.add}
         </Button>
       </div>
     </div>
@@ -1976,7 +1998,11 @@ function CategoryManager({
 // 割り当て (read-only リスト / 管理)
 // ===========================================================================
 
-function useAssignmentData(appID: string, onError: (msg: string) => void) {
+function useAssignmentData(
+  appID: string,
+  onError: (msg: string) => void,
+  t: AdminApplicationsDictionary,
+) {
   const [assignments, setAssignments] = useState<ApplicationAssignment[]>([])
   const [users, setUsers] = useState<AdminUser[]>([])
   const [groups, setGroups] = useState<AdminGroup[]>([])
@@ -1992,11 +2018,11 @@ function useAssignmentData(appID: string, onError: (msg: string) => void) {
         setGroups(g)
         setLoaded(true)
       })
-      .catch((cause) => onError(messageOf(cause, '割り当てを取得できませんでした。')))
+      .catch((cause) => onError(messageOf(cause, t.assignmentFetchFailedError)))
     return () => {
       cancelled = true
     }
-  }, [appID, onError])
+  }, [appID, onError, t.assignmentFetchFailedError])
 
   return { assignments, setAssignments, users, groups, loaded }
 }
@@ -2011,6 +2037,7 @@ function useDisplayName(users: AdminUser[], groups: AdminGroup[]) {
 }
 
 function AssignmentChip({ a, displayName }: { a: ApplicationAssignment; displayName: string }) {
+  const t = useDictionary(adminApplicationsDictionary)
   return (
     <span className="flex items-center gap-2">
       <span
@@ -2018,7 +2045,7 @@ function AssignmentChip({ a, displayName }: { a: ApplicationAssignment; displayN
           a.subject_type === 'user' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'
         }`}
       >
-        {a.subject_type === 'user' ? 'ユーザー' : 'グループ'}
+        {a.subject_type === 'user' ? t.userTypeLabel : t.groupTypeLabel}
       </span>
       <span className="font-medium text-slate-800">{displayName}</span>
     </span>
@@ -2026,14 +2053,15 @@ function AssignmentChip({ a, displayName }: { a: ApplicationAssignment; displayN
 }
 
 function AssignmentList({ appID, onError }: { appID: string; onError: (msg: string) => void }) {
-  const { assignments, users, groups, loaded } = useAssignmentData(appID, onError)
+  const t = useDictionary(adminApplicationsDictionary)
+  const { assignments, users, groups, loaded } = useAssignmentData(appID, onError, t)
   const displayName = useDisplayName(users, groups)
 
-  if (!loaded) return <p className="text-xs text-slate-400">読み込み中…</p>
+  if (!loaded) return <p className="text-xs text-slate-400">{t.loadingNotice}</p>
   if (assignments.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
-        割り当てはありません。未割り当ての利用者はログインできません。
+        {t.noAssignmentsNotice}
       </p>
     )
   }
@@ -2060,7 +2088,12 @@ function AssignmentManager({
   csrfToken: string
   onError: (msg: string) => void
 }) {
-  const { assignments, setAssignments, users, groups, loaded } = useAssignmentData(appID, onError)
+  const t = useDictionary(adminApplicationsDictionary)
+  const { assignments, setAssignments, users, groups, loaded } = useAssignmentData(
+    appID,
+    onError,
+    t,
+  )
   const displayName = useDisplayName(users, groups)
   const [subjectType, setSubjectType] = useState<'user' | 'group'>('user')
   const [subjectID, setSubjectID] = useState('')
@@ -2091,7 +2124,7 @@ function AssignmentManager({
       setAssignments((current) => [...current, created])
       setSubjectID('')
     } catch (cause) {
-      onError(messageOf(cause, '割り当てを追加できませんでした。'))
+      onError(messageOf(cause, t.assignmentAddFailedError))
     } finally {
       setBusy(false)
     }
@@ -2106,21 +2139,19 @@ function AssignmentManager({
         ),
       )
     } catch (cause) {
-      onError(messageOf(cause, '割り当てを解除できませんでした。'))
+      onError(messageOf(cause, t.assignmentRemoveFailedError))
     }
   }
 
   return (
     <section className="grid gap-3">
-      <SectionTitle>割り当て (ユーザー / グループ)</SectionTitle>
-      <p className="text-xs text-slate-500">
-        割り当てられた利用者だけがポータルに表示され、ログインできます。未割り当ての利用者はフェデレーションも拒否されます。
-      </p>
+      <SectionTitle>{t.assignmentsHeading}</SectionTitle>
+      <p className="text-xs text-slate-500">{t.assignmentsManagerHelp}</p>
       {!loaded ? (
-        <p className="text-xs text-slate-400">読み込み中…</p>
+        <p className="text-xs text-slate-400">{t.loadingNotice}</p>
       ) : assignments.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
-          割り当てはありません。
+          {t.noAssignmentsShortNotice}
         </p>
       ) : (
         <ul className="grid gap-2">
@@ -2136,7 +2167,7 @@ function AssignmentManager({
                 onClick={() => remove(a)}
               >
                 <IconX size={14} aria-hidden="true" />
-                解除
+                {t.unassign}
               </Button>
             </li>
           ))}
@@ -2145,7 +2176,7 @@ function AssignmentManager({
 
       <form className="flex flex-wrap items-end gap-2" onSubmit={add}>
         <div className="grid gap-1.5">
-          <Label>対象</Label>
+          <Label>{t.targetFieldLabel}</Label>
           <Select
             value={subjectType}
             onValueChange={(v) => {
@@ -2153,26 +2184,26 @@ function AssignmentManager({
               setSubjectID('')
             }}
             options={[
-              { value: 'user', label: 'ユーザー' },
-              { value: 'group', label: 'グループ' },
+              { value: 'user', label: t.userTypeLabel },
+              { value: 'group', label: t.groupTypeLabel },
             ]}
             className="w-32"
           />
         </div>
         <div className="grid flex-1 gap-1.5">
-          <Label>{subjectType === 'user' ? 'ユーザーを選択' : 'グループを選択'}</Label>
+          <Label>{subjectType === 'user' ? t.selectUserFieldLabel : t.selectGroupFieldLabel}</Label>
           <Select
             value={subjectID}
             onValueChange={setSubjectID}
             options={options}
-            placeholder={options.length === 0 ? '対象がありません' : '選択…'}
+            placeholder={options.length === 0 ? t.noTargetsNotice : t.selectPlaceholder}
             className="w-full"
             disabled={options.length === 0}
           />
         </div>
         <Button type="submit" disabled={busy || !subjectID}>
           <IconUserPlus size={16} aria-hidden="true" />
-          割り当て
+          {t.assign}
         </Button>
       </form>
     </section>
@@ -2217,6 +2248,7 @@ function CreateApplicationDialog({
   const [error, setError] = useState('')
   const [secret, setSecret] = useState<{ clientID: string; clientSecret: string } | null>(null)
   const [createdID, setCreatedID] = useState('')
+  const t = useDictionary(adminApplicationsDictionary)
 
   const nameInvalid = name.trim() === ''
 
@@ -2226,7 +2258,7 @@ function CreateApplicationDialog({
     setSaving(true)
     setError('')
     if (type === 'saml' && samlWantSignedRequests && samlSigningCert.trim() === '') {
-      setError('AuthnRequest / LogoutRequest 署名検証用の X.509 証明書 PEM を指定してください。')
+      setError(t.signingCertRequiredError)
       setSaving(false)
       return
     }
@@ -2269,7 +2301,7 @@ function CreateApplicationDialog({
       }
       onCreated(id)
     } catch (cause) {
-      setError(messageOf(cause, 'アプリケーションを作成できませんでした。'))
+      setError(messageOf(cause, t.applicationCreateFailedError))
     } finally {
       setSaving(false)
     }
@@ -2285,20 +2317,20 @@ function CreateApplicationDialog({
       <button
         type="button"
         className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
+        aria-label={t.close}
         onClick={onClose}
       />
       <Card className="relative flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden shadow-2xl">
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-normal text-blue-700">
-              アプリケーション
+              {t.applicationEyebrow}
             </p>
             <h2 id="app-create-title" className="mt-1 text-xl font-semibold">
-              {secret ? '作成しました' : 'アプリケーションを追加'}
+              {secret ? t.createdHeading : t.addApplicationHeading}
             </h2>
           </div>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
+          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label={t.close}>
             <IconX size={18} aria-hidden="true" />
           </Button>
         </div>
@@ -2306,15 +2338,16 @@ function CreateApplicationDialog({
         {secret ? (
           <div className="grid gap-4 p-6">
             <Alert variant="success">
-              クライアントを作成しました。クライアントシークレットは
-              <strong>この画面でしか確認できません</strong>。安全に保管してください。
+              {t.clientCreatedNotice}
+              <strong>{t.clientSecretVisibleOnceStrong}</strong>
+              {t.clientSecretVisibleOnceSuffix}
             </Alert>
-            <CopyableField label="クライアント ID" value={secret.clientID} />
-            <CopyableField label="クライアントシークレット" value={secret.clientSecret} />
+            <CopyableField label={t.clientIdFieldLabel} value={secret.clientID} />
+            <CopyableField label={t.clientSecretFieldLabel} value={secret.clientSecret} />
             <div className="flex justify-end">
               <Button type="button" onClick={() => onCreated(createdID)}>
                 <IconCheck size={16} aria-hidden="true" />
-                保管しました
+                {t.storedConfirm}
               </Button>
             </div>
           </div>
@@ -2323,9 +2356,9 @@ function CreateApplicationDialog({
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="grid gap-6 p-6">
                 <section className="grid gap-2">
-                  <SectionTitle>種別</SectionTitle>
+                  <SectionTitle>{t.typeSectionHeading}</SectionTitle>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {APP_TYPES.map((option) => {
+                    {appTypeOptions(t).map((option) => {
                       const Icon = option.icon
                       const active = type === option.type
                       return (
@@ -2357,9 +2390,9 @@ function CreateApplicationDialog({
                 </section>
 
                 <section className="grid gap-4 border-t border-slate-200 pt-5">
-                  <SectionTitle>基本情報</SectionTitle>
+                  <SectionTitle>{t.basicInfoHeading}</SectionTitle>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-name">名前</Label>
+                    <Label htmlFor="app-name">{t.nameFieldLabel}</Label>
                     <Input
                       id="app-name"
                       value={name}
@@ -2371,7 +2404,7 @@ function CreateApplicationDialog({
                   {type !== 'service' ? (
                     <div className="grid gap-1.5">
                       <Label htmlFor="app-launch">
-                        {type === 'weblink' ? 'リンク先 URL' : '起動 URL (任意)'}
+                        {type === 'weblink' ? t.linkUrlFieldLabel : t.launchUrlOptionalFieldLabel}
                       </Label>
                       <Input
                         id="app-launch"
@@ -2381,9 +2414,7 @@ function CreateApplicationDialog({
                         required={type === 'weblink'}
                       />
                       {type !== 'weblink' ? (
-                        <p className="text-xs text-slate-500">
-                          ポータルのタイルから開く初期ログイン URL。後から設定もできます。
-                        </p>
+                        <p className="text-xs text-slate-500">{t.launchUrlHelp}</p>
                       ) : null}
                     </div>
                   ) : null}
@@ -2391,9 +2422,9 @@ function CreateApplicationDialog({
 
                 {type === 'service' ? (
                   <section className="grid gap-4 border-t border-slate-200 pt-5">
-                    <SectionTitle>サービス (M2M)</SectionTitle>
+                    <SectionTitle>{t.serviceKindSectionHeading}</SectionTitle>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-scope">スコープ (任意)</Label>
+                      <Label htmlFor="app-scope">{t.scopeOptionalFieldLabel}</Label>
                       <Input
                         id="app-scope"
                         value={scope}
@@ -2401,19 +2432,16 @@ function CreateApplicationDialog({
                         className="font-mono text-xs"
                         placeholder="catalog:read invoice:read"
                       />
-                      <p className="text-xs text-slate-500">
-                        client_credentials で発行されるトークンのスコープ。クライアント ID
-                        とシークレットは自動生成されます。
-                      </p>
+                      <p className="text-xs text-slate-500">{t.serviceScopeHelp}</p>
                     </div>
                   </section>
                 ) : null}
 
                 {type === 'oidc' ? (
                   <section className="grid gap-4 border-t border-slate-200 pt-5">
-                    <SectionTitle>OIDC / OAuth2</SectionTitle>
+                    <SectionTitle>{t.oidcSectionHeading}</SectionTitle>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-redirects">リダイレクト URI</Label>
+                      <Label htmlFor="app-redirects">{t.redirectUriFieldLabel}</Label>
                       <textarea
                         id="app-redirects"
                         value={redirectURIs}
@@ -2423,13 +2451,10 @@ function CreateApplicationDialog({
                         className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                         placeholder="https://app.example.com/callback"
                       />
-                      <p className="text-xs text-slate-500">
-                        改行区切りで複数指定できます。クライアント ID
-                        とシークレットは自動生成されます。
-                      </p>
+                      <p className="text-xs text-slate-500">{t.oidcRedirectHelp}</p>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-oidc-scope">スコープ (任意)</Label>
+                      <Label htmlFor="app-oidc-scope">{t.scopeOptionalFieldLabel}</Label>
                       <Input
                         id="app-oidc-scope"
                         value={scope}
@@ -2440,7 +2465,7 @@ function CreateApplicationDialog({
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="grid gap-1.5">
-                        <Label>クライアント種別</Label>
+                        <Label>{t.clientTypeFieldLabel}</Label>
                         <Select
                           value={clientType}
                           onValueChange={(v) => {
@@ -2456,7 +2481,7 @@ function CreateApplicationDialog({
                         />
                       </div>
                       <div className="grid gap-1.5">
-                        <Label>認証方式</Label>
+                        <Label>{t.authMethodFieldLabel}</Label>
                         <Select
                           value={authMethod}
                           onValueChange={setAuthMethod}
@@ -2467,7 +2492,7 @@ function CreateApplicationDialog({
                     </div>
                     {authMethod === 'private_key_jwt' ? (
                       <div className="grid gap-1.5">
-                        <Label htmlFor="app-jwks-uri">JWKS URI</Label>
+                        <Label htmlFor="app-jwks-uri">{t.jwksUriFieldLabel}</Label>
                         <Input
                           id="app-jwks-uri"
                           type="url"
@@ -2481,7 +2506,7 @@ function CreateApplicationDialog({
                     ) : null}
                     {authMethod === 'tls_client_auth' ? (
                       <div className="grid gap-1.5">
-                        <Label htmlFor="app-tls-dn">TLS クライアント証明書 Subject DN</Label>
+                        <Label htmlFor="app-tls-dn">{t.tlsClientCertSubjectDnFieldLabel}</Label>
                         <Input
                           id="app-tls-dn"
                           value={tlsSubjectDN}
@@ -2492,17 +2517,15 @@ function CreateApplicationDialog({
                         />
                       </div>
                     ) : null}
-                    <p className="text-xs text-slate-500">
-                      認証方式は作成時に確定し、以後は変更できません。
-                    </p>
+                    <p className="text-xs text-slate-500">{t.authMethodFixedNotice}</p>
                   </section>
                 ) : null}
 
                 {type === 'wsfed' ? (
                   <section className="grid gap-4 border-t border-slate-200 pt-5">
-                    <SectionTitle>WS-Federation</SectionTitle>
+                    <SectionTitle>{t.wsFedSectionHeading}</SectionTitle>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-wtrealm">wtrealm</Label>
+                      <Label htmlFor="app-wtrealm">{t.wtrealmFieldLabel}</Label>
                       <Input
                         id="app-wtrealm"
                         value={wtrealm}
@@ -2513,7 +2536,7 @@ function CreateApplicationDialog({
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-replies">Reply URL</Label>
+                      <Label htmlFor="app-replies">{t.replyUrlFieldLabel}</Label>
                       <textarea
                         id="app-replies"
                         value={replyURLs}
@@ -2525,16 +2548,16 @@ function CreateApplicationDialog({
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label>NameID 形式</Label>
+                      <Label>{t.nameIdFormatFieldLabel}</Label>
                       <Select
                         value={nameIDFormat}
                         onValueChange={setNameIDFormat}
-                        options={NAMEID_FORMATS}
+                        options={nameIdFormatOptions(t)}
                         className="w-full"
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-nameid-source">NameID ソース属性</Label>
+                      <Label htmlFor="app-nameid-source">{t.nameIdSourceFieldLabel}</Label>
                       <Input
                         id="app-nameid-source"
                         value={nameIDSource}
@@ -2547,9 +2570,9 @@ function CreateApplicationDialog({
 
                 {type === 'saml' ? (
                   <section className="grid gap-4 border-t border-slate-200 pt-5">
-                    <SectionTitle>SAML 2.0</SectionTitle>
+                    <SectionTitle>{t.samlSectionHeading}</SectionTitle>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-saml-entity">エンティティ ID (SP)</Label>
+                      <Label htmlFor="app-saml-entity">{t.entityIdFieldLabel}</Label>
                       <Input
                         id="app-saml-entity"
                         value={samlEntityID}
@@ -2560,7 +2583,7 @@ function CreateApplicationDialog({
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-saml-acs">ACS URL</Label>
+                      <Label htmlFor="app-saml-acs">{t.acsUrlFieldLabel}</Label>
                       <textarea
                         id="app-saml-acs"
                         value={samlACSURLs}
@@ -2570,10 +2593,10 @@ function CreateApplicationDialog({
                         className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                         placeholder="https://app.example.com/saml/acs"
                       />
-                      <p className="text-xs text-slate-500">改行区切りで複数指定できます。</p>
+                      <p className="text-xs text-slate-500">{t.redirectUriHelp}</p>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-saml-slo">SLO URL (任意)</Label>
+                      <Label htmlFor="app-saml-slo">{t.sloUrlOptionalFieldLabel}</Label>
                       <Input
                         id="app-saml-slo"
                         value={samlSLOURL}
@@ -2583,16 +2606,16 @@ function CreateApplicationDialog({
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label>NameID 形式</Label>
+                      <Label>{t.nameIdFormatFieldLabel}</Label>
                       <Select
                         value={samlNameIDFormat}
                         onValueChange={setSamlNameIDFormat}
-                        options={NAMEID_FORMATS}
+                        options={nameIdFormatOptions(t)}
                         className="w-full"
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-saml-nameid-source">NameID ソース属性</Label>
+                      <Label htmlFor="app-saml-nameid-source">{t.nameIdSourceFieldLabel}</Label>
                       <Input
                         id="app-saml-nameid-source"
                         value={samlNameIDSource}
@@ -2607,7 +2630,7 @@ function CreateApplicationDialog({
                         onChange={(e) => setSamlSignResponse(e.target.checked)}
                         className="size-4"
                       />
-                      レスポンス全体に署名する (既定はアサーション署名のみ)
+                      {t.signResponseDefaultLabel}
                     </label>
                     <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                       <input
@@ -2616,11 +2639,11 @@ function CreateApplicationDialog({
                         onChange={(e) => setSamlWantSignedRequests(e.target.checked)}
                         className="size-4"
                       />
-                      AuthnRequest / LogoutRequest 署名を必須にする
+                      {t.wantSignedRequestsLabel}
                     </label>
                     <div className="grid gap-1.5">
                       <Label htmlFor="app-saml-request-signing-cert">
-                        要求署名検証用 X.509 証明書 PEM
+                        {t.requestSigningCertFieldLabel}
                       </Label>
                       <textarea
                         id="app-saml-request-signing-cert"
@@ -2640,10 +2663,10 @@ function CreateApplicationDialog({
             </div>
             <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
               <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
-                キャンセル
+                {t.cancel}
               </Button>
               <Button type="submit" disabled={saving || nameInvalid}>
-                {saving ? '作成中…' : '作成'}
+                {saving ? t.creating : t.create}
               </Button>
             </div>
           </form>

@@ -12,8 +12,10 @@ import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminRole, AdminUser } from '../../types'
+import { adminRolesDictionary } from './AdminRolesPage.i18n'
 
 export function AdminRolesPage({
   actorUsername,
@@ -26,6 +28,7 @@ export function AdminRolesPage({
 }) {
   const [selectedName, setSelectedName] = useState(roles[0]?.name ?? '')
   const selected = roles.find((role) => role.name === selectedName)
+  const t = useDictionary(adminRolesDictionary)
   const roleCounts = useMemo(
     () =>
       Object.fromEntries(
@@ -41,16 +44,16 @@ export function AdminRolesPage({
     <AdminShell
       active="roles"
       actorUsername={actorUsername}
-      title="ロール"
-      description="管理ロールと、各ロールに許可される操作を確認します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
     >
-      <section className="grid gap-3 sm:grid-cols-2" aria-label="ロール概要">
+      <section className="grid gap-3 sm:grid-cols-2" aria-label={t.overviewSectionLabel}>
         {roles.map((role) => (
           <MetricCard
             key={role.name}
             label={role.name}
             value={roleCounts[role.name] ?? 0}
-            hint={`${role.permissions.length} 件の操作`}
+            hint={t.operationsCountHint.replace('{count}', String(role.permissions.length))}
           />
         ))}
       </section>
@@ -60,9 +63,9 @@ export function AdminRolesPage({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-5 py-3.5">ロール</th>
-                <th className="px-5 py-3.5">付与人数</th>
-                <th className="px-5 py-3.5">操作数</th>
+                <th className="px-5 py-3.5">{t.tableHeaderRole}</th>
+                <th className="px-5 py-3.5">{t.tableHeaderGrantedCount}</th>
+                <th className="px-5 py-3.5">{t.tableHeaderOperationCount}</th>
                 <th className="px-5 py-3.5" />
               </tr>
             </thead>
@@ -113,7 +116,7 @@ export function AdminRolesPage({
               />
             </div>
           ) : (
-            <div className="p-8 text-sm text-slate-500">ロールを選択してください。</div>
+            <div className="p-8 text-sm text-slate-500">{t.selectRolePrompt}</div>
           )}
         </Card>
       </div>
@@ -133,6 +136,7 @@ export function AdminRoleDetailPage({
   count: number
   usernames: string[]
 }) {
+  const t = useDictionary(adminRolesDictionary)
   return (
     <AdminShell
       active="roles"
@@ -146,7 +150,7 @@ export function AdminRoleDetailPage({
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             <IconArrowLeft size={16} aria-hidden="true" />
-            ロール一覧
+            {t.backToRoleList}
           </a>
           <RoleUnavailableActions />
         </div>
@@ -160,15 +164,16 @@ export function AdminRoleDetailPage({
 }
 
 function RoleUnavailableActions() {
+  const t = useDictionary(adminRolesDictionary)
   return (
     <>
-      <Button type="button" variant="outline" disabled title="標準ロールは編集できません">
+      <Button type="button" variant="outline" disabled title={t.editDisabledTitle}>
         <IconPencil size={16} aria-hidden="true" />
-        編集
+        {t.edit}
       </Button>
-      <Button type="button" variant="outline" disabled title="標準ロールは削除できません">
+      <Button type="button" variant="outline" disabled title={t.deleteDisabledTitle}>
         <IconTrash size={16} aria-hidden="true" />
-        削除
+        {t.delete}
       </Button>
     </>
   )
@@ -183,6 +188,7 @@ function RoleDetails({
   count: number
   usernames: string[]
 }) {
+  const t = useDictionary(adminRolesDictionary)
   return (
     <div>
       <div className="border-b border-slate-200 p-5">
@@ -208,11 +214,9 @@ function RoleDetails({
       </div>
 
       <section className="border-b border-slate-200 p-5">
-        <h3 className="text-sm font-semibold text-slate-900">許可される操作</h3>
+        <h3 className="text-sm font-semibold text-slate-900">{t.allowedOperationsHeading}</h3>
         {role.permissions.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">
-            現在の管理者には、このロールの詳細を表示する権限がありません。
-          </p>
+          <p className="mt-3 text-sm text-slate-500">{t.noPermissionsNotice}</p>
         ) : (
           <div className="mt-3 grid gap-3">
             {role.permissions.map((permission) => (
@@ -244,8 +248,10 @@ function RoleDetails({
       <section className="p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">このロールを持つユーザー</h3>
-            <p className="mt-1 text-xs text-slate-500">{count} 人</p>
+            <h3 className="text-sm font-semibold text-slate-900">{t.usersWithRoleHeading}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {t.peopleCount.replace('{count}', String(count))}
+            </p>
           </div>
           <IconUsers size={18} className="text-slate-400" aria-hidden="true" />
         </div>
@@ -262,7 +268,7 @@ function RoleDetails({
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-slate-500">該当するユーザーはいません。</p>
+          <p className="mt-3 text-sm text-slate-500">{t.noMatchingUsersNotice}</p>
         )}
       </section>
     </div>

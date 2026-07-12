@@ -13,6 +13,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { useDictionary } from '../../lib/i18n'
 import {
   isHTTPSURL,
   isValidHexColor,
@@ -21,26 +22,31 @@ import {
   validateTenantBrandingAssetFile,
 } from '../../lib/tenantBranding'
 import type { Branding, TenantBrandingAssetKind } from '../../types'
+import { brandingTabDictionary, type BrandingTabDictionary } from './BrandingTab.i18n'
 
-export function brandingSupportURLError(value: string): string | null {
+export function brandingSupportURLError(value: string, t: BrandingTabDictionary): string | null {
   if (!value.trim()) return null
-  return isHTTPSURL(value.trim()) ? null : 'https:// で始まる URL を指定してください。'
+  return isHTTPSURL(value.trim()) ? null : t.supportURLRequiredError
 }
 
-export function brandingFooterLinkError(label: string, url: string): string | null {
+export function brandingFooterLinkError(
+  label: string,
+  url: string,
+  t: BrandingTabDictionary,
+): string | null {
   const trimmedLabel = label.trim()
   const trimmedURL = url.trim()
   if (!trimmedLabel && !trimmedURL) return null
-  if (!trimmedLabel) return 'リンクテキストを指定してください。'
-  if (trimmedLabel.length > 80) return 'リンクテキストは80文字以内で指定してください。'
+  if (!trimmedLabel) return t.footerLinkLabelRequiredError
+  if (trimmedLabel.length > 80) return t.footerLinkLabelTooLongError
   return (
-    brandingSupportURLError(trimmedURL) ?? (trimmedURL ? null : 'HTTPS URL を指定してください。')
+    brandingSupportURLError(trimmedURL, t) ?? (trimmedURL ? null : t.footerLinkURLRequiredError)
   )
 }
 
-export function brandingColorError(value: string): string | null {
+export function brandingColorError(value: string, t: BrandingTabDictionary): string | null {
   if (!value.trim()) return null
-  return isValidHexColor(value.trim()) ? null : '#rrggbb 形式の色コードを指定してください。'
+  return isValidHexColor(value.trim()) ? null : t.colorFormatError
 }
 
 export function BrandingTab({ csrfToken }: { csrfToken: string }) {
@@ -56,6 +62,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(brandingTabDictionary)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 初回マウント時のみ取得する
   useEffect(() => {
@@ -68,9 +75,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
       .catch((cause) => {
         if (cancelled) return
         setError(
-          cause instanceof AuthenticationAPIError
-            ? cause.message
-            : 'ブランディング設定を取得できませんでした。',
+          cause instanceof AuthenticationAPIError ? cause.message : t.brandingFetchFailedError,
         )
       })
     return () => {
@@ -91,10 +96,10 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
   }
 
   async function handleSave() {
-    const footerLink1Error = brandingFooterLinkError(footerLink1Label, footerLink1URL)
-    const footerLink2Error = brandingFooterLinkError(footerLink2Label, footerLink2URL)
-    const primaryColorError = brandingColorError(primaryColor)
-    const accentColorError = brandingColorError(accentColor)
+    const footerLink1Error = brandingFooterLinkError(footerLink1Label, footerLink1URL, t)
+    const footerLink2Error = brandingFooterLinkError(footerLink2Label, footerLink2URL, t)
+    const primaryColorError = brandingColorError(primaryColor, t)
+    const accentColorError = brandingColorError(accentColor, t)
     const firstError = footerLink1Error ?? footerLink2Error ?? primaryColorError ?? accentColorError
     if (firstError) {
       setError(firstError)
@@ -113,12 +118,10 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
         footer_text: footerText.trim(),
       })
       applyBranding(next)
-      setNotice('ブランディング設定を更新しました。')
+      setNotice(t.brandingUpdatedNotice)
     } catch (cause) {
       setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'ブランディング設定を更新できませんでした。',
+        cause instanceof AuthenticationAPIError ? cause.message : t.brandingUpdateFailedError,
       )
     } finally {
       setSaving(false)
@@ -137,16 +140,16 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
         <AssetUploader
           csrfToken={csrfToken}
           kind="logo"
-          label="ロゴ"
-          hint="login / consent / account portal のヘッダーに表示されます。"
+          label={t.logoLabel}
+          hint={t.logoHint}
           currentURL={branding.logo_url}
           onUpdated={applyBranding}
         />
         <AssetUploader
           csrfToken={csrfToken}
           kind="favicon"
-          label="favicon"
-          hint="ブラウザタブに表示されます。"
+          label={t.faviconLabel}
+          hint={t.faviconHint}
           currentURL={branding.favicon_url}
           onUpdated={applyBranding}
         />
@@ -154,16 +157,14 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
 
       <Card className="p-6">
         <header>
-          <h2 className="text-base font-semibold text-slate-900">表示名・配色・リンク</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            未設定の項目は IdMagic の標準表示にフォールバックします。
-          </p>
+          <h2 className="text-base font-semibold text-slate-900">{t.displayHeading}</h2>
+          <p className="mt-1 text-sm text-slate-600">{t.displayDescription}</p>
         </header>
         <div className="mt-5 grid gap-4">
           {error ? <Alert variant="destructive">{error}</Alert> : null}
           <Toast message={notice} onDismiss={() => setNotice('')} />
           <div className="grid gap-1.5">
-            <Label htmlFor="branding-product-name">製品名</Label>
+            <Label htmlFor="branding-product-name">{t.productNameLabel}</Label>
             <Input
               id="branding-product-name"
               value={productName}
@@ -175,19 +176,19 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <ColorField
               id="branding-primary-color"
-              label="プライマリカラー"
+              label={t.primaryColorLabel}
               value={primaryColor}
               onChange={setPrimaryColor}
               onReset={() => setPrimaryColor('')}
-              error={brandingColorError(primaryColor)}
+              error={brandingColorError(primaryColor, t)}
             />
             <ColorField
               id="branding-accent-color"
-              label="アクセントカラー"
+              label={t.accentColorLabel}
               value={accentColor}
               onChange={setAccentColor}
               onReset={() => setAccentColor('')}
-              error={brandingColorError(accentColor)}
+              error={brandingColorError(accentColor, t)}
             />
           </div>
           <FooterLinkFields
@@ -205,7 +206,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
             onURLChange={setFooterLink2URL}
           />
           <div className="grid gap-1.5">
-            <Label htmlFor="branding-footer-text">フッターテキスト</Label>
+            <Label htmlFor="branding-footer-text">{t.footerTextLabel}</Label>
             <Input
               id="branding-footer-text"
               value={footerText}
@@ -216,7 +217,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
           </div>
           <div>
             <Button type="button" disabled={saving} onClick={() => void handleSave()}>
-              {saving ? '保存中…' : '保存'}
+              {saving ? t.saving : t.save}
             </Button>
           </div>
         </div>
@@ -238,22 +239,25 @@ function FooterLinkFields({
   onLabelChange: (value: string) => void
   onURLChange: (value: string) => void
 }) {
-  const error = brandingFooterLinkError(label, url)
+  const t = useDictionary(brandingTabDictionary)
+  const error = brandingFooterLinkError(label, url, t)
   return (
     <fieldset className="grid gap-3 rounded-md border border-slate-200 p-3">
-      <legend className="px-1 text-sm font-medium text-slate-800">フッターリンク {number}</legend>
+      <legend className="px-1 text-sm font-medium text-slate-800">
+        {t.footerLinkLegend.replace('{number}', String(number))}
+      </legend>
       <div className="grid gap-1.5">
-        <Label htmlFor={`branding-footer-link-${number}-label`}>リンクテキスト</Label>
+        <Label htmlFor={`branding-footer-link-${number}-label`}>{t.linkTextLabel}</Label>
         <Input
           id={`branding-footer-link-${number}-label`}
           value={label}
           onChange={(event) => onLabelChange(event.target.value)}
-          placeholder="ヘルプ"
+          placeholder={t.linkTextPlaceholder}
           maxLength={80}
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor={`branding-footer-link-${number}-url`}>HTTPS URL</Label>
+        <Label htmlFor={`branding-footer-link-${number}-url`}>{t.httpsUrlLabel}</Label>
         <Input
           id={`branding-footer-link-${number}-url`}
           value={url}
@@ -281,6 +285,7 @@ function ColorField({
   onReset: () => void
   error: string | null
 }) {
+  const t = useDictionary(brandingTabDictionary)
   const isUnset = !value.trim()
   return (
     <div className="grid gap-1.5">
@@ -288,7 +293,7 @@ function ColorField({
       <div className="flex items-center gap-2">
         <input
           type="color"
-          aria-label={`${label}を選択`}
+          aria-label={t.selectColorAriaLabel.replace('{label}', label)}
           value={isValidHexColor(value) ? value : '#0f172a'}
           onChange={(event) => onChange(event.target.value)}
           className="size-10 shrink-0 cursor-pointer rounded-md border border-slate-200"
@@ -301,11 +306,11 @@ function ColorField({
           className="font-mono"
         />
         <Button type="button" variant="outline" size="default" disabled={isUnset} onClick={onReset}>
-          既定に戻す
+          {t.resetToDefault}
         </Button>
       </div>
       <p className="text-xs text-slate-500" aria-live="polite">
-        {isUnset ? '未設定（IdMagic の既定色を使用）' : `現在値: ${value}`}
+        {isUnset ? t.colorUnsetNotice : `${t.currentValuePrefix}${value}`}
       </p>
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
     </div>
@@ -331,6 +336,7 @@ function AssetUploader({
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const previewURL = safeTenantBrandingAssetURL(currentURL)
+  const t = useDictionary(brandingTabDictionary)
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -341,8 +347,8 @@ function AssetUploader({
     if (validationError) {
       setError(
         validationError === 'too-large'
-          ? `画像は ${MAX_TENANT_BRANDING_ASSET_BYTES / 1024} KiB 以下にしてください。`
-          : '画像は PNG / JPEG / WebP / GIF を選択してください。',
+          ? t.imageTooLargeError.replace('{kib}', String(MAX_TENANT_BRANDING_ASSET_BYTES / 1024))
+          : t.imageFormatError,
       )
       return
     }
@@ -350,11 +356,7 @@ function AssetUploader({
     try {
       onUpdated(await uploadTenantBrandingAsset(csrfToken, kind, file))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '画像をアップロードできませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.imageUploadFailedError)
     } finally {
       setUploading(false)
     }
@@ -366,9 +368,7 @@ function AssetUploader({
     try {
       onUpdated(await deleteTenantBrandingAsset(csrfToken, kind))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : '画像を削除できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.imageDeleteFailedError)
     } finally {
       setUploading(false)
     }
@@ -396,7 +396,7 @@ function AssetUploader({
             onClick={() => inputRef.current?.click()}
           >
             <IconUpload size={16} aria-hidden="true" />
-            アップロード
+            {t.upload}
           </Button>
           {previewURL ? (
             <Button
@@ -407,7 +407,7 @@ function AssetUploader({
               onClick={() => void handleDelete()}
             >
               <IconTrash size={16} aria-hidden="true" />
-              削除
+              {t.remove}
             </Button>
           ) : null}
         </div>

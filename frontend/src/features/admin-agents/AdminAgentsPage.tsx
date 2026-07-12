@@ -40,18 +40,9 @@ import {
 } from '../../components/ui/dropdown-menu'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
 import type { AdminAgent } from '../../types'
-
-const KIND_LABELS: Record<AdminAgent['kind'], string> = {
-  autonomous: '自律',
-  supervised: '監督下',
-}
-
-const STATUS_LABELS: Record<AdminAgent['status'], string> = {
-  active: '有効',
-  disabled: '無効',
-  killed: '緊急停止',
-}
+import { adminAgentsDictionary, type AdminAgentsDictionary } from './AdminAgentsPage.i18n'
 
 const STATUS_STYLES: Record<AdminAgent['status'], string> = {
   active: 'bg-emerald-100 text-emerald-700',
@@ -59,12 +50,21 @@ const STATUS_STYLES: Record<AdminAgent['status'], string> = {
   killed: 'bg-rose-100 text-rose-700',
 }
 
+function kindLabel(kind: AdminAgent['kind'], t: AdminAgentsDictionary) {
+  return kind === 'autonomous' ? t.kindAutonomous : t.kindSupervised
+}
+
+function statusLabel(status: AdminAgent['status'], t: AdminAgentsDictionary) {
+  return { active: t.statusActive, disabled: t.statusDisabled, killed: t.statusKilled }[status]
+}
+
 function StatusBadge({ status }: { status: AdminAgent['status'] }) {
+  const t = useDictionary(adminAgentsDictionary)
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[status]}`}
     >
-      {STATUS_LABELS[status]}
+      {statusLabel(status, t)}
     </span>
   )
 }
@@ -87,6 +87,7 @@ export function AdminAgentsPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminAgentsDictionary)
 
   const selected = agents.find((a) => a.id === selectedID) ?? null
 
@@ -104,11 +105,7 @@ export function AdminAgentsPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'エージェント操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -129,29 +126,29 @@ export function AdminAgentsPage({
       form.reset()
       setShowCreate(false)
       await refresh(created.id)
-    }, 'エージェントを登録しました。')
+    }, t.agentRegisteredNotice)
   }
 
   return (
     <AdminShell
       active="agents"
       actorUsername={actorUsername}
-      title="エージェント"
-      description="非人間プリンシパルとしてのエージェントを登録し、ロールとクライアント資格情報を管理します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <>
           <Button
             variant="outline"
             className="size-9 px-0"
-            aria-label="一覧を再読み込み"
-            onClick={() => run(() => refresh(), '一覧を更新しました。')}
+            aria-label={t.reloadAriaLabel}
+            onClick={() => run(() => refresh(), t.listRefreshedNotice)}
             disabled={busy}
           >
             <IconRefresh size={16} aria-hidden="true" />
           </Button>
           <Button onClick={() => setShowCreate(true)} disabled={busy}>
             <IconPlus size={16} aria-hidden="true" />
-            登録
+            {t.register}
           </Button>
         </>
       }
@@ -164,11 +161,11 @@ export function AdminAgentsPage({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">エージェント</th>
-                <th className="px-4 py-3">種別</th>
-                <th className="px-4 py-3">所有者</th>
-                <th className="px-4 py-3">状態</th>
-                <th className="px-4 py-3 text-right">ロール / 資格情報</th>
+                <th className="px-4 py-3">{t.tableHeaderAgent}</th>
+                <th className="px-4 py-3">{t.tableHeaderKind}</th>
+                <th className="px-4 py-3">{t.tableHeaderOwner}</th>
+                <th className="px-4 py-3">{t.tableHeaderStatus}</th>
+                <th className="px-4 py-3 text-right">{t.tableHeaderRolesCredentials}</th>
               </tr>
             </thead>
             <tbody>
@@ -186,7 +183,7 @@ export function AdminAgentsPage({
                       <div className="truncate text-xs text-slate-500">{agent.description}</div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{KIND_LABELS[agent.kind]}</td>
+                  <td className="px-4 py-3 text-xs text-slate-600">{kindLabel(agent.kind, t)}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-600">
                     {agent.owner_user_id || '—'}
                   </td>
@@ -203,7 +200,7 @@ export function AdminAgentsPage({
           {agents.length === 0 ? (
             <div className="flex min-h-40 flex-col items-center justify-center px-6 text-center text-sm text-slate-500">
               <IconRobot size={24} className="text-slate-400" aria-hidden="true" />
-              <p className="mt-3">エージェントはまだありません。</p>
+              <p className="mt-3">{t.emptyAgentsNotice}</p>
             </div>
           ) : null}
         </Card>
@@ -215,8 +212,8 @@ export function AdminAgentsPage({
           detailHref={
             selected ? tenantURL(`/admin/agents/${encodeURIComponent(selected.id)}`) : undefined
           }
-          onChanged={(id) => run(() => refresh(id), 'エージェントを更新しました。')}
-          onDeleted={() => run(() => refresh(), 'エージェントを削除しました。')}
+          onChanged={(id) => run(() => refresh(id), t.agentUpdatedNotice)}
+          onDeleted={() => run(() => refresh(), t.agentDeletedNotice)}
         />
       </div>
 
@@ -224,51 +221,51 @@ export function AdminAgentsPage({
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
           <Card className="w-full max-w-md p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">エージェントを登録</h2>
+              <h2 className="text-base font-semibold text-slate-900">{t.registerAgentHeading}</h2>
               <Button
                 variant="ghost"
                 className="px-2.5"
                 onClick={() => setShowCreate(false)}
-                aria-label="閉じる"
+                aria-label={t.close}
               >
                 <IconX size={18} aria-hidden="true" />
               </Button>
             </div>
             <form onSubmit={handleCreate} className="mt-4 grid gap-4">
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-name">エージェント名</Label>
+                <Label htmlFor="agent-name">{t.agentNameLabel}</Label>
                 <Input id="agent-name" name="name" required placeholder="invoice-bot" />
-                <p className="text-xs text-slate-500">テナント内で一意の表示名。</p>
+                <p className="text-xs text-slate-500">{t.agentNameHelp}</p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-description">説明 (任意)</Label>
+                <Label htmlFor="agent-description">{t.descriptionOptionalLabel}</Label>
                 <Input
                   id="agent-description"
                   name="description"
-                  placeholder="請求書処理エージェント"
+                  placeholder={t.agentDescriptionPlaceholder}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-kind">種別</Label>
+                <Label htmlFor="agent-kind">{t.kindLabel}</Label>
                 <select
                   id="agent-kind"
                   name="kind"
                   defaultValue="autonomous"
                   className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm"
                 >
-                  <option value="autonomous">自律 (autonomous)</option>
-                  <option value="supervised">監督下 (supervised)</option>
+                  <option value="autonomous">{t.kindAutonomousOption}</option>
+                  <option value="supervised">{t.kindSupervisedOption}</option>
                 </select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-owner">所有者 (ユーザーID, 任意)</Label>
+                <Label htmlFor="agent-owner">{t.ownerOptionalLabel}</Label>
                 <Input id="agent-owner" name="owner_user_id" placeholder="user-1234" />
-                <p className="text-xs text-slate-500">省略時は操作した管理者が所有者になります。</p>
+                <p className="text-xs text-slate-500">{t.ownerHelp}</p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-roles">ロール</Label>
+                <Label htmlFor="agent-roles">{t.rolesLabel}</Label>
                 <Input id="agent-roles" name="roles" placeholder="invoice:read, invoice:write" />
-                <p className="text-xs text-slate-500">カンマ区切り。エージェントに付与されます。</p>
+                <p className="text-xs text-slate-500">{t.rolesHelp}</p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -277,10 +274,10 @@ export function AdminAgentsPage({
                   onClick={() => setShowCreate(false)}
                   disabled={busy}
                 >
-                  キャンセル
+                  {t.cancel}
                 </Button>
                 <Button type="submit" disabled={busy}>
-                  登録
+                  {t.register}
                 </Button>
               </div>
             </form>
@@ -307,6 +304,7 @@ export function AdminAgentDetailPage({
   const [confirmKill, setConfirmKill] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminAgentsDictionary)
 
   async function reload(id: string) {
     try {
@@ -314,11 +312,7 @@ export function AdminAgentDetailPage({
       setAgent(next)
       setError('')
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'エージェントの再取得に失敗しました。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.agentReloadFailedError)
     }
   }
 
@@ -328,11 +322,7 @@ export function AdminAgentDetailPage({
     try {
       await action()
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'エージェント操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -345,11 +335,7 @@ export function AdminAgentDetailPage({
       await deleteAdminAgent(csrfToken, agent.id)
       window.location.assign(tenantURL('/admin/agents'))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'エージェントを削除できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.agentDeleteFailedError)
       setBusy(false)
     }
   }
@@ -370,11 +356,11 @@ export function AdminAgentDetailPage({
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               <IconArrowLeft size={16} aria-hidden="true" />
-              エージェント一覧
+              {t.backToAgentList}
             </a>
             <Button type="button" disabled={busy || killed} onClick={() => setEditing(true)}>
               <IconPencil size={16} aria-hidden="true" />
-              編集
+              {t.edit}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -382,7 +368,7 @@ export function AdminAgentDetailPage({
                   type="button"
                   variant="outline"
                   className="size-9 px-0"
-                  aria-label="エージェント操作"
+                  aria-label={t.agentActionsAriaLabel}
                   disabled={busy}
                 >
                   <IconDotsVertical size={18} aria-hidden="true" />
@@ -399,7 +385,7 @@ export function AdminAgentDetailPage({
                     }
                   >
                     <IconPower size={17} aria-hidden="true" />
-                    無効化
+                    {t.disable}
                   </DropdownMenuItem>
                 ) : null}
                 {!killed && agent.status === 'disabled' ? (
@@ -412,18 +398,18 @@ export function AdminAgentDetailPage({
                     }
                   >
                     <IconPower size={17} aria-hidden="true" />
-                    有効化
+                    {t.enable}
                   </DropdownMenuItem>
                 ) : null}
                 {!killed ? (
                   <DropdownMenuItem className="text-rose-700" onSelect={() => setConfirmKill(true)}>
                     <IconPlayerStop size={17} aria-hidden="true" />
-                    緊急停止 (kill)
+                    {t.kill}
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem className="text-red-700" onSelect={() => setConfirmDelete(true)}>
                   <IconTrash size={17} aria-hidden="true" />
-                  エージェントを削除
+                  {t.deleteAgent}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -436,13 +422,10 @@ export function AdminAgentDetailPage({
             variant="destructive"
             className="flex flex-wrap items-center justify-between gap-2"
           >
-            <span>
-              このエージェントを緊急停止しますか？緊急停止は<strong>一方向</strong>の操作で、
-              取り消せません。停止後は再有効化できず、すべての資格情報が無効になります。
-            </span>
+            <span>{t.confirmKillPrompt}</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setConfirmKill(false)} disabled={busy}>
-                取消
+                {t.dismissConfirm}
               </Button>
               <Button
                 variant="destructive"
@@ -456,7 +439,7 @@ export function AdminAgentDetailPage({
                 }
               >
                 <IconPlayerStop size={14} aria-hidden="true" />
-                緊急停止を確定
+                {t.confirmKill}
               </Button>
             </div>
           </Alert>
@@ -466,14 +449,14 @@ export function AdminAgentDetailPage({
             variant="destructive"
             className="flex flex-wrap items-center justify-between gap-2"
           >
-            <span>このエージェントを削除しますか？バインドされた資格情報も解除されます。</span>
+            <span>{t.confirmDeleteAgentPrompt}</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
-                取消
+                {t.dismissConfirm}
               </Button>
               <Button variant="destructive" disabled={busy} onClick={() => void handleDelete()}>
                 <IconTrash size={14} aria-hidden="true" />
-                削除を確定
+                {t.confirmDelete}
               </Button>
             </div>
           </Alert>
@@ -528,6 +511,7 @@ function AgentDetailCard({
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editing, setEditing] = useState(false)
+  const t = useDictionary(adminAgentsDictionary)
 
   useEffect(() => {
     setConfirmDelete(false)
@@ -541,7 +525,7 @@ function AgentDetailCard({
   if (!agent) {
     return (
       <Card className="p-5">
-        <p className="text-sm text-slate-500">エージェントを選択してください。</p>
+        <p className="text-sm text-slate-500">{t.selectAgentPrompt}</p>
       </Card>
     )
   }
@@ -554,9 +538,7 @@ function AgentDetailCard({
     try {
       await action()
     } catch (cause) {
-      setLocalError(
-        cause instanceof AuthenticationAPIError ? cause.message : '操作を完了できませんでした。',
-      )
+      setLocalError(cause instanceof AuthenticationAPIError ? cause.message : t.genericOpError)
     } finally {
       setLocalBusy(false)
     }
@@ -593,7 +575,7 @@ function AgentDetailCard({
                 onEdit={killed ? undefined : () => setEditing(true)}
                 actions={[
                   {
-                    label: 'エージェントを削除',
+                    label: t.deleteAgent,
                     icon: IconTrash,
                     onClick: () => setConfirmDelete(true),
                     tone: 'danger',
@@ -609,14 +591,14 @@ function AgentDetailCard({
             variant="destructive"
             className="m-5 flex flex-wrap items-center justify-between gap-2"
           >
-            <span>このエージェントを削除しますか？バインドされた資格情報も解除されます。</span>
+            <span>{t.confirmDeleteAgentPrompt}</span>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={() => setConfirmDelete(false)}
                 disabled={localBusy}
               >
-                取消
+                {t.dismissConfirm}
               </Button>
               <Button
                 variant="destructive"
@@ -629,7 +611,7 @@ function AgentDetailCard({
                 }
               >
                 <IconTrash size={14} aria-hidden="true" />
-                削除を確定
+                {t.confirmDelete}
               </Button>
             </div>
           </Alert>
@@ -644,22 +626,30 @@ function AgentDetailCard({
         <dl className="grid gap-4 p-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">種別</dt>
-              <dd className="mt-1 text-sm text-slate-700">{KIND_LABELS[agent.kind]}</dd>
+              <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+                {t.kindLabel}
+              </dt>
+              <dd className="mt-1 text-sm text-slate-700">{kindLabel(agent.kind, t)}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">所有者</dt>
+              <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+                {t.tableHeaderOwner}
+              </dt>
               <dd className="mt-1 truncate font-mono text-sm text-slate-700">
                 {agent.owner_user_id || '—'}
               </dd>
             </div>
           </div>
           <div>
-            <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">説明</dt>
+            <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+              {t.descriptionLabel}
+            </dt>
             <dd className="mt-1 text-sm text-slate-700">{agent.description || '—'}</dd>
           </div>
           <div>
-            <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">ロール</dt>
+            <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+              {t.rolesLabel}
+            </dt>
             <dd className="mt-1 flex flex-wrap gap-1.5">
               {agent.roles.length > 0 ? (
                 agent.roles.map((role) => (
@@ -671,7 +661,7 @@ function AgentDetailCard({
                   </span>
                 ))
               ) : (
-                <span className="text-sm text-slate-400">なし</span>
+                <span className="text-sm text-slate-400">{t.noneLabel}</span>
               )}
             </dd>
           </div>
@@ -679,11 +669,9 @@ function AgentDetailCard({
 
         <section className="border-t border-slate-100 p-5">
           <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-            資格情報 ({clientIDs.length})
+            {t.credentialsHeading.replace('{count}', String(clientIDs.length))}
           </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            エージェントが利用する OAuth クライアントをバインドします。
-          </p>
+          <p className="mt-1 text-xs text-slate-500">{t.credentialsDescription}</p>
           <ul className="mt-3 grid gap-2">
             {clientIDs.map((clientID) => (
               <li
@@ -703,12 +691,12 @@ function AgentDetailCard({
                   }
                 >
                   <IconX size={14} aria-hidden="true" />
-                  解除
+                  {t.unbind}
                 </Button>
               </li>
             ))}
             {clientIDs.length === 0 ? (
-              <li className="text-xs text-slate-400">バインドされた資格情報はありません。</li>
+              <li className="text-xs text-slate-400">{t.noCredentialsNotice}</li>
             ) : null}
           </ul>
 
@@ -717,7 +705,7 @@ function AgentDetailCard({
               value={addClientID}
               onChange={(e) => setAddClientID(e.target.value)}
               placeholder="client_id"
-              aria-label="バインドする client_id"
+              aria-label={t.bindClientIdAria}
               disabled={killed}
             />
             <Button
@@ -731,7 +719,7 @@ function AgentDetailCard({
               }
             >
               <IconKey size={14} aria-hidden="true" />
-              バインド
+              {t.bind}
             </Button>
           </div>
         </section>
@@ -769,6 +757,7 @@ function AgentEditorDialog({
   const [roles, setRoles] = useState(agent.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminAgentsDictionary)
 
   const trimmedName = name.trim()
   const nextRoles = parseRoles(roles)
@@ -796,11 +785,7 @@ function AgentEditorDialog({
       })
       onSaved(agent.id)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'エージェントを更新できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.agentUpdateFailedError)
     } finally {
       setSaving(false)
     }
@@ -816,21 +801,21 @@ function AgentEditorDialog({
       <button
         type="button"
         className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
+        aria-label={t.close}
         onClick={onClose}
       />
       <Card className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden shadow-2xl">
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-normal text-blue-700">
-              エージェント
+              {t.agentEyebrow}
             </p>
             <h2 id="agent-editor-title" className="mt-1 text-xl font-semibold">
-              エージェントを編集
+              {t.editAgentHeading}
             </h2>
             <p className="mt-1 text-sm text-slate-500">{agent.name}</p>
           </div>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
+          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label={t.close}>
             <IconX size={18} aria-hidden="true" />
           </Button>
         </div>
@@ -844,10 +829,10 @@ function AgentEditorDialog({
             <div className="grid gap-6 p-6">
               <section className="grid gap-4">
                 <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-                  基本情報
+                  {t.basicInfoHeading}
                 </h3>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="agent-editor-name">エージェント名</Label>
+                  <Label htmlFor="agent-editor-name">{t.agentNameLabel}</Label>
                   <Input
                     id="agent-editor-name"
                     value={name}
@@ -857,7 +842,7 @@ function AgentEditorDialog({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="agent-editor-description">説明</Label>
+                  <Label htmlFor="agent-editor-description">{t.descriptionLabel}</Label>
                   <Input
                     id="agent-editor-description"
                     value={description}
@@ -865,19 +850,19 @@ function AgentEditorDialog({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="agent-editor-kind">種別</Label>
+                  <Label htmlFor="agent-editor-kind">{t.kindLabel}</Label>
                   <select
                     id="agent-editor-kind"
                     value={kind}
                     onChange={(e) => setKind(e.target.value as AdminAgent['kind'])}
                     className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm"
                   >
-                    <option value="autonomous">自律 (autonomous)</option>
-                    <option value="supervised">監督下 (supervised)</option>
+                    <option value="autonomous">{t.kindAutonomousOption}</option>
+                    <option value="supervised">{t.kindSupervisedOption}</option>
                   </select>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="agent-editor-owner">所有者 sub</Label>
+                  <Label htmlFor="agent-editor-owner">{t.ownerSubLabel}</Label>
                   <Input
                     id="agent-editor-owner"
                     value={ownerSub}
@@ -887,29 +872,27 @@ function AgentEditorDialog({
               </section>
               <section className="grid gap-3 border-t border-slate-200 pt-5">
                 <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-                  ロール
+                  {t.rolesLabel}
                 </h3>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="agent-editor-roles">ロール</Label>
+                  <Label htmlFor="agent-editor-roles">{t.rolesLabel}</Label>
                   <Input
                     id="agent-editor-roles"
                     value={roles}
                     onChange={(e) => setRoles(e.target.value)}
                     placeholder="invoice:read, invoice:write"
                   />
-                  <p className="text-xs text-slate-500">
-                    カンマ区切り。エージェントに付与されます。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.rolesHelp}</p>
                 </div>
               </section>
             </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
             <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={saving || nameInvalid || !changed}>
-              {saving ? '保存中…' : '保存'}
+              {saving ? t.saving : t.save}
             </Button>
           </div>
         </form>

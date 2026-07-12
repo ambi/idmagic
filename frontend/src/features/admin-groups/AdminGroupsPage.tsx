@@ -37,7 +37,9 @@ import {
 } from '../../components/ui/dropdown-menu'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
 import type { AdminGroup, AdminGroupMember, AdminUser } from '../../types'
+import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 
 export function AdminGroupsPage({
   csrfToken,
@@ -56,6 +58,7 @@ export function AdminGroupsPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminGroupsDictionary)
 
   const selected = groups.find((g) => g.id === selectedID) ?? null
 
@@ -73,11 +76,7 @@ export function AdminGroupsPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'グループ操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -87,15 +86,15 @@ export function AdminGroupsPage({
     <AdminShell
       active="groups"
       actorUsername={actorUsername}
-      title="グループ"
-      description="複数のロールをまとめ、所属ユーザーに一括で付与します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <>
           <Button
             variant="outline"
             className="size-9 px-0"
-            aria-label="一覧を再読み込み"
-            onClick={() => run(() => refresh(), '一覧を更新しました。')}
+            aria-label={t.reloadAriaLabel}
+            onClick={() => run(() => refresh(), t.listRefreshedNotice)}
             disabled={busy}
           >
             <IconRefresh size={16} aria-hidden="true" />
@@ -103,7 +102,7 @@ export function AdminGroupsPage({
           <Button asChild disabled={busy}>
             <a href={tenantURL('/admin/groups/new')}>
               <IconPlus size={16} aria-hidden="true" />
-              新規グループ
+              {t.newGroup}
             </a>
           </Button>
         </>
@@ -117,9 +116,9 @@ export function AdminGroupsPage({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">グループ</th>
-                <th className="px-4 py-3">ロール</th>
-                <th className="px-4 py-3 text-right">メンバー</th>
+                <th className="px-4 py-3">{t.tableHeaderGroup}</th>
+                <th className="px-4 py-3">{t.tableHeaderRoles}</th>
+                <th className="px-4 py-3 text-right">{t.tableHeaderMembers}</th>
               </tr>
             </thead>
             <tbody>
@@ -137,7 +136,9 @@ export function AdminGroupsPage({
                       <div className="truncate text-xs text-slate-500">{group.description}</div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{group.roles.length} 個</td>
+                  <td className="px-4 py-3 text-xs text-slate-600">
+                    {t.rolesCount.replace('{count}', String(group.roles.length))}
+                  </td>
                   <td className="px-4 py-3 text-right text-xs text-slate-600">
                     {group.member_count}
                   </td>
@@ -148,7 +149,7 @@ export function AdminGroupsPage({
           {groups.length === 0 ? (
             <div className="flex min-h-40 flex-col items-center justify-center px-6 text-center text-sm text-slate-500">
               <IconUsersGroup size={24} className="text-slate-400" aria-hidden="true" />
-              <p className="mt-3">グループはまだありません。</p>
+              <p className="mt-3">{t.emptyGroupsNotice}</p>
             </div>
           ) : null}
         </Card>
@@ -160,7 +161,7 @@ export function AdminGroupsPage({
           detailHref={
             selected ? tenantURL(`/admin/groups/${encodeURIComponent(selected.id)}`) : undefined
           }
-          onDeleted={() => run(() => refresh(), 'グループを削除しました。')}
+          onDeleted={() => run(() => refresh(), t.groupDeletedNotice)}
         />
       </div>
     </AdminShell>
@@ -180,6 +181,7 @@ export function AdminGroupDetailPage({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminGroupsDictionary)
 
   async function handleDelete() {
     setBusy(true)
@@ -188,11 +190,7 @@ export function AdminGroupDetailPage({
       await deleteAdminGroup(csrfToken, group.id)
       window.location.assign(tenantURL('/admin/groups'))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'グループを削除できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.groupDeleteFailedError)
       setBusy(false)
     }
   }
@@ -210,12 +208,12 @@ export function AdminGroupDetailPage({
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             <IconArrowLeft size={16} aria-hidden="true" />
-            グループ一覧
+            {t.backToGroupList}
           </a>
           <Button type="button" disabled={busy} asChild>
             <a href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/edit`)}>
               <IconPencil size={16} aria-hidden="true" />
-              編集
+              {t.edit}
             </a>
           </Button>
           <DropdownMenu>
@@ -224,7 +222,7 @@ export function AdminGroupDetailPage({
                 type="button"
                 variant="outline"
                 className="size-9 px-0"
-                aria-label="グループ操作"
+                aria-label={t.groupActionsAriaLabel}
                 disabled={busy}
               >
                 <IconDotsVertical size={18} aria-hidden="true" />
@@ -233,7 +231,7 @@ export function AdminGroupDetailPage({
             <DropdownMenuContent align="end">
               <DropdownMenuItem className="text-red-700" onSelect={() => setConfirmDelete(true)}>
                 <IconTrash size={17} aria-hidden="true" />
-                グループを削除
+                {t.deleteGroup}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -243,14 +241,14 @@ export function AdminGroupDetailPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       {confirmDelete ? (
         <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-2">
-          <span>このグループを削除しますか？所属ユーザーからロールが外れます。</span>
+          <span>{t.confirmDeleteGroupPrompt}</span>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
-              取消
+              {t.dismissConfirm}
             </Button>
             <Button variant="destructive" disabled={busy} onClick={() => void handleDelete()}>
               <IconTrash size={14} aria-hidden="true" />
-              削除を確定
+              {t.confirmDelete}
             </Button>
           </div>
         </Alert>
@@ -289,6 +287,7 @@ function GroupDetailCard({
   const [localBusy, setLocalBusy] = useState(false)
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const t = useDictionary(adminGroupsDictionary)
 
   useEffect(() => {
     setConfirmDelete(false)
@@ -311,7 +310,7 @@ function GroupDetailCard({
   if (!group) {
     return (
       <Card className="p-5">
-        <p className="text-sm text-slate-500">グループを選択してください。</p>
+        <p className="text-sm text-slate-500">{t.selectGroupPrompt}</p>
       </Card>
     )
   }
@@ -323,9 +322,7 @@ function GroupDetailCard({
     try {
       await action()
     } catch (cause) {
-      setLocalError(
-        cause instanceof AuthenticationAPIError ? cause.message : '操作を完了できませんでした。',
-      )
+      setLocalError(cause instanceof AuthenticationAPIError ? cause.message : t.genericOpError)
     } finally {
       setLocalBusy(false)
     }
@@ -351,7 +348,7 @@ function GroupDetailCard({
               <h2 className="truncate text-lg font-semibold text-slate-950">{group.name}</h2>
               {group.scim_source && (
                 <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                  SCIM 同期 ({group.scim_source})
+                  {t.scimSyncBadge.replace('{source}', group.scim_source)}
                 </span>
               )}
             </div>
@@ -369,7 +366,7 @@ function GroupDetailCard({
               busy={busy || localBusy}
               actions={[
                 {
-                  label: 'グループを削除',
+                  label: t.deleteGroup,
                   icon: IconTrash,
                   onClick: () => setConfirmDelete(true),
                   tone: 'danger',
@@ -385,10 +382,10 @@ function GroupDetailCard({
           variant="destructive"
           className="m-5 flex flex-wrap items-center justify-between gap-2"
         >
-          <span>このグループを削除しますか？所属ユーザーからロールが外れます。</span>
+          <span>{t.confirmDeleteGroupPrompt}</span>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={localBusy}>
-              取消
+              {t.dismissConfirm}
             </Button>
             <Button
               variant="destructive"
@@ -401,7 +398,7 @@ function GroupDetailCard({
               }
             >
               <IconTrash size={14} aria-hidden="true" />
-              削除を確定
+              {t.confirmDelete}
             </Button>
           </div>
         </Alert>
@@ -415,11 +412,15 @@ function GroupDetailCard({
 
       <dl className="grid gap-4 p-5">
         <div>
-          <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">説明</dt>
+          <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+            {t.descriptionLabel}
+          </dt>
           <dd className="mt-1 text-sm text-slate-700">{group.description || '—'}</dd>
         </div>
         <div>
-          <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">ロール</dt>
+          <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+            {t.rolesLabel}
+          </dt>
           <dd className="mt-1 flex flex-wrap gap-1.5">
             {group.roles.length > 0 ? (
               group.roles.map((role) => (
@@ -431,7 +432,7 @@ function GroupDetailCard({
                 </span>
               ))
             ) : (
-              <span className="text-sm text-slate-400">なし</span>
+              <span className="text-sm text-slate-400">{t.noneLabel}</span>
             )}
           </dd>
         </div>
@@ -439,7 +440,7 @@ function GroupDetailCard({
 
       <section className="border-t border-slate-100 p-5">
         <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-          メンバー ({members.length})
+          {t.membersHeading.replace('{count}', String(members.length))}
         </h3>
         <ul className="mt-3 grid gap-2">
           {members.map((member) => (
@@ -467,13 +468,11 @@ function GroupDetailCard({
                 }
               >
                 <IconUserMinus size={14} aria-hidden="true" />
-                除外
+                {t.removeMember}
               </Button>
             </li>
           ))}
-          {members.length === 0 ? (
-            <li className="text-xs text-slate-400">メンバーはいません。</li>
-          ) : null}
+          {members.length === 0 ? <li className="text-xs text-slate-400">{t.noMembers}</li> : null}
         </ul>
 
         <div className="mt-3 flex items-center gap-2">
@@ -482,9 +481,9 @@ function GroupDetailCard({
             onChange={(e) => setAddSub(e.target.value)}
             disabled={!!group.scim_source}
             className="h-9 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
-            aria-label="追加するユーザー"
+            aria-label={t.selectUserToAddAria}
           >
-            <option value="">ユーザーを選択…</option>
+            <option value="">{t.selectUserPlaceholder}</option>
             {addableUsers.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.preferred_username}
@@ -502,16 +501,14 @@ function GroupDetailCard({
             }
           >
             <IconUserPlus size={14} aria-hidden="true" />
-            追加
+            {t.add}
           </Button>
         </div>
 
         {group.scim_source && (
           <p className="mt-3 text-xs text-blue-700 flex items-center gap-1.5">
             <IconAlertTriangle size={14} />
-            <span>
-              このグループのメンバーは SCIM 同期により管理されているため、直接変更できません。
-            </span>
+            <span>{t.scimGroupManagedNotice}</span>
           </p>
         )}
       </section>
@@ -529,6 +526,7 @@ export function AdminGroupCreatePage({
   const listPath = tenantURL('/admin/groups')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminGroupsDictionary)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -547,11 +545,7 @@ export function AdminGroupCreatePage({
       })
       window.location.assign(tenantURL(`/admin/groups/${encodeURIComponent(created.id)}`))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'グループを作成できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.groupCreateFailedError)
       setBusy(false)
     }
   }
@@ -560,18 +554,18 @@ export function AdminGroupCreatePage({
     <AdminShell
       active="groups"
       actorUsername={actorUsername}
-      title="グループを追加"
-      description="新しいグループを作成します。"
+      title={t.addGroup}
+      description={t.addGroupDescription}
     >
       <div className="flex items-center gap-3">
         <a
           href={listPath}
           className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-          aria-label="グループ一覧に戻る"
+          aria-label={t.backToGroupListAria}
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">グループを追加</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.addGroup}</h1>
       </div>
 
       <div className="mt-6 max-w-2xl">
@@ -582,27 +576,25 @@ export function AdminGroupCreatePage({
 
               <div className="grid gap-1.5">
                 <Label htmlFor="group-name">
-                  グループ名 <span className="text-red-500">*</span>
+                  {t.groupNameLabel} <span className="text-red-500">*</span>
                 </Label>
                 <Input id="group-name" name="name" required placeholder="engineering" />
-                <p className="text-xs text-slate-500">テナント内で一意の表示名。</p>
+                <p className="text-xs text-slate-500">{t.groupNameHelp}</p>
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="group-description">説明 (任意)</Label>
+                <Label htmlFor="group-description">{t.descriptionOptionalLabel}</Label>
                 <Input
                   id="group-description"
                   name="description"
-                  placeholder="エンジニアリングチーム"
+                  placeholder={t.groupDescriptionPlaceholder}
                 />
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="group-roles">ロール</Label>
+                <Label htmlFor="group-roles">{t.rolesLabel}</Label>
                 <Input id="group-roles" name="roles" placeholder="catalog:read, invoice:read" />
-                <p className="text-xs text-slate-500">
-                  カンマ区切り。所属ユーザーに一斉付与されます。
-                </p>
+                <p className="text-xs text-slate-500">{t.rolesHelp}</p>
               </div>
             </div>
 
@@ -611,10 +603,10 @@ export function AdminGroupCreatePage({
                 href={listPath}
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
               >
-                キャンセル
+                {t.cancel}
               </a>
               <Button type="submit" disabled={busy}>
-                作成
+                {t.create}
               </Button>
             </div>
           </form>
@@ -639,6 +631,7 @@ export function AdminGroupEditPage({
   const [roles, setRoles] = useState(group.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(adminGroupsDictionary)
 
   const trimmedName = name.trim()
   const nextRoles = parseRoles(roles)
@@ -662,11 +655,7 @@ export function AdminGroupEditPage({
       })
       window.location.assign(detailPath)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'グループを更新できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.groupUpdateFailedError)
       setSaving(false)
     }
   }
@@ -675,18 +664,18 @@ export function AdminGroupEditPage({
     <AdminShell
       active="groups"
       actorUsername={actorUsername}
-      title="グループを編集"
-      description="グループ情報を更新します。"
+      title={t.editGroup}
+      description={t.editGroupDescription}
     >
       <div className="flex items-center gap-3">
         <a
           href={detailPath}
           className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-          aria-label="詳細に戻る"
+          aria-label={t.backToDetailAria}
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">グループを編集</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.editGroup}</h1>
       </div>
 
       <div className="mt-6 max-w-2xl">
@@ -700,10 +689,9 @@ export function AdminGroupEditPage({
                   <div className="flex gap-3">
                     <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
                     <div>
-                      <p className="text-sm font-semibold text-blue-950">SCIM 同期グループ</p>
+                      <p className="text-sm font-semibold text-blue-950">{t.scimSyncGroupTitle}</p>
                       <p className="mt-1 text-xs leading-5 text-blue-800">
-                        このグループは外部 IDP ({group.scim_source}) から自動同期されています。
-                        グループ名と説明は直接編集できません。
+                        {t.scimSyncGroupDescription.replace('{source}', group.scim_source)}
                       </p>
                     </div>
                   </div>
@@ -712,10 +700,10 @@ export function AdminGroupEditPage({
 
               <section className="grid gap-4">
                 <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-                  基本情報
+                  {t.basicInfoHeading}
                 </h3>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="group-editor-name">グループ名</Label>
+                  <Label htmlFor="group-editor-name">{t.groupNameLabel}</Label>
                   <Input
                     id="group-editor-name"
                     value={name}
@@ -727,7 +715,7 @@ export function AdminGroupEditPage({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="group-editor-description">説明</Label>
+                  <Label htmlFor="group-editor-description">{t.descriptionLabel}</Label>
                   <Input
                     id="group-editor-description"
                     value={description}
@@ -739,19 +727,17 @@ export function AdminGroupEditPage({
               </section>
               <section className="grid gap-3 border-t border-slate-200 pt-5">
                 <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-                  ロール
+                  {t.rolesLabel}
                 </h3>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="group-editor-roles">ロール</Label>
+                  <Label htmlFor="group-editor-roles">{t.rolesLabel}</Label>
                   <Input
                     id="group-editor-roles"
                     value={roles}
                     onChange={(e) => setRoles(e.target.value)}
                     placeholder="catalog:read, invoice:read"
                   />
-                  <p className="text-xs text-slate-500">
-                    カンマ区切り。所属ユーザーに一斉付与されます。
-                  </p>
+                  <p className="text-xs text-slate-500">{t.rolesHelp}</p>
                 </div>
               </section>
             </div>
@@ -761,10 +747,10 @@ export function AdminGroupEditPage({
                 href={detailPath}
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
               >
-                キャンセル
+                {t.cancel}
               </a>
               <Button type="submit" disabled={saving || nameInvalid || !changed}>
-                {saving ? '保存中…' : '保存'}
+                {saving ? t.saving : t.save}
               </Button>
             </div>
           </form>

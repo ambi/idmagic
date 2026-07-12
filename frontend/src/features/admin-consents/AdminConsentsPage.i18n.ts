@@ -1,0 +1,58 @@
+import { defineDictionary } from '../../lib/i18n'
+
+export const adminConsentsDictionary = defineDictionary(
+  {
+    genericActionError: '同意の操作を完了できませんでした。',
+    revokedNotice: '同意を取り消しました。',
+    pageTitle: '同意',
+    pageDescription:
+      'ユーザーがアプリケーションに与えた scope の付与状況。取り消しは即時に反映されます。',
+    filterPlaceholder: 'ユーザー / アプリ / scope で絞り込み',
+    reloadAriaLabel: '一覧を再読み込み',
+    listRefreshedNotice: '一覧を更新しました。',
+    tableHeaderUser: 'ユーザー',
+    tableHeaderApplication: 'アプリケーション',
+    tableHeaderStatus: '状態',
+    tableHeaderGranted: '付与',
+    noMatchingConsentsNotice: '一致する同意レコードはありません。',
+    revoke: '取消',
+    detailsHeading: '詳細',
+    scopesLabel: 'スコープ',
+    noneLabel: 'なし',
+    expiresLabel: '期限',
+    revokedLabel: '取消',
+    selectConsentPrompt: '同意レコードを選択してください。',
+    revokeConsentTitle: '同意を取り消す',
+    revokeConsentMessage:
+      '{user} の {client} への同意を取り消します。再認可するまでアクセストークンは発行されません。',
+    confirmRevoke: '取り消す',
+    cancel: 'キャンセル',
+  },
+  {
+    genericActionError: 'Could not complete the consent action.',
+    revokedNotice: 'The consent has been revoked.',
+    pageTitle: 'Consents',
+    pageDescription:
+      'The scope grant status users have given to applications. Revocation takes effect immediately.',
+    filterPlaceholder: 'Filter by user / app / scope',
+    reloadAriaLabel: 'Reload the list',
+    listRefreshedNotice: 'The list has been refreshed.',
+    tableHeaderUser: 'User',
+    tableHeaderApplication: 'Application',
+    tableHeaderStatus: 'Status',
+    tableHeaderGranted: 'Granted',
+    noMatchingConsentsNotice: 'No matching consent records.',
+    revoke: 'Revoke',
+    detailsHeading: 'Details',
+    scopesLabel: 'Scopes',
+    noneLabel: 'None',
+    expiresLabel: 'Expires',
+    revokedLabel: 'Revoked',
+    selectConsentPrompt: 'Select a consent record.',
+    revokeConsentTitle: 'Revoke consent',
+    revokeConsentMessage:
+      "This revokes {user}'s consent to {client}. No access tokens will be issued until re-authorized.",
+    confirmRevoke: 'Revoke',
+    cancel: 'Cancel',
+  },
+)

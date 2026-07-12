@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { displayNameError, passwordPolicyOverride } from './AdminSettingsPage'
+
+const t = adminSettingsDictionary.en
 
 describe('admin settings presentation helpers', () => {
   it('rejects a blank display name and trims policy input presence', () => {
-    expect(displayNameError('  ')).toBe('表示名を入力してください。')
-    expect(displayNameError('Acme')).toBeNull()
+    expect(displayNameError('  ', t)).toBe(t.displayNameRequiredError)
+    expect(displayNameError('Acme', t)).toBeNull()
     expect(passwordPolicyOverride(' 12 ', '', '3')).toEqual({ min_length: 12, history_depth: 3 })
   })
 })

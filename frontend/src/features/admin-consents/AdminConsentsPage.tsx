@@ -7,7 +7,9 @@ import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminConsent } from '../../types'
+import { adminConsentsDictionary } from './AdminConsentsPage.i18n'
 
 export function filterAdminConsents(consents: AdminConsent[], query: string): AdminConsent[] {
   const needle = query.trim().toLowerCase()
@@ -40,6 +42,8 @@ export function AdminConsentsPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [confirmTarget, setConfirmTarget] = useState<AdminConsent | null>(null)
+  const t = useDictionary(adminConsentsDictionary)
+  const { locale } = useLocale()
 
   const filtered = useMemo(() => filterAdminConsents(consents, query), [consents, query])
 
@@ -60,11 +64,7 @@ export function AdminConsentsPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '同意の操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -74,7 +74,7 @@ export function AdminConsentsPage({
     await run(async () => {
       await revokeAdminConsent(csrfToken, target.user_id, target.client_id)
       await refresh(target)
-    }, '同意を取り消しました。')
+    }, t.revokedNotice)
     setConfirmTarget(null)
   }
 
@@ -82,15 +82,15 @@ export function AdminConsentsPage({
     <AdminShell
       active="consents"
       actorUsername={actorUsername}
-      title="同意"
-      description="ユーザーがアプリケーションに与えた scope の付与状況。取り消しは即時に反映されます。"
+      title={t.pageTitle}
+      description={t.pageDescription}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <Card className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
         <Input
-          placeholder="ユーザー / アプリ / scope で絞り込み"
+          placeholder={t.filterPlaceholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-md"
@@ -98,9 +98,9 @@ export function AdminConsentsPage({
         <Button
           variant="outline"
           className="size-9 shrink-0 px-0"
-          aria-label="一覧を再読み込み"
+          aria-label={t.reloadAriaLabel}
           disabled={busy}
-          onClick={() => run(() => refresh(selected ?? undefined), '一覧を更新しました。')}
+          onClick={() => run(() => refresh(selected ?? undefined), t.listRefreshedNotice)}
         >
           <IconRefresh size={16} aria-hidden="true" />
         </Button>
@@ -111,10 +111,10 @@ export function AdminConsentsPage({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">ユーザー</th>
-                <th className="px-4 py-3">アプリケーション</th>
-                <th className="px-4 py-3">状態</th>
-                <th className="px-4 py-3">付与</th>
+                <th className="px-4 py-3">{t.tableHeaderUser}</th>
+                <th className="px-4 py-3">{t.tableHeaderApplication}</th>
+                <th className="px-4 py-3">{t.tableHeaderStatus}</th>
+                <th className="px-4 py-3">{t.tableHeaderGranted}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -122,7 +122,7 @@ export function AdminConsentsPage({
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-12 text-center text-sm text-slate-500">
-                    一致する同意レコードはありません。
+                    {t.noMatchingConsentsNotice}
                   </td>
                 </tr>
               ) : null}
@@ -146,7 +146,7 @@ export function AdminConsentsPage({
                     <ConsentStateBadge state={c.state} />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {formatConsentDate(c.granted_at)}
+                    {formatConsentDate(c.granted_at, locale)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {c.state === 'granted' ? (
@@ -160,7 +160,7 @@ export function AdminConsentsPage({
                         }}
                       >
                         <IconBan size={16} aria-hidden="true" />
-                        取消
+                        {t.revoke}
                       </Button>
                     ) : null}
                   </td>
@@ -171,24 +171,24 @@ export function AdminConsentsPage({
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-sm font-semibold text-slate-700">詳細</h2>
+          <h2 className="text-sm font-semibold text-slate-700">{t.detailsHeading}</h2>
           {selected ? (
             <dl className="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-y-3 text-sm">
-              <dt className="text-slate-500">ユーザー</dt>
+              <dt className="text-slate-500">{t.tableHeaderUser}</dt>
               <dd>
                 <NameWithId
                   name={selected.preferred_username ?? selected.user_id}
                   id={selected.user_id}
                 />
               </dd>
-              <dt className="text-slate-500">アプリケーション</dt>
+              <dt className="text-slate-500">{t.tableHeaderApplication}</dt>
               <dd>
                 <NameWithId name={selected.client_name} id={selected.client_id} />
               </dd>
-              <dt className="text-slate-500">スコープ</dt>
+              <dt className="text-slate-500">{t.scopesLabel}</dt>
               <dd className="flex flex-wrap gap-1">
                 {selected.scopes.length === 0 ? (
-                  <span className="text-slate-400">なし</span>
+                  <span className="text-slate-400">{t.noneLabel}</span>
                 ) : (
                   selected.scopes.map((scope) => (
                     <span
@@ -200,32 +200,34 @@ export function AdminConsentsPage({
                   ))
                 )}
               </dd>
-              <dt className="text-slate-500">状態</dt>
+              <dt className="text-slate-500">{t.tableHeaderStatus}</dt>
               <dd>
                 <ConsentStateBadge state={selected.state} />
               </dd>
-              <dt className="text-slate-500">付与</dt>
-              <dd>{formatConsentDate(selected.granted_at)}</dd>
-              <dt className="text-slate-500">期限</dt>
-              <dd>{formatConsentDate(selected.expires_at)}</dd>
+              <dt className="text-slate-500">{t.tableHeaderGranted}</dt>
+              <dd>{formatConsentDate(selected.granted_at, locale)}</dd>
+              <dt className="text-slate-500">{t.expiresLabel}</dt>
+              <dd>{formatConsentDate(selected.expires_at, locale)}</dd>
               {selected.revoked_at ? (
                 <>
-                  <dt className="text-slate-500">取消</dt>
-                  <dd>{formatConsentDate(selected.revoked_at)}</dd>
+                  <dt className="text-slate-500">{t.revokedLabel}</dt>
+                  <dd>{formatConsentDate(selected.revoked_at, locale)}</dd>
                 </>
               ) : null}
             </dl>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">同意レコードを選択してください。</p>
+            <p className="mt-4 text-sm text-slate-500">{t.selectConsentPrompt}</p>
           )}
         </Card>
       </div>
 
       {confirmTarget ? (
         <ConfirmDialog
-          title="同意を取り消す"
-          message={`${confirmTarget.preferred_username ?? confirmTarget.user_id} の ${confirmTarget.client_name} への同意を取り消します。再認可するまでアクセストークンは発行されません。`}
-          confirmLabel="取り消す"
+          title={t.revokeConsentTitle}
+          message={t.revokeConsentMessage
+            .replace('{user}', confirmTarget.preferred_username ?? confirmTarget.user_id)
+            .replace('{client}', confirmTarget.client_name)}
+          confirmLabel={t.confirmRevoke}
           onCancel={() => setConfirmTarget(null)}
           onConfirm={() => handleRevoke(confirmTarget)}
           busy={busy}
@@ -265,10 +267,10 @@ export function ConsentStateBadge({ state }: { state: AdminConsent['state'] }) {
   )
 }
 
-export function formatConsentDate(value?: string): string {
+export function formatConsentDate(value?: string, locale: 'ja' | 'en' = 'en'): string {
   if (!value) return '—'
   try {
-    return new Date(value).toLocaleString()
+    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
   } catch {
     return value
   }
@@ -289,6 +291,7 @@ function ConfirmDialog({
   onConfirm: () => void
   busy: boolean
 }) {
+  const t = useDictionary(adminConsentsDictionary)
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
       <Card className="w-full max-w-md p-6">
@@ -296,7 +299,7 @@ function ConfirmDialog({
         <p className="mt-3 text-sm text-slate-600">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel} disabled={busy}>
-            キャンセル
+            {t.cancel}
           </Button>
           <Button onClick={onConfirm} disabled={busy} className="bg-rose-600 hover:bg-rose-700">
             {confirmLabel}

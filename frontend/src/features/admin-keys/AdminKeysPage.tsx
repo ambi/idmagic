@@ -11,7 +11,9 @@ import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminKey } from '../../types'
+import { adminKeysDictionary } from './AdminKeysPage.i18n'
 
 export function AdminKeysPage({
   csrfToken,
@@ -34,6 +36,7 @@ export function AdminKeysPage({
   const [notice, setNotice] = useState('')
   const [confirm, setConfirm] = useState(false)
   const [disableTarget, setDisableTarget] = useState<AdminKey | null>(null)
+  const t = useDictionary(adminKeysDictionary)
 
   // per-tenant 鍵になったため、自テナントの管理者 (admin / system_admin) は
   // 自テナントの鍵をローテート / 無効化できる。全テナント横断の状態確認は
@@ -55,11 +58,7 @@ export function AdminKeysPage({
       await action()
       setNotice(success)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '署名鍵の操作を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
     }
@@ -69,17 +68,20 @@ export function AdminKeysPage({
     await run(async () => {
       const result = await rotateTenantSigningKey(csrfToken)
       await refresh(result.next.kid)
-    }, '新しい署名鍵に切り替えました。旧鍵は JWKS の verifying に残ります。')
+    }, t.rotatedNotice)
     setConfirm(false)
   }
 
   async function handleDisable() {
     const target = disableTarget
     if (!target) return
-    await run(async () => {
-      await disableTenantKey(csrfToken, target.kid)
-      await refresh()
-    }, `鍵 ${target.kid} を無効化しました。JWKS から除外されます。`)
+    await run(
+      async () => {
+        await disableTenantKey(csrfToken, target.kid)
+        await refresh()
+      },
+      t.disabledNotice.replace('{kid}', target.kid),
+    )
     setDisableTarget(null)
   }
 
@@ -87,15 +89,15 @@ export function AdminKeysPage({
     <AdminShell
       active="keys"
       actorUsername={actorUsername}
-      title="署名鍵 (Signing Keys)"
-      description="ID Token / Access Token の署名に使う JWKS の鍵集合。鍵はテナントごとに分離され、KeyProvider (Local / Postgres / VaultTransit) が実体を保持する。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <>
           <Button
             variant="outline"
             className="size-9 px-0"
-            aria-label="一覧を再読み込み"
-            onClick={() => run(() => refresh(selected?.kid), '一覧を更新しました。')}
+            aria-label={t.reloadAriaLabel}
+            onClick={() => run(() => refresh(selected?.kid), t.listRefreshedNotice)}
             disabled={busy}
           >
             <IconRefresh size={16} aria-hidden="true" />
@@ -103,7 +105,7 @@ export function AdminKeysPage({
           {canManage ? (
             <Button onClick={() => setConfirm(true)} disabled={busy}>
               <IconRotateClockwise size={16} aria-hidden="true" />
-              ローテート
+              {t.rotate}
             </Button>
           ) : null}
         </>
@@ -127,17 +129,14 @@ export function AdminKeysPage({
       {confirm ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
           <Card className="w-full max-w-md p-6">
-            <h2 className="text-base font-semibold text-slate-900">署名鍵をローテートします</h2>
-            <p className="mt-3 text-sm text-slate-600">
-              新しい active 鍵が生成され、旧 active 鍵は JWKS に verifying として残ります。 JWKS
-              キャッシュが更新されるまで一時的な検証遅延が起きる可能性があります。
-            </p>
+            <h2 className="text-base font-semibold text-slate-900">{t.rotateConfirmTitle}</h2>
+            <p className="mt-3 text-sm text-slate-600">{t.rotateConfirmMessage}</p>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setConfirm(false)} disabled={busy}>
-                キャンセル
+                {t.cancel}
               </Button>
               <Button onClick={handleRotate} disabled={busy}>
-                ローテート実行
+                {t.executeRotate}
               </Button>
             </div>
           </Card>
@@ -147,17 +146,18 @@ export function AdminKeysPage({
       {disableTarget ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
           <Card className="w-full max-w-md p-6">
-            <h2 className="text-base font-semibold text-slate-900">署名鍵を無効化します</h2>
+            <h2 className="text-base font-semibold text-slate-900">{t.disableConfirmTitle}</h2>
             <p className="mt-3 text-sm text-slate-600">
-              鍵 <span className="font-mono text-xs">{disableTarget.kid}</span> を JWKS
-              から除外します。この鍵で署名された既存トークンは検証できなくなります。鍵漏洩など緊急時のみ使用してください。
+              {t.disableConfirmMessagePrefix}{' '}
+              <span className="font-mono text-xs">{disableTarget.kid}</span>{' '}
+              {t.disableConfirmMessageSuffix}
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDisableTarget(null)} disabled={busy}>
-                キャンセル
+                {t.cancel}
               </Button>
               <Button variant="destructive" onClick={handleDisable} disabled={busy}>
-                無効化実行
+                {t.executeDisable}
               </Button>
             </div>
           </Card>
@@ -182,17 +182,19 @@ export function SigningKeyTable({
   onSelect: (key: AdminKey) => void
   onDisable: (key: AdminKey) => void
 }) {
+  const t = useDictionary(adminKeysDictionary)
+  const { locale } = useLocale()
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th className="px-4 py-3">Kid</th>
-            <th className="px-4 py-3">Provider</th>
-            <th className="px-4 py-3">Alg</th>
-            <th className="px-4 py-3">状態</th>
-            <th className="px-4 py-3">生成</th>
-            {canManage ? <th className="px-4 py-3 text-right">操作</th> : null}
+            <th className="px-4 py-3">{t.tableHeaderKid}</th>
+            <th className="px-4 py-3">{t.tableHeaderProvider}</th>
+            <th className="px-4 py-3">{t.tableHeaderAlg}</th>
+            <th className="px-4 py-3">{t.tableHeaderStatus}</th>
+            <th className="px-4 py-3">{t.tableHeaderCreatedAt}</th>
+            {canManage ? <th className="px-4 py-3 text-right">{t.tableHeaderActions}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -213,16 +215,18 @@ export function SigningKeyTable({
                       : 'rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600'
                   }
                 >
-                  {key.active ? 'active' : 'verifying'}
+                  {key.active ? t.statusActive : t.statusVerifying}
                 </span>
               </td>
-              <td className="px-4 py-3 text-xs text-slate-500">{formatDate(key.created_at)}</td>
+              <td className="px-4 py-3 text-xs text-slate-500">
+                {formatDate(key.created_at, locale)}
+              </td>
               {canManage ? (
                 <td className="px-4 py-3 text-right">
                   <Button
                     variant="outline"
                     className="h-8 px-2 text-xs text-red-600"
-                    aria-label={`鍵 ${key.kid} を無効化`}
+                    aria-label={t.disableKeyAria.replace('{kid}', key.kid)}
                     onClick={(event) => {
                       event.stopPropagation()
                       onDisable(key)
@@ -230,7 +234,7 @@ export function SigningKeyTable({
                     disabled={busy}
                   >
                     <IconTrash size={14} aria-hidden="true" />
-                    無効化
+                    {t.disable}
                   </Button>
                 </td>
               ) : null}
@@ -243,40 +247,42 @@ export function SigningKeyTable({
 }
 
 export function SigningKeyDetail({ keyItem }: { keyItem: AdminKey | null }) {
+  const t = useDictionary(adminKeysDictionary)
+  const { locale } = useLocale()
   return (
     <Card className="p-5">
       <div className="flex items-center gap-2">
         <IconKey size={16} aria-hidden="true" className="text-slate-500" />
-        <h2 className="text-sm font-semibold text-slate-700">公開鍵 JWK</h2>
+        <h2 className="text-sm font-semibold text-slate-700">{t.publicJwkHeading}</h2>
       </div>
       {keyItem ? (
         <>
           <dl className="mt-4 grid grid-cols-[80px_minmax(0,1fr)] gap-y-2 text-xs">
-            <dt className="text-slate-500">Kid</dt>
+            <dt className="text-slate-500">{t.tableHeaderKid}</dt>
             <dd className="break-all font-mono">{keyItem.kid}</dd>
-            <dt className="text-slate-500">Provider</dt>
+            <dt className="text-slate-500">{t.tableHeaderProvider}</dt>
             <dd>{keyItem.provider}</dd>
-            <dt className="text-slate-500">Alg</dt>
+            <dt className="text-slate-500">{t.tableHeaderAlg}</dt>
             <dd>{keyItem.alg}</dd>
-            <dt className="text-slate-500">状態</dt>
-            <dd>{keyItem.active ? 'yes' : 'no'}</dd>
-            <dt className="text-slate-500">生成</dt>
-            <dd>{formatDate(keyItem.created_at)}</dd>
+            <dt className="text-slate-500">{t.activeFieldLabel}</dt>
+            <dd>{keyItem.active ? t.activeYes : t.activeNo}</dd>
+            <dt className="text-slate-500">{t.tableHeaderCreatedAt}</dt>
+            <dd>{formatDate(keyItem.created_at, locale)}</dd>
           </dl>
           <pre className="mt-4 max-h-[360px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50">
             {JSON.stringify(keyItem.public_jwk, null, 2)}
           </pre>
         </>
       ) : (
-        <p className="mt-4 text-sm text-slate-500">署名鍵がありません。</p>
+        <p className="mt-4 text-sm text-slate-500">{t.noSigningKeysNotice}</p>
       )}
     </Card>
   )
 }
 
-export function formatDate(value: string): string {
+export function formatDate(value: string, locale: 'ja' | 'en' = 'en'): string {
   try {
-    return new Date(value).toLocaleString()
+    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
   } catch {
     return value
   }

@@ -5,7 +5,9 @@ import { SystemShell } from '../../components/SystemShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useDictionary } from '../../lib/i18n'
 import type { TenantKeyHealth } from '../../types'
+import { systemKeyHealthDictionary } from './SystemKeyHealthPage.i18n'
 
 export function SystemKeyHealthPage({
   actorUsername,
@@ -17,6 +19,7 @@ export function SystemKeyHealthPage({
   const [tenants, setTenants] = useState(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const t = useDictionary(systemKeyHealthDictionary)
 
   async function refresh() {
     setBusy(true)
@@ -24,11 +27,7 @@ export function SystemKeyHealthPage({
     try {
       setTenants(await listTenantKeyHealth())
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'テナント別の署名鍵の状態を取得できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.fetchFailedError)
     } finally {
       setBusy(false)
     }
@@ -38,13 +37,13 @@ export function SystemKeyHealthPage({
     <SystemShell
       active="key-health"
       actorUsername={actorUsername}
-      title="署名鍵の状態（全テナント）"
-      description="全テナントの署名鍵プロバイダ（Local / Postgres / VaultTransit）の稼働状況と active kid を横断で確認します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <Button
           variant="outline"
           className="size-9 px-0"
-          aria-label="一覧を再読み込み"
+          aria-label={t.reloadAriaLabel}
           onClick={refresh}
           disabled={busy}
         >
@@ -60,16 +59,17 @@ export function SystemKeyHealthPage({
 }
 
 export function KeyHealthTable({ tenants }: { tenants: TenantKeyHealth[] }) {
+  const t = useDictionary(systemKeyHealthDictionary)
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th className="px-4 py-3">テナント</th>
-            <th className="px-4 py-3">プロバイダ</th>
-            <th className="px-4 py-3">Active kid</th>
-            <th className="px-4 py-3">JWKS 鍵数</th>
-            <th className="px-4 py-3">プロバイダ状態</th>
+            <th className="px-4 py-3">{t.tableHeaderTenant}</th>
+            <th className="px-4 py-3">{t.tableHeaderProvider}</th>
+            <th className="px-4 py-3">{t.tableHeaderActiveKid}</th>
+            <th className="px-4 py-3">{t.tableHeaderKeyCount}</th>
+            <th className="px-4 py-3">{t.tableHeaderProviderStatus}</th>
           </tr>
         </thead>
         <tbody>
@@ -83,11 +83,11 @@ export function KeyHealthTable({ tenants }: { tenants: TenantKeyHealth[] }) {
                 {tenant.provider_healthy ? (
                   <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                     <IconShieldCheck size={13} aria-hidden="true" />
-                    正常
+                    {t.healthy}
                   </span>
                 ) : (
                   <span className="rounded-md bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-                    接続不可
+                    {t.unreachable}
                   </span>
                 )}
               </td>
@@ -96,7 +96,7 @@ export function KeyHealthTable({ tenants }: { tenants: TenantKeyHealth[] }) {
           {tenants.length === 0 ? (
             <tr>
               <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
-                テナントがありません。
+                {t.noTenantsNotice}
               </td>
             </tr>
           ) : null}

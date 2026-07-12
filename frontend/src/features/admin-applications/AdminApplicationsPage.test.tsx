@@ -6,7 +6,10 @@ import {
   AdminApplicationDetailPage,
   AdminApplicationEditPage,
 } from './AdminApplicationsPage'
+import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import type { AdminApplication, AdminApplicationDetail } from '../../types'
+
+const t = adminApplicationsDictionary.en
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -31,6 +34,37 @@ const app: AdminApplication = {
 
 const detail: AdminApplicationDetail = { application: app }
 
+describe('locale', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('renders the application list in English by default', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(response(200, { applications: [] }))),
+    )
+    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[]} />)
+    expect(
+      screen.getByRole('heading', { name: adminApplicationsDictionary.en.pageTitle }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(adminApplicationsDictionary.en.selectApplicationPrompt),
+    ).toBeInTheDocument()
+  })
+
+  it('renders the application list in Japanese when explicitly selected', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(response(200, { applications: [] }))),
+    )
+    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[]} />, {
+      locale: 'ja',
+    })
+    expect(
+      screen.getByRole('heading', { name: adminApplicationsDictionary.ja.pageTitle }),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('AdminApplicationsPage', () => {
   const originalLocation = window.location
   afterEach(() => vi.unstubAllGlobals())
@@ -50,11 +84,11 @@ describe('AdminApplicationsPage', () => {
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アプリケーションを削除' }))
-    fireEvent.click(screen.getByRole('button', { name: '削除を確定' }))
+    fireEvent.click(screen.getByRole('button', { name: t.deleteApplication }))
+    fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
 
-    expect(await screen.findByText('アプリケーションを削除しました。')).toBeInTheDocument()
-    expect(screen.getByText('アプリケーションを選択してください。')).toBeInTheDocument()
+    expect(await screen.findByText(t.applicationDeletedNotice)).toBeInTheDocument()
+    expect(screen.getByText(t.selectApplicationPrompt)).toBeInTheDocument()
   })
 
   it('shows an error when deleting an application fails', async () => {
@@ -62,19 +96,17 @@ describe('AdminApplicationsPage', () => {
       'fetch',
       vi.fn((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/applications') && init?.method === 'DELETE') {
-          return Promise.resolve(
-            response(409, { message: 'アプリケーションを削除できませんでした。' }),
-          )
+          return Promise.resolve(response(409, { message: 'Could not delete the application.' }))
         }
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アプリケーションを削除' }))
-    fireEvent.click(screen.getByRole('button', { name: '削除を確定' }))
+    fireEvent.click(screen.getByRole('button', { name: t.deleteApplication }))
+    fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
 
-    expect(await screen.findByText('アプリケーションを削除できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not delete the application.')).toBeInTheDocument()
   })
 
   it('creates an OIDC application and redirects to its detail page', async () => {
@@ -96,14 +128,16 @@ describe('AdminApplicationsPage', () => {
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アプリケーションを追加' }))
-    fireEvent.change(await screen.findByLabelText('名前'), { target: { value: 'New App' } })
-    fireEvent.change(screen.getByLabelText('リダイレクト URI'), {
+    fireEvent.click(screen.getByRole('button', { name: t.addApplication }))
+    fireEvent.change(await screen.findByLabelText(t.nameFieldLabel), {
+      target: { value: 'New App' },
+    })
+    fireEvent.change(screen.getByLabelText(t.redirectUriFieldLabel), {
       target: { value: 'https://app.example.com/callback' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '作成' }))
+    fireEvent.click(screen.getByRole('button', { name: t.create }))
 
-    fireEvent.click(await screen.findByRole('button', { name: '保管しました' }))
+    fireEvent.click(await screen.findByRole('button', { name: t.storedConfirm }))
 
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith('/admin/applications/app-2'),
@@ -113,20 +147,20 @@ describe('AdminApplicationsPage', () => {
   it('shows an error and keeps the dialog open when creation fails', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(response(409, { message: 'アプリケーションを作成できませんでした。' })),
-      ),
+      vi.fn(() => Promise.resolve(response(409, { message: 'Could not create the application.' }))),
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'アプリケーションを追加' }))
-    fireEvent.change(await screen.findByLabelText('名前'), { target: { value: 'New App' } })
-    fireEvent.change(screen.getByLabelText('リダイレクト URI'), {
+    fireEvent.click(screen.getByRole('button', { name: t.addApplication }))
+    fireEvent.change(await screen.findByLabelText(t.nameFieldLabel), {
+      target: { value: 'New App' },
+    })
+    fireEvent.change(screen.getByLabelText(t.redirectUriFieldLabel), {
       target: { value: 'https://app.example.com/callback' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '作成' }))
+    fireEvent.click(screen.getByRole('button', { name: t.create }))
 
-    expect(await screen.findByText('アプリケーションを作成できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not create the application.')).toBeInTheDocument()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })
@@ -137,16 +171,14 @@ describe('AdminApplicationDetailPage', () => {
   it('shows an error and keeps the confirmation open when deletion fails', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(response(409, { message: 'アプリケーションを削除できませんでした。' })),
-      ),
+      vi.fn(() => Promise.resolve(response(409, { message: 'Could not delete the application.' }))),
     )
     await renderWithRouter(<AdminApplicationDetailPage csrfToken="csrf" detail={detail} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '削除' }))
-    fireEvent.click(screen.getByRole('button', { name: '削除を確定' }))
+    fireEvent.click(screen.getByRole('button', { name: t.delete }))
+    fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
 
-    expect(await screen.findByText('アプリケーションを削除できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not delete the application.')).toBeInTheDocument()
   })
 })
 
@@ -158,14 +190,14 @@ describe('AdminApplicationEditPage', () => {
     vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: '名前を更新できませんでした。' }))),
+      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
     )
     await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={detail} />)
 
-    fireEvent.change(screen.getByLabelText('名前'), { target: { value: 'Renamed App' } })
-    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+    fireEvent.change(screen.getByLabelText(t.nameFieldLabel), { target: { value: 'Renamed App' } })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
 
-    expect(await screen.findByText('名前を更新できませんでした。')).toBeInTheDocument()
+    expect(await screen.findByText('Could not update the name.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 })

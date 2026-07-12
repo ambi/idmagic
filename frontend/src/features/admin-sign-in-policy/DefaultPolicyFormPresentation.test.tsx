@@ -1,7 +1,15 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { LocaleProvider } from '../../lib/i18n'
 import { DefaultPolicyFormPresentation } from './AdminSignInPolicyPage'
+import { adminSignInPolicyDictionary } from './AdminSignInPolicyPage.i18n'
 import type { SignInRule } from '../../types'
+
+const t = adminSignInPolicyDictionary.en
+
+function renderEn(ui: Parameters<typeof render>[0]) {
+  return render(<LocaleProvider initialLocale="en">{ui}</LocaleProvider>)
+}
 
 describe('DefaultPolicyFormPresentation', () => {
   const mockRule: SignInRule = {
@@ -19,7 +27,7 @@ describe('DefaultPolicyFormPresentation', () => {
     const handleCancel = vi.fn()
     const handleSubmit = vi.fn()
 
-    render(
+    renderEn(
       <DefaultPolicyFormPresentation
         rule={mockRule}
         onCancel={handleCancel}
@@ -28,15 +36,12 @@ describe('DefaultPolicyFormPresentation', () => {
       />,
     )
 
-    // 要求する認証強度 (Selectの表示テキスト)
-    expect(screen.getByText('MFA 必須')).toBeInTheDocument()
+    expect(screen.getByText(t.strengthMfaLabel)).toBeInTheDocument()
 
-    // 再認証時間
-    const reauthInput = screen.getByLabelText('再認証を求めるまでの時間（秒）')
+    const reauthInput = screen.getByLabelText(t.reauthSecondsFieldLabel)
     expect(reauthInput).toHaveValue(3600)
 
-    // 許可するネットワーク
-    const cidrsTextarea = screen.getByLabelText('許可するネットワーク (CIDR)')
+    const cidrsTextarea = screen.getByLabelText(t.allowedNetworksCidrFieldLabel)
     expect(cidrsTextarea).toHaveValue('192.168.1.0/24')
   })
 
@@ -44,7 +49,7 @@ describe('DefaultPolicyFormPresentation', () => {
     const handleCancel = vi.fn()
     const handleSubmit = vi.fn().mockResolvedValue(undefined)
 
-    render(
+    renderEn(
       <DefaultPolicyFormPresentation
         rule={mockRule}
         onCancel={handleCancel}
@@ -53,13 +58,13 @@ describe('DefaultPolicyFormPresentation', () => {
       />,
     )
 
-    const reauthInput = screen.getByLabelText('再認証を求めるまでの時間（秒）')
+    const reauthInput = screen.getByLabelText(t.reauthSecondsFieldLabel)
     fireEvent.change(reauthInput, { target: { value: '1800' } })
 
-    const cidrsTextarea = screen.getByLabelText('許可するネットワーク (CIDR)')
+    const cidrsTextarea = screen.getByLabelText(t.allowedNetworksCidrFieldLabel)
     fireEvent.change(cidrsTextarea, { target: { value: '10.0.0.0/8\n172.16.0.0/12' } })
 
-    const saveButton = screen.getByRole('button', { name: '保存' })
+    const saveButton = screen.getByRole('button', { name: t.save })
     const form = saveButton.closest('form')
     expect(form).not.toBeNull()
     if (form) {
@@ -85,7 +90,7 @@ describe('DefaultPolicyFormPresentation', () => {
     const handleCancel = vi.fn()
     const handleSubmit = vi.fn()
 
-    render(
+    renderEn(
       <DefaultPolicyFormPresentation
         rule={mockRule}
         onCancel={handleCancel}
@@ -94,10 +99,10 @@ describe('DefaultPolicyFormPresentation', () => {
       />,
     )
 
-    const reauthInput = screen.getByLabelText('再認証を求めるまでの時間（秒）')
-    fireEvent.change(reauthInput, { target: { value: '0' } }) // 1 未満は不正
+    const reauthInput = screen.getByLabelText(t.reauthSecondsFieldLabel)
+    fireEvent.change(reauthInput, { target: { value: '0' } })
 
-    const saveButton = screen.getByRole('button', { name: '保存' })
+    const saveButton = screen.getByRole('button', { name: t.save })
     const form = saveButton.closest('form')
     expect(form).not.toBeNull()
     if (form) {
@@ -106,7 +111,7 @@ describe('DefaultPolicyFormPresentation', () => {
 
     expect(handleSubmit).not.toHaveBeenCalled()
     expect(
-      screen.getByText('再認証を求めるまでの時間には 1 以上の秒数を入力してください。'),
+      screen.getByText('Enter a number of seconds of 1 or more for the re-authentication time.'),
     ).toBeInTheDocument()
   })
 
@@ -114,7 +119,7 @@ describe('DefaultPolicyFormPresentation', () => {
     const handleCancel = vi.fn()
     const handleSubmit = vi.fn()
 
-    render(
+    renderEn(
       <DefaultPolicyFormPresentation
         rule={mockRule}
         onCancel={handleCancel}
@@ -123,7 +128,7 @@ describe('DefaultPolicyFormPresentation', () => {
       />,
     )
 
-    const cancelButton = screen.getByRole('button', { name: 'キャンセル' })
+    const cancelButton = screen.getByRole('button', { name: t.cancel })
     fireEvent.click(cancelButton)
 
     expect(handleCancel).toHaveBeenCalledTimes(1)
@@ -133,24 +138,24 @@ describe('DefaultPolicyFormPresentation', () => {
     const handleCancel = vi.fn()
     const handleSubmit = vi.fn()
 
-    render(
+    renderEn(
       <DefaultPolicyFormPresentation
         rule={mockRule}
         onCancel={handleCancel}
         onSubmit={handleSubmit}
         saving={false}
-        error="API エラーが発生しました"
+        error="An API error occurred"
       />,
     )
 
-    expect(screen.getByText('API エラーが発生しました')).toBeInTheDocument()
+    expect(screen.getByText('An API error occurred')).toBeInTheDocument()
   })
 
   it('disables save button and shows loading state when saving is true', () => {
     const handleCancel = vi.fn()
     const handleSubmit = vi.fn()
 
-    render(
+    renderEn(
       <DefaultPolicyFormPresentation
         rule={mockRule}
         onCancel={handleCancel}
@@ -159,10 +164,10 @@ describe('DefaultPolicyFormPresentation', () => {
       />,
     )
 
-    const saveButton = screen.getByRole('button', { name: '保存中…' })
+    const saveButton = screen.getByRole('button', { name: t.saving })
     expect(saveButton).toBeDisabled()
 
-    const cancelButton = screen.getByRole('button', { name: 'キャンセル' })
+    const cancelButton = screen.getByRole('button', { name: t.cancel })
     expect(cancelButton).toBeDisabled()
   })
 })

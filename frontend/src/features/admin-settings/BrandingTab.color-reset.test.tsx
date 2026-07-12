@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { LocaleProvider } from '../../lib/i18n'
 import { BrandingTab } from './BrandingTab'
+import { brandingTabDictionary } from './BrandingTab.i18n'
+
+const t = brandingTabDictionary.en
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -23,16 +27,20 @@ describe('BrandingTab color reset', () => {
       .mockResolvedValueOnce(response(200, {}))
     vi.stubGlobal('fetch', fetch)
 
-    render(<BrandingTab csrfToken="csrf-token" />)
+    render(
+      <LocaleProvider initialLocale="en">
+        <BrandingTab csrfToken="csrf-token" />
+      </LocaleProvider>,
+    )
 
-    expect(await screen.findByText('現在値: #123456')).toBeInTheDocument()
-    expect(screen.getByText('現在値: #abcdef')).toBeInTheDocument()
+    expect(await screen.findByText(`${t.currentValuePrefix}#123456`)).toBeInTheDocument()
+    expect(screen.getByText(`${t.currentValuePrefix}#abcdef`)).toBeInTheDocument()
 
-    fireEvent.click(screen.getAllByRole('button', { name: '既定に戻す' })[0])
-    fireEvent.click(screen.getAllByRole('button', { name: '既定に戻す' })[1])
-    expect(screen.getAllByText('未設定（IdMagic の既定色を使用）')).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button', { name: t.resetToDefault })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: t.resetToDefault })[1])
+    expect(screen.getAllByText(t.colorUnsetNotice)).toHaveLength(2)
 
-    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
     expect(fetch.mock.calls[1]).toEqual([
@@ -49,6 +57,6 @@ describe('BrandingTab color reset', () => {
         }),
       }),
     ])
-    expect(screen.getAllByText('未設定（IdMagic の既定色を使用）')).toHaveLength(2)
+    expect(screen.getAllByText(t.colorUnsetNotice)).toHaveLength(2)
   })
 })

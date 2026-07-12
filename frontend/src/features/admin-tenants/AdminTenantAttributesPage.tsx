@@ -8,12 +8,17 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
 import type {
   AttributeType,
   AttrVisibility,
   UserAttributeDef,
   TenantUserAttributeSchema,
 } from '../../types'
+import {
+  adminTenantAttributesDictionary,
+  type AdminTenantAttributesDictionary,
+} from './AdminTenantAttributesPage.i18n'
 
 const ATTRIBUTE_TYPES: AttributeType[] = ['string', 'number', 'boolean', 'date', 'string_array']
 const VISIBILITIES: AttrVisibility[] = [
@@ -23,11 +28,13 @@ const VISIBILITIES: AttrVisibility[] = [
   'claim_exposed',
 ]
 
-const VISIBILITY_LABEL: Record<AttrVisibility, string> = {
-  private: '非公開',
-  self_readable: '本人のみ参照',
-  admin_readable: '管理者のみ参照',
-  claim_exposed: 'claim として開示',
+function visibilityLabel(visibility: AttrVisibility, t: AdminTenantAttributesDictionary): string {
+  return {
+    private: t.visibilityPrivate,
+    self_readable: t.visibilitySelfReadable,
+    admin_readable: t.visibilityAdminReadable,
+    claim_exposed: t.visibilityClaimExposed,
+  }[visibility]
 }
 
 export function newAttribute(): UserAttributeDef {
@@ -71,6 +78,7 @@ export function AdminTenantAttributesPage({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const t = useDictionary(adminTenantAttributesDictionary)
 
   // persist は custom 定義一覧を全置換で保存し、成功したらサーバ正規化後の値で更新する。
   async function persist(next: UserAttributeDef[], success: string) {
@@ -83,11 +91,7 @@ export function AdminTenantAttributesPage({
       setNotice(success)
       return true
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : '属性スキーマを保存できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailedError)
       return false
     } finally {
       setSaving(false)
@@ -100,14 +104,14 @@ export function AdminTenantAttributesPage({
       index === null
         ? [...attributes, cleaned]
         : attributes.map((def, i) => (i === index ? cleaned : def))
-    const ok = await persist(next, index === null ? '属性を追加しました。' : '属性を更新しました。')
+    const ok = await persist(next, index === null ? t.addedNotice : t.updatedNotice)
     if (ok) setEditing(null)
   }
 
   async function handleDelete(index: number) {
     await persist(
       attributes.filter((_, i) => i !== index),
-      '属性を削除しました。',
+      t.deletedNotice,
     )
   }
 
@@ -115,12 +119,12 @@ export function AdminTenantAttributesPage({
     <AdminShell
       active="tenant-attributes"
       actorUsername={actorUsername}
-      title="ユーザー属性"
-      description="このテナント固有のカスタム属性を定義します。組み込み属性はコードが提供します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
       actions={
         <Button type="button" onClick={() => setEditing({ index: null, draft: newAttribute() })}>
           <IconPlus size={16} stroke={1.8} aria-hidden="true" />
-          <span className="ml-1">属性を追加</span>
+          <span className="ml-1">{t.addAttribute}</span>
         </Button>
       }
     >
@@ -130,23 +134,21 @@ export function AdminTenantAttributesPage({
 
         <Card className="overflow-hidden">
           <div className="border-b border-slate-200 p-5">
-            <h2 className="text-base font-semibold text-slate-900">カスタム属性</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              key は snake_case (英字始まり)。組み込み属性と同じ key は使えません。
-            </p>
+            <h2 className="text-base font-semibold text-slate-900">{t.customAttributesHeading}</h2>
+            <p className="mt-1 text-sm text-slate-600">{t.customAttributesDescription}</p>
           </div>
           {attributes.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-slate-500">
-              カスタム属性はまだありません。「属性を追加」で定義できます。
+              {t.noCustomAttributesNotice}
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">属性</th>
-                  <th className="px-5 py-3">型</th>
-                  <th className="px-5 py-3">可視性</th>
-                  <th className="px-5 py-3">本人編集</th>
+                  <th className="px-5 py-3">{t.tableHeaderAttribute}</th>
+                  <th className="px-5 py-3">{t.tableHeaderType}</th>
+                  <th className="px-5 py-3">{t.tableHeaderVisibility}</th>
+                  <th className="px-5 py-3">{t.tableHeaderSelfEditable}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -160,16 +162,18 @@ export function AdminTenantAttributesPage({
                       ) : null}
                     </td>
                     <td className="px-5 py-3 text-slate-600">{def.type}</td>
-                    <td className="px-5 py-3 text-slate-600">{VISIBILITY_LABEL[def.visibility]}</td>
                     <td className="px-5 py-3 text-slate-600">
-                      {def.editable_by_user ? '可' : '不可'}
+                      {visibilityLabel(def.visibility, t)}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {def.editable_by_user ? t.yes : t.no}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
                           className="px-2.5"
-                          aria-label={`${def.key} を編集`}
+                          aria-label={t.editAttributeAria.replace('{key}', def.key)}
                           disabled={saving}
                           onClick={() => setEditing({ index, draft: def })}
                         >
@@ -178,7 +182,7 @@ export function AdminTenantAttributesPage({
                         <Button
                           variant="ghost"
                           className="px-2.5 text-rose-700 hover:bg-rose-50"
-                          aria-label={`${def.key} を削除`}
+                          aria-label={t.deleteAttributeAria.replace('{key}', def.key)}
                           disabled={saving}
                           onClick={() => void handleDelete(index)}
                         >
@@ -224,6 +228,7 @@ function AttributeEditorDialog({
 }) {
   const [draft, setDraft] = useState<UserAttributeDef>(initial)
   const keyInvalid = draft.key.trim() === ''
+  const t = useDictionary(adminTenantAttributesDictionary)
 
   function patch(change: Partial<UserAttributeDef>) {
     setDraft((current) => ({ ...current, ...change }))
@@ -239,15 +244,15 @@ function AttributeEditorDialog({
       <button
         type="button"
         className="absolute inset-0 cursor-default"
-        aria-label="閉じる"
+        aria-label={t.close}
         onClick={onClose}
       />
       <Card className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden shadow-2xl">
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
           <h2 id="attribute-editor-title" className="text-xl font-semibold">
-            {isNew ? '属性を追加' : '属性を編集'}
+            {isNew ? t.addAttribute : t.editAttributeTitle}
           </h2>
-          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label="閉じる">
+          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label={t.close}>
             <IconX size={18} aria-hidden="true" />
           </Button>
         </div>
@@ -261,19 +266,17 @@ function AttributeEditorDialog({
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label htmlFor="attr-label">表示名</Label>
+                <Label htmlFor="attr-label">{t.displayNameFieldLabel}</Label>
                 <Input
                   id="attr-label"
                   value={draft.label ?? ''}
-                  placeholder="例: 部署"
+                  placeholder={t.displayNamePlaceholder}
                   onChange={(event) => patch({ label: event.target.value })}
                 />
-                <p className="text-xs text-slate-500">
-                  利用者・管理者に見せる日本語名。未設定なら key を表示します。
-                </p>
+                <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="attr-key">key</Label>
+                <Label htmlFor="attr-key">{t.keyFieldLabel}</Label>
                 <Input
                   id="attr-key"
                   value={draft.key}
@@ -284,7 +287,7 @@ function AttributeEditorDialog({
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="attr-type">型</Label>
+                <Label htmlFor="attr-type">{t.tableHeaderType}</Label>
                 <select
                   id="attr-type"
                   value={draft.type}
@@ -299,7 +302,7 @@ function AttributeEditorDialog({
                 </select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="attr-visibility">可視性</Label>
+                <Label htmlFor="attr-visibility">{t.tableHeaderVisibility}</Label>
                 <select
                   id="attr-visibility"
                   value={draft.visibility}
@@ -308,27 +311,27 @@ function AttributeEditorDialog({
                 >
                   {VISIBILITIES.map((v) => (
                     <option key={v} value={v}>
-                      {VISIBILITY_LABEL[v]}
+                      {visibilityLabel(v, t)}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="attr-claim">claim 名 (任意)</Label>
+                <Label htmlFor="attr-claim">{t.claimNameFieldLabel}</Label>
                 <Input
                   id="attr-claim"
                   value={draft.claim_name ?? ''}
-                  placeholder="claim として開示する場合のみ"
+                  placeholder={t.claimNamePlaceholder}
                   className="font-mono"
                   onChange={(event) => patch({ claim_name: event.target.value })}
                 />
               </div>
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label htmlFor="attr-scope">OIDC scope (任意)</Label>
+                <Label htmlFor="attr-scope">{t.oidcScopeFieldLabel}</Label>
                 <Input
                   id="attr-scope"
                   value={draft.oidc_scope ?? ''}
-                  placeholder="未指定なら custom_attribute"
+                  placeholder={t.oidcScopePlaceholder}
                   className="font-mono"
                   onChange={(event) => patch({ oidc_scope: event.target.value })}
                 />
@@ -337,19 +340,19 @@ function AttributeEditorDialog({
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-5">
               <Toggle
                 id="attr-required"
-                label="必須"
+                label={t.requiredToggle}
                 checked={draft.required}
                 onChange={(checked) => patch({ required: checked })}
               />
               <Toggle
                 id="attr-editable"
-                label="本人が編集可"
+                label={t.editableByUserToggle}
                 checked={draft.editable_by_user}
                 onChange={(checked) => patch({ editable_by_user: checked })}
               />
               <Toggle
                 id="attr-pii"
-                label="PII (監査で hash 化)"
+                label={t.piiToggle}
                 checked={draft.pii}
                 onChange={(checked) => patch({ pii: checked })}
               />
@@ -357,10 +360,10 @@ function AttributeEditorDialog({
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
             <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={saving || keyInvalid}>
-              {saving ? '保存中…' : '保存'}
+              {saving ? t.saving : t.save}
             </Button>
           </div>
         </form>
@@ -395,21 +398,20 @@ function Toggle({
 }
 
 function BuiltinReference({ builtin }: { builtin: UserAttributeDef[] }) {
+  const t = useDictionary(adminTenantAttributesDictionary)
   return (
     <Card className="p-6">
-      <h2 className="text-base font-semibold text-slate-900">組み込み属性 (参照)</h2>
-      <p className="mt-1 text-sm text-slate-600">
-        OIDC §5.1 / SCIM 由来の読み取り専用カタログ。これらと同じ key はカスタムで定義できません。
-      </p>
+      <h2 className="text-base font-semibold text-slate-900">{t.builtinAttributesHeading}</h2>
+      <p className="mt-1 text-sm text-slate-600">{t.builtinAttributesDescription}</p>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-              <th className="py-2 pr-4 font-medium">表示名</th>
-              <th className="py-2 pr-4 font-medium">key</th>
-              <th className="py-2 pr-4 font-medium">型</th>
-              <th className="py-2 pr-4 font-medium">可視性</th>
-              <th className="py-2 pr-4 font-medium">scope</th>
+              <th className="py-2 pr-4 font-medium">{t.displayNameFieldLabel}</th>
+              <th className="py-2 pr-4 font-medium">{t.keyFieldLabel}</th>
+              <th className="py-2 pr-4 font-medium">{t.tableHeaderType}</th>
+              <th className="py-2 pr-4 font-medium">{t.tableHeaderVisibility}</th>
+              <th className="py-2 pr-4 font-medium">{t.tableHeaderScope}</th>
             </tr>
           </thead>
           <tbody>
@@ -418,7 +420,7 @@ function BuiltinReference({ builtin }: { builtin: UserAttributeDef[] }) {
                 <td className="py-2 pr-4 text-slate-800">{def.label || '—'}</td>
                 <td className="py-2 pr-4 font-mono text-slate-600">{def.key}</td>
                 <td className="py-2 pr-4 text-slate-600">{def.type}</td>
-                <td className="py-2 pr-4 text-slate-600">{VISIBILITY_LABEL[def.visibility]}</td>
+                <td className="py-2 pr-4 text-slate-600">{visibilityLabel(def.visibility, t)}</td>
                 <td className="py-2 pr-4 font-mono text-slate-500">{def.oidc_scope ?? '—'}</td>
               </tr>
             ))}

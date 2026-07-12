@@ -94,9 +94,20 @@ type StandardRequirement struct {
 type UserExperience struct {
 	Accessibility map[string]string               `yaml:"accessibility"`
 	Locales       []string                        `yaml:"locales"`
+	Localization  *UserExperienceLocalization     `yaml:"localization"`
 	Screens       map[string]UserExperienceScreen `yaml:"screens"`
 	Transitions   []UserExperienceTransition      `yaml:"transitions"`
 	Requirements  []UserExperienceRequirement     `yaml:"requirements"`
+}
+
+type UserExperienceLocalization struct {
+	SupportedLocales []string                             `yaml:"supported_locales"`
+	AccountPortal    UserExperienceLocalizationPortalNote `yaml:"account_portal"`
+}
+
+type UserExperienceLocalizationPortalNote struct {
+	Requirement    string `yaml:"requirement"`
+	DateTimeFormat string `yaml:"date_time_format"`
 }
 
 type UserExperienceScreen struct {
@@ -405,6 +416,9 @@ func (s *SCL) mergeUserExperience(ux UserExperience) {
 		if !slices.Contains(s.UserExperience.Locales, locale) {
 			s.UserExperience.Locales = append(s.UserExperience.Locales, locale)
 		}
+	}
+	if ux.Localization != nil {
+		s.UserExperience.Localization = ux.Localization
 	}
 	maps.Copy(s.UserExperience.Screens, ux.Screens)
 	s.UserExperience.Transitions = append(s.UserExperience.Transitions, ux.Transitions...)
