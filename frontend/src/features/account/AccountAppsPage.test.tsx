@@ -1,9 +1,12 @@
 import { KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
-import { renderWithRouter } from '../../test/renderWithRouter'
+import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { AccountAppsPresentation, buildSections } from './AccountAppsPage'
 import type { MyApplication, PortalCategory } from '../../types'
+
+const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
+  renderWithRouterBase(ui, { locale: 'ja' })
 
 const appA: MyApplication = {
   application_id: 'app-a',

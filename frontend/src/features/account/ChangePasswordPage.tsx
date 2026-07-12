@@ -16,15 +16,20 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
+import { changePasswordDictionary } from './ChangePasswordPage.i18n'
 
-export function passwordViolationMessage(violation: string): string {
+export function passwordViolationMessage(
+  violation: string,
+  t = changePasswordDictionary.ja,
+): string {
   switch (violation) {
     case 'too_short':
-      return 'パスワードが短すぎます。'
+      return t.tooShort
     case 'too_long':
-      return 'パスワードが長すぎます。'
+      return t.tooLong
     default:
-      return 'パスワードがセキュリティ要件を満たしていません。'
+      return t.policy
   }
 }
 
@@ -37,8 +42,9 @@ export function ChangePasswordPage({
   preferredUsername: string
   isAdmin: boolean
 }) {
+  const t = useDictionary(changePasswordDictionary)
   const backHref = isAdmin ? tenantURL('/admin') : tenantURL('/account/profile')
-  const backLabel = isAdmin ? '管理コンソールへ戻る' : 'プロフィールへ戻る'
+  const backLabel = isAdmin ? t.backAdmin : t.backProfile
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [error, setError] = useState('')
@@ -62,23 +68,26 @@ export function ChangePasswordPage({
     } catch (cause) {
       if (cause instanceof StepUpCancelledError) return
       if (cause instanceof PasswordPolicyError) {
-        setError(cause.violations.map(passwordViolationMessage).join(' ') || cause.message)
+        setError(
+          cause.violations.map((violation) => passwordViolationMessage(violation, t)).join(' ') ||
+            cause.message,
+        )
       } else if (cause instanceof AuthenticationAPIError) {
         switch (cause.code) {
           case 'access_denied':
-            setError('現在のパスワードが一致しません。')
+            setError(t.currentMismatch)
             break
           case 'password_reuse':
-            setError('新しいパスワードは最近使用したものを再利用できません。')
+            setError(t.reuse)
             break
           case 'authentication_required':
-            setError('認証セッションが切れています。ログインし直してください。')
+            setError(t.sessionExpired)
             break
           default:
             setError(cause.message)
         }
       } else {
-        setError('認証サービスに接続できませんでした。')
+        setError(t.unavailable)
       }
     } finally {
       setSubmitting(false)
@@ -130,6 +139,7 @@ export function ChangePasswordPresentation({
   onToggleShowNew: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
+  const t = useDictionary(changePasswordDictionary)
   return (
     <AuthShell aside={false}>
       <div className="flex flex-col gap-7">
@@ -141,12 +151,12 @@ export function ChangePasswordPresentation({
             <IconArrowLeft size={15} aria-hidden="true" />
             {backLabel}
           </a>
-          <p className="eyebrow">アカウントセキュリティ</p>
-          <h2 className="page-title">パスワードを変更</h2>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h2 className="page-title">{t.title}</h2>
           <p className="page-description">
             {preferredUsername
-              ? `${preferredUsername} の現在のパスワードと新しいパスワードを入力してください。`
-              : '現在のパスワードと新しいパスワードを入力してください。'}
+              ? t.description.replace('{name}', preferredUsername)
+              : t.descriptionAnonymous}
           </p>
         </header>
 
@@ -158,10 +168,8 @@ export function ChangePasswordPresentation({
               aria-hidden="true"
             />
             <div>
-              <p className="font-semibold text-emerald-900">パスワードを更新しました</p>
-              <p className="mt-1 text-sm leading-5 text-emerald-900">
-                次回のログインから新しいパスワードを使用してください。
-              </p>
+              <p className="font-semibold text-emerald-900">{t.updated}</p>
+              <p className="mt-1 text-sm leading-5 text-emerald-900">{t.updatedDescription}</p>
               <a
                 href={backHref}
                 className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-emerald-900 hover:underline"
@@ -181,7 +189,7 @@ export function ChangePasswordPresentation({
               aria-hidden="true"
             />
             <div>
-              <p className="font-semibold">変更できません</p>
+              <p className="font-semibold">{t.failed}</p>
               <p className="mt-1 text-sm leading-5 text-red-800">{error}</p>
             </div>
           </Alert>
@@ -190,7 +198,7 @@ export function ChangePasswordPresentation({
         <form onSubmit={onSubmit}>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="current_password">現在のパスワード</Label>
+              <Label htmlFor="current_password">{t.current}</Label>
               <div className="relative">
                 <IconLock
                   aria-hidden="true"
@@ -201,7 +209,7 @@ export function ChangePasswordPresentation({
                   id="current_password"
                   type={showCurrent ? 'text' : 'password'}
                   name="current_password"
-                  placeholder="現在のパスワードを入力"
+                  placeholder={t.currentPlaceholder}
                   className="px-10"
                   autoComplete="current-password"
                   required
@@ -212,7 +220,7 @@ export function ChangePasswordPresentation({
                   type="button"
                   onClick={onToggleShowCurrent}
                   className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
-                  aria-label={showCurrent ? 'パスワードを隠す' : 'パスワードを表示'}
+                  aria-label={showCurrent ? t.hide : t.show}
                   aria-pressed={showCurrent}
                 >
                   {showCurrent ? (
@@ -225,7 +233,7 @@ export function ChangePasswordPresentation({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="new_password">新しいパスワード</Label>
+              <Label htmlFor="new_password">{t.new}</Label>
               <div className="relative">
                 <IconLock
                   aria-hidden="true"
@@ -236,7 +244,7 @@ export function ChangePasswordPresentation({
                   id="new_password"
                   type={showNew ? 'text' : 'password'}
                   name="new_password"
-                  placeholder="12文字以上"
+                  placeholder={t.newPlaceholder}
                   className="px-10"
                   autoComplete="new-password"
                   minLength={12}
@@ -247,7 +255,7 @@ export function ChangePasswordPresentation({
                   type="button"
                   onClick={onToggleShowNew}
                   className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
-                  aria-label={showNew ? 'パスワードを隠す' : 'パスワードを表示'}
+                  aria-label={showNew ? t.hide : t.show}
                   aria-pressed={showNew}
                 >
                   {showNew ? (
@@ -260,7 +268,7 @@ export function ChangePasswordPresentation({
             </div>
 
             <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
-              {submitting ? '変更しています…' : 'パスワードを変更'}
+              {submitting ? t.submitting : t.submit}
               <IconArrowRight size={18} aria-hidden="true" />
             </Button>
           </div>
@@ -268,9 +276,7 @@ export function ChangePasswordPresentation({
 
         <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
           <IconShieldLock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
-          <p>
-            直近に使ったパスワードは再利用できません。共有端末では変更後に必ずログアウトしてください。
-          </p>
+          <p>{t.hint}</p>
         </div>
       </div>
       {dialog}

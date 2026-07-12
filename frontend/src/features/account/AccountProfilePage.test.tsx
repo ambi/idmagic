@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
-import { renderWithRouter } from '../../test/renderWithRouter'
+import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import {
   AccountProfileEditPage,
   AccountProfilePresentation,
@@ -9,6 +9,9 @@ import {
   valueToText,
 } from './AccountProfilePage'
 import type { AccountProfile, AttributeValue, UserAttributeDef } from '../../types'
+
+const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
+  renderWithRouterBase(ui, { locale: 'ja' })
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,

@@ -7,6 +7,8 @@ import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import type { AccountConsent } from '../../types'
+import { useDictionary, useFormatters } from '../../lib/i18n'
+import { accountApplicationsDictionary } from './AccountApplicationsPage.i18n'
 
 export function formatAccountConsentDate(value: string): string {
   const date = new Date(value)
@@ -27,6 +29,7 @@ export function AccountApplicationsPage({
   consents: AccountConsent[]
   isAdmin: boolean
 }) {
+  const t = useDictionary(accountApplicationsDictionary)
   const [consents, setConsents] = useState<AccountConsent[]>(initial)
   const [pending, setPending] = useState('')
   const [error, setError] = useState('')
@@ -40,15 +43,9 @@ export function AccountApplicationsPage({
     try {
       await revokeAccountConsent(csrfToken, clientId)
       setConsents((current) => current.filter((c) => c.client_id !== clientId))
-      setNotice(
-        `${consent.client_name} へのアクセスを取り消しました。次回このアプリを使うときは、改めて許可を求められます。`,
-      )
+      setNotice(t.revokeNotice.replace('{name}', consent.client_name))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'アクセスを取り消せませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.revokeFailed)
     } finally {
       setPending('')
     }
@@ -87,13 +84,15 @@ export function AccountApplicationsPresentation({
   onDismissNotice: () => void
   onRevoke: (consent: AccountConsent) => void
 }) {
+  const t = useDictionary(accountApplicationsDictionary)
+  const { formatDate } = useFormatters()
   return (
     <AccountShell
       active="applications"
       username={username}
       isAdmin={isAdmin}
-      title="接続済みアプリ"
-      description="あなたのアカウントへのアクセスを許可したアプリケーションです。不要なものは取り消せます。"
+      title={t.title}
+      description={t.description}
     >
       <Toast message={notice} onDismiss={onDismissNotice} />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -101,7 +100,7 @@ export function AccountApplicationsPresentation({
       {consents.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 p-10 text-center">
           <IconApps size={28} className="text-slate-300" aria-hidden="true" />
-          <p className="text-sm text-slate-500">アクセスを許可したアプリはありません。</p>
+          <p className="text-sm text-slate-500">{t.empty}</p>
         </Card>
       ) : (
         <div className="grid gap-3">
@@ -118,7 +117,7 @@ export function AccountApplicationsPresentation({
                   {consent.client_name}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {formatAccountConsentDate(consent.granted_at)} に許可
+                  {t.granted.replace('{date}', formatDate(consent.granted_at))}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {consent.scopes.map((scope) => (
@@ -139,7 +138,7 @@ export function AccountApplicationsPresentation({
                 onClick={() => onRevoke(consent)}
               >
                 <IconTrash size={16} aria-hidden="true" />
-                {pending === consent.client_id ? '取り消し中…' : 'アクセスを取り消す'}
+                {pending === consent.client_id ? t.revoking : t.revoke}
               </Button>
             </Card>
           ))}

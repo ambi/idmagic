@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
-import { renderWithRouter } from '../../test/renderWithRouter'
+import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { ChangePasswordPresentation, passwordViolationMessage } from './ChangePasswordPage'
+
+const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
+  renderWithRouterBase(ui, { locale: 'ja' })
 
 describe('passwordViolationMessage', () => {
   it('translates too_short', () => {

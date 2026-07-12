@@ -25,6 +25,8 @@ import { AccountShell } from '../../components/AccountShell'
 import { Card } from '../../components/ui/card'
 import { safeApplicationIconURL } from '../../lib/applicationIcon'
 import type { MyApplication, PortalCategory } from '../../types'
+import { useDictionary } from '../../lib/i18n'
+import { accountAppsDictionary } from './AccountAppsPage.i18n'
 
 function initials(name: string): string {
   return name.trim().slice(0, 2).toUpperCase() || '??'
@@ -45,6 +47,7 @@ function AppIcon({ app }: { app: MyApplication }) {
 }
 
 function AppTileContent({ app, dragHandle }: { app: MyApplication; dragHandle?: React.ReactNode }) {
+  const t = useDictionary(accountAppsDictionary)
   const launchable = Boolean(app.launch_url)
   return (
     <>
@@ -63,7 +66,9 @@ function AppTileContent({ app, dragHandle }: { app: MyApplication; dragHandle?: 
           <IconExternalLink size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
         ) : null}
       </span>
-      {launchable ? null : <span className="text-xs text-slate-400">起動 URL が未設定です</span>}
+      {launchable ? null : (
+        <span className="text-xs text-slate-400">{t.unconfiguredLaunchURL}</span>
+      )}
     </>
   )
 }
@@ -75,6 +80,7 @@ function AppTile({
   app: MyApplication
   onLaunch: (app: MyApplication) => void
 }) {
+  const t = useDictionary(accountAppsDictionary)
   const {
     attributes,
     isDragging,
@@ -107,7 +113,7 @@ function AppTile({
               type="button"
               ref={setActivatorNodeRef}
               className="absolute left-2 top-2 inline-flex size-8 touch-none cursor-grab items-center justify-center rounded-md border border-slate-200 bg-white/90 text-slate-500 shadow-xs transition-colors hover:border-blue-300 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:cursor-grabbing"
-              aria-label={`${app.name} をドラッグして並び替え`}
+              aria-label={t.dragToReorder.replace('{name}', app.name)}
               onClick={(event) => event.stopPropagation()}
               {...attributes}
               {...listeners}
@@ -149,7 +155,11 @@ export type Section = { key: string; name: string; apps: MyApplication[] }
 
 // buildSections は manual order を保ったまま、各カテゴリ (position 昇順) にアプリを振り分ける。
 // 1 アプリは付与された各カテゴリに現れ、カテゴリ未付与のアプリは末尾の「その他」へ集める。
-export function buildSections(apps: MyApplication[], categories: PortalCategory[]): Section[] {
+export function buildSections(
+  apps: MyApplication[],
+  categories: PortalCategory[],
+  other = 'その他',
+): Section[] {
   const sections: Section[] = categories.map((category) => ({
     key: category.category_id,
     name: category.name,
@@ -158,7 +168,7 @@ export function buildSections(apps: MyApplication[], categories: PortalCategory[
   const known = new Set(categories.map((category) => category.category_id))
   const uncategorized = apps.filter((app) => !app.category_ids.some((id) => known.has(id)))
   if (uncategorized.length > 0) {
-    sections.push({ key: '__uncategorized__', name: 'その他', apps: uncategorized })
+    sections.push({ key: '__uncategorized__', name: other, apps: uncategorized })
   }
   return sections.filter((section) => section.apps.length > 0)
 }
@@ -176,6 +186,7 @@ export function AccountAppsPage({
   csrfToken: string
   isAdmin: boolean
 }) {
+  const t = useDictionary(accountAppsDictionary)
   const [order, setOrder] = useState<MyApplication[]>(applications)
   const [activeID, setActiveID] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -201,9 +212,7 @@ export function AccountAppsPage({
         next.map((app) => app.application_id),
       )
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : '並び順を保存できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -287,8 +296,12 @@ export function AccountAppsPresentation({
   onDragCancel: () => void
   onLaunch: (app: MyApplication) => void
 }) {
+  const t = useDictionary(accountAppsDictionary)
   const itemIDs = useMemo(() => order.map((app) => app.application_id), [order])
-  const sections = useMemo(() => buildSections(order, categories), [order, categories])
+  const sections = useMemo(
+    () => buildSections(order, categories, t.other),
+    [order, categories, t.other],
+  )
   const grouped = categories.length > 0
 
   return (
@@ -296,20 +309,18 @@ export function AccountAppsPresentation({
       active="apps"
       username={username}
       isAdmin={isAdmin}
-      title="アプリ"
-      description="あなたが利用できるアプリケーションです。タイルから起動できます。"
+      title={t.title}
+      description={t.description}
     >
       {order.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 p-10 text-center">
           <IconLayoutGrid size={28} className="text-slate-300" aria-hidden="true" />
-          <p className="text-sm text-slate-500">利用できるアプリはまだありません。</p>
+          <p className="text-sm text-slate-500">{t.empty}</p>
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
           {saving ? (
-            <div className="flex items-center justify-end text-xs text-slate-500">
-              並び順を保存中...
-            </div>
+            <div className="flex items-center justify-end text-xs text-slate-500">{t.saving}</div>
           ) : null}
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <DndContext

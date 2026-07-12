@@ -12,6 +12,8 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import type { AccountSession, AccountSignInActivity } from '../../types'
+import { useDictionary, useFormatters } from '../../lib/i18n'
+import { accountActivityDictionary } from './AccountActivityPage.i18n'
 
 export function formatAccountActivityDateTime(value: string): string {
   return new Date(value).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })
@@ -45,6 +47,8 @@ function SessionRow({
   busy: boolean
   onRevoke: () => void
 }) {
+  const t = useDictionary(accountActivityDictionary)
+  const { formatDateTime } = useFormatters()
   return (
     <li className="flex items-start justify-between gap-3 px-5 py-4">
       <div className="flex min-w-0 items-start gap-3">
@@ -53,10 +57,10 @@ function SessionRow({
         </span>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-slate-900">セッション</p>
+            <p className="text-sm font-semibold text-slate-900">{t.session}</p>
             {session.current ? (
               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                現在のセッション
+                {t.currentSession}
               </span>
             ) : null}
           </div>
@@ -64,12 +68,12 @@ function SessionRow({
             {accountActivityMethodSummary(session.amr)}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            開始: {formatAccountActivityDateTime(session.started_at)}
+            {t.started.replace('{date}', formatDateTime(session.started_at))}
           </p>
         </div>
       </div>
       {session.current ? (
-        <span className="shrink-0 self-center text-xs text-slate-400">このデバイス</span>
+        <span className="shrink-0 self-center text-xs text-slate-400">{t.thisDevice}</span>
       ) : (
         <Button
           type="button"
@@ -78,7 +82,7 @@ function SessionRow({
           disabled={busy}
           onClick={onRevoke}
         >
-          {busy ? '終了中…' : '終了'}
+          {busy ? t.ending : t.end}
         </Button>
       )}
     </li>
@@ -86,19 +90,19 @@ function SessionRow({
 }
 
 function ActivityRow({ activity }: { activity: AccountSignInActivity }) {
+  const t = useDictionary(accountActivityDictionary)
+  const { formatDateTime } = useFormatters()
   return (
     <li className="flex items-start gap-3 px-5 py-4">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
         <IconLogin2 size={18} aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-900">サインイン</p>
+        <p className="text-sm font-semibold text-slate-900">{t.signIn}</p>
         <p className="mt-0.5 text-sm text-slate-600">
           {accountActivityMethodSummary(activity.amr)}
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          {formatAccountActivityDateTime(activity.occurred_at)}
-        </p>
+        <p className="mt-1 text-xs text-slate-500">{formatDateTime(activity.occurred_at)}</p>
       </div>
     </li>
   )
@@ -117,6 +121,7 @@ export function AccountActivityPage({
   sessions: AccountSession[]
   isAdmin: boolean
 }) {
+  const t = useDictionary(accountActivityDictionary)
   const [sessions, setSessions] = useState(initialSessions)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [busyOthers, setBusyOthers] = useState(false)
@@ -130,7 +135,7 @@ export function AccountActivityPage({
       await revokeAccountSession(csrfToken, id)
       setSessions((current) => current.filter((session) => session.id !== id))
     } catch (cause) {
-      setError(errorMessage(cause, 'セッションを終了できませんでした。'))
+      setError(errorMessage(cause, t.revokeFailed))
     } finally {
       setBusyId(null)
     }
@@ -144,7 +149,7 @@ export function AccountActivityPage({
       setSessions((current) => current.filter((session) => session.current))
     } catch (cause) {
       if (cause instanceof StepUpCancelledError) return
-      setError(errorMessage(cause, '他のセッションを終了できませんでした。'))
+      setError(errorMessage(cause, t.revokeOthersFailed))
     } finally {
       setBusyOthers(false)
     }
@@ -155,8 +160,8 @@ export function AccountActivityPage({
       active="activity"
       username={username}
       isAdmin={isAdmin}
-      title="アクティビティ"
-      description="有効なセッションと最近のサインイン履歴を確認できます。"
+      title={t.title}
+      description={t.description}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
@@ -172,10 +177,7 @@ export function AccountActivityPage({
 
       <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
         <IconInfoCircle className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
-        <p>
-          「終了」したセッションのブラウザは次回アクセス時に再ログインが必要になります。 IP
-          アドレス・デバイス・場所の表示は今後のステージで追加します。
-        </p>
+        <p>{t.info}</p>
       </div>
       {dialog}
     </AccountShell>
@@ -195,12 +197,13 @@ export function SessionsSection({
   onRevoke: (id: string) => void
   onRevokeOthers: () => void
 }) {
+  const t = useDictionary(accountActivityDictionary)
   const otherCount = sessions.filter((session) => !session.current).length
 
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-900">有効なセッション</h2>
+        <h2 className="text-sm font-semibold text-slate-900">{t.activeSessions}</h2>
         {otherCount > 0 ? (
           <Button
             type="button"
@@ -209,7 +212,7 @@ export function SessionsSection({
             disabled={busyOthers}
             onClick={onRevokeOthers}
           >
-            {busyOthers ? '終了中…' : '他のセッションを終了'}
+            {busyOthers ? t.ending : t.endOther}
           </Button>
         ) : null}
       </div>
@@ -217,7 +220,7 @@ export function SessionsSection({
         {sessions.length === 0 ? (
           <div className="flex items-center gap-3 px-5 py-8 text-sm text-slate-600">
             <IconDeviceLaptop size={20} className="text-slate-400" aria-hidden="true" />
-            有効なセッションがありません。
+            {t.noSessions}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">
@@ -237,14 +240,15 @@ export function SessionsSection({
 }
 
 export function ActivityHistorySection({ activities }: { activities: AccountSignInActivity[] }) {
+  const t = useDictionary(accountActivityDictionary)
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-slate-900">サインイン履歴</h2>
+      <h2 className="text-sm font-semibold text-slate-900">{t.history}</h2>
       <Card className="overflow-hidden p-0">
         {activities.length === 0 ? (
           <div className="flex items-center gap-3 px-5 py-8 text-sm text-slate-600">
             <IconDeviceLaptop size={20} className="text-slate-400" aria-hidden="true" />
-            まだサインイン履歴がありません。
+            {t.noHistory}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">

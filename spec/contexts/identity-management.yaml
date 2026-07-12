@@ -1999,6 +1999,13 @@ objectives:
     ttl: 2592000s
     description: "SoftDelete (PendingDeletion) から自動 Purge までの 猶予期間。\n業界標準 (Google / Microsoft / Apple) の 7〜30 日に合わせ 30 日を既定とする。\nこの期間内は Restore で Active に戻せる。経過後は lazy-on-access で Purge される。\n"
 user_experience:
+  localization:
+    supported_locales:
+      - ja
+      - en
+    account_portal:
+      requirement: Account の全画面、操作ダイアログ、状態ラベルは選択中の表示言語で表示する。API のメッセージ本文は翻訳せず、stable error code に対応する画面文言だけを翻訳する。
+      date_time_format: Account 画面に表示する日時は選択中の locale を用いて書式化する。
   screens:
     AdminUsers:
       route: /admin/users

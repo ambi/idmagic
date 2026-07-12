@@ -5,8 +5,11 @@ import { AccountShell } from '../../components/AccountShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useDictionary } from '../../lib/i18n'
+import { accountDataDictionary } from './AccountDataPage.i18n'
 
 export function AccountDataPage({ username, isAdmin }: { username: string; isAdmin: boolean }) {
+  const t = useDictionary(accountDataDictionary)
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,11 +28,7 @@ export function AccountDataPage({ username, isAdmin }: { username: string; isAdm
       anchor.remove()
       URL.revokeObjectURL(url)
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'データをエクスポートできませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.exportFailed)
     } finally {
       setDownloading(false)
     }
@@ -59,13 +58,14 @@ export function AccountDataPresentation({
   error: string
   onExport: () => void
 }) {
+  const t = useDictionary(accountDataDictionary)
   return (
     <AccountShell
       active="data"
       username={username}
       isAdmin={isAdmin}
-      title="データとプライバシー"
-      description="アカウントに保存されている個人データをダウンロードできます。"
+      title={t.title}
+      description={t.description}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
@@ -75,18 +75,14 @@ export function AccountDataPresentation({
             <IconFileText size={20} aria-hidden="true" />
           </span>
           <div>
-            <p className="text-sm font-semibold text-slate-900">個人データのエクスポート</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              プロフィール (表示名・属性・メール・ライフサイクル) と、アクセスを許可した アプリ
-              (接続済みアプリ) を JSON ファイルとしてダウンロードします。サインイン
-              履歴やセッションの同梱は今後対応します。
-            </p>
+            <p className="text-sm font-semibold text-slate-900">{t.exportTitle}</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{t.exportDescription}</p>
           </div>
         </div>
         <div>
           <Button type="button" onClick={onExport} disabled={downloading}>
             <IconDownload size={16} aria-hidden="true" />
-            {downloading ? '生成中…' : 'データをダウンロード (JSON)'}
+            {downloading ? t.creating : t.download}
           </Button>
         </div>
       </Card>

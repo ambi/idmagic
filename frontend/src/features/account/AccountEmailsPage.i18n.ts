@@ -1,0 +1,36 @@
+import { defineDictionary } from '../../lib/i18n'
+
+export const accountEmailsDictionary = defineDictionary(
+  {
+    requestFailed: 'メールアドレスの変更を要求できませんでした。',
+    title: 'メールアドレス',
+    description: 'サインインや通知に使うメールアドレスを確認できます。',
+    current: '現在のメールアドレス',
+    notSet: '未設定',
+    verified: '確認済み',
+    unverified: '未確認',
+    change: '変更',
+    sent: '{email} に確認メールを送信しました。リンクを開くと新しいメールアドレスが確定します。',
+    newEmail: '新しいメールアドレス',
+    help: '新しいアドレス宛に確認リンクを送ります。リンクを開いて確認するまで、現在のメールアドレスは変わりません。',
+    sending: '送信中…',
+    send: '確認メールを送信',
+    cancel: 'キャンセル',
+  },
+  {
+    requestFailed: 'Could not request an email address change.',
+    title: 'Email addresses',
+    description: 'Review the email address used for sign-in and notifications.',
+    current: 'Current email address',
+    notSet: 'Not set',
+    verified: 'Verified',
+    unverified: 'Unverified',
+    change: 'Change',
+    sent: 'We sent a confirmation email to {email}. Open the link to confirm your new email address.',
+    newEmail: 'New email address',
+    help: 'We will send a confirmation link to the new address. Your current email address will not change until you open the link and confirm it.',
+    sending: 'Sending…',
+    send: 'Send confirmation email',
+    cancel: 'Cancel',
+  },
+)

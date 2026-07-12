@@ -8,6 +8,8 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
+import { accountEmailsDictionary } from './AccountEmailsPage.i18n'
 
 export function AccountEmailsPage({
   csrfToken,
@@ -20,6 +22,7 @@ export function AccountEmailsPage({
   emailVerified: boolean
   isAdmin: boolean
 }) {
+  const t = useDictionary(accountEmailsDictionary)
   const [newEmail, setNewEmail] = useState('')
   const [editing, setEditing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -40,11 +43,7 @@ export function AccountEmailsPage({
       setEditing(false)
     } catch (cause) {
       if (cause instanceof StepUpCancelledError) return
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'メールアドレスの変更を要求できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.requestFailed)
     } finally {
       setSubmitting(false)
     }
@@ -101,21 +100,22 @@ export function AccountEmailsPresentation({
   onNewEmailChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
+  const t = useDictionary(accountEmailsDictionary)
   return (
     <AccountShell
       active="emails"
       username={email ?? 'account'}
       isAdmin={isAdmin}
-      title="メールアドレス"
-      description="サインインや通知に使うメールアドレスを確認できます。"
+      title={t.title}
+      description={t.description}
     >
       <Card className="flex items-start gap-3 p-5">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
           <IconMail size={20} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-slate-500">現在のメールアドレス</p>
-          <p className="mt-1 truncate text-sm font-semibold text-slate-900">{email ?? '未設定'}</p>
+          <p className="text-xs font-medium text-slate-500">{t.current}</p>
+          <p className="mt-1 truncate text-sm font-semibold text-slate-900">{email ?? t.notSet}</p>
           {email ? (
             <span
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -127,21 +127,20 @@ export function AccountEmailsPresentation({
               ) : (
                 <IconCircleDashed size={13} aria-hidden="true" />
               )}
-              {emailVerified ? '確認済み' : '未確認'}
+              {emailVerified ? t.verified : t.unverified}
             </span>
           ) : null}
         </div>
         {!editing ? (
           <Button type="button" variant="outline" onClick={onStartEdit}>
-            変更
+            {t.change}
           </Button>
         ) : null}
       </Card>
 
       {sentTo ? (
         <Alert variant="success">
-          <span className="font-mono">{sentTo}</span>{' '}
-          に確認メールを送信しました。リンクを開くと新しいメールアドレスが確定します。
+          <span className="font-mono">{sentTo}</span> {t.sent.replace('{email}', sentTo)}
         </Alert>
       ) : null}
       {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -150,7 +149,7 @@ export function AccountEmailsPresentation({
         <Card className="p-5">
           <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="new-email">新しいメールアドレス</Label>
+              <Label htmlFor="new-email">{t.newEmail}</Label>
               <Input
                 id="new-email"
                 type="email"
@@ -160,17 +159,14 @@ export function AccountEmailsPresentation({
                 placeholder="you@example.com"
                 onChange={(event) => onNewEmailChange(event.target.value)}
               />
-              <p className="text-xs text-slate-500">
-                新しいアドレス宛に確認リンクを送ります。リンクを開いて確認するまで、現在の
-                メールアドレスは変わりません。
-              </p>
+              <p className="text-xs text-slate-500">{t.help}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={submitting || newEmail.trim().length === 0}>
-                {submitting ? '送信中…' : '確認メールを送信'}
+                {submitting ? t.sending : t.send}
               </Button>
               <Button type="button" variant="ghost" disabled={submitting} onClick={onCancelEdit}>
-                キャンセル
+                {t.cancel}
               </Button>
             </div>
           </form>

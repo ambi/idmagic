@@ -1,7 +1,10 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
-import { renderWithRouter } from '../../test/renderWithRouter'
+import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { AccountEmailsPage, AccountEmailsPresentation } from './AccountEmailsPage'
+
+const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
+  renderWithRouterBase(ui, { locale: 'ja' })
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -25,6 +28,11 @@ describe('AccountEmailsPresentation', () => {
     onNewEmailChange: vi.fn(),
     onSubmit: vi.fn(),
   }
+
+  it('renders English by default when the locale is English', async () => {
+    await renderWithRouterBase(<AccountEmailsPresentation {...baseProps} />)
+    expect(screen.getByText('Verified')).toBeInTheDocument()
+  })
 
   it('shows the current email and verified badge', async () => {
     await renderWithRouter(<AccountEmailsPresentation {...baseProps} />)

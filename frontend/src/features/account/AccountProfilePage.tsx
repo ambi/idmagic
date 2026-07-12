@@ -14,6 +14,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import type { AccountProfile, AttributeValue, UserAttributeDef } from '../../types'
+import { accountProfileDictionary } from './AccountProfilePage.i18n'
 
 // 編集フォーム上の属性値は文字列で保持し、保存時に AttributeValue へ整形する。
 export type AttributeDraft = Record<string, string>
@@ -74,10 +75,9 @@ export function AccountProfilePage({
   profile: AccountProfile
   isAdmin: boolean
 }) {
+  const t = useDictionary(accountProfileDictionary)
   const [notice, setNotice] = useState(() => {
-    return new URLSearchParams(window.location.search).get('notice') === 'success'
-      ? 'プロフィールを更新しました。'
-      : ''
+    return new URLSearchParams(window.location.search).get('notice') === 'success' ? t.updated : ''
   })
 
   return (
@@ -101,13 +101,14 @@ export function AccountProfilePresentation({
   notice: string
   onDismissNotice: () => void
 }) {
+  const t = useDictionary(accountProfileDictionary)
   return (
     <AccountShell
       active="profile"
       username={profile.preferred_username}
       isAdmin={isAdmin}
-      title="アカウント情報"
-      description="登録されているプロフィール情報を確認できます。"
+      title={t.title}
+      description={t.description}
     >
       <div className="grid gap-6">
         <Toast message={notice} onDismiss={onDismissNotice} />
@@ -115,33 +116,36 @@ export function AccountProfilePresentation({
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">プロフィール</h2>
-              <p className="mt-1 text-sm text-slate-600">登録されているアカウント基本情報です。</p>
+              <h2 className="text-base font-semibold text-slate-900">{t.profile}</h2>
+              <p className="mt-1 text-sm text-slate-600">{t.profileDescription}</p>
             </div>
             <Button asChild variant="outline">
-              <a href="/account/profile/edit">編集</a>
+              <a href="/account/profile/edit">{t.edit}</a>
             </Button>
           </div>
 
           <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-            <ReadField label="表示名" value={profile.name ?? '未設定'} />
-            <ReadField label="名" value={profile.given_name ?? '未設定'} />
-            <ReadField label="姓" value={profile.family_name ?? '未設定'} />
+            <ReadField label={t.displayName} value={profile.name ?? t.notSet} />
+            <ReadField label={t.givenName} value={profile.given_name ?? t.notSet} />
+            <ReadField label={t.familyName} value={profile.family_name ?? t.notSet} />
             <ReadField
-              label="メール"
-              value={profile.email ?? '未設定'}
+              label={t.email}
+              value={profile.email ?? t.notSet}
               action={
                 <a
                   href="/account/emails"
                   className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                 >
-                  変更する
+                  {t.change}
                 </a>
               }
             />
-            <ReadField label="メール確認" value={profile.email_verified ? '確認済み' : '未確認'} />
-            <ReadField label="MFA" value={profile.mfa_enrolled ? '登録済み' : '未登録'} />
-            <ReadField label="状態" value={profile.status} />
+            <ReadField
+              label={t.emailVerification}
+              value={profile.email_verified ? t.verified : t.unverified}
+            />
+            <ReadField label={t.mfa} value={profile.mfa_enrolled ? t.enrolled : t.notEnrolled} />
+            <ReadField label={t.status} value={profile.status} />
           </dl>
           <div className="mt-5 grid gap-4">
             <ProfileAttributeGroups
@@ -164,6 +168,7 @@ export function AccountProfileEditPage({
   profile: AccountProfile
   isAdmin: boolean
 }) {
+  const t = useDictionary(accountProfileDictionary)
   const [name, setName] = useState(profile.name ?? '')
   const [givenName, setGivenName] = useState(profile.given_name ?? '')
   const [familyName, setFamilyName] = useState(profile.family_name ?? '')
@@ -191,11 +196,7 @@ export function AccountProfileEditPage({
       })
       window.location.assign('/account/profile?notice=success')
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError
-          ? cause.message
-          : 'プロフィールを更新できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.updateFailed)
       setSaving(false)
     }
   }
@@ -248,13 +249,14 @@ export function AccountProfileEditPresentation({
   onAttributeChange: (key: string, value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
+  const t = useDictionary(accountProfileDictionary)
   return (
     <AccountShell
       active="profile"
       username={profile.preferred_username}
       isAdmin={isAdmin}
-      title="プロフィールを編集"
-      description="プロフィール情報を更新します。"
+      title={t.editTitle}
+      description={t.editDescription}
     >
       <div className="grid gap-6">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -264,7 +266,7 @@ export function AccountProfileEditPresentation({
             <a
               href="/account/profile"
               className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-              aria-label="アカウント情報に戻る"
+              aria-label={t.back}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -273,7 +275,7 @@ export function AccountProfileEditPresentation({
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <title>戻る</title>
+                <title>{t.backIcon}</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -282,12 +284,12 @@ export function AccountProfileEditPresentation({
                 />
               </svg>
             </a>
-            <h2 className="text-base font-semibold text-slate-900">プロフィールの編集</h2>
+            <h2 className="text-base font-semibold text-slate-900">{t.editHeading}</h2>
           </div>
 
           <form onSubmit={onSubmit} className="mt-5 grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="name">表示名</Label>
+              <Label htmlFor="name">{t.displayName}</Label>
               <Input
                 id="name"
                 value={name}
@@ -296,7 +298,7 @@ export function AccountProfileEditPresentation({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="given-name">名 (given_name)</Label>
+                <Label htmlFor="given-name">{t.givenName} (given_name)</Label>
                 <Input
                   id="given-name"
                   value={givenName}
@@ -304,7 +306,7 @@ export function AccountProfileEditPresentation({
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="family-name">姓 (family_name)</Label>
+                <Label htmlFor="family-name">{t.familyName} (family_name)</Label>
                 <Input
                   id="family-name"
                   value={familyName}
@@ -321,10 +323,10 @@ export function AccountProfileEditPresentation({
 
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={saving}>
-                {saving ? '保存中…' : '保存'}
+                {saving ? t.saving : t.save}
               </Button>
               <Button type="button" variant="ghost" disabled={saving} asChild>
-                <a href="/account/profile">キャンセル</a>
+                <a href="/account/profile">{t.cancel}</a>
               </Button>
             </div>
           </form>
@@ -372,6 +374,7 @@ function ProfileAttributeGroups({
   defs: UserAttributeDef[]
   values: AccountProfile['attributes']
 }) {
+  const accountT = useDictionary(accountProfileDictionary)
   const knownKeys = new Set(defs.map((def) => def.key))
   const readOnlyDefs: UserAttributeDef[] = Object.entries(values)
     .filter(([key]) => !knownKeys.has(key))
@@ -399,7 +402,9 @@ function ProfileAttributeGroups({
               <ReadField
                 key={def.key}
                 label={attributeLabel(def)}
-                value={values[def.key] ? valueToDisplayText(values[def.key]) : '未設定'}
+                value={
+                  values[def.key] ? valueToDisplayText(values[def.key], accountT) : accountT.notSet
+                }
               />
             ))}
           </dl>
@@ -418,12 +423,13 @@ function EditableAttributeGroups({
   values: AttributeDraft
   onChange: (key: string, next: string) => void
 }) {
+  const accountT = useDictionary(accountProfileDictionary)
   const t = useDictionary(domainLabelsDictionary)
   const groups = groupedAttributes(defs, t)
   if (groups.length === 0) return null
   return (
     <div className="grid gap-4 rounded-lg border border-slate-200 p-4">
-      <p className="text-sm font-medium text-slate-700">追加項目</p>
+      <p className="text-sm font-medium text-slate-700">{accountT.additional}</p>
       {groups.map((group) => (
         <fieldset
           key={group.key}
@@ -446,10 +452,10 @@ function EditableAttributeGroups({
   )
 }
 
-function valueToDisplayText(value: AttributeValue): string {
+function valueToDisplayText(value: AttributeValue, t: typeof accountProfileDictionary.ja): string {
   const text = valueToText(value)
-  if (value.type === 'boolean') return text === 'true' ? 'はい' : 'いいえ'
-  return text || '未設定'
+  if (value.type === 'boolean') return text === 'true' ? t.yes : t.no
+  return text || t.notSet
 }
 
 function AttributeField({
@@ -461,6 +467,7 @@ function AttributeField({
   value: string
   onChange: (next: string) => void
 }) {
+  const t = useDictionary(accountProfileDictionary)
   const id = `attr-${def.key}`
   if (def.type === 'boolean') {
     return (
@@ -483,12 +490,10 @@ function AttributeField({
         id={id}
         type={def.type === 'number' ? 'number' : def.type === 'date' ? 'date' : 'text'}
         value={value}
-        placeholder={def.type === 'string_array' ? 'カンマ区切り' : undefined}
+        placeholder={def.type === 'string_array' ? t.commaSeparated : undefined}
         onChange={(event) => onChange(event.target.value)}
       />
-      {def.type === 'string_array' ? (
-        <p className="text-xs text-slate-500">複数値はカンマ区切りで入力します。</p>
-      ) : null}
+      {def.type === 'string_array' ? <p className="text-xs text-slate-500">{t.commaHelp}</p> : null}
     </div>
   )
 }
