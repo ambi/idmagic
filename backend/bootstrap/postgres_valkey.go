@@ -32,6 +32,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
+	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/postgres"
 )
@@ -80,6 +81,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		return nil, err
 	}
 	resilientDB := postgres.NewResilientDB(pool, dbBreaker, dbCfg.QueryTimeout)
+	tenantRepo := &tenancypostgres.TenantRepository{Pool: resilientDB}
+	// NewKeyStore bootstraps the default tenant signing key, whose FK requires
+	// the tenant row to exist first. Fresh databases (including `just dev`) must
+	// establish this root aggregate before assembling dependent adapters.
+	if err := tenantusecases.EnsureDefault(ctx, tenantRepo, time.Now().UTC()); err != nil {
+		pool.Close()
+		return nil, err
+	}
 
 	valkeyClient, err := sharedvalkey.Open(ctx, valkeyURL, valkeyCfg, valkeyBreaker)
 	if err != nil {
@@ -108,7 +117,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 
 	return &Dependencies{
 		Tenancy: tenancy.Module{
-			TenantRepo:         &tenancypostgres.TenantRepository{Pool: resilientDB},
+			TenantRepo:         tenantRepo,
 			AttrSchemaRepo:     &idmpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
 			BrandingRepo:       &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
 			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},

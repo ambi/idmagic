@@ -66,6 +66,13 @@ goroutine として API プロセス内で起動されている。
    も行う。`Jobs` の queue を実際に通す最初の consumer は疎通確認用の
    no-op/echo `JobKind` とし、Queued → Running → Succeeded の遷移と
    worker kill 後のリース失効再取得を検証する。
+8. **Docker なしの標準開発環境**: 標準の `just dev` でも API と worker の
+   プロセス境界を維持する。開発用 supervisor は embedded PostgreSQL と
+   miniredis を localhost の TCP endpoint として起動し、API と worker は
+   production と同じ `postgres_valkey` adapter を通して同じ queue を共有する。
+   miniredis は既存 Valkey adapter の契約を満たす開発・テスト限定実装であり、
+   production の Valkey の永続性・性能・運用特性を代替しない。従来の memory
+   mode は `just dev-memory` に限定し、durable jobs が利用できないことを明示する。
 
 ## 却下した代替案
 - **bounded context ごとのマイクロサービス化**: 現在の認証 → OAuth2 /
@@ -74,6 +81,10 @@ goroutine として API プロセス内で起動されている。
   データ所有・チーム・SLO が成立するまで分割しない。
 - **API プロセスに worker を同居させる**: ジョブ実行の負荷が API の
   レイテンシに影響し、水平スケールの単位も分離できなくなるため却下。
+- **開発時だけ API 内に memory worker を同居させる**: 起動は軽いが、API と
+  worker の障害境界・lease 再取得・共有 queue を確認できず、開発と production
+  で実行モデルが分岐するため却下。Docker 不要の embedded shared stores で
+  同じ adapter とプロセス境界を維持する。
 - **retention sweep を `jobs` テーブル経由の Job として queue 化する**:
   テナント横断処理を tenant_id 必須の Job モデルに押し込めると、
   invariant (c)（テナント分離）の意味が壊れるか、tenant_id を nullable に

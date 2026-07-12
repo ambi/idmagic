@@ -140,6 +140,10 @@ scl-render:
 dev:
     ./dev.sh
 
+# Start the lightweight API + UI stack without durable jobs.
+dev-memory:
+    ./dev.sh memory
+
 # Start the Go API for local UI development.
 dev-api:
     ADDR=:8081 ISSUER=http://localhost:5173 WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-localhost}" WEBAUTHN_RP_ORIGINS="${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}" WEBAUTHN_RP_DISPLAY_NAME="${WEBAUTHN_RP_DISPLAY_NAME:-IdMagic Local}" go run ./backend/cmd/idmagic

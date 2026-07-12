@@ -31,18 +31,23 @@ and a foundation for identity platform experiments.
 
 ## Quick Start
 
-## CSV user import
-
-Tenant administrators can submit UTF-8 CSV files to `POST /api/admin/users/imports` with
-`mode` set to `dry_run` or `apply`. The required header is
-`preferred_username,email,name,roles`; roles are `|` separated. Files are limited to
-1 MiB, 1,000 rows, and 64 KiB per field. Password material is never accepted; imported
-users are required to set a password on first sign-in.
-
-Run the API and UI together in local memory mode:
+Run the Docker-free local stack with embedded PostgreSQL, a Valkey-compatible
+development endpoint, the API, worker, and UI:
 
 ```bash
 just dev
+```
+
+The first run downloads and caches an embedded PostgreSQL binary (about 190 MB).
+Development data is temporary and is removed when the stack stops. The API and
+worker remain separate processes and share the PostgreSQL job queue, so durable
+jobs such as CSV user import work in this mode. The local endpoints are
+`127.0.0.1:55432` (PostgreSQL) and `127.0.0.1:56379` (Valkey-compatible).
+
+For the smallest API + UI loop, without durable jobs or the background worker:
+
+```bash
+just dev-memory
 ```
 
 Open <http://localhost:5173/> and choose the local demo authentication entry.
@@ -56,9 +61,21 @@ Use:
 Do not open `/login` directly. The login screen expects an active
 authorization transaction.
 
+### CSV user import
+
+Tenant administrators can submit UTF-8 CSV files to `POST /api/admin/users/imports`
+with `mode` set to `dry_run` or `apply`. The required header is
+`preferred_username,email,name,roles`; roles are `|` separated. Files are limited
+to 1 MiB, 1,000 rows, and 64 KiB per field. Password material is never accepted;
+imported users are required to set a password on first sign-in. CSV jobs require
+the standard `just dev` or `just dev-compose`; they are unavailable in
+`just dev-memory`.
+
 ### Manual Local Run
 
-If you prefer separate terminals:
+If you prefer separate terminals, start shared PostgreSQL/Valkey yourself and
+provide `PERSISTENCE=postgres_valkey`, `DATABASE_URL`, and `VALKEY_URL` to both
+the API and worker. `just dev-api` by itself continues to use memory mode.
 
 ```bash
 # Terminal 1: Go API
@@ -102,6 +119,8 @@ This repository uses `just` as the command map:
 just --list
 just setup
 just verify
+just dev
+just dev-memory
 just dev-api
 just dev-ui
 just dev-compose

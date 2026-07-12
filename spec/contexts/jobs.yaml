@@ -361,6 +361,10 @@ invariants:
     target: Job
     assuming: attempts >= max_attempts
     always: "event == JobFailed && terminal == true"
+  LocalDevelopmentWorkerSharesDurableQueue:
+    description: "非同期機能を提供する標準開発環境では、API と worker は別プロセスで同じ PostgreSQL JobRepository を共有しなければならない。別々の memory repository を使い、enqueue 済み Job が worker から不可視になる構成を標準開発環境としてはならない。"
+    target: Job
+    always: "standard_development_environment => api.job_repository == worker.job_repository && job_repository.kind == PostgreSQL"
 objectives:
   JobRecordRetention:
     kind: retention
@@ -369,6 +373,28 @@ objectives:
     retention: 30d
     reference: ADR-100-job-data-retention-and-pii
 scenarios:
+  Docker なしの標準開発環境で worker がジョブを完了する:
+    goal: 開発者が追加の常駐サービスを用意せず、API と worker を分離した非同期機能を確認できる。
+    primary_actor: Developer
+    scope: Jobs
+    level: user_goal
+    preconditions:
+      - embedded PostgreSQL binary が取得済み、または初回取得可能である
+      - 開発用ポートが利用可能である
+    success_guarantees:
+      - API と worker は同じ PostgreSQL queue と Valkey 互換 endpoint を共有する。
+      - 開発環境の終了時に全ての子プロセスと一時データが終了する。
+    main_success:
+      - 開発者が標準開発コマンドを実行する
+      - embedded PostgreSQL と開発用 Valkey 互換 endpoint が起動し schema が適用される
+      - API、worker、UI が起動する
+      - API が Job を enqueue する
+      - worker が同じ Job を claim して Succeeded にする
+    extensions:
+      - at: 2
+        condition: binary 取得、ポート確保、または schema 適用に失敗する
+        steps:
+          - 標準開発環境は API と UI を起動せず fail-fast する
   ジョブを enqueue すると worker が実行して成功する:
     goal: 非同期処理を queue に投入し、worker が claim して実行し、結果が確認できる。
     primary_actor: System

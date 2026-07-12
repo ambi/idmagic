@@ -25507,7 +25507,7 @@ oauthbearertoken 方式を 1 件含める。
       <div class="eyebrow">Bounded Context · contexts/jobs.yaml</div>
       <h1>Jobs</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-jobs-glossary"><span class="stat-num">12</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-jobs-models"><span class="stat-num">11</span><span class="stat-label">models</span></a><a class="stat" href="#context-jobs-interfaces"><span class="stat-num">6</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-jobs-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-jobs-invariants"><span class="stat-num">5</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-jobs-scenarios"><span class="stat-num">4</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-jobs-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a></div>
+    <div class="stats"><a class="stat" href="#context-jobs-glossary"><span class="stat-num">12</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-jobs-models"><span class="stat-num">11</span><span class="stat-label">models</span></a><a class="stat" href="#context-jobs-interfaces"><span class="stat-num">6</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-jobs-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-jobs-invariants"><span class="stat-num">6</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-jobs-scenarios"><span class="stat-num">5</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-jobs-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a></div>
   </section>
   <section id="context-jobs-glossary">
     <h2>Glossary <span class="count">12</span></h2>
@@ -26361,7 +26361,7 @@ run_at を設定して Queued (Retry) へ、attempts &gt;= max_attempts なら F
   </article></div>
   </section>
 <section id="context-jobs-invariants">
-    <h2>Invariants <span class="count">5</span></h2>
+    <h2>Invariants <span class="count">6</span></h2>
     <p class="lead">入力に依らず常に成り立つ不変条件、または決して起きてはならない事象。</p>
     <div class="cards"><article class="card" id="context-jobs-inv-jobleaseexclusivity">
     <header><h3>JobLeaseExclusivity</h3></header>
@@ -26400,12 +26400,33 @@ run_at を設定して Queued (Retry) へ、attempts &gt;= max_attempts なら F
     <dl class="kv"><dt>target</dt><dd><code>Job</code></dd></dl>
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">attempts &gt;= max_attempts</code></div>
 <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">event == JobFailed &amp;&amp; terminal == true</code></div>
+  </article>
+<article class="card" id="context-jobs-inv-localdevelopmentworkersharesdurablequeue">
+    <header><h3>LocalDevelopmentWorkerSharesDurableQueue</h3></header>
+    <p class="desc">非同期機能を提供する標準開発環境では、API と worker は別プロセスで同じ PostgreSQL JobRepository を共有しなければならない。別々の memory repository を使い、enqueue 済み Job が worker から不可視になる構成を標準開発環境としてはならない。</p>
+    <dl class="kv"><dt>target</dt><dd><code>Job</code></dd></dl>
+    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">standard_development_environment =&gt; api.job_repository == worker.job_repository &amp;&amp; job_repository.kind == PostgreSQL</code></div>
   </article></div>
   </section>
 <section id="context-jobs-scenarios">
-    <h2>Scenarios <span class="count">4</span></h2>
+    <h2>Scenarios <span class="count">5</span></h2>
     <p class="lead">受け入れ例。自然文ステップで書かれた振る舞いの具体例。引用された既知の名前は定義へリンクする。</p>
-    <div class="cards"><article class="card scenario" id="context-jobs-scn-enqueue-worker">
+    <div class="cards"><article class="card scenario" id="context-jobs-scn-docker-worker">
+    <header><h3>Docker なしの標準開発環境で worker がジョブを完了する</h3></header>
+
+    <dl class="kv"><dt>goal</dt><dd>開発者が追加の常駐サービスを用意せず、API と worker を分離した非同期機能を確認できる。</dd><dt>primary actor</dt><dd><span class="chip">Developer</span></dd><dt>scope</dt><dd><span class="chip">Jobs</span></dd><dt>level</dt><dd><span class="chip">user_goal</span></dd></dl>
+
+    <div class="sub"><div class="label">Preconditions</div><ul class="vlist"><li>embedded PostgreSQL binary が取得済み、または初回取得可能である</li><li>開発用ポートが利用可能である</li></ul></div>
+    <div class="sub"><div class="label">Success guarantees</div><ul class="vlist"><li>API と worker は同じ PostgreSQL queue と Valkey 互換 endpoint を共有する。</li><li>開発環境の終了時に全ての子プロセスと一時データが終了する。</li></ul></div>
+    <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">開発者が標準開発コマンドを実行する</li><li class="scn-step">embedded PostgreSQL と開発用 Valkey 互換 endpoint が起動し schema が適用される</li><li class="scn-step">API、worker、UI が起動する</li><li class="scn-step">API が Job を enqueue する</li><li class="scn-step">worker が同じ Job を claim して Succeeded にする</li></ol></div>
+
+    <div class="sub"><div class="label">Extensions</div><div class="requirements"><article class="requirement">
+        <header><span class="chip chip-hint">at 2</span><code class="name">binary 取得、ポート確保、または schema 適用に失敗する</code></header>
+        <ol class="scn-steps"><li class="scn-step">標準開発環境は API と UI を起動せず fail-fast する</li></ol>
+      </article></div></div>
+
+  </article>
+<article class="card scenario" id="context-jobs-scn-enqueue-worker">
     <header><h3>ジョブを enqueue すると worker が実行して成功する</h3></header>
 
     <dl class="kv"><dt>goal</dt><dd>非同期処理を queue に投入し、worker が claim して実行し、結果が確認できる。</dd><dt>primary actor</dt><dd><span class="chip">System</span></dd><dt>scope</dt><dd><span class="chip">Jobs</span></dd><dt>level</dt><dd><span class="chip">user_goal</span></dd></dl>
