@@ -10,12 +10,17 @@ package bootstrap
 // 見えるようになる。
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
@@ -45,4 +50,35 @@ func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, erro
 	}
 	rec.SearchAttributes = auditusecases.ExtractSearchAttributes(rec)
 	return rec, nil
+}
+
+// NewEmitFunc builds the shared "write DomainEvent to EventSink, then mirror it
+// into AuditEventRepo" closure (audit.DomainEventsAreAuditedRegardlessOfProcess
+// invariant, wi-205). Every process that executes admin/user-facing use cases
+// (idmagic, idmagic-worker, ...) must wire its use case Emit dependency through
+// this helper, so audit coverage doesn't depend on which process happens to run
+// the use case.
+func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent) {
+	return func(event spec.DomainEvent) {
+		eventCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := d.OAuth2.EventSink.Emit(eventCtx, event); err != nil {
+			logger.Error(eventCtx, "event sink emit failed", "error", err)
+		}
+		if d.Audit.AuditEventRepo == nil {
+			return
+		}
+		rec, err := NewAuditEventRecord(event)
+		if err != nil {
+			logger.Error(eventCtx, "audit event conversion failed; reconciliation required", "error", err, "event_type", event.EventType())
+			return
+		}
+		appendCtx := eventCtx
+		if rec.TenantID != "" {
+			appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
+		}
+		if err := d.Audit.AuditEventRepo.Append(appendCtx, rec); err != nil {
+			logger.Error(appendCtx, "audit event append failed; reconciliation required", "error", err, "event_type", event.EventType(), "tenant_id", rec.TenantID)
+		}
+	}
 }

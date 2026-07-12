@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -23,7 +22,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -158,26 +156,7 @@ func Run() error {
 		}
 		e.Use(otelProvider.Middleware)
 	}
-	emit := func(event spec.DomainEvent) {
-		eventCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		if err := deps.OAuth2.EventSink.Emit(eventCtx, event); err != nil {
-			logger.Error(eventCtx, "event sink emit failed", "error", err)
-		}
-		if deps.Audit.AuditEventRepo != nil {
-			if rec, err := bootstrap.NewAuditEventRecord(event); err == nil {
-				appendCtx := eventCtx
-				if rec.TenantID != "" {
-					appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
-				}
-				if err := deps.Audit.AuditEventRepo.Append(appendCtx, rec); err != nil {
-					logger.Error(appendCtx, "audit event append failed; reconciliation required", "error", err, "event_type", event.EventType(), "tenant_id", rec.TenantID)
-				}
-			} else {
-				logger.Error(eventCtx, "audit event conversion failed; reconciliation required", "error", err, "event_type", event.EventType())
-			}
-		}
-	}
+	emit := deps.NewEmitFunc(logger)
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: httpsupport.Deps{
 			Issuer:                    issuer,

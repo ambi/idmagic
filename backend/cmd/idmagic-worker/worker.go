@@ -48,7 +48,7 @@ func RunWorker() error {
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
-	adminDeps := idmusecases.AdminUserDeps{UserRepo: deps.IdentityManagement.UserRepo, AttrSchemaRepo: deps.Tenancy.AttrSchemaRepo, ConsentRepo: deps.OAuth2.ConsentRepo, RefreshStore: deps.OAuth2.RefreshStore, DeviceCodeStore: deps.OAuth2.DeviceCodeStore, MfaFactorRepo: deps.Authentication.MfaFactorRepo, PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo}
+	adminDeps := newAdminUserDeps(deps, logger)
 	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
 	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
 
@@ -107,6 +107,31 @@ func RunWorker() error {
 		logger.Warn(context.Background(), "drain grace period exceeded; exiting with jobs still in flight")
 	}
 	return nil
+}
+
+// newAdminUserDeps builds the AdminUserDeps used by worker-run admin job
+// handlers (currently CSV user import). Emit is wired through
+// bootstrap.Dependencies.NewEmitFunc so business DomainEvents reach
+// AuditEventRepo the same way HTTP handlers' legacyEmit does
+// (audit.DomainEventsAreAuditedRegardlessOfProcess invariant, wi-205); before
+// this wiring existed, Emit was left nil and UserCreated events emitted by
+// CSV import apply were silently dropped.
+func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmusecases.AdminUserDeps {
+	emit := deps.NewEmitFunc(logger)
+	return idmusecases.AdminUserDeps{
+		UserRepo:            deps.IdentityManagement.UserRepo,
+		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
+		ConsentRepo:         deps.OAuth2.ConsentRepo,
+		RefreshStore:        deps.OAuth2.RefreshStore,
+		DeviceCodeStore:     deps.OAuth2.DeviceCodeStore,
+		MfaFactorRepo:       deps.Authentication.MfaFactorRepo,
+		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
+		PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo,
+		Emit: func(event spec.DomainEvent) error {
+			emit(event)
+			return nil
+		},
+	}
 }
 
 func workerIDFallback() string {

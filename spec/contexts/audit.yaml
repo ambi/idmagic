@@ -189,6 +189,11 @@ invariants:
     target: AuditEventSearchAttribute
     assuming: "field in [actor.username, client.ip]"
     always: "raw_storable == false && stored_value == transform(plaintext, tenant_salt)"
+  DomainEventsAreAuditedRegardlessOfProcess:
+    description: "業務操作 (use case) が発行する DomainEvent は、それを実行するプロセス (idmagic-api /\nidmagic-worker 等) に関わらず AuditEventRepo に記録されなければならない。emit の配線は\nプロセスごとの DI 組み立てコードの責務だが、その配線漏れが監査証跡の欠落として現れてはならない。\nJob キューのライフサイクルイベント (JobEnqueued / JobStarted / JobSucceeded 等) はこの対象外で、\n業務操作そのものではなくジョブ実行の観測用ログであり、別の sink (ログ) へ出力されれば足りる。\n反例: idmagic-worker が実行する CSV インポート apply で UserCreated イベントは発行されるが、\nworker プロセスの DI 組み立てに emit の配線が無いため AuditEventRepo には記録されず、\nユーザー作成自体は成功して見えるのに監査証跡だけが欠落する (wi-205)。\n"
+    target: DomainEvent
+    assuming: "e is emitted by use case business logic as the outcome of an admin/user-facing operation (not a job-queue lifecycle event)"
+    always: "exists a record r in AuditEventRepo such that r.type == e.type && r.occurred_at == e.occurred_at && r.payload == e.payload, independent of the process (idmagic-api / idmagic-worker) that executed the emitting use case"
 permissions:
   AdminAuditEventsRead:
     description: "管理者による所属テナントの監査イベント読み出し。admin は所属テナントに閉じ、\nsystem_admin は default tenant 経路から全テナント横断的に参照できる。\n書き込みエンドポイントは存在しないため Read のみ。\n"

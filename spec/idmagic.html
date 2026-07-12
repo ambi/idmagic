@@ -18308,7 +18308,7 @@ challenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, c
       <div class="eyebrow">Bounded Context · contexts/audit.yaml</div>
       <h1>Audit</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-audit-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-audit-models"><span class="stat-num">7</span><span class="stat-label">models</span></a><a class="stat" href="#context-audit-interfaces"><span class="stat-num">3</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-audit-invariants"><span class="stat-num">1</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-audit-permissions"><span class="stat-num">1</span><span class="stat-label">permissions</span></a><a class="stat" href="#context-audit-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-audit-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
+    <div class="stats"><a class="stat" href="#context-audit-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-audit-models"><span class="stat-num">7</span><span class="stat-label">models</span></a><a class="stat" href="#context-audit-interfaces"><span class="stat-num">3</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-audit-invariants"><span class="stat-num">2</span><span class="stat-label">invariants</span></a><a class="stat" href="#context-audit-permissions"><span class="stat-num">1</span><span class="stat-label">permissions</span></a><a class="stat" href="#context-audit-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-audit-user_experience"><span class="stat-num">1</span><span class="stat-label">user experience</span></a></div>
   </section>
   <section id="context-audit-glossary">
     <h2>Glossary <span class="count">2</span></h2>
@@ -18675,7 +18675,7 @@ filter の field は registry allowlist のみ。permission は AdminAuditEvents
   </article></div>
   </section>
 <section id="context-audit-invariants">
-    <h2>Invariants <span class="count">1</span></h2>
+    <h2>Invariants <span class="count">2</span></h2>
     <p class="lead">入力に依らず常に成り立つ不変条件、または決して起きてはならない事象。</p>
     <div class="cards"><article class="card" id="context-audit-inv-auditpiisearchattributesaretransformed">
     <header><h3>AuditPIISearchAttributesAreTransformed</h3></header>
@@ -18684,6 +18684,20 @@ filter の field は registry allowlist のみ。permission は AdminAuditEvents
     <dl class="kv"><dt>target</dt><dd><code>AuditEventSearchAttribute</code></dd></dl>
     <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">field in [actor.username, client.ip]</code></div>
 <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">raw_storable == false &amp;&amp; stored_value == transform(plaintext, tenant_salt)</code></div>
+  </article>
+<article class="card" id="context-audit-inv-domaineventsareauditedregardlessofprocess">
+    <header><h3>DomainEventsAreAuditedRegardlessOfProcess</h3></header>
+    <p class="desc">業務操作 (use case) が発行する DomainEvent は、それを実行するプロセス (idmagic-api /
+idmagic-worker 等) に関わらず AuditEventRepo に記録されなければならない。emit の配線は
+プロセスごとの DI 組み立てコードの責務だが、その配線漏れが監査証跡の欠落として現れてはならない。
+Job キューのライフサイクルイベント (JobEnqueued / JobStarted / JobSucceeded 等) はこの対象外で、
+業務操作そのものではなくジョブ実行の観測用ログであり、別の sink (ログ) へ出力されれば足りる。
+反例: idmagic-worker が実行する CSV インポート apply で UserCreated イベントは発行されるが、
+worker プロセスの DI 組み立てに emit の配線が無いため AuditEventRepo には記録されず、
+ユーザー作成自体は成功して見えるのに監査証跡だけが欠落する (wi-205)。</p>
+    <dl class="kv"><dt>target</dt><dd><code>DomainEvent</code></dd></dl>
+    <div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div><code class="expr">e is emitted by use case business logic as the outcome of an admin/user-facing operation (not a job-queue lifecycle event)</code></div>
+<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">exists a record r in AuditEventRepo such that r.type == e.type &amp;&amp; r.occurred_at == e.occurred_at &amp;&amp; r.payload == e.payload, independent of the process (idmagic-api / idmagic-worker) that executed the emitting use case</code></div>
   </article></div>
   </section>
 <section id="context-audit-permissions">
