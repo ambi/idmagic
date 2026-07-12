@@ -3,6 +3,8 @@ import { AuthenticationAPIError, tenantBasePath, tenantLocalPath, tenantURL } fr
 import { type PortalAudience, restartPortalLogin } from './api/oidc'
 import { routeTree } from './routeTree.gen'
 import { markErrorPage } from './routes/-page'
+import { commonDictionary } from './lib/i18n/common.i18n'
+import { useDictionary } from './lib/i18n'
 
 export function preloadPageChunks() {
   // File-based routes with autoCodeSplitting let TanStack Router/Vite own route chunk loading.
@@ -22,18 +24,18 @@ function portalReauthTarget(): { audience: PortalAudience; returnTo: string } | 
 }
 
 function ErrorScreen({ error }: { error: unknown }) {
+  const t = useDictionary(commonDictionary)
   markErrorPage()
   const rawMessage =
-    error instanceof AuthenticationAPIError ? error.message : '認証画面を読み込めませんでした。'
-  const expiredLogin =
-    rawMessage.includes('認可トランザクション') || rawMessage.toLowerCase().includes('transaction')
+    error instanceof AuthenticationAPIError ? error.message : t.authenticationUnavailable
+  const expiredLogin = rawMessage.toLowerCase().includes('transaction')
   const reauth = expiredLogin ? null : portalReauthTarget()
-  const title = expiredLogin ? 'ログイン要求が終了しています' : '認証を続行できません'
+  const title = expiredLogin ? t.loginRequestExpired : t.cannotContinueAuthentication
   const message = expiredLogin
-    ? '前のログイン要求は完了または期限切れになっています。利用したい画面をもう一度開いてログインしてください。'
+    ? t.expiredLoginMessage
     : reauth
-      ? 'セッションの有効期限が切れました。もう一度ログインすると、この画面に戻ります。'
-      : rawMessage || '認証画面を読み込めませんでした。もう一度お試しください。'
+      ? t.sessionExpiredMessage
+      : rawMessage || t.retryAuthenticationMessage
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
       <div className="w-full max-w-md rounded-2xl border bg-white p-8 text-center shadow-lg">
@@ -45,13 +47,13 @@ function ErrorScreen({ error }: { error: unknown }) {
               href={tenantURL('/account')}
               className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
             >
-              マイページを開く
+              {t.openAccount}
             </a>
             <a
               href={tenantURL('/admin')}
               className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
-              管理コンソールを開く
+              {t.openAdmin}
             </a>
           </div>
         ) : reauth ? (
@@ -63,13 +65,13 @@ function ErrorScreen({ error }: { error: unknown }) {
               }}
               className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
             >
-              再ログイン
+              {t.signInAgain}
             </button>
             <a
               href={tenantURL(reauth.audience === 'account' ? '/account' : '/admin')}
               className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
-              {reauth.audience === 'account' ? 'マイページを開く' : '管理コンソールを開く'}
+              {reauth.audience === 'account' ? t.openAccount : t.openAdmin}
             </a>
           </div>
         ) : null}

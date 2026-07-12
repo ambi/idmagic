@@ -158,7 +158,7 @@ export type Section = { key: string; name: string; apps: MyApplication[] }
 export function buildSections(
   apps: MyApplication[],
   categories: PortalCategory[],
-  other = 'その他',
+  other = accountAppsDictionary.ja.other,
 ): Section[] {
   const sections: Section[] = categories.map((category) => ({
     key: category.category_id,

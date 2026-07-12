@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: high
 created_at: 2026-07-12
@@ -44,11 +44,11 @@ wi-158 で i18n の基盤と主要 hosted auth 画面を導入したが、accoun
 ## Tasks
 
 - [x] T001 [SCL] 全画面の ja/en 表示・fallback・error 表示境界を更新する。
-- [ ] T002 [UI] shared shell と hosted auth の残存文言を辞書化する（wi-199）。
-- [ ] T003 [UI] account / admin / system の全画面・dialog・aria label・状態表示を辞書化する（wi-200 / wi-201）。
-- [ ] T004 [Test] 直書き検出、辞書完全性、ja/en 描画、locale 非依存 E2E を追加する（wi-199〜201）。
+- [x] T002 [UI] shared shell と hosted auth の残存文言を辞書化する（wi-199）。
+- [x] T003 [UI] account / admin / system の全画面・dialog・aria label・状態表示を辞書化する（wi-200 / wi-201）。
+- [x] T004 [Test] 直書き検出、辞書完全性、ja/en 描画、locale 非依存 E2E を追加する（wi-199〜201）。
 - [x] T005 [Docs] 文言追加と画面追加時の ja/en 要件を開発者文書へ追記する。
-- [ ] T006 [Verify] `just yaml-check`、`just verify-ui`、`just test-ui-e2e`、`just verify` を通す。
+- [x] T006 [Verify] `just yaml-check`、`just verify-ui`、`just test-ui-e2e`、`just verify` を通す。
 
 ## Verification
 
@@ -60,3 +60,22 @@ wi-158 で i18n の基盤と主要 hosted auth 画面を導入したが、accoun
 ## Risk Notes
 
 画面数が多く、直書き漏れは利用者ごとの表示不整合になる。feature 単位で辞書とテストを近接配置し、UI error と backend error の責務境界を保つ。
+
+## Completion
+
+- **Completed At**: 2026-07-12
+- **Summary**:
+  子 WI-199〜201 による hosted auth、account、admin、system の辞書化を統合した。残存していたページタイトル、ルーターエラー画面、step-up dialog、共通 Select / Toast、API フォールバックも ja/en の表示責務または英語固定の backend error 境界へ揃えた。
+- **Affected Guarantees State**:
+  `FrontendLocalizationCompleteness`、`TranslationKeyIntegrity`、`UX-LOCALE`、`UX-API-ERROR-ENGLISH-ONLY` を満たす実装と検証を完了した。
+- **Verification Results**:
+  - `just verify-ui` — passed
+  - `just test-ui-e2e` — passed
+  - `just verify` — passed
+  - `just yaml-check` — passed
+- **Evidence**:
+  - 実行日: 2026-07-12
+  - 実行環境: ローカル開発環境 (macOS)
+  - 実行主体: Codex (GPT-5)
+  - 対象ソース版: main（コミット前作業ツリー）
+  - 保存先: 外部成果物なし。UI unit / E2E と全体検証の結果を上記に記録。

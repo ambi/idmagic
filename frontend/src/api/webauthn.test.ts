@@ -156,7 +156,7 @@ describe('createPasskey', () => {
           user: { id: base64URL(new Uint8Array([1])), name: 'user', displayName: 'User' },
         },
       }),
-    ).rejects.toThrow('パスキーを作成できませんでした。')
+    ).rejects.toThrow('Could not create a passkey.')
   })
 })
 
@@ -177,7 +177,7 @@ describe('getPasskeyAssertion', () => {
     vi.stubGlobal('navigator', { credentials: { get: vi.fn().mockResolvedValue(null) } })
     await expect(
       getPasskeyAssertion({ publicKey: { challenge: base64URL(new Uint8Array([1])) } }),
-    ).rejects.toThrow('パスキー認証をキャンセルしました。')
+    ).rejects.toThrow('Passkey authentication was cancelled.')
   })
 })
 

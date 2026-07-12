@@ -391,7 +391,7 @@ test('password reset succeeds through the local SMTP sink without external mail'
     await waitForPage(view, 'reset-password')
     await setInputValue(view, 'input[name="new_password"]', nextPassword)
     await clickButtonByText(view, 'Update password')
-    await waitForText(view, 'Your password has been updated.')
+    await waitForText(view, 'Your password was updated. You can sign in now.')
   } finally {
     view.close()
   }
@@ -422,7 +422,7 @@ test('admin application lifecycle and agent credential binding work from the bro
     )
     expect(clientID).not.toBe('')
 
-    await clickButtonByText(view, 'I stored it')
+    await clickButtonByText(view, 'Stored')
     await waitForUrl(view, /\/admin\/applications\/[^/]+$/)
     const appDetailURL = view.url
     await waitForText(view, appName)

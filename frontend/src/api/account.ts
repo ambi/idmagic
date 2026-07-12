@@ -11,6 +11,10 @@ import type {
 } from '../types'
 import { adminRequest, AuthenticationAPIError, request, tenantURL, type APIError } from './core'
 import { createPasskey, getPasskeyAssertion } from './webauthn'
+import { commonDictionary } from '../lib/i18n/common.i18n'
+import { getCurrentLocale } from '../lib/i18n/currentLocale'
+
+const uiFallback = () => commonDictionary[getCurrentLocale()].networkError
 
 export type UpdateAccountProfileInput = {
   name?: string
@@ -44,10 +48,7 @@ export async function requestEmailChange(csrfToken: string, newEmail: string): P
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(
-    body.message ?? 'メールアドレスの変更を要求できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function exportAccountData(): Promise<unknown> {
@@ -70,7 +71,7 @@ export async function revokeAccountConsent(csrfToken: string, clientId: string):
   )
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? 'アクセスを取り消せませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function getAccountSecurity(): Promise<AccountSecurity> {
@@ -98,7 +99,7 @@ export async function revokeAccountSession(csrfToken: string, id: string): Promi
   )
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? 'セッションを終了できませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function revokeOtherAccountSessions(csrfToken: string): Promise<void> {
@@ -110,10 +111,7 @@ export async function revokeOtherAccountSessions(csrfToken: string): Promise<voi
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(
-    body.message ?? '他のセッションを終了できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 // step-up 再認証 (ADR-043 / wi-43)。高 sensitivity 操作が 403 step_up_required を返したら、
@@ -134,10 +132,7 @@ async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
   })
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as APIError
-    throw new AuthenticationAPIError(
-      body.message ?? 'パスキー認証を開始できませんでした。',
-      body.error,
-    )
+    throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
   }
   return getPasskeyAssertion((await response.json()) as { publicKey: never })
 }
@@ -153,7 +148,7 @@ export async function startStepUp(csrfToken: string): Promise<StepUpMethod[]> {
     return ((await response.json()) as { methods: StepUpMethod[] }).methods
   }
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? '再認証を開始できませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function completeStepUp(
@@ -180,7 +175,7 @@ export async function completeStepUp(
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? '再認証に失敗しました。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function startTotpEnrollment(csrfToken: string): Promise<TotpEnrollmentStart> {
@@ -192,10 +187,7 @@ export async function startTotpEnrollment(csrfToken: string): Promise<TotpEnroll
   })
   if (response.ok) return (await response.json()) as TotpEnrollmentStart
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(
-    body.message ?? '認証アプリの登録を開始できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function confirmTotpEnrollment(
@@ -212,7 +204,7 @@ export async function confirmTotpEnrollment(
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? '認証アプリを登録できませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function removeTotpFactor(csrfToken: string, code: string): Promise<void> {
@@ -225,7 +217,7 @@ export async function removeTotpFactor(csrfToken: string, code: string): Promise
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? '認証アプリを解除できませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 // registerPasskey は登録 challenge を取得し、navigator.credentials.create で作成した
@@ -239,10 +231,7 @@ export async function registerPasskey(csrfToken: string, label?: string): Promis
   })
   if (!startResponse.ok) {
     const body = (await startResponse.json().catch(() => ({}))) as APIError
-    throw new AuthenticationAPIError(
-      body.message ?? 'パスキー登録を開始できませんでした。',
-      body.error,
-    )
+    throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
   }
   const attestation = await createPasskey((await startResponse.json()) as { publicKey: never })
   const finishResponse = await fetch(tenantURL('/api/account/mfa/webauthn/register/finish'), {
@@ -254,7 +243,7 @@ export async function registerPasskey(csrfToken: string, label?: string): Promis
   })
   if (finishResponse.status === 204) return
   const body = (await finishResponse.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? 'パスキーを登録できませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function removePasskey(csrfToken: string, credentialId: string): Promise<void> {
@@ -267,7 +256,7 @@ export async function removePasskey(csrfToken: string, credentialId: string): Pr
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? 'パスキーを解除できませんでした。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export type RecoveryCodesResult = {
@@ -284,10 +273,7 @@ export async function generateRecoveryCodes(csrfToken: string): Promise<Recovery
   })
   if (response.ok) return (await response.json()) as RecoveryCodesResult
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(
-    body.message ?? 'リカバリコードを生成できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function revokeRecoveryCodes(csrfToken: string): Promise<void> {
@@ -299,10 +285,7 @@ export async function revokeRecoveryCodes(csrfToken: string): Promise<void> {
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(
-    body.message ?? 'リカバリコードを失効できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function confirmEmailChange(csrfToken: string, token: string): Promise<void> {
@@ -315,7 +298,7 @@ export async function confirmEmailChange(csrfToken: string, token: string): Prom
   })
   if (response.ok) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? '確認に失敗しました。', body.error)
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 // 利用者ポータルの割当済みアプリ一覧とカテゴリ定義 (wi-69, wi-70)。visible 割当のみ返り、

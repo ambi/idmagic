@@ -109,7 +109,7 @@ export async function createPasskey(optionsJSON: {
     publicKey: preparePublicKeyCreation(optionsJSON.publicKey),
   })) as PublicKeyCredential | null
   if (!credential) {
-    throw new Error('パスキーを作成できませんでした。')
+    throw new Error('Could not create a passkey.')
   }
   return serializeRegistrationCredential(credential)
 }
@@ -122,7 +122,7 @@ export async function getPasskeyAssertion(optionsJSON: {
     publicKey: preparePublicKeyRequest(optionsJSON.publicKey),
   })) as PublicKeyCredential | null
   if (!credential) {
-    throw new Error('パスキー認証をキャンセルしました。')
+    throw new Error('Passkey authentication was cancelled.')
   }
   return serializeAssertionCredential(credential)
 }

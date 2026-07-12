@@ -16,7 +16,7 @@ import { accountHomeDictionary } from './AccountHomePage.i18n'
 export function formatAccountSummaryDateTime(
   value: string | undefined,
   locale = 'ja',
-  empty = '記録なし',
+  empty = accountHomeDictionary.ja.noRecord,
 ): string {
   if (!value) {
     return empty

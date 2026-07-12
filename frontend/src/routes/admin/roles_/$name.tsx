@@ -16,7 +16,7 @@ export const Route = createFileRoute('/admin/roles_/$name')({
       request<AdminUserListResponse>('/api/admin/users'),
     ])
     const role = roles.roles.find((r) => r.name === params.name)
-    if (!role) throw new AuthenticationAPIError('ロールが見つかりません', 'not_found')
+    if (!role) throw new AuthenticationAPIError('Role not found.', 'not_found')
     const usernames = users.users
       .filter((u) => u.roles.includes(params.name))
       .map((u) => u.preferred_username)

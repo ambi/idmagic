@@ -1,5 +1,9 @@
 import type { Branding, BrandingUpdateInput, TenantBrandingAssetKind } from '../types'
 import { AuthenticationAPIError, adminRequest, request, tenantURL } from './core'
+import { commonDictionary } from '../lib/i18n/common.i18n'
+import { getCurrentLocale } from '../lib/i18n/currentLocale'
+
+const uiFallback = () => commonDictionary[getCurrentLocale()].networkError
 
 // GetTenantBranding は解決済みテナントの hosted UI branding を返す公開 endpoint。
 // 未認証の login / consent / device 画面からも呼ぶため認証を要求しない。
@@ -36,12 +40,12 @@ export async function uploadTenantBrandingAsset(
   }
   if (!response.ok) {
     throw new AuthenticationAPIError(
-      body.message ?? body.error_description ?? '画像をアップロードできませんでした。',
+      body.message ?? body.error_description ?? uiFallback(),
       body.error,
     )
   }
   if (!body.branding) {
-    throw new AuthenticationAPIError('画像をアップロードできませんでした。')
+    throw new AuthenticationAPIError(uiFallback())
   }
   return body.branding
 }

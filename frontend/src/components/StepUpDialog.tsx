@@ -13,6 +13,8 @@ import { Alert } from './ui/alert'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
+import { commonDictionary } from '../lib/i18n/common.i18n'
+import { useDictionary } from '../lib/i18n'
 
 // ユーザーが再認証 modal を閉じた (キャンセルした) ことを表す。呼び出し側はこれを
 // 「エラー表示なしの中断」として握りつぶす。
@@ -67,13 +69,6 @@ export function useStepUpGuard(csrfToken: string) {
   return { guard, dialog }
 }
 
-const methodLabels: Record<StepUpMethod, string> = {
-  password: 'パスワード',
-  totp: '認証アプリ',
-  webauthn: 'パスキー',
-  recovery_code: 'リカバリコード',
-}
-
 interface StepUpDialogProps {
   methods: StepUpMethod[]
   csrfToken: string
@@ -82,6 +77,7 @@ interface StepUpDialogProps {
 }
 
 function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpDialogProps) {
+  const t = useDictionary(commonDictionary)
   const available = methods.length > 0 ? methods : (['password'] as StepUpMethod[])
   const [method, setMethod] = useState<StepUpMethod>(available[0])
   const [credential, setCredential] = useState('')
@@ -96,8 +92,7 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
       await completeStepUp(csrfToken, method, credential.trim())
       onAuthenticated()
     } catch (cause) {
-      const message =
-        cause instanceof AuthenticationAPIError ? cause.message : '再認証に失敗しました。'
+      const message = cause instanceof AuthenticationAPIError ? cause.message : t.stepUpFailure
       setError(message)
       setBusy(false)
     }
@@ -123,11 +118,9 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
     >
       <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
         <h2 id="step-up-title" className="text-base font-semibold text-slate-900">
-          本人確認のため再認証してください
+          {t.stepUpTitle}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          この操作はアカウントの安全に関わるため、もう一度本人確認を行います。
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t.stepUpDescription}</p>
 
         {error ? (
           <Alert variant="destructive" className="mt-4">
@@ -137,7 +130,7 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
 
         <form onSubmit={handleSubmit} className="mt-4 grid gap-4">
           {available.length > 1 ? (
-            <div className="flex gap-2" role="tablist" aria-label="再認証の方法">
+            <div className="flex gap-2" role="tablist" aria-label={t.stepUpMethods}>
               {available.map((option) => (
                 <Button
                   key={option}
@@ -151,24 +144,25 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
                     setError('')
                   }}
                 >
-                  {methodLabels[option]}
+                  {
+                    {
+                      password: t.password,
+                      totp: t.authenticatorApp,
+                      webauthn: t.passkey,
+                      recovery_code: t.recoveryCode,
+                    }[option]
+                  }
                 </Button>
               ))}
             </div>
           ) : null}
 
           {isWebAuthn ? (
-            <p className="text-sm text-slate-600">
-              登録済みのパスキー (指紋・顔認証・セキュリティキー) で本人確認します。
-            </p>
+            <p className="text-sm text-slate-600">{t.passkeyStepUpDescription}</p>
           ) : (
             <div className="grid gap-1.5">
               <Label htmlFor="step-up-credential">
-                {isTotp
-                  ? '認証アプリの 6 桁コード'
-                  : isRecovery
-                    ? 'リカバリコード'
-                    : '現在のパスワード'}
+                {isTotp ? t.totpCode : isRecovery ? t.recoveryCode : t.currentPassword}
               </Label>
               <Input
                 id="step-up-credential"
@@ -180,7 +174,7 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
                 maxLength={isTotp ? 6 : undefined}
                 required
                 placeholder={
-                  isTotp ? '123456' : isRecovery ? 'xxxxxxxxxx' : '現在のパスワードを入力'
+                  isTotp ? '123456' : isRecovery ? 'xxxxxxxxxx' : t.currentPasswordPlaceholder
                 }
                 value={credential}
                 className={isCode ? 'font-mono tracking-[0.2em]' : undefined}
@@ -193,7 +187,7 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>
-              キャンセル
+              {t.cancel}
             </Button>
             <Button
               type="submit"
@@ -203,7 +197,11 @@ function StepUpDialog({ methods, csrfToken, onAuthenticated, onCancel }: StepUpD
                 (isTotp && credential.trim().length !== 6)
               }
             >
-              {busy ? '確認中…' : isWebAuthn ? 'パスキーで認証' : '再認証して続行'}
+              {busy
+                ? t.verifying
+                : isWebAuthn
+                  ? t.authenticateWithPasskey
+                  : t.reauthenticateAndContinue}
             </Button>
           </div>
         </form>

@@ -1,6 +1,10 @@
 import type { BrowserFlowResponse } from '../types'
 import { AuthenticationAPIError, base64URL, request, tenantURL, type APIError } from './core'
 import { getPasskeyAssertion } from './webauthn'
+import { commonDictionary } from '../lib/i18n/common.i18n'
+import { getCurrentLocale } from '../lib/i18n/currentLocale'
+
+const uiFallback = () => commonDictionary[getCurrentLocale()].networkError
 
 export async function login(
   csrfToken: string,
@@ -61,10 +65,7 @@ export async function loginWithPasskey(
   })
   if (!challengeResponse.ok) {
     const body = (await challengeResponse.json().catch(() => ({}))) as APIError
-    throw new AuthenticationAPIError(
-      body.message ?? 'パスキー認証を開始できませんでした。',
-      body.error,
-    )
+    throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
   }
   const assertion = await getPasskeyAssertion(
     (await challengeResponse.json()) as { publicKey: never },
@@ -123,15 +124,9 @@ export async function changePassword(
     violations?: string[]
   }
   if (body.error === 'password_policy') {
-    throw new PasswordPolicyError(
-      body.message ?? 'パスワードがセキュリティ要件を満たしていません。',
-      body.violations ?? [],
-    )
+    throw new PasswordPolicyError(body.message ?? uiFallback(), body.violations ?? [])
   }
-  throw new AuthenticationAPIError(
-    body.message ?? '認証サービスに接続できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function requestPasswordReset(csrfToken: string, email: string): Promise<void> {
@@ -144,10 +139,7 @@ export async function requestPasswordReset(csrfToken: string, email: string): Pr
   })
   if (response.status === 204) return
   const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(
-    body.message ?? 'リセット要求を送信できませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function resetPassword(
@@ -165,15 +157,9 @@ export async function resetPassword(
   if (response.ok) return
   const body = (await response.json().catch(() => ({}))) as APIError & { violations?: string[] }
   if (body.error === 'password_policy') {
-    throw new PasswordPolicyError(
-      body.message ?? 'パスワードがセキュリティ要件を満たしていません。',
-      body.violations ?? [],
-    )
+    throw new PasswordPolicyError(body.message ?? uiFallback(), body.violations ?? [])
   }
-  throw new AuthenticationAPIError(
-    body.message ?? 'パスワードをリセットできませんでした。',
-    body.error,
-  )
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
 }
 
 export async function submitDevice(
@@ -193,7 +179,7 @@ export async function submitDevice(
 export function continueBrowserFlow(result: BrowserFlowResponse) {
   const destination = result.redirect_to ?? result.next
   if (!destination) {
-    throw new AuthenticationAPIError('認証フローの遷移先がありません。')
+    throw new AuthenticationAPIError(uiFallback())
   }
   window.location.assign(destination)
 }

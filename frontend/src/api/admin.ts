@@ -693,12 +693,12 @@ export async function uploadApplicationIcon(
   }
   if (!response.ok) {
     throw new AuthenticationAPIError(
-      body.message ?? body.error_description ?? 'アイコンをアップロードできませんでした。',
+      body.message ?? body.error_description ?? 'Could not upload the icon.',
       body.error,
     )
   }
   if (!body.application) {
-    throw new AuthenticationAPIError('アイコンをアップロードできませんでした。')
+    throw new AuthenticationAPIError('Could not upload the icon.')
   }
   return body.application
 }

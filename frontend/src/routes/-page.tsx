@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useLocale } from '../lib/i18n'
 
 // markPage は描画したページ種別を <meta name="idmagic:page"> で DOM に表明する。
 // SPA dispatcher の分岐を E2E から機械的に検証するための不変条件マーカー (wi-22)。
@@ -21,7 +22,7 @@ const ADMIN = `${BRAND} 管理コンソール`
 const ACCOUNT = `${BRAND} マイページ`
 const SYSTEM = `${BRAND} システム管理`
 
-const PAGE_TITLES: Record<string, string> = {
+const PAGE_TITLES_JA: Record<string, string> = {
   // 管理コンソール
   'admin-dashboard': `ダッシュボード | ${ADMIN}`,
   'admin-users': `ユーザー | ${ADMIN}`,
@@ -76,19 +77,26 @@ const PAGE_TITLES: Record<string, string> = {
   error: BRAND,
 }
 
-function markTitle(kind: string) {
-  document.title = PAGE_TITLES[kind] ?? BRAND
+const PAGE_TITLES_EN: Record<string, string> = {
+  ...Object.fromEntries(Object.keys(PAGE_TITLES_JA).map((kind) => [kind, `${kind} | ${BRAND}`])),
+  home: BRAND,
+  error: BRAND,
+}
+
+function markTitle(kind: string, locale: 'ja' | 'en') {
+  document.title = (locale === 'ja' ? PAGE_TITLES_JA : PAGE_TITLES_EN)[kind] ?? BRAND
 }
 
 export function PageMarker({ kind, children }: { kind: string; children: ReactNode }) {
+  const { locale } = useLocale()
   useEffect(() => {
     markPage(kind)
-    markTitle(kind)
-  }, [kind])
+    markTitle(kind, locale)
+  }, [kind, locale])
   return children
 }
 
 export function markErrorPage() {
   markPage('error')
-  markTitle('error')
+  document.title = BRAND
 }

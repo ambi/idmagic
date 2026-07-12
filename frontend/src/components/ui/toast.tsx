@@ -1,5 +1,7 @@
 import { IconCheck, IconX } from '@tabler/icons-react'
 import { useEffect, useRef } from 'react'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { useDictionary } from '../../lib/i18n'
 
 // Toast は操作成功メッセージを、レイアウトを押し下げない固定表示のオーバーレイで
 // 短時間だけ見せる (wi-126 §5)。message が空なら何も描画しない。既定で数秒後に
@@ -16,6 +18,7 @@ export function Toast({
   onDismiss: () => void
   durationMs?: number
 }) {
+  const t = useDictionary(commonDictionary)
   // onDismiss は呼び出し側でインライン関数になりがちなので ref に逃がし、
   // message が変わったときだけ自動消去タイマーを張り直す (親の再描画で
   // タイマーがリセットされ続けて消えなくなるのを防ぐ)。
@@ -42,7 +45,7 @@ export function Toast({
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="閉じる"
+          aria-label={t.close}
           className="ml-1 rounded p-0.5 text-emerald-700 transition-colors hover:bg-emerald-100"
         >
           <IconX size={16} aria-hidden="true" />

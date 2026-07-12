@@ -83,7 +83,7 @@ async function readBlobPrefix(file: File, length: number): Promise<ArrayBuffer> 
         resolve(reader.result)
         return
       }
-      reject(new Error('画像を読み込めませんでした。'))
+      reject(new Error('Could not load the image.'))
     }
     reader.readAsArrayBuffer(blob)
   })

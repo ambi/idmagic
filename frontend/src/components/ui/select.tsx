@@ -1,5 +1,7 @@
 import { IconCheck, IconChevronDown } from '@tabler/icons-react'
 import { cn } from '../../lib/utils'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { useDictionary } from '../../lib/i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +34,7 @@ export function Select({
   disabled,
   'aria-label': ariaLabel,
 }: SelectProps) {
+  const t = useDictionary(commonDictionary)
   const current = options.find((option) => option.value === value)
   return (
     <DropdownMenu>
@@ -46,7 +49,7 @@ export function Select({
         )}
       >
         <span className={cn('truncate', current ? '' : 'text-slate-400')}>
-          {current?.label ?? placeholder ?? '選択'}
+          {current?.label ?? placeholder ?? t.selectPlaceholder}
         </span>
         <IconChevronDown size={16} className="shrink-0 text-slate-400" aria-hidden="true" />
       </DropdownMenuTrigger>

@@ -19,19 +19,14 @@ export function formatAccountActivityDateTime(value: string): string {
   return new Date(value).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-const amrLabels: Record<string, string> = {
-  pwd: 'パスワード',
-  otp: '認証アプリ (TOTP)',
-  webauthn: 'パスキー',
-  rc: 'リカバリコード',
-  mfa: '多要素認証',
-  hwk: 'ハードウェアキー',
-  swk: 'ソフトウェアキー',
-}
+const amrLabels: Record<string, string> = accountActivityDictionary.ja
 
-export function accountActivityMethodSummary(amr: string[]): string {
-  if (amr.length === 0) return '不明な手段'
-  return amr.map((code) => amrLabels[code] ?? code).join(' + ')
+export function accountActivityMethodSummary(
+  amr: string[],
+  labels: Record<string, string> = amrLabels,
+): string {
+  if (amr.length === 0) return labels.unknownMethod
+  return amr.map((code) => labels[code] ?? code).join(' + ')
 }
 
 function errorMessage(cause: unknown, fallback: string): string {
@@ -65,7 +60,7 @@ function SessionRow({
             ) : null}
           </div>
           <p className="mt-0.5 text-sm text-slate-600">
-            {accountActivityMethodSummary(session.amr)}
+            {accountActivityMethodSummary(session.amr, t)}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             {t.started.replace('{date}', formatDateTime(session.started_at))}
@@ -100,7 +95,7 @@ function ActivityRow({ activity }: { activity: AccountSignInActivity }) {
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900">{t.signIn}</p>
         <p className="mt-0.5 text-sm text-slate-600">
-          {accountActivityMethodSummary(activity.amr)}
+          {accountActivityMethodSummary(activity.amr, t)}
         </p>
         <p className="mt-1 text-xs text-slate-500">{formatDateTime(activity.occurred_at)}</p>
       </div>

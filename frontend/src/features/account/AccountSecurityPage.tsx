@@ -36,12 +36,16 @@ import type {
   TotpEnrollmentStart,
   WebAuthnCredentialSummary,
 } from '../../types'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import { accountSecurityDictionary } from './AccountSecurityPage.i18n'
 
-export function formatAccountSecurityDateTime(value?: string): string {
-  if (!value) return '記録なし'
-  return new Date(value).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })
+export function formatAccountSecurityDateTime(
+  value?: string,
+  locale = 'ja',
+  noRecord = accountSecurityDictionary.ja.noRecord,
+): string {
+  if (!value) return noRecord
+  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function errorMessage(cause: unknown, fallback: string): string {
@@ -257,6 +261,7 @@ export function AccountSecurityPage({
 
 function PasswordCard({ passwordChangedAt }: { passwordChangedAt?: string }) {
   const t = useDictionary(accountSecurityDictionary)
+  const { locale } = useLocale()
   return (
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex items-start gap-3">
@@ -266,7 +271,10 @@ function PasswordCard({ passwordChangedAt }: { passwordChangedAt?: string }) {
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{t.password}</p>
           <p className="mt-1 text-sm text-slate-600">
-            {t.changedAt.replace('{date}', formatAccountSecurityDateTime(passwordChangedAt))}
+            {t.changedAt.replace(
+              '{date}',
+              formatAccountSecurityDateTime(passwordChangedAt, locale, t.noRecord),
+            )}
           </p>
         </div>
       </div>
@@ -484,6 +492,7 @@ export function PasskeyList({
   onRemove: (credentialId: string) => void
 }) {
   const t = useDictionary(accountSecurityDictionary)
+  const { locale } = useLocale()
   if (passkeys.length === 0) {
     return <p className="border-t border-slate-100 pt-4 text-sm text-slate-500">{t.noPasskeys}</p>
   }
@@ -499,9 +508,15 @@ export function PasskeyList({
               {passkey.label ?? t.passkey}
             </p>
             <p className="mt-0.5 text-xs text-slate-500">
-              {t.registered.replace('{date}', formatAccountSecurityDateTime(passkey.created_at))}
+              {t.registered.replace(
+                '{date}',
+                formatAccountSecurityDateTime(passkey.created_at, locale, t.noRecord),
+              )}
               {passkey.last_used_at
-                ? t.lastUsed.replace('{date}', formatAccountSecurityDateTime(passkey.last_used_at))
+                ? t.lastUsed.replace(
+                    '{date}',
+                    formatAccountSecurityDateTime(passkey.last_used_at, locale, t.noRecord),
+                  )
                 : ''}
             </p>
           </div>

@@ -229,7 +229,7 @@ export async function completeLoginFromCallback(): Promise<boolean> {
   const code = params.get('code')
   const state = params.get('state')
   if (!code || state !== login.state) {
-    throw new Error('OIDC callback の state が一致しません')
+    throw new Error('OIDC callback state does not match')
   }
   await exchange(login.audience, {
     grant_type: 'authorization_code',
