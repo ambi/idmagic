@@ -13,6 +13,8 @@ import {
   IconWorldShare,
 } from '@tabler/icons-react'
 import { tenantURL } from '../api'
+import type { Locale } from './i18n'
+import { shellDictionary } from '../components/shell.i18n'
 
 export type AdminNavKey =
   | 'dashboard'
@@ -38,81 +40,82 @@ export type AdminNavItem = {
   active: boolean
 }
 
-export function adminNavItems(active: AdminNavKey): AdminNavItem[] {
+export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): AdminNavItem[] {
+  const t = shellDictionary[locale]
   const items: AdminNavItem[] = [
     {
       key: 'dashboard',
-      label: 'ダッシュボード',
+      label: t.dashboard,
       icon: IconLayoutDashboard,
       href: tenantURL('/admin'),
       active: active === 'dashboard',
     },
     {
       key: 'users',
-      label: 'ユーザー',
+      label: t.users,
       icon: IconUsers,
       href: tenantURL('/admin/users'),
       active: active === 'users',
     },
     {
       key: 'groups',
-      label: 'グループ',
+      label: t.groups,
       icon: IconUsersGroup,
       href: tenantURL('/admin/groups'),
       active: active === 'groups',
     },
     {
       key: 'agents',
-      label: 'エージェント',
+      label: t.agents,
       icon: IconRobot,
       href: tenantURL('/admin/agents'),
       active: active === 'agents',
     },
     {
       key: 'roles',
-      label: 'ロール',
+      label: t.roles,
       icon: IconUserShield,
       href: tenantURL('/admin/roles'),
       active: active === 'roles',
     },
     {
       key: 'applications',
-      label: 'アプリケーション',
+      label: t.applications,
       icon: IconApps,
       href: tenantURL('/admin/applications'),
       active: active === 'applications',
     },
     {
       key: 'sign-in-policy',
-      label: 'サインインポリシー',
+      label: t.signInPolicy,
       icon: IconShieldLock,
       href: tenantURL('/admin/sign-in-policy'),
       active: active === 'sign-in-policy',
     },
     {
       key: 'authz-detail-types',
-      label: '認可詳細の種類',
+      label: t.authorizationDetailTypes,
       icon: IconForms,
       href: tenantURL('/admin/authorization-detail-types'),
       active: active === 'authz-detail-types',
     },
     {
       key: 'consents',
-      label: '同意',
+      label: t.consents,
       icon: IconCheckupList,
       href: tenantURL('/admin/consents'),
       active: active === 'consents',
     },
     {
       key: 'audit-events',
-      label: '監査イベント',
+      label: t.auditEvents,
       icon: IconActivity,
       href: tenantURL('/admin/audit_events'),
       active: active === 'audit-events',
     },
     {
       key: 'keys',
-      label: '署名鍵',
+      label: t.signingKeys,
       icon: IconShieldLock,
       href: tenantURL('/admin/keys'),
       active: active === 'keys',
@@ -123,21 +126,21 @@ export function adminNavItems(active: AdminNavKey): AdminNavItem[] {
   ]
   items.push({
     key: 'tenant-attributes',
-    label: 'ユーザー属性',
+    label: t.userAttributes,
     icon: IconForms,
     href: tenantURL('/admin/tenant/attributes'),
     active: active === 'tenant-attributes',
   })
   items.push({
     key: 'entra-federation',
-    label: 'Entra 連携',
+    label: t.entraFederation,
     icon: IconWorldShare,
     href: tenantURL('/admin/federation/entra'),
     active: active === 'entra-federation',
   })
   items.push({
     key: 'settings',
-    label: '設定',
+    label: t.settings,
     icon: IconSettings,
     href: tenantURL('/admin/settings'),
     active: active === 'settings',

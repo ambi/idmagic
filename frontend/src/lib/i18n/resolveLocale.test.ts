@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { commonDictionary } from './common.i18n'
+import { configuredDefaultLocale } from './locale'
 import { resolveLocale } from './resolveLocale'
 
 describe('resolveLocale', () => {
@@ -19,9 +20,14 @@ describe('resolveLocale', () => {
     )
   })
 
-  it('uses a supported browser language and otherwise falls back to Japanese', () => {
+  it('uses a supported browser language and otherwise falls back to the startup setting', () => {
     expect(resolveLocale({ browserLanguages: ['en-US'] })).toBe('en')
-    expect(resolveLocale({ browserLanguages: ['fr-FR'] })).toBe('ja')
+    expect(resolveLocale({ browserLanguages: ['fr-FR'] }, 'ja')).toBe('ja')
+  })
+
+  it('uses English when the startup setting is absent or unsupported', () => {
+    expect(configuredDefaultLocale()).toBe('en')
+    expect(configuredDefaultLocale('fr')).toBe('en')
   })
 })
 

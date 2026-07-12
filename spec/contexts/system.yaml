@@ -19,13 +19,18 @@ glossary:
       - term: Locale
         reason: Locale は言語タグそのもの、DisplayLanguage は利用者が選び保存した Locale の値。
   FallbackLocale:
-    definition: 要求された Locale が未対応、または対応 Locale の辞書に該当 translation key が欠落している場合に表示へ用いる既定 Locale。idmagicでは "ja" を既定とする。
+    definition: 要求された Locale が未対応、または対応 Locale の辞書に該当 translation key が欠落している場合に表示へ用いる既定 Locale。idmagicでは "en" を既定とする。
     aliases:
       - 既定 locale
       - default locale
     not_to_confuse_with:
       - term: DisplayLanguage
         reason: DisplayLanguage は利用者が選択した値。FallbackLocale はその選択や辞書が使えない場合の受け皿。
+  ConfiguredDefaultLocale:
+    definition: アプリケーション起動時の設定 VITE_DEFAULT_LOCALE により指定する既定 Locale。"ja" または "en" のみを受け付け、未設定または未対応値のときは FallbackLocale を使う。
+    aliases:
+      - startup default locale
+      - configured locale fallback
   BackendErrorText:
     definition: バックエンドが HTTP、OAuth/OIDC redirect、SAML、SCIM などの外部 API 応答で返す利用者向けエラー本文。message、error_description、detail およびプレーンテキストのエラー本文を含む。常に英語であり、表示言語によって変化しない。
     aliases:
@@ -103,6 +108,10 @@ invariants:
     description: すべての BackendErrorText は英語で固定され、表示言語に依存しない。エラーコード、HTTP status、プロトコルで規定された error 値はこの規則によって変更しない。
     target: BackendErrorResponse
     always: "backend_error_text is English and backend_error_text is independent_of DisplayLanguage and error_code is unchanged and http_status is unchanged"
+  FrontendLocalizationCompleteness:
+    description: すべての利用者向けUI文言、aria label、空状態、dialog、状態ラベル、UI起因のエラーは、各画面または共通部品に近接したja/en辞書から解決される。日時と数値は選択済みDisplayLanguageで書式化する。
+    target: FrontendUIScreen
+    always: "every user_visible_ui_string is resolved_from_locale_dictionary and every supported_locale has_the_same_translation_keys and date_time_and_number_formatting uses DisplayLanguage"
 interfaces:
   BackendErrorResponse:
     description: バックエンドの HTTP API とプロトコル endpoint がエラー時に返す共通の外部契約。message、error_description、detail、またはプレーンテキスト本文のいずれも BackendErrorText である。
@@ -133,7 +142,22 @@ scenarios:
       - "表示言語の明示選択も保存済み設定も存在しない"
     main_success:
       - "EndUser が Login 画面を表示する"
-      - 画面の文言は既定 locale \"ja\" の辞書で表示される
+      - 画面の文言は既定 locale \"en\" の辞書で表示される
+  起動時設定の既定localeがフォールバックに使われる:
+    goal: Operator がアプリケーション起動時に表示言語の最終フォールバックを設定できる。
+    primary_actor: Operator
+    scope: System
+    level: user_goal
+    preconditions:
+      - "表示言語の明示選択、ui_localesヒント、保存済み設定、対応ブラウザ言語が存在しない"
+    main_success:
+      - "Operator が VITE_DEFAULT_LOCALE を \"ja\" に設定してアプリケーションを起動する"
+      - "EndUser が画面を表示する"
+      - "画面の文言は ja 辞書で表示される"
+    extensions:
+      - condition: VITE_DEFAULT_LOCALE が未設定または未対応値である
+        steps:
+          - "画面の文言は FallbackLocale \"en\" の辞書で表示される"
   OIDC ui_localesヒントにより表示言語が決まる:
     goal: 認可リクエストの ui_locales ヒントに従い、明示選択も保存済み設定も無い場合にホスト認証画面の表示言語が決まる。
     primary_actor: ResourceOwner
@@ -160,6 +184,39 @@ scenarios:
     main_success:
       - "Administrator が表示言語 \"en\" を選択する"
       - AdminDashboard の文言が en 辞書で表示される
+  選択した表示言語で全UI画面が描画される:
+    goal: EndUser または Administrator がjaまたはenを選択したとき、shared shell、hosted auth、account、admin、system のすべての画面とその dialog、空状態、状態表示、支援技術向けラベルを同じ言語で利用できる。
+    primary_actor: EndUser
+    scope: System
+    level: user_goal
+    preconditions:
+      - "対応する画面へ遷移できる認証状態である"
+    main_success:
+      - "EndUser または Administrator が表示言語 \"en\" を選択する"
+      - "任意のUI画面を表示する"
+      - "画面、shared shell、dialog、empty state、aria label、状態ラベルがen辞書で表示される"
+      - "日時および数値がenの書式で表示される"
+    extensions:
+      - condition: jaを選択する
+        steps:
+          - "同じ要素がja辞書およびjaの書式で表示される"
+      - condition: 翻訳keyが欠落している
+        steps:
+          - "FallbackLocale (en) の対応keyを表示する"
+  既知のバックエンドエラーコードはUIで翻訳される:
+    goal: UI利用者がstableな既知error codeの失敗を選択した表示言語で理解でき、未知のバックエンドメッセージの意味は改変されない。
+    primary_actor: EndUser
+    scope: System
+    level: user_goal
+    preconditions:
+      - "UI操作に対しバックエンドがエラー応答を返す"
+    main_success:
+      - "バックエンドが既知のstable error codeを返す"
+      - "UIが選択済みDisplayLanguageの辞書にあるerror codeの文言を表示する"
+    extensions:
+      - condition: error codeが未知、またはbackendが任意のmessageだけを返す
+        steps:
+          - "UIはバックエンドmessageを英語のまま表示する"
   バックエンドAPIエラーは英語で返る:
     goal: API Consumer が表示言語に関係なく、安定した error code と英語のエラー本文を受け取る。
     primary_actor: APIConsumer
@@ -392,6 +449,18 @@ objectives:
       fail_on_missing_key: true
       fail_on_untranslated_key: true
       warn_on_unused_key: true
+  FrontendLocalizationCoverage:
+    kind: security
+    description: "利用者向けの画面文字列はfeature-localまたは共通辞書にja/enの対として存在し、ja/enの代表画面描画と直書き検出により回帰を検出する。"
+    policy: frontend_localization_coverage
+    target: FrontendUIScreen
+    value:
+      supported_locales:
+        - ja
+        - en
+      require_feature_local_dictionaries: true
+      require_representative_locale_rendering_tests: true
+      require_user_visible_literal_detection: true
   BackendErrorLanguageConsistency:
     kind: security
     description: "バックエンドが外部へ送信する error text は英語のみとし、レスポンス境界で日本語を検出した場合は英語の安全な既定文言へ置換する。error code と HTTP status は維持する。"
@@ -739,7 +808,7 @@ user_experience:
     - id: UX-LOCALE
       category: localization
       adoption: required
-      statement: "UI文言はjaとenの辞書で提供する。表示言語(DisplayLanguage)は 明示選択 > OIDCのui_localesヒント > 保存済み設定 > ブラウザ言語 > 既定locale(FallbackLocale=ja) の優先順で解決する。未対応localeおよび辞書keyが欠落しているlocaleは既定locale(ja)にフォールバックする。ui_localesヒントは明示選択済みの表示言語を上書きしない。"
+      statement: "すべてのUI screen、shared shell、dialog、form、empty state、aria label、状態ラベルおよびUI起因のエラーはjaとenのfeature-localまたは共通辞書で提供する。日時と数値は選択済みDisplayLanguageで書式化する。表示言語(DisplayLanguage)は 明示選択 > OIDCのui_localesヒント > 保存済み設定 > ブラウザ言語 > 起動時設定VITE_DEFAULT_LOCALE > 既定locale(FallbackLocale=en) の優先順で解決する。VITE_DEFAULT_LOCALE はja/enのみを受け付け、未設定または未対応値、未対応locale、辞書keyが欠落しているlocaleは既定locale(en)にフォールバックする。ui_localesヒントは明示選択済みの表示言語を上書きしない。"
       screens:
         - Home
         - Login

@@ -68,7 +68,7 @@ describe('auth-flow pages', () => {
     fireEvent.change(screen.getByLabelText('ユーザー名'), { target: { value: 'alice' } })
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'wrong' } })
     fireEvent.click(screen.getByRole('button', { name: 'ログインして続行' }))
-    expect(await screen.findByText('認証情報が違います')).toBeInTheDocument()
+    expect(await screen.findByText('認証情報が正しくありません。')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'ログインして続行' }))
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))

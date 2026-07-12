@@ -15,12 +15,13 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
-import { useDictionary } from '../../lib/i18n'
+import { localizedErrorMessage, useDictionary, useLocale } from '../../lib/i18n'
 import { loginPageDictionary } from './LoginPage.i18n'
 
 export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo?: string }) {
   const t = useDictionary(loginPageDictionary)
   const tCommon = useDictionary(commonDictionary)
+  const { locale } = useLocale()
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -39,7 +40,11 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
       )
       continueBrowserFlow(result)
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : tCommon.networkError)
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? localizedErrorMessage(locale, cause.code, cause.message)
+          : tCommon.networkError,
+      )
       setSubmitting(false)
     }
   }

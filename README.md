@@ -110,11 +110,16 @@ just test-ui-e2e
 ## UI display languages
 
 The hosted authentication, account, and admin UI support Japanese (`ja`) and English (`en`) only.
+English is the product default. Set `VITE_DEFAULT_LOCALE=ja` or `VITE_DEFAULT_LOCALE=en` at
+application startup to choose the final fallback when neither an explicit nor a browser locale is
+available; an unset or invalid value falls back to English.
 Add user-visible copy to the dictionary that is local to its feature (for example,
 `frontend/src/features/auth-flow/LoginPage.i18n.ts`) and provide both locale values in
 the same change. Use `defineDictionary` so TypeScript rejects missing or extra keys;
 run `just verify-ui` before committing. Do not add another locale without a separately
-specified product decision.
+specified product decision. Translate only stable backend error codes in the receiving
+UI dictionary; render an unknown backend message unchanged, because backend error text
+is intentionally English-only.
 
 ## Configuration
 

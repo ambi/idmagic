@@ -15,9 +15,11 @@ import { useEffect, type ReactNode } from 'react'
 import { logout } from '../api'
 import { tenantBrandStyle, useTenantBranding } from '../lib/useTenantBranding'
 import { cn } from '../lib/utils'
+import { useDictionary } from '../lib/i18n'
 import { preloadPageChunks } from '../router'
 import { Brand } from './Brand'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { shellDictionary } from './shell.i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,17 +43,6 @@ export type AccountNavKey =
   | 'applications'
   | 'data'
 
-const navItems: { key: AccountNavKey; label: string; href: string; icon: typeof IconUser }[] = [
-  { key: 'home', label: 'ホーム', href: '/account', icon: IconUserCircle },
-  { key: 'apps', label: 'アプリ', href: '/account/apps', icon: IconLayoutGrid },
-  { key: 'profile', label: 'アカウント情報', href: '/account/profile', icon: IconUser },
-  { key: 'emails', label: 'メールアドレス', href: '/account/emails', icon: IconMail },
-  { key: 'security', label: 'セキュリティ', href: '/account/security', icon: IconShieldLock },
-  { key: 'activity', label: 'アクティビティ', href: '/account/activity', icon: IconHistory },
-  { key: 'applications', label: '接続済みアプリ', href: '/account/applications', icon: IconApps },
-  { key: 'data', label: 'データとプライバシー', href: '/account/data', icon: IconDatabaseCog },
-]
-
 type AccountShellProps = {
   active: AccountNavKey
   username: string
@@ -69,6 +60,17 @@ export function AccountShell({
   description,
   children,
 }: AccountShellProps) {
+  const t = useDictionary(shellDictionary)
+  const navItems: { key: AccountNavKey; label: string; href: string; icon: typeof IconUser }[] = [
+    { key: 'home', label: t.home, href: '/account', icon: IconUserCircle },
+    { key: 'apps', label: t.apps, href: '/account/apps', icon: IconLayoutGrid },
+    { key: 'profile', label: t.profile, href: '/account/profile', icon: IconUser },
+    { key: 'emails', label: t.emailAddresses, href: '/account/emails', icon: IconMail },
+    { key: 'security', label: t.security, href: '/account/security', icon: IconShieldLock },
+    { key: 'activity', label: t.activity, href: '/account/activity', icon: IconHistory },
+    { key: 'applications', label: t.connectedApps, href: '/account/applications', icon: IconApps },
+    { key: 'data', label: t.dataAndPrivacy, href: '/account/data', icon: IconDatabaseCog },
+  ]
   // アカウントポータルに入ったら全ページ chunk をバックグラウンド先読みし、遷移の空白を防ぐ。
   useEffect(() => {
     preloadPageChunks()
@@ -81,7 +83,7 @@ export function AccountShell({
           <div className="flex items-center gap-5">
             <Link
               to="/account"
-              aria-label="アカウント"
+              aria-label={t.account}
               className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
             >
               <Brand compact productName={branding.product_name} logoURL={branding.logo_url} />
@@ -89,7 +91,7 @@ export function AccountShell({
             <div className="hidden h-6 w-px bg-slate-200/80 sm:block" />
             <span className="hidden items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-1.5 text-sm font-medium text-slate-600 shadow-xs sm:flex">
               <IconShieldLock size={16} className="text-slate-400" aria-hidden="true" />
-              マイページ
+              {t.accountPortal}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -99,11 +101,11 @@ export function AccountShell({
                 <button
                   type="button"
                   className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
-                  aria-label="アカウントメニュー"
+                  aria-label={t.accountMenu}
                 >
                   <div className="hidden text-right sm:block">
                     <p className="text-sm font-semibold text-slate-800">{username}</p>
-                    <p className="text-xs text-slate-500">サインイン中</p>
+                    <p className="text-xs text-slate-500">{t.signedIn}</p>
                   </div>
                   <span className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white shadow-sm">
                     {username.slice(0, 1).toUpperCase()}
@@ -113,7 +115,7 @@ export function AccountShell({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>
-                  <p className="text-xs font-medium text-slate-500">ログイン中</p>
+                  <p className="text-xs font-medium text-slate-500">{t.signedInAs}</p>
                   <p className="mt-0.5 text-sm font-semibold text-slate-900">{username}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
@@ -124,7 +126,7 @@ export function AccountShell({
                       OIDC ログインへ画面遷移してしまう (hover だけで遷移する不具合)。 */}
                     <Link to="/admin" preload={false}>
                       <IconShieldLock size={17} aria-hidden="true" />
-                      管理コンソール
+                      {t.adminConsole}
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
@@ -137,7 +139,7 @@ export function AccountShell({
                     className="w-full text-left text-red-700"
                   >
                     <IconLogout size={17} aria-hidden="true" />
-                    ログアウト
+                    {t.signOut}
                   </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -148,7 +150,7 @@ export function AccountShell({
 
       <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside className="app-sidebar">
-          <nav className="flex flex-1 flex-col gap-1 p-4" aria-label="マイページメニュー">
+          <nav className="flex flex-1 flex-col gap-1 p-4" aria-label={t.accountNavigation}>
             {navItems.map((item) => (
               <Link
                 key={item.key}

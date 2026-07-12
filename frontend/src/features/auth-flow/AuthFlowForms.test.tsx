@@ -121,8 +121,8 @@ describe('static auth-flow pages', () => {
   it('shows the callback success action only for a successful authorization', async () => {
     await renderWithRouter(<CallbackPage code="authorization-code" />)
 
-    expect(screen.getByText('ローカルデモ認証が完了しました')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '管理コンソールを開く' })).toHaveAttribute(
+    expect(screen.getByText('Local demo authorization is complete')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open admin console' })).toHaveAttribute(
       'href',
       '/admin',
     )
@@ -133,29 +133,29 @@ describe('static auth-flow pages', () => {
       <CallbackPage error="access_denied" errorDescription="ユーザーが拒否しました" />,
     )
 
-    expect(screen.getByText('認証を完了できませんでした')).toBeInTheDocument()
+    expect(screen.getByText('Could not complete authentication')).toBeInTheDocument()
     expect(screen.getByText('ユーザーが拒否しました')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '管理コンソールを開く' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open admin console' })).not.toBeInTheDocument()
   })
 
   it('renders demo guidance only when the local demo is enabled', async () => {
     const { unmount } = await renderWithRouter(<HomePage demoEnabled />)
 
-    expect(screen.getByRole('button', { name: 'ローカルデモ認証を開始' })).toBeInTheDocument()
-    expect(screen.getByText(/デモユーザー/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Start local demo authorization' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Demo user/)).toBeInTheDocument()
     unmount()
 
     await renderWithRouter(<HomePage demoEnabled={false} />)
-    expect(
-      screen.getByText('利用するアプリケーションからログインを開始してください。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Start signing in from the application you use.')).toBeInTheDocument()
   })
 
   it('shows sign-in links only after a signed-out status', async () => {
     await renderWithRouter(<StatusPage status="signed-out" />)
 
-    expect(screen.getByText('ログアウトしました')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'マイページにログイン' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '管理コンソールにログイン' })).toBeInTheDocument()
+    expect(screen.getByText('You have signed out')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in to account' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in to admin console' })).toBeInTheDocument()
   })
 })

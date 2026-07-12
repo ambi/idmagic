@@ -1,6 +1,8 @@
 import { IconCheck, IconLayoutDashboard, IconRefresh, IconX } from '@tabler/icons-react'
 import { AuthShell } from '../../components/AuthShell'
 import { Button } from '../../components/ui/button'
+import { useDictionary } from '../../lib/i18n'
+import { informationalPagesDictionary } from './InformationalPages.i18n'
 
 export function CallbackPage({
   code,
@@ -12,6 +14,7 @@ export function CallbackPage({
   errorDescription?: string
 }) {
   const succeeded = Boolean(code) && !error
+  const t = useDictionary(informationalPagesDictionary)
 
   return (
     <AuthShell>
@@ -34,13 +37,11 @@ export function CallbackPage({
           <p className="eyebrow">
             {succeeded ? 'Authentication complete' : 'Authentication failed'}
           </p>
-          <h2 className="page-title">
-            {succeeded ? 'ローカルデモ認証が完了しました' : '認証を完了できませんでした'}
-          </h2>
+          <h2 className="page-title">{succeeded ? t.callbackComplete : t.callbackFailed}</h2>
           <p className="page-description">
             {succeeded
-              ? '認可コードが発行され、ブラウザ認証フローが正常に完了しました。'
-              : (errorDescription ?? error ?? '認可レスポンスが不正です。')}
+              ? t.callbackCompleteText
+              : (errorDescription ?? error ?? t.invalidAuthorizationResponse)}
           </p>
         </header>
 
@@ -49,14 +50,14 @@ export function CallbackPage({
             <Button asChild className="w-full">
               <a href="/admin">
                 <IconLayoutDashboard size={17} aria-hidden="true" />
-                管理コンソールを開く
+                {t.openAdmin}
               </a>
             </Button>
           )}
           <Button asChild variant="outline" className="w-full">
             <a href="/">
               <IconRefresh size={17} aria-hidden="true" />
-              もう一度試す
+              {t.tryAgain}
             </a>
           </Button>
         </div>

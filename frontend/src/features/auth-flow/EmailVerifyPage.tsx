@@ -4,8 +4,11 @@ import { AuthenticationAPIError, confirmEmailChange, tenantURL } from '../../api
 import { AuthShell } from '../../components/AuthShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
+import { useDictionary } from '../../lib/i18n'
+import { emailVerifyPageDictionary } from './EmailVerifyPage.i18n'
 
 export function EmailVerifyPage({ csrfToken, token }: { csrfToken: string; token: string }) {
+  const t = useDictionary(emailVerifyPageDictionary)
   const [state, setState] = useState<'idle' | 'submitting' | 'done'>('idle')
   const [error, setError] = useState('')
 
@@ -16,7 +19,7 @@ export function EmailVerifyPage({ csrfToken, token }: { csrfToken: string; token
       await confirmEmailChange(csrfToken, token)
       setState('done')
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : '確認に失敗しました。')
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.confirmationFailed)
       setState('idle')
     }
   }
@@ -28,10 +31,8 @@ export function EmailVerifyPage({ csrfToken, token }: { csrfToken: string; token
           <span className="flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
             <IconMail size={22} aria-hidden="true" />
           </span>
-          <h1 className="text-xl font-semibold text-slate-900">メールアドレスの確認</h1>
-          <p className="text-sm text-slate-600">
-            このアドレスをアカウントのメールアドレスとして確定します。
-          </p>
+          <h1 className="text-xl font-semibold text-slate-900">{t.title}</h1>
+          <p className="text-sm text-slate-600">{t.description}</p>
         </header>
 
         {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -51,29 +52,26 @@ export function EmailVerificationAction({
   state: 'idle' | 'submitting' | 'done'
   onConfirm: () => void
 }) {
+  const t = useDictionary(emailVerifyPageDictionary)
   if (state === 'done') {
     return (
       <Alert variant="success" className="flex items-start gap-2">
         <IconCircleCheck className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
         <span>
-          メールアドレスを確認しました。{' '}
+          {t.confirmed}{' '}
           <a href={tenantURL('/account')} className="font-medium underline">
-            アカウントへ戻る
+            {t.returnToAccount}
           </a>
         </span>
       </Alert>
     )
   }
   if (!token) {
-    return (
-      <Alert variant="destructive">
-        確認リンクが正しくありません。メール内のリンクをもう一度開いてください。
-      </Alert>
-    )
+    return <Alert variant="destructive">{t.invalidLink}</Alert>
   }
   return (
     <Button type="button" onClick={onConfirm} disabled={state === 'submitting'}>
-      {state === 'submitting' ? '確認中…' : 'メールアドレスを確認する'}
+      {state === 'submitting' ? t.verifying : t.confirmEmail}
     </Button>
   )
 }

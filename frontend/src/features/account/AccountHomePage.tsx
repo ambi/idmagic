@@ -8,19 +8,24 @@ import {
 import type { ReactNode } from 'react'
 import { AccountShell } from '../../components/AccountShell'
 import { Card } from '../../components/ui/card'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import { requiredActionLabel, type AccountSummary } from '../../types'
+import { accountHomeDictionary } from './AccountHomePage.i18n'
 
-export function formatAccountSummaryDateTime(value: string | undefined): string {
+export function formatAccountSummaryDateTime(
+  value: string | undefined,
+  locale = 'ja',
+  empty = '記録なし',
+): string {
   if (!value) {
-    return '記録なし'
+    return empty
   }
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
-    return '記録なし'
+    return empty
   }
-  return date.toLocaleString('ja-JP', {
+  return date.toLocaleString(locale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -38,13 +43,15 @@ export function AccountHomePage({
 }) {
   const displayName = summary.name?.trim() || summary.preferred_username
   const tLabels = useDictionary(domainLabelsDictionary)
+  const t = useDictionary(accountHomeDictionary)
+  const { formatDateTime } = useFormatters()
   return (
     <AccountShell
       active="home"
       username={summary.preferred_username}
       isAdmin={isAdmin}
-      title={`こんにちは、${displayName} さん`}
-      description="サインイン状態とセキュリティ状態を確認できます。"
+      title={t.greeting.replace('{name}', displayName)}
+      description={t.description}
     >
       {summary.required_actions.length > 0 ? (
         <Card className="flex items-start gap-3 border-amber-200 bg-amber-50/70 p-4">
@@ -54,7 +61,7 @@ export function AccountHomePage({
             aria-hidden="true"
           />
           <div>
-            <p className="text-sm font-semibold text-amber-900">対応が必要な項目があります</p>
+            <p className="text-sm font-semibold text-amber-900">{t.requiredActions}</p>
             <ul className="mt-1.5 flex flex-wrap gap-2">
               {summary.required_actions.map((action) => (
                 <li
@@ -69,30 +76,30 @@ export function AccountHomePage({
         </Card>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2" aria-label="アカウント状態">
+      <section className="grid gap-4 sm:grid-cols-2" aria-label={t.accountStatus}>
         <SummaryCard
           icon={summary.mfa_enrolled ? <IconShieldCheck size={20} /> : <IconShieldOff size={20} />}
           tone={summary.mfa_enrolled ? 'ok' : 'warn'}
-          label="二要素認証 (MFA)"
-          value={summary.mfa_enrolled ? '登録済み' : '未登録'}
+          label={t.mfa}
+          value={summary.mfa_enrolled ? t.enrolled : t.notEnrolled}
         />
         <SummaryCard
           icon={<IconUser size={20} />}
           tone="neutral"
-          label="メールアドレス"
-          value={summary.email ?? '未設定'}
-          hint={summary.email ? (summary.email_verified ? '確認済み' : '未確認') : undefined}
+          label={t.emailAddress}
+          value={summary.email ?? t.notSet}
+          hint={summary.email ? (summary.email_verified ? t.verified : t.unverified) : undefined}
         />
         <SummaryCard
           icon={<IconClockHour4 size={20} />}
           tone="neutral"
-          label="最終ログイン"
-          value={formatAccountSummaryDateTime(summary.last_login_at)}
+          label={t.lastLogin}
+          value={summary.last_login_at ? formatDateTime(summary.last_login_at) : t.noRecord}
         />
         <SummaryCard
           icon={<IconUser size={20} />}
           tone="neutral"
-          label="ユーザー名"
+          label={t.username}
           value={summary.preferred_username}
         />
       </section>

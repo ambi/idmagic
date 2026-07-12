@@ -9,17 +9,19 @@ describe('LanguageSwitcher', () => {
     document.documentElement.lang = ''
   })
 
-  it('switches to English and persists the explicit choice', () => {
+  it('uses English by default and persists an explicit Japanese choice', () => {
     render(
       <LocaleProvider>
         <LanguageSwitcher />
       </LocaleProvider>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'English' }))
-
     expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true')
-    expect(document.documentElement.lang).toBe('en')
-    expect(window.localStorage.getItem('idmagic.displayLocale')).toBe('en')
+
+    fireEvent.click(screen.getByRole('button', { name: '日本語' }))
+
+    expect(screen.getByRole('button', { name: '日本語' })).toHaveAttribute('aria-pressed', 'true')
+    expect(document.documentElement.lang).toBe('ja')
+    expect(window.localStorage.getItem('idmagic.displayLocale')).toBe('ja')
   })
 })

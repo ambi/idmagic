@@ -8,20 +8,20 @@ describe('SystemShell', () => {
 
   it('marks the active nav item and shows a return link back to the admin console', async () => {
     await renderWithRouter(
-      <SystemShell active="tenants" title="テナント" description="説明文">
+      <SystemShell active="tenants" title="Tenants" description="Description">
         <p>content</p>
       </SystemShell>,
     )
 
-    expect(screen.getByRole('link', { name: 'テナント' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: '管理コンソール' })).toHaveAttribute('href', '/admin')
-    expect(screen.getByText('システムコンソール')).toBeInTheDocument()
-    expect(screen.getByText('説明文')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Tenants' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Admin console' })).toHaveAttribute('href', '/admin')
+    expect(screen.getByText('System console')).toBeInTheDocument()
+    expect(screen.getByText('Description')).toBeInTheDocument()
   })
 
   it('falls back to a default label when no actor username is provided', async () => {
     await renderWithRouter(
-      <SystemShell active="key-health" title="署名鍵の状態">
+      <SystemShell active="key-health" title="Signing key health">
         <p>content</p>
       </SystemShell>,
     )
@@ -34,15 +34,15 @@ describe('SystemShell', () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign })
     await renderWithRouter(
-      <SystemShell active="key-health" actorUsername="Sonoko" title="署名鍵の状態">
+      <SystemShell active="key-health" actorUsername="Sonoko" title="Signing key health">
         <p>content</p>
       </SystemShell>,
     )
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'アカウントメニュー' }), { key: 'Enter' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Account menu' }), { key: 'Enter' })
     const menu = screen.getByRole('menu')
     expect(within(menu).getByText('Sonoko')).toBeInTheDocument()
-    fireEvent.click(within(menu).getByRole('menuitem', { name: /ログアウト/ }))
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /Sign out/ }))
 
     await waitFor(() =>
       expect(assign).toHaveBeenCalledWith(expect.stringContaining('/end_session')),

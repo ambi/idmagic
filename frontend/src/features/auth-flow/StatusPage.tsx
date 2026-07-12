@@ -3,46 +3,47 @@ import { tenantURL } from '../../api'
 import { AuthShell } from '../../components/AuthShell'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
+import { useDictionary } from '../../lib/i18n'
+import { statusPageDictionary } from './StatusPage.i18n'
 
-const content = {
-  approved: {
-    eyebrow: 'Connection approved',
-    title: 'デバイスを承認しました',
-    text: '認証が完了しました。このウィンドウを閉じて、接続したデバイスに戻ってください。',
-    note: 'この操作に心当たりがない場合は、すぐに管理者へ連絡してください。',
-    icon: IconCheck,
-    color: 'border-emerald-100 bg-emerald-50 text-emerald-700',
-  },
-  denied: {
-    eyebrow: 'Connection denied',
-    title: '接続を拒否しました',
-    text: 'デバイスへの接続を拒否しました。アカウント情報は共有されていません。',
-    note: '同じ要求が繰り返される場合は、管理者へ連絡してください。',
-    icon: IconX,
-    color: 'border-slate-200 bg-slate-100 text-slate-700',
-  },
-  'signed-out': {
-    eyebrow: 'Signed out',
-    title: 'ログアウトしました',
-    text: 'IdMagic のセッションを安全に終了しました。',
-    note: '共有端末では、このブラウザを閉じることをおすすめします。',
-    icon: IconLogout,
-    color: 'border-blue-100 bg-blue-50 text-blue-700',
-  },
-  'authentication-required': {
-    eyebrow: 'Authentication required',
-    title: 'ログインが必要です',
-    text: 'デバイスを承認するには、先に認証フローからログインしてください。',
-    note: '元のアプリケーションまたはデバイスに戻り、接続操作を最初からやり直してください。',
-    icon: IconLogin,
-    color: 'border-amber-200 bg-amber-50 text-amber-700',
-  },
-} as const
-
-type StatusKey = keyof typeof content
+type StatusKey = 'approved' | 'denied' | 'signed-out' | 'authentication-required'
 
 export function StatusPage({ status }: { status: StatusKey }) {
-  const state = content[status]
+  const t = useDictionary(statusPageDictionary)
+  const state = {
+    approved: {
+      eyebrow: t.approvedEyebrow,
+      title: t.approvedTitle,
+      text: t.approvedText,
+      note: t.approvedNote,
+      icon: IconCheck,
+      color: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+    },
+    denied: {
+      eyebrow: t.deniedEyebrow,
+      title: t.deniedTitle,
+      text: t.deniedText,
+      note: t.deniedNote,
+      icon: IconX,
+      color: 'border-slate-200 bg-slate-100 text-slate-700',
+    },
+    'signed-out': {
+      eyebrow: t.signedOutEyebrow,
+      title: t.signedOutTitle,
+      text: t.signedOutText,
+      note: t.signedOutNote,
+      icon: IconLogout,
+      color: 'border-blue-100 bg-blue-50 text-blue-700',
+    },
+    'authentication-required': {
+      eyebrow: t.authRequiredEyebrow,
+      title: t.authRequiredTitle,
+      text: t.authRequiredText,
+      note: t.authRequiredNote,
+      icon: IconLogin,
+      color: 'border-amber-200 bg-amber-50 text-amber-700',
+    },
+  }[status]
   const StatusIcon = state.icon
 
   return (
@@ -71,10 +72,10 @@ export function StatusPage({ status }: { status: StatusKey }) {
         {status === 'signed-out' ? (
           <div className="grid w-full gap-2">
             <Button asChild className="w-full">
-              <a href={tenantURL('/account')}>マイページにログイン</a>
+              <a href={tenantURL('/account')}>{t.signInToAccount}</a>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <a href={tenantURL('/admin')}>管理コンソールにログイン</a>
+              <a href={tenantURL('/admin')}>{t.signInToAdmin}</a>
             </Button>
           </div>
         ) : null}

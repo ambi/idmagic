@@ -8,32 +8,32 @@ describe('AdminShell', () => {
 
   it('marks the active nav item and shows a two-level breadcrumb', async () => {
     await renderWithRouter(
-      <AdminShell active="users" title="ユーザー" description="説明文">
+      <AdminShell active="users" title="Users" description="Description">
         <p>content</p>
       </AdminShell>,
     )
 
-    expect(screen.getByRole('link', { name: 'ユーザー' })).toHaveAttribute('aria-current', 'page')
-    const breadcrumb = screen.getByRole('navigation', { name: 'breadcrumb' })
-    expect(within(breadcrumb).getByRole('link', { name: '管理コンソール' })).toBeInTheDocument()
-    expect(screen.getByText('説明文')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Users' })).toHaveAttribute('aria-current', 'page')
+    const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(within(breadcrumb).getByRole('link', { name: 'Admin console' })).toBeInTheDocument()
+    expect(screen.getByText('Description')).toBeInTheDocument()
   })
 
   it('collapses the breadcrumb to a single entry on the dashboard', async () => {
     await renderWithRouter(
-      <AdminShell active="dashboard" title="ダッシュボード">
+      <AdminShell active="dashboard" title="Dashboard">
         <p>content</p>
       </AdminShell>,
     )
 
-    const breadcrumb = screen.getByRole('navigation', { name: 'breadcrumb' })
-    expect(breadcrumb).toHaveTextContent('管理コンソール')
+    const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(breadcrumb).toHaveTextContent('Admin console')
     expect(within(breadcrumb).queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('falls back to a default label when no actor username is provided', async () => {
     await renderWithRouter(
-      <AdminShell active="dashboard" title="ダッシュボード">
+      <AdminShell active="dashboard" title="Dashboard">
         <p>content</p>
       </AdminShell>,
     )
@@ -46,13 +46,13 @@ describe('AdminShell', () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign })
     await renderWithRouter(
-      <AdminShell active="dashboard" actorUsername="Alice" title="ダッシュボード">
+      <AdminShell active="dashboard" actorUsername="Alice" title="Dashboard">
         <p>content</p>
       </AdminShell>,
     )
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'アカウントメニュー' }), { key: 'Enter' })
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'ログアウト' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Account menu' }), { key: 'Enter' })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
 
     await waitFor(() =>
       expect(assign).toHaveBeenCalledWith(expect.stringContaining('/end_session')),

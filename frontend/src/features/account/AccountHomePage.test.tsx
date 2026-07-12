@@ -33,7 +33,13 @@ describe('AccountHomePage', () => {
 
   it('greets the user by display name', async () => {
     await renderWithRouter(<AccountHomePage summary={summary} isAdmin={false} />)
-    expect(screen.getByText('こんにちは、Taro Yamada さん')).toBeInTheDocument()
+    expect(screen.getByText('Hello, Taro Yamada')).toBeInTheDocument()
+  })
+
+  it('renders account copy in English when English is selected', async () => {
+    await renderWithRouter(<AccountHomePage summary={summary} isAdmin={false} />, { locale: 'en' })
+    expect(screen.getByText('Hello, Taro Yamada')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Account status' })).toBeInTheDocument()
   })
 
   it('shows required actions when present', async () => {
@@ -43,16 +49,16 @@ describe('AccountHomePage', () => {
         isAdmin={false}
       />,
     )
-    expect(screen.getByText('対応が必要な項目があります')).toBeInTheDocument()
+    expect(screen.getByText('Action is required')).toBeInTheDocument()
   })
 
   it('does not show required actions section when empty', async () => {
     await renderWithRouter(<AccountHomePage summary={summary} isAdmin={false} />)
-    expect(screen.queryByText('対応が必要な項目があります')).not.toBeInTheDocument()
+    expect(screen.queryByText('Action is required')).not.toBeInTheDocument()
   })
 
   it('shows MFA as unregistered when not enrolled', async () => {
     await renderWithRouter(<AccountHomePage summary={summary} isAdmin={false} />)
-    expect(screen.getByText('未登録')).toBeInTheDocument()
+    expect(screen.getByText('Not enrolled')).toBeInTheDocument()
   })
 })

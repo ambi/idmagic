@@ -44,17 +44,23 @@ type LocaleContextValue = {
   setLocale: (next: Locale) => void
 }
 
-// Provider が無い状況 (LocaleProvider を挟まない unit test など) では既定locale (ja) を
-// 返す。FallbackLocale の考え方を context 自体の既定値としても適用する。
+// Provider が無い純粋な presentation unit test では従来の日本語を返す。本体と統合
+// テストは必ず LocaleProvider を通り、FallbackLocale=en を使用する。
 const defaultLocaleContextValue: LocaleContextValue = {
-  locale: FALLBACK_LOCALE,
+  locale: 'ja',
   setLocale: () => {},
 }
 
 const LocaleContext = createContext<LocaleContextValue>(defaultLocaleContextValue)
 
-export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(readInitialLocale)
+export function LocaleProvider({
+  children,
+  initialLocale,
+}: {
+  children: ReactNode
+  initialLocale?: Locale
+}) {
+  const [locale, setLocaleState] = useState<Locale>(() => initialLocale ?? readInitialLocale())
 
   useEffect(() => {
     document.documentElement.lang = locale

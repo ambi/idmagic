@@ -80,13 +80,14 @@ export function DeviceCodeFormPresentation({
   onCodeChange: (code: string) => void
   onSubmit: (action: 'allow' | 'deny') => void
 }) {
+  const t = useDictionary(devicePageDictionary)
   const isComplete = code.length === 8
   return (
     <form onSubmit={(event) => event.preventDefault()}>
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="user-code">デバイスコード</Label>
+            <Label htmlFor="user-code">{t.codeLabel}</Label>
             <span className="text-xs tabular-nums text-slate-500">{code.length} / 8</span>
           </div>
           <div className="relative">
@@ -108,12 +109,13 @@ export function DeviceCodeFormPresentation({
             />
           </div>
           <p id="user-code-hint" className="text-xs leading-5 text-slate-500">
-            ハイフンは入力不要です。例: <span className="font-mono font-semibold">ABCD-EFGH</span>
+            {t.codeHintPrefix}
+            <span className="font-mono font-semibold">ABCD-EFGH</span>
           </p>
         </div>
         <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 text-xs leading-5 text-blue-950">
           <IconInfoCircle className="mt-0.5 shrink-0 text-blue-700" size={17} aria-hidden="true" />
-          <p>コードが一致していても、自分で開始していない接続要求は承認しないでください。</p>
+          <p>{t.warningNote}</p>
         </div>
         {error ? (
           <p role="alert" className="text-sm font-medium text-red-700">
@@ -129,7 +131,7 @@ export function DeviceCodeFormPresentation({
             onClick={() => onSubmit('allow')}
           >
             <IconShieldCheck size={18} aria-hidden="true" />
-            {submitting ? '処理しています…' : 'このデバイスを承認'}
+            {submitting ? t.processing : t.approve}
           </Button>
           <Button
             type="button"
@@ -139,7 +141,7 @@ export function DeviceCodeFormPresentation({
             onClick={() => onSubmit('deny')}
           >
             <IconX size={17} aria-hidden="true" />
-            接続を拒否
+            {t.deny}
           </Button>
         </div>
       </div>

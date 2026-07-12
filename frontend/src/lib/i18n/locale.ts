@@ -4,7 +4,13 @@ export const SUPPORTED_LOCALES = ['ja', 'en'] as const
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 
 // FallbackLocale (glossary): 未対応 locale・辞書 key 欠落時に用いる既定 locale。
-export const FALLBACK_LOCALE: Locale = 'ja'
+export const FALLBACK_LOCALE: Locale = 'en'
+
+// VITE_DEFAULT_LOCALE はビルド時にアプリケーション起動設定として注入される。
+// 対応外・未設定の値をそのまま利用者へ露出せず、製品既定の英語へ戻す。
+export function configuredDefaultLocale(value = import.meta.env.VITE_DEFAULT_LOCALE): Locale {
+  return parseLocaleTag(value) ?? FALLBACK_LOCALE
+}
 
 export function isSupportedLocale(value: string | null | undefined): value is Locale {
   return value != null && (SUPPORTED_LOCALES as readonly string[]).includes(value)

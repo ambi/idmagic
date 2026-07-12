@@ -1,0 +1,36 @@
+import { defineDictionary } from '../../lib/i18n'
+
+export const accountHomeDictionary = defineDictionary(
+  {
+    greeting: 'こんにちは、{name} さん',
+    description: 'サインイン状態とセキュリティ状態を確認できます。',
+    requiredActions: '対応が必要な項目があります',
+    accountStatus: 'アカウント状態',
+    mfa: '二要素認証 (MFA)',
+    enrolled: '登録済み',
+    notEnrolled: '未登録',
+    emailAddress: 'メールアドレス',
+    notSet: '未設定',
+    verified: '確認済み',
+    unverified: '未確認',
+    lastLogin: '最終ログイン',
+    noRecord: '記録なし',
+    username: 'ユーザー名',
+  },
+  {
+    greeting: 'Hello, {name}',
+    description: 'Review your sign-in and security status.',
+    requiredActions: 'Action is required',
+    accountStatus: 'Account status',
+    mfa: 'Multi-factor authentication (MFA)',
+    enrolled: 'Enrolled',
+    notEnrolled: 'Not enrolled',
+    emailAddress: 'Email address',
+    notSet: 'Not set',
+    verified: 'Verified',
+    unverified: 'Unverified',
+    lastLogin: 'Last sign-in',
+    noRecord: 'No record',
+    username: 'Username',
+  },
+)
