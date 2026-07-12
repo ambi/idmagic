@@ -1441,6 +1441,135 @@
         }
       }
     },
+    "/api/admin/users/imports": {
+      "post": {
+        "operationId": "ImportAdminUsers",
+        "summary": "管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "csv",
+                  "mode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/UserImportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/imports/{job_id}": {
+      "get": {
+        "operationId": "GetAdminUserImport",
+        "summary": "管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/UserImportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users/{user_id}/disable": {
       "post": {
         "operationId": "DisableAdminUser",
@@ -15361,7 +15490,9 @@
       "JobKind": {
         "type": "string",
         "enum": [
-          "noop_echo"
+          "noop_echo",
+          "user_import_preview",
+          "user_import_apply"
         ],
         "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
       },
@@ -19000,6 +19131,66 @@
           "effective_roles"
         ],
         "description": "指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。\n"
+      },
+      "UserImportJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "total_rows": {
+            "type": "integer"
+          },
+          "accepted_rows": {
+            "type": "integer"
+          },
+          "rejected_rows": {
+            "type": "integer"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserImportRowError"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "mode",
+          "total_rows",
+          "accepted_rows",
+          "rejected_rows"
+        ],
+        "description": "CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。"
+      },
+      "UserImportRowError": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer"
+          },
+          "column": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "row",
+          "column",
+          "code"
+        ],
+        "description": "CSV の 1 行に対する安全な検証または適用エラー。値そのものは返さず、列名と stable code のみを返す。"
       },
       "UserInfoResponse": {
         "type": "object",

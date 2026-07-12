@@ -33,11 +33,15 @@ func (s JobStatus) Valid() bool {
 // handler.
 type JobKind string
 
-// KindNoopEcho is the wi-126 core-runtime smoke-test job kind.
-const KindNoopEcho JobKind = "noop_echo"
+const (
+	// KindNoopEcho is the wi-126 core-runtime smoke-test job kind.
+	KindNoopEcho          JobKind = "noop_echo"
+	KindUserImportPreview JobKind = "user_import_preview"
+	KindUserImportApply   JobKind = "user_import_apply"
+)
 
 func (k JobKind) Valid() bool {
-	return k == KindNoopEcho
+	return k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply
 }
 
 // JobLifecycleEvent is a JobLifecycle state machine event.

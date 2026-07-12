@@ -36,6 +36,7 @@ var roleDescriptionCopy = map[string]string{
 var permissionDescriptionCopy = map[string]string{
 	"AdminUserRead":            "ユーザーの一覧と詳細を閲覧します。",
 	"AdminUserCreate":          "ユーザーを新規作成します。",
+	"AdminUserImport":          "CSV を使ってユーザーを検証・一括登録します。",
 	"AdminUserUpdate":          "ユーザーのプロフィール・ロール・有効状態を更新します。",
 	"AdminUserDelete":          "ユーザーを削除予約します。復元可能期間内なら元に戻せます。",
 	"AdminUserRestore":         "削除予約中のユーザーを復元します。",

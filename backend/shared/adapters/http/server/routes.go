@@ -13,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/identitymanagement"
 	idmhttp "github.com/ambi/idmagic/backend/identitymanagement/adapters/http"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -71,6 +72,7 @@ type Deps struct {
 	Scim              scim.Module
 	FederationSigner  *samltoken.Signer
 	Application       application.Module
+	Jobs              jobs.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -287,6 +289,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
 		EmailChangeTokenStore: d.Authentication.EmailChangeTokenStore,
 		EmailSender:           d.Authentication.EmailSender,
+		JobRepo:               d.Jobs.Repo,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{

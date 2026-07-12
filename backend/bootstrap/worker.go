@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
@@ -45,6 +46,9 @@ func RunWorker() error {
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
+	adminDeps := idmusecases.AdminUserDeps{UserRepo: deps.IdentityManagement.UserRepo, AttrSchemaRepo: deps.Tenancy.AttrSchemaRepo, ConsentRepo: deps.OAuth2.ConsentRepo, RefreshStore: deps.OAuth2.RefreshStore, DeviceCodeStore: deps.OAuth2.DeviceCodeStore, MfaFactorRepo: deps.Authentication.MfaFactorRepo, PasswordHasher: deps.Authentication.PasswordHasher, PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo}
+	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
+	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
 
 	workerID := envDefault("WORKER_ID", workerIDFallback())
 	runner := usecases.NewRunner(

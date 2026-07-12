@@ -25,6 +25,12 @@ glossary:
     definition: User.disabled_at を設定して認証とセッション利用を停止する復活可能な管理操作。削除や PII purge とは異なる。
     aliases:
       - disable user
+  UserImport:
+    definition: 管理者が UTF-8 CSV を使ってユーザーを検証または作成する非同期操作。CSV は preferred_username,email,name,roles ヘッダーを持ち、パスワードや password_hash を含めない。
+    aliases:
+      - CSV user import
+      - bulk user import
+      - ユーザー一括インポート
       - アカウント無効化
   UserDeletion:
     definition: "User の tombstone 化と関連 aggregate の cascade 削除。`deleted_at` を設定し PII フィールドを匿名化、`id` のみを audit のため保持する。`Deleted` は終端で復元できない。"
@@ -458,6 +464,35 @@ models:
       attributes:
         type: "Map<String,AttributeValue>"
         optional: true
+  UserImportJob:
+    kind: value_object
+    description: CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。
+    fields:
+      id:
+        type: String
+      status:
+        type: String
+      mode:
+        type: String
+      total_rows:
+        type: Integer
+      accepted_rows:
+        type: Integer
+      rejected_rows:
+        type: Integer
+      errors:
+        type: "UserImportRowError[]"
+        optional: true
+  UserImportRowError:
+    kind: value_object
+    description: CSV の 1 行に対する安全な検証または適用エラー。値そのものは返さず、列名と stable code のみを返す。
+    fields:
+      row:
+        type: Integer
+      column:
+        type: String
+      code:
+        type: String
   AccountSummary:
     kind: value_object
     description: "`/api/account/summary` の返り値 (end-user account portal のホーム)。呼び出し\nユーザ自身のアカウント概要で、admin shell 用の AccountContext (/api/auth/account)\nとは別契約。roles は含めず、最終ログイン・パスワード変更日時・MFA 状態・未対応の\nrequired actions を portal home の summary card 用に返す。\n"
@@ -1412,6 +1447,42 @@ interfaces:
         request_form: body
         successful_status_codes:
           - "201"
+  ImportAdminUsers:
+    description: 管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。
+    input:
+      csv:
+        type: String
+      mode:
+        type: String
+    output:
+      job:
+        type: UserImportJob
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/users/imports
+        request_form: body
+        successful_status_codes:
+          - "202"
+  GetAdminUserImport:
+    description: 管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。
+    input:
+      job_id:
+        type: String
+    output:
+      job:
+        type: UserImportJob
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/users/imports/{job_id}"
   UpdateAdminUser:
     description: 管理者がユーザーのプロフィール、email_verified、roles を更新する。
     input:
@@ -1874,6 +1945,10 @@ invariants:
     description: "Agent.owner_user_id と AgentCredentialBinding.client_id は同一 tenant_id 内の live aggregate だけを指す。\n反例: tenant A の Agent が tenant B の User や OAuth2Client を参照する = tenant isolation 違反。\n"
     target: Agent
     always: "agent.owner_user_id in Users(agent.tenant_id) && binding(agent).client_id in OAuth2Clients(agent.tenant_id)"
+  UserImportDryRunHasNoSideEffects:
+    description: dry_run の CSV インポートはユーザー、グループ、資格情報を変更せず、検証結果だけを job result に保存する。
+    target: UserImportJob
+    always: "job.mode == 'dry_run' => Users(job.tenant_id) are unchanged"
 permissions:
   AdminUserRead:
     description: 管理ユーザー情報の一覧・取得。
@@ -1890,6 +1965,11 @@ permissions:
     actor: User
     resource: User
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
+  AdminUserImport:
+    description: 管理者による CSV ユーザーインポートの投入と結果参照。job.tenant_id は actor.tenant_id に一致しなければならない。
+    actor: User
+    resource: UserImportJob
+    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
   AdminUserDelete:
     description: "管理者によるユーザーの soft-delete (削除予約)。status を PendingDeletion\nに遷移させる。actor.id == resource.id かつ admin / system_admin role を持つ\n場合は use case 側で reject する (自爆防止)。\n"
     actor: User
@@ -1921,6 +2001,23 @@ permissions:
     resource: Agent
     allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
 scenarios:
+  管理者は CSV を検証して有効な行だけをインポートできる:
+    goal: 管理者が副作用なしに CSV を検証し、修正可能な行エラーを確認してから有効行を作成する。
+    primary_actor: Administrator
+    scope: IdentityManagement
+    level: user_goal
+    preconditions:
+      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のユーザー一覧を開いている"
+    main_success:
+      - "管理者が CSV を dry_run で投入する"
+      - "job result に行番号と error code が表示され、User は作成されない"
+      - "管理者が修正済み CSV を apply で投入する"
+      - "有効行だけが UserCreated として作成され、無効行は結果に残る"
+    extensions:
+      - condition: CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超えるか、password 列を含む
+        steps:
+          - "インポート投入は拒否される"
+          - "エラー \"invalid_csv\""
   管理者はエージェントを登録し client 資格情報をバインドできる:
     goal: 管理者が非人間エージェントを登録し、資格情報のバインドとライフサイクル操作を行う。
     primary_actor: Administrator
@@ -1993,6 +2090,12 @@ scenarios:
           - "soft-delete / 復元 / 完全削除のいずれも拒否される"
           - "エラー \"self_delete_forbidden\""
 objectives:
+  UserImportCsvLimits:
+    kind: security
+    target: UserImportJob
+    policy: bounded_input
+    value: 1048576
+    description: 同期 upload/stage の負荷を上限化する CSV インポート入力制限。
   UserSoftDeleteGracePeriod:
     kind: lifetime
     target: User
@@ -2021,6 +2124,8 @@ user_experience:
         - RestoreAdminUser
         - SetUserRequiredAction
         - ClearUserRequiredAction
+        - ImportAdminUsers
+        - GetAdminUserImport
         - ListUserGroups
         - AddGroupMember
       states:

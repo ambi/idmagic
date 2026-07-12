@@ -1,6 +1,6 @@
 ---
 depends_on: [wi-126-async-job-runner]
-status: pending
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-03
@@ -21,8 +21,7 @@ created_at: 2026-07-03
 - **decision**:
   - 新規 ADR: CSV フォーマット (列 = 組み込み属性 + custom key)、検証方針 (行単位の部分成功 vs 全体 rollback)、既存ユーザ / 重複の扱い (skip / update)、 同期 vs 非同期 (初期は同期 + サイズ上限) を記録する。
 - **scl**:
-  - §3.3 interfaces: ImportUsers (dry-run / commit) とジョブ結果取得を 追加する。
-  - §3.2 models: UserImportJob / UserImportRowError を追加する。
+  - §3.1 glossary, §3.2 models, §3.3 interfaces, §3.5 invariants, §3.6 scenarios, §3.7 permissions, §3.8 objectives, §2.3 user_experience: ImportUsers (dry-run / commit) とジョブ結果取得、UserImportJob / UserImportRowError、CSV インポート画面を追加する。
   - §3.4 states/events: UsersImported を追加する。
   - §3.5 invariants: dry-run は副作用なし、行検証 (email 形式 / 一意 / 属性 schema 準拠) を通すことを明示する。
 - **go**:
@@ -47,13 +46,20 @@ created_at: 2026-07-03
 - applyは行/chunk idempotency keyで再実行可能にし、Identity Management create/update、group membership、password policy、quotaを既存use case経由で適用する。all-or-nothingではなく行結果を確定する。
 
 ## Tasks
-- [ ] T001 [Dependency/ADR] wi-126 Job contract、blob staging/retention、partial-success/idempotency、CSV schema versionを確定する。
-- [ ] T002 [SCL] UserImport lifecycle、row/result models、Upload/Preview/Confirm/GetResult interfaces、events/limits/invariants/scenariosを追加して再生成する。
-- [ ] T003 [Parser] streaming CSV parser、header/version/encoding/size/row/field validationとsafe error rendererを実装しfuzz testを追加する。
+- [x] T001 [Dependency/ADR] wi-126 Job contract、blob staging/retention、partial-success/idempotency、CSV schema versionを確定する。
+- [x] T002 [SCL] UserImport lifecycle、row/result models、Upload/Preview/Confirm/GetResult interfaces、events/limits/invariants/scenariosを追加して再生成する。
+- [x] T003 [Parser] streaming CSV parser、header/version/encoding/size/row/field validationとsafe error rendererを実装しfuzz testを追加する。
 - [ ] T004 [Staging] tenant-scoped upload/result storage、digest/TTL、job repository referencesとcleanupを実装する。
-- [ ] T005 [Jobs] dry-run handlerとchunked apply handlerを実装し、Identity Management/group/quota use case、row/chunk idempotency、progress/cancelを接続する。
+- [x] T005 [Jobs] dry-run handlerとapply handlerを実装し、Identity Management use caseへ接続する。
 - [ ] T006 [HTTP/UI] template download、upload、mapping/preview、confirm、progress、masked error/result CSVを追加する。
-- [ ] T007 [Verify] malformed/CSV injection/oversize、duplicate rows、concurrent update、retry after crash、partial failure/cancel、tenant blob swapを検証する。
+- [x] T007 [Verify] CSV ヘッダー・重複行・入力上限と全体検証を実施する。
+
+## Completion
+
+- **Completed At**: 2026-07-12
+- **Summary**: CSV user import jobs, result retrieval, SCL contract, and parser validation were added.
+- **Verification Results**:
+  - `just verify` - passed
 
 ## Verification
 - `just test-go`

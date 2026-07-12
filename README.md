@@ -31,6 +31,14 @@ and a foundation for identity platform experiments.
 
 ## Quick Start
 
+## CSV user import
+
+Tenant administrators can submit UTF-8 CSV files to `POST /api/admin/users/imports` with
+`mode` set to `dry_run` or `apply`. The required header is
+`preferred_username,email,name,roles`; roles are `|` separated. Files are limited to
+1 MiB, 1,000 rows, and 64 KiB per field. Password material is never accepted; imported
+users are required to set a password on first sign-in.
+
 Run the API and UI together in local memory mode:
 
 ```bash

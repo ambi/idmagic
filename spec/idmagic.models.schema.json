@@ -6083,7 +6083,9 @@
     "JobKind": {
       "type": "string",
       "enum": [
-        "noop_echo"
+        "noop_echo",
+        "user_import_preview",
+        "user_import_apply"
       ],
       "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
     },
@@ -9722,6 +9724,66 @@
         "effective_roles"
       ],
       "description": "指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。\n"
+    },
+    "UserImportJob": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "total_rows": {
+          "type": "integer"
+        },
+        "accepted_rows": {
+          "type": "integer"
+        },
+        "rejected_rows": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UserImportRowError"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "mode",
+        "total_rows",
+        "accepted_rows",
+        "rejected_rows"
+      ],
+      "description": "CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。"
+    },
+    "UserImportRowError": {
+      "type": "object",
+      "properties": {
+        "row": {
+          "type": "integer"
+        },
+        "column": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "row",
+        "column",
+        "code"
+      ],
+      "description": "CSV の 1 行に対する安全な検証または適用エラー。値そのものは返さず、列名と stable code のみを返す。"
     },
     "UserInfoResponse": {
       "type": "object",

@@ -33,6 +33,7 @@ type RoleInterface struct {
 var rolePermissionInterfaces = map[string][]string{
 	"AdminUserRead":                        {"ListAdminUsers", "GetAdminUser"},
 	"AdminUserCreate":                      {"CreateAdminUser"},
+	"AdminUserImport":                      {"ImportAdminUsers", "GetAdminUserImport"},
 	"AdminUserUpdate":                      {"UpdateAdminUser", "DisableAdminUser", "EnableAdminUser"},
 	"AdminUserDelete":                      {"DeleteAdminUser"},
 	"AdminUserRestore":                     {"RestoreAdminUser"},

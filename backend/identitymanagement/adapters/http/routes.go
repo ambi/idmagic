@@ -7,6 +7,7 @@ package http
 import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
@@ -36,6 +37,7 @@ type Deps struct {
 	PasswordHistoryRepo   authnports.PasswordHistoryRepository
 	EmailChangeTokenStore authnports.EmailChangeTokenStore
 	EmailSender           authnports.EmailSender
+	JobRepo               jobsports.JobRepository
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
@@ -49,6 +51,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/users", d.handleListAdminUsers)
 	g.GET("/api/admin/users/:sub", d.handleGetAdminUser)
 	g.POST("/api/admin/users", d.handleCreateAdminUser)
+	g.POST("/api/admin/users/imports", d.handleImportAdminUsers)
+	g.GET("/api/admin/users/imports/:job_id", d.handleGetAdminUserImport)
 	g.PATCH("/api/admin/users/:sub", d.handleUpdateAdminUser)
 	g.POST("/api/admin/users/:sub/disable", d.handleDisableAdminUser)
 	g.POST("/api/admin/users/:sub/enable", d.handleEnableAdminUser)
