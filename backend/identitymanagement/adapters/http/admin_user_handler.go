@@ -11,6 +11,7 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 
 	"github.com/labstack/echo/v5"
 )
@@ -301,7 +302,7 @@ func (d Deps) writeAdminUserError(c *echo.Context, err error) error {
 				violations[i] = string(violation)
 			}
 			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
-				"error": "password_policy", "message": "パスワードがセキュリティ要件を満たしていません。",
+				"error": "password_policy", "message": kernel.EnglishErrorText("パスワードがセキュリティ要件を満たしていません。"),
 				"violations": violations,
 			})
 		}

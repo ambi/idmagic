@@ -11,6 +11,7 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -113,7 +114,7 @@ func (d Deps) handleChangePasswordAPI(c *echo.Context) error {
 			}
 			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
 				"error":      "password_policy",
-				"message":    "パスワードがセキュリティ要件を満たしていません。",
+				"message":    kernel.EnglishErrorText("パスワードがセキュリティ要件を満たしていません。"),
 				"violations": violations,
 			})
 		}

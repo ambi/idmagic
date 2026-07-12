@@ -26,6 +26,11 @@ glossary:
     not_to_confuse_with:
       - term: DisplayLanguage
         reason: DisplayLanguage は利用者が選択した値。FallbackLocale はその選択や辞書が使えない場合の受け皿。
+  BackendErrorText:
+    definition: バックエンドが HTTP、OAuth/OIDC redirect、SAML、SCIM などの外部 API 応答で返す利用者向けエラー本文。message、error_description、detail およびプレーンテキストのエラー本文を含む。常に英語であり、表示言語によって変化しない。
+    aliases:
+      - API error message
+      - error description
 standards:
   WCAG22:
     title: Web Content Accessibility Guidelines 2.2
@@ -94,6 +99,18 @@ invariants:
     description: "永続化される状態モデルは作成時刻を持つ。作成後に現在状態が更新されるモデルは更新時刻も持つ。作成後は不可変で、消費または削除のみされる記録モデルは更新時刻を持たない。issued_at / granted_at / occurred_at / expires_at / revoked_at / first_seen / last_seen などのドメイン時刻は作成時刻を置き換えない。イベントログは履歴・監査の真実だが、created_at / updated_at は現在状態の検索・表示・同期・運用確認のためのモデル属性である。"
     target: PersistedStateModel
     always: "persisted_model has created_at and (mutable_persisted_model implies has updated_at) and (immutable_record implies not has updated_at)"
+  BackendErrorTextIsEnglish:
+    description: すべての BackendErrorText は英語で固定され、表示言語に依存しない。エラーコード、HTTP status、プロトコルで規定された error 値はこの規則によって変更しない。
+    target: BackendErrorResponse
+    always: "backend_error_text is English and backend_error_text is independent_of DisplayLanguage and error_code is unchanged and http_status is unchanged"
+interfaces:
+  BackendErrorResponse:
+    description: バックエンドの HTTP API とプロトコル endpoint がエラー時に返す共通の外部契約。message、error_description、detail、またはプレーンテキスト本文のいずれも BackendErrorText である。
+    output:
+      error: { type: String, optional: true }
+      message: { type: String, optional: true }
+      error_description: { type: String, optional: true }
+      detail: { type: String, optional: true }
 scenarios:
   明示的に選択した表示言語でホスト認証画面が描画される:
     goal: EndUser が言語切り替え UIで Locale を明示的に選択し、対応する文言でホスト認証画面が表示される。
@@ -143,6 +160,24 @@ scenarios:
     main_success:
       - "Administrator が表示言語 \"en\" を選択する"
       - AdminDashboard の文言が en 辞書で表示される
+  バックエンドAPIエラーは英語で返る:
+    goal: API Consumer が表示言語に関係なく、安定した error code と英語のエラー本文を受け取る。
+    primary_actor: APIConsumer
+    scope: System
+    level: user_goal
+    main_success:
+      - "APIConsumer が不正な JSON を HTTP API に送信する"
+      - "System は既存の error code と HTTP status を返す"
+      - "System は英語の message を返す"
+    extensions:
+      - condition: OAuth/OIDC redirect endpoint が要求を拒否する
+        steps:
+          - "System は既存の OAuth error code を返す"
+          - "System は英語の error_description を返す"
+      - condition: 未知の内部エラーが発生する
+        steps:
+          - "System は既存の error code と HTTP status を維持する"
+          - "System は英語のエラー本文を返す"
 objectives:
   DatabaseResilience:
     kind: security
@@ -357,6 +392,15 @@ objectives:
       fail_on_missing_key: true
       fail_on_untranslated_key: true
       warn_on_unused_key: true
+  BackendErrorLanguageConsistency:
+    kind: security
+    description: "バックエンドが外部へ送信する error text は英語のみとし、レスポンス境界で日本語を検出した場合は英語の安全な既定文言へ置換する。error code と HTTP status は維持する。"
+    policy: backend_error_text_english_only
+    target: BackendErrorResponse
+    value:
+      language: en
+      preserve_error_code: true
+      preserve_http_status: true
 user_experience:
   accessibility:
     standard: WCAG22

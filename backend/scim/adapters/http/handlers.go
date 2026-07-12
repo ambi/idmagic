@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/scim/domain"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 )
 
 type Handler struct {
@@ -45,7 +46,7 @@ func (h *Handler) authenticate(c *echo.Context) (string, error) {
 
 func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType string) error {
 	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), detail, scimType))
+	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), kernel.EnglishErrorText(detail), scimType))
 }
 
 func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {

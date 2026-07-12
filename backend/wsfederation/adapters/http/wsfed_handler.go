@@ -8,6 +8,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/wsfed"
@@ -59,9 +60,9 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 	case wsfedusecases.SignInNeedLogin:
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
 	case wsfedusecases.SignInRejected:
-		return c.String(outcome.Status, outcome.Message)
+		return c.String(outcome.Status, kernel.EnglishErrorText(outcome.Message))
 	case wsfedusecases.SignInForbidden:
-		return c.String(http.StatusForbidden, outcome.Message)
+		return c.String(http.StatusForbidden, kernel.EnglishErrorText(outcome.Message))
 	default:
 		return d.issuePassiveForm(c, outcome)
 	}

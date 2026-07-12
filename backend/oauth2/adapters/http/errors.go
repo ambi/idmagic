@@ -14,7 +14,7 @@ import (
 func writeOAuthError(c *echo.Context, err error) error {
 	var oe *usecases.OAuthError
 	if !errors.As(err, &oe) {
-		return c.JSON(http.StatusInternalServerError, support.OAuthErrorBody("server_error", err.Error()))
+		return c.JSON(http.StatusInternalServerError, support.OAuthErrorBody("server_error", "The authorization server encountered an unexpected condition."))
 	}
 	status := http.StatusBadRequest
 	switch oe.Code {
