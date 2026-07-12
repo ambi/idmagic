@@ -2014,10 +2014,14 @@ scenarios:
       - "管理者が修正済み CSV を apply で投入する"
       - "有効行だけが UserCreated として作成され、無効行は結果に残る"
     extensions:
-      - condition: CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超えるか、password 列を含む
+      - condition: CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超える
         steps:
           - "インポート投入は拒否される"
-          - "エラー \"invalid_csv\""
+          - "エラー \"csv_too_large\" または \"too_many_rows\" または \"field_too_large\""
+      - condition: CSV のヘッダー列が preferred_username,email,name,roles と一致しない (password 列を含む場合を含む)
+        steps:
+          - "インポート投入は拒否される"
+          - "エラー \"invalid_header\""
   管理者はエージェントを登録し client 資格情報をバインドできる:
     goal: 管理者が非人間エージェントを登録し、資格情報のバインドとライフサイクル操作を行う。
     primary_actor: Administrator
@@ -2135,6 +2139,11 @@ user_experience:
         - empty
         - delete_confirmation
         - purge_confirmation
+        - import_dry_run_running
+        - import_dry_run_result
+        - import_apply_confirmation
+        - import_apply_running
+        - import_result
         - access_denied
         - service_error
     AdminGroups:

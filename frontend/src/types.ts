@@ -31,6 +31,38 @@ export type AdminUser = {
   scim_source?: string
 }
 
+export type UserImportMode = 'dry_run' | 'apply'
+
+export type UserImportJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled'
+
+// value なしで row/column/code のみを返す (パスワード等の秘密情報を含めないため)。
+export type UserImportRowError = {
+  row: number
+  column?: string
+  code: string
+}
+
+export type UserImportResult = {
+  total_rows: number
+  accepted_rows: number
+  rejected_rows: number
+  errors?: UserImportRowError[]
+}
+
+// POST /api/admin/users/imports の応答。ジョブはまだ処理されておらず result は含まない。
+export type UserImportJobSummary = {
+  id: string
+  status: UserImportJobStatus
+  mode: UserImportMode
+}
+
+// GET /api/admin/users/imports/{id} の応答。result はジョブが終端状態になるまで未設定。
+export type UserImportJob = {
+  id: string
+  status: UserImportJobStatus
+  result?: UserImportResult
+}
+
 export const REQUIRED_ACTIONS = [
   'update_password',
   'verify_email',

@@ -28,6 +28,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-users': `ユーザー | ${ADMIN}`,
   'admin-user-detail': `ユーザー詳細 | ${ADMIN}`,
   'admin-user-create': `ユーザーを追加 | ${ADMIN}`,
+  'admin-user-import': `CSV インポート | ${ADMIN}`,
   'admin-user-edit': `ユーザーを編集 | ${ADMIN}`,
   'admin-agents': `エージェント | ${ADMIN}`,
   'admin-agent-detail': `エージェント詳細 | ${ADMIN}`,

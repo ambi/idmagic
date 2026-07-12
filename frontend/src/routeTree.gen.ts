@@ -47,6 +47,7 @@ import { Route as AccountApplicationsRouteImport } from './routes/account/applic
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
 import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
 import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
+import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
 import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
@@ -256,6 +257,11 @@ const AdminUsersNewRoute = AdminUsersNewRouteImport.update({
   path: '/users/new',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminUsersImportRoute = AdminUsersImportRouteImport.update({
+  id: '/users_/import',
+  path: '/users/import',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
   id: '/users_/$id',
   path: '/users/$id',
@@ -392,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/$id': typeof AdminUsersIdRouteWithChildren
+  '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
   '/account/profile/': typeof AccountProfileIndexRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
@@ -443,6 +450,7 @@ export interface FileRoutesByTo {
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
+  '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
@@ -500,6 +508,7 @@ export interface FileRoutesById {
   '/admin/roles_/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users_/$id': typeof AdminUsersIdRouteWithChildren
+  '/admin/users_/import': typeof AdminUsersImportRoute
   '/admin/users_/new': typeof AdminUsersNewRoute
   '/account/profile_/': typeof AccountProfileIndexRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
@@ -559,6 +568,7 @@ export interface FileRouteTypes {
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
     | '/admin/users/$id'
+    | '/admin/users/import'
     | '/admin/users/new'
     | '/account/profile/'
     | '/admin/applications/$applicationId/edit'
@@ -610,6 +620,7 @@ export interface FileRouteTypes {
     | '/admin/groups/new'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
+    | '/admin/users/import'
     | '/admin/users/new'
     | '/admin/applications/$applicationId/edit'
     | '/admin/federation/entra/new'
@@ -666,6 +677,7 @@ export interface FileRouteTypes {
     | '/admin/roles_/$name'
     | '/admin/tenant/attributes'
     | '/admin/users_/$id'
+    | '/admin/users_/import'
     | '/admin/users_/new'
     | '/account/profile_/'
     | '/admin/applications_/$applicationId/edit'
@@ -960,6 +972,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/users_/import': {
+      id: '/admin/users_/import'
+      path: '/users/import'
+      fullPath: '/admin/users/import'
+      preLoaderRoute: typeof AdminUsersImportRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/users_/$id': {
       id: '/admin/users_/$id'
       path: '/users/$id'
@@ -1182,6 +1201,7 @@ interface AdminRouteRouteChildren {
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
   AdminUsersIdRoute: typeof AdminUsersIdRouteWithChildren
+  AdminUsersImportRoute: typeof AdminUsersImportRoute
   AdminUsersNewRoute: typeof AdminUsersNewRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
 }
@@ -1208,6 +1228,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
   AdminUsersIdRoute: AdminUsersIdRouteWithChildren,
+  AdminUsersImportRoute: AdminUsersImportRoute,
   AdminUsersNewRoute: AdminUsersNewRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
 }

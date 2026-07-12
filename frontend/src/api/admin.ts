@@ -25,6 +25,9 @@ import type {
   TenantUserAttributeSchema,
   UserAttributeDef,
   EntraFederationProfile,
+  UserImportJob,
+  UserImportJobSummary,
+  UserImportMode,
   WsFedClaimMappingRule,
   WsFedRelyingParty,
   WsFedTokenType,
@@ -138,6 +141,19 @@ export async function restoreAdminUser(csrfToken: string, id: string): Promise<A
     `/api/admin/users/${encodeURIComponent(id)}/restore`,
     adminRequest(csrfToken, 'POST'),
   )
+}
+
+// importAdminUsers は CSV を dry_run (検証のみ) または apply (作成) ジョブとして投入する。
+// 202 応答はジョブ受理のみを表し、結果は getAdminUserImport の polling で取得する。
+export async function importAdminUsers(
+  csrfToken: string,
+  input: { csv: string; mode: UserImportMode },
+): Promise<UserImportJobSummary> {
+  return request('/api/admin/users/imports', adminRequest(csrfToken, 'POST', input))
+}
+
+export async function getAdminUserImport(jobId: string): Promise<UserImportJob> {
+  return request(`/api/admin/users/imports/${encodeURIComponent(jobId)}`)
 }
 
 // authorization_details type (RFC 9396 / ADR-050) の管理 API クライアント。
