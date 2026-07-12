@@ -8,7 +8,7 @@ created_at: 2026-07-04
 
 ## コンテキスト
 
-`idmagic/deploy/migrations/` は番号付き SQL ファイルを自前 runner
+旧 `idmagic/deploy/migrations/` は番号付き SQL ファイルを自前 runner
 (`internal/shared/adapters/persistence/postgres/migrate.go`) で順に適用している。
 この方式は単純で監査しやすいが、schema が成長すると現在の望ましい形が履歴の総和に
 埋もれる。空 DB を作るだけでも過去の `ALTER TABLE`、index 作り直し、列削除を
@@ -20,16 +20,16 @@ Regenerative Architecture では外側 adapter は再生成可能であるべき
 
 ## 決定
 
-`deploy/schema/postgres.sql` を PostgreSQL adapter の現在形 schema とし、
-`deploy/migrations/`、`schema_migrations`、アプリ起動時 migration runner は廃止する。
+`infra/schema/postgres.sql` を PostgreSQL database infrastructure の現在形 schema とし、
+旧 `deploy/migrations/`、`schema_migrations`、アプリ起動時 migration runner は廃止する。
 
-1. PostgreSQL schema の現在形を `deploy/schema/postgres.sql` に置く。
+1. PostgreSQL schema の現在形を `infra/schema/postgres.sql` に置く。
    このファイルは `CREATE TABLE` / `CREATE INDEX` / 制約定義で構成し、過去の
    中間状態を含めない。
 2. schema 差分の計画と適用には `psqldef` を使う。通常はデプロイ前ジョブで
    `--dry-run` をレビューし、承認後に `--apply` する。アプリケーション起動時に
    外部 CLI として `psqldef` を呼ばない。
-3. 既存の `deploy/migrations/` と Go runner は削除する。`AUTO_MIGRATE` /
+3. 既存の migration directory と Go runner は削除する。`AUTO_MIGRATE` /
    `MIGRATIONS_DIR` は設定としても廃止する。
 4. 開発 Docker 環境では compose の一回限りの `schema` サービスが PostgreSQL 起動後に
    `psqldef --apply --file /schema/postgres.sql` を実行し、その完了後に `idp` を起動する。
@@ -37,7 +37,7 @@ Regenerative Architecture では外側 adapter は再生成可能であるべき
    backfill などは WI に紐づく runbook または目的別 SQL script として保存する。
 6. 参照データは schema 正本に含めない。たとえば default tenant は起動時の
    `EnsureDefault` によって収束させる。
-7. 構造変更を行う WI は、原則として `deploy/schema/postgres.sql` を先に更新し、
+7. 構造変更を行う WI は、原則として `infra/schema/postgres.sql` を先に更新し、
    既存環境に必要なデータ移行がある場合だけ別の runbook / SQL script を追加する。
 
 ## 却下した代替案
@@ -60,8 +60,8 @@ Regenerative Architecture では外側 adapter は再生成可能であるべき
 
 ## 影響
 
-- `deploy/schema/postgres.sql` が PostgreSQL schema の現在形 artifact になる。
-- `deploy/migrations/`、`schema_migrations`、`internal/shared/adapters/persistence/postgres/migrate.go`
+- `infra/schema/postgres.sql` が PostgreSQL schema の現在形 artifact になる。
+- 旧 `deploy/migrations/`、`schema_migrations`、`internal/shared/adapters/persistence/postgres/migrate.go`
   は削除する。
 - README と ARCHITECTURE は、PostgreSQL 構造変更時に schema 正本を更新する規約へ変わる。
 - CI / デプロイでは、将来的に `psqldef --dry-run` による drift check を追加する。

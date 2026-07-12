@@ -58,7 +58,7 @@ services:
     image: idmagic:dev
     build:
       context: ../..
-      dockerfile: deploy/docker/Dockerfile
+      dockerfile: infra/docker/Dockerfile
     environment:
       ADDR: :8081
       ISSUER: http://localhost:8080

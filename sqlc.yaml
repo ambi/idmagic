@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/application/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -18,7 +18,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/wsfederation/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -35,7 +35,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/oauth2/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -52,7 +52,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/audit/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -69,7 +69,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/saml/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -86,7 +86,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/authentication/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -103,7 +103,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/scim/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -120,7 +120,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/identitymanagement/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -137,7 +137,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/tenancy/adapters/persistence/postgres/queries"
     gen:
       go:
@@ -154,7 +154,7 @@ sql:
             go_type: "time.Time"
             nullable: false
   - engine: "postgresql"
-    schema: "deploy/schema/postgres.sql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/jobs/adapters/persistence/postgres/queries"
     gen:
       go:

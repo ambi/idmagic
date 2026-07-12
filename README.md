@@ -102,7 +102,7 @@ just dev-compose
 Re-apply only the declarative PostgreSQL schema:
 
 ```bash
-docker compose -f deploy/docker/docker-compose.dev.yaml run --rm schema
+docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema
 ```
 
 Run the OAuth/OIDC demo script against the compose stack:
@@ -350,7 +350,7 @@ work-items/       planned and completed change records
 backend/cmd/              process entry points
 backend/         Go bounded contexts, use cases, ports, and adapters
 frontend/               React SPA for auth, account, admin, and system flows
-deploy/           Docker, schema, and runtime infrastructure assets
+infra/            Docker, schema, and runtime infrastructure assets
 ```
 
 The main bounded contexts are `tenancy`, `identitymanagement`,
@@ -368,7 +368,7 @@ IdMagic follows Regenerative Architecture:
 | Decisions | `decisions/*.md` |
 | Application logic | `backend/<context>/domain`, `backend/<context>/usecases` |
 | Ports and adapters | `backend/<context>/ports`, `backend/<context>/adapters`, `backend/shared/adapters` |
-| Runtime and infrastructure | `backend/cmd/`, `backend/bootstrap`, `deploy/`, `frontend/` |
+| Runtime and infrastructure | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
 
 Start with [ARCHITECTURE.md](ARCHITECTURE.md) when changing code. It is the
 small, stable index for navigating the implementation. Use the generated SCL
@@ -377,26 +377,26 @@ behind protocol and infrastructure choices.
 
 ## PostgreSQL Schema
 
-`deploy/schema/postgres.sql` is the declarative current-state schema. The app
+`infra/schema/postgres.sql` is the declarative current-state schema. The app
 does not run migrations on startup; deployment applies schema changes with
 `psqldef`.
 
 ```bash
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --dry-run < deploy/schema/postgres.sql
+  --dry-run < infra/schema/postgres.sql
 
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --apply < deploy/schema/postgres.sql
+  --apply < infra/schema/postgres.sql
 ```
 
-See [deploy/schema/README.md](deploy/schema/README.md) for the full workflow.
+See [infra/schema/README.md](infra/schema/README.md) for the full workflow.
 
 ## Documentation Guide
 
 - Product specification: [spec/scl.yaml](spec/scl.yaml)
 - Implementation index: [ARCHITECTURE.md](ARCHITECTURE.md)
 - UI design and test policy: [frontend/README.md](frontend/README.md)
-- PostgreSQL workflow: [deploy/schema/README.md](deploy/schema/README.md)
+- PostgreSQL workflow: [infra/schema/README.md](infra/schema/README.md)
 - Architecture decisions: [decisions/](decisions/)
 - Work items: [work-items/](work-items/)
 
@@ -428,7 +428,7 @@ docker build \
   --build-arg VERSION=1.0.0 \
   --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
   --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-  -t idmagic:1.0.0 -f deploy/docker/Dockerfile .
+  -t idmagic:1.0.0 -f infra/docker/Dockerfile .
 ```
 
 ### Checking Active Version

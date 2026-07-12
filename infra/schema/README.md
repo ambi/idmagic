@@ -40,7 +40,7 @@ map their `DATABASE_URL` secret to `PGHOST` / `PGPORT` / `PGUSER` /
 
 ## Change workflow
 
-1. Edit `deploy/schema/postgres.sql` to the desired current schema.
+1. Edit `infra/schema/postgres.sql` to the desired current schema.
 2. If the change needs data movement, add an explicit runbook or purpose-built
    SQL script for the backfill / value conversion. Do not hide data movement in
    the declarative schema file.
@@ -48,7 +48,7 @@ map their `DATABASE_URL` secret to `PGHOST` / `PGPORT` / `PGUSER` /
 
 ```bash
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --dry-run < deploy/schema/postgres.sql \
+  --dry-run < infra/schema/postgres.sql \
   | tee /tmp/idmagic-schema-plan.sql
 ```
 
@@ -62,14 +62,14 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 
 ```bash
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --apply < deploy/schema/postgres.sql
+  --apply < infra/schema/postgres.sql
 ```
 
 6. Run dry-run again. The expected result is empty output:
 
 ```bash
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --dry-run < deploy/schema/postgres.sql
+  --dry-run < infra/schema/postgres.sql
 ```
 
 7. Record the generated plan and the final empty dry-run in the WI completion or
@@ -80,7 +80,7 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 The dev compose file has a one-shot `schema` service:
 
 ```bash
-docker compose -f deploy/docker/docker-compose.dev.yaml up --build
+docker compose -f infra/docker/docker-compose.dev.yaml up --build
 ```
 
 `schema` waits for PostgreSQL, runs `psqldef --apply --file
@@ -92,7 +92,7 @@ When only the schema changed and the stack is already running, apply it without
 recreating the whole stack:
 
 ```bash
-docker compose -f deploy/docker/docker-compose.dev.yaml run --rm schema
+docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema
 ```
 
 To inspect the dev database before applying, run dry-run from the host after
@@ -100,7 +100,7 @@ installing `psqldef`:
 
 ```bash
 psqldef -U idmagic -h localhost -p 5432 idmagic \
-  --dry-run < deploy/schema/postgres.sql
+  --dry-run < infra/schema/postgres.sql
 ```
 
 ## Production deployment
@@ -112,11 +112,11 @@ First deployment to an empty database:
 
 ```bash
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --dry-run < deploy/schema/postgres.sql
+  --dry-run < infra/schema/postgres.sql
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --apply < deploy/schema/postgres.sql
+  --apply < infra/schema/postgres.sql
 psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
-  --check < deploy/schema/postgres.sql
+  --check < infra/schema/postgres.sql
 ```
 
 Second and later deployments use the same sequence. `--dry-run` shows the DDL
@@ -138,7 +138,7 @@ converges required rows such as the default tenant at startup.
 
 - Keep structural schema in `postgres.sql`.
 - Keep data migrations, backfills, and high-risk destructive changes as explicit
-  SQL scripts or runbooks outside `deploy/schema/`.
+  SQL scripts or runbooks outside `infra/schema/`.
 - Do not put reference data in this file. The application converges required
   reference data such as the default tenant at startup.
 - Do not reintroduce an application startup migration runner. Schema changes are

@@ -17,6 +17,6 @@ COPY --from=build /out/idmagic /app/idmagic
 COPY --from=build /out/idmagic-relay /app/idmagic-relay
 COPY --from=build /out/idmagic-worker /app/idmagic-worker
 COPY spec /app/spec
-COPY deploy/schema /app/deploy/schema
+COPY infra/schema /app/infra/schema
 EXPOSE 8080
 ENTRYPOINT ["/app/idmagic"]

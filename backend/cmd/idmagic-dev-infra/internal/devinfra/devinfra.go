@@ -55,7 +55,7 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		cfg.ValkeyPort = DefaultValkeyPort
 	}
 	if cfg.SchemaPath == "" {
-		cfg.SchemaPath = filepath.Join("deploy", "schema", "postgres.sql")
+		cfg.SchemaPath = filepath.Join("infra", "schema", "postgres.sql")
 	}
 	if cfg.RuntimeDir == "" {
 		var err error

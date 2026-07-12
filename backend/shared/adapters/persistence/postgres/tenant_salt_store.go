@@ -15,7 +15,7 @@ import (
 // tenant scope は ctx (tenancy.TenantID) から解決し、初回取得時に generate-on-first-use する。
 type TenantSaltStore struct{ Pool DB }
 
-// NewTenantSaltStore は salt ストアを構築する。テーブルは deploy/schema/postgres.sql で用意する。
+// NewTenantSaltStore は salt ストアを構築する。テーブルは infra/schema/postgres.sql で用意する。
 func NewTenantSaltStore(pool DB) *TenantSaltStore {
 	return &TenantSaltStore{Pool: pool}
 }

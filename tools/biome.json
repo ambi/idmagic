@@ -51,7 +51,7 @@
   },
   "overrides": [
     {
-      "includes": ["adapters/**", "deploy/**"],
+      "includes": ["adapters/**", "infra/**"],
       "linter": {
         "rules": {
           "suspicious": {

@@ -154,7 +154,11 @@ dev-ui:
 
 # Start the Docker Compose development stack.
 dev-compose:
-    docker compose -f deploy/docker/docker-compose.dev.yaml up --build
+    docker compose -f infra/docker/docker-compose.dev.yaml up --build
+
+# Validate the Docker Compose development stack configuration.
+check-compose:
+    docker compose -f infra/docker/docker-compose.dev.yaml config --quiet
 
 # Run the OAuth2 / OIDC demo against a running server (default http://localhost:8080).
 demo:

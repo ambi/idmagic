@@ -50,7 +50,7 @@ func TestEmbeddedInfrastructureSharesJobQueueWithRunner(t *testing.T) {
 	runtime, ready, err := Start(t.Context(), Config{
 		PostgresPort: uint32(postgresPort),
 		ValkeyPort:   valkeyPort,
-		SchemaPath:   filepath.Join("..", "..", "deploy", "schema", "postgres.sql"),
+		SchemaPath:   filepath.Join("..", "..", "infra", "schema", "postgres.sql"),
 		RuntimeDir:   t.TempDir(),
 		Logger:       io.Discard,
 	})

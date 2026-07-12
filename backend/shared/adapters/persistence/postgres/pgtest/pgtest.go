@@ -25,7 +25,7 @@ import (
 // 起動できなかった場合は nil のままとなり、Require がテストをスキップする。
 var Pool *pgxpool.Pool
 
-// Main は embedded-postgres を起動し deploy/schema/postgres.sql を投入した上で
+// Main は embedded-postgres を起動し infra/schema/postgres.sql を投入した上で
 // m.Run() を実行する。呼び出し側の TestMain から os.Exit(pgtest.Main(m)) の形で使う。
 func Main(m *testing.M) int {
 	pool, cleanup := start()
@@ -100,10 +100,10 @@ func loadSchema(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 // schemaPath は呼び出し元パッケージの深さに依存しないよう、本ファイル自身の
-// 位置からリポジトリルートの deploy/schema/postgres.sql を解決する。
+// 位置からリポジトリルートの infra/schema/postgres.sql を解決する。
 func schemaPath() string {
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "..", "deploy", "schema", "postgres.sql")
+	return filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "..", "infra", "schema", "postgres.sql")
 }
 
 func freePort(ctx context.Context) (uint32, error) {

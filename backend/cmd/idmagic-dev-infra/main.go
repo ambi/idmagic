@@ -23,7 +23,7 @@ func run() error {
 	postgresPort := uint64Flag(devinfra.DefaultPostgresPort)
 	flag.Var(&postgresPort, "postgres-port", "embedded PostgreSQL port")
 	flag.IntVar(&cfg.ValkeyPort, "valkey-port", devinfra.DefaultValkeyPort, "development Valkey-compatible port")
-	flag.StringVar(&cfg.SchemaPath, "schema", "deploy/schema/postgres.sql", "PostgreSQL schema path")
+	flag.StringVar(&cfg.SchemaPath, "schema", "infra/schema/postgres.sql", "PostgreSQL schema path")
 	flag.StringVar(&cfg.ReadyFile, "ready-file", "", "ready marker JSON path")
 	flag.Parse()
 	cfg.PostgresPort = uint32(postgresPort)

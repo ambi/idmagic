@@ -7,7 +7,7 @@ import (
 )
 
 func TestPostgresSchemaReferentialIntegrityConstraints(t *testing.T) {
-	sql, err := os.ReadFile("../../../../../deploy/schema/postgres.sql")
+	sql, err := os.ReadFile("../../../../../infra/schema/postgres.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestPostgresSchemaReferentialIntegrityConstraints(t *testing.T) {
 }
 
 func TestPostgresSchemaTimestampColumnPolicy(t *testing.T) {
-	sql, err := os.ReadFile("../../../../../deploy/schema/postgres.sql")
+	sql, err := os.ReadFile("../../../../../infra/schema/postgres.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
