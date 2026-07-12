@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-func envDefault(key, fallback string) string {
+func EnvDefault(key, fallback string) string {
 	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
 		return value
 	}
 	return fallback
 }
 
-func envInt(key string, fallback int) int {
+func EnvInt(key string, fallback int) int {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
 		return fallback
@@ -54,7 +54,7 @@ func envCircuitBreakerMinRequests(key string) uint32 {
 	return uint32(parsed)
 }
 
-func envDuration(key string, fallback time.Duration) time.Duration {
+func EnvDuration(key string, fallback time.Duration) time.Duration {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
 		return fallback

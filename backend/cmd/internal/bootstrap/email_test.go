@@ -9,7 +9,7 @@ import (
 
 func TestResolveEmailSenderDefaultsToConsole(t *testing.T) {
 	t.Parallel()
-	sender, err := resolveEmailSender(stubEnv(map[string]string{}))
+	sender, err := ResolveEmailSender(stubEnv(map[string]string{}))
 	if err != nil {
 		t.Fatalf("resolveEmailSender: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestResolveEmailSenderSMTPRequiresHostAndFrom(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := resolveEmailSender(stubEnv(tc.env))
+			_, err := ResolveEmailSender(stubEnv(tc.env))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err=%v, want substring %q", err, tc.want)
 			}
@@ -41,7 +41,7 @@ func TestResolveEmailSenderSMTPRequiresHostAndFrom(t *testing.T) {
 
 func TestResolveEmailSenderSMTPBuildsAdapter(t *testing.T) {
 	t.Parallel()
-	sender, err := resolveEmailSender(stubEnv(map[string]string{
+	sender, err := ResolveEmailSender(stubEnv(map[string]string{
 		"EMAIL_SENDER":  "smtp",
 		"SMTP_HOST":     "smtp.example.com",
 		"SMTP_FROM":     "noreply@example.com",
@@ -58,7 +58,7 @@ func TestResolveEmailSenderSMTPBuildsAdapter(t *testing.T) {
 
 func TestResolveEmailSenderRejectsUnknownKind(t *testing.T) {
 	t.Parallel()
-	_, err := resolveEmailSender(stubEnv(map[string]string{"EMAIL_SENDER": "carrier-pigeon"}))
+	_, err := ResolveEmailSender(stubEnv(map[string]string{"EMAIL_SENDER": "carrier-pigeon"}))
 	if err == nil || !strings.Contains(err.Error(), "EMAIL_SENDER") {
 		t.Fatalf("err=%v, want unsupported EMAIL_SENDER error", err)
 	}

@@ -14,7 +14,7 @@ import (
 // (auditEventMatches) に効く。
 func TestNewAuditEventRecordExtractsTenantID(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
-	rec, err := newAuditEventRecord(&spec.UserAuthenticated{
+	rec, err := NewAuditEventRecord(&spec.UserAuthenticated{
 		At: now, TenantID: "acme", UserID: "user_alice", AMR: []string{"pwd"},
 	})
 	if err != nil {
@@ -40,7 +40,7 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 		&spec.AccessTokenIssued{At: now, TenantID: "acme", JTI: "jti", ClientID: "demo-client", UserID: "user_alice"},
 		&oauthdomain.ConsentGrantedEvent{At: now, TenantID: "acme", UserID: "user_alice", ClientID: "demo-client"},
 	} {
-		rec, err := newAuditEventRecord(ev)
+		rec, err := NewAuditEventRecord(ev)
 		if err != nil {
 			t.Fatalf("%s: %v", ev.EventType(), err)
 		}
@@ -58,7 +58,7 @@ func TestNewAuditEventRecordWithoutTenantIDStaysEmpty(t *testing.T) {
 		&spec.EmailSent{At: now, ToHash: "deadbeef", Purpose: "password_reset", Delivered: true},
 		&spec.SigningKeyRotated{At: now, NewKID: "kid-2", PreviousKID: "kid-1"},
 	} {
-		rec, err := newAuditEventRecord(ev)
+		rec, err := NewAuditEventRecord(ev)
 		if err != nil {
 			t.Fatalf("%s: %v", ev.EventType(), err)
 		}

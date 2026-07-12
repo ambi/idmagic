@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ambi/idmagic/backend/devinfra"
+	"github.com/ambi/idmagic/backend/cmd/idmagic-dev-infra/internal/devinfra"
 )
 
 func main() {

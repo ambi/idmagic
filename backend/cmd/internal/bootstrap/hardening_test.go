@@ -12,7 +12,7 @@ import (
 )
 
 func TestLoadHTTPServerHardeningDefaults(t *testing.T) {
-	h := loadHTTPServerHardening()
+	h := LoadHTTPServerHardening()
 	if h.ReadHeaderTimeout != 10*time.Second {
 		t.Errorf("ReadHeaderTimeout = %v, want 10s", h.ReadHeaderTimeout)
 	}
@@ -37,7 +37,7 @@ func TestLoadHTTPServerHardeningEnvOverride(t *testing.T) {
 	t.Setenv("HTTP_IDLE_TIMEOUT", "90s")
 	t.Setenv("HTTP_MAX_BODY_BYTES", "2048")
 
-	h := loadHTTPServerHardening()
+	h := LoadHTTPServerHardening()
 	if h.ReadHeaderTimeout != 5*time.Second {
 		t.Errorf("ReadHeaderTimeout = %v, want 5s", h.ReadHeaderTimeout)
 	}
@@ -59,7 +59,7 @@ func TestLoadHTTPServerHardeningInvalidEnvFallsBack(t *testing.T) {
 	t.Setenv("HTTP_READ_TIMEOUT", "not-a-duration")
 	t.Setenv("HTTP_MAX_BODY_BYTES", "-1")
 
-	h := loadHTTPServerHardening()
+	h := LoadHTTPServerHardening()
 	if h.ReadTimeout != 30*time.Second {
 		t.Errorf("ReadTimeout = %v, want default 30s on invalid value", h.ReadTimeout)
 	}
@@ -77,7 +77,7 @@ func TestHTTPServerHardeningApply(t *testing.T) {
 		MaxBodyBytes:      5,
 	}
 	s := &http.Server{}
-	h.apply(s)
+	h.Apply(s)
 	if s.ReadHeaderTimeout != 1*time.Second || s.ReadTimeout != 2*time.Second ||
 		s.WriteTimeout != 3*time.Second || s.IdleTimeout != 4*time.Second {
 		t.Fatalf("apply did not set all timeouts: %+v", s)

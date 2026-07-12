@@ -18,7 +18,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
+func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
 	wire, err := spec.MarshalDomainEvent(e)
 	if err != nil {
 		return nil, err

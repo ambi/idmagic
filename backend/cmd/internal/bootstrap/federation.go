@@ -22,7 +22,7 @@ import (
 
 // newDevFederationSigner は開発用の自己署名 federation 署名証明書から署名器を作る。
 // 本番の証明書ライフサイクル・ローテーション・metadata 掲載は後続スライス (ADR-060) で扱う。
-func newDevFederationSigner() (*samltoken.Signer, error) {
+func NewDevFederationSigner() (*samltoken.Signer, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, fmt.Errorf("generate federation signing key: %w", err)
@@ -47,7 +47,7 @@ func newDevFederationSigner() (*samltoken.Signer, error) {
 }
 
 // seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
-func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository) error {
+func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository) error {
 	now := time.Now().UTC()
 	rp := &domain.WsFedRelyingParty{
 		TenantID:    tenancydomain.DefaultTenantID,
@@ -70,7 +70,7 @@ func seedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 }
 
 // seedSamlServiceProvider は SAML 2.0 Web Browser SSO のデモ用 service provider を投入する。
-func seedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository) error {
+func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository) error {
 	now := time.Now().UTC()
 	sp := &samldomain.SamlServiceProvider{
 		TenantID:    tenancydomain.DefaultTenantID,

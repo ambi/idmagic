@@ -8,8 +8,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/policy"
 )
 
-func assembleAuthorizer() (oauthports.Authorizer, error) {
-	switch envDefault("AUTHZEN", "local") {
+func AssembleAuthorizer() (oauthports.Authorizer, error) {
+	switch EnvDefault("AUTHZEN", "local") {
 	case "local":
 		return policy.Local{}, nil
 	case "remote":

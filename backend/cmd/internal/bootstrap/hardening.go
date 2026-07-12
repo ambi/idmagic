@@ -21,19 +21,19 @@ type httpServerHardening struct {
 
 // loadHTTPServerHardening は env から上書き可能なハードニング設定を組み立てる。
 // 未指定・不正値は本番安全なデフォルトにフォールバックする (envDuration / envInt の規約)。
-func loadHTTPServerHardening() httpServerHardening {
+func LoadHTTPServerHardening() httpServerHardening {
 	return httpServerHardening{
-		ReadHeaderTimeout: envDuration("HTTP_READ_HEADER_TIMEOUT", 10*time.Second),
-		ReadTimeout:       envDuration("HTTP_READ_TIMEOUT", 30*time.Second),
-		WriteTimeout:      envDuration("HTTP_WRITE_TIMEOUT", 60*time.Second),
-		IdleTimeout:       envDuration("HTTP_IDLE_TIMEOUT", 120*time.Second),
-		MaxBodyBytes:      int64(envInt("HTTP_MAX_BODY_BYTES", 1<<20)),
+		ReadHeaderTimeout: EnvDuration("HTTP_READ_HEADER_TIMEOUT", 10*time.Second),
+		ReadTimeout:       EnvDuration("HTTP_READ_TIMEOUT", 30*time.Second),
+		WriteTimeout:      EnvDuration("HTTP_WRITE_TIMEOUT", 60*time.Second),
+		IdleTimeout:       EnvDuration("HTTP_IDLE_TIMEOUT", 120*time.Second),
+		MaxBodyBytes:      int64(EnvInt("HTTP_MAX_BODY_BYTES", 1<<20)),
 	}
 }
 
 // apply は基盤 http.Server にタイムアウトを設定する。echo.StartConfig.BeforeServeFunc
 // から呼び出す。ボディ上限は echo BodyLimit middleware 側で適用する。
-func (h httpServerHardening) apply(s *http.Server) {
+func (h httpServerHardening) Apply(s *http.Server) {
 	s.ReadHeaderTimeout = h.ReadHeaderTimeout
 	s.ReadTimeout = h.ReadTimeout
 	s.WriteTimeout = h.WriteTimeout

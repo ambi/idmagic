@@ -16,7 +16,7 @@ const breachedPasswordCheckerVersion = "0.3.0"
 // resolveBreachedPasswordChecker は BREACHED_PASSWORD_CHECKER 環境変数から
 // BreachedPasswordChecker adapter を組み立てる。既定は noop (外部依存なし)。
 // hibp 選択時は api.pwnedpasswords.com への egress が要る (ADR-028 §3)。
-func resolveBreachedPasswordChecker(getenv func(string) string) (authnports.BreachedPasswordChecker, error) {
+func ResolveBreachedPasswordChecker(getenv func(string) string) (authnports.BreachedPasswordChecker, error) {
 	kind := strings.ToLower(strings.TrimSpace(getenv("BREACHED_PASSWORD_CHECKER")))
 	if kind == "" {
 		kind = "noop"

@@ -1,4 +1,4 @@
-package bootstrap
+package main
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -31,9 +32,9 @@ import (
 
 // Run はサーバ全体を起動する。SIGINT/SIGTERM で graceful shutdown。
 func Run() error {
-	runtime := loadRuntimeConfig()
-	issuer := envDefault("ISSUER", "http://localhost:8080")
-	addr := envDefault("ADDR", ":8080")
+	runtime := bootstrap.LoadRuntimeConfig()
+	issuer := bootstrap.EnvDefault("ISSUER", "http://localhost:8080")
+	addr := bootstrap.EnvDefault("ADDR", ":8080")
 
 	shuttingDown := &atomic.Bool{}
 	startupComplete := &atomic.Bool{}
@@ -41,13 +42,13 @@ func Run() error {
 	// アプリケーションログは stdout に構造化 JSON Lines で出力する (ADR-018)。
 	// 監査ログ (DomainEvent) は EventSink 経由の別経路。
 	buildInfo := version.Get()
-	serviceName := envDefault("OTEL_SERVICE_NAME", "idmagic")
+	serviceName := bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic")
 	logLevel := logging.ParseLevel(os.Getenv("LOG_LEVEL"))
 	slogLogger := logging.NewSlog(os.Stdout, logLevel, serviceName, buildInfo.Version)
 	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
 	logger := logging.Default()
 
-	deps, err := assemble(context.Background())
+	deps, err := bootstrap.Assemble(context.Background())
 	if err != nil {
 		return fmt.Errorf("assemble dependencies: %w", err)
 	}
@@ -61,20 +62,20 @@ func Run() error {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
 	if os.Getenv("SKIP_DEMO_SEED") == "" {
-		if err := seedDemoData(ctx, deps.OAuth2.ClientRepo, deps.IdentityManagement.UserRepo, deps.Authentication.MfaFactorRepo, deps.Authentication.PasswordHistoryRepo, deps.IdentityManagement.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
+		if err := bootstrap.SeedDemoData(ctx, deps.OAuth2.ClientRepo, deps.IdentityManagement.UserRepo, deps.Authentication.MfaFactorRepo, deps.Authentication.PasswordHistoryRepo, deps.IdentityManagement.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
 			return fmt.Errorf("seed demo data: %w", err)
 		}
-		if err := seedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
+		if err := bootstrap.SeedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
 			return fmt.Errorf("seed federation relying party: %w", err)
 		}
-		if err := seedSamlServiceProvider(ctx, deps.Saml.SPRepo); err != nil {
+		if err := bootstrap.SeedSamlServiceProvider(ctx, deps.Saml.SPRepo); err != nil {
 			return fmt.Errorf("seed saml service provider: %w", err)
 		}
-		if err := seedDemoApplications(ctx, deps.Application.Repo, deps.Application.AssignmentRepo, time.Now().UTC()); err != nil {
+		if err := bootstrap.SeedDemoApplications(ctx, deps.Application.Repo, deps.Application.AssignmentRepo, time.Now().UTC()); err != nil {
 			return fmt.Errorf("seed demo applications: %w", err)
 		}
 	}
-	federationSigner, err := newDevFederationSigner()
+	federationSigner, err := bootstrap.NewDevFederationSigner()
 	if err != nil {
 		return fmt.Errorf("federation signer: %w", err)
 	}
@@ -86,11 +87,11 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("create sentinel password hash: %w", err)
 	}
-	emailSender, err := resolveEmailSender(os.Getenv)
+	emailSender, err := bootstrap.ResolveEmailSender(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("resolve email sender: %w", err)
 	}
-	breachedChecker, err := resolveBreachedPasswordChecker(os.Getenv)
+	breachedChecker, err := bootstrap.ResolveBreachedPasswordChecker(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("resolve breached password checker: %w", err)
 	}
@@ -113,7 +114,7 @@ func Run() error {
 			LockoutSeconds: objectiveInt("per_ip", "lockout_seconds"),
 		},
 	})
-	authorizer, err := assembleAuthorizer()
+	authorizer, err := bootstrap.AssembleAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -139,19 +140,19 @@ func Run() error {
 	// 同じ request_id 配下に入る。受信 X-Request-ID は secure-by-default で無視し
 	// 自前生成する。信頼できる境界プロキシが所有・消毒している構成でのみ
 	// REQUEST_ID_TRUST_INBOUND=true で受信値の再利用を許可する。
-	e.Use(httpsupport.RequestIDMiddleware(envDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
+	e.Use(httpsupport.RequestIDMiddleware(bootstrap.EnvDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
 	e.Use(httpsupport.RecoverMiddleware(logger))
 	// SecurityResponseHeaders / FrameAncestorsPolicy objectives (ADR-076):
 	// backend レスポンスへ CSP (nonce ベース) / frame-ancestors 'none' / nosniff 等を
 	// 一元付与する。HSTS は TLS 終端層が所有するため既定は無効 (開発 http では抑制)。
-	e.Use(httpsupport.SecurityHeadersMiddleware(loadSecurityHeaders(os.Getenv)))
+	e.Use(httpsupport.SecurityHeadersMiddleware(bootstrap.LoadSecurityHeaders(os.Getenv)))
 	// HTTPServerHardening objective: ボディ上限を全リクエストに課し、超過は 413 で拒否する。
 	// request_id 付与と panic recover の内側に置き、拒否レスポンスも相関/回復対象にする。
-	hardening := loadHTTPServerHardening()
+	hardening := bootstrap.LoadHTTPServerHardening()
 	e.Use(middleware.BodyLimit(hardening.MaxBodyBytes))
 	var otelProvider *observability.Provider
 	if runtime.Observability == "otel" {
-		otelProvider, err = observability.New(ctx, envDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
+		otelProvider, err = observability.New(ctx, bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
 		if err != nil {
 			return fmt.Errorf("initialize OpenTelemetry: %w", err)
 		}
@@ -164,7 +165,7 @@ func Run() error {
 			logger.Error(eventCtx, "event sink emit failed", "error", err)
 		}
 		if deps.Audit.AuditEventRepo != nil {
-			if rec, err := newAuditEventRecord(event); err == nil {
+			if rec, err := bootstrap.NewAuditEventRecord(event); err == nil {
 				appendCtx := eventCtx
 				if rec.TenantID != "" {
 					appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
@@ -181,8 +182,8 @@ func Run() error {
 		Deps: httpsupport.Deps{
 			Issuer:                    issuer,
 			SCL:                       sclDoc,
-			LegacyBareIssuer:          envDefault("LEGACY_BARE_ISSUER", "false") == "true",
-			TrustedForwardedHops:      envInt("TRUSTED_FORWARDED_HOPS", 0),
+			LegacyBareIssuer:          bootstrap.EnvDefault("LEGACY_BARE_ISSUER", "false") == "true",
+			TrustedForwardedHops:      bootstrap.EnvInt("TRUSTED_FORWARDED_HOPS", 0),
 			OperationTimeout:          0, // 必要なら設定
 			DetachedCompletionTimeout: 0,
 			Emit:                      emit,
@@ -231,7 +232,7 @@ func Run() error {
 		Address: addr,
 		// HTTPServerHardening objective: 基盤 http.Server にタイムアウトを設定する。
 		BeforeServeFunc: func(s *http.Server) error {
-			hardening.apply(s)
+			hardening.Apply(s)
 			return nil
 		},
 	}

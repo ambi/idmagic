@@ -1,4 +1,4 @@
-package bootstrap
+package main
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -28,12 +29,12 @@ import (
 // than becoming a queued Job.
 func RunWorker() error {
 	buildInfo := version.Get()
-	serviceName := envDefault("OTEL_SERVICE_NAME", "idmagic-worker")
+	serviceName := bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic-worker")
 	logLevel := logging.ParseLevel(os.Getenv("LOG_LEVEL"))
 	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
 	logger := logging.Default()
 
-	deps, err := assemble(context.Background())
+	deps, err := bootstrap.Assemble(context.Background())
 	if err != nil {
 		return fmt.Errorf("assemble dependencies: %w", err)
 	}
@@ -42,7 +43,7 @@ func RunWorker() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	startRetentionSweep(ctx, deps, envDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
+	bootstrap.StartRetentionSweep(ctx, deps, bootstrap.EnvDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
@@ -50,15 +51,15 @@ func RunWorker() error {
 	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
 	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
 
-	workerID := envDefault("WORKER_ID", workerIDFallback())
+	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
 	runner := usecases.NewRunner(
 		usecases.RunnerConfig{
 			WorkerID:      workerID,
-			PollInterval:  envDuration("JOB_POLL_INTERVAL", 2*time.Second),
-			Concurrency:   envInt("JOB_WORKER_CONCURRENCY", 4),
-			LeaseDuration: envDuration("JOB_LEASE_DURATION", 5*time.Minute),
-			BackoffBase:   envDuration("JOB_BACKOFF_BASE", domain.DefaultBackoffBase),
-			BackoffCap:    envDuration("JOB_BACKOFF_CAP", domain.DefaultBackoffCap),
+			PollInterval:  bootstrap.EnvDuration("JOB_POLL_INTERVAL", 2*time.Second),
+			Concurrency:   bootstrap.EnvInt("JOB_WORKER_CONCURRENCY", 4),
+			LeaseDuration: bootstrap.EnvDuration("JOB_LEASE_DURATION", 5*time.Minute),
+			BackoffBase:   bootstrap.EnvDuration("JOB_BACKOFF_BASE", domain.DefaultBackoffBase),
+			BackoffCap:    bootstrap.EnvDuration("JOB_BACKOFF_CAP", domain.DefaultBackoffCap),
 		},
 		usecases.RunnerDeps{
 			Repo:     deps.Jobs.Repo,

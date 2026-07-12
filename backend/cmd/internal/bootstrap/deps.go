@@ -48,20 +48,20 @@ type RuntimeConfig struct {
 	AuthZEN       string
 }
 
-func loadRuntimeConfig() RuntimeConfig {
+func LoadRuntimeConfig() RuntimeConfig {
 	return RuntimeConfig{
-		Persistence:   envDefault("PERSISTENCE", "memory"),
-		EventSink:     envDefault("EVENT_SINK", "console"),
-		Observability: envDefault("OBSERVABILITY", "noop"),
-		AuthZEN:       envDefault("AUTHZEN", "local"),
+		Persistence:   EnvDefault("PERSISTENCE", "memory"),
+		EventSink:     EnvDefault("EVENT_SINK", "console"),
+		Observability: EnvDefault("OBSERVABILITY", "noop"),
+		AuthZEN:       EnvDefault("AUTHZEN", "local"),
 	}
 }
 
 // assemble は PERSISTENCE 環境変数に応じて memory/postgres_valkey いずれかの構成を組み立てる。
-func assemble(ctx context.Context) (*Dependencies, error) {
+func Assemble(ctx context.Context) (*Dependencies, error) {
 	var deps *Dependencies
 	var err error
-	switch envDefault("PERSISTENCE", "memory") {
+	switch EnvDefault("PERSISTENCE", "memory") {
 	case "memory":
 		deps, err = assembleMemory()
 	case "postgres_valkey":
@@ -85,17 +85,17 @@ func assemble(ctx context.Context) (*Dependencies, error) {
 // 構築する。RP_ID 未設定なら WebAuthn は無効 (nil) とし、RP_ID 設定時に origin が無ければ
 // 起動を失敗させる (誤設定の silent 無効化を防ぐ起動時検証)。
 func loadWebAuthnRP() (*gowebauthn.WebAuthn, error) {
-	rpID := strings.TrimSpace(envDefault("WEBAUTHN_RP_ID", ""))
+	rpID := strings.TrimSpace(EnvDefault("WEBAUTHN_RP_ID", ""))
 	if rpID == "" {
 		return nil, nil //nolint:nilnil // RP_ID 未設定は WebAuthn 無効を表す正当な状態 (エラーではない)。
 	}
-	origins := splitAndTrim(envDefault("WEBAUTHN_RP_ORIGINS", ""))
+	origins := splitAndTrim(EnvDefault("WEBAUTHN_RP_ORIGINS", ""))
 	if len(origins) == 0 {
 		return nil, errors.New("WEBAUTHN_RP_ORIGINS must be set when WEBAUTHN_RP_ID is set")
 	}
 	return authusecases.NewWebAuthn(authusecases.WebAuthnConfig{
 		RPID:          rpID,
-		RPDisplayName: envDefault("WEBAUTHN_RP_DISPLAY_NAME", "idmagic"),
+		RPDisplayName: EnvDefault("WEBAUTHN_RP_DISPLAY_NAME", "idmagic"),
 		RPOrigins:     origins,
 	})
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/ambi/idmagic/backend/relay"
+	"github.com/ambi/idmagic/backend/cmd/idmagic-relay/internal/relay"
 	"github.com/ambi/idmagic/backend/shared/logging"
 )
 

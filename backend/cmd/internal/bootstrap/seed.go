@@ -37,7 +37,7 @@ const (
 
 // seedDemoData は SKIP_DEMO_SEED が空のとき、デモ用クライアントとユーザーを 1 件投入する。
 // 既存データを更新する想定で Save を直接呼ぶ。
-func seedDemoData(
+func SeedDemoData(
 	ctx context.Context,
 	clients oauthports.OAuth2ClientRepository,
 	users idmports.UserRepository,
@@ -47,7 +47,7 @@ func seedDemoData(
 	authzDetailTypes oauthports.AuthorizationDetailTypeRepository,
 	hasher authnports.PasswordHasher,
 ) error {
-	secretHash := oauthdomain.HashClientSecret(envDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
+	secretHash := oauthdomain.HashClientSecret(EnvDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
 	now := time.Now().UTC()
 	if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: seedDemoClientID,
@@ -71,7 +71,7 @@ func seedDemoData(
 	if err := seedFirstPartyPortalClients(ctx, clients, now); err != nil {
 		return err
 	}
-	password := envDefault("DEMO_USER_PASSWORD", "demo-password-1234")
+	password := EnvDefault("DEMO_USER_PASSWORD", "demo-password-1234")
 	if result := authusecases.ValidatePassword(password); !result.OK {
 		return errors.New("DEMO_USER_PASSWORD violates password policy")
 	}
@@ -80,7 +80,7 @@ func seedDemoData(
 		return err
 	}
 	email := "alice@example.com"
-	totpSecret := envDefault("DEMO_TOTP_SECRET", "")
+	totpSecret := EnvDefault("DEMO_TOTP_SECRET", "")
 	if err := users.Save(ctx, &idmdomain.User{
 		ID: seedUserAliceID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
@@ -168,7 +168,7 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 // federated Application として binding 接続し、いずれも user_alice に割り当てる。これにより
 // ポータルのアプリ一覧に並び、デモのログイン経路 (割当ゲート) も成立する (wi-69)。
 // 管理コンソール / ポータルは first-party のため、割当がなくてもログイン自体は塞がない。
-func seedDemoApplications(
+func SeedDemoApplications(
 	ctx context.Context,
 	apps appports.ApplicationRepository,
 	assignments appports.AssignmentRepository,

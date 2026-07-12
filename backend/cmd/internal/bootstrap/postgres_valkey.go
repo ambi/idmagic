@@ -47,31 +47,31 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	dbCfg := postgres.DBConfig{
 		MaxConns:        envInt32("DB_MAX_CONNS", 20),
 		MinConns:        envInt32("DB_MIN_CONNS", 2),
-		MaxConnIdleTime: envDuration("DB_MAX_CONN_IDLE_TIME", 30*time.Second),
-		MaxConnLifetime: envDuration("DB_MAX_CONN_LIFETIME", 1*time.Hour),
-		ConnectTimeout:  envDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
-		QueryTimeout:    envDuration("DB_QUERY_TIMEOUT", 5*time.Second),
+		MaxConnIdleTime: EnvDuration("DB_MAX_CONN_IDLE_TIME", 30*time.Second),
+		MaxConnLifetime: EnvDuration("DB_MAX_CONN_LIFETIME", 1*time.Hour),
+		ConnectTimeout:  EnvDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
+		QueryTimeout:    EnvDuration("DB_QUERY_TIMEOUT", 5*time.Second),
 	}
 
 	valkeyCfg := sharedvalkey.ValkeyConfig{
-		DialTimeout:  envDuration("VALKEY_DIAL_TIMEOUT", 5*time.Second),
-		ReadTimeout:  envDuration("VALKEY_READ_TIMEOUT", 2*time.Second),
-		WriteTimeout: envDuration("VALKEY_WRITE_TIMEOUT", 2*time.Second),
-		QueryTimeout: envDuration("VALKEY_QUERY_TIMEOUT", 2*time.Second),
+		DialTimeout:  EnvDuration("VALKEY_DIAL_TIMEOUT", 5*time.Second),
+		ReadTimeout:  EnvDuration("VALKEY_READ_TIMEOUT", 2*time.Second),
+		WriteTimeout: EnvDuration("VALKEY_WRITE_TIMEOUT", 2*time.Second),
+		QueryTimeout: EnvDuration("VALKEY_QUERY_TIMEOUT", 2*time.Second),
 	}
 
 	// 2. サーキットブレイカーの構築
 	dbBreaker := resilience.NewCircuitBreaker(resilience.Settings{ //nolint:contextcheck // Global breaker doesn't rely on request context
 		Name:             "postgres",
 		FailureThreshold: envFloat("DB_BREAKER_FAILURE_THRESHOLD", 0.5),
-		Cooldown:         envDuration("DB_BREAKER_COOLDOWN", 30*time.Second),
+		Cooldown:         EnvDuration("DB_BREAKER_COOLDOWN", 30*time.Second),
 		MinRequests:      envCircuitBreakerMinRequests("DB_BREAKER_MIN_REQUESTS"),
 	})
 
 	valkeyBreaker := resilience.NewCircuitBreaker(resilience.Settings{ //nolint:contextcheck // Global breaker doesn't rely on request context
 		Name:             "valkey",
 		FailureThreshold: envFloat("VALKEY_BREAKER_FAILURE_THRESHOLD", 0.5),
-		Cooldown:         envDuration("VALKEY_BREAKER_COOLDOWN", 15*time.Second),
+		Cooldown:         EnvDuration("VALKEY_BREAKER_COOLDOWN", 15*time.Second),
 		MinRequests:      envCircuitBreakerMinRequests("VALKEY_BREAKER_MIN_REQUESTS"),
 	})
 
@@ -104,7 +104,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	}
 
 	var sink oauthports.EventSink
-	switch envDefault("EVENT_SINK", "console") {
+	switch EnvDefault("EVENT_SINK", "console") {
 	case "console":
 		sink = eventsink.NewConsoleSink()
 	case "outbox":
