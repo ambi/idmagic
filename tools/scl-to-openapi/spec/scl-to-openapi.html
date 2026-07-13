@@ -16,7 +16,7 @@
 <div class="layout">
   <aside class="toc-wrap"><nav class="toc" data-toc-for="scl" aria-label="SCL contents">
     <div class="toc-title">SCL</div>
-    <ol><li data-scl-context-item="overview"><a data-sec="scl-overview" href="#tab=scl&amp;sec=scl-overview">Overview</a></li><li data-scl-context-item="overview"><a data-sec="glossary" href="#tab=scl&amp;sec=glossary">Glossary</a></li><li data-scl-context-item="overview"><a data-sec="models" href="#tab=scl&amp;sec=models">Models</a></li><li data-scl-context-item="overview"><a data-sec="interfaces" href="#tab=scl&amp;sec=interfaces">Interfaces</a></li><li data-scl-context-item="overview"><a data-sec="invariants" href="#tab=scl&amp;sec=invariants">Invariants</a></li><li data-scl-context-item="overview"><a data-sec="scenarios" href="#tab=scl&amp;sec=scenarios">Scenarios</a></li><li data-scl-context-item="overview"><a data-sec="objectives" href="#tab=scl&amp;sec=objectives">Objectives</a></li></ol>
+    <ol><li data-scl-context-item="overview"><a data-sec="scl-overview" href="#tab=scl&amp;sec=scl-overview">Overview</a></li><li data-scl-context-item="overview"><a data-sec="glossary" href="#tab=scl&amp;sec=glossary">Glossary</a></li><li data-scl-context-item="overview"><a data-sec="models" href="#tab=scl&amp;sec=models">Models</a></li><li data-scl-context-item="overview"><a data-sec="interfaces" href="#tab=scl&amp;sec=interfaces">Interfaces</a></li><li data-scl-context-item="overview"><a data-sec="objectives" href="#tab=scl&amp;sec=objectives">Objectives</a></li><li data-scl-context-item="overview"><a data-sec="scenarios" href="#tab=scl&amp;sec=scenarios">Scenarios</a></li></ol>
   </nav></aside>
   <main><div class="tab" data-tab="scl" id="tab-scl"><nav class="context-tab-bar" aria-label="SCL contexts">
     <a class="context-tab-link active" data-scl-context-link="overview" href="#tab=scl&amp;sec=scl-overview">Overview</a>
@@ -25,10 +25,10 @@
 <div class="scl-context-pane active" data-scl-context-pane="overview">
     <section id="scl-overview" class="tab-overview">
     <header class="page-header">
-      <div class="eyebrow">Specification Core Language · spec 2.0</div>
+      <div class="eyebrow">Specification Core Language · spec 3.0</div>
       <h1>scl-to-openapi</h1>
     </header>
-    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">4</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">3</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">1</span><span class="stat-label">interfaces</span></a><a class="stat" href="#invariants"><span class="stat-num">5</span><span class="stat-label">invariants</span></a><a class="stat" href="#scenarios"><span class="stat-num">3</span><span class="stat-label">scenarios</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a></div>
+    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">4</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">4</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">5</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="glossary">
     <h2>Glossary <span class="count">4</span></h2>
@@ -36,7 +36,7 @@
     <div class="vocab-list"><article class="vocab-entry" id="glossary-httpbinding">
       <div class="vocab-name"><code class="name">HttpBinding</code></div>
       <div class="vocab-body">
-        <p class="def">interface の bindings のうち kind が http のもの。method / path / request_form 等を持つ。</p>
+        <p class="def">interface bindings のうち kind が http の契約。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -45,25 +45,25 @@
 <article class="vocab-entry" id="glossary-operation">
       <div class="vocab-name"><code class="name">Operation</code></div>
       <div class="vocab-body">
-        <p class="def">OpenAPI の 1 つの path × method。1 つの HttpBinding から導かれる。</p>
+        <p class="def">OpenAPI の path と method で識別される操作。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
       </div>
     </article>
-<article class="vocab-entry" id="glossary-componentschema">
-      <div class="vocab-name"><code class="name">ComponentSchema</code></div>
+<article class="vocab-entry" id="glossary-authorizationmetadata">
+      <div class="vocab-name"><code class="name">AuthorizationMetadata</code></div>
       <div class="vocab-body">
-        <p class="def">OpenAPI の components/schemas エントリ。SCL の 1 Model から導かれ、$ref は</p>
+        <p class="def">protected interface の policy と resource から決定的に導出する action group 表現。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
       </div>
     </article>
-<article class="vocab-entry" id="glossary-openapidocument">
-      <div class="vocab-name"><code class="name">OpenApiDocument</code></div>
+<article class="vocab-entry" id="glossary-maintainer">
+      <div class="vocab-name"><code class="name">Maintainer</code></div>
       <div class="vocab-body">
-        <p class="def">生成された OpenAPI 3.1 文書。paths に Operation を、components/schemas に ComponentSchema を持つ。手書きせず常に再生成する。</p>
+        <p class="def">SCL から OpenAPI を生成する利用者。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -71,10 +71,10 @@
     </article></div>
   </section>
 <section id="models">
-    <h2>Models <span class="count">3</span></h2>
+    <h2>Models <span class="count">4</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">value object <span class="count">2</span></h3>
+      <h3 class="grp-title">value object <span class="count">4</span></h3>
       <div class="cards"><article class="card" id="model-generaterequest">
     <header><h3>GenerateRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
 
@@ -83,18 +83,19 @@
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
     <td><code class="name">scl</code></td>
-    <td><code class="type">Path</code></td>
+    <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-constraint">non empty</span></td>
-    <td>SCL 文書 (context map か単一 context)。</td>
+    <td></td>
   </tr><tr>
     <td><code class="name">out</code></td>
-    <td><code class="type">Path</code></td>
+    <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>出力先。省略時は標準出力。</td>
+    <td></td>
   </tr></tbody>
   </table>
+
   </article>
 <article class="card" id="model-openapidocument">
     <header><h3>OpenApiDocument</h3><span class="badge badge-kind-value_object">value object</span></header>
@@ -107,7 +108,7 @@
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>常に &quot;3.1.0&quot;。</td>
+    <td></td>
   </tr><tr>
     <td><code class="name">title</code></td>
     <td><code class="type">String</code></td>
@@ -118,33 +119,112 @@
     <td><code class="name">paths_count</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
+    <td><span class="chip chip-constraint">minimum: 0</span></td>
     <td></td>
   </tr></tbody>
   </table>
-  </article></div>
-    </div>
-<div class="group">
-      <h3 class="grp-title">enum <span class="count">1</span></h3>
-      <div class="cards"><article class="card" id="model-requeststyle">
-    <header><h3>RequestStyle</h3><span class="badge badge-kind-enum">enum</span></header>
-    <p class="desc">リクエストペイロードの運び方。SCL の request_form / request_body から決まる。</p>
+    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">paths_count &gt;= 0</code></li></ul></div>
+  </article>
+<article class="card" id="model-authorizationaction">
+    <header><h3>AuthorizationAction</h3><span class="badge badge-kind-value_object">value object</span></header>
 
-    <div class="enum-vals"><span class="chip chip-enum">query</span> <span class="chip chip-enum">form</span> <span class="chip chip-enum">xml</span> <span class="chip chip-enum">json</span></div>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">policies</code></td>
+    <td><code class="type">List&lt;String&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">resource_type</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="model-authorizationactiongroup">
+    <header><h3>AuthorizationActionGroup</h3><span class="badge badge-kind-value_object">value object</span></header>
+
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">policies</code></td>
+    <td><code class="type">List&lt;String&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actions</code></td>
+    <td><code class="type">List&lt;AuthorizationAction&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
   </article></div>
     </div>
   </section>
 <section id="interfaces">
-    <h2>Interfaces <span class="count">1</span></h2>
+    <h2>Interfaces <span class="count">2</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
-    <div class="cards"><article class="card" id="iface-generateopenapi">
-    <header><h3>GenerateOpenApi</h3><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
-    <p class="desc">SCL bundle を読み込み、http binding を持つ interface を Operation に、全 Model を
-components/schemas に変換した OpenAPI 3.1 文書を出力する。request_form / request_body
-に応じて query / form / json / xml を選び、successful_status_codes を response に、
-errors を default response の oneOf に対応づける。
+    <div class="cards"><article class="card" id="iface-buildauthorizationmetadata">
+    <header><h3>BuildAuthorizationMetadata</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+    <p class="desc">protected interface を policy 集合ごとに group 化し、interface 名を action 名、
+resource.type を appliesTo として安定 sort した中間表現を返す。
 </p>
-    <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">{scl} の interfaces と models から OpenAPI を生成する</code></div>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">interfaces</code></td>
+    <td><code class="type">Map&lt;String, JSON&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">groups</code></td>
+    <td><code class="type">List&lt;AuthorizationActionGroup&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.groups.size() &gt;= 0</code></li></ul></div>
+  </article>
+<article class="card" id="iface-generateopenapi">
+    <header><h3>GenerateOpenApi</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+    <p class="desc">http binding を持つ interface を OpenAPI 3.1 Operation に変換する。public operation は
+security を空配列、protected operation は bearer security と x-scl-access を持つ。
+requires、ensures、resource、policy と AuthorizationMetadata を vendor extension に保持する。
+</p>
+
     <div class="io">
     <div class="label">Input</div>
     <table class="fields">
@@ -169,6 +249,8 @@ errors を default response の oneOf に対応づける。
   </tr></tbody>
     </table>
   </div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.scl != &quot;&quot;</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.document.openapi == &quot;3.1.0&quot;</code></li><li><code class="expr">output.document.paths_count &gt;= 0</code></li><li><code class="expr">all_component_references_resolve(output.document)</code></li><li><code class="expr">every_http_binding_becomes_an_operation(input.request, output.document)</code></li><li><code class="expr">internal_interfaces_are_not_exposed(input.request, output.document)</code></li><li><code class="expr">access_and_contract_metadata_are_preserved(input.request, output.document)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
     <div class="binding-kind"><span class="badge badge-bkind-cli">cli</span></div>
     <div class="binding-body"><div class="binding-head"><code class="path">scl-to-openapi</code></div><div class="io"><div class="label">Flags</div><table class="fields"><thead><tr><th>Long</th><th>Short</th><th>Presence</th><th>Note</th></tr></thead><tbody><tr>
@@ -185,91 +267,56 @@ errors を default response の oneOf に対応づける。
   </div></div></div>
   </article></div>
   </section>
-<section id="invariants">
-    <h2>Invariants <span class="count">5</span></h2>
-    <p class="lead">入力に依らず常に成り立つ不変条件、または決して起きてはならない事象。</p>
-    <div class="cards"><article class="card" id="inv-output-is-openapi-31">
-    <header><h3>output_is_openapi_31</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">生成結果は openapi 3.1.0 を宣言し、paths オブジェクトと components/schemas を持つ。</p>
-    <dl class="kv"><dt>target</dt><dd><code>GenerateOpenApi</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">the generated document declares openapi 3.1.0 and contains a paths object and components/schemas</code></div>
-  </article>
-<article class="card" id="inv-refs-resolve-to-components">
-    <header><h3>refs_resolve_to_components</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">生成結果中の $ref はすべて</p>
-    <dl class="kv"><dt>target</dt><dd><code>GenerateOpenApi</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">the generated document contains a $ref that does not resolve to an existing components/schemas entry</code></div>
-  </article>
-<article class="card" id="inv-http-binding-becomes-operation">
-    <header><h3>http_binding_becomes_operation</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">http binding を持つ各 interface は、その path × method の Operation になる。</p>
-    <dl class="kv"><dt>target</dt><dd><code>GenerateOpenApi</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">for every interface with an http binding there is a matching path/method operation</code></div>
-  </article>
-<article class="card" id="inv-generation-is-pure">
-    <header><h3>generation_is_pure</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">生成は入力 SCL のみに依存し、時刻・乱数・環境に依存しない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>GenerateOpenApi</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">GenerateOpenApi(scl) ≡ GenerateOpenApi(scl)</code></div>
-  </article>
-<article class="card" id="inv-read-only">
-    <header><h3>read_only</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">--out への書き込み以外、入力や他の状態を変更しない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>GenerateOpenApi</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">GenerateOpenApi mutates any file other than the requested --out target</code></div>
-  </article></div>
-  </section>
-<section id="scenarios">
-    <h2>Scenarios <span class="count">3</span></h2>
-    <p class="lead">受け入れ例。自然文ステップで書かれた振る舞いの具体例。引用された既知の名前は定義へリンクする。</p>
-    <div class="cards"><article class="card scenario" id="scn-http-interface-operation">
-    <header><h3>http interface が Operation になる</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">method POST / path /things / request_form body を持つ interface を用意する</li><li class="scn-step">scl-to-openapi で生成する</li><li class="scn-step">paths./things.post に operationId 付き Operation ができる</li><li class="scn-step">request body は application/json で input スキーマを参照する</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-query-binding-query-path">
-    <header><h3>query binding は query パラメータと path パラメータになる</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">method GET / path /t/{id} / request_form query の interface を用意する</li><li class="scn-step">scl-to-openapi で生成する</li><li class="scn-step">{id} が path パラメータ、input フィールドが query パラメータになる</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-tool-spec-refs-openapi">
-    <header><h3>tool spec から refs の解決する OpenAPI が生成される</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">tool の SCL を入力にする</li><li class="scn-step">scl-to-openapi で生成する</li><li class="scn-step">openapi は 3.1.0、paths は 1 つ以上</li><li class="scn-step">すべての $ref は components/schemas に解決し、$defs 参照は残らない</li></ol></div>
-
-
-  </article></div>
-  </section>
 <section id="objectives">
     <h2>Objectives <span class="count">1</span></h2>
+    <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
+    <div class="cards"><article class="card" id="obj-generatelatency">
+        <header><h3>GenerateLatency</h3><span class="badge badge-kind-slo">SLO</span></header>
 
-    <div class="group">
-      <h3 class="grp-title">security <span class="count">1</span></h3>
-      <div class="cards"><article class="card" id="obj-read-only-generation">
-    <header><h3>read_only_generation</h3><span class="badge badge-kind-security">security</span></header>
-    <p class="desc">--out への書き込み以外の副作用を持たない。</p>
-    <dl class="kv"><dt>policy</dt><dd><span class="text">read_only_operation</span></dd><dt>target</dt><dd><span class="text">GenerateOpenApi</span></dd><dt>value</dt><dd><code>true</code></dd></dl>
-  </article></div>
-    </div>
+        <dl class="kv">
+          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#iface-generateopenapi">GenerateOpenApi</a></dd>
+          <dt>indicator</dt><dd><code class="expr">measurement.latency_ms &lt; 500</code></dd>
+          <dt>target</dt><dd><code>0.95</code></dd>
+          <dt>window</dt><dd><code>30d</code></dd>
+          <dt>budgeting</dt><dd><span class="badge">occurrences</span></dd>
+
+        </dl>
+      </article></div>
+  </section>
+<section id="scenarios">
+    <h2>Scenarios <span class="count">5</span></h2>
+    <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
+    <div class="cards"><article class="card scenario" id="scn-public-interface-unauthenticated-operation">
+        <header><h3>public interface は unauthenticated operation になる</h3><span class="chip chip-actor">Maintainer</span></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">public access の HttpBinding を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation の security は空配列になる</li></ol></div>
+
+      </article><article class="card scenario" id="scn-protected-interface-security-metadata">
+        <header><h3>protected interface は security metadata を保持する</h3><span class="chip chip-actor">Maintainer</span></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">policy と resource を持つ protected HttpBinding を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation は bearer security と x-scl-access を持つ</li></ol></div>
+
+      </article><article class="card scenario" id="scn-interface-contract">
+        <header><h3>interface contract は記述として保持される</h3><span class="chip chip-actor">Maintainer</span></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">requires と ensures を持つ HttpBinding を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation の x-scl-requires と x-scl-ensures に原文が保持される</li></ol></div>
+
+      </article><article class="card scenario" id="scn-policy-action-group">
+        <header><h3>policy 集合から action group が決定的に生成される</h3><span class="chip chip-actor">Maintainer</span></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">複数の protected interface を <a class="chip chip-ref" href="#iface-buildauthorizationmetadata">BuildAuthorizationMetadata</a> に渡す</li><li class="scn-step">policy 集合が同じ action は同一 group に安定順で含まれる</li></ol></div>
+
+      </article><article class="card scenario" id="scn-tool-spec-openapi">
+        <header><h3>tool spec から解決可能な OpenAPI が生成される</h3><span class="chip chip-actor">Maintainer</span></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">tool の SCL を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">全 $ref が components/schemas に解決する</li></ol></div>
+
+      </article></div>
   </section>
   </div></div></main>
 </div>

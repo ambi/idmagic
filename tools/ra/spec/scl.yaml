@@ -1,148 +1,114 @@
 # ra — Specification Core Language (SCL) Document
-#
-# RA repository and application workspacesを検証・派生物生成する CLI 自身の仕様。
 
 system: ra
-spec_version: "2.0"
+spec_version: "3.0"
 
 glossary:
-
   RaWorkspace:
-    definition: |
-      Regenerative Architecture に従うリポジトリ。標準では spec/scl.yaml、
-      spec/contexts/*.yaml、decisions/、work-items/ を持つ。
+    definition: Regenerative Architecture に従う標準レイアウトのリポジトリ。
     aliases: [workspace]
-
   StandardLayout:
-    definition: |
-      追加設定なしで RA CLI が発見する既定のファイル配置。アプリケーション repo では
-      spec/scl.yaml を主 SCL とし、work-items/ と decisions/ を同じ root から解決する。
-
+    definition: 追加設定なしで RA CLI が発見する既定のファイル配置。
   ToolSpec:
-    definition: |
-      RA core repository 内の tools/*/spec/scl.yaml。ツール自身も RA の対象として
-      SCL から派生物を再生成できる。
-
+    definition: RA core repository 内の tools/*/spec/scl.yaml。
   WorkspaceDiscovery:
-    definition: |
-      repository-local registry ファイルに依存せず、現在の作業ディレクトリと
-      標準レイアウトから検証対象と生成対象を決定する処理。
+    definition: registry に依存せず標準レイアウトから対象を決定する処理。
+  Maintainer:
+    definition: RA workspace を初期化、検証、描画する利用者。
 
 models:
-
   WorkspaceApp:
     kind: value_object
     description: 標準レイアウトから発見されたアプリケーション仕様。
     fields:
       name: { type: String, constraints: [non_empty] }
-      root: { type: Path, constraints: [non_empty] }
-      scl: { type: Path, constraints: [non_empty] }
+      root: { type: String, constraints: [non_empty] }
+      scl: { type: String, constraints: [non_empty] }
       context_glob: { type: String, optional: true }
-      decisions: { type: Path, optional: true }
-      work_items: { type: Path, optional: true }
-
+      decisions: { type: String, optional: true }
+      work_items: { type: String, optional: true }
   WorkspaceConfig:
     kind: value_object
     description: 発見済み workspace の検証・生成対象。
     fields:
       apps: { type: List<WorkspaceApp> }
-      repository_work_items: { type: Path, optional: true }
-      tool_specs: { type: List<Path> }
-
+      repository_work_items: { type: String, optional: true }
+      tool_specs: { type: List<String> }
   WorkspaceCommand:
     kind: enum
     values: [init, verify, yaml-check, render]
+  NoWorkspaceTargets:
+    kind: error
+    fields:
+      root: { type: String }
 
 interfaces:
-
   DiscoverWorkspace:
-    description: |
-      現在の作業ディレクトリから RA workspace を発見する。設定ファイルは不要であり、
-      spec/scl.yaml と tools/*/spec/scl.yaml を convention として扱う。
+    description: 現在の作業ディレクトリから標準 RA workspace を発見する。
     input:
-      cwd: { type: Path }
+      cwd: { type: String }
     output:
       config: { type: WorkspaceConfig }
-    errors:
-      - NoWorkspaceTargets
-
+    errors: [NoWorkspaceTargets]
+    ensures:
+      - output.config.apps.size() > 0 || output.config.tool_specs.size() > 0 || output.config.repository_work_items != null
+      - output.config.tool_specs.size() >= 0
+      - standard_layout_requires_no_registry(input.cwd, output.config)
+    access: internal
+    read_only: true
   RunWorkspaceCommand:
-    description: |
-      発見済み workspace に対して検証または派生物生成を実行する。
+    description: 発見済み workspace に対して検証または派生物生成を実行する。
     input:
       command: { type: WorkspaceCommand }
       config: { type: WorkspaceConfig }
     output:
       exit_code: { type: Integer }
-
+    ensures:
+      - output.exit_code >= 0
+      - public_command_name_is_ra(input.command)
+    access: internal
   InitializeWorkspace:
-    description: |
-      現在の作業ディレクトリに標準 RA レイアウトを作成する。既存の spec/scl.yaml は上書きしない。
+    description: 現在の作業ディレクトリに標準 RA レイアウトを作成する。
     input:
-      cwd: { type: Path }
+      cwd: { type: String }
     output:
       created_layout: { type: Boolean }
-
-invariants:
-
-  NoRegistryRequiredForStandardLayout:
-    description: |
-      spec/scl.yaml を持つ標準 RA workspace は、別の registry ファイルなしで
-      yaml-check と render の対象になる。
-    target: DiscoverWorkspace
-    always: "a workspace with spec/scl.yaml is discovered without a repository-local registry file"
-    severity: must
-
-  CoreToolSpecsAreDiscovered:
-    description: |
-      RA core repository では tools/*/spec/scl.yaml が ToolSpec として発見される。
-    target: DiscoverWorkspace
-    always: "every tools/*/spec/scl.yaml file under the workspace root is included in tool_specs"
-    severity: must
-
-  ExternalNameIsRa:
-    description: |
-      利用者向けコマンド、テンプレート、README は ra を入口名にする。
-    target: RunWorkspaceCommand
-    always: "public commands and starter templates use ra as the workspace CLI name"
-    severity: must
+    ensures:
+      - output.created_layout implies input.cwd != ""
+      - existing_scl_is_not_overwritten(input.cwd)
+    access: internal
 
 scenarios:
-
   StandardAppWithoutRegistry:
-    steps:
-      - spec/scl.yaml、spec/contexts/*.yaml、work-items/、decisions/ を持つアプリ repo がある。
-      - repository-local registry ファイルは存在しない。
-      - 利用者が ra yaml-check を実行する
-      - spec と Work Item が検証される。
-      - registry ファイルの作成は要求されない。
-
+    actor: Maintainer
+    given:
+      - spec/scl.yaml を持ち registry を持たないアプリ repo がある
+    main_success:
+      - Maintainer が DiscoverWorkspace を実行する
+      - spec と work item が検証対象として発見される
   InitializeStandardLayout:
-    steps:
-      - 空のアプリ repo がある。
-      - 利用者が ra init を実行する。
-      - spec/scl.yaml、spec/contexts/、decisions/、work-items/done/ が作成される。
-      - 既存の spec/scl.yaml は上書きされない。
-
+    actor: Maintainer
+    given:
+      - 空のアプリ repo がある
+    main_success:
+      - Maintainer が InitializeWorkspace を実行する
+      - 標準ディレクトリが作成される
+    extensions:
+      - at: 1
+        condition: spec/scl.yaml が既に存在する
+        steps:
+          - 既存の spec/scl.yaml は上書きされない
   CoreRepositoryToolSpecs:
-    steps:
-      - RA core repository に tools/*/spec/scl.yaml が複数存在する。
-      - メンテナが ra render を実行する。
-      - 各 tool spec の HTML が同じ spec ディレクトリに再生成される。
-
+    actor: Maintainer
+    given:
+      - RA core repository に複数の ToolSpec がある
+    main_success:
+      - Maintainer が render を実行する
+      - 各 ToolSpec の HTML が同じ spec ディレクトリへ生成される
   EmptyRepositoryRejected:
-    steps:
-      - spec/scl.yaml、work-items/、tools/*/spec/scl.yaml のいずれも存在しない。
-      - 利用者が ra yaml-check を実行する。
-      - 実行対象がないことを示すエラーで失敗する。
-
-objectives:
-
-  AdoptionSurface:
-    kind: security
-    policy: no_repository_local_registry
-    target: StandardLayout
-    value: true
-    description: |
-      標準 RA アプリケーション repo が追加で持つべき RA 専用ファイルを AGENTS.md /
-      CLAUDE.md / GEMINI.md / justfile に限定し、AGENTS.md と .agents/skills を正本にする。
+    actor: Maintainer
+    given:
+      - 標準レイアウトの対象が何も存在しない
+    main_success:
+      - Maintainer が DiscoverWorkspace を実行する
+      - NoWorkspaceTargets が返る

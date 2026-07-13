@@ -16,7 +16,7 @@
 <div class="layout">
   <aside class="toc-wrap"><nav class="toc" data-toc-for="scl" aria-label="SCL contents">
     <div class="toc-title">SCL</div>
-    <ol><li data-scl-context-item="overview"><a data-sec="scl-overview" href="#tab=scl&amp;sec=scl-overview">Overview</a></li><li data-scl-context-item="overview"><a data-sec="glossary" href="#tab=scl&amp;sec=glossary">Glossary</a></li><li data-scl-context-item="overview"><a data-sec="models" href="#tab=scl&amp;sec=models">Models</a></li><li data-scl-context-item="overview"><a data-sec="interfaces" href="#tab=scl&amp;sec=interfaces">Interfaces</a></li><li data-scl-context-item="overview"><a data-sec="invariants" href="#tab=scl&amp;sec=invariants">Invariants</a></li><li data-scl-context-item="overview"><a data-sec="scenarios" href="#tab=scl&amp;sec=scenarios">Scenarios</a></li><li data-scl-context-item="overview"><a data-sec="objectives" href="#tab=scl&amp;sec=objectives">Objectives</a></li></ol>
+    <ol><li data-scl-context-item="overview"><a data-sec="scl-overview" href="#tab=scl&amp;sec=scl-overview">Overview</a></li><li data-scl-context-item="overview"><a data-sec="glossary" href="#tab=scl&amp;sec=glossary">Glossary</a></li><li data-scl-context-item="overview"><a data-sec="models" href="#tab=scl&amp;sec=models">Models</a></li><li data-scl-context-item="overview"><a data-sec="interfaces" href="#tab=scl&amp;sec=interfaces">Interfaces</a></li><li data-scl-context-item="overview"><a data-sec="objectives" href="#tab=scl&amp;sec=objectives">Objectives</a></li><li data-scl-context-item="overview"><a data-sec="scenarios" href="#tab=scl&amp;sec=scenarios">Scenarios</a></li></ol>
   </nav></aside>
   <main><div class="tab" data-tab="scl" id="tab-scl"><nav class="context-tab-bar" aria-label="SCL contexts">
     <a class="context-tab-link active" data-scl-context-link="overview" href="#tab=scl&amp;sec=scl-overview">Overview</a>
@@ -25,19 +25,19 @@
 <div class="scl-context-pane active" data-scl-context-pane="overview">
     <section id="scl-overview" class="tab-overview">
     <header class="page-header">
-      <div class="eyebrow">Specification Core Language · spec 2.0</div>
+      <div class="eyebrow">Specification Core Language · spec 3.0</div>
       <h1>yaml-check</h1>
     </header>
-    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">10</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">6</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#invariants"><span class="stat-num">12</span><span class="stat-label">invariants</span></a><a class="stat" href="#scenarios"><span class="stat-num">9</span><span class="stat-label">scenarios</span></a><a class="stat" href="#objectives"><span class="stat-num">2</span><span class="stat-label">objectives</span></a></div>
+    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">5</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">6</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">9</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="glossary">
-    <h2>Glossary <span class="count">10</span></h2>
+    <h2>Glossary <span class="count">5</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="glossary-yamlinput">
       <div class="vocab-name"><code class="name">YamlInput</code></div>
       <div class="vocab-body">
-        <p class="def">検査対象となる UTF-8 テキストファイル。拡張子は通常 .yaml だが、ツール側は内容ベースで処理する。</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">input</span> <span class="chip chip-alias">target</span></div>
+        <p class="def">検査対象となる UTF-8 YAML テキストファイル。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
       </div>
@@ -45,29 +45,7 @@
 <article class="vocab-entry" id="glossary-finding">
       <div class="vocab-name"><code class="name">Finding</code></div>
       <div class="vocab-body">
-        <p class="def">1 つの検査違反を表すレコード。発生したファイル・行・列・メッセージを持つ。
-Parse / Lint / Schema のいずれかの層で生じる。
-</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
-
-
-      </div>
-    </article>
-<article class="vocab-entry" id="glossary-parsefinding">
-      <div class="vocab-name"><code class="name">ParseFinding</code></div>
-      <div class="vocab-body">
-        <p class="def">Bun の YAML ローダで構文解析に失敗したことを示す Finding。</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
-
-
-      </div>
-    </article>
-<article class="vocab-entry" id="glossary-lintfinding">
-      <div class="vocab-name"><code class="name">LintFinding</code></div>
-      <div class="vocab-body">
-        <p class="def">生テキストへの形式的なチェック (tab indent / 行末空白 / 末尾改行) に
-違反した Finding。意味解釈は行わない。
-</p>
+        <p class="def">発生位置、重大度、メッセージを持つ検査違反。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -76,62 +54,25 @@ Parse / Lint / Schema のいずれかの層で生じる。
 <article class="vocab-entry" id="glossary-schemafinding">
       <div class="vocab-name"><code class="name">SchemaFinding</code></div>
       <div class="vocab-body">
-        <p class="def">Parse 成功後のデータが、明示指定された Schema に適合しなかったことを
-示す Finding。原因の JSON pointer と Ajv のメッセージを内包する。
-</p>
+        <p class="def">入力が選択された JSON Schema に適合しなかった Finding。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
       </div>
     </article>
-<article class="vocab-entry" id="glossary-contextmapfinding">
-      <div class="vocab-name"><code class="name">ContextMapFinding</code></div>
+<article class="vocab-entry" id="glossary-semanticfinding">
+      <div class="vocab-name"><code class="name">SemanticFinding</code></div>
       <div class="vocab-body">
-        <p class="def">context_map セクションの意味的整合性 (参照解決・非循環・shared_kernel の
-肥大) に対する Finding。Schema が検査できない context 間の関係を見る。
-severity が error のものは exit code に反映し、warning のものは反映しない。
-</p>
+        <p class="def">SCL section 間の参照、CEL binding、graph の意味的不整合を表す Finding。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
       </div>
     </article>
-<article class="vocab-entry" id="glossary-severity">
-      <div class="vocab-name"><code class="name">Severity</code></div>
+<article class="vocab-entry" id="glossary-maintainer">
+      <div class="vocab-name"><code class="name">Maintainer</code></div>
       <div class="vocab-body">
-        <p class="def">Finding の重大度。error は CheckRun の失敗を意味し exit code 1 に反映する。
-warning は助言であり exit code には反映しない。Parse / Lint / Schema 由来の
-Finding は常に error。ContextMapFinding のみ warning を取りうる。
-</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
-
-
-      </div>
-    </article>
-<article class="vocab-entry" id="glossary-schema">
-      <div class="vocab-name"><code class="name">Schema</code></div>
-      <div class="vocab-body">
-        <p class="def">JSON Schema 2020-12 形式の検査定義。本ツールに同梱され、`SchemaName` の
-列挙値で呼び出される。
-</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">json-schema</span></div>
-
-
-      </div>
-    </article>
-<article class="vocab-entry" id="glossary-schemaname">
-      <div class="vocab-name"><code class="name">SchemaName</code></div>
-      <div class="vocab-body">
-        <p class="def">同梱 Schema の識別名。`work-item` / `scl` の 2 種。</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
-
-
-      </div>
-    </article>
-<article class="vocab-entry" id="glossary-checkrun">
-      <div class="vocab-name"><code class="name">CheckRun</code></div>
-      <div class="vocab-body">
-        <p class="def">1 回の `yaml-check` 起動。引数で指定されたファイル群に対して順に Parse → Lint → (任意) Schema を回す。</p>
+        <p class="def">YAML と SCL 文書を検証する利用者。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -145,7 +86,7 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
       <h3 class="grp-title">value object <span class="count">3</span></h3>
       <div class="cards"><article class="card" id="model-finding">
     <header><h3>Finding</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">1 つの検査違反。</p>
+
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -160,7 +101,7 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td><code class="type">Severity</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-default">default: error</span></td>
-    <td>context_map 以外は常に error。</td>
+    <td></td>
   </tr><tr>
     <td><code class="name">file</code></td>
     <td><code class="type">String</code></td>
@@ -171,13 +112,13 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td><code class="name">line</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
+    <td><span class="chip chip-constraint">minimum: 1</span></td>
     <td></td>
   </tr><tr>
     <td><code class="name">column</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
+    <td><span class="chip chip-constraint">minimum: 1</span></td>
     <td></td>
   </tr><tr>
     <td><code class="name">message</code></td>
@@ -187,10 +128,11 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td></td>
   </tr></tbody>
   </table>
+    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">line &gt;= 1</code></li><li><code class="expr">column &gt;= 1</code></li></ul></div>
   </article>
 <article class="card" id="model-checkresult">
     <header><h3>CheckResult</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">1 ファイルの検査結果。</p>
+
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -202,7 +144,7 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td></td>
   </tr><tr>
     <td><code class="name">findings</code></td>
-    <td><code class="type">Finding[]</code></td>
+    <td><code class="type">List&lt;Finding&gt;</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -211,13 +153,14 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td><code class="type">Boolean</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>findings が空のとき true。</td>
+    <td></td>
   </tr></tbody>
   </table>
+    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">ok == (findings.size() == 0)</code></li></ul></div>
   </article>
 <article class="card" id="model-checkrunsummary">
     <header><h3>CheckRunSummary</h3><span class="badge badge-kind-value_object">value object</span></header>
-    <p class="desc">CheckRun 全体の結果。</p>
+
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -225,22 +168,23 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td><code class="name">total</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
-    <td>検査対象ファイル総数。</td>
+    <td><span class="chip chip-constraint">minimum: 0</span></td>
+    <td></td>
   </tr><tr>
     <td><code class="name">failed</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
-    <td>1 つ以上の Finding を持つファイル数。</td>
+    <td><span class="chip chip-constraint">minimum: 0</span></td>
+    <td></td>
   </tr><tr>
     <td><code class="name">results</code></td>
-    <td><code class="type">CheckResult[]</code></td>
+    <td><code class="type">List&lt;CheckResult&gt;</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
   </tr></tbody>
   </table>
+    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">total &gt;= failed</code></li><li><code class="expr">total == results.size()</code></li></ul></div>
   </article></div>
     </div>
 <div class="group">
@@ -250,18 +194,21 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
 
 
     <div class="enum-vals"><span class="chip chip-enum">work-item</span> <span class="chip chip-enum">scl</span></div>
+
   </article>
 <article class="card" id="model-findingkind">
     <header><h3>FindingKind</h3><span class="badge badge-kind-enum">enum</span></header>
 
 
-    <div class="enum-vals"><span class="chip chip-enum">parse</span> <span class="chip chip-enum">lint</span> <span class="chip chip-enum">schema</span> <span class="chip chip-enum">context_map</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">parse</span> <span class="chip chip-enum">lint</span> <span class="chip chip-enum">schema</span> <span class="chip chip-enum">semantic</span> <span class="chip chip-enum">context_map</span></div>
+
   </article>
 <article class="card" id="model-severity">
     <header><h3>Severity</h3><span class="badge badge-kind-enum">enum</span></header>
 
 
     <div class="enum-vals"><span class="chip chip-enum">error</span> <span class="chip chip-enum">warning</span></div>
+
   </article></div>
     </div>
   </section>
@@ -269,26 +216,25 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <h2>Interfaces <span class="count">2</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="iface-checkyaml">
-    <header><h3>CheckYaml</h3><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
-    <p class="desc">入力ファイル群に対し parse + lint + (任意) schema + context_map 検査を行い、
-結果を返す。context_map 検査は context_map セクションを持つ入力でのみ動き、
---schema の有無に依存しない。
+    <header><h3>CheckYaml</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+    <p class="desc">YAML parse、text lint、選択された version schema、SCL 3.0 semantics、context map、
+work-item dependency を決定的な順序で検査する。
 </p>
-    <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">{files} を yaml-check で検査する</code></div>
+
     <div class="io">
     <div class="label">Input</div>
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
     <td><code class="name">files</code></td>
-    <td><code class="type">Path[]</code></td>
+    <td><code class="type">List&lt;String&gt;</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td>対象ファイル (glob 展開後)。</td>
+    <td></td>
   </tr><tr>
     <td><code class="name">schema</code></td>
     <td><code class="type">SchemaName</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>指定時のみ schema 検証を実行する。</td>
+    <td></td>
   </tr></tbody>
     </table>
   </div>
@@ -301,9 +247,16 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
     <td><code class="type">CheckRunSummary</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">exit_code</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
   </tr></tbody>
     </table>
   </div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.files.size() &gt; 0</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.summary.total == input.files.size()</code></li><li><code class="expr">output.exit_code == 0 || output.exit_code == 1 || output.exit_code == 2</code></li><li><code class="expr">output.exit_code == 0 implies output.summary.failed == 0</code></li><li><code class="expr">output.summary.results.size() == output.summary.total</code></li><li><code class="expr">parse_precedes_schema(input.files, output.summary)</code></li><li><code class="expr">schema_validation_is_opt_in(input.schema, output.summary)</code></li><li><code class="expr">schema_name_is_validated_before_file_reads(input.schema, output.exit_code)</code></li><li><code class="expr">one_schema_is_applied_uniformly(input.schema, output.summary)</code></li><li><code class="expr">input_content_executes_no_code(input.files)</code></li><li><code class="expr">input_files_are_not_modified(input.files)</code></li><li><code class="expr">context_map_semantics_are_checked(input.files, output.summary)</code></li><li><code class="expr">work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)</code></li><li><code class="expr">warnings_do_not_fail(output.summary, output.exit_code)</code></li><li><code class="expr">finding_locations_are_within_source(output.summary)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
     <div class="binding-kind"><span class="badge badge-bkind-cli">cli</span></div>
     <div class="binding-body"><div class="binding-head"><code class="path">yaml-check</code></div><div class="io"><div class="label">Args (positional)</div><table class="fields"><thead><tr><th>Name</th><th>Position</th><th>Presence</th><th>Note</th></tr></thead><tbody><tr>
@@ -320,237 +273,107 @@ Finding は常に error。ContextMapFinding のみ warning を取りうる。
   </div></div></div>
   </article>
 <article class="card" id="iface-listschemas">
-    <header><h3>ListSchemas</h3></header>
-    <p class="desc">同梱されている SchemaName の一覧を 1 行 1 名で標準出力に書き出す。</p>
+    <header><h3>ListSchemas</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span></header>
+    <p class="desc">同梱 SchemaName を安定順で返す。</p>
 
-    <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">schemas</code></td>
+    <td><code class="type">List&lt;SchemaName&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.schemas.size() &gt; 0</code></li></ul></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
     <div class="binding-kind"><span class="badge badge-bkind-cli">cli</span></div>
     <div class="binding-body"><div class="binding-head"><code class="path">yaml-check</code></div><div class="io"><div class="label">Flags</div><table class="fields"><thead><tr><th>Long</th><th>Short</th><th>Presence</th><th>Note</th></tr></thead><tbody><tr>
               <td><code class="name">--list-schemas</code></td>
               <td></td>
               <td><span class="badge badge-required">required</span></td>
               <td></td>
-            </tr></tbody></table></div><dl class="kv"><dt>stdout</dt><dd><code>SchemaName</code></dd><dt>exit codes</dt><dd>success: <code>0</code></dd></dl></div>
+            </tr></tbody></table></div><dl class="kv"><dt>exit codes</dt><dd>success: <code>0</code></dd></dl></div>
   </div></div></div>
   </article></div>
   </section>
-<section id="invariants">
-    <h2>Invariants <span class="count">12</span></h2>
-    <p class="lead">入力に依らず常に成り立つ不変条件、または決して起きてはならない事象。</p>
-    <div class="cards"><article class="card" id="inv-parse-before-lint-and-schema">
-    <header><h3>parse_before_lint_and_schema</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">各ファイルに対し parse が最初に走る。parse 失敗時は schema 検証を行わない
-(lint は生テキスト依存なので、parse 失敗とは独立に実行する)。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">for every file f: parse(f) is evaluated before schema(f), and schema(f) only runs when parse(f) succeeded</code></div>
-  </article>
-<article class="card" id="inv-schema-is-opt-in">
-    <header><h3>schema_is_opt_in</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">入力ファイル名やパスから schema を推測してはならない。schema は CLI で明示指定された場合にだけ実行される。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">schema validation runs for a file when --schema was not provided</code></div>
-  </article>
-<article class="card" id="inv-schema-name-validated-upfront">
-    <header><h3>schema_name_validated_upfront</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">--schema に未知の名前が渡されたら、ファイル検査を一切行わず exit code 2 で
-終了する。誤指定で部分結果を返さない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">any file is checked when --schema=&lt;name&gt; and name is not in SchemaName</code></div>
-  </article>
-<article class="card" id="inv-schema-application-is-uniform">
-    <header><h3>schema_application_is_uniform</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">--schema=&lt;name&gt; を指定すると、入力ファイル全件に同じ schema を適用する。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">every input file is validated against the same schema in a single CheckRun</code></div>
-  </article>
-<article class="card" id="inv-no-arbitrary-code-execution">
-    <header><h3>no_arbitrary_code_execution</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">入力 YAML の内容によって、ツール側で任意コードが実行されてはならない。
-anchor / tag / merge key 等の高度な YAML 機能による副作用は許可しない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">evaluating CheckYaml causes execution of code originating from YamlInput contents</code></div>
-  </article>
-<article class="card" id="inv-no-input-modification">
-    <header><h3>no_input_modification</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">yaml-check は読み取り専用である。入力ファイルへの書き戻し・自動修正は行わない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">CheckYaml mutates any file under the file system</code></div>
-  </article>
-<article class="card" id="inv-deterministic-findings">
-    <header><h3>deterministic_findings</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">同じ入力ファイル群と同じ --schema 引数からは、findings 集合とその順序が
-常に同一になる。時刻・乱数・環境変数に依存しない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">CheckYaml(files, schema) ≡ CheckYaml(files, schema)</code></div>
-  </article>
-<article class="card" id="inv-exit-code-reflects-findings">
-    <header><h3>exit_code_reflects_findings</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">CheckRun が 1 つでも error 重大度の Finding を出した場合 exit code は 1。
-error が 0 件なら 0 (warning のみは 0)。引数自体の誤りは 2。3 つの状態が
-混じってはならない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">exit_code(CheckRun) = 0 iff no error-severity Finding, 1 iff any error-severity Finding, 2 iff usage_error</code></div>
-  </article>
-<article class="card" id="inv-context-map-checked-when-present">
-    <header><h3>context_map_checked_when_present</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">入力が context_map セクションを持つとき、--schema の有無に関わらず
-参照解決・非循環の検査が走る。未解決参照と循環は error、shared_kernel の
-肥大は warning とする。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">for every input with a context_map: unresolved depends_on/uses and dependency cycles are reported as error-severity ContextMapFinding</code></div>
-  </article>
-<article class="card" id="inv-work-item-dependencies-are-resolved-and-acyclic">
-    <header><h3>work_item_dependencies_are_resolved_and_acyclic</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">workspace の未完了 work-item が宣言する depends_on は、同じ work-item 名前空間の
-open / done を含む既知の WI を指す。自己参照と循環依存は error として報告する。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">every workspace work-item dependency refers to an existing non-self work item, and the dependency graph is acyclic</code></div>
-  </article>
-<article class="card" id="inv-warnings-do-not-fail-the-run">
-    <header><h3>warnings_do_not_fail_the_run</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">warning 重大度の Finding は表示するが CheckRun の成否を変えない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div><code class="expr">a CheckRun with only warning-severity Findings exits non-zero</code></div>
-  </article>
-<article class="card" id="inv-schema-finding-points-into-source">
-    <header><h3>schema_finding_points_into_source</h3><span class="badge badge-severity-must">must</span></header>
-    <p class="desc">SchemaFinding は、Ajv の instancePath を入力テキスト上の行番号に解決して
-添付する。解決に失敗しても列 1 / 行 1 を返し、エラー化しない。</p>
-    <dl class="kv"><dt>target</dt><dd><code>CheckYaml</code></dd></dl>
-    <div class="clause clause-always"><div class="clause-label ok">always (invariant)</div><code class="expr">every SchemaFinding carries a (line, column) within bounds of the source file</code></div>
-  </article></div>
+<section id="objectives">
+    <h2>Objectives <span class="count">1</span></h2>
+    <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
+    <div class="cards"><article class="card" id="obj-checklatency">
+        <header><h3>CheckLatency</h3><span class="badge badge-kind-slo">SLO</span></header>
+        <p class="desc">数十 KiB のファイル 30 件程度を対話的に検査できる。</p>
+        <dl class="kv">
+          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#iface-checkyaml">CheckYaml</a></dd>
+          <dt>indicator</dt><dd><code class="expr">measurement.latency_ms &lt; 500</code></dd>
+          <dt>target</dt><dd><code>0.95</code></dd>
+          <dt>window</dt><dd><code>30d</code></dd>
+          <dt>budgeting</dt><dd><span class="badge">occurrences</span></dd>
+
+        </dl>
+      </article></div>
   </section>
 <section id="scenarios">
     <h2>Scenarios <span class="count">9</span></h2>
-    <p class="lead">受け入れ例。自然文ステップで書かれた振る舞いの具体例。引用された既知の名前は定義へリンクする。</p>
-    <div class="cards"><article class="card scenario" id="scn-work-item-schema-work-item-ok">
-    <header><h3>正しい work-item を --schema=work-item で検査すると ok になる</h3></header>
+    <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
+    <div class="cards"><article class="card scenario" id="scn-scl-3-0">
+        <header><h3>正しい SCL 3.0 文書を検査できる</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 3.0 の文書を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">schema と semantics の <a class="chip chip-ref" href="#model-finding">Finding</a> はなく exit code 0 になる</li></ol></div>
 
+      </article><article class="card scenario" id="scn-scl-version-schema">
+        <header><h3>SCL version ごとに schema が選択される</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SCL 2.0 と SCL 3.0 の文書をそれぞれ <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">spec_version に対応する単一 schema だけが適用される</li></ol></div>
 
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">規定どおりの work-item.md を用意する</li><li class="scn-step"><code class="step-arg">--schema=work-item</code> を指定して yaml-check で検査する</li><li class="scn-step">すべてのファイルが ok と報告される</li><li class="scn-step">exit code は 0</li></ol></div>
+      </article><article class="card scenario" id="scn-scl-3-0">
+        <header><h3>SCL 3.0 の未解決参照は拒否される</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
-  </article>
-<article class="card scenario" id="scn-plan-tasks-work-item-schema-work-item">
-    <header><h3>Plan と Tasks を持つ work-item は --schema=work-item で検査できる</h3></header>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">未知 policy を参照する protected interface を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">Semantic<a class="chip chip-ref" href="#model-finding">Finding</a> と exit code 1 が返る</li></ol></div>
 
+      </article><article class="card scenario" id="scn-schema">
+        <header><h3>未知 schema 名は検査前に拒否される</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">未知 schema 名で <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> を起動する</li><li class="scn-step">ファイルを読まず usage error の exit code 2 になる</li></ol></div>
 
+      </article><article class="card scenario" id="scn-schema-parse-lint">
+        <header><h3>schema 指定なしでは parse と lint だけを行う</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"># Plan と T001 形式の checkbox を含む # Tasks を持つ work-item.md を用意する</li><li class="scn-step"><code class="step-arg">--schema=work-item</code> を指定して yaml-check で検査する</li><li class="scn-step">schema 由来の Finding は出ない</li><li class="scn-step">exit code は 0</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">schema 違反だが valid YAML の文書を schema 指定なしで検査する</li><li class="scn-step">Schema<a class="chip chip-ref" href="#model-finding">Finding</a> は返らない</li></ol></div>
 
+      </article><article class="card scenario" id="scn-parse-schema">
+        <header><h3>parse 失敗時は schema 検証を行わない</h3><span class="chip chip-actor">Maintainer</span></header>
 
-  </article>
-<article class="card scenario" id="scn-work-item-workspace">
-    <header><h3>work-item の完了前提は workspace 全体で検査される</h3></header>
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">壊れた YAML を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">parse <a class="chip chip-ref" href="#model-finding">Finding</a> だけがその文書の構造検査結果になる</li></ol></div>
 
+      </article><article class="card scenario" id="scn-work-item-dependency-graph">
+        <header><h3>work-item dependency graph を検査する</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">work-item workspace を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">未解決参照、自己参照、循環が error として報告される</li></ol></div>
 
+      </article><article class="card scenario" id="scn-context-map">
+        <header><h3>context map の循環を検査する</h3><span class="chip chip-actor">Maintainer</span></header>
 
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">pending work-item に既存 WI ID を depends_on として列挙する</li><li class="scn-step">workspace の work-item 検査を実行する</li><li class="scn-step">参照先が存在し、自己参照も循環もなければ成功する</li><li class="scn-step">未知の ID、自己参照、または循環があれば該当 WI の error Finding と exit code 1 を返す</li></ol></div>
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">循環した context_map を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">ContextMap <a class="chip chip-ref" href="#model-finding">Finding</a> と exit code 1 が返る</li></ol></div>
 
-  </article>
-<article class="card scenario" id="scn-exit-code-2">
-    <header><h3>未知のスキーマ名を渡すと、ファイル検査は行わず exit code 2 を返す</h3></header>
+      </article><article class="card scenario" id="scn-warning">
+        <header><h3>warning だけなら成功する</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">shared kernel 肥大 warning だけを持つ文書を検査する</li><li class="scn-step"><a class="chip chip-ref" href="#model-finding">Finding</a> は表示され exit code は 0 になる</li></ol></div>
 
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><code class="step-arg">--schema=bogus</code> と任意のファイルを渡して yaml-check を呼ぶ</li><li class="scn-step">エラーメッセージに利用可能な SchemaName 一覧が含まれる</li><li class="scn-step">検査対象ファイルは 1 件も読み込まれない</li><li class="scn-step">exit code は 2</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-schema-parse-lint">
-    <header><h3>--schema を付けずに呼ぶと parse + lint のみが走る</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">スキーマ違反だが YAML として valid なファイルを用意する</li><li class="scn-step"><code class="step-arg">--schema を付けずに</code> yaml-check で検査する</li><li class="scn-step">parse 由来 / lint 由来の Finding は出るが schema 由来の Finding は出ない</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-parse-schema">
-    <header><h3>parse 失敗ファイルでは schema 検証はスキップされる</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">YAML として破損した内容を持つファイルを用意する</li><li class="scn-step"><code class="step-arg">--schema=scl</code> を指定して yaml-check で検査する</li><li class="scn-step">parse の Finding が報告される</li><li class="scn-step">schema 由来の Finding は同じファイルに対し追加で出ない</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-list-schemas">
-    <header><h3>--list-schemas は同梱スキーマ名のみを出力する</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><code class="step-arg">--list-schemas</code> を指定して yaml-check を呼ぶ</li><li class="scn-step">標準出力に work-item / scl が 1 行ずつ書かれる</li><li class="scn-step">exit code は 0</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-context-map-error">
-    <header><h3>context_map の未解決参照や循環は error として検出される</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">depends_on が存在しない context を指す、または publish されていない名前を uses する context_map を用意する</li><li class="scn-step">yaml-check で検査する</li><li class="scn-step">ContextMapFinding (error) が報告される</li><li class="scn-step">exit code は 1</li></ol></div>
-
-
-  </article>
-<article class="card scenario" id="scn-shared-kernel-warning-exit-code">
-    <header><h3>shared_kernel の肥大は warning であり exit code を変えない</h3></header>
-
-
-
-
-
-
-    <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">via が shared_kernel で多数の名前を共有する context_map を用意する</li><li class="scn-step">yaml-check で検査する</li><li class="scn-step">shared_kernel の warning が表示される</li><li class="scn-step">他に error が無ければ exit code は 0</li></ol></div>
-
-
-  </article></div>
-  </section>
-<section id="objectives">
-    <h2>Objectives <span class="count">2</span></h2>
-
-    <div class="group">
-      <h3 class="grp-title">slo <span class="count">1</span></h3>
-      <div class="cards"><article class="card" id="obj-fast-check">
-    <header><h3>fast_check</h3><span class="badge badge-kind-slo">slo</span></header>
-    <p class="desc">数十 KiB クラスのファイル 30 件程度なら p95 500ms 以内で完了する。</p>
-    <dl class="kv"><dt>metric</dt><dd><span class="text">latency_p95</span></dd><dt>target</dt><dd><span class="text">&lt;500ms</span></dd><dt>interface</dt><dd><span class="text">CheckYaml</span></dd></dl>
-  </article></div>
-    </div>
-<div class="group">
-      <h3 class="grp-title">security <span class="count">1</span></h3>
-      <div class="cards"><article class="card" id="obj-no-persistent-state">
-    <header><h3>no_persistent_state</h3><span class="badge badge-kind-security">security</span></header>
-    <p class="desc">yaml-check は副作用を持たない。プロセス外の状態 (ファイル / ネットワーク / 環境) を変更しない。</p>
-    <dl class="kv"><dt>policy</dt><dd><span class="text">read_only_operation</span></dd><dt>target</dt><dd><span class="text">CheckYaml</span></dd><dt>value</dt><dd><code>true</code></dd></dl>
-  </article></div>
-    </div>
+      </article></div>
   </section>
   </div></div></main>
 </div>

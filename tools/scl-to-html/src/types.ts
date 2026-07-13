@@ -15,11 +15,10 @@ export const SECTION_KINDS = [
   'models',
   'interfaces',
   'states',
-  'invariants',
-  'scenarios',
-  'permissions',
+  'authorization',
   'objectives',
-  'user_experience',
+  'scenarios',
+  'flows',
 ] as const
 
 export type SectionKind = (typeof SECTION_KINDS)[number]
@@ -35,11 +34,10 @@ export interface SclDocument {
   models?: Record<string, Model>
   interfaces?: Record<string, Interface>
   states?: Record<string, StateMachine>
-  invariants?: Record<string, Invariant>
-  scenarios?: Record<string, Scenario>
-  permissions?: Record<string, Permission>
+  authorization?: Authorization
   objectives?: Record<string, Objective>
-  user_experience?: UserExperience
+  scenarios?: Record<string, Scenario>
+  flows?: Record<string, Flow>
 }
 
 export interface ContextMapEntry {
@@ -77,35 +75,7 @@ export interface StandardRequirement {
   adoption?: 'required' | 'optional' | 'excluded'
   statement?: string
   reason?: string
-  relates_to?: Record<string, string[]>
-}
-
-export interface UserExperience {
-  accessibility?: { standard?: string; level?: string }
-  locales?: string[]
-  screens?: Record<
-    string,
-    { route?: string; purpose?: string; interfaces?: string[]; states?: string[] }
-  >
-  transitions?: Array<{
-    from?: string
-    to?: string
-    trigger?: string
-    interface?: string
-    external?: boolean
-  }>
-  requirements?: Array<{
-    id?: string
-    category?: string
-    adoption?: 'required' | 'optional' | 'excluded'
-    statement?: string
-    reason?: string
-    screens?: string[]
-    interfaces?: string[]
-    standards?: string[]
-    scenarios?: string[]
-    invariants?: string[]
-  }>
+  refs?: string[]
 }
 
 export interface GlossaryEntry {
@@ -135,6 +105,7 @@ export interface Model {
   values?: string[]
   fields?: Record<string, Field>
   payload?: Record<string, Field>
+  constraints?: string[]
 }
 
 export interface Interface {
@@ -144,6 +115,9 @@ export interface Interface {
   output?: Record<string, Field>
   errors?: string[]
   emits?: string[]
+  requires?: string[]
+  ensures?: string[]
+  access?: Access
   idempotent?: boolean
   read_only?: boolean
   bindings?: Binding[]
@@ -151,6 +125,14 @@ export interface Interface {
 }
 
 export type Binding = { kind: string; description?: string } & Record<string, unknown>
+
+export type Access =
+  | 'public'
+  | 'internal'
+  | {
+      policies: string[]
+      resource: { type: string; id: string }
+    }
 
 export interface StateMachine {
   description?: string
@@ -168,50 +150,56 @@ export interface StateMachine {
   }>
 }
 
-export interface Invariant {
-  description?: string
-  annotations?: Record<string, unknown>
-  target?: string
-  assuming?: unknown
-  always?: unknown
-  never?: unknown
-  eventually?: unknown
-  within?: string
-  severity?: string
+export interface Authorization {
+  resources?: Record<string, { description?: string }>
+  principals?: Record<
+    string,
+    { type: string; matches: string[]; description?: string; annotations?: Record<string, unknown> }
+  >
+  policies?: Record<
+    string,
+    {
+      effect: 'permit' | 'forbid'
+      principal: string
+      when?: string
+      description?: string
+      annotations?: Record<string, unknown>
+    }
+  >
 }
 
 export interface Scenario {
   description?: string
   annotations?: Record<string, unknown>
   tags?: string[]
-  goal?: string
-  primary_actor?: string
-  scope?: string
-  level?: string
-  preconditions?: string[]
-  success_guarantees?: string[]
+  actor: string
+  given?: string[]
   main_success?: string[]
   extensions?: Array<{ at?: string | number; condition?: string; steps?: string[] }>
-  steps?: string[]
-  where?: Array<Record<string, unknown>>
-}
-
-export interface Permission {
-  description?: string
-  annotations?: Record<string, unknown>
-  actor?: string
-  protects?: string[]
-  operation?: string
-  resource?: string
-  allow_when?: unknown
-  deny_when?: unknown
 }
 
 export interface Objective {
-  kind?: string
   description?: string
   annotations?: Record<string, unknown>
-  [k: string]: unknown
+  interface?: string
+  indicator: string
+  target: number
+  window: string
+  budgeting?: 'occurrences' | 'timeslices'
+  slice?: string
+}
+
+export interface Flow {
+  description?: string
+  annotations?: Record<string, unknown>
+  entry: string
+  transitions: Array<{
+    from: string
+    action: string
+    interface?: string
+    to?: string
+    external?: boolean
+  }>
 }
 
 // ─── Decisions (CONCEPTION + ADR) ──────────────────────────────────

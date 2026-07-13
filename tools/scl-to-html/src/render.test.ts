@@ -12,7 +12,7 @@ import type { ChangeEntry, DecisionDoc, SclBundle, SclDocument, SiteInput } from
 
 const sampleScl = (): SclDocument => ({
   system: 'demo',
-  spec_version: '2.0',
+  spec_version: '3.0',
   context_map: {
     Auth: { description: 'auth context', depends_on: { Directory: { via: 'published_language' } } },
     Directory: { description: 'directory context' },
@@ -21,7 +21,12 @@ const sampleScl = (): SclDocument => ({
     Foo: { definition: 'a thing' },
   },
   models: {
-    Foo: { kind: 'entity', identity: ['a', 'b'], fields: { a: { type: 'String' } } },
+    Foo: {
+      kind: 'entity',
+      identity: ['a', 'b'],
+      fields: { a: { type: 'String' }, b: { type: 'String' } },
+      constraints: ['a != b'],
+    },
     Bar: { kind: 'enum', values: ['X', 'Y'] },
     BarUpdated: { kind: 'event', payload: { id: { type: 'UUID' } } },
   },
@@ -32,6 +37,9 @@ const sampleScl = (): SclDocument => ({
       input: { x: { type: 'String' } },
       output: { y: { type: 'Foo' } },
       emits: ['BarUpdated'],
+      requires: ['input.x != ""'],
+      ensures: ['output.y.a != ""'],
+      access: { policies: ['P'], resource: { type: 'Foo', id: 'input.x' } },
       bindings: [
         { kind: 'http', method: 'POST', path: '/do' },
         { kind: 'schedule', every: '1m' },
@@ -40,6 +48,7 @@ const sampleScl = (): SclDocument => ({
   },
   states: {
     FooLifecycle: {
+      target: 'Foo',
       initial: 'Draft',
       terminal: ['Done'],
       transitions: [
@@ -48,32 +57,33 @@ const sampleScl = (): SclDocument => ({
       ],
     },
   },
-  permissions: {
-    P: {
-      actor: 'User',
-      protects: ['interfaces.DoIt'],
-      operation: 'do',
-      resource: 'Foo',
-      allow_when: 'true',
+  authorization: {
+    principals: {
+      User: { type: 'Foo', matches: ['principal.a != ""'] },
     },
-  },
-  invariants: {
-    I: { description: 'always', always: 'x == y' },
+    policies: {
+      P: { effect: 'permit', principal: 'User', when: 'resource.a != ""' },
+    },
   },
   scenarios: {
     'demo の流れ': {
-      steps: ['"DoIt" を呼ぶ', '"BarUpdated" が発行される'],
+      actor: 'User',
+      main_success: ['DoIt を呼ぶ', 'BarUpdated が発行される'],
     },
   },
   objectives: {
-    O: { kind: 'slo', metric: 'latency_p95', target: '<200ms' } as never,
-  },
-  user_experience: {
-    screens: {
-      Login: { route: '/login', interfaces: ['DoIt'] },
-      Done: { route: '/done' },
+    O: {
+      interface: 'DoIt',
+      indicator: 'measurement.latency_ms < 200',
+      target: 0.95,
+      window: '30d',
     },
-    transitions: [{ from: 'Login', trigger: 'success', to: 'Done', interface: 'DoIt' }],
+  },
+  flows: {
+    Demo: {
+      entry: 'Login',
+      transitions: [{ from: 'Login', action: 'success', to: 'Done', interface: 'DoIt' }],
+    },
   },
 })
 
@@ -85,23 +95,21 @@ describe('renderSclTab', () => {
     expect(html).toContain('id="models"')
     expect(html).toContain('id="interfaces"')
     expect(html).toContain('id="states"')
-    expect(html).toContain('id="permissions"')
-    expect(html).toContain('id="invariants"')
+    expect(html).toContain('id="authorization"')
     expect(html).toContain('id="scenarios"')
     expect(html).toContain('id="objectives"')
-    expect(html).toContain('id="user_experience"')
+    expect(html).toContain('id="flows"')
   })
 
   it('renders the spec version in the SCL tab header', () => {
-    expect(html).toContain('spec 2.0')
+    expect(html).toContain('spec 3.0')
   })
 
   it('renders composite identity as a comma-joined string', () => {
     expect(html).toContain('a, b')
   })
 
-  it('linkifies known model names quoted inside scenario steps', () => {
-    // "DoIt" should become a link to #iface-doit. "BarUpdated" → #model-barupdated.
+  it('linkifies known names inside scenario steps', () => {
     expect(html).toContain('href="#iface-doit"')
     expect(html).toContain('href="#model-barupdated"')
   })
@@ -114,10 +122,27 @@ describe('renderSclTab', () => {
     expect(html).toContain('every: 1m')
   })
 
-  it('renders derived diagrams for context map, states, and UX transitions', () => {
+  it('renders local model and interface contracts beside their owners', () => {
+    expect(html).toContain('Model constraints')
+    expect(html).toContain('a != b')
+    expect(html).toContain('requires')
+    expect(html).toContain('input.x != &quot;&quot;')
+    expect(html).toContain('ensures')
+    expect(html).toContain('output.y.a != &quot;&quot;')
+  })
+
+  it('renders protected access, authorization policy, and SLO details', () => {
+    expect(html).toContain('access-protected')
+    expect(html).toContain('id="auth-p"')
+    expect(html).toContain('effect-permit')
+    expect(html).toContain('measurement.latency_ms &lt; 200')
+    expect(html).toContain('30d')
+  })
+
+  it('renders derived diagrams for context map, states, and flows', () => {
     expect(html).toContain('id="diagram-context-map"')
     expect(html).toContain('id="diagram-state-foolifecycle"')
-    expect(html).toContain('id="diagram-ux-transitions"')
+    expect(html).toContain('id="diagram-flow-demo"')
     expect(html).toContain('data-diagram-svg')
     expect(html).toContain('published_language')
     expect(html).toContain('Submit')
@@ -135,7 +160,7 @@ describe('renderSclTab with context documents', () => {
   const bundle: SclBundle = {
     root: {
       system: 'demo',
-      spec_version: '2.0',
+      spec_version: '3.0',
       context_map: {
         Application: { path: 'contexts/application.yaml' },
       },
@@ -146,7 +171,7 @@ describe('renderSclTab with context documents', () => {
         path: 'contexts/application.yaml',
         document: {
           system: 'demo',
-          spec_version: '2.0',
+          spec_version: '3.0',
           context: 'Application',
           models: {
             Application: {
@@ -157,7 +182,8 @@ describe('renderSclTab with context documents', () => {
           },
           scenarios: {
             'application flow': {
-              steps: ['"Application" を読む'],
+              actor: 'Application',
+              main_success: ['Application を読む'],
             },
           },
         },

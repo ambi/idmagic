@@ -15,7 +15,7 @@ function usage(): string {
     '  init                                    Create the standard RA layout',
     '  yaml-check [--work-items] [--scl] [--ids]  Validate discovered RA records',
     '  verify                                  Alias for yaml-check',
-    '  render                                  Regenerate discovered SCL artifacts',
+    '  render [--tools-only]                   Regenerate discovered SCL artifacts',
     '',
   ].join('\n')
 }
@@ -30,7 +30,7 @@ async function initWorkspace(): Promise<void> {
     const system = basename(root)
       .replace(/[^a-zA-Z0-9_-]+/g, '-')
       .toLowerCase()
-    await writeFile(sclPath, `system: ${system}\nspec_version: "2.0"\n`, 'utf8')
+    await writeFile(sclPath, `system: ${system}\nspec_version: "3.0"\n`, 'utf8')
   }
   console.log('created standard RA layout')
 }
@@ -64,7 +64,7 @@ if (command === 'verify') {
 }
 
 if (command === 'render') {
-  await runScript(['ra/src/render-workspace.ts'])
+  await runScript(['ra/src/render-workspace.ts', ...rest])
 }
 
 console.error(`ra: unknown command ${command}`)

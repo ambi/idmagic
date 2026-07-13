@@ -3,7 +3,7 @@ import Ajv2020 from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
 import { describe, expect, it } from 'bun:test'
 import { loadSclBundle } from '../../scl-to-html/src/load.ts'
-import type { SclDocument } from '../../scl-to-html/src/types.ts'
+import type { Authorization, SclDocument } from '../../scl-to-html/src/types.ts'
 import {
   collectRefNames,
   type JsonSchema,
@@ -29,7 +29,8 @@ const op = (doc: JsonSchema, path: string, method: string): Record<string, unkno
 const doc = (
   models: SclDocument['models'],
   interfaces: SclDocument['interfaces'],
-): SclDocument => ({ system: 'demo', spec_version: '2.0', models, interfaces })
+  authorization?: Authorization,
+): SclDocument => ({ system: 'demo', spec_version: '3.0', models, interfaces, authorization })
 
 describe('generateOpenApi — unit', () => {
   it('turns an http interface into an operation with a json request body', () => {
@@ -110,6 +111,68 @@ describe('generateOpenApi — unit', () => {
     const responses = o.responses as Record<string, Record<string, unknown>>
     expect(responses['201']).toBeDefined()
     expect(responses.default?.description).toContain('E')
+  })
+
+  it('emits public and protected security metadata with local contracts', () => {
+    const out = generateOpenApi(
+      doc(
+        {
+          User: { kind: 'entity', identity: 'id', fields: { id: { type: 'UUID' } } },
+          Tenant: { kind: 'entity', identity: 'id', fields: { id: { type: 'UUID' } } },
+        },
+        {
+          Health: {
+            access: 'public',
+            bindings: [{ kind: 'http', method: 'GET', path: '/health' }],
+          },
+          UpdateTenant: {
+            input: { id: { type: 'UUID' } },
+            requires: ['input.id != ""'],
+            ensures: ['response.status == 200'],
+            access: {
+              policies: ['TenantMember'],
+              resource: { type: 'Tenant', id: 'input.id' },
+            },
+            bindings: [{ kind: 'http', method: 'PATCH', path: '/tenants/{id}' }],
+          },
+        },
+        {
+          principals: { Member: { type: 'User', matches: ['principal.id != ""'] } },
+          policies: { TenantMember: { effect: 'permit', principal: 'Member' } },
+        },
+      ),
+    )
+
+    expect(op(out, '/health', 'get').security).toEqual([])
+    const update = op(out, '/tenants/{id}', 'patch')
+    expect(update.security).toEqual([{ SclBearer: [] }])
+    expect(update['x-scl-access']).toEqual({
+      policies: ['TenantMember'],
+      resource: { type: 'Tenant', id: 'input.id' },
+    })
+    expect(update['x-scl-requires']).toEqual(['input.id != ""'])
+    expect(update['x-scl-ensures']).toEqual(['response.status == 200'])
+    expect(update.description).toContain('Requires: input.id != ""')
+
+    const components = out.components as Record<string, unknown>
+    expect(components.securitySchemes).toEqual({
+      SclBearer: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+    })
+    expect(out['x-scl-authorization']).toMatchObject({
+      groups: [{ name: 'policy:TenantMember' }],
+    })
+  })
+
+  it('does not expose an invalid internal http interface', () => {
+    const out = generateOpenApi(
+      doc(undefined, {
+        InternalOnly: {
+          access: 'internal',
+          bindings: [{ kind: 'http', method: 'POST', path: '/internal' }],
+        },
+      }),
+    )
+    expect((out.paths as Record<string, unknown>)['/internal']).toBeUndefined()
   })
 })
 

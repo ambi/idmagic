@@ -27,7 +27,11 @@ export async function loadScl(path: string): Promise<SclDocument> {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     throw new Error(`SCL document ${path} did not parse to an object`)
   }
-  return data as SclDocument
+  const document = data as SclDocument
+  if (document.spec_version !== '3.0') {
+    throw new Error(`SCL document ${path} uses unsupported spec_version ${document.spec_version}`)
+  }
+  return document
 }
 
 export async function loadSclBundle(path: string): Promise<SclBundle> {
@@ -177,9 +181,7 @@ function parseMarkdownWorkItem(id: string, text: string): WorkItem | null {
         }
         if (val.startsWith('[') && val.endsWith(']')) {
           const items = val.slice(1, -1).trim()
-          wi[key] = items
-            ? items.split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
-            : []
+          wi[key] = items ? items.split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')) : []
         } else if (val === 'true') {
           wi[key] = true
         } else if (val === 'false') {
@@ -199,7 +201,11 @@ function parseMarkdownWorkItem(id: string, text: string): WorkItem | null {
   if (typeof wi.title !== 'string' || wi.title.length === 0) {
     const firstHeading = bodyText.match(/^#{1,2}\s+(.+)$/m)
     const headingText = firstHeading?.[1]?.trim()
-    if (firstHeading && headingText && !KNOWN_WORK_ITEM_SECTION_HEADINGS.has(headingText.toLowerCase())) {
+    if (
+      firstHeading &&
+      headingText &&
+      !KNOWN_WORK_ITEM_SECTION_HEADINGS.has(headingText.toLowerCase())
+    ) {
       wi.title = headingText
       bodyText = bodyText.replace(firstHeading[0], '')
     }

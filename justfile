@@ -136,6 +136,10 @@ yaml-check-architecture:
 scl-render:
     {{ra_cmd}} render
 
+# Regenerate only embedded tool SCL HTML artifacts.
+scl-render-tools:
+    {{ra_cmd}} render --tools-only
+
 # Start the local dev stack (Go API + React UI together with live reload).
 dev:
     ./dev.sh

@@ -52,9 +52,20 @@ describe('collectSclElements', () => {
     const refs = collectSclElements({
       interfaces: { DiscoverWorkspace: {} },
       models: { WorkspaceApp: {} },
+      authorization: {
+        resources: { System: {} },
+        principals: { Maintainer: {} },
+        policies: { CanRender: {} },
+      },
       annotations: { ignored: {} },
     })
-    expect(refs.sort()).toEqual(['interfaces.DiscoverWorkspace', 'models.WorkspaceApp'])
+    expect(refs.sort()).toEqual([
+      'authorization.CanRender',
+      'authorization.Maintainer',
+      'authorization.System',
+      'interfaces.DiscoverWorkspace',
+      'models.WorkspaceApp',
+    ])
   })
 })
 

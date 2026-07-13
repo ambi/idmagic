@@ -21,7 +21,7 @@ const defOf = (schema: JsonSchema, name: string): Record<string, unknown> => {
 
 const doc = (models: SclDocument['models']): SclDocument => ({
   system: 'demo',
-  spec_version: '2.0',
+  spec_version: '3.0',
   models,
 })
 
@@ -65,6 +65,74 @@ describe('generateModelSchemas — unit', () => {
     const bag = defOf(out, 'Bag')
     const props = bag.properties as Record<string, unknown>
     expect(props.tags).toEqual({ type: 'array', items: { $ref: '#/$defs/Tag' } })
+  })
+
+  it('treats Optional<T> as an optional field', () => {
+    const out = generateModelSchemas(
+      doc({
+        Note: {
+          kind: 'value_object',
+          fields: { title: { type: 'String' }, body: { type: 'Optional<String>' } },
+        },
+      }),
+    )
+    expect(defOf(out, 'Note').required).toEqual(['title'])
+  })
+
+  it('maps SCL 3.0 field constraints to JSON Schema keywords', () => {
+    const out = generateModelSchemas(
+      doc({
+        Item: {
+          kind: 'value_object',
+          fields: {
+            count: { type: 'Integer', constraints: [{ minimum: 1 }, { maximum: 10 }] },
+            code: { type: 'String', constraints: [{ pattern: '^[A-Z]+$' }] },
+            tags: {
+              type: 'List<String>',
+              constraints: ['non_empty', 'unique', { max_length: 3 }],
+            },
+          },
+        },
+      }),
+    )
+    const props = defOf(out, 'Item').properties as Record<string, Record<string, unknown>>
+    expect(props.count).toMatchObject({ type: 'integer', minimum: 1, maximum: 10 })
+    expect(props.code).toMatchObject({ type: 'string', pattern: '^[A-Z]+$' })
+    expect(props.tags).toMatchObject({
+      type: 'array',
+      minItems: 1,
+      maxItems: 3,
+      uniqueItems: true,
+    })
+  })
+
+  it('enforces representable model CEL comparisons', () => {
+    const out = generateModelSchemas(
+      doc({
+        Adult: {
+          kind: 'value_object',
+          fields: { age: { type: 'Integer' }, status: { type: 'String' } },
+          constraints: ['age >= 18', 'status != "Deleted"'],
+        },
+      }),
+    )
+    const validate = newAjv().compile({ ...out, $ref: '#/$defs/Adult' })
+    expect(validate({ age: 18, status: 'Active' })).toBe(true)
+    expect(validate({ age: 17, status: 'Active' })).toBe(false)
+    expect(validate({ age: 20, status: 'Deleted' })).toBe(false)
+  })
+
+  it('preserves unsupported model CEL explicitly instead of guessing', () => {
+    const out = generateModelSchemas(
+      doc({
+        Window: {
+          kind: 'value_object',
+          fields: { start: { type: 'Integer' }, end: { type: 'Integer' } },
+          constraints: ['start < end'],
+        },
+      }),
+    )
+    expect(defOf(out, 'Window')['x-scl-untranslated-constraints']).toEqual(['start < end'])
   })
 
   it('produces a schema with no dangling $defs references', () => {

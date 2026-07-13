@@ -28,10 +28,17 @@ describe('loadScl', () => {
   it('reads a YAML SCL document via Bun YAML import', async () => {
     const dir = await tempDir()
     const path = join(dir, 'scl.yaml')
-    await writeFile(path, 'system: demo\nspec_version: "1.0"\n')
+    await writeFile(path, 'system: demo\nspec_version: "3.0"\n')
     const doc = await loadScl(path)
     expect(doc.system).toBe('demo')
-    expect(doc.spec_version).toBe('1.0')
+    expect(doc.spec_version).toBe('3.0')
+  })
+
+  it('rejects pre-3.0 SCL documents instead of applying a compatibility transform', async () => {
+    const dir = await tempDir()
+    const path = join(dir, 'scl.yaml')
+    await writeFile(path, 'system: demo\nspec_version: "2.0"\n')
+    await expect(loadScl(path)).rejects.toThrow('unsupported spec_version 2.0')
   })
 
   it('throws if the file does not parse to an object', async () => {
@@ -50,7 +57,7 @@ describe('loadSclBundle', () => {
       join(dir, 'scl.yaml'),
       [
         'system: demo',
-        'spec_version: "2.0"',
+        'spec_version: "3.0"',
         'context_map:',
         '  App:',
         '    path: contexts/application.yaml',
@@ -60,7 +67,7 @@ describe('loadSclBundle', () => {
       join(dir, 'contexts', 'application.yaml'),
       [
         'system: demo',
-        'spec_version: "2.0"',
+        'spec_version: "3.0"',
         'context: Application',
         'models:',
         '  App:',

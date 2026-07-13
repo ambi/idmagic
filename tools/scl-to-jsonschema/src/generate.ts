@@ -51,6 +51,18 @@ function typeToSchema(type: unknown, modelNames: ReadonlySet<string>): JsonSchem
   if (name.endsWith('[]')) {
     return { type: 'array', items: typeToSchema(name.slice(0, -2).trim(), modelNames) }
   }
+  const generic = name.match(/^(List|Set|Optional)<(.+)>$/)
+  if (generic?.[1] && generic[2]) {
+    if (generic[1] === 'Optional') return typeToSchema(generic[2].trim(), modelNames)
+    return {
+      type: 'array',
+      items: typeToSchema(generic[2].trim(), modelNames),
+      ...(generic[1] === 'Set' ? { uniqueItems: true } : {}),
+    }
+  }
+  if (/^Map<.+>$/.test(name) || name === 'Map' || name === 'JSON' || name === 'Any') {
+    return { type: 'object' }
+  }
   if (name in PRIMITIVES) return { ...PRIMITIVES[name] }
   if (modelNames.has(name)) return { $ref: `#/$defs/${name}` }
   // Unknown type (e.g. a Map<…> or an external type): stay permissive rather
@@ -59,19 +71,101 @@ function typeToSchema(type: unknown, modelNames: ReadonlySet<string>): JsonSchem
 }
 
 function applyConstraints(schema: JsonSchema, constraints: unknown[]): void {
+  const untranslated: unknown[] = []
   for (const c of constraints) {
     if (c === 'non_empty') {
       if (schema.type === 'array') schema.minItems = 1
+      else if (schema.type === 'object') schema.minProperties = 1
       else schema.minLength = 1
       continue
     }
-    if (!isRecord(c)) continue
-    if (typeof c.max_length === 'number') schema.maxLength = c.max_length
-    if (typeof c.min_length === 'number') schema.minLength = c.min_length
-    if (typeof c.pattern === 'string') schema.pattern = c.pattern
-    if (typeof c.min === 'number') schema.minimum = c.min
-    if (typeof c.max === 'number') schema.maximum = c.max
+    if (c === 'unique') {
+      schema.uniqueItems = true
+      continue
+    }
+    if (!isRecord(c)) {
+      untranslated.push(c)
+      continue
+    }
+    const [key, value] = Object.entries(c)[0] ?? []
+    switch (key) {
+      case 'max_length':
+        if (typeof value === 'number' && schema.type === 'array') schema.maxItems = value
+        else if (typeof value === 'number' && schema.type === 'object') schema.maxProperties = value
+        else if (typeof value === 'number') schema.maxLength = value
+        else untranslated.push(c)
+        break
+      case 'min_length':
+        if (typeof value === 'number' && schema.type === 'array') schema.minItems = value
+        else if (typeof value === 'number' && schema.type === 'object') schema.minProperties = value
+        else if (typeof value === 'number') schema.minLength = value
+        else untranslated.push(c)
+        break
+      case 'pattern':
+        if (typeof value === 'string') schema.pattern = value
+        else untranslated.push(c)
+        break
+      case 'format':
+        if (typeof value === 'string') schema.format = value
+        else untranslated.push(c)
+        break
+      case 'minimum':
+        if (typeof value === 'number') schema.minimum = value
+        else untranslated.push(c)
+        break
+      case 'maximum':
+        if (typeof value === 'number') schema.maximum = value
+        else untranslated.push(c)
+        break
+      default:
+        untranslated.push(c)
+    }
   }
+  if (untranslated.length > 0) schema['x-scl-untranslated-constraints'] = untranslated
+}
+
+function scalarLiteral(raw: string): string | number | boolean | null | undefined {
+  const value = raw.trim()
+  if (value === 'true') return true
+  if (value === 'false') return false
+  if (value === 'null') return null
+  if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(value)) return Number(value)
+  if (value.startsWith('"') && value.endsWith('"')) {
+    try {
+      return JSON.parse(value) as string
+    } catch {
+      return undefined
+    }
+  }
+  if (value.startsWith("'") && value.endsWith("'")) return value.slice(1, -1)
+  return undefined
+}
+
+function applyModelConstraints(schema: JsonSchema, constraints: string[]): void {
+  const properties = isRecord(schema.properties) ? schema.properties : {}
+  const untranslated: string[] = []
+  for (const expression of constraints) {
+    const match = expression.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=|>=|<=|>|<)\s*(.+)\s*$/)
+    const field = match?.[1]
+    const operator = match?.[2]
+    const literal = match?.[3] ? scalarLiteral(match[3]) : undefined
+    const fieldSchema = field ? properties[field] : undefined
+    if (!field || !operator || literal === undefined || !isRecord(fieldSchema)) {
+      untranslated.push(expression)
+      continue
+    }
+    if (operator === '==') fieldSchema.const = literal
+    else if (operator === '!=') fieldSchema.not = { const: literal }
+    else if (typeof literal === 'number') {
+      if (operator === '>=') fieldSchema.minimum = literal
+      else if (operator === '>') fieldSchema.exclusiveMinimum = literal
+      else if (operator === '<=') fieldSchema.maximum = literal
+      else if (operator === '<') fieldSchema.exclusiveMaximum = literal
+    } else {
+      untranslated.push(expression)
+    }
+  }
+  if (untranslated.length > 0) schema['x-scl-untranslated-constraints'] = untranslated
 }
 
 export function fieldToSchema(field: Field, modelNames: ReadonlySet<string>): JsonSchema {
@@ -98,7 +192,8 @@ export function fieldsToSchema(
   const required: string[] = []
   for (const [name, field] of Object.entries(fields)) {
     properties[name] = fieldToSchema(field, modelNames)
-    if (!field.optional) required.push(name)
+    const optionalType = typeof field.type === 'string' && /^Optional<.+>$/.test(field.type.trim())
+    if (!field.optional && !optionalType) required.push(name)
   }
   const schema: JsonSchema = { type: 'object', properties, additionalProperties: false }
   if (required.length > 0) schema.required = required
@@ -122,6 +217,7 @@ export function modelToSchema(model: Model, modelNames: ReadonlySet<string>): Js
       schema = fieldsToSchema(model.fields ?? {}, modelNames)
   }
   if (model.description) schema.description = model.description
+  if (model.constraints?.length) applyModelConstraints(schema, model.constraints)
   return schema
 }
 

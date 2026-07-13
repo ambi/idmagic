@@ -2,8 +2,15 @@
 import { loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
 
 const config = await loadWorkspaceConfig()
+const args = new Set(process.argv.slice(2))
+for (const arg of args) {
+  if (arg !== '--tools-only') {
+    throw new Error(`render-workspace: unknown option ${arg}`)
+  }
+}
+const toolsOnly = args.has('--tools-only')
 
-for (const app of config.apps) {
+for (const app of toolsOnly ? [] : config.apps) {
   const artifacts = app.artifacts ?? {}
   if (artifacts.html) {
     await runTool([

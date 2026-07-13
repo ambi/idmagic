@@ -20,14 +20,14 @@ import {
 } from './html.ts'
 import {
   type Binding,
+  type Authorization,
   type ContextMapEntry,
   type Field,
+  type Flow,
   type GlossaryEntry,
   type Interface,
-  type Invariant,
   type Model,
   type Objective,
-  type Permission,
   type Scenario,
   SECTION_KINDS,
   type SclBundle,
@@ -36,7 +36,6 @@ import {
   type SectionKind,
   type Standard,
   type StateMachine,
-  type UserExperience,
 } from './types.ts'
 
 // ─── cross-section references ──────────────────────────────────────
@@ -48,10 +47,10 @@ const referenceAnchor = (section: string, name: string): string | undefined => {
     events: 'model',
     interfaces: 'iface',
     states: 'state',
-    invariants: 'inv',
     scenarios: 'scn',
-    permissions: 'perm',
+    authorization: 'auth',
     objectives: 'obj',
+    flows: 'flow',
     standards: 'std',
     context_map: 'ctx',
   }
@@ -70,12 +69,10 @@ const prefixAnchors = (html: string, prefix: string): string => {
       'model',
       'iface',
       'state',
-      'inv',
       'scn',
-      'perm',
+      'auth',
       'obj',
-      'screen',
-      'ux',
+      'flow',
       'diagram',
     ].join('|')})-`,
   )
@@ -89,20 +86,16 @@ const prefixAnchors = (html: string, prefix: string): string => {
     )
 }
 
-const renderNamedReferences = (refs?: Record<string, string[]>): string => {
-  if (!refs) return ''
-  return Object.entries(refs)
-    .map(([section, names]) => {
-      const values = names
-        .map((name) => {
-          const href = referenceAnchor(section, name)
-          return href ? link(href, name, 'ref') : chip(name)
+const renderSemanticReferences = (refs?: string[]): string =>
+  refs?.length
+    ? `<div class="reference-row"><span class="reference-label">refs</span>${refs
+        .map((ref) => {
+          const [section, name] = ref.split('.', 2)
+          const href = section && name ? referenceAnchor(section, name) : undefined
+          return href ? link(href, ref, 'ref') : chip(ref)
         })
-        .join(' ')
-      return `<div class="reference-row"><span class="reference-label">${esc(section)}</span>${values}</div>`
-    })
-    .join('')
-}
+        .join(' ')}</div>`
+    : ''
 
 // ─── derived diagrams ──────────────────────────────────────────────
 
@@ -262,7 +255,7 @@ const ioTable = (io: Record<string, Field>, label: string): string => {
   </div>`
 }
 
-// ─── logical expression tree (invariants / permissions) ───────────
+// ─── CEL expression display ───────────────────────────────────────
 
 const renderExpression = (v: unknown): string => {
   if (typeof v === 'string') return `<code class="expr">${esc(v)}</code>`
@@ -327,7 +320,7 @@ const renderStandards = (standards: Record<string, Standard>): string => {
             </header>
             ${req.statement ? `<p>${esc(req.statement)}</p>` : ''}
             ${req.reason ? `<p class="exclusion-reason"><strong>reason:</strong> ${esc(req.reason)}</p>` : ''}
-            ${renderNamedReferences(req.relates_to)}
+            ${renderSemanticReferences(req.refs)}
           </article>`
         })
         .join('')
@@ -485,11 +478,15 @@ const renderModel = (name: string, m: Model): string => {
   } else {
     body = '<p class="muted">(no fields)</p>'
   }
+  const constraints = m.constraints?.length
+    ? `<div class="sub"><div class="label">Model constraints</div>${renderExpression(m.constraints)}</div>`
+    : ''
   return `<article class="card" id="model-${esc(slug(name))}">
     <header><h3>${esc(name)}</h3>${badge(kind.replace(/_/g, ' '), `kind-${kind}`)}</header>
     ${desc}
     ${metaRows.length ? `<dl class="kv">${metaRows.join('')}</dl>` : ''}
     ${body}
+    ${constraints}
   </article>`
 }
 
@@ -680,6 +677,14 @@ const renderInterface = (name: string, i: Interface): string => {
         .join('\n')
     : ''
   const blocks: string[] = []
+  const access =
+    typeof i.access === 'string'
+      ? badge(i.access, `access-${i.access}`)
+      : i.access
+        ? `${badge('protected', 'access-protected')} ${i.access.policies
+            .map((policy) => link(`#auth-${slug(policy)}`, policy, 'policy-ref'))
+            .join(' ')} <code>${esc(`${i.access.resource.type}:${i.access.resource.id}`)}</code>`
+        : ''
   if (i.input) blocks.push(ioTable(i.input, 'Input'))
   if (i.output) blocks.push(ioTable(i.output, 'Output'))
   if (i.errors?.length) {
@@ -694,6 +699,16 @@ const renderInterface = (name: string, i: Interface): string => {
       `<div class="io"><div class="label">Emits</div><div class="chip-row">${chips}</div></div>`,
     )
   }
+  if (i.requires?.length) {
+    blocks.push(
+      `<div class="clause"><div class="clause-label muted">requires</div>${renderExpression(i.requires)}</div>`,
+    )
+  }
+  if (i.ensures?.length) {
+    blocks.push(
+      `<div class="clause"><div class="clause-label ok">ensures</div>${renderExpression(i.ensures)}</div>`,
+    )
+  }
   if (i.bindings?.length) {
     const items = i.bindings.map((b) => renderBinding(b)).join('\n')
     blocks.push(
@@ -703,7 +718,7 @@ const renderInterface = (name: string, i: Interface): string => {
   const ann = renderAnnotations(i.annotations)
   if (ann) blocks.unshift(`<dl class="kv">${kvRow('annotations', ann)}</dl>`)
   return `<article class="card" id="iface-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3>${readOnly}${idempotent}</header>
+    <header><h3>${esc(name)}</h3>${access}${readOnly}${idempotent}</header>
     ${desc}
     ${stepTpl}
     ${blocks.join('\n')}
@@ -824,366 +839,203 @@ const renderStates = (sms: Record<string, StateMachine>): string => {
   )
 }
 
-// ─── section: invariants ───────────────────────────────────────────
+// ─── SCL 3.0 owned sections ───────────────────────────────────────
 
-const renderInvariant = (name: string, p: Invariant): string => {
-  const desc = p.description ? `<p class="desc">${esc(p.description.trim())}</p>` : ''
-  const ann = renderAnnotations(p.annotations)
-  const metaRows = [
-    p.target ? kvRow('target', `<code>${esc(p.target)}</code>`) : '',
-    ann ? kvRow('annotations', ann) : '',
-  ]
-    .filter(Boolean)
-    .join('')
-  const meta = metaRows ? `<dl class="kv">${metaRows}</dl>` : ''
-  const severity = p.severity ? badge(p.severity, `severity-${p.severity}`) : ''
-  const clauses: string[] = []
-  if (p.assuming !== undefined)
-    clauses.push(
-      `<div class="clause clause-assuming"><div class="clause-label muted">assuming (precondition)</div>${renderExpression(p.assuming)}</div>`,
-    )
-  if (p.always !== undefined)
-    clauses.push(
-      `<div class="clause clause-always"><div class="clause-label ok">always (invariant)</div>${renderExpression(p.always)}</div>`,
-    )
-  if (p.never !== undefined)
-    clauses.push(
-      `<div class="clause clause-never"><div class="clause-label danger">never (forbidden)</div>${renderExpression(p.never)}</div>`,
-    )
-  if (p.eventually !== undefined) {
-    const within = p.within
-      ? ` <span class="within">within <code>${esc(p.within)}</code></span>`
-      : ''
-    clauses.push(
-      `<div class="clause clause-eventually"><div class="clause-label accent">eventually (liveness)${within}</div>${renderExpression(p.eventually)}</div>`,
-    )
-  }
-  return `<article class="card" id="inv-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3>${severity}</header>
-    ${desc}
-    ${meta}
-    ${clauses.join('\n')}
-  </article>`
-}
-
-const renderInvariants = (props: Record<string, Invariant>): string => {
-  const cards = Object.entries(props)
-    .map(([n, p]) => renderInvariant(n, p))
-    .join('\n')
-  return wrapSection(
-    'invariants',
-    'Invariants',
-    '入力に依らず常に成り立つ不変条件、または決して起きてはならない事象。',
-    `<div class="cards">${cards}</div>`,
-    Object.keys(props).length,
-  )
-}
-
-// ─── section: scenarios ────────────────────────────────────────────
-
-const buildXref = (scl: SclDocument): Map<string, string> => {
+const buildXrefV3 = (scl: SclDocument): Map<string, string> => {
   const idx = new Map<string, string>()
   for (const n of Object.keys(scl.interfaces ?? {})) idx.set(n, `#iface-${slug(n)}`)
   for (const n of Object.keys(scl.models ?? {})) idx.set(n, `#model-${slug(n)}`)
+  for (const n of Object.keys(scl.states ?? {})) idx.set(n, `#state-${slug(n)}`)
+  for (const n of Object.keys(scl.authorization?.resources ?? {})) idx.set(n, `#auth-${slug(n)}`)
+  for (const n of Object.keys(scl.authorization?.principals ?? {})) idx.set(n, `#auth-${slug(n)}`)
+  for (const n of Object.keys(scl.authorization?.policies ?? {})) idx.set(n, `#auth-${slug(n)}`)
+  for (const n of Object.keys(scl.objectives ?? {})) idx.set(n, `#obj-${slug(n)}`)
+  for (const n of Object.keys(scl.flows ?? {})) idx.set(n, `#flow-${slug(n)}`)
   return idx
 }
 
-const renderStepText = (raw: string, xref: Map<string, string>): string =>
-  esc(raw).replace(/&quot;(.*?)&quot;/g, (_m, inner: string) => {
-    const href = xref.get(inner)
-    return href
-      ? `<a class="chip chip-ref" href="${esc(href)}">${inner}</a>`
-      : `<code class="step-arg">${inner}</code>`
-  })
-
-const renderWhere = (rows: Array<Record<string, unknown>>): string => {
-  const cols = Object.keys(rows[0] ?? {})
-  if (!cols.length) return ''
-  const head = cols.map((c) => `<th>${esc(c)}</th>`).join('')
-  const body = rows
-    .map((r) => `<tr>${cols.map((c) => `<td>${renderValue(r[c])}</td>`).join('')}</tr>`)
-    .join('')
-  return `<div class="sub">
-    <div class="label">Where</div>
-    <table class="fields"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
-  </div>`
-}
-
-const renderScenario = (name: string, s: Scenario, xref: Map<string, string>): string => {
-  const tags = s.tags?.length ? s.tags.map((t) => chip(t, 'tag')).join(' ') : ''
-  const desc = s.description ? `<p class="desc">${esc(s.description)}</p>` : ''
-  const ann = renderAnnotations(s.annotations)
-  const metaRows = [
-    s.goal ? kvRow('goal', esc(s.goal)) : '',
-    s.primary_actor ? kvRow('primary actor', chip(s.primary_actor)) : '',
-    s.scope ? kvRow('scope', chip(s.scope)) : '',
-    s.level ? kvRow('level', chip(s.level)) : '',
-  ]
-    .filter(Boolean)
-    .join('')
-  const listBlock = (label: string, items?: string[]) =>
-    items?.length
-      ? `<div class="sub"><div class="label">${esc(label)}</div><ul class="vlist">${items
-          .map((item) => `<li>${renderStepText(item, xref)}</li>`)
-          .join('')}</ul></div>`
-      : ''
-  const steps = (s.steps ?? [])
-    .map((st) => `<li class="scn-step">${renderStepText(String(st), xref)}</li>`)
-    .join('')
-  const mainSuccess = (s.main_success ?? [])
-    .map((st) => `<li class="scn-step">${renderStepText(String(st), xref)}</li>`)
-    .join('')
-  const extensions = (s.extensions ?? [])
-    .map(
-      (ext) => `<article class="requirement">
-        <header>${ext.at !== undefined ? chip(`at ${ext.at}`, 'hint') : ''}<code class="name">${esc(ext.condition ?? '')}</code></header>
-        <ol class="scn-steps">${(ext.steps ?? [])
-          .map((st) => `<li class="scn-step">${renderStepText(String(st), xref)}</li>`)
-          .join('')}</ol>
-      </article>`,
-    )
-    .join('')
-  const where = s.where?.length ? renderWhere(s.where) : ''
-  return `<article class="card scenario" id="scn-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3>${tags}</header>
-    ${desc}
-    ${metaRows ? `<dl class="kv">${metaRows}</dl>` : ''}
-    ${ann ? `<dl class="kv">${kvRow('annotations', ann)}</dl>` : ''}
-    ${listBlock('Preconditions', s.preconditions)}
-    ${listBlock('Success guarantees', s.success_guarantees)}
-    ${mainSuccess ? `<div class="sub"><div class="label">Main success</div><ol class="scn-steps">${mainSuccess}</ol></div>` : ''}
-    ${steps ? `<div class="sub"><div class="label">Steps</div><ol class="scn-steps">${steps}</ol></div>` : ''}
-    ${extensions ? `<div class="sub"><div class="label">Extensions</div><div class="requirements">${extensions}</div></div>` : ''}
-    ${where}
-  </article>`
-}
-
-const renderScenarios = (scns: Record<string, Scenario>, xref: Map<string, string>): string => {
-  const cards = Object.entries(scns)
-    .map(([n, s]) => renderScenario(n, s, xref))
-    .join('\n')
-  return wrapSection(
-    'scenarios',
-    'Scenarios',
-    '受け入れ例。自然文ステップで書かれた振る舞いの具体例。引用された既知の名前は定義へリンクする。',
-    `<div class="cards">${cards}</div>`,
-    Object.keys(scns).length,
+const renderSemanticText = (raw: string, xref: Map<string, string>): string => {
+  const names = [...xref.keys()].sort((a, b) => b.length - a.length)
+  if (!names.length) return esc(raw)
+  const pattern = new RegExp(
+    `(${names.map((name) => name.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')).join('|')})`,
+    'g',
   )
-}
-
-// ─── section: permissions ──────────────────────────────────────────
-
-const renderPermission = (name: string, p: Permission): string => {
-  const desc = p.description ? `<p class="desc">${esc(p.description)}</p>` : ''
-  const triple = (
-    [
-      ['actor', p.actor],
-      ['operation', p.operation],
-      ['resource', p.resource],
-    ] as const
-  )
-    .map(([k, v]) =>
-      kvRow(k, v ? `<code class="name">${esc(v)}</code>` : '<span class="muted">—</span>'),
-    )
-    .join('')
-  const clauses: string[] = []
-  if (p.protects?.length) {
-    clauses.push(
-      `<div class="reference-row"><span class="reference-label">protects</span>${p.protects
-        .map((target) => {
-          const [section, name] = target.split('.', 2)
-          const href = section && name ? referenceAnchor(section, name) : undefined
-          return href ? link(href, target, 'ref') : chip(target)
-        })
-        .join(' ')}</div>`,
-    )
-  }
-  if (p.allow_when !== undefined)
-    clauses.push(
-      `<div class="clause"><div class="clause-label ok">allow when</div>${renderExpression(p.allow_when)}</div>`,
-    )
-  if (p.deny_when !== undefined)
-    clauses.push(
-      `<div class="clause"><div class="clause-label danger">deny when</div>${renderExpression(p.deny_when)}</div>`,
-    )
-  const ann = renderAnnotations(p.annotations)
-  const metaRows = [triple, ann ? kvRow('annotations', ann) : ''].filter(Boolean).join('')
-  return `<article class="card" id="perm-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3></header>
-    ${desc}
-    <dl class="kv">${metaRows}</dl>
-    ${clauses.join('\n')}
-  </article>`
-}
-
-const renderPermissions = (perms: Record<string, Permission>): string => {
-  const cards = Object.entries(perms)
-    .map(([n, p]) => renderPermission(n, p))
-    .join('\n')
-  return wrapSection(
-    'permissions',
-    'Permissions',
-    '誰が、何に対して、どんな条件で何ができるかを宣言する認可ルール。',
-    `<div class="cards">${cards}</div>`,
-    Object.keys(perms).length,
-  )
-}
-
-// ─── section: objectives ───────────────────────────────────────────
-
-const OBJ_KIND_ORDER = ['slo', 'lifetime', 'security', 'retention']
-
-const renderObjective = (name: string, o: Objective): string => {
-  const kind = o.kind ?? 'unknown'
-  const desc = o.description ? `<p class="desc">${esc(o.description)}</p>` : ''
-  const rows = Object.entries(o)
-    .filter(([k]) => k !== 'kind' && k !== 'description')
-    .map(([k, v]) =>
-      kvRow(k.replace(/_/g, ' '), k === 'annotations' ? renderAnnotations(v) : renderValue(v)),
-    )
-    .join('')
-  return `<article class="card" id="obj-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3>${badge(kind, `kind-${kind}`)}</header>
-    ${desc}
-    ${rows ? `<dl class="kv">${rows}</dl>` : ''}
-  </article>`
-}
-
-const renderObjectives = (objs: Record<string, Objective>): string => {
-  const grouped = new Map<string, Array<[string, Objective]>>()
-  for (const [n, o] of Object.entries(objs)) {
-    const k = o.kind ?? 'unknown'
-    const bucket = grouped.get(k) ?? []
-    bucket.push([n, o])
-    grouped.set(k, bucket)
-  }
-  const ordered = [
-    ...OBJ_KIND_ORDER.filter((k) => grouped.has(k)),
-    ...[...grouped.keys()].filter((k) => !OBJ_KIND_ORDER.includes(k)),
-  ]
-  const groups = ordered
-    .map((kind) => {
-      const entries = grouped.get(kind) ?? []
-      const items = entries.map(([n, o]) => renderObjective(n, o)).join('\n')
-      return `<div class="group">
-      <h3 class="grp-title">${esc(kind)} <span class="count">${entries.length}</span></h3>
-      <div class="cards">${items}</div>
-    </div>`
+  return raw
+    .split(pattern)
+    .map((part) => {
+      const href = xref.get(part)
+      return href ? link(href, part, 'ref') : esc(part)
     })
-    .join('\n')
-  return wrapSection('objectives', 'Objectives', '', groups, Object.keys(objs).length)
+    .join('')
 }
 
-// ─── section: user_experience ──────────────────────────────────────
-
-const renderUserExperience = (ux: UserExperience): string => {
-  const screenNodes = Object.keys(ux.screens ?? {}).map((name) => ({
-    id: name,
-    label: name,
-    href: `#screen-${slug(name)}`,
-    kind: 'screen',
-  }))
-  const externalNodes = (ux.transitions ?? []).some(
-    (transition) => transition.external && !transition.to,
-  )
-    ? [{ id: '__external__', label: 'External', kind: 'external' }]
-    : []
-  const uxDiagram = renderDiagram(
-    'ux-transitions',
-    'Screen transitions',
-    'Screen node と transition edge は user_experience.screens / transitions から派生する。',
-    [...screenNodes, ...externalNodes],
-    (ux.transitions ?? [])
-      .filter((transition) => transition.from && (transition.to || transition.external))
-      .map((transition) => ({
-        from: String(transition.from),
-        to: transition.to ? String(transition.to) : '__external__',
-        label: String(transition.trigger ?? transition.interface ?? ''),
-        href: transition.to ? `#screen-${slug(transition.to)}` : undefined,
-      })),
-  )
-  const screens = Object.entries(ux.screens ?? {})
-    .map(
-      ([name, screen]) => `<article class="card" id="screen-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${screen.route ? chip(screen.route, 'hint') : ''}</header>
-        ${screen.purpose ? `<p class="desc">${esc(screen.purpose)}</p>` : ''}
-        ${
-          screen.interfaces?.length
-            ? `<div class="reference-row"><span class="reference-label">interfaces</span>${screen.interfaces
-                .map((item) => link(`#iface-${slug(item)}`, item, 'iface-ref'))
-                .join(' ')}</div>`
-            : ''
-        }
-        ${screen.states?.length ? `<div class="chip-row">${screen.states.map((state) => chip(state)).join(' ')}</div>` : ''}
-      </article>`,
-    )
-    .join('')
-
-  const transitions = (ux.transitions ?? [])
-    .map(
-      (t) => `<tr>
-        <td>${t.from ? link(`#screen-${slug(t.from)}`, t.from) : '<span class="muted">system</span>'}</td>
-        <td><code>${esc(t.trigger)}</code></td>
-        <td>${
-          t.to
-            ? link(`#screen-${slug(t.to)}`, t.to)
-            : t.external
-              ? badge('external', 'optional')
-              : ''
-        }</td>
-        <td>${t.interface ? link(`#iface-${slug(t.interface)}`, t.interface, 'iface-ref') : ''}</td>
-      </tr>`,
-    )
-    .join('')
-
-  const requirements = (ux.requirements ?? [])
-    .map((req) => {
-      const refs: Record<string, string[]> = {}
-      if (req.interfaces) refs.interfaces = req.interfaces
-      if (req.standards) refs.standards = req.standards
-      if (req.scenarios) refs.scenarios = req.scenarios
-      if (req.invariants) refs.invariants = req.invariants
-      return `<article class="requirement" id="ux-${esc(slug(req.id ?? ''))}">
-        <header>
-          <code class="name">${esc(req.id)}</code>
-          ${badge(req.adoption ?? 'required', `adoption-${req.adoption ?? 'required'}`)}
-          ${req.category ? badge(req.category, 'category') : ''}
-        </header>
-        ${req.statement ? `<p>${esc(req.statement)}</p>` : ''}
-        ${
-          req.screens?.length
-            ? `<div class="reference-row"><span class="reference-label">screens</span>${req.screens
-                .map((screen) => link(`#screen-${slug(screen)}`, screen))
-                .join(' ')}</div>`
-            : ''
-        }
-        ${renderNamedReferences(refs)}
+const renderScenariosV3 = (
+  scenarios: Record<string, Scenario>,
+  xref: Map<string, string>,
+): string => {
+  const cards = Object.entries(scenarios)
+    .map(([name, scenario]) => {
+      const list = (label: string, items?: string[]) =>
+        items?.length
+          ? `<div class="sub"><div class="label">${esc(label)}</div><ol class="scn-steps">${items
+              .map((item) => `<li class="scn-step">${renderSemanticText(item, xref)}</li>`)
+              .join('')}</ol></div>`
+          : ''
+      const extensions = (scenario.extensions ?? [])
+        .map(
+          (extension) => `<article class="requirement">
+            <header>${chip(`at ${extension.at ?? ''}`, 'hint')}<code class="name">${esc(extension.condition ?? '')}</code></header>
+            ${list('Steps', extension.steps)}
+          </article>`,
+        )
+        .join('')
+      return `<article class="card scenario" id="scn-${esc(slug(name))}">
+        <header><h3>${esc(name)}</h3>${chip(scenario.actor, 'actor')}</header>
+        ${scenario.description ? `<p class="desc">${esc(scenario.description)}</p>` : ''}
+        ${list('Given', scenario.given)}
+        ${list('Main success', scenario.main_success)}
+        ${extensions ? `<div class="sub"><div class="label">Extensions</div>${extensions}</div>` : ''}
       </article>`
     })
     .join('')
-
-  const metadata = `<dl class="kv">
-    ${
-      ux.accessibility
-        ? kvRow(
-            'accessibility',
-            `${link(`#std-${slug(ux.accessibility.standard ?? '')}`, ux.accessibility.standard)} ${badge(ux.accessibility.level)}`,
-          )
-        : ''
-    }
-    ${ux.locales?.length ? kvRow('locales', ux.locales.map((locale) => chip(locale)).join(' ')) : ''}
-  </dl>`
-
   return wrapSection(
-    'user_experience',
-    'User Experience',
-    'ブラウザ画面、画面遷移、セキュリティ・プライバシー・アクセシビリティ要件。',
-    `${metadata}
-    ${uxDiagram}
-    <div class="group"><h3 class="grp-title">Screens <span class="count">${Object.keys(ux.screens ?? {}).length}</span></h3><div class="cards">${screens}</div></div>
-    <div class="group"><h3 class="grp-title">Transitions <span class="count">${ux.transitions?.length ?? 0}</span></h3><table class="fields"><thead><tr><th>From</th><th>Trigger</th><th>To</th><th>Interface</th></tr></thead><tbody>${transitions}</tbody></table></div>
-    <div class="group"><h3 class="grp-title">Requirements <span class="count">${ux.requirements?.length ?? 0}</span></h3><div class="requirements">${requirements}</div></div>`,
-    Object.keys(ux.screens ?? {}).length,
+    'scenarios',
+    'Scenarios',
+    '主成功経路と extension で表す black-box の受け入れ例。',
+    `<div class="cards">${cards}</div>`,
+    Object.keys(scenarios).length,
+  )
+}
+
+const renderAuthorization = (authorization: Authorization): string => {
+  const resources = Object.entries(authorization.resources ?? {})
+    .map(
+      ([name, resource]) => `<article class="card" id="auth-${esc(slug(name))}">
+        <header><h3>${esc(name)}</h3>${badge('resource', 'kind-resource')}</header>
+        ${resource.description ? `<p class="desc">${esc(resource.description)}</p>` : ''}
+      </article>`,
+    )
+    .join('')
+  const principals = Object.entries(authorization.principals ?? {})
+    .map(
+      ([name, principal]) => `<article class="card" id="auth-${esc(slug(name))}">
+        <header><h3>${esc(name)}</h3>${badge('principal', 'kind-principal')}</header>
+        ${principal.description ? `<p class="desc">${esc(principal.description)}</p>` : ''}
+        <dl class="kv">${kvRow('type', link(`#model-${slug(principal.type)}`, principal.type, 'model-ref'))}</dl>
+        <div class="clause"><div class="clause-label muted">matches</div>${renderExpression(principal.matches)}</div>
+      </article>`,
+    )
+    .join('')
+  const policies = Object.entries(authorization.policies ?? {})
+    .map(
+      ([name, policy]) => `<article class="card" id="auth-${esc(slug(name))}">
+        <header><h3>${esc(name)}</h3>${badge(policy.effect, `effect-${policy.effect}`)}</header>
+        ${policy.description ? `<p class="desc">${esc(policy.description)}</p>` : ''}
+        <dl class="kv">${kvRow('principal', link(`#auth-${slug(policy.principal)}`, policy.principal, 'principal-ref'))}</dl>
+        ${policy.when ? `<div class="clause"><div class="clause-label muted">when</div>${renderExpression(policy.when)}</div>` : ''}
+      </article>`,
+    )
+    .join('')
+  const count =
+    Object.keys(authorization.resources ?? {}).length +
+    Object.keys(authorization.principals ?? {}).length +
+    Object.keys(authorization.policies ?? {}).length
+  return wrapSection(
+    'authorization',
+    'Authorization',
+    'resource、principal、permit/forbid policy。',
+    `<div class="group"><h3 class="grp-title">Resources</h3><div class="cards">${resources}</div></div>
+     <div class="group"><h3 class="grp-title">Principals</h3><div class="cards">${principals}</div></div>
+     <div class="group"><h3 class="grp-title">Policies</h3><div class="cards">${policies}</div></div>`,
+    count,
+  )
+}
+
+const renderObjectivesV3 = (objectives: Record<string, Objective>): string => {
+  const cards = Object.entries(objectives)
+    .map(
+      ([name, objective]) => `<article class="card" id="obj-${esc(slug(name))}">
+        <header><h3>${esc(name)}</h3>${badge('SLO', 'kind-slo')}</header>
+        ${objective.description ? `<p class="desc">${esc(objective.description)}</p>` : ''}
+        <dl class="kv">
+          ${objective.interface ? kvRow('interface', link(`#iface-${slug(objective.interface)}`, objective.interface, 'iface-ref')) : ''}
+          ${kvRow('indicator', `<code class="expr">${esc(objective.indicator)}</code>`)}
+          ${kvRow('target', `<code>${esc(objective.target)}</code>`)}
+          ${kvRow('window', `<code>${esc(objective.window)}</code>`)}
+          ${kvRow('budgeting', badge(objective.budgeting ?? 'occurrences'))}
+          ${objective.slice ? kvRow('slice', `<code>${esc(objective.slice)}</code>`) : ''}
+        </dl>
+      </article>`,
+    )
+    .join('')
+  return wrapSection(
+    'objectives',
+    'Objectives',
+    '観測可能な indicator、target、window を持つ SLO。',
+    `<div class="cards">${cards}</div>`,
+    Object.keys(objectives).length,
+  )
+}
+
+const renderFlows = (flows: Record<string, Flow>): string => {
+  const diagrams = Object.entries(flows)
+    .map(([name, flow]) => {
+      const views = new Set<string>([flow.entry])
+      for (const transition of flow.transitions) {
+        views.add(transition.from)
+        if (transition.to) views.add(transition.to)
+      }
+      const nodes = [...views].map((view) => ({
+        id: view,
+        label: view,
+        href: `#flow-${slug(name)}`,
+        kind: view === flow.entry ? 'initial' : 'view',
+      }))
+      if (flow.transitions.some((transition) => transition.external)) {
+        nodes.push({
+          id: '__external__',
+          label: 'External',
+          href: `#flow-${slug(name)}`,
+          kind: 'external',
+        })
+      }
+      const edges = flow.transitions.map((transition) => ({
+        from: transition.from,
+        to: transition.external ? '__external__' : (transition.to ?? transition.from),
+        label: transition.action,
+        href: transition.interface ? `#iface-${slug(transition.interface)}` : `#flow-${slug(name)}`,
+      }))
+      return renderDiagram(
+        `flow-${slug(name)}`,
+        `${name} navigation`,
+        'View node と transition edge は flows から派生する。',
+        nodes,
+        edges,
+      )
+    })
+    .join('')
+  const cards = Object.entries(flows)
+    .map(
+      ([name, flow]) => `<article class="card" id="flow-${esc(slug(name))}">
+        <header><h3>${esc(name)}</h3>${chip(`entry: ${flow.entry}`, 'initial')}</header>
+        ${flow.description ? `<p class="desc">${esc(flow.description)}</p>` : ''}
+        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
+        <tbody>${flow.transitions
+          .map(
+            (transition) =>
+              `<tr><td>${esc(transition.from)}</td><td><code>${esc(transition.action)}</code></td><td>${esc(transition.external ? 'external' : (transition.to ?? 'end'))}</td><td>${transition.interface ? link(`#iface-${slug(transition.interface)}`, transition.interface, 'iface-ref') : ''}</td></tr>`,
+          )
+          .join('')}</tbody></table>
+      </article>`,
+    )
+    .join('')
+  return wrapSection(
+    'flows',
+    'Flows',
+    'view navigation と interface invocation。',
+    `${diagrams}<div class="cards">${cards}</div>`,
+    Object.keys(flows).length,
   )
 }
 
@@ -1209,11 +1061,10 @@ export const SECTION_TITLES: Record<SectionKind, string> = {
   models: 'Models',
   interfaces: 'Interfaces',
   states: 'States',
-  invariants: 'Invariants',
-  scenarios: 'Scenarios',
-  permissions: 'Permissions',
+  authorization: 'Authorization',
   objectives: 'Objectives',
-  user_experience: 'User Experience',
+  scenarios: 'Scenarios',
+  flows: 'Flows',
 }
 
 const renderOneSection = (k: SectionKind, scl: SclDocument): string => {
@@ -1230,16 +1081,14 @@ const renderOneSection = (k: SectionKind, scl: SclDocument): string => {
       return scl.interfaces ? renderInterfaces(scl.interfaces) : ''
     case 'states':
       return scl.states ? renderStates(scl.states) : ''
-    case 'invariants':
-      return scl.invariants ? renderInvariants(scl.invariants) : ''
-    case 'scenarios':
-      return scl.scenarios ? renderScenarios(scl.scenarios, buildXref(scl)) : ''
-    case 'permissions':
-      return scl.permissions ? renderPermissions(scl.permissions) : ''
+    case 'authorization':
+      return scl.authorization ? renderAuthorization(scl.authorization) : ''
     case 'objectives':
-      return scl.objectives ? renderObjectives(scl.objectives) : ''
-    case 'user_experience':
-      return scl.user_experience ? renderUserExperience(scl.user_experience) : ''
+      return scl.objectives ? renderObjectivesV3(scl.objectives) : ''
+    case 'scenarios':
+      return scl.scenarios ? renderScenariosV3(scl.scenarios, buildXrefV3(scl)) : ''
+    case 'flows':
+      return scl.flows ? renderFlows(scl.flows) : ''
   }
 }
 
@@ -1257,10 +1106,7 @@ const renderSingleSclTab = (scl: SclDocument): string => {
   const stats = sclSectionsPresent(scl)
     .map((k) => {
       const section = scl[k]
-      const n =
-        k === 'user_experience'
-          ? Object.keys(scl.user_experience?.screens ?? {}).length
-          : Object.keys(section as Record<string, unknown>).length
+      const n = Object.keys(section as Record<string, unknown>).length
       return `<a class="stat" href="#${k}"><span class="stat-num">${n}</span><span class="stat-label">${esc(SECTION_TITLES[k].toLowerCase())}</span></a>`
     })
     .join('')
@@ -1286,10 +1132,7 @@ const renderContextDocument = (ctx: SclContextDocument): string => {
     .filter((k) => k !== 'context_map')
     .map((k) => {
       const section = ctx.document[k]
-      const n =
-        k === 'user_experience'
-          ? Object.keys(ctx.document.user_experience?.screens ?? {}).length
-          : Object.keys(section as Record<string, unknown>).length
+      const n = Object.keys(section as Record<string, unknown>).length
       return `<a class="stat" href="#${esc(`${prefix}-${k}`)}"><span class="stat-num">${n}</span><span class="stat-label">${esc(SECTION_TITLES[k].toLowerCase())}</span></a>`
     })
     .join('')

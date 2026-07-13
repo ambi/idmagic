@@ -27,6 +27,7 @@ import {
   modelToSchema,
   rewriteRefs,
 } from '../../scl-to-jsonschema/src/generate.ts'
+import { buildAuthorizationMetadata } from './authorization.ts'
 
 const DEFS = '#/$defs/'
 const COMPONENTS = '#/components/schemas/'
@@ -74,6 +75,25 @@ function buildOperation(
   const operation: JsonSchema = { operationId: name }
   const summary = firstLine(iface.description)
   if (summary) operation.summary = summary
+  if (iface.requires?.length) operation['x-scl-requires'] = [...iface.requires]
+  if (iface.ensures?.length) operation['x-scl-ensures'] = [...iface.ensures]
+  const contractDescription = [
+    iface.requires?.length ? `Requires: ${iface.requires.join('; ')}` : '',
+    iface.ensures?.length ? `Ensures: ${iface.ensures.join('; ')}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+  if (contractDescription) operation.description = contractDescription
+
+  if (iface.access === 'public') {
+    operation.security = []
+  } else if (iface.access && typeof iface.access === 'object') {
+    operation.security = [{ SclBearer: [] }]
+    operation['x-scl-access'] = {
+      policies: [...iface.access.policies].sort(),
+      resource: { ...iface.access.resource },
+    }
+  }
 
   const parameters: JsonSchema[] = []
   for (const p of pathParams(path)) {
@@ -142,6 +162,7 @@ export function generateOpenApi(bundle: SclBundle | SclDocument): JsonSchema {
 
   const paths: Record<string, Record<string, JsonSchema>> = {}
   for (const [name, iface] of Object.entries(collectInterfaces(bundle))) {
+    if (iface.access === 'internal') continue
     for (const binding of iface.bindings ?? []) {
       if (binding.kind !== 'http' || !binding.path) continue
       const path = String(binding.path)
@@ -155,11 +176,19 @@ export function generateOpenApi(bundle: SclBundle | SclDocument): JsonSchema {
     }
   }
 
+  const authorization = buildAuthorizationMetadata(bundle)
+  const components: JsonSchema = { schemas }
+  if (authorization.groups.length > 0) {
+    components.securitySchemes = {
+      SclBearer: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+    }
+  }
   const doc: JsonSchema = {
     openapi: '3.1.0',
     info: { title: `${root.system} API`, version: root.spec_version },
     paths,
-    components: { schemas },
+    components,
+    'x-scl-authorization': authorization,
   }
   // Schemas were built with the model generator's `#/$defs/` base; relocate
   // them under the OpenAPI components namespace.

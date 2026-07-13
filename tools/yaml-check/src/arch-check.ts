@@ -25,10 +25,10 @@ const SCL_ELEMENT_SECTIONS = [
   'interfaces',
   'models',
   'states',
-  'invariants',
+  'authorization',
   'scenarios',
-  'permissions',
   'objectives',
+  'flows',
   'glossary',
 ] as const
 
@@ -82,6 +82,16 @@ export function collectSclElements(sclDoc: unknown): string[] {
   for (const section of SCL_ELEMENT_SECTIONS) {
     const members = doc[section]
     if (members && typeof members === 'object' && !Array.isArray(members)) {
+      if (section === 'authorization') {
+        for (const group of Object.values(members as Record<string, unknown>)) {
+          if (group && typeof group === 'object' && !Array.isArray(group)) {
+            for (const name of Object.keys(group as Record<string, unknown>)) {
+              refs.push(`authorization.${name}`)
+            }
+          }
+        }
+        continue
+      }
       for (const name of Object.keys(members as Record<string, unknown>)) {
         refs.push(`${section}.${name}`)
       }
