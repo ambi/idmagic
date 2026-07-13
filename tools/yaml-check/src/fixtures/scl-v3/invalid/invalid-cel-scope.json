@@ -1,0 +1,10 @@
+{
+  "system": "demo",
+  "spec_version": "3.0",
+  "interfaces": {
+    "Read": {
+      "access": "public",
+      "requires": ["output.value != ''"]
+    }
+  }
+}

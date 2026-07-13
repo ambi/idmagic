@@ -1,7 +1,7 @@
 /**
  * Semantic verification for the SCL `context_map` section.
  *
- * The JSON Schema (`schemas/scl.schema.json`) only checks the *shape* of
+ * The versioned JSON Schemas (`schemas/scl-v*.schema.json`) only check the *shape* of
  * context_map entries (the `via` enum, that `uses` is an array, etc.). It
  * cannot check meaning across entries. This module adds the cross-entry
  * checks that catch real bounded-context modelling mistakes:

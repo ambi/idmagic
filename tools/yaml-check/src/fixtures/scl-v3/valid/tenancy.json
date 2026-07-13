@@ -1,0 +1,98 @@
+{
+  "system": "IdMagic",
+  "spec_version": "3.0",
+  "context": "Tenancy",
+  "standards": {
+    "RFC7636": {
+      "title": "Proof Key for Code Exchange",
+      "url": "https://www.rfc-editor.org/rfc/rfc7636.html",
+      "requirements": [
+        {
+          "id": "RFC7636-S256",
+          "strength": "MUST",
+          "adoption": "required",
+          "statement": "S256 is required.",
+          "refs": ["interfaces.UpdateTenant"]
+        }
+      ]
+    }
+  },
+  "models": {
+    "User": {
+      "kind": "entity",
+      "identity": "id",
+      "fields": {
+        "id": { "type": "UUID" },
+        "status": { "type": "String" }
+      }
+    },
+    "Tenant": {
+      "kind": "entity",
+      "identity": "id",
+      "fields": {
+        "id": { "type": "UUID" },
+        "name": { "type": "String", "constraints": ["non_empty"] }
+      },
+      "constraints": ["name != id"]
+    },
+    "TenantUpdated": { "kind": "event", "payload": { "tenant_id": { "type": "UUID" } } },
+    "InvalidTenant": { "kind": "error", "fields": { "reason": { "type": "String" } } }
+  },
+  "interfaces": {
+    "UpdateTenant": {
+      "input": { "tenant_id": { "type": "UUID" }, "name": { "type": "String" } },
+      "output": { "tenant": { "type": "Tenant" } },
+      "errors": ["InvalidTenant"],
+      "emits": ["TenantUpdated"],
+      "requires": ["context.authenticated", "input.name != ''"],
+      "ensures": ["output.tenant.id == input.tenant_id", "emitted.size() == 1"],
+      "access": {
+        "policies": ["TenantAdministrator"],
+        "resource": { "type": "Tenant", "id": "input.tenant_id" }
+      }
+    }
+  },
+  "authorization": {
+    "principals": {
+      "TenantAdministrator": {
+        "type": "User",
+        "matches": ["context.authenticated", "principal.status == 'Active'"]
+      }
+    },
+    "policies": {
+      "TenantAdministrator": {
+        "effect": "permit",
+        "principal": "TenantAdministrator",
+        "when": "resource.id == context.tenant_id"
+      }
+    }
+  },
+  "objectives": {
+    "UpdateLatency": {
+      "interface": "UpdateTenant",
+      "indicator": "measurement.latency_ms < 500",
+      "target": 0.99,
+      "window": "30d",
+      "budgeting": "occurrences"
+    }
+  },
+  "scenarios": {
+    "管理者はテナントを更新できる": {
+      "actor": "TenantAdministrator",
+      "given": ["テナントが存在する"],
+      "main_success": ["UpdateTenant を実行する", "TenantUpdated が発行される"],
+      "extensions": [
+        { "at": 1, "condition": "テナントが存在しない", "steps": ["InvalidTenant が返る"] }
+      ]
+    }
+  },
+  "flows": {
+    "TenantManagement": {
+      "entry": "TenantList",
+      "transitions": [
+        { "from": "TenantList", "action": "edit", "to": "TenantEdit" },
+        { "from": "TenantEdit", "action": "submit", "interface": "UpdateTenant", "to": "TenantList" }
+      ]
+    }
+  }
+}

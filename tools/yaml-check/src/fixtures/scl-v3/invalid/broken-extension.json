@@ -1,0 +1,12 @@
+{
+  "system": "demo",
+  "spec_version": "3.0",
+  "glossary": { "User": { "definition": "利用者" } },
+  "scenarios": {
+    "Broken": {
+      "actor": "User",
+      "main_success": ["成功する"],
+      "extensions": [{ "at": 2, "condition": "失敗する", "steps": ["拒否される"] }]
+    }
+  }
+}

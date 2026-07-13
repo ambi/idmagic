@@ -1,5 +1,5 @@
 ---
-status: suggested
+status: accepted
 authors: [tn]
 created_at: 2026-07-14
 ---
@@ -122,12 +122,16 @@ CEL の binding は位置で決める。
 
 ### 3. 認可を principal、policy、interface access に分ける
 
-トップレベルの `permissions` を `authorization` に置き換える。配下には再利用可能な主体集合
-`principals` と認可規則 `policies` を置く。`permission` は許可された能力または判定結果を指し、
+トップレベルの `permissions` を `authorization` に置き換える。配下には明示的な singleton resource
+`resources`、再利用可能な主体集合 `principals`、認可規則 `policies` を置く。`permission` は許可された能力または判定結果を指し、
 permit/forbid と条件を含む宣言は policy であるため、規則名には `policies` を用いる。
 
 ```yaml
 authorization:
+  resources:
+    System:
+      description: システム全体を表す singleton resource
+
   principals:
     TenantAdministrator:
       type: User
@@ -155,6 +159,7 @@ authorization:
       principal: SystemAdministrator
 ```
 
+`resources.<name>` は domain model では表さない singleton authorization resource type を明示する。
 `principals.<name>` は `type` と非空の `matches` を持つ。これは Cedar entity group の保存形式ではなく、
 principal scope と condition へ展開する SCL の authoring abstraction である。role、認証状態、主体の
 lifecycle、request context に依存する共通条件を一度だけ宣言する。
@@ -386,8 +391,8 @@ model/configuration contract へ移す。
 
 ## 影響
 
-- 本 ADR は `suggested` の設計記録であり、この時点では `SPECIFICATION_CORE_LANGUAGE.md`、
-  `spec/scl.yaml`、`spec/contexts/*.yaml`、runtime、外部 API を変更しない。
+- 本 ADR の採用時点では `spec/scl.yaml`、`spec/contexts/*.yaml`、runtime、外部 API を変更せず、
+  後続 work item で段階的に移行する。
 - 採用後は別 work item で `SPECIFICATION_CORE_LANGUAGE.md` を SCL 3.0 に改訂し、JSON Schema、
   yaml validator、HTML renderer、OpenAPI/JSON Schema generator、型、fixture、全 context を一括移行する。
 - SCL 変更後は HTML、model JSON Schema、OpenAPI 等の派生物を再生成する。

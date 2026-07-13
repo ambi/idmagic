@@ -1,0 +1,13 @@
+{
+  "system": "demo",
+  "spec_version": "3.0",
+  "flows": {
+    "Broken": {
+      "entry": "Start",
+      "transitions": [
+        { "from": "Start", "action": "finish", "external": true },
+        { "from": "Unreachable", "action": "save", "interface": "Missing" }
+      ]
+    }
+  }
+}

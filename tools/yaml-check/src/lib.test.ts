@@ -288,12 +288,12 @@ describe('validateAgainstSchema — work-item', () => {
 })
 
 describe('validateAgainstSchema — scl', () => {
-  it('accepts a minimal SCL document', () => {
-    expect(validateAgainstSchema('scl', { system: 'demo', spec_version: '1.0' }, '')).toEqual([])
+  it('accepts a minimal frozen SCL 2.0 document', () => {
+    expect(validateAgainstSchema('scl', { system: 'demo', spec_version: '2.0' }, '')).toEqual([])
   })
 
   it('rejects a missing system field', () => {
-    const f = validateAgainstSchema('scl', { spec_version: '1.0' }, '')
+    const f = validateAgainstSchema('scl', { spec_version: '2.0' }, '')
     expect(f.some((x) => x.message.includes('system'))).toBe(true)
   })
 
@@ -302,7 +302,7 @@ describe('validateAgainstSchema — scl', () => {
       'scl',
       {
         system: 'demo',
-        spec_version: '1.0',
+        spec_version: '2.0',
         models: { Foo: { kind: 'entity' } },
       },
       '',
@@ -316,7 +316,7 @@ describe('validateAgainstSchema — scl', () => {
       'scl',
       {
         system: 'demo',
-        spec_version: '1.0',
+        spec_version: '2.0',
         models: {
           Foo: { kind: 'entity', identity: ['a', 'b'], fields: { a: { type: 'String' } } },
         },
@@ -343,7 +343,7 @@ describe('validateAgainstSchema — scl', () => {
   it('requires invariants to declare always / never / eventually', () => {
     const f = validateAgainstSchema(
       'scl',
-      { system: 'demo', spec_version: '1.0', invariants: { I: { description: 'x' } } },
+      { system: 'demo', spec_version: '2.0', invariants: { I: { description: 'x' } } },
       '',
     )
     expect(f.length).toBeGreaterThan(0)
@@ -354,13 +354,18 @@ describe('validateAgainstSchema — scl', () => {
       'scl',
       {
         system: 'demo',
-        spec_version: '1.0',
+        spec_version: '2.0',
         interfaces: { Op: { bindings: [{ kind: 'http' }] } },
       },
       '',
     )
     expect(f.some((x) => x.message.includes('method'))).toBe(true)
     expect(f.some((x) => x.message.includes('path'))).toBe(true)
+  })
+
+  it('rejects unknown SCL versions before schema selection', () => {
+    const f = validateAgainstSchema('scl', { system: 'demo', spec_version: '4.0' }, '')
+    expect(f.some((x) => x.message.includes('unsupported SCL version'))).toBe(true)
   })
 })
 

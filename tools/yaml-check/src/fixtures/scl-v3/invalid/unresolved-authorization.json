@@ -1,0 +1,17 @@
+{
+  "system": "demo",
+  "spec_version": "3.0",
+  "interfaces": {
+    "Change": {
+      "access": {
+        "policies": ["MissingPolicy"],
+        "resource": { "type": "MissingResource", "id": "context.id" }
+      }
+    }
+  },
+  "authorization": {
+    "policies": {
+      "Broken": { "effect": "permit", "principal": "MissingPrincipal" }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-14
@@ -42,14 +42,14 @@ depends_on: []
 
 ## Tasks
 
-- [ ] T001 [SCL] SCL 3.0 の全 section、型、必須性、CEL binding、意味参照、移行表を
+- [x] T001 [SCL] SCL 3.0 の全 section、型、必須性、CEL binding、意味参照、移行表を
   `SPECIFICATION_CORE_LANGUAGE.md` に反映する。
-- [ ] T002 [Schema] SCL 2.0 schema を凍結し、旧 field を受理しない SCL 3.0 schema を追加する。
-- [ ] T003 [Validator] `spec_version` dispatcher と、未知 version・混在した単一文書を拒否する検証を追加する。
-- [ ] T004 [Validator] model/interface/state/authorization/objective/flow/scenario/refs の意味検証を実装する。
-- [ ] T005 [Test] ADR-103/Tenancy ベースの valid fixture と、旧 section、未解決 policy/resource、
+- [x] T002 [Schema] SCL 2.0 schema を凍結し、旧 field を受理しない SCL 3.0 schema を追加する。
+- [x] T003 [Validator] `spec_version` dispatcher と、未知 version・混在した単一文書を拒否する検証を追加する。
+- [x] T004 [Validator] model/interface/state/authorization/objective/flow/scenario/refs の意味検証を実装する。
+- [x] T005 [Test] ADR-103/Tenancy ベースの valid fixture と、旧 section、未解決 policy/resource、
   protected coverage 漏れ、無効 CEL scope、壊れた flow/extension の negative fixture を追加する。
-- [ ] T006 [Verify] tool test、typecheck、SCL 2.0 workspace の移行前検証を通す。
+- [x] T006 [Verify] tool test、typecheck、SCL 2.0 workspace の移行前検証を通す。
 
 ## Verification
 
@@ -64,3 +64,38 @@ depends_on: []
 risk は high。後続の全仕様と生成器が依存するため、曖昧な必須性や CEL binding は全移行へ波及する。
 shape と意味検証を分離し、negative fixture を先に固定する。SCL 2.0 bridge は [[wi-212]] を削除責任者とし、
 3.0 内には互換構文を一切持ち込まない。
+
+## Completion
+
+- **Completed At**: 2026-07-14
+- **Summary**:
+  - SCL 3.0 の section、所有規則、必須性、CEL binding、意味参照、2.0 からの移行表を
+    `SPECIFICATION_CORE_LANGUAGE.md` の規範仕様として確立した。
+  - SCL 2.0 schema を凍結し、旧 field を閉じた shape で拒否する SCL 3.0 schema と
+    `spec_version` dispatcher を追加した。
+  - model、interface、state、authorization、objective、flow、scenario、standard refs の意味検証と、
+    Tenancy positive fixture / negative fixtures を追加した。
+- **Verification Results**:
+  - `just test-tools` — passed (195 tests)
+  - `just typecheck-tools` — passed
+  - `just yaml-check-scl` — passed (SCL 2.0 workspace 19 files)
+  - `just yaml-check-work-items` — passed
+  - `just check-ids` — passed
+  - `just verify` — passed outside the sandbox (Go `httptest` requires loopback bind)
+- **Affected Guarantees State**:
+  - guarantee: SCL 3.0 文書は廃止 section/field を受理せず、単一の規範 shape で検証される。
+  - state: passed
+  - guarantee: SCL 2.0 workspace は移行期間中だけ凍結 schema で検証を継続できる。
+  - state: passed
+  - guarantee: section 間参照、protected access coverage、CEL root binding、flow/scenario graph の
+    不整合が実装前に検出される。
+  - state: passed
+- **Evidence**:
+  - procedure: ローカル作業ツリーで positive/negative fixture の unit test、TypeScript typecheck、
+    SCL 2.0 workspace 検証、work item/ID 検証、Go/UI を含む全体検証を実行した。
+  - commands: `just test-tools`, `just typecheck-tools`, `just yaml-check-scl`,
+    `just yaml-check-work-items`, `just check-ids`, `just verify`
+  - environment: macOS workspace; `just verify` は loopback socket を許可した sandbox 外で実行。
+  - actor: Codex
+  - source: pre-commit working tree
+  - result: passed

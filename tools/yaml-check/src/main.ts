@@ -28,6 +28,7 @@ import { pathToFileURL } from 'node:url'
 import { parseArchitectureDoc } from './arch-check.ts'
 import { verifyContextMap } from './context-map.ts'
 import { type Finding, SCHEMAS, lintRawText, parseArgs, validateAgainstSchema } from './lib.ts'
+import { verifySclSemantics } from './scl-semantics.ts'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
 
@@ -331,6 +332,9 @@ for (const path of targets) {
 
   if (parseResult.ok && opts.schema !== null) {
     findings.push(...validateAgainstSchema(opts.schema, parseResult.data, text))
+    if (opts.schema === 'scl') {
+      findings.push(...verifySclSemantics(parseResult.data, text))
+    }
   }
 
   // Context-map semantics are checked whenever a context_map is present,

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://regenerative-architecture/schemas/scl.json",
+  "$id": "https://regenerative-architecture/schemas/scl-v2.json",
   "title": "Specification Core Language (SCL) Document",
   "description": "SPECIFICATION_CORE_LANGUAGE.md §2-§3 で規定される SCL 文書。",
   "type": "object",
