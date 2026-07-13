@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestParseAuditFilterAcceptsAllowlisted(t *testing.T) {
@@ -41,95 +40,40 @@ func TestParseAuditFilterRejects(t *testing.T) {
 	}
 }
 
-func TestTransformFilterValuesHashesUsername(t *testing.T) {
-	salt := []byte("tenant-salt")
-	exprs, err := ParseAuditFilter([]RawFilter{
-		{Field: "actor.username", Operator: "eq", Values: []string{"Alice"}},
-	})
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	got, err := TransformFilterValues(exprs, salt)
-	if err != nil {
-		t.Fatalf("transform: %v", err)
-	}
-	// username は lowercased で salted hash され、平文は残らない。
-	want := spec.SaltedHash(salt, spec.NormalizeUsername("Alice"))
-	if got[0].Values[0] != want {
-		t.Fatalf("username not hashed as expected: got %q want %q", got[0].Values[0], want)
-	}
-	if got[0].Values[0] == "Alice" || got[0].Values[0] == "alice" {
-		t.Fatal("plaintext username leaked into filter value")
-	}
-}
-
-func TestTransformFilterValuesTruncatesIP(t *testing.T) {
-	exprs, err := ParseAuditFilter([]RawFilter{
-		{Field: "client.ip", Operator: "eq", Values: []string{"203.0.113.9"}},
-	})
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	got, err := TransformFilterValues(exprs, nil)
-	if err != nil {
-		t.Fatalf("transform: %v", err)
-	}
-	if got[0].Values[0] != "203.0.113.0/24" {
-		t.Fatalf("ip not truncated: %q", got[0].Values[0])
-	}
-}
-
-func TestTransformFilterValuesRejectsBadIP(t *testing.T) {
-	exprs, _ := ParseAuditFilter([]RawFilter{
-		{Field: "client.ip", Operator: "eq", Values: []string{"not-an-ip"}},
-	})
-	if _, err := TransformFilterValues(exprs, nil); err == nil {
-		t.Fatal("expected error for malformed IP")
-	}
-}
-
-func TestTransformFilterValuesLeavesRawAttributes(t *testing.T) {
-	exprs, _ := ParseAuditFilter([]RawFilter{
-		{Field: "actor.id", Operator: "eq", Values: []string{"user-123"}},
-	})
-	got, err := TransformFilterValues(exprs, []byte("salt"))
-	if err != nil {
-		t.Fatalf("transform: %v", err)
-	}
-	if got[0].Values[0] != "user-123" {
-		t.Fatalf("raw attribute value should be unchanged, got %q", got[0].Values[0])
-	}
-}
-
 func TestExtractSearchAttributes(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "UserAuthenticated",
 		Payload: map[string]any{
-			"userId":       "user-1",
-			"clientId":     "client-1",
-			"sessionId":    "sess-1",
-			"usernameHash": "hash-alice",
-			"ipTruncated":  "203.0.113.0/24",
+			"userId":    "user-1",
+			"clientId":  "client-1",
+			"sessionId": "sess-1",
+			"ip":        "203.0.113.9",
 		},
 	}
 	attrs := ExtractSearchAttributes(rec)
 	want := map[string]string{
-		"event.type":     "UserAuthenticated",
-		"outcome":        "success",
-		"actor.id":       "user-1",
-		"client.id":      "client-1",
-		"session.id":     "sess-1",
-		"actor.username": "hash-alice",
-		"client.ip":      "203.0.113.0/24",
+		"event.type": "UserAuthenticated",
+		"outcome":    "success",
+		"actor.id":   "user-1",
+		"client.id":  "client-1",
+		"session.id": "sess-1",
+		"client.ip":  "203.0.113.9",
 	}
 	for k, v := range want {
 		if attrs[k] != v {
 			t.Errorf("attr %q = %q, want %q", k, attrs[k], v)
 		}
 	}
+	// wi-147: 実アカウントが確定するイベントは username を payload に持たない。
+	// 検索時に username -> user_id を解決する設計のため、actor.username は空。
+	if _, ok := attrs["actor.username"]; ok {
+		t.Fatalf("UserAuthenticated should not carry actor.username, got %q", attrs["actor.username"])
+	}
 }
 
 func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
+	// ADR-104 (ADR-046 の username 条項を撤回): 実アカウントが確定しない可能性のある
+	// AuthenticationFailed は平文 username をそのまま検索属性として使う。
 	rec := &ports.AuditEventRecord{
 		Type:    "AuthenticationFailed",
 		Payload: map[string]any{"username": "someone"},
@@ -138,10 +82,7 @@ func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
 	if attrs["outcome"] != "failure" {
 		t.Fatalf("outcome = %q, want failure", attrs["outcome"])
 	}
-	// 平文 username は sidecar 検索属性に載らない (payload 側にのみ残す)。
-	for k, v := range attrs {
-		if v == "someone" {
-			t.Fatalf("plaintext username leaked into search attribute %q", k)
-		}
+	if attrs["actor.username"] != "someone" {
+		t.Fatalf("actor.username = %q, want plaintext %q", attrs["actor.username"], "someone")
 	}
 }

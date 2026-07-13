@@ -141,9 +141,12 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	if d.AuditEventRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
 	}
-	query, err := d.parseAuditEventQuery(c, actor)
+	query, noMatch, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	if noMatch {
+		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
 	}
 	records, err := d.AuditEventRepo.List(c.Request().Context(), query)
 	if err != nil {
@@ -183,13 +186,13 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	query, err := d.parseAuditEventQuery(c, actor)
+	query, noMatch, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	query.Limit = adminAuditEventExportMaxLimit
 	var records []*auditports.AuditEventRecord
-	if d.AuditEventRepo != nil {
+	if d.AuditEventRepo != nil && !noMatch {
 		records, err = d.AuditEventRepo.List(c.Request().Context(), query)
 		if err != nil {
 			return err
@@ -203,11 +206,48 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": response})
 }
 
+// AuditEventSearchOptionsResponse は SCL AuditEventSearchOptionsResponse の双子。
+type AuditEventSearchOptionsResponse struct {
+	EventTypes []string `json:"event_types"`
+	Outcomes   []string `json:"outcomes"`
+}
+
+// auditEventOutcomeChoices は outcome フィルタの選択肢 (eventOutcome() の分類先と一致させる)。
+var auditEventOutcomeChoices = []string{"success", "failure"}
+
+// handleAdminAuditEventSearchOptions は event.type / outcome を選択式にするための選択肢一覧を
+// 返す (wi-147)。event_types は auditEventCategoryTypes (category 絞り込みと同じ単一の正) の
+// 和集合から重複除去・ソートして導出し、UI 側の手書きリストとの drift を防ぐ。
+func (d Deps) handleAdminAuditEventSearchOptions(c *echo.Context) error {
+	if _, err := d.RequireAuditReader(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	seen := map[string]bool{}
+	eventTypes := make([]string, 0, len(auditEventCategoryTypes))
+	for _, types := range auditEventCategoryTypes {
+		for _, t := range types {
+			if seen[t] {
+				continue
+			}
+			seen[t] = true
+			eventTypes = append(eventTypes, t)
+		}
+	}
+	slices.Sort(eventTypes)
+	return support.NoStoreJSON(c, http.StatusOK, AuditEventSearchOptionsResponse{
+		EventTypes: eventTypes,
+		Outcomes:   auditEventOutcomeChoices,
+	})
+}
+
 // requireAuditReader は AdminAuditEventsRead パーミッションを満たすユーザーを返す。
 // admin / system_admin のどちらでも通る。所属テナントの拘束は問わない (実際の
 // テナント絞り込みは List のクエリ生成時に行う)。
 
-func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (auditports.AuditEventQuery, error) {
+// parseAuditEventQuery は query string を AuditEventQuery へ変換する。第 2 戻り値 noMatch が
+// true の場合、username が実アカウントに解決できなかったことを示し、呼び出し側は
+// AuditEventRepo.List を呼ばず空の結果を返す (フィルタ無視で全件返すという誤動作を避ける)。
+func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (auditports.AuditEventQuery, bool, error) {
 	q := auditports.AuditEventQuery{
 		TenantID:   actor.TenantID,
 		AllTenants: false,
@@ -226,31 +266,51 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (audi
 	if category := c.QueryParam("category"); category != "" {
 		types, ok := auditEventCategoryTypes[category]
 		if !ok {
-			return auditports.AuditEventQuery{}, errors.New("category が不正です")
+			return auditports.AuditEventQuery{}, false, errors.New("category が不正です")
 		}
 		q.Types = types
 	}
 	if userID := c.QueryParam("user_id"); userID != "" {
 		q.UserID = userID
 	}
+	// username (wi-147): 実アカウントが常に確定するイベントの検索用。payload に username/hash を
+	// 持たせず、検索時に UserRepo で user_id へ解決してから既存の user_id フィルタで絞り込む。
+	// 該当ユーザーが存在しない場合は noMatch=true (0 件を返す。全件返すフォールバックはしない)。
+	if username := c.QueryParam("username"); username != "" {
+		if d.UserRepo == nil {
+			return auditports.AuditEventQuery{}, true, nil
+		}
+		resolveTenant := q.TenantID
+		if q.AllTenants {
+			resolveTenant = actor.TenantID
+		}
+		user, err := d.UserRepo.FindByUsername(c.Request().Context(), resolveTenant, username)
+		if err != nil {
+			return auditports.AuditEventQuery{}, false, err
+		}
+		if user == nil {
+			return auditports.AuditEventQuery{}, true, nil
+		}
+		q.UserID = user.ID
+	}
 	if after := c.QueryParam("after"); after != "" {
 		t, err := time.Parse(time.RFC3339, after)
 		if err != nil {
-			return auditports.AuditEventQuery{}, errors.New("after は RFC3339 形式を指定してください")
+			return auditports.AuditEventQuery{}, false, errors.New("after は RFC3339 形式を指定してください")
 		}
 		q.After = t
 	}
 	if before := c.QueryParam("before"); before != "" {
 		t, err := time.Parse(time.RFC3339, before)
 		if err != nil {
-			return auditports.AuditEventQuery{}, errors.New("before は RFC3339 形式を指定してください")
+			return auditports.AuditEventQuery{}, false, errors.New("before は RFC3339 形式を指定してください")
 		}
 		q.Before = t
 	}
 	if limitParam := c.QueryParam("limit"); limitParam != "" {
 		limit, err := strconv.Atoi(limitParam)
 		if err != nil || limit < 0 {
-			return auditports.AuditEventQuery{}, errors.New("limit は 0 以上の整数を指定してください")
+			return auditports.AuditEventQuery{}, false, errors.New("limit は 0 以上の整数を指定してください")
 		}
 		q.Limit = limit
 	}
@@ -260,15 +320,15 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (audi
 	}
 	filters, err := d.parseAuditFilters(c)
 	if err != nil {
-		return auditports.AuditEventQuery{}, err
+		return auditports.AuditEventQuery{}, false, err
 	}
 	q.Filters = filters
-	return q, nil
+	return q, false, nil
 }
 
-// parseAuditFilters は繰り返し filter=field:op:value[,value2] クエリを parse / validate し、
-// PII 属性の平文値を tenant salt でサーバ側 transform する (wi-145)。field/operator は
-// registry allowlist のみ許可。IPv6 の値に含まれる ":" を壊さないよう先頭 2 個の ":" で切る。
+// parseAuditFilters は繰り返し filter=field:op:value[,value2] クエリを parse / validate する
+// (wi-145)。field/operator は registry allowlist のみ許可。IPv6 の値に含まれる ":" を壊さない
+// よう先頭 2 個の ":" で切る。ADR-104 により PII 属性の hash/truncate transform はしない (平文一致)。
 func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpression, error) {
 	raw := c.Request().URL.Query()["filter"]
 	if len(raw) == 0 {
@@ -286,17 +346,7 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpres
 			Values:   strings.Split(parts[2], ","),
 		})
 	}
-	exprs, err := auditusecases.ParseAuditFilter(parsed)
-	if err != nil {
-		return nil, err
-	}
-	var salt []byte
-	if d.TenantSaltStore != nil {
-		if s, serr := d.TenantSaltStore.GetSalt(c.Request().Context()); serr == nil {
-			salt = s
-		}
-	}
-	return auditusecases.TransformFilterValues(exprs, salt)
+	return auditusecases.ParseAuditFilter(parsed)
 }
 
 // auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。

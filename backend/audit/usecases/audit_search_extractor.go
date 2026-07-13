@@ -2,9 +2,10 @@ package usecases
 
 // 監査イベントレコードから sidecar 検索属性を生成する抽出器 (wi-145 / wi-46)。
 //
-// 非 PII raw id (event.type / outcome / actor.id / client.id / session.id / target.id /
-// transaction.id / correlation.id / request.id) と、payload 上で transform 済みの PII-safe 属性
-// (usernameHash / ipTruncated) だけを対象とする。username / IP の平文は sidecar に載せない。
+// event.type / outcome / actor.id / client.id / session.id / target.id / transaction.id /
+// correlation.id / request.id の非 PII raw id に加え、actor.username / client.ip も ADR-104
+// (ADR-046 の username/IP 条項を撤回) により平文のまま抽出する。actor.username は実アカウントが
+// 確定しないイベント (AuthenticationFailed 等、payload.username を持つイベント) でのみ値を持つ。
 
 import (
 	"github.com/ambi/idmagic/backend/audit/ports"
@@ -48,8 +49,8 @@ func ExtractSearchAttributes(rec *ports.AuditEventRecord) map[string]string {
 	set("transaction.id", payloadString(rec.Payload, "transactionId"))
 	set("correlation.id", payloadString(rec.Payload, "correlationId"))
 	set("request.id", payloadString(rec.Payload, "requestId"))
-	set("actor.username", payloadString(rec.Payload, "usernameHash"))
-	set("client.ip", payloadString(rec.Payload, "ipTruncated"))
+	set("actor.username", payloadString(rec.Payload, "username"))
+	set("client.ip", payloadString(rec.Payload, "ip"))
 
 	if len(attrs) == 0 {
 		return nil

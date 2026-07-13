@@ -11,15 +11,12 @@ import "slices"
 // filter parse の時点で拒否され、SQL 生成には到達しない。
 
 // AuditSearchTransform は検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。
+// ADR-104 (ADR-046 の username/IP 条項を撤回) により、現状は TransformNone のみ存在する。
 type AuditSearchTransform int
 
 const (
-	// TransformNone は平文をそのまま保存する (非 PII)。
+	// TransformNone は平文をそのまま保存する。
 	TransformNone AuditSearchTransform = iota
-	// TransformHash は tenant salt 付き SHA-256 で hash する (ADR-046)。
-	TransformHash
-	// TransformIPTruncate は IPv4 /24・IPv6 /48 へ丸める (ADR-046)。
-	TransformIPTruncate
 )
 
 // AuditFilterOperator は filter 式で使える比較演算子。SCL AuditEventFilterOperator の双子。
@@ -41,12 +38,10 @@ const (
 type AuditSearchAttribute struct {
 	// Field は検索軸の正準ドット名。sidecar の attr_name でもある。例: actor.id / client.ip。
 	Field string
-	// RawStorable は平文をそのまま sidecar に保存してよいか。PII 属性は false。
+	// RawStorable は平文をそのまま sidecar に保存してよいか。
 	RawStorable bool
 	// Transform は保存 / 検索前に平文値へ適用する変換。
 	Transform AuditSearchTransform
-	// TenantSaltReq は Transform に tenant salt を要するか (hash 属性で true)。
-	TenantSaltReq bool
 	// AllowedOperators はこの属性に許可される operator の allowlist。
 	AllowedOperators []AuditFilterOperator
 	// UIVisible は admin 検索ビルダーの UI プリセットに出すか。
@@ -93,10 +88,11 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		UIVisible:        true,
 	},
 	"actor.username": {
-		Field:            "actor.username",
-		RawStorable:      false,
-		Transform:        TransformHash,
-		TenantSaltReq:    true,
+		Field: "actor.username",
+		// ADR-104 (ADR-046 の username 条項を撤回): 平文のまま保存・検索する。
+		// 実アカウントが確定しないイベント (AuthenticationFailed) 専用の検索軸。
+		RawStorable:      true,
+		Transform:        TransformNone,
 		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
 		UIVisible:        true,
 	},
@@ -115,9 +111,10 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		UIVisible:        true,
 	},
 	"client.ip": {
+		// ADR-104 (ADR-046 の IP 条項を撤回): 平文のまま保存・検索する (truncate/hash しない)。
 		Field:            "client.ip",
-		RawStorable:      false,
-		Transform:        TransformIPTruncate,
+		RawStorable:      true,
+		Transform:        TransformNone,
 		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
 		UIVisible:        true,
 	},

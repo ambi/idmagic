@@ -248,6 +248,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Authenticator:   authenticator,
 		AuditEventRepo:  d.Audit.AuditEventRepo,
 		TenantSaltStore: d.Audit.TenantSaltStore,
+		// d.UserRepo (トップレベル) は wi-178 移行中の非推奨テスト互換フィールドで、実運用の
+		// bootstrap では設定されない。username -> user_id 解決 (wi-147) には
+		// d.IdentityManagement.UserRepo を使う。
+		UserRepo: d.IdentityManagement.UserRepo,
 	})
 
 	authhttp.RegisterRoutes(g, authhttp.Deps{

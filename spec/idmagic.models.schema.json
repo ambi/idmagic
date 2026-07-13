@@ -3048,7 +3048,11 @@
         },
         "user_id": {
           "type": "string",
-          "description": "対象ユーザー sub の完全一致フィルタ。"
+          "description": "操作者 (actor) の user sub による完全一致フィルタ。filter の actor.id と同じ対象を指す\n(AuditActorVsTarget 参照)。管理操作の対象ユーザーを絞り込みたい場合は filter の target.id を使う\n(本フィールドとは別概念)。UI 上のラベルは「ユーザー ID (操作者)」。\n"
+        },
+        "username": {
+          "type": "string",
+          "description": "操作者 (actor) のログイン名による検索 (wi-147, ADR-104)。実アカウントが常に確定する\nイベント (UserAuthenticated、OAuth2 フロー系イベント等) は payload に username を持たないため、\n検索時に UserRepo で user_id へ解決してから user_id と同じ経路で絞り込む。該当ユーザーが\n存在しない場合は 0 件を返す (フィルタ無視で全件返すフォールバックはしない)。実在しないアカウント\n名も追跡する必要がある認証失敗イベントの検索には使えない (filter の actor.username を使う)。\n"
         },
         "after": {
           "type": "string",
@@ -3073,7 +3077,7 @@
           "items": {
             "$ref": "#/$defs/AuditEventFilterExpression"
           },
-          "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。username / IP はここで actor.username / client.ip として表現し、専用 query param にはしない。actor.username は lowercased username を tenant salt 付き hash に変換して照合し、client.ip は IPv4 /24・IPv6 /48 に丸めて照合する。"
+          "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で (ADR-104:\nhash 化はしない)、実アカウントが確定するイベントの検索には username query param を使う\n(本フィールドとは別経路)。client.ip も平文一致で照合する (truncate/hash はしない)。event.type は\nSCL events セクションの型名 (owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の\nenum (success / failure) から選ぶ選択式の値であり、自由入力ではない (AuditActorVsTarget /\nAuditSearchRegistry 参照)。actor.id / actor.username は操作者、target.id は管理操作の対象ユーザーを\n指し、意味が異なる。"
         }
       },
       "additionalProperties": false,
@@ -3088,15 +3092,11 @@
         },
         "raw_storable": {
           "type": "boolean",
-          "description": "平文をそのまま sidecar に保存してよいか。PII 属性は false で hash / ip_truncate を要する。"
+          "description": "平文をそのまま sidecar に保存してよいか。ADR-104 により現状は全属性で true。"
         },
         "transform": {
           "$ref": "#/$defs/AuditEventSearchTransform",
-          "description": "保存 / 検索前に平文値へ適用する変換。"
-        },
-        "tenant_salt_required": {
-          "type": "boolean",
-          "description": "transform に tenant salt を要するか (hash 属性で true)。"
+          "description": "保存 / 検索前に平文値へ適用する変換 (現状は none のみ)。"
         },
         "allowed_operators": {
           "type": "array",
@@ -3115,20 +3115,42 @@
         "field",
         "raw_storable",
         "transform",
-        "tenant_salt_required",
         "allowed_operators",
         "ui_visible"
       ],
-      "description": "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist と PII 変換方針を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nactor.username / client.ip は admin 検索ビルダーに表示できる PII-safe 属性で、sidecar には平文を保存しない。\n"
+      "description": "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nADR-104 (ADR-046 の username/IP 条項を撤回) により、actor.username / client.ip を含む全属性が\n平文のまま sidecar に保存・検索される。actor.id / actor.username は操作者 (誰が行ったか)、target.id は\n管理操作の対象ユーザー (誰に対して行ったか) を指し、同じ「ユーザー」でも意味が異なる (AuditActorVsTarget)。\nevent.type / outcome は値が自由入力ではなく allowlist / enum 由来の選択式として扱う: event.type は\nSCL events の型名 (owns_events)、outcome は Go 側 eventOutcome() が返す success / failure の 2 値\n(該当しないイベントでは値なし)。\n"
+    },
+    "AuditEventSearchOptionsResponse": {
+      "type": "object",
+      "properties": {
+        "event_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "選択可能な event.type の値一覧 (SCL events の型名)。カテゴリ分類済みの type 群の和集合で、\nadmin UI のイベントカテゴリ選択肢と同じ母集合。"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "選択可能な outcome の値一覧。現時点では success / failure の 2 値 (認証系イベントのみ分類対象)。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "event_types",
+        "outcomes"
+      ],
+      "description": "event.type / outcome を選択式にするための選択肢一覧 (wi-147)。UI がハードコードせず、\nGo 側の単一の正 (category → type マップ / eventOutcome 分類) から機械的に取得する。\n"
     },
     "AuditEventSearchTransform": {
       "type": "string",
       "enum": [
-        "none",
-        "hash",
-        "ip_truncate"
+        "none"
       ],
-      "description": "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。none は raw 保存、hash は tenant salt 付き SHA-256、ip_truncate は IPv4 /24・IPv6 /48 への丸め (ADR-046)。"
+      "description": "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。ADR-104 (ADR-046 の\nusername/IP 条項を撤回) により、現状は none (raw 保存) のみ存在する。\n"
     },
     "AuthenticationContext": {
       "type": "object",
@@ -3294,10 +3316,6 @@
         "username": {
           "type": "string"
         },
-        "usernameHash": {
-          "type": "string",
-          "description": "tenant salt 付き username (lowercased) の SHA-256 hex。"
-        },
         "reason": {
           "type": "string"
         },
@@ -3334,7 +3352,7 @@
         "occurredAt",
         "tenantId"
       ],
-      "description": "ResourceOwner の認証が失敗した。レートリミット・不正検知の入力イベント。username は PII として扱う\n(失敗イベント限定で平文を 7 日保持し、以後 sweep で粒度を落とす。usernameHash は first-class)。\n"
+      "description": "ResourceOwner の認証が失敗した。レートリミット・不正検知の入力イベント。\n実在しないユーザー名での試行も記録対象のため sub を持たず、username を平文のまま監査検索の\nactor.username 相関キーとして保持する (ADR-104: username の hash 化はしない)。他の failure\nイベントと同じ保持期間 (既定 30 日) で扱う。\n"
     },
     "AuthenticationStepCompleted": {
       "type": "object",
@@ -3374,9 +3392,6 @@
           "format": "date-time"
         },
         "tenantId": {
-          "type": "string"
-        },
-        "usernameHash": {
           "type": "string"
         },
         "step": {

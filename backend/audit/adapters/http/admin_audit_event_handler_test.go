@@ -28,7 +28,6 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -131,6 +130,74 @@ func getAdminAuditEvents(e *echo.Echo, path string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec
+}
+
+func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
+	// wi-147: 実アカウントが常に確定するイベント (UserAuthenticated 等) は payload に
+	// username を持たないため、username=... は検索時に user_id へ解決してから絞り込む。
+	admin := auditUser("user_admin", "acme", []string{"admin"})
+	target := auditUser("alice", "acme", []string{})
+	userRepo := idmmemory.NewUserRepository()
+	userRepo.Seed(admin)
+	userRepo.Seed(target)
+	now := time.Now().UTC()
+	events := []*auditports.AuditEventRecord{
+		auditEvent("acme", "UserAuthenticated", "alice", now),
+		auditEvent("acme", "UserAuthenticated", "user_admin", now),
+	}
+	auditStore := auditmemory.NewAuditEventStore(0)
+	for _, ev := range events {
+		_ = auditStore.Append(context.Background(), ev)
+	}
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps:          support.Deps{Issuer: "http://test", TenantRepo: newSingleTenantRepo()},
+		UserRepo:      userRepo,
+		Audit:         audit.Module{AuditEventRepo: auditStore},
+		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
+	})
+
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?username=alice")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if len(body.Events) != 1 || body.Events[0].Payload["userId"] != "alice" {
+		t.Fatalf("expected only alice's event, got %+v", body.Events)
+	}
+}
+
+func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
+	// wi-147: 該当ユーザーが存在しない username は 0 件を返す。フィルタ無視で全件返す・
+	// エラーにするのどちらでもない。
+	admin := auditUser("user_admin", "acme", []string{"admin"})
+	userRepo := idmmemory.NewUserRepository()
+	userRepo.Seed(admin)
+	now := time.Now().UTC()
+	auditStore := auditmemory.NewAuditEventStore(0)
+	_ = auditStore.Append(context.Background(), auditEvent("acme", "UserAuthenticated", "alice", now))
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps:          support.Deps{Issuer: "http://test", TenantRepo: newSingleTenantRepo()},
+		UserRepo:      userRepo,
+		Audit:         audit.Module{AuditEventRepo: auditStore},
+		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
+	})
+
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?username=no-such-user")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if len(body.Events) != 0 {
+		t.Fatalf("expected 0 events for unknown username, got %+v", body.Events)
+	}
 }
 
 func TestAdminAuditEventsRequiresAdminRole(t *testing.T) {
@@ -322,16 +389,18 @@ func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 	}
 }
 
-func TestAdminAuditEventsTransformsPIIFilters(t *testing.T) {
+func TestAdminAuditEventsFiltersPlaintextUsernameAndIP(t *testing.T) {
+	// ADR-104 (ADR-046 の username/IP 条項を撤回): actor.username / client.ip は平文のまま
+	// 完全一致で検索する。サーバ側の hash/truncate transform はしない。
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
 	ev := auditEvent("acme", "AuthenticationFailed", "", now)
-	ev.Payload["usernameHash"] = spec.SaltedHash(nil, spec.NormalizeUsername("Alice"))
-	ev.Payload["ipTruncated"] = "203.0.113.0/24"
+	ev.Payload["username"] = "alice"
+	ev.Payload["ip"] = "203.0.113.9"
 	ev.SearchAttributes = auditusecases.ExtractSearchAttributes(ev)
 	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{ev})
 
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=actor.username:eq:Alice&filter=client.ip:eq:203.0.113.42")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=actor.username:eq:alice&filter=client.ip:eq:203.0.113.9")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -340,7 +409,7 @@ func TestAdminAuditEventsTransformsPIIFilters(t *testing.T) {
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 || body.Events[0].Type != "AuthenticationFailed" {
-		t.Fatalf("PII filter mismatch: %+v", body.Events)
+		t.Fatalf("plaintext filter mismatch: %+v", body.Events)
 	}
 }
 
@@ -351,6 +420,42 @@ func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 	if rec.Code != http.StatusBadRequest ||
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_request"`)) {
 		t.Fatalf("unknown filter must be 400 invalid_request, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminAuditEventSearchOptionsRequiresAuditReader(t *testing.T) {
+	user := auditUser("user_alice", "acme", []string{})
+	e := newAuditAdminServer(t, user, nil)
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/search_options")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminAuditEventSearchOptionsReturnsAllowlist(t *testing.T) {
+	// wi-147: event.type / outcome の選択肢は Go 側の単一の正 (auditEventCategoryTypes /
+	// eventOutcome) から機械的に導出され、UI のハードコードとの drift を防ぐ。
+	user := auditUser("user_admin", "acme", []string{"admin"})
+	e := newAuditAdminServer(t, user, nil)
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/search_options")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body audithttp.AuditEventSearchOptionsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Outcomes) != 2 {
+		t.Fatalf("expected 2 outcome choices, got %v", body.Outcomes)
+	}
+	found := map[string]bool{}
+	for _, ty := range body.EventTypes {
+		found[ty] = true
+	}
+	for _, want := range []string{"UserAuthenticated", "AuthenticationFailed", "AccessTokenIssued", "ConsentGranted"} {
+		if !found[want] {
+			t.Fatalf("expected event_types to contain %q, got %v", want, body.EventTypes)
+		}
 	}
 }
 

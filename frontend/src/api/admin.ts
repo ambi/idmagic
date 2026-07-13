@@ -268,6 +268,9 @@ export type AdminAuditEventQuery = {
   type?: string
   category?: AdminAuditEventCategory
   sub?: string
+  // username (wi-147): 実アカウントが常に確定するイベントの検索用。サーバ側で user_id に
+  // 解決してから絞り込む (該当なしは 0 件)。
+  username?: string
   after?: string
   before?: string
   limit?: number
@@ -275,11 +278,16 @@ export type AdminAuditEventQuery = {
   filter?: string[]
 }
 
+// 監査イベント検索フォームが URL query string と同期する部分 (wi-147)。type は
+// 機械向け低レベルフィルタで UI からは設定しないため除く。
+export type AdminAuditEventsSearchParams = Omit<AdminAuditEventQuery, 'type'>
+
 function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   const params = new URLSearchParams()
   if (query.type) params.set('type', query.type)
   if (query.category) params.set('category', query.category)
   if (query.sub) params.set('user_id', query.sub)
+  if (query.username) params.set('username', query.username)
   if (query.after) params.set('after', query.after)
   if (query.before) params.set('before', query.before)
   if (query.limit !== undefined) params.set('limit', String(query.limit))
@@ -303,6 +311,17 @@ export async function listAdminAuditEvents(
 export function adminAuditEventsExportURL(query: AdminAuditEventQuery): string {
   const params = auditEventParams(query)
   return tenantURL(`/api/admin/audit_events/export?${params.toString()}`)
+}
+
+// event.type / outcome を選択式にするための選択肢一覧 (wi-147)。UI 側でハードコードせず、
+// Go 側の単一の正 (auditEventCategoryTypes / eventOutcome) から機械的に取得する。
+export type AdminAuditEventSearchOptions = {
+  event_types: string[]
+  outcomes: string[]
+}
+
+export async function listAdminAuditEventSearchOptions(): Promise<AdminAuditEventSearchOptions> {
+  return request<AdminAuditEventSearchOptions>('/api/admin/audit_events/search_options')
 }
 
 export async function listAdminKeys(): Promise<AdminKey[]> {

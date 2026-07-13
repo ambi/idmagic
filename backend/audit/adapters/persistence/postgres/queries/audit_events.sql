@@ -20,11 +20,3 @@ WHERE type = $1 AND occurred_at < $2;
 -- name: DeleteAuditEventsBeforeExceptTypes :execrows
 DELETE FROM audit_events
 WHERE occurred_at < $1 AND type <> ALL($2::text[]);
-
--- name: RedactAuthenticationFailureUsernames :execrows
-UPDATE audit_events
-SET payload = jsonb_set(payload, '{username}', 'null'::jsonb, true)
-WHERE type = $1
-  AND occurred_at < $2
-  AND payload ? 'username'
-  AND payload->>'username' IS NOT NULL;

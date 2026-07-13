@@ -1,7 +1,9 @@
 import { IconDownload, IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import {
-  type AdminAuditEventQuery,
+  type AdminAuditEventCategory,
+  type AdminAuditEventSearchOptions,
+  type AdminAuditEventsSearchParams,
   adminAuditEventsExportURL,
   AuthenticationAPIError,
   listAdminAuditEvents,
@@ -21,15 +23,19 @@ import {
 
 const DEFAULT_REALM = 'default'
 
-type EventKind = 'success' | 'fail' | 'aggregated'
+// wi-147: 「誰を検索するか」を含むすべての検索条件を1つの一覧に統一する。quick.* は
+// registry の filter attribute ではなく、トップレベル query param (category/sub/username) へ
+// 変換される疑似フィールド。それ以外は既存の registry allowlist の filter[] へ変換される。
 type AuditFilterField =
+  | 'quick.category'
+  | 'quick.actor_id'
+  | 'quick.username'
   | 'actor.username'
   | 'client.ip'
   | 'event.type'
   | 'outcome'
   | 'target.id'
   | 'session.id'
-  | 'transaction.id'
 
 type AuditFilterRow = {
   id: number
@@ -39,20 +45,27 @@ type AuditFilterRow = {
 
 function auditFilterFields(
   t: AdminAuditEventsDictionary,
-): Array<{ value: AuditFilterField; label: string; placeholder: string }> {
+): Array<{ value: AuditFilterField; label: string; placeholder?: string }> {
   return [
+    { value: 'quick.category', label: t.eventCategoryFieldLabel },
+    {
+      value: 'quick.actor_id',
+      label: t.actorUserIdFieldLabel,
+      placeholder: t.actorUserIdFieldPlaceholder,
+    },
+    {
+      value: 'quick.username',
+      label: t.actorUsernameFieldLabel,
+      placeholder: t.actorUsernameFieldPlaceholder,
+    },
     {
       value: 'actor.username',
       label: t.filterFieldUsername,
       placeholder: t.filterFieldUsernamePlaceholder,
     },
     { value: 'client.ip', label: t.filterFieldIp, placeholder: t.filterFieldIpPlaceholder },
-    {
-      value: 'event.type',
-      label: t.filterFieldEventType,
-      placeholder: t.filterFieldEventTypePlaceholder,
-    },
-    { value: 'outcome', label: t.filterFieldOutcome, placeholder: t.filterFieldOutcomePlaceholder },
+    { value: 'event.type', label: t.filterFieldEventType },
+    { value: 'outcome', label: t.filterFieldOutcome },
     {
       value: 'target.id',
       label: t.filterFieldTargetUser,
@@ -62,11 +75,6 @@ function auditFilterFields(
       value: 'session.id',
       label: t.filterFieldSession,
       placeholder: t.filterFieldSessionPlaceholder,
-    },
-    {
-      value: 'transaction.id',
-      label: t.filterFieldTransaction,
-      placeholder: t.filterFieldTransactionPlaceholder,
     },
   ]
 }
@@ -95,6 +103,8 @@ const AUTH_TYPES = new Set([
   ...AGGREGATED_TYPES,
 ])
 
+type EventKind = 'success' | 'fail' | 'aggregated'
+
 function authEventKind(type: string): EventKind | null {
   if (!AUTH_TYPES.has(type)) return null
   if (FAIL_TYPES.has(type)) return 'fail'
@@ -112,55 +122,113 @@ function kindLabel(kind: EventKind, t: AdminAuditEventsDictionary): string {
   return { success: t.kindSuccess, fail: t.kindFail, aggregated: t.kindAggregated }[kind]
 }
 
+const DEFAULT_OUTCOME_CHOICES = ['success', 'failure']
+
+function outcomeLabel(value: string, t: AdminAuditEventsDictionary): string {
+  if (value === 'success') return t.outcomeSuccessOption
+  if (value === 'failure') return t.outcomeFailureOption
+  return value
+}
+
+// datetime-local 入力は timezone を持たないローカル時刻表記を要求する。API 用 ISO 文字列
+// (buildQuery が new Date(after).toISOString() で生成) を、URL 経由で受け取った検索条件から
+// フォームへ復元する際はローカル時刻へ戻す (wi-147)。
+function isoToDatetimeLocal(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// URL query (category / sub / username / filter[]) を検索条件一覧の行へ復元する (wi-147)。
+// トップレベル query param もすべて同じ一覧の行として表示し、UI 上の置き場所を1つに統一する。
+function filtersFromSearch(search?: AdminAuditEventsSearchParams): AuditFilterRow[] {
+  const rows: AuditFilterRow[] = []
+  let nextID = 1
+  if (search?.category) rows.push({ id: nextID++, field: 'quick.category', value: search.category })
+  if (search?.sub) rows.push({ id: nextID++, field: 'quick.actor_id', value: search.sub })
+  if (search?.username) rows.push({ id: nextID++, field: 'quick.username', value: search.username })
+  for (const raw of search?.filter ?? []) {
+    const firstColon = raw.indexOf(':')
+    const secondColon = raw.indexOf(':', firstColon + 1)
+    const field = (firstColon >= 0 ? raw.slice(0, firstColon) : raw) as AuditFilterField
+    const value = secondColon >= 0 ? raw.slice(secondColon + 1) : ''
+    rows.push({ id: nextID++, field, value })
+  }
+  if (rows.length === 0) rows.push({ id: 1, field: 'quick.category', value: '' })
+  return rows
+}
+
 export function AdminAuditEventsPage({
   actorUsername,
   actorRoles,
   actorRealm,
   events: initial,
+  search,
+  searchOptions,
+  onSearch,
+  initialError,
 }: {
   actorUsername?: string
   actorRoles: string[]
   actorRealm: string
   events: AdminAuditEvent[]
+  search?: AdminAuditEventsSearchParams
+  searchOptions?: AdminAuditEventSearchOptions
+  onSearch?: (search: AdminAuditEventsSearchParams) => void
+  // 初期表示 (loader) 側の取得失敗。URL の検索条件が壊れていてもページ自体は表示し、
+  // ページ内のエラー表示に留める (wi-147)。
+  initialError?: string
 }) {
   const [events, setEvents] = useState(initial)
   const [selected, setSelected] = useState<AdminAuditEvent | null>(initial[0] ?? null)
-  const [category, setCategory] = useState<'' | AdminAuditEventQuery['category']>('')
-  const [sub, setSub] = useState('')
-  const [after, setAfter] = useState('')
-  const [before, setBefore] = useState('')
-  const [limit, setLimit] = useState('100')
-  const [filters, setFilters] = useState<AuditFilterRow[]>([
-    { id: 1, field: 'actor.username', value: '' },
-  ])
-  const [allTenants, setAllTenants] = useState(false)
+  const [after, setAfter] = useState(isoToDatetimeLocal(search?.after))
+  const [before, setBefore] = useState(isoToDatetimeLocal(search?.before))
+  const [limit, setLimit] = useState(search?.limit !== undefined ? String(search.limit) : '100')
+  const [filters, setFilters] = useState<AuditFilterRow[]>(filtersFromSearch(search))
+  const [allTenants, setAllTenants] = useState(search?.allTenants ?? false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(initialError ?? '')
   const t = useDictionary(adminAuditEventsDictionary)
   const { locale } = useLocale()
 
   const canCrossTenant = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
+  const eventTypeChoices = searchOptions?.event_types ?? []
+  const outcomeChoices = searchOptions?.outcomes ?? DEFAULT_OUTCOME_CHOICES
 
-  function buildQuery(): AdminAuditEventQuery {
+  function buildQuery(): AdminAuditEventsSearchParams {
     const parsedLimit = limit.trim() ? Number.parseInt(limit, 10) : undefined
-    return {
-      category: category || undefined,
-      sub: sub.trim() || undefined,
+    const query: AdminAuditEventsSearchParams = {
       after: after.trim() ? new Date(after).toISOString() : undefined,
       before: before.trim() ? new Date(before).toISOString() : undefined,
       limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
       allTenants: canCrossTenant && allTenants,
-      filter: filters
-        .map((filter) => {
-          const value = filter.value.trim()
-          return value ? `${filter.field}:eq:${value}` : ''
-        })
-        .filter(Boolean),
     }
+    const filterExprs: string[] = []
+    for (const row of filters) {
+      const value = row.value.trim()
+      if (!value) continue
+      switch (row.field) {
+        case 'quick.category':
+          query.category = value as AdminAuditEventCategory
+          break
+        case 'quick.actor_id':
+          query.sub = value
+          break
+        case 'quick.username':
+          query.username = value
+          break
+        default:
+          filterExprs.push(`${row.field}:eq:${value}`)
+      }
+    }
+    query.filter = filterExprs
+    return query
   }
 
   function addFilter() {
-    setFilters((current) => [...current, { id: Date.now(), field: 'actor.username', value: '' }])
+    setFilters((current) => [...current, { id: Date.now(), field: 'event.type', value: '' }])
   }
 
   function updateFilter(id: number, patch: Partial<Omit<AuditFilterRow, 'id'>>) {
@@ -179,8 +247,10 @@ export function AdminAuditEventsPage({
     event.preventDefault()
     setBusy(true)
     setError('')
+    const query = buildQuery()
+    onSearch?.(query)
     try {
-      const next = await listAdminAuditEvents(buildQuery())
+      const next = await listAdminAuditEvents(query)
       setEvents(next)
       setSelected(next[0] ?? null)
     } catch (cause) {
@@ -207,39 +277,6 @@ export function AdminAuditEventsPage({
 
       <Card className="p-5">
         <form onSubmit={handleQuery} className="grid gap-4 lg:grid-cols-3">
-          <Field label={t.eventCategoryFieldLabel}>
-            <select
-              value={category ?? ''}
-              onChange={(e) =>
-                setCategory((e.target.value || '') as '' | AdminAuditEventQuery['category'])
-              }
-              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
-            >
-              <option value="">{t.allEventsOption}</option>
-              <optgroup label={t.authenticationGroupLabel}>
-                <option value="authentication">{t.authenticationAllOption}</option>
-                <option value="success">{t.kindSuccess}</option>
-                <option value="fail">{t.kindFail}</option>
-                <option value="aggregated">{t.authAggregatedOption}</option>
-              </optgroup>
-              <optgroup label={t.adminOperationsGroupLabel}>
-                <option value="user">{t.userManagementOption}</option>
-                <option value="group">{t.groupManagementOption}</option>
-                <option value="client">{t.clientManagementOption}</option>
-                <option value="consent">{t.consentOption}</option>
-                <option value="token">{t.tokenFlowOption}</option>
-                <option value="tenant">{t.tenantManagementOption}</option>
-                <option value="key">{t.signingKeyOption}</option>
-              </optgroup>
-            </select>
-          </Field>
-          <Field label={t.targetUserSubFieldLabel}>
-            <Input
-              value={sub}
-              onChange={(e) => setSub(e.target.value)}
-              placeholder={t.filterFieldTargetUserPlaceholder}
-            />
-          </Field>
           <Field label={t.startDateFieldLabel}>
             <Input type="datetime-local" value={after} onChange={(e) => setAfter(e.target.value)} />
           </Field>
@@ -269,6 +306,7 @@ export function AdminAuditEventsPage({
                 {t.addCondition}
               </Button>
             </div>
+            <p className="text-xs text-slate-500">{t.searchAttributesHint}</p>
             <div className="grid gap-2">
               {filters.map((filter) => {
                 const fields = auditFilterFields(t)
@@ -284,6 +322,7 @@ export function AdminAuditEventsPage({
                       onChange={(e) =>
                         updateFilter(filter.id, {
                           field: e.target.value as AuditFilterField,
+                          value: '',
                         })
                       }
                       className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
@@ -294,11 +333,63 @@ export function AdminAuditEventsPage({
                         </option>
                       ))}
                     </select>
-                    <Input
-                      value={filter.value}
-                      onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
-                      placeholder={selectedField.placeholder}
-                    />
+                    {filter.field === 'quick.category' ? (
+                      <select
+                        value={filter.value}
+                        onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                        className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                      >
+                        <option value="">{t.allEventsOption}</option>
+                        <optgroup label={t.authenticationGroupLabel}>
+                          <option value="authentication">{t.authenticationAllOption}</option>
+                          <option value="success">{t.kindSuccess}</option>
+                          <option value="fail">{t.kindFail}</option>
+                          <option value="aggregated">{t.authAggregatedOption}</option>
+                        </optgroup>
+                        <optgroup label={t.adminOperationsGroupLabel}>
+                          <option value="user">{t.userManagementOption}</option>
+                          <option value="group">{t.groupManagementOption}</option>
+                          <option value="client">{t.clientManagementOption}</option>
+                          <option value="consent">{t.consentOption}</option>
+                          <option value="token">{t.tokenFlowOption}</option>
+                          <option value="tenant">{t.tenantManagementOption}</option>
+                          <option value="key">{t.signingKeyOption}</option>
+                        </optgroup>
+                      </select>
+                    ) : filter.field === 'event.type' ? (
+                      <select
+                        value={filter.value}
+                        onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                        className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                      >
+                        <option value="">{t.filterFieldAnyOption}</option>
+                        {eventTypeChoices.map((choice) => (
+                          <option key={choice} value={choice}>
+                            {choice}
+                          </option>
+                        ))}
+                      </select>
+                    ) : filter.field === 'outcome' ? (
+                      <select
+                        value={filter.value}
+                        onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                        className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                      >
+                        <option value="">{t.filterFieldAnyOption}</option>
+                        {outcomeChoices.map((choice) => (
+                          <option key={choice} value={choice}>
+                            {outcomeLabel(choice, t)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        className="h-9"
+                        value={filter.value}
+                        onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                        placeholder={selectedField.placeholder}
+                      />
+                    )}
                     <Button
                       type="button"
                       variant="ghost"

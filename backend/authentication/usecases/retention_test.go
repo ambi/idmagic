@@ -81,48 +81,30 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	}
 }
 
-func TestRetentionSweepRedactsOldFailureUsernames(t *testing.T) {
+func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
+	// ADR-104 (ADR-046 の username 条項を撤回): AuthenticationFailed.username は redact されず、
+	// 他の failure イベントと同じ保持期間 (FailDays) でそのまま保持される。
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := auditmemory.NewAuditEventStore(0)
 	oldFailure := &auditports.AuditEventRecord{
 		ID: "fail-8", TenantID: tenancydomain.DefaultTenantID,
 		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
-		Payload: map[string]any{
-			"tenantId":     tenancydomain.DefaultTenantID,
-			"username":     "alice",
-			"usernameHash": "hash-alice",
-		},
-	}
-	freshFailure := &auditports.AuditEventRecord{
-		ID: "fail-6", TenantID: tenancydomain.DefaultTenantID,
-		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 6),
-		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID, "username": "bob"},
+		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID, "username": "alice"},
 	}
 	if err := store.Append(ctx, oldFailure); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Append(ctx, freshFailure); err != nil {
-		t.Fatal(err)
-	}
 
-	res, err := usecases.RunRetentionSweep(ctx, store, nil, usecases.DefaultRetentionPolicy(), now)
-	if err != nil {
+	if _, err := usecases.RunRetentionSweep(ctx, store, nil, usecases.DefaultRetentionPolicy(), now); err != nil {
 		t.Fatal(err)
-	}
-	if res.RedactedUsernames != 1 {
-		t.Fatalf("redacted usernames=%d, want 1", res.RedactedUsernames)
 	}
 	oldGot, _ := store.FindByID(ctx, "fail-8")
-	if oldGot.Payload["username"] != nil {
-		t.Fatalf("old failure username should be null, got %#v", oldGot.Payload["username"])
+	if oldGot == nil {
+		t.Fatal("fail-8 should survive the 30-day FailDays cutoff at day 8")
 	}
-	if oldGot.Payload["usernameHash"] != "hash-alice" {
-		t.Fatalf("usernameHash should remain, got %#v", oldGot.Payload["usernameHash"])
-	}
-	freshGot, _ := store.FindByID(ctx, "fail-6")
-	if freshGot.Payload["username"] != "bob" {
-		t.Fatalf("fresh failure username should remain, got %#v", freshGot.Payload["username"])
+	if oldGot.Payload["username"] != "alice" {
+		t.Fatalf("username should remain plaintext, got %#v", oldGot.Payload["username"])
 	}
 }
 

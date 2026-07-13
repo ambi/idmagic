@@ -464,12 +464,10 @@ func (d Deps) emitAuthenticationSuccess(
 	if d.Emit == nil || user == nil {
 		return
 	}
-	attrs := d.authenticationEventAttributes(c, user.PreferredUsername)
 	d.Emit(&spec.UserAuthenticated{
 		At: at, TenantID: user.TenantID, UserID: user.ID,
 		AMR: authn.AMR, SessionID: authn.SessionID, ClientID: clientID, ACR: authn.ACR,
-		UsernameHash: attrs.UsernameHash, IPTruncated: attrs.IPTruncated, IPHash: attrs.IPHash,
-		UAHash: attrs.UAHash,
+		IP: extractClientIP(c.Request(), d.TrustedForwardedHops), UserAgent: c.Request().UserAgent(),
 	})
 }
 
@@ -837,28 +835,11 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 
 func (d Deps) emitAuthenticationFailure(c *echo.Context, username, reason string) {
 	if d.Emit != nil {
-		attrs := d.authenticationEventAttributes(c, username)
 		d.Emit(&spec.AuthenticationFailed{
 			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), Username: username, Reason: reason,
-			UsernameHash: attrs.UsernameHash, IPTruncated: attrs.IPTruncated, IPHash: attrs.IPHash,
-			UAHash: attrs.UAHash,
+			IP: extractClientIP(c.Request(), d.TrustedForwardedHops), UserAgent: c.Request().UserAgent(),
 		})
 	}
-}
-
-func (d Deps) authenticationEventAttributes(c *echo.Context, username string) usecases.AuthenticationEventAttributes {
-	var salt []byte
-	if d.TenantSaltStore != nil {
-		if s, err := d.TenantSaltStore.GetSalt(c.Request().Context()); err == nil {
-			salt = s
-		}
-	}
-	return usecases.BuildAuthenticationEventAttributes(
-		salt,
-		username,
-		extractClientIP(c.Request(), d.TrustedForwardedHops),
-		c.Request().UserAgent(),
-	)
 }
 
 func (d Deps) acquireLoginThrottle(

@@ -48,3 +48,18 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 		t.Fatalf("find by ID: %v %#v", err, found)
 	}
 }
+
+func TestAuditEventRepositoryListRejectsMalformedUserIDAsNoMatch(t *testing.T) {
+	// wi-147: user_id は UUID 列。typo や実在しない ID を入力しても 500 にせず 0 件を返す。
+	db := pgtest.Require(t)
+	repo := &AuditEventRepository{Pool: db}
+	events, err := repo.List(context.Background(), ports.AuditEventQuery{
+		TenantID: "tenant-audit-test", UserID: "not-a-uuid",
+	})
+	if err != nil {
+		t.Fatalf("expected no error for malformed user_id, got %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("expected 0 events for malformed user_id, got %d", len(events))
+	}
+}

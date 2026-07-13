@@ -12,16 +12,20 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ambi/idmagic/backend/audit/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/audit/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+// pgInvalidTextRepresentation は Postgres の型キャスト失敗 (SQLSTATE 22P02)。user_id は UUID 列
+// なので、admin が typo や実在しないユーザー ID を入力すると UUID 形式チェックで弾かれうる。
+// これを 500 にはせず「該当なし」として扱う (wi-147: 管理者の検索操作でクラッシュしない)。
+const pgInvalidTextRepresentation = "22P02"
 
 const (
 	auditDefaultListLimit = 100
@@ -169,7 +173,7 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	query := auditEventSelect + where + fmt.Sprintf(" ORDER BY occurred_at DESC LIMIT $%d", len(args))
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return handleAuditListError(err)
 	}
 	defer rows.Close()
 	out := []*ports.AuditEventRecord{}
@@ -180,7 +184,21 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		}
 		out = append(out, rec)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return handleAuditListError(err)
+	}
+	return out, nil
+}
+
+// handleAuditListError は List のクエリ実行 / 走査で起きたエラーを扱う。pgx v5 の Query は
+// 遅延実行のため、型キャスト失敗 (例: user_id への不正な UUID) は Query() の戻り値ではなく
+// rows.Next()/rows.Err() 側で顕在化することがある。両方の箇所から呼べるよう共通化する (wi-147)。
+func handleAuditListError(err error) ([]*ports.AuditEventRecord, error) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgInvalidTextRepresentation {
+		return []*ports.AuditEventRecord{}, nil
+	}
+	return nil, err
 }
 
 func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.AuditEventRecord, error) {
@@ -246,15 +264,4 @@ func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports
 		deleted += count
 	}
 	return deleted, nil
-}
-
-// RedactAuthenticationFailureUsernames は ADR-046 の短期平文 username 保持を実装する。
-// 失敗イベント自体と usernameHash は残し、payload.username だけ JSON null にする。
-func (r *AuditEventRepository) RedactAuthenticationFailureUsernames(ctx context.Context, before time.Time) (int64, error) {
-	count, err := sqlcgen.New(r.Pool).RedactAuthenticationFailureUsernames(ctx,
-		sqlcgen.RedactAuthenticationFailureUsernamesParams{Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: before.UTC()})
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
 }

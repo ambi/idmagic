@@ -120,25 +120,3 @@ func (q *Queries) GetAuditEventByID(ctx context.Context, id string) (*AuditEvent
 	)
 	return &i, err
 }
-
-const redactAuthenticationFailureUsernames = `-- name: RedactAuthenticationFailureUsernames :execrows
-UPDATE audit_events
-SET payload = jsonb_set(payload, '{username}', 'null'::jsonb, true)
-WHERE type = $1
-  AND occurred_at < $2
-  AND payload ? 'username'
-  AND payload->>'username' IS NOT NULL
-`
-
-type RedactAuthenticationFailureUsernamesParams struct {
-	Type       string
-	OccurredAt time.Time
-}
-
-func (q *Queries) RedactAuthenticationFailureUsernames(ctx context.Context, arg RedactAuthenticationFailureUsernamesParams) (int64, error) {
-	result, err := q.db.Exec(ctx, redactAuthenticationFailureUsernames, arg.Type, arg.OccurredAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}

@@ -19,6 +19,11 @@ glossary:
     aliases:
       - filter-expression
       - フィルタ式
+  AuditActorVsTarget:
+    definition: "監査イベントのユーザー相関には actor (操作者) と target (対象ユーザー) の 2 つの独立した軸がある。\nactor は操作を行った当人 (payload の userId 相当。認証・OAuth2 フロー・自身の操作はすべて actor)。\ntarget は操作の対象になった別ユーザー (payload の targetUserId 相当。例: 管理者が UserCreated /\nUserDisabled / GroupMemberAdded を実行した際の対象ユーザー)。AuditEventQuery.user_id / username\n(検索時に user_id へ解決) と filter の actor.id は同じ actor 概念の別表現であり、filter の target.id とは\n別概念である。実在しないアカウント名も追跡する認証失敗イベントだけは、別の平文検索属性\nactor.username (ADR-104) で扱う。UI 語彙では actor 系を「ユーザー ID (操作者)」「ユーザー名 (操作者)」\n「ログイン試行のユーザー名」、target 系を「対象ユーザー」と表記して区別する。\n"
+    aliases:
+      - actor-vs-target
+      - 操作者と対象ユーザー
 models:
   AuditEventQuery:
     kind: value_object
@@ -35,7 +40,11 @@ models:
       user_id:
         type: String
         optional: true
-        description: 対象ユーザー sub の完全一致フィルタ。
+        description: "操作者 (actor) の user sub による完全一致フィルタ。filter の actor.id と同じ対象を指す\n(AuditActorVsTarget 参照)。管理操作の対象ユーザーを絞り込みたい場合は filter の target.id を使う\n(本フィールドとは別概念)。UI 上のラベルは「ユーザー ID (操作者)」。\n"
+      username:
+        type: String
+        optional: true
+        description: "操作者 (actor) のログイン名による検索 (wi-147, ADR-104)。実アカウントが常に確定する\nイベント (UserAuthenticated、OAuth2 フロー系イベント等) は payload に username を持たないため、\n検索時に UserRepo で user_id へ解決してから user_id と同じ経路で絞り込む。該当ユーザーが\n存在しない場合は 0 件を返す (フィルタ無視で全件返すフォールバックはしない)。実在しないアカウント\n名も追跡する必要がある認証失敗イベントの検索には使えない (filter の actor.username を使う)。\n"
       after:
         type: Timestamp
         optional: true
@@ -55,7 +64,7 @@ models:
       filter:
         type: "AuditEventFilterExpression[]"
         optional: true
-        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。username / IP はここで actor.username / client.ip として表現し、専用 query param にはしない。actor.username は lowercased username を tenant salt 付き hash に変換して照合し、client.ip は IPv4 /24・IPv6 /48 に丸めて照合する。"
+        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で (ADR-104:\nhash 化はしない)、実アカウントが確定するイベントの検索には username query param を使う\n(本フィールドとは別経路)。client.ip も平文一致で照合する (truncate/hash はしない)。event.type は\nSCL events セクションの型名 (owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の\nenum (success / failure) から選ぶ選択式の値であり、自由入力ではない (AuditActorVsTarget /\nAuditSearchRegistry 参照)。actor.id / actor.username は操作者、target.id は管理操作の対象ユーザーを\n指し、意味が異なる。"
   AuditEventFilterOperator:
     kind: enum
     description: "監査イベント検索 filter 式で使える比較演算子。registry の属性ごとに許可 operator が宣言される。eq は完全一致、in は値集合のいずれか一致、contains は部分一致 (q 用)、time_range は occurred_at の期間指定。"
@@ -66,27 +75,22 @@ models:
       - time_range
   AuditEventSearchTransform:
     kind: enum
-    description: "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。none は raw 保存、hash は tenant salt 付き SHA-256、ip_truncate は IPv4 /24・IPv6 /48 への丸め (ADR-046)。"
+    description: "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。ADR-104 (ADR-046 の\nusername/IP 条項を撤回) により、現状は none (raw 保存) のみ存在する。\n"
     values:
       - none
-      - hash
-      - ip_truncate
   AuditEventSearchAttribute:
     kind: value_object
-    description: "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist と PII 変換方針を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nactor.username / client.ip は admin 検索ビルダーに表示できる PII-safe 属性で、sidecar には平文を保存しない。\n"
+    description: "監査イベント検索で許可される検索軸 (registry エントリ)。field/operator の allowlist を宣言し、\n任意 SQL / JSONPath ではなく閉じた検索文法を定める。Go 側の AuditSearchRegistry がこの value_object の twin。\nADR-104 (ADR-046 の username/IP 条項を撤回) により、actor.username / client.ip を含む全属性が\n平文のまま sidecar に保存・検索される。actor.id / actor.username は操作者 (誰が行ったか)、target.id は\n管理操作の対象ユーザー (誰に対して行ったか) を指し、同じ「ユーザー」でも意味が異なる (AuditActorVsTarget)。\nevent.type / outcome は値が自由入力ではなく allowlist / enum 由来の選択式として扱う: event.type は\nSCL events の型名 (owns_events)、outcome は Go 側 eventOutcome() が返す success / failure の 2 値\n(該当しないイベントでは値なし)。\n"
     fields:
       field:
         type: String
         description: "検索軸の正準ドット名。例: actor.username / client.ip / event.type。"
       raw_storable:
         type: Boolean
-        description: 平文をそのまま sidecar に保存してよいか。PII 属性は false で hash / ip_truncate を要する。
+        description: "平文をそのまま sidecar に保存してよいか。ADR-104 により現状は全属性で true。"
       transform:
         type: AuditEventSearchTransform
-        description: 保存 / 検索前に平文値へ適用する変換。
-      tenant_salt_required:
-        type: Boolean
-        description: transform に tenant salt を要するか (hash 属性で true)。
+        description: 保存 / 検索前に平文値へ適用する変換 (現状は none のみ)。
       allowed_operators:
         type: "AuditEventFilterOperator[]"
         description: この属性に許可される operator の allowlist。
@@ -134,9 +138,19 @@ models:
         type: Timestamp
         optional: true
         description: ページング継続用カーソル。
+  AuditEventSearchOptionsResponse:
+    kind: value_object
+    description: "event.type / outcome を選択式にするための選択肢一覧 (wi-147)。UI がハードコードせず、\nGo 側の単一の正 (category → type マップ / eventOutcome 分類) から機械的に取得する。\n"
+    fields:
+      event_types:
+        type: "String[]"
+        description: "選択可能な event.type の値一覧 (SCL events の型名)。カテゴリ分類済みの type 群の和集合で、\nadmin UI のイベントカテゴリ選択肢と同じ母集合。"
+      outcomes:
+        type: "String[]"
+        description: "選択可能な outcome の値一覧。現時点では success / failure の 2 値 (認証系イベントのみ分類対象)。"
 interfaces:
   ListAdminAuditEvents:
-    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / sub による絞り込みを提供する。\n認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、category\n(authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nactor.username / client.ip filter は管理者が平文で入力し、サーバが tenant salt 付き hash または\nIP 丸めに変換して sidecar の transform 済み値と照合する。system_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に閉じる。\n"
+    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / user_id / username (操作者) による\n絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、\ncategory (authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nuser_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ\n解決する (ADR-104: hash 化しない。該当ユーザーが無ければ 0 件)。filter の actor.username は実在しない\nアカウント名も追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象\nユーザーを指す別概念 (AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント\n横断、admin は所属テナント内に閉じる。\n"
     input:
       query:
         type: AuditEventQuery
@@ -167,6 +181,18 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/audit_events/export
+  GetAdminAuditEventSearchOptions:
+    description: "管理者が監査イベント検索フォームの event.type / outcome を選択式にするための選択肢一覧を取得する。\n値は AuditSearchRegistry / auditEventCategoryTypes と同じ Go 側の単一の正から導出し、UI 側で\nハードコードした allowlist との drift を防ぐ。permission は AdminAuditEventsRead と同一。\n"
+    output:
+      response:
+        type: AuditEventSearchOptionsResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/audit_events/search_options
   GetAdminAuditEvent:
     description: 管理者が監査イベント 1 件を ID で取得する。別テナントのイベントは未存在として扱う。
     input:
@@ -184,11 +210,11 @@ interfaces:
         method: GET
         path: "/api/admin/audit_events/{id}"
 invariants:
-  AuditPIISearchAttributesAreTransformed:
-    description: "認証イベントの username / IP 相関検索属性は sidecar に平文を保存しない。actor.username は tenant salt 付き hash、client.ip は IPv4 /24・IPv6 /48 に丸めた値だけを保存し、検索時も同じ変換を通す。\n反例: 監査検索 index から username / IP の平文が漏洩する、または tenant 間で同一 username を相関できる。\n"
-    target: AuditEventSearchAttribute
-    assuming: "field in [actor.username, client.ip]"
-    always: "raw_storable == false && stored_value == transform(plaintext, tenant_salt)"
+  ResolvableUserEventsDoNotStoreUsername:
+    description: "実アカウントが常に確定するイベント (UserAuthenticated、ConsentGranted、\nAuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued 等) は\npayload に username (平文・hash とも) を持たない。管理 UI がユーザー名で検索したい場合は\nAuditEventQuery.username が検索時に UserRepo で user_id へ解決し、既存の user_id 経路で絞り込む\n(ADR-104)。実在しないアカウント名も追跡する必要がある認証失敗イベントだけが、例外として\nactor.username 検索属性に平文 username を持つ。\n反例: OAuth2 フロー系イベントの payload に username や usernameHash が含まれる。\n"
+    target: DomainEvent
+    assuming: "e.type in [UserAuthenticated, ConsentGranted, AuthorizationCodeIssued, AuthorizationCodeRedeemed, AccessTokenIssued, RefreshTokenIssued]"
+    always: "!(payload has 'username') && !(payload has 'usernameHash')"
   DomainEventsAreAuditedRegardlessOfProcess:
     description: "業務操作 (use case) が発行する DomainEvent は、それを実行するプロセス (idmagic-api /\nidmagic-worker 等) に関わらず AuditEventRepo に記録されなければならない。emit の配線は\nプロセスごとの DI 組み立てコードの責務だが、その配線漏れが監査証跡の欠落として現れてはならない。\nJob キューのライフサイクルイベント (JobEnqueued / JobStarted / JobSucceeded 等) はこの対象外で、\n業務操作そのものではなくジョブ実行の観測用ログであり、別の sink (ログ) へ出力されれば足りる。\n反例: idmagic-worker が実行する CSV インポート apply で UserCreated イベントは発行されるが、\nworker プロセスの DI 組み立てに emit の配線が無いため AuditEventRepo には記録されず、\nユーザー作成自体は成功して見えるのに監査証跡だけが欠落する (wi-205)。\n"
     target: DomainEvent
@@ -216,6 +242,7 @@ user_experience:
         - ListAdminAuditEvents
         - GetAdminAuditEvent
         - ExportAdminAuditEvents
+        - GetAdminAuditEventSearchOptions
       states:
         - ready
         - loading

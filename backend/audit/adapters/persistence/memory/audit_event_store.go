@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
 )
@@ -115,24 +114,6 @@ func (s *AuditEventStore) DeleteOlderThan(_ context.Context, cutoff ports.Retent
 	}
 	s.events = kept
 	return deleted, nil
-}
-
-// RedactAuthenticationFailureUsernames は失敗イベントの短期平文 username を期限後に null 化する。
-// usernameHash は保持されるため、相関検索は継続できる。
-func (s *AuditEventStore) RedactAuthenticationFailureUsernames(_ context.Context, before time.Time) (int64, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	var redacted int64
-	for _, rec := range s.events {
-		if rec.Type != "AuthenticationFailed" || !rec.OccurredAt.Before(before) || rec.Payload == nil {
-			continue
-		}
-		if v, ok := rec.Payload["username"]; ok && v != nil {
-			rec.Payload["username"] = nil
-			redacted++
-		}
-	}
-	return redacted, nil
 }
 
 func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) bool {

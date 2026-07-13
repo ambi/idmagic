@@ -4,6 +4,10 @@ authors: [tn]
 created_at: 2026-07-04
 ---
 
+> **注記 (2026-07-14)**: 本 ADR の「2. username」条項 (tenant salt 付き hash を first-class とする
+> 方針) は [[ADR-104]] により supersede された。username は平文で扱い、hash 化はしない。
+> IP / 位置情報 / device fingerprint (1, 3, 4) の方針は本 ADR のまま変更していない。
+
 # ADR-046: 認証イベントの PII 取り扱いポリシー
 
 ## コンテキスト

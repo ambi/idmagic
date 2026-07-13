@@ -19,17 +19,15 @@ type UserAuthenticated struct {
 	UserID   string    `json:"userId"`
 	AMR      []string  `json:"amr"`
 	// wi-44 / ADR-041: 産業標準の optional 属性 (後方互換: 既存 payload は破壊しない)。
-	// IP / device は ADR-046 の PII ポリシーに従い truncated / hash で持つ。
-	UsernameHash          string `json:"usernameHash,omitempty"`
-	SessionID             string `json:"sessionId,omitempty"`
-	ClientID              string `json:"clientId,omitempty"`
-	ACR                   string `json:"acr,omitempty"`
-	IPTruncated           string `json:"ipTruncated,omitempty"`
-	IPHash                string `json:"ipHash,omitempty"`
-	UAHash                string `json:"uaHash,omitempty"`
-	CountryCode           string `json:"countryCode,omitempty"`
-	DeviceFingerprintHash string `json:"deviceFingerprintHash,omitempty"`
-	RiskScore             *int   `json:"riskScore,omitempty"`
+	// ADR-104 (ADR-046 の username/IP/device 条項を撤回): 平文のまま持つ。hash / truncate はしない。
+	SessionID         string `json:"sessionId,omitempty"`
+	ClientID          string `json:"clientId,omitempty"`
+	ACR               string `json:"acr,omitempty"`
+	IP                string `json:"ip,omitempty"`
+	UserAgent         string `json:"userAgent,omitempty"`
+	CountryCode       string `json:"countryCode,omitempty"`
+	DeviceFingerprint string `json:"deviceFingerprint,omitempty"`
+	RiskScore         *int   `json:"riskScore,omitempty"`
 }
 
 func (e *UserAuthenticated) EventType() string     { return "UserAuthenticated" }
@@ -40,17 +38,14 @@ type AuthenticationFailed struct {
 	TenantID string    `json:"tenantId"`
 	Username string    `json:"username"`
 	Reason   string    `json:"reason"`
-	// wi-44 / ADR-046: usernameHash は first-class、IP / device は truncated / hash。
-	// 既存の Username 平文は失敗イベント限定で 7 日保持し sweep で粒度を落とす。
-	UsernameHash          string `json:"usernameHash,omitempty"`
-	SessionID             string `json:"sessionId,omitempty"`
-	ClientID              string `json:"clientId,omitempty"`
-	IPTruncated           string `json:"ipTruncated,omitempty"`
-	IPHash                string `json:"ipHash,omitempty"`
-	UAHash                string `json:"uaHash,omitempty"`
-	CountryCode           string `json:"countryCode,omitempty"`
-	DeviceFingerprintHash string `json:"deviceFingerprintHash,omitempty"`
-	RiskScore             *int   `json:"riskScore,omitempty"`
+	// ADR-104 (ADR-046 の username/IP/device 条項を撤回): 平文のまま持つ。hash / truncate はしない。
+	SessionID         string `json:"sessionId,omitempty"`
+	ClientID          string `json:"clientId,omitempty"`
+	IP                string `json:"ip,omitempty"`
+	UserAgent         string `json:"userAgent,omitempty"`
+	CountryCode       string `json:"countryCode,omitempty"`
+	DeviceFingerprint string `json:"deviceFingerprint,omitempty"`
+	RiskScore         *int   `json:"riskScore,omitempty"`
 }
 
 func (e *AuthenticationFailed) EventType() string     { return "AuthenticationFailed" }
@@ -156,14 +151,14 @@ func (e *BackupCodeConsumed) EventType() string     { return "BackupCodeConsumed
 func (e *BackupCodeConsumed) OccurredAt() time.Time { return e.At }
 
 type SessionStarted struct {
-	At          time.Time `json:"-"`
-	TenantID    string    `json:"tenantId"`
-	UserID      string    `json:"userId"`
-	SessionID   string    `json:"sessionId"`
-	AMR         []string  `json:"amr,omitempty"`
-	ACR         string    `json:"acr,omitempty"`
-	IPTruncated string    `json:"ipTruncated,omitempty"`
-	UAHash      string    `json:"uaHash,omitempty"`
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	UserID    string    `json:"userId"`
+	SessionID string    `json:"sessionId"`
+	AMR       []string  `json:"amr,omitempty"`
+	ACR       string    `json:"acr,omitempty"`
+	IP        string    `json:"ip,omitempty"`
+	UserAgent string    `json:"userAgent,omitempty"`
 }
 
 func (e *SessionStarted) EventType() string     { return "SessionStarted" }
@@ -630,6 +625,7 @@ type AuthorizationCodeIssued struct {
 	TenantID            string              `json:"tenantId"`
 	ClientID            string              `json:"clientId"`
 	UserID              string              `json:"userId"`
+	UsernameHash        string              `json:"usernameHash,omitempty"`
 	Scopes              []string            `json:"scopes"`
 	CodeChallengeMethod CodeChallengeMethod `json:"codeChallengeMethod"`
 }
@@ -638,10 +634,11 @@ func (e *AuthorizationCodeIssued) EventType() string     { return "Authorization
 func (e *AuthorizationCodeIssued) OccurredAt() time.Time { return e.At }
 
 type AuthorizationCodeRedeemed struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	ClientID string    `json:"clientId"`
-	UserID   string    `json:"userId"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ClientID     string    `json:"clientId"`
+	UserID       string    `json:"userId"`
+	UsernameHash string    `json:"usernameHash,omitempty"`
 }
 
 func (e *AuthorizationCodeRedeemed) EventType() string     { return "AuthorizationCodeRedeemed" }
@@ -653,6 +650,7 @@ type AccessTokenIssued struct {
 	JTI              string    `json:"jti"`
 	ClientID         string    `json:"clientId"`
 	UserID           string    `json:"userId"`
+	UsernameHash     string    `json:"usernameHash,omitempty"`
 	Scopes           []string  `json:"scopes"`
 	SenderConstraint string    `json:"senderConstraint"` // "none" | "dpop" | "mtls"
 }
@@ -661,13 +659,14 @@ func (e *AccessTokenIssued) EventType() string     { return "AccessTokenIssued" 
 func (e *AccessTokenIssued) OccurredAt() time.Time { return e.At }
 
 type RefreshTokenIssued struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	TokenID  string    `json:"tokenId"`
-	FamilyID string    `json:"familyId"`
-	ParentID string    `json:"parentId,omitempty"`
-	ClientID string    `json:"clientId"`
-	UserID   string    `json:"userId"`
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	TokenID      string    `json:"tokenId"`
+	FamilyID     string    `json:"familyId"`
+	ParentID     string    `json:"parentId,omitempty"`
+	ClientID     string    `json:"clientId"`
+	UserID       string    `json:"userId"`
+	UsernameHash string    `json:"usernameHash,omitempty"`
 }
 
 func (e *RefreshTokenIssued) EventType() string     { return "RefreshTokenIssued" }

@@ -14,7 +14,6 @@ type Querier interface {
 	DeleteAuditEventsBeforeExceptTypes(ctx context.Context, arg DeleteAuditEventsBeforeExceptTypesParams) (int64, error)
 	DeleteAuditEventsByTypeBefore(ctx context.Context, arg DeleteAuditEventsByTypeBeforeParams) (int64, error)
 	GetAuditEventByID(ctx context.Context, id string) (*AuditEvent, error)
-	RedactAuthenticationFailureUsernames(ctx context.Context, arg RedactAuthenticationFailureUsernamesParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

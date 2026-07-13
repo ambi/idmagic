@@ -180,7 +180,8 @@ func (d Deps) handleToken(c *echo.Context) error {
 		res, err := usecases.ExchangeDeviceCode(ctx, usecases.ExchangeDeviceCodeDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			DeviceCodeStore: d.DeviceCodeStore, RefreshStore: d.RefreshStore,
-			TokenIssuer: d.TokenIssuer, Emit: d.Emit,
+			TokenIssuer:          d.TokenIssuer,
+			Emit:                 d.Emit,
 			ResolveAttributeDefs: d.effectiveUserAttributeDefs,
 		}, usecases.ExchangeDeviceCodeInput{
 			ClientID: clientStub.ID, DeviceCode: dc,

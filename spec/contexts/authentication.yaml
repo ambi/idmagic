@@ -617,7 +617,7 @@ models:
         description: リスクスコア (本 WI ではフィールド確保のみ、値は null)。
   AuthenticationFailed:
     kind: event
-    description: "ResourceOwner の認証が失敗した。レートリミット・不正検知の入力イベント。username は PII として扱う\n(失敗イベント限定で平文を 7 日保持し、以後 sweep で粒度を落とす。usernameHash は first-class)。\n"
+    description: "ResourceOwner の認証が失敗した。レートリミット・不正検知の入力イベント。\n実在しないユーザー名での試行も記録対象のため sub を持たず、username を平文のまま監査検索の\nactor.username 相関キーとして保持する (ADR-104: username の hash 化はしない)。他の failure\nイベントと同じ保持期間 (既定 30 日) で扱う。\n"
     payload:
       occurredAt:
         type: Timestamp
@@ -627,12 +627,6 @@ models:
       username:
         type: String
         optional: true
-        annotations:
-          pii: true
-      usernameHash:
-        type: String
-        optional: true
-        description: tenant salt 付き username (lowercased) の SHA-256 hex。
       reason:
         type: String
         optional: true
@@ -743,9 +737,6 @@ models:
         type: Timestamp
       tenantId:
         type: String
-      usernameHash:
-        type: String
-        optional: true
       step:
         type: String
       reason:

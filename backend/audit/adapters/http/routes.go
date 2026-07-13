@@ -7,6 +7,7 @@ package http
 
 import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -19,6 +20,9 @@ type Deps struct {
 
 	AuditEventRepo  auditports.AuditEventRepository
 	TenantSaltStore auditports.TenantSaltStore
+	// UserRepo は username -> user_id 解決 (wi-147) に使う。実アカウントが常に確定する
+	// イベントの検索は、payload に username/hash を持たせず検索時にここで解決する。
+	UserRepo idmports.UserRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに audit コンテキストのエンドポイントを
@@ -26,5 +30,6 @@ type Deps struct {
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/audit_events", d.handleListAdminAuditEvents)
 	g.GET("/api/admin/audit_events/export", d.handleExportAdminAuditEvents)
+	g.GET("/api/admin/audit_events/search_options", d.handleAdminAuditEventSearchOptions)
 	g.GET("/api/admin/audit_events/:id", d.handleGetAdminAuditEvent)
 }

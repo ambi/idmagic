@@ -3684,10 +3684,6 @@ invariants:
     description: クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。
     assuming: event == ClientAuthenticationFailed
     always: "error == InvalidClient && size(error_description) == size(error_description_constant)"
-  AuthenticationFailurePlainUsernameTtl:
-    description: "AuthenticationFailed.username の平文は失敗調査用に短期保持し、発生から 7 日を超えた sweep 後は null 化される。usernameHash は保持され、相関検索には hash を使う。\n反例: 失敗イベントの平文 username が長期監査ログに残る。\n"
-    target: AuthenticationFailed
-    always: "occurred_at < now() - 7d => payload.username == null"
   TokenAndConsentReferencesStayTenantLocal:
     description: "Consent と RefreshTokenRecord は同一 tenant_id 内の User と OAuth2Client だけを参照する。RefreshTokenRecord.parent_id は同じ family_id の既存 RefreshTokenRecord を指す。\n反例: tenant A の refresh token が tenant B の client_id または sub を持つ。\n"
     target: RefreshTokenRecord

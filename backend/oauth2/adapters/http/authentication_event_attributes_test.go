@@ -1,23 +1,21 @@
 package http
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
 
-func TestEmitAuthenticationFailureAddsPIISafeAttributes(t *testing.T) {
-	store := crypto.NewInMemoryTenantSaltStore()
-	d := Deps{TenantSaltStore: store}
+func TestEmitAuthenticationFailureRecordsPlaintextAttributes(t *testing.T) {
+	// ADR-104 (ADR-046 の username/IP/UA 条項を撤回): AuthenticationFailed は平文のまま記録する。
+	d := Deps{}
 	var emitted spec.DomainEvent
 	d.Emit = func(e spec.DomainEvent) { emitted = e }
 
@@ -44,20 +42,13 @@ func TestEmitAuthenticationFailureAddsPIISafeAttributes(t *testing.T) {
 	if !ok {
 		t.Fatalf("emitted %#v, want AuthenticationFailed", emitted)
 	}
-	salt, err := store.GetSalt(tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", ""))
-	if err != nil {
-		t.Fatal(err)
+	if ev.Username != " Alice " {
+		t.Fatalf("username = %q, want the raw input preserved", ev.Username)
 	}
-	if ev.UsernameHash != spec.SaltedHash(salt, "alice") {
-		t.Fatalf("usernameHash = %q", ev.UsernameHash)
+	if ev.IP != "198.51.100.44" {
+		t.Fatalf("ip = %q, want the raw client IP", ev.IP)
 	}
-	if ev.IPTruncated != "198.51.100.0/24" {
-		t.Fatalf("ipTruncated = %q", ev.IPTruncated)
-	}
-	if ev.IPHash != spec.SaltedHash(salt, "198.51.100.44") {
-		t.Fatalf("ipHash = %q", ev.IPHash)
-	}
-	if ev.UAHash != spec.SaltedHash(salt, "test-agent") {
-		t.Fatalf("uaHash = %q", ev.UAHash)
+	if ev.UserAgent != "test-agent" {
+		t.Fatalf("userAgent = %q", ev.UserAgent)
 	}
 }

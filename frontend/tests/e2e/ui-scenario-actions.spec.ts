@@ -14,9 +14,11 @@ import {
   setCheckboxValue,
   setInputValue,
   setSelectValue,
+  setSelectValueAt,
   startE2EEnvironment,
   stopE2EEnvironment,
   uiOrigin,
+  waitForLocationHref,
   waitForPage,
   waitForUrl,
   waitForEmailURL,
@@ -272,20 +274,35 @@ test('admin audit log can be filtered and export can be triggered', async () => 
       }
     })()`)
 
-    await setSelectValue(view, 'select', 'authentication')
+    // wi-147: イベントカテゴリとユーザー ID (操作者) は同じ検索条件一覧の行として操作する。
+    // 既定行 (field=quick.category) の値 select は 2 番目の <select>。
+    await setSelectValueAt(view, 'select', 1, 'authentication')
+    await clickButtonByText(view, 'Add condition')
+    // 追加した行 (既定 field=event.type) の種類 select は 3 番目の <select>。
+    await setSelectValueAt(view, 'select', 2, 'quick.actor_id')
     await setInputValue(
       view,
-      'input[placeholder="e.g., user_..."]',
+      'input[placeholder="e.g., usr_... (the actor\'s user ID)"]',
       '00000000-0000-4000-8000-000000000001',
     )
     await clickButtonByText(view, 'Filter')
     await waitForText(view, 'UserAuthenticated')
+
+    // wi-147: 検索実行後は URL が同期し、共有 URL / reload で同じ検索結果を復元できる。
+    const searchURL = await waitForLocationHref(
+      view,
+      /category=authentication.*sub=00000000-0000-4000-8000-000000000001/,
+    )
 
     await clickButtonByText(view, 'Export')
     const exportURL = await view.evaluate('window.__raAuditExportURL ?? ""')
     expect(String(exportURL)).toContain('/api/admin/audit_events/export')
     expect(String(exportURL)).toContain('category=authentication')
     expect(String(exportURL)).toContain('user_id=00000000-0000-4000-8000-000000000001')
+
+    await view.navigate(searchURL)
+    await waitForPage(view, 'admin-audit-events', 30_000)
+    await waitForText(view, 'UserAuthenticated')
   } finally {
     view.close()
   }

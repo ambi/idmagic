@@ -20,18 +20,12 @@ func TestAuditSearchRegistryIntegrity(t *testing.T) {
 				t.Errorf("attr %q has unknown operator %q", key, op)
 			}
 		}
-		// PII (非 raw_storable) 属性は transform を要し、hash なら tenant salt を要する。
+		// ADR-104 (ADR-046 の username/IP 条項を撤回) により、現状は全属性が平文 raw_storable。
 		if !attr.RawStorable {
-			if attr.Transform == TransformNone {
-				t.Errorf("attr %q is not raw_storable but has no transform", key)
-			}
-			if attr.Transform == TransformHash && !attr.TenantSaltReq {
-				t.Errorf("attr %q hashes but does not require tenant salt", key)
-			}
+			t.Errorf("attr %q is not raw_storable, but no PII transform exists anymore (ADR-104)", key)
 		}
-		// raw_storable 属性は変換不要。
-		if attr.RawStorable && attr.Transform != TransformNone {
-			t.Errorf("attr %q is raw_storable but declares a transform", key)
+		if attr.Transform != TransformNone {
+			t.Errorf("attr %q declares a transform, but TransformNone is the only transform (ADR-104)", key)
 		}
 	}
 }
@@ -59,11 +53,12 @@ func TestAllowsOperator(t *testing.T) {
 		t.Error("actor.username should allow eq")
 	}
 	if attr.AllowsOperator(OpContains) {
-		t.Error("actor.username (PII) must not allow contains")
+		t.Error("actor.username must not allow contains")
 	}
 }
 
-func TestPIIAttributesAreVisibleButNotRawStorable(t *testing.T) {
+func TestActorUsernameAndClientIPAreVisibleAndRawStorable(t *testing.T) {
+	// ADR-104 (ADR-046 の username/IP 条項を撤回): 平文のまま sidecar に保存・検索する。
 	for _, field := range []string{"actor.username", "client.ip"} {
 		attr, ok := LookupSearchAttribute(field)
 		if !ok {
@@ -72,8 +67,8 @@ func TestPIIAttributesAreVisibleButNotRawStorable(t *testing.T) {
 		if !attr.UIVisible {
 			t.Fatalf("%s should be available in the admin search builder", field)
 		}
-		if attr.RawStorable {
-			t.Fatalf("%s must not store plaintext in the sidecar", field)
+		if !attr.RawStorable {
+			t.Fatalf("%s should store plaintext in the sidecar (ADR-104)", field)
 		}
 	}
 }

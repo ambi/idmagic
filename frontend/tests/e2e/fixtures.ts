@@ -296,6 +296,24 @@ export async function waitForLocationPath(
   throw new Error(`timeout waiting for location.pathname=${expected}`)
 }
 
+// view.url は History API 経由の SPA 遷移 (pushState/replaceState) を反映しないため、
+// router navigation による URL 同期 (wi-147) は window.location.href を直接ポーリングして検証する。
+export async function waitForLocationHref(
+  view: Bun.WebView,
+  pattern: RegExp,
+  timeoutMs = 15_000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const href = String(await view.evaluate('window.location.href'))
+    if (pattern.test(href)) {
+      return href
+    }
+    await Bun.sleep(150)
+  }
+  throw new Error(`timeout waiting for location.href matching ${pattern}`)
+}
+
 export async function clickButtonByText(view: Bun.WebView, text: string): Promise<void> {
   const clicked = await view.evaluate(`(() => {
     const target = [...document.querySelectorAll('button')]
@@ -401,6 +419,27 @@ export async function setSelectValue(
   })()`)
   if (changed !== true) {
     throw new Error(`select not found: ${selector}`)
+  }
+}
+
+// setSelectValueAt は selector に複数マッチする場合に index 番目 (0 始まり) の
+// select を対象にする。複数の select が並ぶ検索条件行 UI (wi-147) 向け。
+export async function setSelectValueAt(
+  view: Bun.WebView,
+  selector: string,
+  index: number,
+  value: string,
+): Promise<void> {
+  const changed = await view.evaluate(`(() => {
+    const select = document.querySelectorAll(${JSON.stringify(selector)})[${index}]
+    if (!(select instanceof HTMLSelectElement)) return false
+    select.value = ${JSON.stringify(value)}
+    select.dispatchEvent(new Event('input', { bubbles: true }))
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+    return true
+  })()`)
+  if (changed !== true) {
+    throw new Error(`select not found at index ${index}: ${selector}`)
   }
 }
 

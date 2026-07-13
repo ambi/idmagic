@@ -48,7 +48,7 @@ const (
 	authFirstPartyClientID = "auth-client-fp"
 )
 
-func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *domain.Consent) *echo.Echo {
+func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *domain.Consent) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmmemory.NewUserRepository()
@@ -91,8 +91,12 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		_ = consentRepo.Save(context.Background(), tenancydomain.DefaultTenantID, consent)
 	}
 	e := echo.New()
+	emitted := &[]spec.DomainEvent{}
 	deps := httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"},
+		Deps: support.Deps{
+			Issuer: "http://test",
+			Emit:   func(e spec.DomainEvent) { *emitted = append(*emitted, e) },
+		},
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: consentRepo,
 			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(), PARStore: oauth2memory.NewPARStore(),
@@ -103,7 +107,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		deps.AuthnResolver = &fakeAuthnResolver{ctx: authn}
 	}
 	httpadapter.Register(e, deps)
-	return e
+	return e, emitted
 }
 
 func authorizeQuery(extra url.Values) url.Values {
@@ -128,7 +132,7 @@ func runAuthorize(t *testing.T, e *echo.Echo, q url.Values) *httptest.ResponseRe
 }
 
 func TestAuthorizePromptNoneWithoutSessionReturnsLoginRequired(t *testing.T) {
-	e := newAuthorizeTestServer(t, nil, nil)
+	e, _ := newAuthorizeTestServer(t, nil, nil)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"none"}}))
 	if rec.Code == http.StatusSeeOther ||
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"login_required"`)) {
@@ -140,7 +144,7 @@ func TestAuthorizePromptLoginForcesReauthentication(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
 		UserID: "user_alice", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 	}
-	e := newAuthorizeTestServer(t, authn, nil)
+	e, _ := newAuthorizeTestServer(t, authn, nil)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"login"}}))
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("expected 303 redirect, got %d body=%s", rec.Code, rec.Body.String())
@@ -155,7 +159,7 @@ func TestAuthorizeMaxAgeBeyondLastAuthForcesReauthentication(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
 		UserID: "user_alice", AuthTime: time.Now().Add(-time.Hour).Unix(), AMR: []string{"pwd"},
 	}
-	e := newAuthorizeTestServer(t, authn, nil)
+	e, _ := newAuthorizeTestServer(t, authn, nil)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"max_age": {"60"}}))
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("expected 303, got %d body=%s", rec.Code, rec.Body.String())
@@ -177,7 +181,7 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 		State:     domain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
-	e := newAuthorizeTestServer(t, authn, consent)
+	e, _ := newAuthorizeTestServer(t, authn, consent)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"consent"}}))
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("expected 303, got %d body=%s", rec.Code, rec.Body.String())
@@ -194,7 +198,7 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
 		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
-	e := newAuthorizeTestServer(t, authn, nil)
+	e, emitted := newAuthorizeTestServer(t, authn, nil)
 	q := authorizeQuery(url.Values{})
 	q.Set("client_id", authFirstPartyClientID)
 	q.Set("scope", "openid profile idmagic.admin")
@@ -209,5 +213,14 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	}
 	if !strings.HasPrefix(loc, authRedirectURI) || !strings.Contains(loc, "code=") {
 		t.Fatalf("expected redirect to %s with code, got Location=%q", authRedirectURI, loc)
+	}
+	found := false
+	for _, e := range *emitted {
+		if _, ok := e.(*spec.AuthorizationCodeIssued); ok {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected AuthorizationCodeIssued to be emitted")
 	}
 }
