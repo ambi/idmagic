@@ -24,6 +24,9 @@ var successAuthEventTypes = map[string]bool{
 	(&spec.UserAuthenticated{}).EventType():           true,
 	(&spec.AuthenticationStepCompleted{}).EventType(): true,
 	(&spec.MfaChallengeSucceeded{}).EventType():       true,
+	(&spec.MfaEnrollmentRequired{}).EventType():       true,
+	(&spec.MfaEnrollmentCompleted{}).EventType():      true,
+	(&spec.MfaEnrollmentBypassConsumed{}).EventType(): true,
 	(&spec.SessionStarted{}).EventType():              true,
 }
 
@@ -42,8 +45,16 @@ func ExtractSearchAttributes(rec *ports.AuditEventRecord) map[string]string {
 
 	set("event.type", rec.Type)
 	set("outcome", eventOutcome(rec.Type))
-	set("actor.id", payloadString(rec.Payload, "userId"))
-	set("target.id", payloadString(rec.Payload, "targetUserId"))
+	actorID := payloadString(rec.Payload, "actorUserId")
+	if actorID == "" {
+		actorID = payloadString(rec.Payload, "userId")
+	}
+	set("actor.id", actorID)
+	targetID := payloadString(rec.Payload, "targetUserId")
+	if targetID == "" && payloadString(rec.Payload, "actorUserId") != "" {
+		targetID = payloadString(rec.Payload, "userId")
+	}
+	set("target.id", targetID)
 	set("client.id", payloadString(rec.Payload, "clientId"))
 	set("session.id", payloadString(rec.Payload, "sessionId"))
 	set("transaction.id", payloadString(rec.Payload, "transactionId"))

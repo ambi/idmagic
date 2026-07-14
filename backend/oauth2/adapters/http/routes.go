@@ -39,6 +39,7 @@ type Deps struct {
 	PasswordHasher             authnports.PasswordHasher
 	LoginAttemptThrottle       authnports.LoginAttemptThrottle
 	MfaFactorRepo              authnports.MfaFactorRepository
+	MfaEnrollmentBypassRepo    authnports.MfaEnrollmentBypassRepository
 	CodeStore                  oauthports.AuthorizationCodeStore
 	JWKResolver                *crypto.JWKResolver
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
@@ -76,6 +77,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/auth/webauthn/challenge", d.handleWebAuthnChallengeAPI)
 	g.POST("/api/auth/webauthn", d.handleWebAuthnAPI)
 	g.POST("/api/auth/recovery-code", d.handleRecoveryCodeAPI)
+	g.POST("/api/auth/mfa/enrollment/totp/start", d.handleStartMfaEnrollmentAPI)
+	g.POST("/api/auth/mfa/enrollment/totp/confirm", d.handleConfirmMfaEnrollmentAPI)
 	g.GET("/api/auth/device", d.handleDeviceContext)
 	g.POST("/api/auth/device", d.handleDeviceAPI)
 	g.POST("/token", d.handleToken)

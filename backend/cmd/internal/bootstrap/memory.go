@@ -48,6 +48,7 @@ func assembleMemory() (*Dependencies, error) {
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),
+			MfaEnrollmentBypassRepo: authnmemory.NewMfaEnrollmentBypassRepository(),
 			PasswordHistoryRepo:     authnmemory.NewPasswordHistoryRepository(),
 			PasswordResetTokenStore: authnmemory.NewPasswordResetTokenStore(),
 			EmailChangeTokenStore:   authnmemory.NewEmailChangeTokenStore(),

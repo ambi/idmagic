@@ -54,6 +54,7 @@ func (m *SessionManager) CreateWithPending(
 		AMR:                   amr,
 		ACR:                   DeriveACR(amr),
 		AuthenticationPending: authenticationPending,
+		PendingPurpose:        domain.LoginPendingNone,
 		ExpiresAt:             now.Add(SessionTTLSeconds * time.Second),
 	}
 	if err := m.Store.Save(ctx, sess); err != nil {
@@ -66,6 +67,7 @@ func (m *SessionManager) CreateWithPending(
 		ACR:                   sess.ACR,
 		SessionID:             id,
 		AuthenticationPending: sess.AuthenticationPending,
+		PendingPurpose:        sess.PendingPurpose,
 	}, nil
 }
 
@@ -90,6 +92,9 @@ func (m *SessionManager) CompleteFactor(
 	sess.AMR = merged
 	sess.ACR = DeriveACR(merged)
 	sess.AuthenticationPending = false
+	sess.PendingPurpose = domain.LoginPendingNone
+	sess.EnrollmentDeadline = nil
+	sess.EnrollmentBypassID = ""
 	if err := m.Store.Save(ctx, sess); err != nil {
 		return nil, err
 	}
@@ -100,6 +105,7 @@ func (m *SessionManager) CompleteFactor(
 		ACR:                   sess.ACR,
 		SessionID:             sess.ID,
 		AuthenticationPending: sess.AuthenticationPending,
+		PendingPurpose:        sess.PendingPurpose,
 		StepUpAt:              sess.StepUpAt,
 	}, nil
 }
@@ -116,6 +122,7 @@ func (m *SessionManager) RequireFactor(
 		return nil, nil
 	}
 	sess.AuthenticationPending = true
+	sess.PendingPurpose = domain.LoginPendingChallenge
 	if err := m.Store.Save(ctx, sess); err != nil {
 		return nil, err
 	}
@@ -128,6 +135,41 @@ func (m *SessionManager) RequireFactor(
 		AuthenticationPending: sess.AuthenticationPending,
 		StepUpAt:              sess.StepUpAt,
 	}, nil
+}
+
+func (m *SessionManager) RequireEnrollment(
+	ctx context.Context,
+	sessionID string,
+	deadline time.Time,
+	bypassID string,
+) (*domain.AuthenticationContext, error) {
+	if deadline.IsZero() || bypassID == "" {
+		return nil, domain.ErrInvalidMfaEnrollmentBypass
+	}
+	sess, err := m.Store.Find(ctx, sessionID)
+	if err != nil || sess == nil {
+		return nil, err
+	}
+	if sess.TenantID != tenancy.TenantID(ctx) {
+		return nil, nil
+	}
+	sess.AuthenticationPending = true
+	sess.PendingPurpose = domain.LoginPendingEnrollment
+	sess.EnrollmentDeadline = &deadline
+	sess.EnrollmentBypassID = bypassID
+	if err := m.Store.Save(ctx, sess); err != nil {
+		return nil, err
+	}
+	return authenticationContextFromSession(sess), nil
+}
+
+func authenticationContextFromSession(sess *domain.LoginSession) *domain.AuthenticationContext {
+	return &domain.AuthenticationContext{
+		UserID: sess.UserID, AuthTime: sess.AuthTime, AMR: slices.Clone(sess.AMR), ACR: sess.ACR,
+		SessionID: sess.ID, AuthenticationPending: sess.AuthenticationPending,
+		PendingPurpose: sess.PendingPurpose, EnrollmentDeadline: sess.EnrollmentDeadline,
+		EnrollmentBypassID: sess.EnrollmentBypassID, StepUpAt: sess.StepUpAt,
+	}
 }
 
 // RecordStepUp は session に step-up 再認証の成立時刻を刻む (ADR-043)。pending な
@@ -177,15 +219,7 @@ func (m *SessionManager) Resolve(ctx context.Context, headers domain.Headers) (*
 	if sess.TenantID != tenancy.TenantID(ctx) {
 		return nil, nil
 	}
-	return &domain.AuthenticationContext{
-		UserID:                sess.UserID,
-		AuthTime:              sess.AuthTime,
-		AMR:                   sess.AMR,
-		ACR:                   sess.ACR,
-		SessionID:             sess.ID,
-		AuthenticationPending: sess.AuthenticationPending,
-		StepUpAt:              sess.StepUpAt,
-	}, nil
+	return authenticationContextFromSession(sess), nil
 }
 
 func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error {

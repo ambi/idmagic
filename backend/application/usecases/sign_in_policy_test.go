@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -8,6 +9,25 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 )
+
+func TestValidateSignInPolicyRulesAtMfaEnrollment(t *testing.T) {
+	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
+	start := now.Add(time.Hour)
+	grace := 900
+	rules := []domain.SignInRule{{
+		Name: "mfa", Enabled: true,
+		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+		MfaEnrollment: &domain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true},
+	}}
+	if err := ValidateSignInPolicyRulesAt(rules, now); err != nil {
+		t.Fatalf("valid enrollment policy: %v", err)
+	}
+	past := now.Add(-time.Second)
+	rules[0].MfaEnrollment.EnforcementStartAt = &past
+	if err := ValidateSignInPolicyRulesAt(rules, now); !errors.Is(err, ErrInvalidSignInPolicy) {
+		t.Fatalf("past start: %v", err)
+	}
+}
 
 func TestEvaluateSignInPolicyRequiresMFA(t *testing.T) {
 	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{

@@ -23,6 +23,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
+	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -128,12 +129,13 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	return newServerWithTOTPPolicy(t, totpSecret, false)
 }
 
-func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *httptest.Server {
+func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, enrollment ...bool) *httptest.Server {
 	t.Helper()
 
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmmemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
+	mfaEnrollmentBypassRepo := authnmemory.NewMfaEnrollmentBypassRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
 	requestStore := oauth2memory.NewAuthorizationRequestStore()
 	codeStore := oauth2memory.NewAuthorizationCodeStore()
@@ -181,6 +183,23 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 		}
 	}
 	if requireMFA {
+		enrollmentEnabled := len(enrollment) > 0 && enrollment[0]
+		var enrollmentPolicy *appdomain.MfaEnrollmentPolicy
+		if enrollmentEnabled {
+			start := now.Add(-time.Minute)
+			grace := 3600
+			enrollmentPolicy = &appdomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true}
+			bypassExpiresAt := now.Add(15 * time.Minute)
+			if len(enrollment) > 1 && enrollment[1] {
+				bypassExpiresAt = now.Add(-time.Second)
+			}
+			if err := mfaEnrollmentBypassRepo.Save(context.Background(), &authdomain.MfaEnrollmentBypass{
+				ID: "bypass-alice", TenantID: tenancydomain.DefaultTenantID, UserID: "user_alice", IssuedBy: "admin",
+				IssuedAt: now.Add(-time.Minute), ExpiresAt: bypassExpiresAt,
+			}); err != nil {
+				t.Fatalf("seed enrollment bypass: %v", err)
+			}
+		}
 		if err := applicationRepo.Save(context.Background(), &appdomain.Application{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-demo", Name: "Demo App",
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
@@ -201,6 +220,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			Rules: []appdomain.SignInRule{{
 				RuleID: "default", Name: "Require MFA", Enabled: true,
 				RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+				MfaEnrollment: enrollmentPolicy,
 			}},
 		}); err != nil {
 			t.Fatalf("seed sign-in policy: %v", err)
@@ -227,7 +247,8 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool) *
 			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
 			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
 		}, UserRepo: userRepo,
-		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
+		Authentication: authentication.Module{MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo},
+		MfaFactorRepo:  mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		Application: application.Module{
@@ -392,6 +413,80 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	})
 	if totpResult["next"] != "/consent" {
 		t.Fatalf("totp next=%q, want /consent", totpResult["next"])
+	}
+}
+
+func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testing.T) {
+	srv := newServerWithTOTPPolicy(t, "", true, true)
+	defer srv.Close()
+	client := browserClient(t)
+
+	resp := startAuthorization(t, client, srv.URL, "verifier-for-enrollment-test-123456789012345", "state")
+	resp.Body.Close()
+	transaction := getJSON[struct {
+		Kind      string `json:"kind"`
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/api/auth/transaction")
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
+	if loginResult["next"] != "/mfa-enrollment" {
+		t.Fatalf("login next=%q", loginResult["next"])
+	}
+
+	enrollmentTransaction := getJSON[struct {
+		Kind      string `json:"kind"`
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/api/auth/transaction")
+	if enrollmentTransaction.Kind != "mfa_enrollment" {
+		t.Fatalf("kind=%q", enrollmentTransaction.Kind)
+	}
+	start := postJSON[struct {
+		Secret string `json:"secret"`
+	}](t, client, srv.URL+"/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
+	code, err := authusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed := postJSON[map[string]string](t, client, srv.URL+"/api/auth/mfa/enrollment/totp/confirm", enrollmentTransaction.CSRFToken, map[string]string{"secret": start.Secret, "code": code})
+	if completed["next"] != "/consent" {
+		t.Fatalf("enrollment next=%q", completed["next"])
+	}
+
+	// bypass は単発であり、登録完了後の同一 session は通常 transaction を継続する。
+	consent := getJSON[struct {
+		Kind string `json:"kind"`
+	}](t, client, srv.URL+"/api/auth/transaction")
+	if consent.Kind != "consent" {
+		t.Fatalf("post-enrollment kind=%q", consent.Kind)
+	}
+}
+
+func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApproval(t *testing.T) {
+	srv := newServerWithTOTPPolicy(t, "", true)
+	defer srv.Close()
+	client := browserClient(t)
+	resp := startAuthorization(t, client, srv.URL, "verifier-for-no-enrollment-test-123456789012", "state")
+	resp.Body.Close()
+	transaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/api/auth/transaction")
+	result := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
+	if !strings.Contains(result["redirect_to"], "error=access_denied") {
+		t.Fatalf("redirect=%q", result["redirect_to"])
+	}
+}
+
+func TestBrowserAuthorizationFlowRejectsExpiredEnrollmentApproval(t *testing.T) {
+	srv := newServerWithTOTPPolicy(t, "", true, true, true)
+	defer srv.Close()
+	client := browserClient(t)
+	resp := startAuthorization(t, client, srv.URL, "verifier-for-expired-enrollment-123456789012", "state")
+	resp.Body.Close()
+	transaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/api/auth/transaction")
+	result := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
+	if !strings.Contains(result["redirect_to"], "error=access_denied") {
+		t.Fatalf("redirect=%q", result["redirect_to"])
 	}
 }
 

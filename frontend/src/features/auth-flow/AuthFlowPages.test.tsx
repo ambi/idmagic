@@ -7,6 +7,7 @@ import { ConsentPage } from './ConsentPage'
 import { DevicePage } from './DevicePage'
 import { EmailVerifyPage } from './EmailVerifyPage'
 import { TotpPage } from './TotpPage'
+import { MfaEnrollmentPage } from './MfaEnrollmentPage'
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -203,6 +204,32 @@ describe('auth-flow pages', () => {
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/auth/totp'),
+      expect.objectContaining({ body: expect.stringContaining('123456') }),
+    )
+  })
+
+  it('enrolls TOTP in the dedicated pending flow and continues the transaction', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url.includes('/mfa/enrollment/totp/start')) {
+          return Promise.resolve(
+            response(200, { secret: 'SECRET', account_name: 'alice', issuer: 'idmagic' }),
+          )
+        }
+        if (url.includes('/mfa/enrollment/totp/confirm')) {
+          return Promise.resolve(response(200, { next: '/continue' }))
+        }
+        return Promise.resolve(response(200, {}))
+      }),
+    )
+    render(<MfaEnrollmentPage csrfToken="csrf" />)
+    expect(await screen.findByText('SECRET')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: '登録してログインを続行' }))
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/mfa/enrollment/totp/confirm'),
       expect.objectContaining({ body: expect.stringContaining('123456') }),
     )
   })

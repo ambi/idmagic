@@ -167,12 +167,19 @@ export type AccessCondition = {
   reauth_max_age_seconds?: number
 }
 
+export type MfaEnrollmentPolicy = {
+  enforcement_start_at?: string
+  grace_period_seconds?: number
+  allow_admin_bypass: boolean
+}
+
 export type SignInRule = {
   rule_id: string
   name: string
   enabled: boolean
   required_authn: RequiredAuthnLevel
   condition: AccessCondition
+  mfa_enrollment?: MfaEnrollmentPolicy
 }
 
 export type AppSignInPolicy = {
@@ -189,6 +196,11 @@ export type TenantDefaultSignInPolicy = {
   rules: SignInRule[]
   created_at: string
   updated_at: string
+}
+
+export type TenantDefaultSignInPolicyView = {
+  policy: TenantDefaultSignInPolicy
+  unenrolled_user_count: number
 }
 
 // アプリ詳細で「このアプリの上書き」「テナントデフォルト」「最終的に適用されるポリシー」を区別する (ADR-081)。

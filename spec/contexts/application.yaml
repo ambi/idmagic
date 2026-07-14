@@ -182,6 +182,19 @@ models:
       strength:
         type: RequiredAuthnStrength
         default: Password
+  MfaEnrollmentPolicy:
+    kind: value_object
+    description: MFA 必須化の事前登録期間と、強制開始後の管理者承認済みオンボーディングを制御する。enforcement_start_at より前は通常ログインを許可して self-service 登録を促し、開始後は未登録ユーザーをログイン完了させず、allow_admin_bypass=true かつ有効な単発 enrollment bypass がある場合だけ登録専用 flow へ進める。grace_period_seconds は開始後に bypass を利用できる期間であり、自由登録期間ではない。
+    fields:
+      enforcement_start_at:
+        type: DateTime
+        optional: true
+      grace_period_seconds:
+        type: Integer
+        optional: true
+      allow_admin_bypass:
+        type: Boolean
+        default: false
   AccessCondition:
     kind: value_object
     description: サインインポリシーの静的アクセス条件。すべて初期実装で実際に評価できる構造化条件のみを持つ。network_allow_cidrs はクライアント IP を許可 CIDR に突き合わせ、reauth_max_age_seconds は認証または step-up の recency として評価する。旧 network / device の自由入力は廃止した。
@@ -206,6 +219,9 @@ models:
         type: RequiredAuthnLevel
       condition:
         type: AccessCondition
+      mfa_enrollment:
+        type: MfaEnrollmentPolicy
+        optional: true
   AppSignInPolicy:
     kind: entity
     description: Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。
@@ -576,6 +592,9 @@ models:
     fields:
       policy:
         type: TenantDefaultSignInPolicy
+      unenrolled_user_count:
+        type: Integer
+        description: テナント内の active user のうち TOTP / WebAuthn factor を 1 件も持たない人数。MFA 必須化前の影響確認に使う。
   MyApplication:
     kind: value_object
     description: 利用者ポータルに表示する割当済みアプリ 1 件。
@@ -1318,7 +1337,7 @@ interfaces:
         path: "/api/admin/applications/{application_id}/sign-in-policy"
         request_form: body
   GetTenantDefaultSignInPolicy:
-    description: 管理者がテナントデフォルト sign-in policy を取得する。未設定なら空 rules の policy を返す (ADR-081)。
+    description: 管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す (ADR-081)。
     output:
       response:
         type: TenantDefaultSignInPolicyResponse
@@ -1335,7 +1354,7 @@ interfaces:
         method: GET
         path: /api/admin/default-sign-in-policy
   UpdateTenantDefaultSignInPolicy:
-    description: 管理者がテナントデフォルト sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。
+    description: 管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。
     input:
       request:
         type: TenantDefaultSignInPolicyRequest
@@ -1627,8 +1646,9 @@ scenarios:
       - "roles=[\"admin\"] のユーザー \"operator\" がサインインポリシー画面を開いている"
       - テナントに OIDC binding を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない
     main_success:
-      - 管理者が MFA 必須を要求するテナントデフォルトサインインポリシーを保存する
+      - 管理者が MFA 必須、将来の強制開始日時、enrollment bypass 猶予、管理者承認を要求するテナントデフォルトサインインポリシーを保存する
       - "TenantDefaultSignInPolicyUpdated が発行される"
+      - 画面は active user の MFA 未登録人数と強制時のロックアウト影響を表示する
       - 単要素セッションの利用者が個別ポリシーを持たない Application にアクセスする
       - システムはデフォルトポリシーを適用し step-up を要求する
     extensions:

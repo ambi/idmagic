@@ -900,6 +900,73 @@ type GroupMemberRemoved struct {
 func (e *GroupMemberRemoved) EventType() string     { return "GroupMemberRemoved" }
 func (e *GroupMemberRemoved) OccurredAt() time.Time { return e.At }
 
+type MfaEnrollmentRequired struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	UserID    string    `json:"userId"`
+	SessionID string    `json:"sessionId"`
+	BypassID  string    `json:"bypassId"`
+	Deadline  time.Time `json:"deadline"`
+}
+
+func (e *MfaEnrollmentRequired) EventType() string     { return "MfaEnrollmentRequired" }
+func (e *MfaEnrollmentRequired) OccurredAt() time.Time { return e.At }
+
+type MfaEnrollmentCompleted struct {
+	At         time.Time `json:"-"`
+	TenantID   string    `json:"tenantId"`
+	UserID     string    `json:"userId"`
+	SessionID  string    `json:"sessionId"`
+	FactorType string    `json:"factorType"`
+}
+
+func (e *MfaEnrollmentCompleted) EventType() string     { return "MfaEnrollmentCompleted" }
+func (e *MfaEnrollmentCompleted) OccurredAt() time.Time { return e.At }
+
+type MfaEnrollmentBypassIssued struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	UserID      string    `json:"userId"`
+	BypassID    string    `json:"bypassId"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+}
+
+func (e *MfaEnrollmentBypassIssued) EventType() string     { return "MfaEnrollmentBypassIssued" }
+func (e *MfaEnrollmentBypassIssued) OccurredAt() time.Time { return e.At }
+
+type MfaEnrollmentBypassConsumed struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	UserID    string    `json:"userId"`
+	BypassID  string    `json:"bypassId"`
+	SessionID string    `json:"sessionId"`
+}
+
+func (e *MfaEnrollmentBypassConsumed) EventType() string     { return "MfaEnrollmentBypassConsumed" }
+func (e *MfaEnrollmentBypassConsumed) OccurredAt() time.Time { return e.At }
+
+type MfaEnrollmentBypassRevoked struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	UserID      string    `json:"userId"`
+	BypassID    string    `json:"bypassId"`
+}
+
+func (e *MfaEnrollmentBypassRevoked) EventType() string     { return "MfaEnrollmentBypassRevoked" }
+func (e *MfaEnrollmentBypassRevoked) OccurredAt() time.Time { return e.At }
+
+type MfaEnrollmentBypassExpired struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	UserID   string    `json:"userId"`
+	BypassID string    `json:"bypassId"`
+}
+
+func (e *MfaEnrollmentBypassExpired) EventType() string     { return "MfaEnrollmentBypassExpired" }
+func (e *MfaEnrollmentBypassExpired) OccurredAt() time.Time { return e.At }
+
 func MarshalDomainEvent(event DomainEvent) ([]byte, error) {
 	payload, err := json.Marshal(event)
 	if err != nil {

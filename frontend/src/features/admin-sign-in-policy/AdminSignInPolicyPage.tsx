@@ -71,11 +71,13 @@ export function AdminSignInPolicyPage({
   actorUsername,
   policy,
   apps,
+  unenrolledUserCount,
 }: {
   csrfToken: string
   actorUsername?: string
   policy: TenantDefaultSignInPolicy
   apps: SignInPolicyAppRow[]
+  unenrolledUserCount: number
 }) {
   const t = useDictionary(adminSignInPolicyDictionary)
   return (
@@ -86,7 +88,11 @@ export function AdminSignInPolicyPage({
       description={t.pageDescription}
     >
       <div className="grid gap-6">
-        <DefaultPolicyCard csrfToken={csrfToken} policy={policy} />
+        <DefaultPolicyCard
+          csrfToken={csrfToken}
+          policy={policy}
+          unenrolledUserCount={unenrolledUserCount}
+        />
         <ApplicationPolicyList apps={apps} />
       </div>
     </AdminShell>
@@ -96,9 +102,11 @@ export function AdminSignInPolicyPage({
 function DefaultPolicyCard({
   csrfToken,
   policy: initial,
+  unenrolledUserCount,
 }: {
   csrfToken: string
   policy: TenantDefaultSignInPolicy
+  unenrolledUserCount: number
 }) {
   const [rule, setRule] = useState<SignInRule | undefined>(initial.rules?.[0])
   const [editing, setEditing] = useState(false)
@@ -122,6 +130,11 @@ function DefaultPolicyCard({
         ) : null}
       </header>
       <div className="mt-5">
+        {unenrolledUserCount > 0 ? (
+          <Alert className="mb-4">
+            {t.unenrolledWarning.replace('{count}', String(unenrolledUserCount))}
+          </Alert>
+        ) : null}
         {!editing ? (
           <dl className="grid gap-3 sm:grid-cols-3">
             <ReadField
@@ -179,6 +192,15 @@ export function DefaultPolicyFormPresentation({
   const [networkCIDRs, setNetworkCIDRs] = useState(
     (rule?.condition.network_allow_cidrs ?? []).join('\n'),
   )
+  const [enforcementStart, setEnforcementStart] = useState(
+    rule?.mfa_enrollment?.enforcement_start_at?.slice(0, 16) ?? '',
+  )
+  const [gracePeriod, setGracePeriod] = useState(
+    rule?.mfa_enrollment?.grace_period_seconds?.toString() ?? '900',
+  )
+  const [allowAdminBypass, setAllowAdminBypass] = useState(
+    rule?.mfa_enrollment?.allow_admin_bypass ?? true,
+  )
   const [validationError, setValidationError] = useState('')
   const t = useDictionary(adminSignInPolicyDictionary)
 
@@ -195,6 +217,14 @@ export function DefaultPolicyFormPresentation({
     }
 
     const cidrs = parseNetworkCIDRs(networkCIDRs)
+    const graceSeconds = Number(gracePeriod)
+    if (
+      strength === 'Mfa' &&
+      (!enforcementStart || !Number.isInteger(graceSeconds) || graceSeconds <= 0)
+    ) {
+      setValidationError(t.mfaEnrollmentInvalidError)
+      return
+    }
 
     // デフォルトは常に適用される baseline なので、認証強度が最低でも 1 ルールとして保存する。
     const rules: SignInRule[] = [
@@ -207,6 +237,14 @@ export function DefaultPolicyFormPresentation({
           reauth_max_age_seconds: validationResult.parsed,
           network_allow_cidrs: cidrs.length > 0 ? cidrs : undefined,
         },
+        mfa_enrollment:
+          strength === 'Mfa'
+            ? {
+                enforcement_start_at: new Date(enforcementStart).toISOString(),
+                grace_period_seconds: graceSeconds,
+                allow_admin_bypass: allowAdminBypass,
+              }
+            : undefined,
       },
     ]
 
@@ -226,6 +264,42 @@ export function DefaultPolicyFormPresentation({
         />
         <p className="text-xs text-slate-500">{t.mfaStepUpHelp}</p>
       </div>
+      {strength === 'Mfa' ? (
+        <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="mfa-enforcement-start">{t.enforcementStartLabel}</Label>
+            <Input
+              id="mfa-enforcement-start"
+              type="datetime-local"
+              required
+              value={enforcementStart}
+              onChange={(event) => setEnforcementStart(event.target.value)}
+              className="sm:w-72"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="mfa-grace-period">{t.gracePeriodLabel}</Label>
+            <Input
+              id="mfa-grace-period"
+              type="number"
+              min="1"
+              required
+              value={gracePeriod}
+              onChange={(event) => setGracePeriod(event.target.value)}
+              className="sm:w-72"
+            />
+            <p className="text-xs text-slate-500">{t.gracePeriodHelp}</p>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={allowAdminBypass}
+              onChange={(event) => setAllowAdminBypass(event.target.checked)}
+            />
+            <span>{t.allowAdminBypassLabel}</span>
+          </label>
+        </div>
+      ) : null}
       <div className="grid gap-1.5">
         <Label htmlFor="default-reauth">{t.reauthSecondsFieldLabel}</Label>
         <Input

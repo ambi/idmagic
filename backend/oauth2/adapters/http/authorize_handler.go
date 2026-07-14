@@ -139,7 +139,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				if in.Prompt == "none" {
 					return writeOAuthError(c, usecases.NewOAuthError("login_required", "追加factor検証が必要です"))
 				}
-				return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/totp"))
+				return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 			}
 			policy := oauthdomain.ParsePrompt(out.Request)
 			needsStepUp := out.Request.ACRValues != nil &&
@@ -158,7 +158,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 					}
 					d.setSessionCookie(c, pending.SessionID)
-					return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/totp"))
+					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 				}
 				return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))
 			}
@@ -171,7 +171,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 					if in.Prompt == "none" {
 						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 					}
-					return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/totp"))
+					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 				}
 			}
 			next, err := d.completeAfterAuthn(c, out.Request, out.Client, authn)
@@ -335,7 +335,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 			return err
 		} else if redirected {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
-				Next: support.TenantRoute(c, "/totp") + "?return_to=" + url.QueryEscape(input.ReturnTo),
+				Next: d.pendingAuthPath(c, authn) + "?return_to=" + url.QueryEscape(input.ReturnTo),
 			})
 		}
 		d.emitAuthenticationSuccess(c, authTime, user, authn, "")
@@ -363,6 +363,15 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		}
 		if decision.StepUpRequired {
 			if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
+				enrollment, policyErr := d.applicationMfaEnrollmentPolicy(c, decision.ApplicationID)
+				if policyErr != nil {
+					return policyErr
+				}
+				if begun, err := d.beginMfaEnrollment(c, authn, enrollment); err != nil {
+					return err
+				} else if begun {
+					return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/mfa-enrollment")})
+				}
 				return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
 					RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "アプリケーションのサインインポリシーを満たせません"),
 				})
@@ -375,7 +384,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 				return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
 			}
 			d.setSessionCookie(c, pending.SessionID)
-			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/totp")})
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
 		}
 		if !decision.Allowed {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
@@ -387,7 +396,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		if redirected, err := d.enforceDefaultSignInPolicy(c, authn, true); err != nil {
 			return err
 		} else if redirected {
-			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/totp")})
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
 		}
 	}
 	d.emitAuthenticationSuccess(c, authTime, user, authn, req.ClientID)
@@ -438,6 +447,12 @@ func (d Deps) enforceDefaultSignInPolicy(
 			return true, nil
 		}
 		if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
+			enrollment := appusecases.MfaEnrollmentPolicyFromRules(policy.Rules)
+			if begun, err := d.beginMfaEnrollment(c, authn, enrollment); err != nil {
+				return false, err
+			} else if begun {
+				return true, nil
+			}
 			return false, support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "MFA必須ですが、利用できる第二要素がありません")
 		}
 		pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
@@ -597,7 +612,7 @@ func (d Deps) completeAfterAuthn(
 	authn *authdomain.AuthenticationContext,
 ) (authorizationNext, error) {
 	if authn.AuthenticationPending {
-		return authorizationNext{Path: support.TenantRoute(c, "/totp")}, nil
+		return authorizationNext{Path: d.pendingAuthPath(c, authn)}, nil
 	}
 	// first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
 	// resource owner が IdP 利用者自身であるため consent をスキップする (ADR-061)。

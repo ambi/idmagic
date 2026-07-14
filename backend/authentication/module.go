@@ -15,6 +15,7 @@ import (
 // bootstrap は backend ごとの adapter を組み立て、起動時に実行時依存を補完する。
 type Module struct {
 	MfaFactorRepo           ports.MfaFactorRepository
+	MfaEnrollmentBypassRepo ports.MfaEnrollmentBypassRepository
 	PasswordHistoryRepo     ports.PasswordHistoryRepository
 	PasswordResetTokenStore ports.PasswordResetTokenStore
 	EmailChangeTokenStore   ports.EmailChangeTokenStore

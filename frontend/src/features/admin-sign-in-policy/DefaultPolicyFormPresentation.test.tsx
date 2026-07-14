@@ -21,6 +21,11 @@ describe('DefaultPolicyFormPresentation', () => {
       reauth_max_age_seconds: 3600,
       network_allow_cidrs: ['192.168.1.0/24'],
     },
+    mfa_enrollment: {
+      enforcement_start_at: '2030-01-01T00:00:00.000Z',
+      grace_period_seconds: 900,
+      allow_admin_bypass: true,
+    },
   }
 
   it('renders initial form values correctly', () => {
@@ -81,6 +86,11 @@ describe('DefaultPolicyFormPresentation', () => {
         condition: {
           reauth_max_age_seconds: 1800,
           network_allow_cidrs: ['10.0.0.0/8', '172.16.0.0/12'],
+        },
+        mfa_enrollment: {
+          enforcement_start_at: expect.any(String),
+          grace_period_seconds: 900,
+          allow_admin_bypass: true,
         },
       },
     ])

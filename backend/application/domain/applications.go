@@ -128,11 +128,18 @@ type AccessCondition struct {
 
 // SignInRule は Application sign-in policy の 1 ルール。
 type SignInRule struct {
-	RuleID        string             `json:"rule_id"`
-	Name          string             `json:"name"`
-	Enabled       bool               `json:"enabled"`
-	RequiredAuthn RequiredAuthnLevel `json:"required_authn"`
-	Condition     AccessCondition    `json:"condition"`
+	RuleID        string               `json:"rule_id"`
+	Name          string               `json:"name"`
+	Enabled       bool                 `json:"enabled"`
+	RequiredAuthn RequiredAuthnLevel   `json:"required_authn"`
+	Condition     AccessCondition      `json:"condition"`
+	MfaEnrollment *MfaEnrollmentPolicy `json:"mfa_enrollment,omitempty"`
+}
+
+type MfaEnrollmentPolicy struct {
+	EnforcementStartAt *time.Time `json:"enforcement_start_at,omitempty"`
+	GracePeriodSeconds *int       `json:"grace_period_seconds,omitempty"`
+	AllowAdminBypass   bool       `json:"allow_admin_bypass"`
 }
 
 // AppSignInPolicy は Application ごとの federation 開始条件。

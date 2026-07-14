@@ -92,6 +92,33 @@ export async function submitRecoveryCode(
   })
 }
 
+export type MfaEnrollmentStart = {
+  secret: string
+  otpauth_uri: string
+  account_name: string
+  issuer: string
+}
+
+export async function startMfaEnrollment(csrfToken: string): Promise<MfaEnrollmentStart> {
+  return request('/api/auth/mfa/enrollment/totp/start', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  })
+}
+
+export async function confirmMfaEnrollment(
+  csrfToken: string,
+  secret: string,
+  code: string,
+  returnTo?: string,
+): Promise<BrowserFlowResponse> {
+  return request('/api/auth/mfa/enrollment/totp/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ secret, code, return_to: returnTo }),
+  })
+}
+
 export class PasswordPolicyError extends AuthenticationAPIError {
   violations: string[]
 

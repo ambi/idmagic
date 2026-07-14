@@ -4,9 +4,10 @@ import { PageMarker } from './-page'
 import { ConsentPage as ConsentPageComponent } from '../features/auth-flow/ConsentPage'
 import { LoginPage as LoginPageComponent } from '../features/auth-flow/LoginPage'
 import { TotpPage as TotpPageComponent } from '../features/auth-flow/TotpPage'
+import { MfaEnrollmentPage as MfaEnrollmentPageComponent } from '../features/auth-flow/MfaEnrollmentPage'
 
 type TransactionResponse = {
-  kind: 'login' | 'totp' | 'consent'
+  kind: 'login' | 'totp' | 'mfa_enrollment' | 'consent'
   csrf_token: string
   client_name?: string
   scopes?: string[]
@@ -32,6 +33,11 @@ export type BrowserFlowPage =
       clientName: string
       scopes: string[]
       authorizationDetails: ConsentDetailView[]
+    }
+  | {
+      kind: 'mfa_enrollment'
+      csrfToken: string
+      returnTo?: string
     }
 
 export async function loadBrowserFlowData(path: string, search: string): Promise<BrowserFlowPage> {
@@ -68,6 +74,12 @@ export async function loadBrowserFlowData(path: string, search: string): Promise
       secondFactorMethods: data.second_factor_methods ?? ['totp'],
     }
   }
+  if (data.kind === 'mfa_enrollment') {
+    if (path !== '/mfa-enrollment') {
+      window.history.replaceState(null, '', tenantURL('/mfa-enrollment'))
+    }
+    return { kind: 'mfa_enrollment', csrfToken: data.csrf_token, returnTo }
+  }
   if (path !== '/login') {
     window.history.replaceState(null, '', tenantURL('/login'))
   }
@@ -79,6 +91,8 @@ export function BrowserFlowRoute({ data }: { data: BrowserFlowPage }) {
     <PageMarker kind={data.kind}>
       {data.kind === 'consent' ? (
         <ConsentPageComponent {...data} />
+      ) : data.kind === 'mfa_enrollment' ? (
+        <MfaEnrollmentPageComponent {...data} />
       ) : data.kind === 'totp' ? (
         <TotpPageComponent {...data} />
       ) : (

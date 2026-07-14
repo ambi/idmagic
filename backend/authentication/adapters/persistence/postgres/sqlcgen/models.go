@@ -205,6 +205,18 @@ type Job struct {
 	UpdatedAt      time.Time
 }
 
+type MfaEnrollmentBypass struct {
+	ID         string
+	TenantID   string
+	UserID     string
+	IssuedBy   string
+	IssuedAt   time.Time
+	ExpiresAt  time.Time
+	ConsumedAt pgtype.Timestamptz
+	RevokedAt  pgtype.Timestamptz
+	ExpiredAt  pgtype.Timestamptz
+}
+
 type MfaFactor struct {
 	UserID     string
 	Type       string

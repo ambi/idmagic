@@ -34,9 +34,11 @@ import {
   getAdminUserGroups,
   getAdminUserImport,
   importAdminUsers,
+  issueMfaEnrollmentBypass,
   listAdminGroups,
   listAdminUsers,
   restoreAdminUser,
+  revokeMfaEnrollmentBypass,
   setAdminUserDisabled,
   setAdminUserRequiredAction,
   tenantURL,
@@ -533,6 +535,18 @@ export function AdminUserDetailPage({
     }, t.userRestoredNotice)
   }
 
+  async function handleIssueMfaEnrollmentBypass() {
+    await run(async () => {
+      await issueMfaEnrollmentBypass(csrfToken, user.id)
+    }, t.mfaEnrollmentBypassIssuedNotice)
+  }
+
+  async function handleRevokeMfaEnrollmentBypass() {
+    await run(async () => {
+      await revokeMfaEnrollmentBypass(csrfToken, user.id)
+    }, t.mfaEnrollmentBypassRevokedNotice)
+  }
+
   async function handleRequiredAction(action: string, present: boolean) {
     await run(
       async () => {
@@ -596,6 +610,19 @@ export function AdminUserDetailPage({
                   </>
                 ) : (
                   <>
+                    {!user.mfa_enrolled ? (
+                      <>
+                        <DropdownMenuItem onSelect={() => void handleIssueMfaEnrollmentBypass()}>
+                          <IconShield size={17} aria-hidden="true" />
+                          {t.issueMfaEnrollmentBypass}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => void handleRevokeMfaEnrollmentBypass()}>
+                          <IconX size={17} aria-hidden="true" />
+                          {t.revokeMfaEnrollmentBypass}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
+                      </>
+                    ) : null}
                     <DropdownMenuItem
                       className={user.disabled_at ? undefined : 'text-red-700'}
                       onSelect={() => requestDisable()}

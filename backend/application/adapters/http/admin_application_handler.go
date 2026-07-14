@@ -515,7 +515,11 @@ func (d Deps) handleGetDefaultSignInPolicy(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy})
+	count, err := d.unenrolledUserCount(c)
+	if err != nil {
+		return err
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy, "unenrolled_user_count": count})
 }
 
 func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
@@ -536,7 +540,25 @@ func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy})
+	count, err := d.unenrolledUserCount(c)
+	if err != nil {
+		return err
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy, "unenrolled_user_count": count})
+}
+
+func (d Deps) unenrolledUserCount(c *echo.Context) (int, error) {
+	users, err := d.UserRepo.FindAll(c.Request().Context(), support.RequestTenantID(c))
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, user := range users {
+		if user.IsActive() && !user.MfaEnrolled {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (d Deps) applicationDeps() appusecases.ApplicationDeps {

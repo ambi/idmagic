@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TotpRouteImport } from './routes/totp'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as Reset_passwordRouteImport } from './routes/reset_password'
+import { Route as MfaEnrollmentRouteImport } from './routes/mfa-enrollment'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as Forgot_passwordRouteImport } from './routes/forgot_password'
 import { Route as DeviceRouteImport } from './routes/device'
@@ -79,6 +80,11 @@ const StatusRoute = StatusRouteImport.update({
 const Reset_passwordRoute = Reset_passwordRouteImport.update({
   id: '/reset_password',
   path: '/reset_password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MfaEnrollmentRoute = MfaEnrollmentRouteImport.update({
+  id: '/mfa-enrollment',
+  path: '/mfa-enrollment',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -361,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/device': typeof DeviceRoute
   '/forgot_password': typeof Forgot_passwordRoute
   '/login': typeof LoginRoute
+  '/mfa-enrollment': typeof MfaEnrollmentRoute
   '/reset_password': typeof Reset_passwordRoute
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
@@ -416,6 +423,7 @@ export interface FileRoutesByTo {
   '/device': typeof DeviceRoute
   '/forgot_password': typeof Forgot_passwordRoute
   '/login': typeof LoginRoute
+  '/mfa-enrollment': typeof MfaEnrollmentRoute
   '/reset_password': typeof Reset_passwordRoute
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
@@ -471,6 +479,7 @@ export interface FileRoutesById {
   '/device': typeof DeviceRoute
   '/forgot_password': typeof Forgot_passwordRoute
   '/login': typeof LoginRoute
+  '/mfa-enrollment': typeof MfaEnrollmentRoute
   '/reset_password': typeof Reset_passwordRoute
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/device'
     | '/forgot_password'
     | '/login'
+    | '/mfa-enrollment'
     | '/reset_password'
     | '/status'
     | '/totp'
@@ -586,6 +596,7 @@ export interface FileRouteTypes {
     | '/device'
     | '/forgot_password'
     | '/login'
+    | '/mfa-enrollment'
     | '/reset_password'
     | '/status'
     | '/totp'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
     | '/device'
     | '/forgot_password'
     | '/login'
+    | '/mfa-enrollment'
     | '/reset_password'
     | '/status'
     | '/totp'
@@ -699,6 +711,7 @@ export interface RootRouteChildren {
   DeviceRoute: typeof DeviceRoute
   Forgot_passwordRoute: typeof Forgot_passwordRoute
   LoginRoute: typeof LoginRoute
+  MfaEnrollmentRoute: typeof MfaEnrollmentRoute
   Reset_passwordRoute: typeof Reset_passwordRoute
   StatusRoute: typeof StatusRoute
   TotpRoute: typeof TotpRoute
@@ -725,6 +738,13 @@ declare module '@tanstack/react-router' {
       path: '/reset_password'
       fullPath: '/reset_password'
       preLoaderRoute: typeof Reset_passwordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mfa-enrollment': {
+      id: '/mfa-enrollment'
+      path: '/mfa-enrollment'
+      fullPath: '/mfa-enrollment'
+      preLoaderRoute: typeof MfaEnrollmentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -1263,6 +1283,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeviceRoute: DeviceRoute,
   Forgot_passwordRoute: Forgot_passwordRoute,
   LoginRoute: LoginRoute,
+  MfaEnrollmentRoute: MfaEnrollmentRoute,
   Reset_passwordRoute: Reset_passwordRoute,
   StatusRoute: StatusRoute,
   TotpRoute: TotpRoute,

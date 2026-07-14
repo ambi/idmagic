@@ -4242,6 +4242,26 @@
       ],
       "description": "SPA が POST /api/auth/forgot_password に送る JSON。未認証経路。anti-enumeration のため email 存在有無に関わらず常に 204 を返す。"
     },
+    "BrowserMfaEnrollmentConfirmRequest": {
+      "type": "object",
+      "properties": {
+        "secret": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "return_to": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "secret",
+        "code"
+      ],
+      "description": "管理者承認済みの login enrollment flow で TOTP 登録を確定する。secret と code は audit / log に残さない。"
+    },
     "BrowserRecoveryCodeRequest": {
       "type": "object",
       "properties": {
@@ -6398,6 +6418,15 @@
       ],
       "description": "鍵の用途。現状は OAuth2/OIDC の JWT 署名 (Signing) のみ。JWE 暗号鍵や SAML/WS-* の X.509 は将来の用途として枠だけ残す。"
     },
+    "LoginPendingPurpose": {
+      "type": "string",
+      "enum": [
+        "None",
+        "Challenge",
+        "Enrollment"
+      ],
+      "description": "LoginSession が未完了である理由。None は通常の認証済みセッション、Challenge は登録済み factor の検証待ち、Enrollment は管理者承認済みの新規 factor 登録待ち。"
+    },
     "LoginSession": {
       "type": "object",
       "properties": {
@@ -6433,6 +6462,21 @@
           "default": false,
           "description": "追加 factor 検証を待っている中間状態か。完了で false。"
         },
+        "pending_purpose": {
+          "$ref": "#/$defs/LoginPendingPurpose",
+          "default": "None",
+          "description": "authentication_pending の目的。Enrollment の間は account/admin/application resource へアクセスできず、登録専用 API だけを許可する。"
+        },
+        "enrollment_deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "pending_purpose=Enrollment の完了期限。期限後の登録確定は拒否し、セッションを認証完了へ昇格させない。"
+        },
+        "enrollment_bypass_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Enrollment へ進むために消費した管理者発行 bypass。監査相関用。"
+        },
         "expires_at": {
           "type": "string",
           "format": "date-time"
@@ -6446,6 +6490,7 @@
         "amr",
         "acr",
         "authentication_pending",
+        "pending_purpose",
         "expires_at"
       ],
       "description": "ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true はサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加 factor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize 完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。Cookie は http_only かつ same_site=Lax で発行する。"
@@ -6568,6 +6613,300 @@
         "factorType"
       ],
       "description": "MFA チャレンジに成功した。"
+    },
+    "MfaEnrollmentBypass": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "issued_by": {
+          "type": "string"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "consumed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expired_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "user_id",
+        "issued_by",
+        "issued_at",
+        "expires_at"
+      ],
+      "description": "管理者が MFA 未登録 user に発行する短期・単発の登録承認。password 成功後に消費して enrollment pending へ進めるための trust anchor であり、MFA 必須ログインそのものを免除しない。期限切れ・取消・消費済みは fail closed で利用できない。",
+      "x-scl-untranslated-constraints": [
+        "expires_at > issued_at",
+        "count([consumed_at, revoked_at, expired_at], value != null) <= 1"
+      ]
+    },
+    "MfaEnrollmentBypassConsumed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "bypassId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId",
+        "bypassId",
+        "sessionId"
+      ],
+      "description": "password 認証済みの対象 user が enrollment bypass を単発消費し、登録専用 pending flow へ入った。"
+    },
+    "MfaEnrollmentBypassExpired": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "bypassId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId",
+        "bypassId"
+      ],
+      "description": "未消費の enrollment bypass が期限を過ぎて利用不能と判定された。期限切れを初めて観測した時に発行する。"
+    },
+    "MfaEnrollmentBypassIssueRequest": {
+      "type": "object",
+      "properties": {
+        "expires_in_seconds": {
+          "type": "integer",
+          "x-scl-untranslated-constraints": [
+            {
+              "min": 60
+            },
+            {
+              "max": 3600
+            }
+          ],
+          "default": 900
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "expires_in_seconds"
+      ],
+      "description": "管理者が対象 user に単発 enrollment bypass を発行する入力。"
+    },
+    "MfaEnrollmentBypassIssued": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "bypassId": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "userId",
+        "bypassId",
+        "expiresAt"
+      ],
+      "description": "管理者が MFA 未登録 user に短期・単発の enrollment bypass を発行した。"
+    },
+    "MfaEnrollmentBypassResponse": {
+      "type": "object",
+      "properties": {
+        "bypass": {
+          "$ref": "#/$defs/MfaEnrollmentBypass"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "bypass"
+      ],
+      "description": "enrollment bypass の管理表示。secret は存在せず、対象 user の password 成功時にサーバーが自動消費する。"
+    },
+    "MfaEnrollmentBypassRevoked": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "bypassId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "userId",
+        "bypassId"
+      ],
+      "description": "管理者が未消費の enrollment bypass を取り消した。"
+    },
+    "MfaEnrollmentCompleted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "factorType": {
+          "$ref": "#/$defs/MfaFactorType"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId",
+        "sessionId",
+        "factorType"
+      ],
+      "description": "login enrollment flow で factor 登録と所持証明が完了し、同一 LoginSession が MFA 済みに昇格した。"
+    },
+    "MfaEnrollmentPolicy": {
+      "type": "object",
+      "properties": {
+        "enforcement_start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "grace_period_seconds": {
+          "type": "integer"
+        },
+        "allow_admin_bypass": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "allow_admin_bypass"
+      ],
+      "description": "MFA 必須化の事前登録期間と、強制開始後の管理者承認済みオンボーディングを制御する。enforcement_start_at より前は通常ログインを許可して self-service 登録を促し、開始後は未登録ユーザーをログイン完了させず、allow_admin_bypass=true かつ有効な単発 enrollment bypass がある場合だけ登録専用 flow へ進める。grace_period_seconds は開始後に bypass を利用できる期間であり、自由登録期間ではない。"
+    },
+    "MfaEnrollmentRequired": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "bypassId": {
+          "type": "string"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "userId",
+        "sessionId",
+        "bypassId",
+        "deadline"
+      ],
+      "description": "MFA 必須ポリシー下の未登録 user が、有効な管理者承認を消費して登録専用 pending flow へ入った。password 認証だけでは通常セッションを成立させない。"
     },
     "MfaFactor": {
       "type": "object",
@@ -8419,6 +8758,9 @@
         },
         "condition": {
           "$ref": "#/$defs/AccessCondition"
+        },
+        "mfa_enrollment": {
+          "$ref": "#/$defs/MfaEnrollmentPolicy"
         }
       },
       "additionalProperties": false,
@@ -9028,11 +9370,16 @@
       "properties": {
         "policy": {
           "$ref": "#/$defs/TenantDefaultSignInPolicy"
+        },
+        "unenrolled_user_count": {
+          "type": "integer",
+          "description": "テナント内の active user のうち TOTP / WebAuthn factor を 1 件も持たない人数。MFA 必須化前の影響確認に使う。"
         }
       },
       "additionalProperties": false,
       "required": [
-        "policy"
+        "policy",
+        "unenrolled_user_count"
       ],
       "description": "テナントデフォルト sign-in policy 表現。"
     },

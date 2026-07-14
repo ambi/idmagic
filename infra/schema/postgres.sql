@@ -193,6 +193,27 @@ CREATE TABLE mfa_factors (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE mfa_enrollment_bypasses (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    issued_by UUID NOT NULL,
+    issued_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    expired_at TIMESTAMPTZ,
+    CONSTRAINT mfa_enrollment_bypasses_tenant_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT mfa_enrollment_bypasses_user_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT mfa_enrollment_bypasses_issuer_fkey FOREIGN KEY (tenant_id, issued_by) REFERENCES users(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT mfa_enrollment_bypasses_expiry CHECK (expires_at > issued_at),
+    CONSTRAINT mfa_enrollment_bypasses_terminal CHECK (num_nonnulls(consumed_at, revoked_at, expired_at) <= 1)
+);
+
+CREATE UNIQUE INDEX mfa_enrollment_bypasses_active_user_idx
+    ON mfa_enrollment_bypasses (tenant_id, user_id)
+    WHERE consumed_at IS NULL AND revoked_at IS NULL AND expired_at IS NULL;
+
 -- WebAuthn / Passkey credential (wi-26 / ADR-087)。1 ユーザーが複数持てるため credential_id を
 -- 主キーとし、mfa_factors とは別テーブルとする。public_key は COSE 公開鍵 (base64url)。
 CREATE TABLE webauthn_credentials (

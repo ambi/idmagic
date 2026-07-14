@@ -18,6 +18,7 @@ import type {
   ApplicationStatus,
   AppSignInPolicyView,
   TenantDefaultSignInPolicy,
+  TenantDefaultSignInPolicyView,
   SignInRule,
   ProtocolBinding,
   ProtocolBindingType,
@@ -834,9 +835,8 @@ export async function updateAppSignInPolicy(
 }
 
 // テナントデフォルトサインインポリシー (wi-115, ADR-081)。
-export async function getTenantDefaultSignInPolicy(): Promise<TenantDefaultSignInPolicy> {
-  return (await request<{ policy: TenantDefaultSignInPolicy }>('/api/admin/default-sign-in-policy'))
-    .policy
+export async function getTenantDefaultSignInPolicy(): Promise<TenantDefaultSignInPolicyView> {
+  return request<TenantDefaultSignInPolicyView>('/api/admin/default-sign-in-policy')
 }
 
 export async function updateTenantDefaultSignInPolicy(
@@ -849,6 +849,33 @@ export async function updateTenantDefaultSignInPolicy(
       adminRequest(csrfToken, 'PUT', { rules }),
     )
   ).policy
+}
+
+export type MfaEnrollmentBypass = {
+  id: string
+  tenant_id: string
+  user_id: string
+  issued_at: string
+  expires_at: string
+}
+
+export async function issueMfaEnrollmentBypass(
+  csrfToken: string,
+  userID: string,
+): Promise<MfaEnrollmentBypass> {
+  return (
+    await request<{ bypass: MfaEnrollmentBypass }>(
+      `/api/admin/users/${encodeURIComponent(userID)}/mfa-enrollment-bypass`,
+      adminRequest(csrfToken, 'POST', { expires_in_seconds: 900 }),
+    )
+  ).bypass
+}
+
+export async function revokeMfaEnrollmentBypass(csrfToken: string, userID: string): Promise<void> {
+  await request(
+    `/api/admin/users/${encodeURIComponent(userID)}/mfa-enrollment-bypass`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
 }
 
 // ApplicationCategory の管理 (wi-70, ADR-069)。tenant 単位で定義し Application に付与する。

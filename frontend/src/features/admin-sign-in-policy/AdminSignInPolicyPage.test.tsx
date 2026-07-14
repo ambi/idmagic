@@ -17,7 +17,9 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
 
 describe('AdminSignInPolicyPage', () => {
   it('renders in English by default', async () => {
-    await renderWithRouterBase(<AdminSignInPolicyPage csrfToken="csrf" policy={policy} apps={[]} />)
+    await renderWithRouterBase(
+      <AdminSignInPolicyPage csrfToken="csrf" policy={policy} apps={[]} unenrolledUserCount={0} />,
+    )
     expect(
       screen.getByRole('heading', { name: adminSignInPolicyDictionary.en.pageTitle }),
     ).toBeInTheDocument()
@@ -25,7 +27,9 @@ describe('AdminSignInPolicyPage', () => {
   })
 
   it('renders in Japanese when explicitly selected', async () => {
-    await renderWithRouter(<AdminSignInPolicyPage csrfToken="csrf" policy={policy} apps={[]} />)
+    await renderWithRouter(
+      <AdminSignInPolicyPage csrfToken="csrf" policy={policy} apps={[]} unenrolledUserCount={2} />,
+    )
     expect(
       screen.getByRole('heading', { name: adminSignInPolicyDictionary.ja.pageTitle }),
     ).toBeInTheDocument()

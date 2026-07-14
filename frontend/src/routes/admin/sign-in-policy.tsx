@@ -10,7 +10,7 @@ import { PageMarker } from '../-page'
 export const Route = createFileRoute('/admin/sign-in-policy')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const [policy, applications] = await Promise.all([
+    const [policyView, applications] = await Promise.all([
       getTenantDefaultSignInPolicy(),
       listAdminApplications(),
     ])
@@ -24,7 +24,8 @@ export const Route = createFileRoute('/admin/sign-in-policy')({
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
-      policy,
+      policy: policyView.policy,
+      unenrolledUserCount: policyView.unenrolled_user_count,
       apps,
     }
   },

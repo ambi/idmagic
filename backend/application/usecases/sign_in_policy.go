@@ -71,7 +71,7 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 		return nil, err
 	}
 	rules := slices.Clone(in.Rules)
-	if err := ValidateSignInPolicyRules(rules); err != nil {
+	if err := ValidateSignInPolicyRulesAt(rules, in.Now); err != nil {
 		return nil, err
 	}
 	now := adminNow(in.Now)
@@ -134,7 +134,7 @@ type UpdateDefaultSignInPolicyInput struct {
 func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateDefaultSignInPolicyInput) (*domain.TenantDefaultSignInPolicy, error) {
 	tenantID := tenancy.TenantID(ctx)
 	rules := slices.Clone(in.Rules)
-	if err := ValidateSignInPolicyRules(rules); err != nil {
+	if err := ValidateSignInPolicyRulesAt(rules, in.Now); err != nil {
 		return nil, err
 	}
 	now := adminNow(in.Now)
@@ -259,6 +259,10 @@ func AppPolicyWeakerThanDefault(def *domain.TenantDefaultSignInPolicy, app *doma
 }
 
 func ValidateSignInPolicyRules(rules []domain.SignInRule) error {
+	return ValidateSignInPolicyRulesAt(rules, time.Time{})
+}
+
+func ValidateSignInPolicyRulesAt(rules []domain.SignInRule, now time.Time) error {
 	seen := map[string]struct{}{}
 	for i := range rules {
 		r := &rules[i]
@@ -291,6 +295,26 @@ func ValidateSignInPolicyRules(rules []domain.SignInRule) error {
 		r.Condition.NetworkAllowCIDRs = cidrs
 		if r.Condition.ReauthMaxAgeSeconds != nil && *r.Condition.ReauthMaxAgeSeconds <= 0 {
 			return ErrInvalidSignInPolicy
+		}
+		if r.MfaEnrollment != nil {
+			if r.RequiredAuthn.Strength != domain.RequiredAuthnMfa ||
+				r.MfaEnrollment.EnforcementStartAt == nil ||
+				r.MfaEnrollment.GracePeriodSeconds == nil ||
+				*r.MfaEnrollment.GracePeriodSeconds <= 0 {
+				return ErrInvalidSignInPolicy
+			}
+			if !now.IsZero() && r.MfaEnrollment.EnforcementStartAt.Before(now) {
+				return ErrInvalidSignInPolicy
+			}
+		}
+	}
+	return nil
+}
+
+func MfaEnrollmentPolicyFromRules(rules []domain.SignInRule) *domain.MfaEnrollmentPolicy {
+	for i := range rules {
+		if rules[i].Enabled && rules[i].RequiredAuthn.Strength == domain.RequiredAuthnMfa {
+			return rules[i].MfaEnrollment
 		}
 	}
 	return nil
@@ -351,7 +375,8 @@ func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.Auth
 		if len(rule.Condition.NetworkAllowCIDRs) > 0 && !clientIPAllowed(clientIP, rule.Condition.NetworkAllowCIDRs) {
 			return PolicyEvaluation{Decision: PolicyDeny, Reason: "client network is not allowed"}
 		}
-		if rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
+		mfaEnforced := rule.MfaEnrollment == nil || rule.MfaEnrollment.EnforcementStartAt == nil || !now.Before(*rule.MfaEnrollment.EnforcementStartAt)
+		if rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && mfaEnforced && !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
 			return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "mfa requirement is not satisfied"}
 		}
 		if rule.Condition.ReauthMaxAgeSeconds != nil {

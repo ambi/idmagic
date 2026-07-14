@@ -1,0 +1,75 @@
+package http
+
+import (
+	"errors"
+	"net/http"
+	"time"
+
+	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+
+	"github.com/labstack/echo/v5"
+)
+
+type issueMfaEnrollmentBypassRequest struct {
+	ExpiresInSeconds int `json:"expires_in_seconds"`
+}
+
+func (d Deps) mfaEnrollmentDeps() authusecases.MfaEnrollmentDeps {
+	return authusecases.MfaEnrollmentDeps{
+		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo,
+		WebAuthnCredentialRepo: d.WebAuthnCredentialRepo,
+		BypassRepo:             d.MfaEnrollmentBypassRepo, Emit: d.Emit,
+	}
+}
+
+func (d Deps) handleIssueMfaEnrollmentBypass(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input issueMfaEnrollmentBypassRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+	}
+	if input.ExpiresInSeconds == 0 {
+		input.ExpiresInSeconds = 900
+	}
+	bypass, err := authusecases.IssueMfaEnrollmentBypass(
+		c.Request().Context(), d.mfaEnrollmentDeps(), actor.ID, c.Param("sub"),
+		time.Duration(input.ExpiresInSeconds)*time.Second, time.Now().UTC(),
+	)
+	if err != nil {
+		return writeMfaEnrollmentAdminError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"bypass": bypass})
+}
+
+func (d Deps) handleRevokeMfaEnrollmentBypass(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	if err := authusecases.RevokeMfaEnrollmentBypass(c.Request().Context(), d.mfaEnrollmentDeps(), actor.ID, c.Param("sub"), time.Now().UTC()); err != nil {
+		return err
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.NoContent(http.StatusNoContent)
+}
+
+func writeMfaEnrollmentAdminError(c *echo.Context, err error) error {
+	switch {
+	case errors.Is(err, authusecases.ErrMfaEnrollmentAlreadyComplete):
+		return support.WriteBrowserError(c, http.StatusConflict, "mfa_already_enrolled", "対象ユーザーは既にMFA登録済みです")
+	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed):
+		return support.WriteBrowserError(c, http.StatusBadRequest, "mfa_enrollment_not_allowed", "MFA登録バイパスを発行できません")
+	default:
+		return err
+	}
+}

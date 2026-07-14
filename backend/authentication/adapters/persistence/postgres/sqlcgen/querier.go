@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	ConsumeActiveMfaEnrollmentBypass(ctx context.Context, arg ConsumeActiveMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
 	ConsumeEmailChangeToken(ctx context.Context, tokenHash string) (*ConsumeEmailChangeTokenRow, error)
 	DeleteAuthEventBucketsOlderThan(ctx context.Context, windowStart time.Time) (int64, error)
 	DeleteEmailChangeTokensForSub(ctx context.Context, userID string) error
@@ -19,6 +20,8 @@ type Querier interface {
 	DeleteRecoveryCodesForSub(ctx context.Context, userID string) error
 	DeleteWebAuthnCredential(ctx context.Context, arg DeleteWebAuthnCredentialParams) error
 	DeleteWebAuthnCredentialsForSub(ctx context.Context, userID string) error
+	ExpireOpenMfaEnrollmentBypass(ctx context.Context, arg ExpireOpenMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
+	FindActiveMfaEnrollmentBypass(ctx context.Context, arg FindActiveMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
 	GetMfaFactor(ctx context.Context, arg GetMfaFactorParams) (*GetMfaFactorRow, error)
 	GetWebAuthnCredentialByID(ctx context.Context, credentialID string) (*GetWebAuthnCredentialByIDRow, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
@@ -31,6 +34,8 @@ type Querier interface {
 	MarkRecoveryCodeConsumed(ctx context.Context, arg MarkRecoveryCodeConsumedParams) (int64, error)
 	RecentPasswordHistory(ctx context.Context, arg RecentPasswordHistoryParams) ([]*RecentPasswordHistoryRow, error)
 	RecordAuthEventBucket(ctx context.Context, arg RecordAuthEventBucketParams) (*RecordAuthEventBucketRow, error)
+	RevokeActiveMfaEnrollmentBypass(ctx context.Context, arg RevokeActiveMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
+	SaveMfaEnrollmentBypass(ctx context.Context, arg SaveMfaEnrollmentBypassParams) error
 	UpdateWebAuthnCredentialSignCount(ctx context.Context, arg UpdateWebAuthnCredentialSignCountParams) error
 	UpsertMfaFactor(ctx context.Context, arg UpsertMfaFactorParams) error
 	UpsertWebAuthnCredential(ctx context.Context, arg UpsertWebAuthnCredentialParams) error

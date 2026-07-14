@@ -2,7 +2,10 @@
 // password 検証・user lookup・session cookie の詳細には踏み込まない。
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type AuthenticationContext struct {
 	UserID                string
@@ -11,6 +14,9 @@ type AuthenticationContext struct {
 	ACR                   string
 	SessionID             string
 	AuthenticationPending bool
+	PendingPurpose        LoginPendingPurpose
+	EnrollmentDeadline    *time.Time
+	EnrollmentBypassID    string
 	// StepUpAt は直近の step-up 再認証時刻 (Unix 秒、未実施は 0)。高 sensitivity 操作の
 	// recency gate (ADR-043) が AuthTime と合わせて評価する。
 	StepUpAt int64

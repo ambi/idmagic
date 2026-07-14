@@ -53,6 +53,12 @@ var (
 		(&spec.MfaChallengeSucceeded{}).EventType(),
 		(&spec.MfaChallengeFailed{}).EventType(),
 		(&spec.BackupCodeConsumed{}).EventType(),
+		(&spec.MfaEnrollmentRequired{}).EventType(),
+		(&spec.MfaEnrollmentCompleted{}).EventType(),
+		(&spec.MfaEnrollmentBypassIssued{}).EventType(),
+		(&spec.MfaEnrollmentBypassConsumed{}).EventType(),
+		(&spec.MfaEnrollmentBypassRevoked{}).EventType(),
+		(&spec.MfaEnrollmentBypassExpired{}).EventType(),
 	}
 	retentionSessionTypes = []string{
 		(&spec.SessionStarted{}).EventType(),

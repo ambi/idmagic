@@ -22,6 +22,14 @@ export const adminSignInPolicyDictionary = defineDictionary(
     noRestrictionNotice: '制限なし',
     mfaStepUpHelp:
       '「MFA 必須」の場合、単要素セッションはサインイン時に再認証 (step-up) へ誘導されます。',
+    unenrolledWarning:
+      'MFA 未登録の active user が {count} 人います。強制開始前に登録または管理者承認を準備してください。',
+    enforcementStartLabel: 'MFA 強制開始日時',
+    gracePeriodLabel: '登録承認を利用できる期間（秒）',
+    gracePeriodHelp:
+      '強制開始後に、管理者発行の単発登録承認を利用できる期間です。自由登録は許可されません。',
+    allowAdminBypassLabel: '管理者が発行した単発の MFA 登録承認を許可する',
+    mfaEnrollmentInvalidError: 'MFA 強制開始日時と 1 以上の登録承認期間を入力してください。',
     reauthSecondsFieldLabel: '再認証を求めるまでの時間（秒）',
     reauthSecondsPlaceholder: '例: 3600',
     reauthSecondsHelp: 'この秒数を超えた認証は再認証（再ログイン）を求めます。空欄なら無期限です。',
@@ -65,6 +73,15 @@ export const adminSignInPolicyDictionary = defineDictionary(
     noRestrictionNotice: 'No restriction',
     mfaStepUpHelp:
       'When "MFA required" is set, single-factor sessions are prompted to re-authenticate (step-up) at sign-in.',
+    unenrolledWarning:
+      '{count} active users have not enrolled in MFA. Prepare enrollment or administrator approval before enforcement starts.',
+    enforcementStartLabel: 'MFA enforcement start',
+    gracePeriodLabel: 'Enrollment approval window (seconds)',
+    gracePeriodHelp:
+      'After enforcement starts, this is the period when a one-time administrator approval may be used. Open enrollment is never allowed.',
+    allowAdminBypassLabel: 'Allow one-time MFA enrollment approvals issued by administrators',
+    mfaEnrollmentInvalidError:
+      'Enter an MFA enforcement start and an approval window of at least one second.',
     reauthSecondsFieldLabel: 'Time before re-authentication is required (seconds)',
     reauthSecondsPlaceholder: 'e.g., 3600',
     reauthSecondsHelp:

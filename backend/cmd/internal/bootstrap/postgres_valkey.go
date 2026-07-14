@@ -129,6 +129,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
+			MfaEnrollmentBypassRepo: &authnpostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
 			PasswordHistoryRepo:     &authnpostgres.PasswordHistoryRepository{Pool: resilientDB},
 			PasswordResetTokenStore: &authnpostgres.PasswordResetTokenStore{Pool: resilientDB},
 			EmailChangeTokenStore:   &authnpostgres.EmailChangeTokenStore{Pool: resilientDB},

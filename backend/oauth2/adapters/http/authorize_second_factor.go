@@ -48,6 +48,9 @@ func (d Deps) recoveryCodesDeps() authusecases.RecoveryCodesDeps {
 
 // secondFactorTransaction は第二要素待ち (kind=totp) の transaction 応答を組み立てる。
 func (d Deps) secondFactorTransaction(c *echo.Context, csrf string, authn *authdomain.AuthenticationContext) transactionResponse {
+	if authn.PendingPurpose == authdomain.LoginPendingEnrollment {
+		return transactionResponse{Kind: "mfa_enrollment", CSRFToken: csrf}
+	}
 	return transactionResponse{
 		Kind:                "totp",
 		CSRFToken:           csrf,

@@ -32,6 +32,7 @@ type Deps struct {
 	ClientDisplayNameResolver *support.ClientDisplayNameResolver
 	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
 	MfaFactorRepo             authnports.MfaFactorRepository
+	MfaEnrollmentBypassRepo   authnports.MfaEnrollmentBypassRepository
 	AuthEventBucketStore      authnports.AuthEventBucketStore
 	TenantRepo                tenantports.TenantRepository
 	PasswordResetTokenStore   authnports.PasswordResetTokenStore
@@ -74,6 +75,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/auth/reset_password", d.handleResetPasswordAPI)
 	g.GET("/api/admin/users/:sub/signin_activity", d.handleGetUserSignInActivity)
 	g.GET("/api/admin/authentication_event_buckets", d.handleListAuthEventBuckets)
+	g.POST("/api/admin/users/:sub/mfa-enrollment-bypass", d.handleIssueMfaEnrollmentBypass)
+	g.DELETE("/api/admin/users/:sub/mfa-enrollment-bypass", d.handleRevokeMfaEnrollmentBypass)
 }
 
 func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
