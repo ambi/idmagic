@@ -2,7 +2,7 @@
 # Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: OAuth2
 standards:
   RFC6749:
@@ -18,40 +18,23 @@ standards:
         strength: MUST
         adoption: required
         statement: Authorization Code Grantを認可エンドポイントとトークンエンドポイントで提供する。
-        relates_to:
-          interfaces:
-            - Authorize
-            - Token
-          states:
-            - AuthorizationCodeFlow
       - id: RFC6749-CLIENT-CREDENTIALS
         section: §4.4
         strength: MAY
         adoption: optional
         statement: confidential clientに限りClient Credentials Grantを許可する。
-        relates_to:
-          interfaces:
-            - Token
-          permissions:
-            - TokenGrantClientCredentials
       - id: RFC6749-IMPLICIT
         section: §4.2
         strength: MAY
         adoption: excluded
         statement: Implicit Grantを提供する。
         reason: RFC 9700の勧告に従いAuthorization Code + PKCEへ限定する。
-        relates_to:
-          models:
-            - GrantType
       - id: RFC6749-PASSWORD-GRANT
         section: §4.3
         strength: MAY
         adoption: excluded
         statement: Resource Owner Password Credentials Grantを提供する。
         reason: RFC 9700により使用しない。
-        relates_to:
-          models:
-            - GrantType
   RFC6750:
     title: The OAuth 2.0 Authorization Framework Bearer Token Usage
     version: RFC 6750
@@ -66,10 +49,6 @@ standards:
         strength: MUST
         adoption: required
         statement: Bearer Access TokenはAuthorizationヘッダーで受け付ける。
-        relates_to:
-          interfaces:
-            - UserInfo
-            - PostUserInfo
       - id: RFC6750-QUERY-TOKEN
         section: §2.3
         strength: MAY
@@ -89,11 +68,6 @@ standards:
         strength: MUST
         adoption: required
         statement: 認証済みクライアントへトークン失効エンドポイントを提供する。
-        relates_to:
-          interfaces:
-            - Revoke
-          models:
-            - RevokeRequest
       - id: RFC7009-UNKNOWN-TOKEN
         section: §2.2
         strength: MUST
@@ -112,12 +86,6 @@ standards:
         strength: MUST
         adoption: required
         statement: 公開可能な検証鍵をJWK Setとして配布する。
-        relates_to:
-          interfaces:
-            - GetJwks
-          models:
-            - JWK
-            - JWKS
   RFC7518:
     title: JSON Web Algorithms
     version: RFC 7518
@@ -131,10 +99,6 @@ standards:
         strength: MUST
         adoption: required
         statement: JWT署名をPS256またはES256で行い、対称鍵署名をAccess TokenとID Tokenに使用しない。
-        relates_to:
-          models:
-            - SignatureAlgorithm
-            - SigningKey
   RFC7519:
     title: JSON Web Token
     version: RFC 7519
@@ -148,11 +112,6 @@ standards:
         strength: MUST
         adoption: required
         statement: JWTのissuer、subject、audience、有効期限、発行時刻、一意識別子を用途に応じて検証・発行する。
-        relates_to:
-          models:
-            - AccessTokenClaims
-            - IdTokenClaims
-            - Audience
   RFC7523:
     title: JSON Web Token Profile for OAuth 2.0 Client Authentication and Authorization Grants
     version: RFC 7523
@@ -166,13 +125,6 @@ standards:
         strength: MAY
         adoption: optional
         statement: client assertionの署名、issuer、subject、audience、有効期限、jtiを検証する。
-        relates_to:
-          models:
-            - TokenEndpointAuthMethod
-          interfaces:
-            - Token
-            - Introspect
-            - Revoke
   RFC7591:
     title: OAuth 2.0 Dynamic Client Registration Protocol
     version: RFC 7591
@@ -186,12 +138,6 @@ standards:
         strength: MAY
         adoption: optional
         statement: Client metadataを受け取りclient_idと登録結果を返す。
-        relates_to:
-          interfaces:
-            - RegisterClient
-          models:
-            - ClientRegistrationRequest
-            - OAuth2Client
       - id: RFC7591-REDIRECT-URI
         section: §2
         strength: MUST
@@ -210,20 +156,11 @@ standards:
         strength: MUST
         adoption: required
         statement: Token requestのcode_verifierを認可時のcode_challengeと照合する。
-        relates_to:
-          interfaces:
-            - Authorize
-            - Token
-          invariants:
-            - PkceRoundTrip
       - id: RFC7636-S256
         section: §4.2
         strength: SHOULD
         adoption: required
         statement: code_challenge_methodはS256だけを許可する。
-        relates_to:
-          models:
-            - CodeChallengeMethod
       - id: RFC7636-PLAIN
         section: §4.2
         strength: MAY
@@ -243,20 +180,11 @@ standards:
         strength: MUST
         adoption: required
         statement: 認証済みResource Serverへactive状態と許可されたメタデータを返す。
-        relates_to:
-          interfaces:
-            - Introspect
-          models:
-            - IntrospectionRequest
-            - IntrospectionResponse
       - id: RFC7662-INACTIVE
         section: §2.2
         strength: MUST
         adoption: required
         statement: 無効なトークンにはactive=falseだけを返す。
-        relates_to:
-          scenarios:
-            - 失効済みトークンの introspection は active=false のみ返す
   RFC7800:
     title: Proof-of-Possession Key Semantics for JSON Web Tokens
     version: RFC 7800
@@ -271,10 +199,6 @@ standards:
         strength: MAY
         adoption: optional
         statement: Sender-constrained tokenの確認鍵情報をcnf claimへ格納する。
-        relates_to:
-          models:
-            - SenderConstraintCnf
-            - AccessTokenClaims
   RFC8176:
     title: Authentication Method Reference Values
     version: RFC 8176
@@ -288,11 +212,6 @@ standards:
         strength: MAY
         adoption: required
         statement: 実際に成立した認証方法をamr値として記録する。
-        relates_to:
-          models:
-            - AuthenticationContext
-            - IdTokenClaims
-            - AccessTokenClaims
   RFC8414:
     title: OAuth 2.0 Authorization Server Metadata
     version: RFC 8414
@@ -306,11 +225,6 @@ standards:
         strength: MUST
         adoption: required
         statement: issuerと利用可能なエンドポイント・機能をmetadata文書として公開する。
-        relates_to:
-          interfaces:
-            - GetOauthAuthorizationServer
-          models:
-            - DiscoveryDocument
   RFC8628:
     title: OAuth 2.0 Device Authorization Grant
     version: RFC 8628
@@ -324,13 +238,6 @@ standards:
         strength: MUST
         adoption: optional
         statement: device_code、user_code、verification_uriを発行しResourceOwnerの判断を受け付ける。
-        relates_to:
-          interfaces:
-            - DeviceAuthorization
-            - GetBrowserDeviceContext
-            - SubmitBrowserDevice
-          states:
-            - DeviceCodeFlow
       - id: RFC8628-POLLING
         section: §3.5
         strength: MUST
@@ -349,22 +256,11 @@ standards:
         strength: MAY
         adoption: optional
         statement: 登録済みSubject DNと検証済みクライアント証明書を照合してClientを認証する。
-        relates_to:
-          interfaces:
-            - Token
-            - Introspect
-            - Revoke
       - id: RFC8705-CERT-BOUND
         section: §3
         strength: MAY
         adoption: optional
         statement: Access Tokenをクライアント証明書thumbprintへバインドしResource access時に照合する。
-        relates_to:
-          models:
-            - SenderConstraintCnf
-          interfaces:
-            - UserInfo
-            - PostUserInfo
   RFC8707:
     title: Resource Indicators for OAuth 2.0
     version: RFC 8707
@@ -378,11 +274,6 @@ standards:
         strength: SHOULD
         adoption: required
         statement: 発行するAccess Tokenへ非空のaudienceを設定し、意図しないResource Serverでの利用を防ぐ。
-        relates_to:
-          invariants:
-            - AllAccessTokensCarryAudience
-          models:
-            - AccessTokenClaims
   RFC9068:
     title: JSON Web Token Profile for OAuth 2.0 Access Tokens
     version: RFC 9068
@@ -396,20 +287,11 @@ standards:
         strength: MUST
         adoption: required
         statement: JWT Access Tokenへiss、sub、aud、exp、iat、jti、client_idを含める。
-        relates_to:
-          models:
-            - AccessTokenClaims
       - id: RFC9068-ASYMMETRIC-SIGNATURE
         section: §2.1
         strength: MUST
         adoption: required
         statement: Access Tokenを非対称アルゴリズムで署名し公開鍵で検証可能にする。
-        relates_to:
-          models:
-            - SignatureAlgorithm
-            - SigningKey
-          interfaces:
-            - GetJwks
   RFC9126:
     title: OAuth 2.0 Pushed Authorization Requests
     version: RFC 9126
@@ -423,23 +305,11 @@ standards:
         strength: MAY
         adoption: optional
         statement: Client認証済みPARを保存し短命なrequest_uriを返す。
-        relates_to:
-          interfaces:
-            - PushAuthorizationRequest
-            - Authorize
-          models:
-            - PARRecord
-            - ParResponse
       - id: RFC9126-SINGLE-USE
         section: §2.2
         strength: SHOULD
         adoption: required
         statement: request_uriは短命かつ一度だけ使用可能とする。
-        relates_to:
-          objectives:
-            - ParRequestUriLifetime
-          states:
-            - PARRecordLifecycle
   RFC9207:
     title: OAuth 2.0 Authorization Server Issuer Identification
     version: RFC 9207
@@ -453,11 +323,6 @@ standards:
         strength: MUST
         adoption: required
         statement: Authorization responseへissuer識別子を含める。
-        relates_to:
-          interfaces:
-            - Authorize
-          models:
-            - DiscoveryDocument
   RFC9449:
     title: OAuth 2.0 Demonstrating Proof of Possession
     version: RFC 9449
@@ -472,22 +337,11 @@ standards:
         strength: MAY
         adoption: optional
         statement: DPoP proofの署名、htm、htu、iat、jtiを検証する。
-        relates_to:
-          interfaces:
-            - Token
-            - UserInfo
-            - PostUserInfo
-          invariants:
-            - DpopJtiUniquenessWithinWindow
       - id: RFC9449-TOKEN-BINDING
         section: §6
         strength: MUST
         adoption: optional
         statement: DPoP利用時はAccess Tokenへjktを含め、提示proofの鍵と照合する。
-        relates_to:
-          models:
-            - SenderConstraintCnf
-            - AccessTokenClaims
   RFC9700:
     title: Best Current Practice for OAuth 2.0 Security
     version: RFC 9700 / BCP 240
@@ -501,40 +355,21 @@ standards:
         strength: MUST
         adoption: required
         statement: redirect_uriは登録値と完全一致させ、未検証URIへリダイレクトしない。
-        relates_to:
-          invariants:
-            - RedirectUriExactMatch
       - id: RFC9700-AUTHORIZATION-CODE
         section: §2.1.1
         strength: MUST
         adoption: required
         statement: redirect-based flowはAuthorization Code GrantとPKCEで保護する。
-        relates_to:
-          interfaces:
-            - Authorize
-            - Token
-          invariants:
-            - PkceRoundTrip
       - id: RFC9700-SENDER-CONSTRAINT
         section: §2.2.1
         strength: SHOULD
         adoption: optional
         statement: 高セキュリティClientではAccess TokenをDPoPまたはmTLSでsender-constrainedにする。
-        relates_to:
-          models:
-            - SenderConstraintKind
-            - SenderConstraintCnf
       - id: RFC9700-REFRESH-REPLAY
         section: "§2.2.2, §4.14"
         strength: MUST
         adoption: required
         statement: Refresh Tokenをローテーションし再利用検知時に関連トークンを失効する。
-        relates_to:
-          states:
-            - RefreshTokenLifecycle
-          invariants:
-            - RefreshFamilyTransitiveRevoke
-            - RefreshRotationParentInvariants
   OpenIDConnectCore:
     title: OpenID Connect Core 1.0 incorporating errata set 1
     version: Final
@@ -548,32 +383,16 @@ standards:
         strength: MUST
         adoption: required
         statement: code response typeによるOpenID Connect Authenticationを提供する。
-        relates_to:
-          interfaces:
-            - Authorize
-            - Token
-          models:
-            - IdTokenClaims
       - id: OIDC-CORE-ID-TOKEN
         section: §2
         strength: MUST
         adoption: required
         statement: ID Tokenへiss、sub、aud、exp、iatと認証コンテキストを含める。
-        relates_to:
-          models:
-            - IdTokenClaims
-            - AuthenticationContext
       - id: OIDC-CORE-USERINFO
         section: §5.3
         strength: SHOULD
         adoption: required
         statement: openid scopeのAccess Tokenに対してsubを含むUserInfoを返す。
-        relates_to:
-          interfaces:
-            - UserInfo
-            - PostUserInfo
-          models:
-            - UserInfoResponse
       - id: OIDC-CORE-HYBRID-IMPLICIT
         section: §3.2-3.3
         strength: MAY
@@ -593,11 +412,6 @@ standards:
         strength: MUST
         adoption: required
         statement: well-known configurationからissuer、endpoints、supported metadataを公開する。
-        relates_to:
-          interfaces:
-            - GetOpenidConfiguration
-          models:
-            - DiscoveryDocument
   OpenIDConnectRPInitiatedLogout:
     title: OpenID Connect RP-Initiated Logout 1.0
     version: Final
@@ -611,10 +425,6 @@ standards:
         strength: MUST
         adoption: required
         statement: end_session_endpointを公開しRPからのlogout要求を受け付ける。
-        relates_to:
-          interfaces:
-            - EndSession
-            - GetOpenidConfiguration
       - id: OIDC-LOGOUT-REDIRECT
         section: §3
         strength: MUST
@@ -633,36 +443,21 @@ standards:
         strength: MUST
         adoption: optional
         statement: Fapi2SecurityProfileを選択したClientにだけ本プロファイルの追加制約を適用する。
-        relates_to:
-          models:
-            - FapiProfile
-            - OAuth2Client
       - id: FAPI2-PAR-PKCE
         section: §5.3.2
         strength: MUST
         adoption: optional
         statement: FAPI ClientはPARとS256 PKCEを使用する。
-        relates_to:
-          interfaces:
-            - PushAuthorizationRequest
-            - Authorize
       - id: FAPI2-CLIENT-AUTH
         section: §5.3.2
         strength: MUST
         adoption: optional
         statement: FAPI Clientはprivate_key_jwtまたはmTLSで認証する。
-        relates_to:
-          models:
-            - TokenEndpointAuthMethod
       - id: FAPI2-SENDER-CONSTRAINT
         section: §5.3.2
         strength: MUST
         adoption: optional
         statement: FAPI Access TokenをDPoPまたはmTLSでsender-constrainedにする。
-        relates_to:
-          models:
-            - AccessTokenSenderConstraint
-            - SenderConstraintCnf
 glossary:
   ResourceOwner:
     definition: 保護リソースに対するアクセス権限を付与できる実体。本アプリではエンドユーザー。
@@ -1251,7 +1046,7 @@ models:
       client_type:
         type: ClientType
       redirect_uris:
-        type: "Uri[]"
+        type: "URI[]"
         optional: true
         description: redirect 系グラント (authorization_code) のとき必須。client_credentials のみの M2M クライアントは持たない (RFC 6749 §3.1.2)。
       grant_types:
@@ -1265,7 +1060,7 @@ models:
       scope:
         type: String
       jwks_uri:
-        type: Uri
+        type: URI
         optional: true
       jwks:
         type: JSON
@@ -1292,12 +1087,14 @@ models:
         type: Boolean
         default: false
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         description: 作成時は created_at と同じ値を持ち、以後 client metadata の管理操作ごとに更新する。
   Consent:
     kind: entity
+    constraints:
+      - consent_references_are_tenant_local(user_id, client_id)
     description: GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。user_id と client_id は既存 User と OAuth2Client を指す。
     identity:
       - user_id
@@ -1315,16 +1112,16 @@ models:
       state:
         type: ConsentState
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
       granted_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
         description: 通常 granted_at + 365 日
       revoked_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: state == Revoked になった時刻（監査）。
       authorization_details:
@@ -1421,11 +1218,16 @@ models:
         type: AuthorizationDetailTypeState
         default: Enabled
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   RefreshTokenRecord:
     kind: entity
+    constraints:
+      - hash != ''
+      - absolute_expires_at >= expires_at
+      - refresh_token_references_are_tenant_local(user_id, client_id)
+      - parent_id == null || parent_in_same_family(parent_id, family_id)
     description: リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant は global ID の User / OAuth2Client から導出し、token 行に冗長保持しない。use case は両者の tenant-local invariant を検証する。
     identity: id
     fields:
@@ -1451,21 +1253,24 @@ models:
       state:
         type: RefreshTokenState
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
       issued_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
       absolute_expires_at:
-        type: Timestamp
+        type: DateTime
         description: ローテーションされても延長されない絶対期限。
       sender_constraint:
         type: RefreshTokenSenderConstraint
         optional: true
   AuthorizationRequest:
     kind: entity
+    constraints:
+      - code_challenge != ''
+      - code_challenge_method == S256
     description: フロー追跡用のサーバー内部中間ステート。
     identity: id
     fields:
@@ -1480,7 +1285,7 @@ models:
       client_id:
         type: String
       redirect_uri:
-        type: Uri
+        type: URI
       response_type:
         type: ResponseType
       scope:
@@ -1529,11 +1334,13 @@ models:
         optional: true
         description: RFC 9396 — クライアントが要求した構造化詳細。検証済み・登録 type 適合済みのものを保持する。
       created_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
   AuthorizationCodeRecord:
     kind: entity
+    constraints:
+      - expires_at - issued_at <= duration('60s')
     description: 発行済み認可コードの永続レコード。code 本体は短命。状態は AuthorizationCodeRecordLifecycle に従う（AuthorizationCodeFlow とは別軸でコード自体のライフサイクルを表す）。
     identity: code
     fields:
@@ -1554,7 +1361,7 @@ models:
       scopes:
         type: "String[]"
       redirect_uri:
-        type: Uri
+        type: URI
       code_challenge:
         type: String
       code_challenge_method:
@@ -1579,11 +1386,11 @@ models:
       state:
         type: AuthorizationCodeRecordState
       issued_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
       redeemed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: state == Redeemed になった時刻（監査）。
       issued_family_id:
@@ -1608,9 +1415,9 @@ models:
       state:
         type: PARRecordState
       issued_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
   DeviceAuthorization:
     kind: entity
     description: RFC 8628 デバイス認可レコード。device_code はハッシュのみで保存する。
@@ -1644,15 +1451,15 @@ models:
         constraints:
           - min: 1
       last_polled_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       issued_family_id:
         type: UUID
         optional: true
       issued_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
   SenderConstraintCnf:
     kind: value_object
     description: Sender-Constrained 証明 (RFC 7800)。
@@ -1679,10 +1486,12 @@ models:
         optional: true
   AccessTokenClaims:
     kind: value_object
+    constraints:
+      - audience_non_empty(aud)
     description: JWT Access Token クレーム (RFC 9068)。TTL 600 秒。
     fields:
       iss:
-        type: Uri
+        type: URI
       sub:
         type: String
         description: client_credentials 時は client_id と一致。
@@ -1732,7 +1541,7 @@ models:
     description: OIDC ID Token クレーム。TTL 3600 秒。
     fields:
       iss:
-        type: Uri
+        type: URI
       sub:
         type: String
       aud:
@@ -1788,40 +1597,32 @@ models:
       one_or_many:
         type: JSON
         description: JSON string または1つ以上の JSON string の配列。
-  Uri:
-    kind: value_object
-    description: URI 形式の文字列。
-    fields:
-      value:
-        type: String
-        constraints:
-          - format: uri
   DiscoveryDocument:
     kind: value_object
     description: RFC 8414 / OIDC Discovery 1.0 メタデータ。
     fields:
       issuer:
-        type: Uri
+        type: URI
       authorization_endpoint:
-        type: Uri
+        type: URI
       token_endpoint:
-        type: Uri
+        type: URI
       userinfo_endpoint:
-        type: Uri
+        type: URI
       jwks_uri:
-        type: Uri
+        type: URI
       introspection_endpoint:
-        type: Uri
+        type: URI
       revocation_endpoint:
-        type: Uri
+        type: URI
       pushed_authorization_request_endpoint:
-        type: Uri
+        type: URI
       device_authorization_endpoint:
-        type: Uri
+        type: URI
       registration_endpoint:
-        type: Uri
+        type: URI
       end_session_endpoint:
-        type: Uri
+        type: URI
         optional: true
       scopes_supported:
         type: "String[]"
@@ -1919,7 +1720,7 @@ models:
     description: /register への動的クライアント登録リクエスト本体 (RFC 7591)。登録後の OAuth2Client は本リクエストの内容から派生する。
     fields:
       redirect_uris:
-        type: "Uri[]"
+        type: "URI[]"
         constraints:
           - non_empty
       client_name:
@@ -1942,7 +1743,7 @@ models:
         type: String
         optional: true
       jwks_uri:
-        type: Uri
+        type: URI
         optional: true
       jwks:
         type: JSON
@@ -2008,9 +1809,9 @@ models:
       state:
         type: AuthorizationDetailTypeState
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   AuthorizationDetailTypeListResponse:
     kind: value_object
     description: 管理 API の authorization_details type 一覧。
@@ -2022,7 +1823,7 @@ models:
     description: 管理者が所属テナントに OAuth client を作成する。生成された client_secret は作成応答で一度だけ返す。
     fields:
       redirect_uris:
-        type: "Uri[]"
+        type: "URI[]"
         constraints:
           - non_empty
       client_name:
@@ -2047,7 +1848,7 @@ models:
         type: String
         optional: true
       jwks_uri:
-        type: Uri
+        type: URI
         optional: true
       jwks:
         type: JSON
@@ -2074,7 +1875,7 @@ models:
         constraints:
           - max_length: 200
       redirect_uris:
-        type: "Uri[]"
+        type: "URI[]"
         optional: true
         constraints:
           - non_empty
@@ -2109,7 +1910,7 @@ models:
       client_type:
         type: ClientType
       redirect_uris:
-        type: "Uri[]"
+        type: "URI[]"
       grant_types:
         type: "GrantType[]"
       response_types:
@@ -2119,7 +1920,7 @@ models:
       scope:
         type: String
       jwks_uri:
-        type: Uri
+        type: URI
         optional: true
       jwks:
         type: JSON
@@ -2136,7 +1937,7 @@ models:
       fapi_profile:
         type: FapiProfile
       created_at:
-        type: Timestamp
+        type: DateTime
   AdminOAuth2ClientCreateResponse:
     kind: value_object
     description: client 作成応答。client_secret は生成された場合に限り一度だけ返す。
@@ -2175,11 +1976,11 @@ models:
       state:
         type: ConsentState
       granted_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
       revoked_at:
-        type: Timestamp
+        type: DateTime
         optional: true
   AdminConsentListResponse:
     kind: value_object
@@ -2201,9 +2002,9 @@ models:
       state:
         type: ConsentState
       granted_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
   AccountConsentListResponse:
     kind: value_object
     description: "end-user 自身の接続済みアプリ (active な Consent) 一覧 (self-service)。"
@@ -2364,9 +2165,9 @@ models:
       user_code:
         type: String
       verification_uri:
-        type: Uri
+        type: URI
       verification_uri_complete:
-        type: Uri
+        type: URI
         optional: true
       expires_in:
         type: Integer
@@ -2460,7 +2261,7 @@ models:
         type: String
         optional: true
       redirect_to:
-        type: Uri
+        type: URI
         optional: true
   EndSessionParameters:
     kind: value_object
@@ -2473,7 +2274,7 @@ models:
         type: String
         optional: true
       post_logout_redirect_uri:
-        type: Uri
+        type: URI
         optional: true
       state:
         type: String
@@ -2554,7 +2355,7 @@ models:
     description: /register で新しいクライアントが動的登録された (RFC 7591)。クライアント登録監査の起点。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: クライアントが属するテナント ID。
@@ -2568,7 +2369,7 @@ models:
     description: 管理者が所属テナントに OAuth client を作成した。秘密情報は含めない。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: クライアントが属するテナント ID。actor と一致する。
@@ -2581,7 +2382,7 @@ models:
     description: 管理者が OAuth client metadata を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: クライアントが属するテナント ID。actor と一致する。
@@ -2596,7 +2397,7 @@ models:
     description: 管理者が所属テナントから OAuth client を削除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: クライアントが属するテナント ID。actor と一致する。
@@ -2609,7 +2410,7 @@ models:
     description: ResourceOwner がクライアントに対する scope の同意を与えた (GDPR Art.6 法的根拠の取得記録)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 同意が起きたテナント ID。
@@ -2624,7 +2425,7 @@ models:
     description: ResourceOwner または所属テナントの Administrator が既存の同意を撤回した (GDPR Art.7(3) 同意撤回権)。以後の発行はブロックされる。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 同意が属するテナント ID。
@@ -2641,7 +2442,7 @@ models:
     description: RFC 9396 — クライアントが /authorize・/par・/token で authorization_details を要求し、登録 type 適合検証を通過した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       clientId:
@@ -2658,7 +2459,7 @@ models:
     description: RFC 9396 — ResourceOwner が提示された authorization_details に同意した。発行・交換の部分集合判定の基準となる。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       userId:
@@ -2672,7 +2473,7 @@ models:
     description: "RFC 9396 — authorization_details の構文不正・未登録 type・スキーマ不適合・同意逸脱・ダウンスコープ超過により要求を拒否した (fail-closed)。"
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       clientId:
@@ -2685,7 +2486,7 @@ models:
     description: /authorize 完了時に AuthorizationCode を発行した。/token への交換まで 60 秒以内に行う必要がある。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 認可コードを発行したテナント ID。
@@ -2703,7 +2504,7 @@ models:
     description: AuthorizationCode が /token で正しく交換された。同一コードの再使用はファミリー失効を引き起こす。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 交換が起きたテナント ID。
@@ -2716,7 +2517,7 @@ models:
     description: AccessToken (JWT) を発行した。senderConstraint がある場合は所有証明（DPoP/mTLS）バインド済み。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: トークンを発行したテナント ID。
@@ -2736,7 +2537,7 @@ models:
     description: RefreshToken を発行した。familyId は元の認可コード由来のファミリーを識別し、ローテーションで継承される。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: トークンを発行したテナント ID。
@@ -2756,7 +2557,7 @@ models:
     description: RefreshToken を /token で交換し、新しい子トークンを発行して親を Rotated 状態にした。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: ローテーションが起きたテナント ID。
@@ -2771,7 +2572,7 @@ models:
     description: /revoke もしくは管理操作によってトークンが失効された (RFC 7009)。監査・即時性要件あり。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 失効が起きたテナント ID。
@@ -2787,7 +2588,7 @@ models:
     description: /introspect が呼ばれてトークン状態を返した (RFC 7662)。ResourceServer の利用パターン分析に使用。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: introspection が起きたテナント ID。
@@ -2802,7 +2603,7 @@ models:
     description: RFC 8693 — トークン交換による委任トークンを発行した。delegationDepth は発行トークンの act 入れ子の深さ。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: トークン交換が起きたテナント ID。
@@ -2823,7 +2624,7 @@ models:
     description: RFC 8693 — トークン交換要求をポリシー違反・検証失敗により拒否した (fail-closed)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: トークン交換が拒否されたテナント ID。
@@ -2839,7 +2640,7 @@ models:
     description: Rotated 状態の RefreshToken が再提示された。ファミリー全失効をトリガーする (RFC 9700 §4.14)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 再利用が検出されたテナント ID。
@@ -2855,7 +2656,7 @@ models:
     description: /par に届いた authorize パラメータをサーバー側に格納し短命の request_uri を発行した (RFC 9126)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: PAR を受け付けたテナント ID。
@@ -2868,7 +2669,7 @@ models:
     description: RFC 8628 §3.1 — device_code/user_code を発行した。user_code は監査ログに残さない。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: デバイス認可を受け付けたテナント ID。
@@ -2881,7 +2682,7 @@ models:
     description: RFC 8628 §3.3 — ユーザーが承認した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 承認が起きたテナント ID。
@@ -2894,7 +2695,7 @@ models:
     description: RFC 8628 §3.3 — ユーザーが拒否、または user_code 誤り続けた。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 拒否が起きたテナント ID。
@@ -2903,6 +2704,105 @@ models:
       userId:
         type: String
         optional: true
+  User:
+    kind: entity
+    description: IdentityManagement が publish する principal の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  Tenant:
+    kind: entity
+    description: Tenancy が publish する tenant の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  Application:
+    kind: entity
+    description: Application context が publish する protocol assignment / sign-in policy 判定用 stub。
+    identity: application_id
+    fields:
+      application_id:
+        type: UUID
+      tenant_id:
+        type: String
+      status:
+        type: String
+  SignatureAlgorithm:
+    kind: enum
+    description: SigningKeys が publish する JWT 署名アルゴリズム。
+    values: [PS256, ES256]
+  Validate:
+    kind: event
+    description: 認可要求を検証する lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  Reject:
+    kind: event
+    description: lifecycle を拒否終端へ進める event。
+    payload: { occurredAt: { type: DateTime } }
+  AuthenticateUser:
+    kind: event
+    description: resource owner 認証が成立した event。
+    payload: { occurredAt: { type: DateTime } }
+  RequestConsent:
+    kind: event
+    description: resource owner の同意を要求する event。
+    payload: { occurredAt: { type: DateTime } }
+  GrantConsent:
+    kind: event
+    description: resource owner が同意した event。
+    payload: { occurredAt: { type: DateTime } }
+  IssueCode:
+    kind: event
+    description: authorization code を発行する lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  RedeemCode:
+    kind: event
+    description: authorization code を単発償還する lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  Expire:
+    kind: event
+    description: 有効期限到達を表す lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  EnterUserCode:
+    kind: event
+    description: device user code が入力された event。
+    payload: { occurredAt: { type: DateTime } }
+  Approve:
+    kind: event
+    description: device authorization が承認された event。
+    payload: { occurredAt: { type: DateTime } }
+  Deny:
+    kind: event
+    description: device authorization が拒否された event。
+    payload: { occurredAt: { type: DateTime } }
+  Exchange:
+    kind: event
+    description: device code が token に交換された event。
+    payload: { occurredAt: { type: DateTime } }
+  Rotate:
+    kind: event
+    description: refresh token を child token へ rotate する event。
+    payload: { occurredAt: { type: DateTime } }
+  RevokeToken:
+    kind: event
+    description: token を失効させる lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  RevokeConsent:
+    kind: event
+    description: consent を論理撤回する lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  Use:
+    kind: event
+    description: PAR request_uri を単発消費する lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
 states:
   AuthorizationCodeFlow:
     description: /authorize から /token に至る authorization request のライフサイクル。
@@ -2999,6 +2899,7 @@ states:
       - from: Active
         event: Rotate
         to: Rotated
+        guard: now() < absolute_expires_at
       - from: Active
         event: RevokeToken
         to: Revoked
@@ -3022,6 +2923,7 @@ states:
       - from: Issued
         event: RedeemCode
         to: Redeemed
+        guard: now() < expires_at
       - from: Issued
         event: Expire
         to: Expired
@@ -3050,6 +2952,7 @@ states:
       - from: Stored
         event: Use
         to: Used
+        guard: now() < expires_at
       - from: Stored
         event: Expire
         to: Expired
@@ -3068,6 +2971,7 @@ interfaces:
       - InvalidRequestError
     emits:
       - ClientRegistered
+    access: public
     bindings:
       - kind: http
         method: POST
@@ -3086,9 +2990,18 @@ interfaces:
       - InvalidRequestError
       - InvalidClientError
       - AccessDeniedError
+    requires:
+      - registered_client(input.params.client_id)
+      - redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)
+      - requested_scopes_allowed(input.params.client_id, input.params.scope)
+      - pkce_s256_present(input.params)
+      - par_requirement_satisfied(input.params.client_id, input.params.request_uri)
+      - application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)
+      - application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)
     emits:
       - AuthorizationCodeIssued
       - ConsentGranted
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3104,6 +3017,7 @@ interfaces:
     errors:
       - InvalidRequestError
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3119,9 +3033,16 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - valid_authorization_transaction(context.transaction_cookie)
     emits:
       - ConsentGranted
       - AuthorizationCodeIssued
+    access:
+      policies: [AuthenticatedResourceOwner]
+      resource:
+        type: OAuth2AuthorizationService
+        id: context.transaction_id
     bindings:
       - kind: http
         method: POST
@@ -3141,6 +3062,11 @@ interfaces:
     emits:
       - DeviceAuthorizationApproved
       - DeviceAuthorizationDenied
+    access:
+      policies: [AuthenticatedResourceOwner]
+      resource:
+        type: OAuth2AuthorizationService
+        id: context.transaction_id
     bindings:
       - kind: http
         method: POST
@@ -3152,6 +3078,7 @@ interfaces:
       response:
         type: BrowserDeviceContextResponse
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3165,6 +3092,9 @@ interfaces:
         type: EndSessionParameters
     errors:
       - InvalidRequestError
+    requires:
+      - registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3195,6 +3125,11 @@ interfaces:
       - InvalidClientError
     emits:
       - PARStored
+    access:
+      policies: [AuthenticatedClient]
+      resource:
+        type: OAuth2AuthorizationService
+        id: context.client_id
     bindings:
       - kind: http
         method: POST
@@ -3225,6 +3160,17 @@ interfaces:
       - SlowDownError
       - AccessDeniedError
       - ExpiredTokenError
+    requires:
+      - signing_key_provider_healthy(context.tenant_id)
+      - token_request_references_are_tenant_local(context.tenant_id, input.request)
+      - dpop_proof_is_fresh_and_unique(context.dpop_proof)
+    ensures:
+      - output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)
+      - input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request)
+      - input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request)
+      - input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token)
+      - "!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)"
+      - client_authentication_failures_are_uniform()
     emits:
       - AccessTokenIssued
       - RefreshTokenIssued
@@ -3233,6 +3179,11 @@ interfaces:
       - AuthorizationCodeRedeemed
       - TokenExchanged
       - TokenExchangeRejected
+    access:
+      policies: [TokenAuthorizationCode, TokenRefresh, TokenClientCredentials, TokenDeviceCode, TokenExchange]
+      resource:
+        type: OAuth2TokenService
+        id: context.client_id
     bindings:
       - kind: http
         method: POST
@@ -3257,6 +3208,11 @@ interfaces:
       - InvalidTokenError
     emits:
       - TokenIntrospected
+    access:
+      policies: [AuthenticatedClient]
+      resource:
+        type: OAuth2TokenService
+        id: context.client_id
     bindings:
       - kind: http
         method: POST
@@ -3273,6 +3229,11 @@ interfaces:
       - InvalidClientError
     emits:
       - TokenRevoked
+    access:
+      policies: [AuthenticatedClient]
+      resource:
+        type: OAuth2TokenService
+        id: context.client_id
     bindings:
       - kind: http
         method: POST
@@ -3290,6 +3251,11 @@ interfaces:
     errors:
       - InvalidTokenError
       - InsufficientScopeError
+    access:
+      policies: [ActiveOpenidToken]
+      resource:
+        type: OAuth2UserInfoService
+        id: context.token_client_id
     bindings:
       - kind: http
         method: GET
@@ -3307,6 +3273,11 @@ interfaces:
     errors:
       - InvalidTokenError
       - InsufficientScopeError
+    access:
+      policies: [ActiveOpenidToken]
+      resource:
+        type: OAuth2UserInfoService
+        id: context.token_client_id
     bindings:
       - kind: http
         method: POST
@@ -3329,6 +3300,11 @@ interfaces:
       - InvalidClientError
     emits:
       - DeviceAuthorizationRequested
+    access:
+      policies: [RegisteredClient]
+      resource:
+        type: OAuth2AuthorizationService
+        id: context.client_id
     bindings:
       - kind: http
         method: POST
@@ -3342,6 +3318,7 @@ interfaces:
       discovery:
         type: DiscoveryDocument
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3354,6 +3331,7 @@ interfaces:
       discovery:
         type: DiscoveryDocument
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3361,6 +3339,7 @@ interfaces:
   Health:
     description: Health check
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -3375,6 +3354,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -3391,6 +3375,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -3406,6 +3395,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -3426,6 +3420,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: PATCH
@@ -3439,6 +3438,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: DELETE
@@ -3453,6 +3457,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -3469,6 +3478,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -3486,6 +3500,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AdminOAuth2ClientCreated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -3508,6 +3527,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AdminOAuth2ClientUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: PATCH
@@ -3523,6 +3547,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AdminOAuth2ClientDeleted
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: DELETE
@@ -3537,6 +3566,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -3555,6 +3589,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -3571,6 +3610,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ConsentRevoked
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: DELETE
@@ -3585,6 +3629,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: GET
@@ -3599,408 +3648,274 @@ interfaces:
       - AccessDeniedError
     emits:
       - ConsentRevoked
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: POST
         path: "/api/account/consents/{client_id}/revoke"
         successful_status_codes:
           - "204"
-invariants:
-  PkceRoundTrip:
-    description: "任意の verifier in [A-Za-z0-9._~-]{43,128} に対して、\nchallenge = base64url(SHA256(verifier)) としたとき、verifyPkce(verifier, challenge, S256) は true。\n反例: PKCE が壊れている。認可コード横取り攻撃の防御がない。\n"
-    always: "verifyPkce(verifier, base64url(sha256(verifier)), S256) == true"
-  AuthCodeStateSafety:
-    description: 任意のイベント列を AuthorizationCodeFlow に逐次適用しても、状態は宣言された値の部分集合に留まる。
-    target: AuthorizationRequest
-    always: "state in AuthorizationCodeState.values"
-  DeviceCodeStateSafety:
-    description: 任意のイベント列を DeviceCodeFlow に逐次適用しても、状態は宣言された値の部分集合に留まる。
-    target: DeviceAuthorization
-    always: "state in DeviceCodeState.values"
-  RefreshFamilyTransitiveRevoke:
-    description: "RevokeFamily(f) 後、family_id == f のすべての RefreshToken の state が Revoked になる。\n反例: ファミリー失効の取りこぼし。RFC 9700 §4.14 違反。\n"
-    target: RefreshTokenRecord
-    assuming: event == RevokeFamily
-    eventually: "RefreshTokenRecords.all(x, x.family_id != event.family_id || x.state == Revoked)"
-    within: 1s
-  RefreshRotationParentInvariants:
-    description: "親 p を rotate(p, child) した直後の不変条件。\n反例: absolute TTL が延長され、攻撃者が refresh chain を無限延長可能になる。\n"
-    target: RefreshTokenRecord
-    assuming: event == RotateRefreshToken
-    always: "next.parent.state == Rotated && next.child.parent_id == prev.parent.id && next.child.family_id == prev.parent.family_id && next.child.absolute_expires_at == prev.parent.absolute_expires_at"
-  DpopJtiUniquenessWithinWindow:
-    description: "window 秒以内に同一 jti を含む DPoP proof は受理されない。\n反例: DPoP リプレイ攻撃の成功。RFC 9449 違反。\n"
-    assuming: event == AcceptDpopProof
-    never: "SeenJtis.exists(x, x.jti == event.jti && (event.at - x.seen_at) <= window)"
-  TokenHashOneWay:
-    description: "RefreshTokenRecord にはハッシュのみが保存され、平文が残らない。\n反例: トークン平文漏洩、horizontal escalation の可能性。\n"
-    target: RefreshTokenRecord
-    always: "has(hash) && !has(plaintext)"
-  AuthorizationCodeSingleUse:
-    description: 発行された AuthorizationCode は最大1回だけ Redeemed に到達する。再使用は InvalidGrant。
-    target: AuthorizationCodeRecord
-    assuming: event == RedeemCode
-    never: prev.state != Issued
-  ParRequestUriSingleUse:
-    description: PAR で発行された request_uri は使用直後に無効化される。
-    target: PARRecord
-    assuming: event == Use
-    never: prev.state != Stored
-  AuthorizationCodeTtl:
-    description: AuthorizationCode の TTL は最大 60 秒（RFC 9700 §4.10）。
-    target: AuthorizationCodeRecord
-    always: expires_at - issued_at <= 60s
-  AuthorizationCodeEventuallyResolves:
-    description: 発行された AuthorizationCode は必ず Redeemed または Expired に到達する。
-    target: AuthorizationCodeRecord
-    eventually: "state in [Redeemed, Expired]"
-    within: 60s
-  DeviceCodeEventuallyResolves:
-    description: 発行された DeviceCode は必ず Exchanged / Denied / Expired のいずれかに到達する。
-    target: DeviceAuthorization
-    eventually: "state in [Exchanged, Denied, Expired]"
-    within: 15m
-  RefreshTokenAbsoluteTtl:
-    description: RefreshToken の絶対 TTL は通常 TTL 以上（ローテーション越境不可）。
-    target: RefreshTokenRecord
-    always: absolute_expires_at >= expires_at
-  RedirectUriExactMatch:
-    description: 認可リクエストの redirect_uri は登録 URI のいずれかと完全文字列一致しなければならない（RFC 9700 §4.1.3）。
-    assuming: event == ValidateAuthorizeRequest
-    always: "client.redirect_uris.exists(x, x == request.redirect_uri)"
-  PkceMandatory:
-    description: 認可コードフローのすべての要求に対して code_challenge を必須とする（例外なし）。
-    assuming: event == ValidateAuthorizeRequest
-    always: exists(request.code_challenge) and request.code_challenge_method == S256
-  AccessTokenIssuedOnlyAfterConsent:
-    description: Authorization Code Grant の AccessToken は、対応する Subject × Client × Scope の Consent が Granted の場合のみ発行される。
-    assuming: event == AccessTokenIssued and event.grant_type == AuthorizationCode
-    always: "Consents.exists(c, c.subject == event.subject && c.client_id == event.client_id && c.state == Granted && event.scope.all(s, s in c.scopes))"
-  AllAccessTokensCarryAudience:
-    description: 発行されたすべての AccessToken は非空の audience を持つ（RFC 8707 / RFC 9068）。
-    target: AccessToken
-    always: exists(audience) and len(audience) >= 1
-  ClientAuthFailureUniformity:
-    description: クライアント認証失敗時、client_id の存在有無を開示しない（タイミング差・エラーメッセージ差を出さない）。
-    assuming: event == ClientAuthenticationFailed
-    always: "error == InvalidClient && size(error_description) == size(error_description_constant)"
-  TokenAndConsentReferencesStayTenantLocal:
-    description: "Consent と RefreshTokenRecord は同一 tenant_id 内の User と OAuth2Client だけを参照する。RefreshTokenRecord.parent_id は同じ family_id の既存 RefreshTokenRecord を指す。\n反例: tenant A の refresh token が tenant B の client_id または sub を持つ。\n"
-    target: RefreshTokenRecord
-    always: "refresh_token.user_id in Users(refresh_token.tenant_id) && refresh_token.client_id in OAuth2Clients(refresh_token.tenant_id)"
-permissions:
-  TokenGrantAuthorizationCode:
-    description: 認可コード交換による access_token / id_token / refresh_token 発行
-    actor: Client
-    resource: AuthorizationCodeRecord
-    allow_when: "AuthorizationCode in actor.grant_types && sha256(context.code_verifier) == resource.code_challenge && context.redirect_uri == resource.redirect_uri && resource.state == Issued && now() < resource.expires_at"
-  TokenGrantRefresh:
-    description: リフレッシュトークンによる再発行
-    actor: Client
-    resource: RefreshTokenRecord
-    allow_when: "RefreshToken in actor.grant_types && resource.state == Active && now() < resource.absolute_expires_at && sender_constraint_satisfied(resource, context)"
-  TokenGrantClientCredentials:
-    description: クライアント自己認可フロー
-    actor: Client
-    resource: AccessTokenClaims
-    allow_when: "actor.client_type == Confidential && ClientCredentials in actor.grant_types"
-  TokenGrantDeviceCode:
-    description: デバイスコードフロー
-    actor: Client
-    resource: DeviceAuthorization
-    allow_when: "resource.state == Approved && now() < resource.expires_at"
-  TokenGrantTokenExchange:
-    description: トークン交換 (RFC 8693) による委任トークン発行
-    actor: Client
-    resource: AccessTokenClaims
-    allow_when: "TokenExchange in actor.grant_types"
-  TokenIntrospect:
-    description: /introspect の呼び出し
-    actor: Client
-    resource: AccessTokenClaims
-    allow_when: actor.type == Client and context.authenticated == true
-  TokenRevoke:
-    description: /revoke の呼び出し
-    actor: Client
-    resource: AccessTokenClaims
-    allow_when: actor.client_id == resource.client_id
-  UserInfoRead:
-    description: /userinfo の呼び出し
-    actor: Client
-    resource: User
-    allow_when: "openid in context.token_scopes && context.token_active == true"
-  AuthorizeInitiate:
-    description: /authorize でフローを開始する
-    actor: Client
-    resource: AuthorizationRequest
-    allow_when: "actor.registered == true && context.redirect_uri in actor.redirect_uris && subset(context.requested_scopes, actor.scopes) && (actor.require_pkce == false || context.code_challenge != null) && (actor.require_pushed_authorization_requests == false || context.par_used == true)"
-  AdminAuthorizationDetailTypesManage:
-    description: 細粒度な認可詳細 (authorization_details) の種類定義を、検証ルールと同意画面の表示文とあわせて登録・更新・削除します。
-    actor: User
-    resource: AuthorizationDetailType
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminOAuth2ClientsManage:
-    description: 所属テナント内の client 一覧・作成・更新・削除。
-    actor: User
-    resource: OAuth2Client
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminConsentsManage:
-    description: 所属テナント内の Consent 一覧・取得・撤回。同意の付与と scope 拡張は ResourceOwner に限定する。
-    actor: User
-    resource: Consent
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+authorization:
+  resources:
+    OAuth2AuthorizationService:
+      description: tenant 内の authorization / PAR / device flow 操作対象。
+    OAuth2TokenService:
+      description: client に束縛された token 発行・検査・失効操作対象。
+    OAuth2UserInfoService:
+      description: active openid token に束縛された UserInfo 操作対象。
+  principals:
+    RegisteredClient:
+      type: OAuth2Client
+      matches:
+        - principal.client_id != ""
+        - principal.tenant_id == context.tenant_id
+    AuthenticatedClient:
+      type: OAuth2Client
+      matches:
+        - context.client_authenticated
+        - principal.client_id != ""
+        - principal.tenant_id == context.tenant_id
+    ActiveOpenidToken:
+      type: OAuth2Client
+      matches:
+        - context.token_active
+        - '"openid" in context.token_scopes'
+        - principal.tenant_id == context.tenant_id
+    AuthenticatedResourceOwner:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
+    AuthenticatedSelf:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles'
+  policies:
+    RegisteredClient:
+      effect: permit
+      principal: RegisteredClient
+      when: principal.client_id == resource.id
+    AuthenticatedClient:
+      effect: permit
+      principal: AuthenticatedClient
+      when: principal.client_id == resource.id
+    ActiveOpenidToken:
+      effect: permit
+      principal: ActiveOpenidToken
+      when: principal.client_id == resource.id
+    AuthenticatedResourceOwner:
+      effect: permit
+      principal: AuthenticatedResourceOwner
+      when: valid_authorization_transaction(context.transaction_cookie)
+    AuthenticatedSelf:
+      effect: permit
+      principal: AuthenticatedSelf
+      when: principal.id == resource.id
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.id
+    TokenAuthorizationCode:
+      effect: permit
+      principal: RegisteredClient
+      when: context.grant_type == AuthorizationCode && AuthorizationCode in principal.grant_types && authorization_code_grant_valid(context)
+    TokenRefresh:
+      effect: permit
+      principal: RegisteredClient
+      when: context.grant_type == RefreshToken && RefreshToken in principal.grant_types && refresh_grant_valid(context)
+    TokenClientCredentials:
+      effect: permit
+      principal: AuthenticatedClient
+      when: context.grant_type == ClientCredentials && principal.client_type == Confidential && ClientCredentials in principal.grant_types
+    TokenDeviceCode:
+      effect: permit
+      principal: RegisteredClient
+      when: context.grant_type == DeviceCode && DeviceCode in principal.grant_types && device_code_grant_valid(context)
+    TokenExchange:
+      effect: permit
+      principal: AuthenticatedClient
+      when: context.grant_type == TokenExchange && TokenExchange in principal.grant_types
 objectives:
   AuthorizeLatency:
-    kind: slo
-    description: /authorize の p99 レイテンシ目標。ブラウザリダイレクトを介す対話的フローのため、人間が体感する遅延の上限を 500ms に置く。
-    metric: latency_p99
+    description: /authorize 応答の99%以上を 500ms 未満で返す。
     interface: Authorize
-    target: "<500ms"
+    indicator: measurement.latency < duration("500ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   ParLatency:
-    kind: slo
-    description: /par の p99 レイテンシ目標。FAPI クライアントが /authorize 前段で同期的に呼ぶため、追加遅延を最小化する。
-    metric: latency_p99
+    description: /par 応答の99%以上を 200ms 未満で返す。
     interface: PushAuthorizationRequest
-    target: "<200ms"
+    indicator: measurement.latency < duration("200ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   TokenLatency:
-    kind: slo
-    description: /token の p99 レイテンシ目標。トークン交換は機械対機械の同期処理が多いため、300ms 以内に抑える。
-    metric: latency_p99
+    description: /token 応答の99%以上を 300ms 未満で返す。
     interface: Token
-    target: "<300ms"
+    indicator: measurement.latency < duration("300ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   IntrospectLatency:
-    kind: slo
-    description: /introspect の p99 レイテンシ目標。ResourceServer が API リクエストごとにインライン検証するため、最も厳しい 50ms を要求する。
-    metric: latency_p99
+    description: /introspect 応答の99%以上を 50ms 未満で返す。
     interface: Introspect
-    target: "<50ms"
+    indicator: measurement.latency < duration("50ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   RevokeLatency:
-    kind: slo
-    description: /revoke の p99 レイテンシ目標。失効処理は遅延すると侵害時の影響範囲が広がるため 100ms に抑える。
-    metric: latency_p99
+    description: /revoke 応答の99%以上を 100ms 未満で返す。
     interface: Revoke
-    target: "<100ms"
+    indicator: measurement.latency < duration("100ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   UserInfoLatency:
-    kind: slo
-    description: /userinfo の p99 レイテンシ目標。ResourceServer 経由ではなくクライアントが直接呼ぶことが多いため 100ms 以内。
-    metric: latency_p99
+    description: /userinfo 応答の99%以上を 100ms 未満で返す。
     interface: UserInfo
-    target: "<100ms"
+    indicator: measurement.latency < duration("100ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   DiscoveryLatency:
-    kind: slo
-    description: /.well-known/openid-configuration の p99 レイテンシ目標。クライアント起動時の自動検出に使われるため CDN キャッシュ前提で 20ms。
-    metric: latency_p99
+    description: Discovery 応答の99%以上を 20ms 未満で返す。
     interface: GetOpenidConfiguration
-    target: "<20ms"
+    indicator: measurement.latency < duration("20ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   RegisterLatency:
-    kind: slo
-    description: /register の p99 レイテンシ目標。Dynamic Client Registration (RFC 7591) はレアパスなので Authorize と同水準で良い。
-    metric: latency_p99
+    description: /register 応答の99%以上を 500ms 未満で返す。
     interface: RegisterClient
-    target: "<500ms"
+    indicator: measurement.latency < duration("500ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   DeviceAuthorizationLatency:
-    kind: slo
-    description: /device_authorization の p99 レイテンシ目標 (RFC 8628 §3.1)。デバイス起動直後のユーザー体験のため Token と同等。
-    metric: latency_p99
+    description: /device_authorization 応答の99%以上を 300ms 未満で返す。
     interface: DeviceAuthorization
-    target: "<300ms"
+    indicator: measurement.latency < duration("300ms")
+    target: 0.99
     window: 30d
+    budgeting: occurrences
   AuthorizeErrorRate:
-    kind: slo
-    description: /authorize の 5xx 比率上限。0.1% を超えるとクライアントのフロー全体が失敗するため対話的経路の許容下限。
-    metric: error_rate
+    description: /authorize 応答を規定の非5xx成功率以上で返す。
     interface: Authorize
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   ParErrorRate:
-    kind: slo
-    description: /par の 5xx 比率上限。FAPI クライアントの /authorize 前段なので、失敗は即座にフロー全停止につながる。
-    metric: error_rate
+    description: /par 応答を規定の非5xx成功率以上で返す。
     interface: PushAuthorizationRequest
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   TokenErrorRate:
-    kind: slo
-    description: /token の 5xx 比率上限。トークン交換失敗はアプリログイン全停止に等価のため 0.1% を上限とする。
-    metric: error_rate
+    description: /token 応答を規定の非5xx成功率以上で返す。
     interface: Token
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   IntrospectErrorRate:
-    kind: slo
-    description: /introspect の 5xx 比率上限。ResourceServer のリクエスト毎に呼ばれるため、Token より一桁厳しい 0.01% を要求。
-    metric: error_rate
+    description: /introspect 応答を規定の非5xx成功率以上で返す。
     interface: Introspect
-    target: "<0.0001"
+    indicator: measurement.status_code < 500
+    target: 0.9999
     window: 30d
+    budgeting: occurrences
   RevokeErrorRate:
-    kind: slo
-    description: /revoke の 5xx 比率上限。失効処理の信頼性は侵害時のリスク許容に直結するため 0.1% を死守する。
-    metric: error_rate
+    description: /revoke 応答を規定の非5xx成功率以上で返す。
     interface: Revoke
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   UserInfoErrorRate:
-    kind: slo
-    description: /userinfo の 5xx 比率上限。クライアントの「ログイン後ユーザー表示」失敗を防ぐため 0.1% に置く。
-    metric: error_rate
+    description: /userinfo 応答を規定の非5xx成功率以上で返す。
     interface: UserInfo
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   DiscoveryErrorRate:
-    kind: slo
-    description: /.well-known/* の 5xx 比率上限。クライアント自動構成の起点なので、JWKS と同水準の 0.01% を要求。
-    metric: error_rate
+    description: Discovery 応答を規定の非5xx成功率以上で返す。
     interface: GetOpenidConfiguration
-    target: "<0.0001"
+    indicator: measurement.status_code < 500
+    target: 0.9999
     window: 30d
+    budgeting: occurrences
   RegisterErrorRate:
-    kind: slo
-    description: /register の 5xx 比率上限。利用頻度は低いが新規クライアント登録の信頼性のため 0.1% に抑える。
-    metric: error_rate
+    description: /register 応答を規定の非5xx成功率以上で返す。
     interface: RegisterClient
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   DeviceAuthorizationErrorRate:
-    kind: slo
-    description: /device_authorization の 5xx 比率上限。デバイスログイン体験の入口なので 0.1% を下限とする。
-    metric: error_rate
+    description: /device_authorization 応答を規定の非5xx成功率以上で返す。
     interface: DeviceAuthorization
-    target: "<0.001"
+    indicator: measurement.status_code < 500
+    target: 0.999
     window: 30d
+    budgeting: occurrences
   TokenEndpointAvailability:
-    kind: slo
-    description: /token の月次可用性目標。FAPI 2.0 §6.2 が AS に要求する水準（99.95%）に整合させる。
-    metric: availability
+    description: /token の月次可用性を99.95%以上に保つ。
     interface: Token
-    target: ">=99.95%"
+    indicator: measurement.available
+    target: 0.9995
     window: 30d
+    budgeting: timeslices
+    slice: 5m
   OverallAvailability:
-    kind: slo
-    description: サービス全体の月次可用性目標。エンドポイントを跨いだ統合 SLO（個別 SLO よりやや緩めの 99.9%）。
-    metric: availability
-    target: ">=99.9%"
+    description: OAuth2/OIDC service 全体の月次可用性を99.9%以上に保つ。
+    indicator: measurement.available
+    target: 0.999
     window: 30d
+    budgeting: timeslices
+    slice: 5m
   TokenThroughput:
-    kind: slo
-    description: /token のピーク処理能力目標。ログイン集中時間帯にトークン発行が詰まらない水平スケール容量。
-    metric: throughput
+    description: /token が5000rps以上を処理できる測定区間を99%以上に保つ。
     interface: Token
-    target: ">=5000rps"
+    indicator: measurement.requests_per_second >= 5000
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
   AuthorizeThroughput:
-    kind: slo
-    description: /authorize のピーク処理能力目標。対話的フローの並列セッション数に応じて要求される。
-    metric: throughput
+    description: /authorize が1000rps以上を処理できる測定区間を99%以上に保つ。
     interface: Authorize
-    target: ">=1000rps"
+    indicator: measurement.requests_per_second >= 1000
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
   IntrospectThroughput:
-    kind: slo
-    description: /introspect のピーク処理能力目標。ResourceServer 毎リクエスト検証の母数を捌くため、最大ボリュームを想定。
-    metric: throughput
+    description: /introspect が20000rps以上を処理できる測定区間を99%以上に保つ。
     interface: Introspect
-    target: ">=20000rps"
-  AuthorizationCodeLifetime:
-    kind: lifetime
-    target: AuthorizationCodeRecord
-    ttl: 60s
-    single_use: true
-    reference: RFC 9700 §4.10
-  ParRequestUriLifetime:
-    kind: lifetime
-    target: PARRecord
-    ttl: 600s
-    single_use: true
-    reference: RFC 9126
-  AccessTokenLifetime:
-    kind: lifetime
-    target: AccessTokenClaims
-    ttl: 600s
-  IdTokenLifetime:
-    kind: lifetime
-    target: IdTokenClaims
-    ttl: 3600s
-  RefreshTokenLifetime:
-    kind: lifetime
-    target: RefreshTokenRecord
-    ttl: 14d
-  RefreshTokenAbsoluteLifetime:
-    kind: lifetime
-    target: RefreshTokenRecord
-    ttl: 30d
-    description: ローテーション越境不可
-  DeviceCodeLifetime:
-    kind: lifetime
-    target: DeviceAuthorization
-    ttl: 600s
-  UserCodeLifetime:
-    kind: lifetime
-    target: DeviceAuthorization
-    ttl: 600s
-  DeviceCodePollingDefaultInterval:
-    kind: lifetime
-    target: DeviceAuthorization
-    ttl: 5s
-    description: 既定ポーリング間隔
-  ClientAuthFailureRateLimit:
-    kind: security
-    policy: rate_limit_per_minute
-    value: 10
-  AuthorizationCodeRedemptionFailureRateLimit:
-    kind: security
-    policy: rate_limit_per_minute
-    value: 5
-  DpopProofClockSkewPast:
-    kind: security
-    policy: clock_skew_seconds
-    value: 60
-  DpopProofClockSkewFuture:
-    kind: security
-    policy: clock_skew_seconds
-    value: 5
-  DpopJtiReplayWindow:
-    kind: security
-    policy: replay_window_minutes
-    value: 10
-  DpopNonceLifetime:
-    kind: security
-    policy: ttl_seconds
-    value: 60
-  RefreshReuseAlertWindow:
-    kind: security
-    policy: alert_window_seconds
-    value: 60
-  DeviceCodePollingSlowDownIncrement:
-    kind: security
-    policy: polling_slow_down_increment_seconds
-    target: DeviceAuthorization
-    value: 5
-    reference: RFC 8628 §3.5
-  ConsentRecordsRetention:
-    kind: retention
-    target: Consent
-    policy: keep
-    retention: 7y
+    indicator: measurement.requests_per_second >= 20000
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
 scenarios:
   認可コードフローでアクセストークンと ID トークンを取得できる:
-    goal: Client が認可コードを access token と ID token に交換する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: 認可リクエスト→認可コード交換と進み、PKCE 検証を経てトークン一式を得る。
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "\"web-app\" は confidential クライアントで redirect_uri \"https://app.example.com/callback\" を登録済みである"
       - "ユーザー \"alice\" は \"web-app\" に scope \"openid profile\" を同意済みである"
-    success_guarantees:
-      - 認可コードはちょうど一度だけ償還され、再利用できない。
-      - access_token・id_token・refresh_token が発行される。
     main_success:
       - "\"web-app\" として scope \"openid profile\" で認可リクエストを送る"
       - 発行された認可コードを正しい PKCE verifier で交換する
@@ -4035,46 +3950,10 @@ scenarios:
         steps:
           - "認可コードの交換はエラー \"InvalidGrantError\""
           - 認可コードの状態は Expired になる
-  管理者は username と IP で認証監査イベントを相関検索できる:
-    goal: 管理者が credential stuffing 調査のため、平文 username / IP 入力から PII-safe な監査検索を行う。
-    primary_actor: Admin
-    scope: OAuth2
-    level: user_goal
-    preconditions:
-      - tenant 内で username "Alice" のログイン失敗が発生している
-      - 失敗リクエストの client IP は "203.0.113.9" である
-      - 監査イベント sidecar には actor.username / client.ip の transform 済み検索属性が保存されている
-    success_guarantees:
-      - 管理者は actor.username に "alice" または "Alice" を指定して同じ失敗イベントを検索できる
-      - 管理者は client.ip に "203.0.113.42" を指定して同じ /24 の失敗イベントを検索できる
-      - sidecar には username / IP の平文は保存されない
-    main_success:
-      - 管理者が監査ログ画面で field "actor.username" operator "eq" value "Alice" を指定する
-      - サーバは tenant salt と username 正規化を使い value を hash に変換する
-      - 検索結果に username "Alice" の AuthenticationFailed が含まれる
-      - 管理者が field "client.ip" operator "eq" value "203.0.113.42" を追加する
-      - サーバは IP を "203.0.113.0/24" に丸めて照合する
-      - 同じ /24 から発生した認証イベントだけが残る
-    extensions:
-      - at: 4
-        condition: client.ip value が IP アドレスとして不正である
-        steps:
-          - "エラー \"InvalidRequestError\""
-          - SQL / JSONPath は実行されない
-      - at: 1
-        condition: 管理者が registry に無い field を指定する
-        steps:
-          - "エラー \"InvalidRequestError\""
-          - 検索は実行されない
   リフレッシュトークンをローテーションして新しいトークンを得る:
-    goal: Client が refresh token をローテーションして新しい access/refresh token を得る。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "有効な refresh token \"RT1\" が存在する"
-    success_guarantees:
-      - 旧 refresh token はローテーションで無効化され、再使用は family 全体を失効させる。
     main_success:
       - "リフレッシュトークン \"RT1\" を交換する"
       - 応答に新しい access_token と refresh_token が含まれる
@@ -4093,25 +3972,19 @@ scenarios:
           - "\"RefreshTokenReuseDetected\" が発行される"
           - "\"TokenRevoked\" が発行される"
   不正なクライアント認証は invalid_client で一律拒否される:
-    goal: トークンエンドポイントが不正なクライアント認証を client_id の存在を漏らさず拒否する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: client_id の存在有無を開示せず、タイミング差も出さない。
+    actor: RegisteredClient
     main_success:
       - 既知のクライアントを誤った client_secret で認可コードを交換する
       - "エラー \"InvalidClientError\""
     extensions:
       - condition: 未知の client_id で交換する
+        at: 1
         steps:
           - 未知の client_id で認可コードを交換する
           - "エラー \"InvalidClientError\""
   既存同意の有無に応じて同意画面を出し分ける:
-    goal: 既存同意があれば同意画面をスキップし、prompt=consent なら再同意を求める。
-    primary_actor: ResourceOwner
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: ResourceOwner
+    given:
       - "ユーザー \"alice\" が \"web-app\" に scope \"openid profile\" を同意済みである"
     main_success:
       - "\"web-app\" として scope \"openid profile\" で認可リクエストを送る"
@@ -4124,12 +3997,8 @@ scenarios:
           - "\"web-app\" として prompt \"consent\" で認可リクエストを送る"
           - 認可リクエストの状態は ConsentPending
   PAR で送信した認可リクエストを request_uri 経由で実行する:
-    goal: Client が認可リクエストを事前送信し、一度だけ使える request_uri で認可を実行する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: RFC 9126。request_uri は使用直後に無効化される。
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "クライアント \"web-app\" が存在する"
     main_success:
       - "\"web-app\" として認可リクエストを事前送信する"
@@ -4140,15 +4009,12 @@ scenarios:
       - "\"AuthorizationCodeIssued\" が発行される"
     extensions:
       - condition: PAR 必須の FAPI クライアントが PAR なしで直接送信する
+        at: 1
         steps:
           - "PAR 必須の FAPI クライアント \"fapi-app\" として scope \"openid\" で直接認可リクエストを送る"
           - "エラー \"InvalidRequestError\""
   DPoP 証明付き要求はセンダー制約付きトークンを発行する:
-    goal: Client が DPoP 証明を付けて proof-of-possession 制約付きトークンを得る。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: RFC 9449。
+    actor: RegisteredClient
     main_success:
       - 有効な DPoP 証明を付けて認可コードを交換する
       - 発行された access token は DPoP 鍵サムプリントに cnf でバインドされる
@@ -4167,47 +4033,33 @@ scenarios:
           - 1 回目の応答には access_token が含まれる
           - "2 回目はエラー \"InvalidDpopProofError\""
   失効済みトークンの introspection は active=false のみ返す:
-    goal: ResourceServer が失効済みトークンを検査すると active=false だけを得る。
-    primary_actor: ResourceServer
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: ResourceServer
+    given:
       - "失効済み access token \"AT1\" が存在する"
     main_success:
       - "トークン \"AT1\" を検査する"
       - 応答は active=false のみで他のフィールドを含まない
   UserInfo は openid スコープのトークンに sub を返す:
-    goal: Client が openid スコープの access token で UserInfo クレームを得る。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "scope \"openid profile\" の access token \"AT1\" が存在する"
     main_success:
       - "トークン \"AT1\" でユーザー情報を取得する"
       - 応答に sub・name・preferred_username が含まれる
     extensions:
       - condition: openid スコープを持たないトークンで取得する
+        at: 1
         steps:
           - "scope \"profile\" のみの access token \"AT1\" でユーザー情報を取得する"
           - "エラー \"InsufficientScopeError\""
   Discovery 文書は宣言された全エンドポイントを広告する:
-    goal: クライアントが Discovery 文書から全エンドポイントを得る。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
+    actor: RegisteredClient
     main_success:
       - Discovery 文書を取得する
       - 応答に issuer・authorization_endpoint・token_endpoint・userinfo_endpoint・jwks_uri・introspection_endpoint・revocation_endpoint・pushed_authorization_request_endpoint・device_authorization_endpoint・registration_endpoint が含まれる
   認可コードの並行交換はちょうど一方だけ成功する:
-    goal: 互いに観測しない並行コード交換のうち一方だけが成功する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: "成功側のファミリーも再使用検出により最終的に全失効する。"
-    tags:
-      - concurrency
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "発行済み認可コード \"AC1\"（family_id \"F1\"）が存在する"
     main_success:
       - "認可コード \"AC1\" を verifier \"v\" で並行に 2 回交換する"
@@ -4217,11 +4069,7 @@ scenarios:
       - "\"RefreshTokenReuseDetected\" が発行される"
       - "\"TokenRevoked\" が発行される"
   動的クライアント登録は client_id を採番して返す:
-    goal: Client が Dynamic Registration で client_id を採番し metadata を登録する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: RFC 7591 §3.2.1 — 成功応答は client_id と client_metadata を返す。
+    actor: Client
     main_success:
       - "confidential クライアント \"web-app\" を redirect_uri \"https://app.example.com/callback\" で登録する"
       - 応答に client_id と client_secret が含まれる
@@ -4233,23 +4081,16 @@ scenarios:
           - "confidential クライアント \"web-app\" を redirect_uri \"\" で登録する"
           - "エラー \"InvalidRequestError\""
   absolute_expires_at を超えた refresh token はローテーション不可:
-    goal: 絶対 TTL を超えた refresh token はローテーションで延長されない。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: ローテーションで延長されない絶対 TTL。
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "absolute_expires_at \"2026-01-01T00:00:00Z\" の refresh token \"RT1\" が存在する"
     main_success:
       - "時刻が \"2026-01-02T00:00:00Z\" になる"
       - "リフレッシュトークン \"RT1\" を交換する"
       - "エラー \"InvalidGrantError\""
   クライアントは自分のトークンを失効できる:
-    goal: クライアントが自分の所有する refresh token を失効させる。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "有効な refresh token \"RT1\" が存在する"
     main_success:
       - "トークン \"RT1\" を失効させる"
@@ -4257,27 +4098,21 @@ scenarios:
       - "\"TokenRevoked\" が発行される"
     extensions:
       - condition: 所有者でないクライアントが失効を要求する
+        at: 1
         steps:
           - "クライアント \"client-A\" が所有する refresh token \"RT1\" に対し \"client-B\" として失効を要求する"
           - "盗難検知防止のため 200 OK のみ返り \"RT1\" の状態は \"Active\" のまま"
   失効した access_token でユーザー情報取得は invalid_token で拒否される:
-    goal: 失効した access token での UserInfo 取得が拒否される。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "有効な access token \"AT1\" が存在する"
     main_success:
       - "トークン \"AT1\" を失効させる"
       - "トークン \"AT1\" でユーザー情報を取得する"
       - "エラー \"InvalidTokenError\""
   refresh_token は offline_access スコープ付与時のみ発行される:
-    goal: refresh_token が offline_access を要求したときだけ発行される。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: OIDC Core §11。
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "confidential クライアント \"web-app\" が grant_types に \"authorization_code\"・\"refresh_token\" を含めて登録済みである"
     main_success:
       - "\"web-app\" として scope \"openid offline_access\" で認可リクエストを送る"
@@ -4286,27 +4121,20 @@ scenarios:
       - "\"RefreshTokenIssued\" が発行される"
     extensions:
       - condition: offline_access を要求しない
+        at: 1
         steps:
           - "\"web-app\" として scope \"openid profile\" で認可リクエストを送る"
           - "発行された認可コードを verifier \"v\" で交換する"
           - 応答に refresh_token は含まれない
   認可リクエストの nonce は ID トークンに伝播する:
-    goal: 認可リクエストの nonce が id_token クレームへ伝播する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: OIDC Core §3.1.2.1 — リプレイ防止のため nonce は id_token に必須で含む。
+    actor: RegisteredClient
     main_success:
       - "\"web-app\" として scope \"openid\"、nonce \"n-12345\" で認可リクエストを送る"
       - "発行された認可コードを verifier \"v\" で交換する"
       - "応答の id_token の nonce クレームは \"n-12345\""
   RP-Initiated Logout は登録済み post_logout_redirect_uri にだけ戻す:
-    goal: RP-Initiated Logout が登録済み post_logout_redirect_uri にだけリダイレクトする。
-    primary_actor: ResourceOwner
-    scope: OAuth2
-    level: user_goal
-    description: OIDC RP-Initiated Logout 1.0 — open redirect を避け、登録済み URI のみ許可する。
-    preconditions:
+    actor: ResourceOwner
+    given:
       - "confidential クライアント \"web-app\" が redirect_uri \"https://app.example.com/cb\" で登録済みである"
     main_success:
       - "\"web-app\" として post_logout_redirect_uri \"https://app.example.com/cb\" でログアウトする"
@@ -4318,12 +4146,8 @@ scenarios:
           - "\"web-app\" として post_logout_redirect_uri \"https://evil.example.com/cb\" でログアウトする"
           - "エラー \"InvalidRequestError\""
   client_credentials グラントで M2M トークンが発行される:
-    goal: confidential クライアントが client_credentials で自身向けのトークンを得る。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: RFC 6749 §4.4 — confidential クライアント自身のリソースアクセス。
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "confidential クライアント \"backend\" が grant_types に \"client_credentials\" を含めて登録済みである"
     main_success:
       - "\"backend\" として client_credentials で scope \"api:read\" のトークンを取得する"
@@ -4332,16 +4156,13 @@ scenarios:
       - "\"AccessTokenIssued\" が発行される"
     extensions:
       - condition: public クライアントが client_credentials を登録しようとする
+        at: 1
         steps:
           - "public クライアント \"spa-app\" を grant_types に \"client_credentials\" 含めて登録する"
           - "client_credentials は confidential 限定でありエラー \"InvalidRequestError\""
   デバイス認可フローでアクセストークンを取得できる:
-    goal: 入力制約デバイスが device flow でトークンを取得する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: RFC 8628 §3 — TV 等の入力制約デバイス向け。
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "confidential クライアント \"tv-app\" が grant_types に \"urn:ietf:params:oauth:grant-type:device_code\" を含めて登録済みである"
     main_success:
       - "\"tv-app\" として scope \"openid profile\" でデバイス認可を開始する"
@@ -4370,45 +4191,32 @@ scenarios:
           - "issued_at \"2026-01-01T00:00:00Z\"・expires_at \"2026-01-01T00:10:00Z\" の device_code \"DC1\" を時刻 \"2026-01-01T00:11:00Z\" で交換する"
           - "エラー \"ExpiredTokenError\""
   改ざんされた client_assertion は invalid_client で拒否される:
-    goal: private_key_jwt の改ざんされた client_assertion を拒否する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "confidential クライアント \"fapi-app\" が token_endpoint_auth_method \"private_key_jwt\"・jwks 登録で存在する"
     main_success:
       - "認可コード \"AC1\" を verifier \"v\"・改ざんされた client_assertion で交換する"
       - "エラー \"InvalidClientError\""
   mTLS バインド AT は同じ証明書のリクエストでのみ受理される:
-    goal: mTLS 証明書バインドされた access token を同一証明書の提示でのみ受理する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: "RFC 8705 §3。cnf.x5t#S256 が AT に埋め込まれ、resource access では同一証明書の thumbprint 一致を要求する。"
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "confidential クライアント \"mtls-app\" が token_endpoint_auth_method \"tls_client_auth\" で存在する"
     main_success:
       - mTLS 証明書バインドされた access_token を発行する
       - 同じ証明書を提示して userinfo を取得すると 200 を返す
     extensions:
       - condition: 別の証明書を提示する
+        at: 1
         steps:
           - 別の証明書を提示すると invalid_token で拒否される
   RFC 8414 メタデータ文書は OIDC Discovery と同等の内容を返す:
-    goal: クライアントが RFC 8414 メタデータを別パスで取得する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: 同一のメタデータを別パスでも取得できる。
+    actor: RegisteredClient
     main_success:
       - Authorization Server メタデータを取得する
       - 応答に issuer・authorization_endpoint・token_endpoint・jwks_uri・grant_types_supported が含まれる
   管理者は所属テナントの同意を参照・撤回できるが付与は代行できない:
-    goal: 管理者が所属テナントの同意を参照・撤回する。付与や scope 拡張は代行できない。
-    primary_actor: Administrator
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "tenant_id \"acme\" の roles=[\"admin\"] のユーザー \"operator\" が認証済みである"
       - "tenant_id \"acme\" のユーザー \"alice\" と client \"portal\" の Consent が Granted で存在する"
     main_success:
@@ -4418,11 +4226,8 @@ scenarios:
       - "\"ConsentRevoked\" が actorUserId \"operator\" で発行される"
       - 管理者が Consent を作成または scope 拡張する interface は存在しない
   ユーザーは接続済みアプリの同意を自分で撤回できる:
-    goal: ユーザーが接続済みアプリの同意を一覧して撤回する。
-    primary_actor: ResourceOwner
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: ResourceOwner
+    given:
       - "ユーザー \"alice\" が client \"web-app\" に scope \"openid profile\" を同意済みである"
       - "ユーザー \"alice\" が認証済みで接続済みアプリ画面を開いている"
     main_success:
@@ -4430,207 +4235,133 @@ scenarios:
       - "ユーザー \"alice\" が \"web-app\" の同意を撤回する"
       - Consent の state は Revoked になり一覧から消える
   realm prefix 付き Discovery は同 prefix の issuer を返す:
-    goal: テナント prefix 付き Discovery が同じ prefix の issuer とエンドポイントを返す。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    preconditions:
+    actor: RegisteredClient
+    given:
       - "tenant_id \"acme\" が Active で存在する"
     main_success:
       - /realms/acme/.well-known/openid-configuration を取得する
       - 応答の issuer は base URL + /realms/acme
       - 応答の authorization_endpoint は base URL + /realms/acme/authorize
   トークンエンドポイントはテナント境界を越えた資格情報を受理しない:
-    goal: クロステナントの client / code / refresh / device_code を existence を漏らさず拒否する。
-    primary_actor: OAuth2Client
-    scope: OAuth2
-    level: user_goal
-    description: クロステナントガード。record.tenant_id != ctx.tenant_id を確認し、存在しない資格情報と同じ応答にする。
+    actor: RegisteredClient
     main_success:
       - "tenant_id \"acme\" で発行した認可コード \"AC1\" を \"/realms/default/token\" で交換する"
       - "エラー \"InvalidGrantError\""
     extensions:
       - condition: 他テナントの client_id を使う
+        at: 1
         steps:
           - "tenant_id \"acme\" に登録した client_id \"web-app\" で \"/realms/default/token\" に交換を要求する"
           - "エラー \"InvalidClientError\""
       - condition: 他テナントのリフレッシュトークンを再発行する
+        at: 1
         steps:
           - "tenant_id \"acme\" で発行した refresh token \"RT1\" を \"/realms/default/token\" で再発行する"
           - "エラー \"InvalidGrantError\""
       - condition: 保存層に別テナントの subject / client を持つ refresh token を書き込む
+        at: 1
         steps:
           - "tenant_id \"acme\" の refresh token に tenant_id \"default\" の client_id または sub を指定する"
           - "永続化層が参照整合性エラーで拒否する"
       - condition: 他テナントの device_code を交換する
+        at: 1
         steps:
           - "tenant_id \"acme\" で発行し承認した device_code \"DC1\" を \"/realms/default/token\" で交換する"
           - "エラー \"InvalidGrantError\""
-user_experience:
-  screens:
-    Home:
-      route: /
-      purpose: IdPの稼働状態と認証開始方法を示し、ローカルデモでは認可要求を開始する。
-      interfaces:
-        - Authorize
-        - GetOpenidConfiguration
-      states:
-        - ready
-        - unavailable
-    Consent:
-      route: /consent
-      purpose: Client名と要求Scopeを示し、ResourceOwnerの許可または拒否を取得する。
-      interfaces:
-        - GetBrowserTransaction
-        - SubmitBrowserConsent
-      states:
-        - ready
-        - submitting
-        - denied
-        - expired_transaction
-        - service_error
-    Device:
-      route: /device
-      purpose: 入力制約デバイスのuser_codeを確認し、ResourceOwnerの許可または拒否を取得する。
-      interfaces:
-        - GetBrowserDeviceContext
-        - SubmitBrowserDevice
-      states:
-        - ready
-        - submitting
-        - invalid_code
-        - expired_code
-        - approved
-        - denied
-        - authentication_required
-    Status:
-      route: /status
-      purpose: device承認、拒否、logout、再認証要求などの終端状態を明示する。
-      states:
-        - approved
-        - denied
-        - signed_out
-        - authentication_required
-        - error
-    Callback:
-      route: /callback
-      purpose: ローカルデモClientの認可成功またはOAuthエラーを表示する。
-      states:
-        - success
-        - oauth_error
-        - invalid_response
-    AdminAuthorizationDetailTypes:
-      route: /admin/authorization-detail-types
-      purpose: 管理者が RAR (RFC 9396) の authorization_details type とそのフィールドスキーマを一覧・作成・更新・削除する。
-      interfaces:
-        - ListAuthorizationDetailTypes
-        - GetAuthorizationDetailType
-        - CreateAuthorizationDetailType
-        - UpdateAuthorizationDetailType
-        - DeleteAuthorizationDetailType
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - delete_confirmation
-        - access_denied
-        - service_error
-    AdminConsents:
-      route: /admin/consents
-      purpose: 管理者が所属テナントの同意を一覧・参照し、撤回する。付与や scope 拡張の代行はできない。
-      interfaces:
-        - ListAdminConsents
-        - GetAdminConsent
-        - RevokeAdminConsent
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - access_denied
-        - service_error
-    AccountApplications:
-      route: /account/applications
-      purpose: end-userが自身のアカウントへのアクセスを許可した接続済みアプリ(同意)を一覧し、撤回する。
-      interfaces:
-        - ListMyConsents
-        - RevokeMyConsent
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - access_denied
-        - service_error
-  transitions:
-    - from: Home
-      to: Login
-      trigger: authorization_started
-      interface: Authorize
-    - from: Consent
-      trigger: consent_allowed
-      interface: SubmitBrowserConsent
-      external: true
-    - from: Consent
-      trigger: consent_denied
-      interface: SubmitBrowserConsent
-      external: true
-    - from: Device
-      to: Status
-      trigger: device_approved
-      interface: SubmitBrowserDevice
-    - from: Device
-      to: Status
-      trigger: device_denied
-      interface: SubmitBrowserDevice
-    - to: Status
-      trigger: session_ended
-      interface: EndSession
-    - to: Callback
-      trigger: local_demo_authorization_response
-      external: true
-  requirements:
-    - id: UX-TRANSACTION-BOUND
-      category: security
-      adoption: required
-      statement: Consentは有効なHttpOnly authorization transaction cookieなしでは表示も送信もできない。LoginとTotpは通常同cookieに拘束し、管理画面への直接ログイン時だけ同一realmの/admin配下へ検証済みreturn_toで継続できる。
-      screens:
-        - Login
-        - Totp
-        - Consent
-      interfaces:
-        - GetBrowserTransaction
-        - SubmitBrowserLogin
-        - SubmitBrowserTotp
-        - SubmitBrowserConsent
-      standards:
-        - RFC9700
-    - id: UX-REGISTERED-REDIRECT
-      category: security
-      adoption: required
-      statement: Browser flowの外部遷移先は検証済みredirect_uriまたはpost_logout_redirect_uriだけとする。
-      screens:
-        - Login
-        - Totp
-        - Consent
-        - Status
-      interfaces:
-        - Authorize
-        - SubmitBrowserLogin
-        - SubmitBrowserTotp
-        - SubmitBrowserConsent
-        - EndSession
-      standards:
-        - RFC9700
-        - OpenIDConnectRPInitiatedLogout
-      invariants:
-        - RedirectUriExactMatch
-    - id: UX-CLIENT-CONTEXT
-      category: usability
-      adoption: required
-      statement: Consent画面は判断前にClientと要求ScopeをResourceOwnerへ明示する。
-      screens:
-        - Consent
-      interfaces:
-        - GetBrowserTransaction
+  管理者は所属テナントのclientを作成・更新・削除できる:
+    actor: TenantAdministrator
+    given:
+      - 'tenant_id "acme" の admin "operator" が認証済みである'
+    main_success:
+      - '"operator" が client "portal" を作成し client_secret を一度だけ受け取る'
+      - '"operator" が client "portal" の redirect_uris を更新する'
+      - '"operator" が client "portal" を削除する'
+      - '"AdminOAuth2ClientCreated"、"AdminOAuth2ClientUpdated"、"AdminOAuth2ClientDeleted" が発行される'
+    extensions:
+      - at: 1
+        condition: 別テナントの client を取得する
+        steps:
+          - 別テナントの管理者が client_id を指定して取得する
+          - 'エラー "InvalidRequestError"'
+  管理consent APIは別テナントの同意を公開しない:
+    actor: TenantAdministrator
+    given:
+      - 'tenant_id "acme" の user と client の Consent が存在する'
+    main_success:
+      - 'tenant_id "default" の管理者が同じ user_id と client_id の Consent を取得する'
+      - 'エラー "InvalidRequestError"'
+  KeyProvider障害時は新規token発行を拒否する:
+    actor: RegisteredClient
+    given:
+      - 'tenant_id "acme" の KeyProvider が到達不能である'
+    main_success:
+      - 'tenant_id "acme" の client が token 発行を要求する'
+      - '新規署名は行われずエラー "ServerError" で拒否される'
+flows:
+  Authorization:
+    entry: Home
+    transitions:
+      - from: Home
+        action: authorization_started
+        interface: Authorize
+        to: Consent
+      - from: Consent
+        action: consent_allowed
+        interface: SubmitBrowserConsent
+        external: true
+      - from: Consent
+        action: consent_denied
+        interface: SubmitBrowserConsent
+        external: true
+  DeviceAuthorization:
+    entry: Device
+    transitions:
+      - from: Device
+        action: device_approved
+        interface: SubmitBrowserDevice
+        to: Status
+      - from: Device
+        action: device_denied
+        interface: SubmitBrowserDevice
+        to: Status
+  AdminAuthorizationDetailTypes:
+    entry: AdminAuthorizationDetailTypes
+    transitions:
+      - from: AdminAuthorizationDetailTypes
+        action: list
+        interface: ListAuthorizationDetailTypes
+        to: AdminAuthorizationDetailTypes
+      - from: AdminAuthorizationDetailTypes
+        action: create
+        interface: CreateAuthorizationDetailType
+        to: AdminAuthorizationDetailTypes
+      - from: AdminAuthorizationDetailTypes
+        action: update
+        interface: UpdateAuthorizationDetailType
+        to: AdminAuthorizationDetailTypes
+      - from: AdminAuthorizationDetailTypes
+        action: delete
+        interface: DeleteAuthorizationDetailType
+        to: AdminAuthorizationDetailTypes
+  AdminConsents:
+    entry: AdminConsents
+    transitions:
+      - from: AdminConsents
+        action: list
+        interface: ListAdminConsents
+        to: AdminConsents
+      - from: AdminConsents
+        action: revoke
+        interface: RevokeAdminConsent
+        to: AdminConsents
+  AccountApplications:
+    entry: AccountApplications
+    transitions:
+      - from: AccountApplications
+        action: list
+        interface: ListMyConsents
+        to: AccountApplications
+      - from: AccountApplications
+        action: revoke
+        interface: RevokeMyConsent
+        to: AccountApplications

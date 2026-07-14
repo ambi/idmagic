@@ -1,8 +1,8 @@
 # idmagic ClaimMapping — SCL
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# SCL 3.0 context specification.
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: ClaimMapping
 glossary:
   ClaimMappingPolicy:

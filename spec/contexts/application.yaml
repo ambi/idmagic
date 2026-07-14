@@ -1,8 +1,11 @@
 # idmagic Application — SCL
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# SCL 3.0 context specification.
+# AssignmentGatesProtocol / AppPolicyFailClosed の実際の強制点は OAuth2.Authorize の requires
+# であり、Application 自体は federation を実行する interface を持たない。強制点は OAuth2
+# context 側に置く (SAML / WS-Federation はこの context の対象外)。
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: Application
 glossary:
   Application:
@@ -113,9 +116,9 @@ models:
         type: "UUID[]"
         description: 付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う (ADR-069)。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   ApplicationCategory:
     kind: entity
     description: "管理者が tenant 単位で定義するポータルの分類セクション (ADR-069)。Application に 0..N 個\n付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、\nセクションには利用者に割当済みのアプリだけが並ぶ。\n"
@@ -139,9 +142,9 @@ models:
         type: Integer
         description: セクションの表示順。小さいほど先。同値は name 昇順。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   ApplicationAssignment:
     kind: entity
     description: Application へのユーザー / グループ割当。割当はポータル可視性とフェデレーション利用可否を fail-closed で制御する。hidden は一覧に出さないがプロトコル利用は許可する。subject_id は subject_type に応じて同一テナントの User.id または Group.id を指す。
@@ -165,7 +168,7 @@ models:
         type: AssignmentVisibility
         description: visible か hidden か。
       created_at:
-        type: Timestamp
+        type: DateTime
   RequiredAuthnStrength:
     kind: enum
     description: サインインポリシーが要求する認証強度。Password は追加要求なし (acr ⊇ urn:idmagic:acr:pwd)、Mfa は第二要素必須 (acr = urn:idmagic:acr:mfa、amr に otp / webauthn / hwk / swk のいずれかを含む)。
@@ -214,9 +217,9 @@ models:
       rules:
         type: "SignInRule[]"
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   TenantDefaultSignInPolicy:
     kind: entity
     description: テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。
@@ -229,9 +232,9 @@ models:
       rules:
         type: "SignInRule[]"
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   AdminApplicationResponse:
     kind: value_object
     description: 管理 API が返す Application 表現。
@@ -266,9 +269,9 @@ models:
       sign_in_policy_summary:
         type: String
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   AdminApplicationListResponse:
     kind: value_object
     description: Application 一覧レスポンス。
@@ -297,9 +300,9 @@ models:
       position:
         type: Integer
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   AdminApplicationCategoryListResponse:
     kind: value_object
     description: ApplicationCategory 一覧レスポンス。position 昇順 (同値は name 昇順)。
@@ -344,7 +347,7 @@ models:
         optional: true
         description: type=oidc の生成 client 認証方式。作成時に確定し以後不変。
       jwks_uri:
-        type: Uri
+        type: URI
         optional: true
         description: token_endpoint_auth_method=private_key_jwt の公開鍵 JWKS URI。
       tls_client_auth_subject_dn:
@@ -534,7 +537,7 @@ models:
       visibility:
         type: AssignmentVisibility
       created_at:
-        type: Timestamp
+        type: DateTime
   ApplicationAssignmentListResponse:
     kind: value_object
     description: 割当一覧レスポンス。
@@ -619,9 +622,9 @@ models:
       application_ids:
         type: "UUID[]"
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   ReorderMyApplicationsRequest:
     kind: value_object
     description: 利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible なアプリのみを含む。
@@ -639,7 +642,7 @@ models:
     description: Application を作成した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -651,7 +654,7 @@ models:
     description: Application のメタデータを更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -665,7 +668,7 @@ models:
     description: Application の保存済みアイコンをアップロードまたは削除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -679,7 +682,7 @@ models:
     description: Application を削除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -691,7 +694,7 @@ models:
     description: Application に protocol binding を接続した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -705,7 +708,7 @@ models:
     description: Application から protocol binding を解除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -719,7 +722,7 @@ models:
     description: Application にユーザー / グループを割当てた。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -735,7 +738,7 @@ models:
     description: Application の割当を解除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -751,7 +754,7 @@ models:
     description: ApplicationCategory を作成した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -763,7 +766,7 @@ models:
     description: ApplicationCategory を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -775,7 +778,7 @@ models:
     description: ApplicationCategory を削除した。付与済みの Application からも除かれる。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -787,7 +790,7 @@ models:
     description: Application の sign-in policy を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -799,7 +802,7 @@ models:
     description: テナントデフォルト sign-in policy を更新した (クリアを含む)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -809,7 +812,7 @@ models:
     description: Application sign-in policy により federation を拒否した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       applicationId:
@@ -825,7 +828,7 @@ models:
     description: Application sign-in policy の認証強度を満たすため step-up が必要になった。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       applicationId:
@@ -834,6 +837,89 @@ models:
         type: String
       subject:
         type: String
+  User:
+    kind: entity
+    description: IdentityManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  ClientType:
+    kind: enum
+    description: OAuth2 context が publish する client 種別の published language stub。
+    values:
+      - Public
+      - Confidential
+  GrantType:
+    kind: enum
+    description: OAuth2 context が publish するトークン発行方式の published language stub。
+    values:
+      - AuthorizationCode
+      - RefreshToken
+      - ClientCredentials
+      - DeviceCode
+      - TokenExchange
+  TokenEndpointAuthMethod:
+    kind: enum
+    description: OAuth2 context が publish する /token クライアント認証方式の published language stub。
+    values:
+      - ClientSecretBasic
+      - ClientSecretPost
+      - PrivateKeyJwt
+      - TlsClientAuth
+      - None
+  ResponseType:
+    kind: enum
+    description: OAuth2 context が publish する /authorize 応答種別の published language stub。
+    values:
+      - Code
+  FapiProfile:
+    kind: enum
+    description: OAuth2 context が publish する FAPI セキュリティプロファイルの published language stub。
+    values:
+      - None
+      - Fapi2SecurityProfile
+  WsFedTokenType:
+    kind: enum
+    description: WS-Federation context が publish する発行 assertion 種別の published language stub。
+    values:
+      - "urn:oasis:names:tc:SAML:1.0:assertion"
+      - "urn:oasis:names:tc:SAML:2.0:assertion"
+  ClaimMappingRule:
+    kind: value_object
+    description: ClaimMapping context が publish する claim 発行規則の published language stub。
+    fields:
+      claim_type:
+        type: String
+        constraints:
+          - non_empty
+      source:
+        type: String
+      source_key:
+        type: String
+        optional: true
+      fixed_value:
+        type: String
+        optional: true
+      required:
+        type: Boolean
+        default: false
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
 interfaces:
   ListAdminApplications:
     description: 管理者が所属テナントの Application を一覧する。
@@ -843,6 +929,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ApplicationDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -859,6 +950,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: GET
@@ -876,6 +972,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCreated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ApplicationDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -898,6 +999,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: PATCH
@@ -918,6 +1024,15 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationIconUpdated
+    requires:
+      - context.upload.content_type in ["image/png", "image/jpeg", "image/webp", "image/gif"]
+      - context.upload.magic_byte_matches_content_type
+      - size(input.file) <= 262144
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: POST
@@ -936,12 +1051,17 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationIconUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: DELETE
         path: "/api/admin/applications/{application_id}/icon"
   GetApplicationIcon:
-    description: "保存済み Application アイコンを配信する。Content-Type は検証済み形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。"
+    description: "保存済み Application アイコンを配信する公開 interface。Content-Type は検証済み形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。"
     input:
       application_id:
         type: String
@@ -952,7 +1072,11 @@ interfaces:
         type: String
     errors:
       - InvalidRequestError
+    ensures:
+      - response.headers["Content-Type"] in ["image/png", "image/jpeg", "image/webp", "image/gif"]
+      - response.headers["X-Content-Type-Options"] == "nosniff"
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -967,6 +1091,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationDeleted
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: DELETE
@@ -988,6 +1117,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ProtocolBindingAttached
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: POST
@@ -1007,6 +1141,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ProtocolBindingDetached
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: DELETE
@@ -1023,6 +1162,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: PATCH
@@ -1040,6 +1184,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: PATCH
@@ -1059,6 +1208,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: GET
@@ -1078,6 +1232,13 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationAssigned
+    requires:
+      - subject_exists_in_tenant(input.request.subject_type, input.request.subject_id, context.tenant_id)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: POST
@@ -1099,6 +1260,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationUnassigned
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: DELETE
@@ -1117,6 +1283,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: GET
@@ -1136,6 +1307,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AppSignInPolicyUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: PUT
@@ -1149,6 +1325,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantDefaultSignInPolicy
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -1166,6 +1347,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantDefaultSignInPolicyUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantDefaultSignInPolicy
+        id: context.tenant_id
     bindings:
       - kind: http
         method: PUT
@@ -1179,6 +1365,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ApplicationCategoryDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -1196,6 +1387,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCategoryCreated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ApplicationCategoryDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -1218,6 +1414,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCategoryUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ApplicationCategory
+        id: input.category_id
     bindings:
       - kind: http
         method: PATCH
@@ -1233,6 +1434,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCategoryDeleted
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ApplicationCategory
+        id: input.category_id
     bindings:
       - kind: http
         method: DELETE
@@ -1254,6 +1460,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
     bindings:
       - kind: http
         method: PUT
@@ -1266,7 +1477,14 @@ interfaces:
         type: MyApplicationListResponse
     errors:
       - AccessDeniedError
+    ensures:
+      - output.response.applications.all(a, is_visible_assignment(subject.id, a))
     read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: GET
@@ -1279,6 +1497,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: GET
@@ -1294,141 +1517,73 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - input.request.application_ids.all(id, is_visible_assignment(subject.id, id))
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: PUT
         path: /api/account/applications/order
         request_form: body
-invariants:
-  AssignmentGatesProtocol:
-    description: "未割当の subject はどの protocol binding でもフェデレーションを開始 / 完了できない。\nauthorize / WS-Fed sign-in / 将来 SAML SSO は割当を fail-closed で確認する。\n反例: 未割当ユーザーがプロトコル経由でアプリにログインできる (アクセス制御の迂回)。\n"
-    target: Application
-    never: federation_completed and not subject_assigned
-  AssignmentGatesPortalVisibility:
-    description: "ListMyApplications は visible 割当のみ返す。hidden 割当は一覧から除外するが\nプロトコル利用は引き続き許可する。\n"
-    target: ApplicationAssignment
-    always: listed_in_portal implies (assigned and visibility == visible)
-  AppPolicyFailClosed:
-    description: Application sign-in policy の要求を満たせない subject には token / assertion を発行しない。評価不能な条件 (許可 CIDR 非空でクライアント IP 不明など) も拒否として扱う。
-    target: AppSignInPolicy
-    never: federation_completed and policy_result != allow
-  AppPolicyEvaluatedAcrossProtocols:
-    description: OIDC authorize、WS-Fed sign-in、SAML SSO は同じ Application sign-in policy 評価器を通し、protocol ごとの個別条件分岐で迂回できない。評価器には上書きモデルの実効ポリシー (アプリ独自ルールがあればそれ、なければテナントデフォルト) とクライアント IP を全経路で渡す。
-    target: AppSignInPolicy
-    always: federation_started_via_binding implies app_sign_in_policy_evaluated
-  DefaultPolicyAppliesWhenAppUnset:
-    description: "独自の sign-in policy を持たない Application は、federation 開始時にテナントデフォルトポリシーで\nfail-closed 評価される。アプリが有効ルールを持つ場合はデフォルトを上書き (置換) し、その実効ポリシーで評価する。\nどちらの経路でも評価器は fail-closed。\n反例: デフォルトで MFA を要求しているのに、独自ポリシーを持たないアプリへ単要素で federation を完了できる。\n"
-    target: TenantDefaultSignInPolicy
-    never: federation_completed and effective_policy_result != allow
-  ApplicationIconSafeServing:
-    description: Application icon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
-    target: Application
-    always: icon_uploaded implies (content_type in ["image/png","image/jpeg","image/webp","image/gif"] and size_bytes <= 262144 and response_nosniff == true)
-  ApplicationIconTenantIsolation:
-    description: Application icon は tenant_id + application_id + object_key で参照し、別テナントの object は同じ key でも取得できない。
-    target: Application
-    always: icon_served implies request.tenant_id == icon.tenant_id
-  ApplicationReferencesStayTenantLocal:
-    description: "Application / ApplicationCategory / ApplicationAssignment は既存 Tenant に属し、割当 subject は同一 tenant_id 内の live User または Group だけを指す。ApplicationOrdering の user は global unique な既存 live User を指す。category_ids と protocol binding は配列 / JSONB 参照なので保存 use case が同一テナントの存在性を検証する。\n反例: tenant A の ApplicationAssignment が tenant B の User / Group を subject_id に持つ。\n"
-    target: Application
-    always: "application.tenant_id in Tenants && assignment.subject in Subjects(assignment.tenant_id) && ordering.user_id in Users"
-permissions:
-  AdminApplicationsManage:
-    description: 所属テナント内の Application 一覧・取得・作成・更新・削除・binding 接続/解除・アイコンアップロード/削除。
-    actor: User
-    resource: Application
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminApplicationAssignmentsManage:
-    description: Application へのユーザー / グループ割当の参照・追加・削除。
-    actor: User
-    resource: ApplicationAssignment
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminApplicationPoliciesManage:
-    description: 所属テナント内の Application sign-in policy の参照・更新。
-    actor: User
-    resource: AppSignInPolicy
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminTenantDefaultSignInPolicyManage:
-    description: 所属テナントのデフォルト sign-in policy の参照・更新。
-    actor: User
-    resource: TenantDefaultSignInPolicy
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminApplicationCategoriesManage:
-    description: 所属テナント内の ApplicationCategory の参照・作成・更新・削除と Application への付与。
-    actor: User
-    resource: ApplicationCategory
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  MyApplicationsRead:
-    description: 利用者が自分に割当済みの Application 一覧を参照する。
-    actor: User
-    resource: ApplicationAssignment
-    allow_when: "context.authenticated == true && actor.tenant_id == resource.tenant_id"
+authorization:
+  resources:
+    ApplicationDirectory:
+      description: テナント内の Application 一覧・作成対象を表す singleton resource。
+    ApplicationCategoryDirectory:
+      description: テナント内の ApplicationCategory 一覧・作成対象を表す singleton resource。
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles'
+    AuthenticatedSelf:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.tenant_id
+    AuthenticatedSelf:
+      effect: permit
+      principal: AuthenticatedSelf
+      when: principal.id == resource.id
 scenarios:
-  管理者は所属テナントの client を作成・更新・削除できる:
-    goal: 管理者が所属テナントの client を作成・更新・削除する。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    preconditions:
-      - "tenant_id \"acme\" の roles=[\"admin\"] のユーザー \"operator\" が認証済みである"
-    main_success:
-      - "管理者 \"operator\" が client \"portal\" を作成する"
-      - 作成応答だけが生成された client_secret を含む
-      - "管理者 \"operator\" が client \"portal\" の redirect_uris を更新する"
-      - "管理者 \"operator\" が client \"portal\" を削除する"
-      - "\"AdminOAuth2ClientCreated\"、\"AdminOAuth2ClientUpdated\"、\"AdminOAuth2ClientDeleted\" が発行される"
-    extensions:
-      - at: 1
-        condition: 管理画面から操作する
-        steps:
-          - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のアプリケーション一覧を開く"
-          - "管理者 \"operator\" が confidential client を作成する"
-          - 画面は生成された client_secret を一度だけ表示する
-          - "管理者 \"operator\" が redirect_uris と scope を編集する"
-          - "管理者 \"operator\" が client_id を確認して client を削除する"
-          - 一覧から対象 client が消える
-      - condition: 別テナントの client を取得しようとする
-        steps:
-          - "tenant_id \"acme\" に client_id \"portal\" が存在する"
-          - "tenant_id \"default\" の管理者が client_id \"portal\" を取得する"
-          - "エラー \"InvalidRequestError\""
-  管理 consent API は別テナントの同意を公開しない:
-    goal: 管理 consent API がテナント境界を越えた同意を公開しない。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    preconditions:
-      - "tenant_id \"acme\" のユーザー \"alice\" と client \"portal\" の Consent が存在する"
-    main_success:
-      - "tenant_id \"default\" の管理者が同じ sub と client_id の Consent を取得する"
-      - "エラー \"InvalidRequestError\""
-  管理者は管理画面でアプリケーションを作成し protocol binding を構成できる:
-    goal: 管理者が統合 Application 画面でアプリを作成し、protocol binding と割り当てを構成する。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    description: OAuth2 / WS-Federation / service を統合した Application 画面。
-    preconditions:
+  管理者は管理画面でアプリケーションを作成しprotocol_bindingを構成できる:
+    actor: TenantAdministrator
+    given:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のアプリケーション一覧を開いている"
     main_success:
-      - "管理者 \"operator\" が confidential なアプリケーション \"portal\" を作成する"
-      - 画面は生成された client_secret を一度だけ表示する
+      - "管理者 \"operator\" が confidential なアプリケーション \"portal\" (type=oidc) を作成する"
+      - 作成応答だけが生成された client_secret を一度だけ含む
       - "管理者 \"operator\" がアプリケーション \"portal\" に OIDC protocol binding を追加する"
-      - "管理者 \"operator\" がアプリケーション \"portal\" の redirect_uris と scope を編集する"
+      - "管理者 \"operator\" がアプリケーション \"portal\" の OIDC 設定 (redirect_uris / scope) を編集する"
       - "管理者 \"operator\" がアプリケーション \"portal\" をユーザー \"alice\" に割り当てる"
       - "管理者 \"operator\" がアプリケーション \"portal\" を削除する"
-      - 一覧から対象アプリケーションが消える
+      - "\"ApplicationCreated\"、\"ProtocolBindingAttached\"、\"ApplicationAssigned\"、\"ApplicationDeleted\" が発行される"
     extensions:
-      - condition: 別テナントまたは存在しない subject へ割り当てる
+      - at: 5
+        condition: 別テナントまたは存在しない subject へ割り当てる
         steps:
           - "tenant_id \"acme\" の Application に tenant_id \"default\" の User sub を指定する"
           - "エラー \"InvalidRequestError\""
-  管理者は Application アイコンをアップロード・削除できる:
-    goal: 管理者が Application 編集画面で画像ファイルを選び、ポータルと管理画面に保存済みアイコンを表示する。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    preconditions:
+      - at: 1
+        condition: 別テナントの管理者がアプリケーションを取得しようとする
+        steps:
+          - "tenant_id \"acme\" に Application \"portal\" が存在する"
+          - "tenant_id \"default\" の管理者が同じ application_id を取得する"
+          - "エラー \"InvalidRequestError\""
+  管理者はApplicationアイコンをアップロード削除できる:
+    actor: TenantAdministrator
+    given:
       - 管理者が Application 編集画面を開いている
     main_success:
       - PNG / JPEG / WebP / GIF の 256KiB 以下の画像をアップロードする
@@ -1436,37 +1591,39 @@ scenarios:
       - 管理一覧・詳細・利用者ポータルの icon_url は IdP の配信 URL を指す
       - 管理者がアイコンを削除すると icon_object_key と icon_url は空になる
     extensions:
-      - condition: 非画像または上限超過ファイルをアップロードする
+      - at: 1
+        condition: 非画像または上限超過ファイルをアップロードする
         steps:
           - エラー "InvalidRequestError"
           - 既存アイコンは置き換わらない
+      - at: 1
+        condition: 別テナントの application_id + object_key で同じアイコンの取得を試みる
+        steps:
+          - アセットは存在しないものとして扱われ InvalidRequestError で拒否される
   管理者はアプリケーション別サインインポリシーを設定できる:
-    goal: 管理者が Application ごとに MFA / 再認証 / 許可 CIDR 条件を設定し、フェデレーション開始時に強制する。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - 管理者が Application 編集画面を開いている
       - Application は OIDC / SAML / WS-Fed のいずれかの protocol binding を持つ
     main_success:
       - 管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する
+      - "AppSignInPolicyUpdated が発行される"
       - 単要素セッションの利用者が対象 Application にアクセスする
       - システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する
-      - システムは token / assertion 発行前に policy を評価する
+      - システムは token / assertion 発行前に policy を評価する (強制点は OAuth2.Authorize、[[ADR-103]])
     extensions:
-      - condition: 許可 CIDR に含まれないクライアント IP、またはクライアント IP を取得できない
+      - at: 5
+        condition: 許可 CIDR に含まれないクライアント IP、またはクライアント IP を取得できない
         steps:
           - 対象 Application への federation は拒否される
           - "AppAccessDeniedByPolicy が発行される"
-      - condition: 管理者以外が policy を更新する
+      - at: 1
+        condition: 管理者以外が policy を更新する
         steps:
           - エラー "AccessDeniedError"
   管理者はテナントデフォルトサインインポリシーを設定し全アプリに適用できる:
-    goal: 管理者がテナントデフォルトサインインポリシーを設定し、独自ポリシーを持たない全 Application の federation 開始に baseline として適用する。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "roles=[\"admin\"] のユーザー \"operator\" がサインインポリシー画面を開いている"
       - テナントに OIDC binding を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない
     main_success:
@@ -1475,172 +1632,133 @@ scenarios:
       - 単要素セッションの利用者が個別ポリシーを持たない Application にアクセスする
       - システムはデフォルトポリシーを適用し step-up を要求する
     extensions:
-      - condition: 低リスクアプリだけデフォルトを上書きして緩和する
+      - at: 1
+        condition: 低リスクアプリだけデフォルトを上書きして緩和する
         steps:
           - "管理者が対象 Application に弱いサインインポリシー (例: パスワードのみ) を設定してデフォルトを上書きする"
           - システムはデフォルトより弱い旨の警告を表示するが保存は許可する
           - 単要素セッションの利用者が当該 Application に step-up なしでアクセスできる
           - 他の Application ではデフォルトの MFA 必須が引き続き適用される
-      - condition: アプリ詳細で最終適用ポリシーを確認する
+      - at: 1
+        condition: アプリ詳細で最終適用ポリシーを確認する
         steps:
           - アプリ編集画面はテナントデフォルト・このアプリの上書き・最終的に適用されるポリシーを区別して表示する
-      - condition: デフォルトポリシーを空にして解除する
+      - at: 1
+        condition: デフォルトポリシーを空にして解除する
         steps:
           - 管理者がルールを空にして保存する
           - "TenantDefaultSignInPolicyUpdated が発行される"
           - 以降、独自ポリシーを持たない Application の federation 開始は追加要件を課さない
-  ダッシュボードは所属テナントの集計を表示する:
-    goal: 管理ダッシュボードが所属テナントの集計を表示する。
-    primary_actor: Administrator
-    scope: Application
-    level: user_goal
-    preconditions:
-      - "roles=[\"admin\"] のユーザー \"operator\" が管理ダッシュボードを開いている"
+  未割当のsubjectはprotocol経由でアプリケーションへフェデレーションできない:
+    actor: TenantAdministrator
+    given:
+      - "アプリケーション \"portal\" にユーザー \"alice\" は割り当てられていない"
     main_success:
-      - ユーザー数・登録アプリケーション数・付与済み同意数・直近 24 時間の監査イベント数が表示される
-      - 最近の監査イベントが表示される
-user_experience:
-  screens:
-    AdminApplications:
-      route: /admin/applications
-      purpose: "管理者が OAuth2 / WS-Federation / service の各種クライアントを単一の「アプリケーション」として\n一覧・作成・更新・削除し、protocol binding の追加・削除、OIDC / WS-Fed の設定、\nユーザー/グループへの割り当てを行う統合画面。OIDC の高度な設定 (grant / response 種別・PAR・\nDPoP、作成時に確定する認証方式) もここで編集し、専用の低レベル client 画面は持たない。\n生成された client_secret は作成成功直後に一度だけ表示する。\n"
-      interfaces:
-        - ListAdminApplications
-        - GetAdminApplication
-        - CreateAdminApplication
-        - UpdateAdminApplication
-        - UploadApplicationIcon
-        - DeleteApplicationIcon
-        - DeleteAdminApplication
-        - AttachProtocolBinding
-        - DetachProtocolBinding
-        - UpdateApplicationOidcConfig
-        - UpdateApplicationWsFedConfig
-        - GetAppSignInPolicy
-        - UpdateAppSignInPolicy
-        - ListApplicationAssignments
-        - AssignApplication
-        - UnassignApplication
-        - ListApplicationCategories
-        - CreateApplicationCategory
-        - UpdateApplicationCategory
-        - DeleteApplicationCategory
-        - SetApplicationCategories
-        - ListAdminUsers
-        - ListGroups
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - secret_issued
-        - delete_confirmation
-        - access_denied
-        - service_error
-    AdminSignInPolicy:
-      route: /admin/sign-in-policy
-      purpose: "テナントのサインインポリシーを総合的に扱う画面。上段で全 Application 共通のデフォルトポリシー\n(要求認証強度・再認証を求めるまでの時間・許可 CIDR を制約された選択肢で) を詳細表示し、編集モードに切り替えて編集する。\n下段で各 Application の個別設定 (上書き) の有無・デフォルトより弱い警告・最終的に適用される実効ポリシーを\n一覧して編集画面へ導線する (ADR-081)。\n"
-      interfaces:
-        - GetTenantDefaultSignInPolicy
-        - UpdateTenantDefaultSignInPolicy
-        - ListAdminApplications
-        - GetAppSignInPolicy
-      states:
-        - viewing
-        - editing
-        - loading
-        - submitting
-        - access_denied
-        - service_error
-    AccountApps:
-      route: /account/apps
-      purpose: "end-user が利用できるアプリケーションをタイルで一覧し、起動する。管理者が定義したカテゴリ\nごとにセクション表示し、利用者は手動で並び替えられる (ADR-069)。\n"
-      interfaces:
-        - ListMyApplications
-        - GetMyApplicationOrder
-        - ReorderMyApplications
-      states:
-        - ready
-        - loading
-        - reordering
-        - saving_order
-        - empty
-        - access_denied
-        - service_error
-  transitions:
-    - from: AdminApplications
-      to: AdminUsers
-      trigger: user_management_selected
-  requirements:
-    - id: UX-ADMIN-CLIENT-SECRET
-      category: security
-      adoption: required
-      statement: AdminApplicationsはOIDCアプリ作成で生成されたclient_secretを作成成功直後に一度だけ表示し、再取得できないことを明示する。client_secret_hashは表示しない。
-      screens:
-        - AdminApplications
-      interfaces:
-        - CreateAdminApplication
-        - GetAdminApplication
-    - id: UX-ADMIN-CLIENT-DELETE-CONFIRMATION
-      category: usability
-      adoption: required
-      statement: AdminApplicationsはアプリケーション削除前に対象を示す確認操作を要求する。
-      screens:
-        - AdminApplications
-      interfaces:
-        - DeleteAdminApplication
-    - id: UX-APPLICATION-ICON-UPLOAD
-      category: usability
-      adoption: required
-      statement: AdminApplicationsはアイコンを URL 入力ではなくファイル選択またはドラッグ&ドロップで受け取り、ローカルプレビューとアップロード後のプレビューはいずれも PNG / JPEG / WebP / GIF または保存済み内部配信 URL のみを表示する。不正形式・過大サイズは同じ画面で拒否理由を表示する。
-      screens:
-        - AdminApplications
-      interfaces:
-        - UploadApplicationIcon
-        - DeleteApplicationIcon
-        - GetApplicationIcon
-    - id: UX-APPLICATION-PORTAL-DIRECT-REORDER
-      category: usability
-      adoption: required
-      statement: AccountApps は利用者が通常表示のアプリタイル上のドラッグハンドルで直接並び替え、ドラッグ完了後に順序を保存できるようにする。
-      screens:
-        - AccountApps
-      interfaces:
-        - ReorderMyApplications
-    - id: UX-APPLICATION-PORTAL-REORDER-FALLBACK
-      category: accessibility
-      adoption: required
-      statement: AccountApps の並び替えはドラッグ操作だけに依存せず、キーボード操作で同じ順序変更と保存ができる。
-      screens:
-        - AccountApps
-      interfaces:
-        - ReorderMyApplications
-    - id: UX-APPLICATION-SIGN-IN-POLICY
-      category: security
-      adoption: required
-      statement: AdminApplications は Application 編集画面で sign-in policy の有効化、要求認証強度 (パスワードのみ / MFA 必須)、再認証を求めるまでの時間 (秒)、許可 CIDR を制約された選択肢で編集できるようにし、保存後の federation 開始で同じ条件が protocol 横断に適用されることを示す。自由入力の未評価条件は入力できない。
-      screens:
-        - AdminApplications
-      interfaces:
-        - GetAppSignInPolicy
-        - UpdateAppSignInPolicy
-    - id: UX-TENANT-DEFAULT-SIGN-IN-POLICY
-      category: security
-      adoption: required
-      statement: AdminSignInPolicy はテナント全 Application に適用するデフォルトサインインポリシーを、まず詳細表示し編集モードで編集する (他の設定画面と同じ詳細→編集の作法)。編集項目はアプリ個別ポリシーと同じ制約された選択肢 (要求認証強度・再認証を求めるまでの時間・許可 CIDR)。あわせて各 Application の個別設定 (上書き) の有無・デフォルトより弱い警告・実効ポリシーを一覧表示する。認証強度を最低・その他を空にすれば追加要件のない状態に戻せる。
-      screens:
-        - AdminSignInPolicy
-      interfaces:
-        - GetTenantDefaultSignInPolicy
-        - UpdateTenantDefaultSignInPolicy
-        - ListAdminApplications
-        - GetAppSignInPolicy
-    - id: UX-APPLICATION-EFFECTIVE-SIGN-IN-POLICY
-      category: security
-      adoption: required
-      statement: AdminApplications は Application 編集画面で「テナントデフォルト」「このアプリの上書き」「最終的に適用されるポリシー」を区別して表示する。アプリ個別ポリシーはデフォルトを上書き (置換) し、デフォルトより弱い設定 (認証強度・再認証を求めるまでの時間・許可ネットワークのいずれかを緩める) のときは警告を表示する。
-      screens:
-        - AdminApplications
-      interfaces:
-        - GetAppSignInPolicy
-        - UpdateAppSignInPolicy
+      - "\"alice\" が \"portal\" への federation を試みる (強制点は OAuth2.Authorize、[[ADR-103]])"
+      - 未割当のため federation は拒否される
+    extensions:
+      - at: 1
+        condition: 管理者が事後に visible で割り当てる
+        steps:
+          - "管理者が \"portal\" に \"alice\" を visibility=visible で割り当てる"
+          - "\"alice\" は \"portal\" への federation を完了できる"
+  hidden割当はポータル一覧から除外されるがprotocol利用は許可される:
+    actor: TenantAdministrator
+    given:
+      - "管理者が \"portal\" にユーザー \"alice\" を visibility=hidden で割り当てている"
+    main_success:
+      - "\"alice\" が自分のポータルアプリ一覧 (ListMyApplications) を取得する"
+      - 一覧に "portal" は含まれない
+      - "\"alice\" は \"portal\" への federation は引き続き完了できる (強制点は OAuth2.Authorize)"
+  adminロールを持たない利用者はApplicationを操作できない:
+    actor: AuthenticatedSelf
+    given:
+      - "\"alice\" は admin ロールを持たない認証済みユーザーである"
+    main_success:
+      - "\"alice\" が ListAdminApplications を呼び出す"
+      - AccessDeniedError で拒否される
+flows:
+  AdminApplicationManagement:
+    entry: AdminApplications
+    transitions:
+      - from: AdminApplications
+        action: create
+        interface: CreateAdminApplication
+        to: AdminApplications
+      - from: AdminApplications
+        action: update
+        interface: UpdateAdminApplication
+        to: AdminApplications
+      - from: AdminApplications
+        action: delete
+        interface: DeleteAdminApplication
+        to: AdminApplications
+      - from: AdminApplications
+        action: upload_icon
+        interface: UploadApplicationIcon
+        to: AdminApplications
+      - from: AdminApplications
+        action: delete_icon
+        interface: DeleteApplicationIcon
+        to: AdminApplications
+      - from: AdminApplications
+        action: attach_binding
+        interface: AttachProtocolBinding
+        to: AdminApplications
+      - from: AdminApplications
+        action: detach_binding
+        interface: DetachProtocolBinding
+        to: AdminApplications
+      - from: AdminApplications
+        action: update_oidc_config
+        interface: UpdateApplicationOidcConfig
+        to: AdminApplications
+      - from: AdminApplications
+        action: update_wsfed_config
+        interface: UpdateApplicationWsFedConfig
+        to: AdminApplications
+      - from: AdminApplications
+        action: assign
+        interface: AssignApplication
+        to: AdminApplications
+      - from: AdminApplications
+        action: unassign
+        interface: UnassignApplication
+        to: AdminApplications
+      - from: AdminApplications
+        action: update_sign_in_policy
+        interface: UpdateAppSignInPolicy
+        to: AdminApplications
+      - from: AdminApplications
+        action: create_category
+        interface: CreateApplicationCategory
+        to: AdminApplications
+      - from: AdminApplications
+        action: update_category
+        interface: UpdateApplicationCategory
+        to: AdminApplications
+      - from: AdminApplications
+        action: delete_category
+        interface: DeleteApplicationCategory
+        to: AdminApplications
+      - from: AdminApplications
+        action: set_categories
+        interface: SetApplicationCategories
+        to: AdminApplications
+      - from: AdminApplications
+        action: manage_users
+        external: true
+  AdminSignInPolicyManagement:
+    entry: AdminSignInPolicy
+    transitions:
+      - from: AdminSignInPolicy
+        action: update_default
+        interface: UpdateTenantDefaultSignInPolicy
+        to: AdminSignInPolicy
+  AccountAppsManagement:
+    entry: AccountApps
+    transitions:
+      - from: AccountApps
+        action: reorder
+        interface: ReorderMyApplications
+        to: AccountApps
