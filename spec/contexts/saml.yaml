@@ -1,7 +1,7 @@
 # idmagic Saml — SCL
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: Saml
 standards:
   SAML2Core:
@@ -16,9 +16,9 @@ standards:
         strength: MUST
         adoption: required
         statement: 発行 assertion は Audience / Recipient / InResponseTo を要求と整合させる
-        relates_to:
-          interfaces: [SamlSingleSignOn]
-          invariants: [SamlResponseMatchesRequest]
+        refs:
+          - interfaces.SamlSingleSignOn
+          - models.SamlResponse
       - id: SAML2Core-EncryptedAssertion
         section: "§2.3.4"
         strength: MAY
@@ -37,8 +37,8 @@ standards:
         strength: MUST
         adoption: required
         statement: AuthnRequest は HTTP-Redirect または HTTP-POST binding で受理し、SAMLResponse は HTTP-POST で返す
-        relates_to:
-          interfaces: [SamlSingleSignOn]
+        refs:
+          - interfaces.SamlSingleSignOn
   SAML2WebBrowserSSO:
     title: Profiles for the OASIS Security Assertion Markup Language (SAML) V2.0
     version: "2.0"
@@ -51,8 +51,8 @@ standards:
         strength: MUST
         adoption: required
         statement: SP-initiated / IdP-initiated Web Browser SSO を提供する
-        relates_to:
-          interfaces: [SamlSingleSignOn]
+        refs:
+          - interfaces.SamlSingleSignOn
       - id: SAML2Profile-ECP
         section: "§4.2"
         strength: MAY
@@ -71,8 +71,8 @@ standards:
         strength: MUST
         adoption: required
         statement: IdP metadata は SSO endpoint、SLO endpoint、署名証明書、NameID format を公開する
-        relates_to:
-          interfaces: [PublishSamlMetadata]
+        refs:
+          - interfaces.PublishSamlMetadata
       - id: SAML2Metadata-WantAuthnRequestsSigned
         section: "§2.4.3"
         strength: MAY
@@ -86,7 +86,42 @@ glossary:
       - SAML
       - SAML2
       - SAML 2.0
+  EndUser:
+    definition: SAML Web Browser SSO または Single Logout をブラウザで開始する利用者。
 models:
+  User:
+    kind: entity
+    description: IdentityManagement が publish する認可 principal の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  Tenant:
+    kind: entity
+    description: Tenancy が publish するテナント resource の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  InvalidRequestError:
+    kind: error
+    description: SAML request または管理入力が契約を満たさない。
+  AccessDeniedError:
+    kind: error
+    description: 認証済み principal が対象テナントの管理権限を持たない。
+  ClaimMappingPolicy:
+    kind: value_object
+    description: ClaimMapping context が publish する trust ごとの claim 発行規則の最小 stub。
+    fields:
+      configuration:
+        type: JSON
+        optional: true
   SamlBinding:
     kind: enum
     description: SAML 2.0 message binding。SP-initiated の AuthnRequest 受信と SAMLResponse 返送に用いる。HTTP-Redirect は GET でクエリに deflate+base64 を載せ、HTTP-POST は base64 を自動 POST フォームで運ぶ。
@@ -127,7 +162,7 @@ models:
           - non_empty
         description: 許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、省略時は先頭を既定の返信先とする。
       slo_url:
-        type: Uri
+        type: String
         optional: true
         description: SP の SingleLogoutService URL。Single Logout の返送先。
       audience:
@@ -154,9 +189,9 @@ models:
         optional: true
         description: AuthnRequest / LogoutRequest 署名検証に使う SP の X.509 証明書 PEM。want_authn_requests_signed=true の場合は必須。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   SamlAuthnRequest:
     kind: value_object
     description: SP-initiated SSO で受信した <samlp:AuthnRequest> から検証対象を抽出した中間表現。HTTP-Redirect は deflate+base64、HTTP-POST は base64 を復号して解析する。復号後 XML には上限を課し、deflate 爆弾を防ぐ。
@@ -172,11 +207,11 @@ models:
           - non_empty
         description: SP の entityID。登録済み SamlServiceProvider に解決する。
       acs_url:
-        type: Uri
+        type: String
         optional: true
         description: 要求が指定する AssertionConsumerService URL。許可集合との完全一致のみ受理する。
       destination:
-        type: Uri
+        type: String
         optional: true
         description: 要求が宛てた IdP の SSO endpoint URL。
       name_id_format:
@@ -197,7 +232,7 @@ models:
           - non_empty
         description: Response ID。
       destination:
-        type: Uri
+        type: String
         constraints:
           - non_empty
         description: 確定した ACS URL (許可集合内)。
@@ -206,7 +241,7 @@ models:
         optional: true
         description: SP-initiated の AuthnRequest ID。IdP-initiated では空。
       issue_instant:
-        type: Timestamp
+        type: DateTime
       assertion:
         type: SamlAssertion
         description: 埋め込む署名済み assertion。
@@ -229,14 +264,14 @@ models:
           - non_empty
         description: SP の audience (既定 entity_id)。
       recipient:
-        type: Uri
+        type: String
         description: bearer SubjectConfirmationData の Recipient (ACS URL)。
       not_before:
-        type: Timestamp
+        type: DateTime
       not_on_or_after:
-        type: Timestamp
+        type: DateTime
       authn_instant:
-        type: Timestamp
+        type: DateTime
       name_id_format:
         type: SamlNameIDFormat
       name_id_value:
@@ -248,7 +283,7 @@ models:
     description: SAML SSO で署名済み SAMLResponse を SP へ発行した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 発行したテナント ID。
@@ -263,7 +298,7 @@ models:
     description: "SAML SSO 要求を拒否した (未登録 entityID・許可外 ACS URL・未割当 subject・解析失敗など)。"
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 拒否したテナント ID。
@@ -279,7 +314,7 @@ models:
     description: SAML Single Logout でローカルセッションを破棄した。LogoutRequest がある場合は LogoutResponse を登録済み SLO URL へ返す。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: logout したテナント ID。
@@ -290,8 +325,6 @@ models:
 interfaces:
   SamlSingleSignOn:
     description: "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で service provider を解決して、署名必須 SP では Redirect binding 署名または XML 署名を検証する。Destination を現在 realm の SSO endpoint に限定し、ACS URL を許可集合に限定する (open redirect 防止)。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、SP 設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。"
-    steps:
-      - "service provider {entity_id} へ relay_state {relay_state} で sign-in する"
     input:
       saml_request:
         type: String
@@ -308,6 +341,15 @@ interfaces:
     emits:
       - SamlSignInIssued
       - SamlSignInRejected
+    requires:
+      - input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id)
+      - input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)
+      - input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)
+      - input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)
+    ensures:
+      - relay_state_round_tripped(input.relay_state)
+      - saml_response_matches_request(input.saml_request, context.tenant_id)
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -325,8 +367,6 @@ interfaces:
           - "303"
   SamlSingleLogout:
     description: SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、署名必須 SP では署名を検証する。Destination は現在 realm の SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、署名済み LogoutResponse を登録済み SLO URL へ返す。互換経路として entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。
-    steps:
-      - "service provider {entity_id} で single logout する"
     input:
       entity_id:
         type: String
@@ -337,6 +377,15 @@ interfaces:
         optional: true
     emits:
       - SamlLogout
+    requires:
+      - input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id)
+      - logout_destination_matches_current_slo_endpoint(context.tenant_id)
+      - logout_signature_satisfies_policy(input.entity_id, context.tenant_id)
+    ensures:
+      - local_session_cleared
+      - logout_response_destination_is_registered(input.entity_id, context.tenant_id)
+      - no_unregistered_redirect
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -355,6 +404,7 @@ interfaces:
   PublishSamlMetadata:
     description: SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、token 署名検証用証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -363,8 +413,6 @@ interfaces:
           - "200"
   RegisterSamlServiceProvider:
     description: SAML service provider の登録 / 更新 (upsert)。entityID、許可 ACS URL、NameID format、audience、署名方針、claim policy を受け取り、テナント境界に閉じて保存する。entityID と ACS URL の閉集合は必須。
-    steps:
-      - "service provider {entity_id} を登録する"
     input:
       service_provider:
         type: SamlServiceProvider
@@ -374,6 +422,15 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - input.service_provider.tenant_id == context.tenant_id
+      - input.service_provider.acs_urls.size > 0
+      - not input.service_provider.want_authn_requests_signed or input.service_provider.authn_request_signing_certificate_pem != null
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -390,6 +447,13 @@ interfaces:
     read_only: true
     errors:
       - AccessDeniedError
+    ensures:
+      - service_providers_belong_to_tenant(output.service_providers, context.tenant_id)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -398,8 +462,6 @@ interfaces:
           - "200"
   DeleteSamlServiceProvider:
     description: entityID に一致する SAML service provider を削除する (冪等)。entityID は URI のため、path ではなくクエリで指定する。
-    steps:
-      - "service provider {entity_id} を削除する"
     input:
       entity_id:
         type: String
@@ -407,6 +469,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: DELETE
@@ -414,52 +481,63 @@ interfaces:
         request_form: query
         successful_status_codes:
           - "204"
-invariants:
-  SamlRequestEndpointsClosed:
-    description: AuthnRequest の Issuer は登録済み entityID、ACS は登録済み acs_urls、Destination は現在 realm の SSO endpoint と完全一致しなければならない。未登録・不一致は fail-closed で拒否する。
-    target: SamlAuthnRequest
-    always: issuer_registered and acs_url in service_provider.acs_urls and destination_matches_current_sso_endpoint
-  SamlForceAuthnRequiresRecentAuthentication:
-    description: ForceAuthn=true の AuthnRequest は、直近再認証済みでなければ SAMLResponse を発行せずログインへ戻す。ログイン往復直後だけ短い猶予を許す。
-    target: SamlAuthnRequest
-    always: force_authn implies recent_authentication
-  SamlRelayStateRoundTrip:
-    description: RelayState は不透明値として改変せず、SAMLResponse POST form に同値で返す。
-    target: SamlResponse
-    always: returned_relay_state == received_relay_state
-  SamlResponseMatchesRequest:
-    description: 発行 SAMLResponse / Assertion の Destination / Recipient は確定 ACS、Audience は SP audience、InResponseTo は AuthnRequest ID と一致する。
-    target: SamlResponse
-    always: destination == acs and assertion.recipient == acs and assertion.audience == service_provider.audience and in_response_to == authn_request.id
-  SamlRequestSignatureVerifiedWhenRequired:
-    description: want_authn_requests_signed=true の SP は AuthnRequest / LogoutRequest の Redirect binding 署名または XML 署名が検証済みでなければ受理しない。
-    target: SamlServiceProvider
-    always: want_authn_requests_signed implies request_signature_verified
-  SamlLogoutResponseClosed:
-    description: /saml/slo は LogoutRequest の Issuer と Destination を検証し、登録済み SLO URL にだけ LogoutResponse を返す。
-    target: SamlLogout
-    always: local_session_cleared and logout_response_destination in service_provider.slo_url and no_unregistered_redirect
-permissions:
-  AdminFederationTrustsManage:
-    description: 所属テナント内の SAML SP / WS-Federation RP trust の一覧・登録・削除。
-    actor: User
-    resource: FederationTrust
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+authorization:
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles || "system_admin" in principal.roles'
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.id
 scenarios:
   SAML SP initiated SSO succeeds:
-    description: SamlSingleSignOn で、登録済み entityID、許可 ACS、現在 realm の Destination、割当済み subject なら SAMLResponse を ACS へ POST し RelayState を同値で返す。
-    steps:
+    actor: EndUser
+    given:
+      - subject は認証済みで対象 Application に割り当てられている
+      - SP の entityID、ACS URL、Destination は登録済みである
+    main_success:
       - 登録済み SP の AuthnRequest を受信する
       - Issuer / ACS / Destination / subject assignment を検証する
-      - SAMLResponse を発行する
+      - 署名済み SAMLResponse を ACS へ POST し RelayState を同値で返す
+    extensions:
+      - at: 2
+        condition: entityID、ACS、Destination、subject assignment のいずれかが不正である
+        steps:
+          - SAMLResponse を発行しない
+          - SamlSignInRejected を発行して fail-closed で拒否する
+      - at: 2
+        condition: AuthnRequest の解析または署名検証に失敗する
+        steps:
+          - SamlSignInRejected を発行して protocol error を返す
   SAML rejects unregistered or mismatched request:
-    description: SamlSingleSignOn で、未登録 entityID、許可外 ACS、Destination 不一致、未割当 subject は SAMLResponse を発行せず拒否する。
-    steps:
+    actor: EndUser
+    given:
+      - AuthnRequest の entityID、ACS URL、Destination、subject assignment のいずれかが不正である
+    main_success:
       - 不正な AuthnRequest を受信する
-      - fail-closed で拒否する
+      - SAMLResponse を発行せず SamlSignInRejected を発行する
   SAML ForceAuthn redirects stale session:
-    description: SamlSingleSignOn で、ForceAuthn=true かつ認証時刻が猶予より古い場合、既存セッションで発行せずログインへ戻す。
-    steps:
+    actor: EndUser
+    given:
+      - ForceAuthn=true かつ認証時刻が再認証猶予より古い
+    main_success:
       - ForceAuthn=true の AuthnRequest を受信する
       - 古い認証コンテキストを検出する
       - ログインへリダイレクトする
+flows:
+  SamlBrowserNavigation:
+    entry: ServiceProvider
+    transitions:
+      - from: ServiceProvider
+        action: sign_in
+        interface: SamlSingleSignOn
+        to: ServiceProvider
+      - from: ServiceProvider
+        action: sign_out
+        interface: SamlSingleLogout
+        to: ServiceProvider

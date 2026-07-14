@@ -2,7 +2,7 @@
 # Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: WsFederation
 standards:
   WsFederationPassiveRequestorProfile:
@@ -17,9 +17,8 @@ standards:
         strength: MUST
         adoption: required
         statement: wsignin1.0 で登録済み wtrealm と許可済み wreply にだけ token を返す
-        relates_to:
-          interfaces: [WsFederationSignIn]
-          invariants: [WsFedReplyAndRealmClosed]
+        refs:
+          - interfaces.WsFederationSignIn
       - id: WSFed-SilentSignIn
         section: "§13"
         strength: MAY
@@ -38,9 +37,9 @@ standards:
         strength: MUST
         adoption: required
         statement: Issue 要求に対して Bearer SAML assertion を RSTR で返す
-        relates_to:
-          interfaces: [WsTrustIssue]
-          invariants: [WsTrustRSTClosed]
+        refs:
+          - interfaces.WsTrustIssue
+          - models.WsTrustRequestSecurityToken
       - id: WSTrust13-WindowsTransport
         section: "§8"
         strength: MAY
@@ -59,8 +58,8 @@ standards:
         strength: MUST
         adoption: required
         statement: WS-Trust active STS は UsernameToken username/password を認証する
-        relates_to:
-          interfaces: [WsTrustIssue]
+        refs:
+          - interfaces.WsTrustIssue
   WsAddressing:
     title: Web Services Addressing 1.0 - Core
     version: "1.0"
@@ -73,9 +72,9 @@ standards:
         strength: MUST
         adoption: required
         statement: MessageID は replay 防止、To は active STS endpoint、Action は Issue として検証する
-        relates_to:
-          interfaces: [WsTrustIssue]
-          invariants: [WsTrustRSTClosed, WsTrustMessageIDReplay]
+        refs:
+          - interfaces.WsTrustIssue
+          - models.WsTrustRequestSecurityToken
 glossary:
   WsFederation:
     definition: WS-Federation Passive Requestor Profile と WS-Trust active STS を組み合わせた WS-* protocol family。UsernameToken による Issue、WS-Addressing の MessageID / To / Action、Bearer SAML assertion 発行を扱う。WindowsTransport / Kerberos、silent sign-in は初期範囲外。
@@ -83,7 +82,44 @@ glossary:
       - WS-Federation
       - WS-Trust
       - WS-Fed
+  EndUser:
+    definition: WS-Federation passive sign-in / sign-out をブラウザで開始する利用者。
+  SecurityTokenRequester:
+    definition: UsernameToken credential を提示して WS-Trust Issue を呼び出す active client。
 models:
+  User:
+    kind: entity
+    description: IdentityManagement が publish する認可 principal の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  Tenant:
+    kind: entity
+    description: Tenancy が publish するテナント resource の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  ClaimMappingPolicy:
+    kind: value_object
+    description: ClaimMapping context が publish する trust ごとの claim 発行規則の最小 stub。
+    fields:
+      configuration:
+        type: JSON
+        optional: true
+  InvalidRequestError:
+    kind: error
+    description: WS-Federation、WS-Trust、または管理入力が契約を満たさない。
+  AccessDeniedError:
+    kind: error
+    description: credential または認可 principal が要求された操作を許可されない。
   WsFedTokenType:
     kind: enum
     description: WS-Federation で発行する assertion の SAML バージョン (RSTR の TokenType にもなる)。 SAML 1.1 (urn:oasis:names:tc:SAML:1.0:assertion) は Entra / AD FS の WS-Fed 既定。
@@ -131,9 +167,9 @@ models:
         optional: true
         description: Microsoft Entra domain federation preset。設定時に required claims と sourceAnchor 変換を束ねる。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   EntraFederationProfile:
     kind: value_object
     description: Microsoft Entra domain federation 用 profile。IssuerUri、sourceAnchor 属性、 passive / active / MEX endpoint を束ね、UPN / ImmutableID / persistent NameID の claim preset を WS-Fed RP に適用する。
@@ -159,20 +195,20 @@ models:
           - non_empty
         description: 変換後 ImmutableID を格納する合成属性名。既定 entra_immutable_id。
       passive_logon_uri:
-        type: Uri
+        type: String
         description: Entra PassiveLogOnUri。通常 /wsfed。
       active_logon_uri:
-        type: Uri
+        type: String
         description: Entra ActiveLogOnUri。通常 /trust/usernamemixed。
       metadata_exchange_uri:
-        type: Uri
+        type: String
         description: Entra MetadataExchangeUri。通常 /trust/mex。
   SecurityTokenEndpoint:
     kind: value_object
     description: WS-Trust / WS-Federation metadata に広告する STS endpoint。受理する認証方式と binding を表す。
     fields:
       url:
-        type: Uri
+        type: String
         description: 公開 endpoint URL。
       binding:
         type: String
@@ -194,7 +230,7 @@ models:
           - non_empty
         description: WS-Addressing MessageID。replay 防止に使う。
       to:
-        type: Uri
+        type: String
         description: WS-Addressing To。要求先 STS endpoint。
       action:
         type: String
@@ -210,10 +246,10 @@ models:
           - non_empty
         description: WS-Security UsernameToken password credential。
       created_at:
-        type: Timestamp
+        type: DateTime
         description: WS-Security Timestamp Created。
       expires_at:
-        type: Timestamp
+        type: DateTime
         description: WS-Security Timestamp Expires。
       applies_to:
         type: String
@@ -247,9 +283,9 @@ models:
       token_type:
         type: WsFedTokenType
       issued_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
       assertion_id:
         type: String
         optional: true
@@ -258,7 +294,7 @@ models:
     description: WS-Federation passive sign-in で署名済み assertion を RP へ発行した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 発行したテナント ID。
@@ -273,7 +309,7 @@ models:
     description: "WS-Federation passive sign-in を拒否した (未登録 wtrealm・許可外 wreply・検証失敗など)。"
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 拒否したテナント ID。
@@ -289,7 +325,7 @@ models:
     description: WS-Federation sign-out でローカルセッションを破棄した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: sign-out したテナント ID。
@@ -302,7 +338,7 @@ models:
     description: WS-Trust active STS で署名済み assertion を発行した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 発行したテナント ID。
@@ -317,7 +353,7 @@ models:
     description: WS-Trust active STS の Issue 要求を拒否した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 拒否したテナント ID。
@@ -333,7 +369,7 @@ models:
     description: Microsoft Entra domain federation preset を設定し、対応する WS-Fed RP trust を upsert した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 設定したテナント ID。
@@ -346,8 +382,6 @@ models:
 interfaces:
   WsFederationSignIn:
     description: WS-Federation passive requestor profile の sign-in。wtrealm で relying party を解決し、 wreply を許可集合に限定する (open redirect 防止)。未認証はログインへ誘導し、認証済みなら relying party の claim policy で発行した claim を署名済み SAML assertion (既定 SAML 1.1 / Entra 互換、RP 設定で SAML 2.0) に 載せ、RSTR に包んで自動 POST する。wfresh が示す最大経過時間より認証が古ければ再認証へ誘導し、wauth が要求する 認証方式を尊重する (満たせない統合 Windows 認証等は fail-closed で拒否)。
-    steps:
-      - "wtrealm {wtrealm} へ wreply {wreply} で sign-in する"
     input:
       wa:
         type: String
@@ -375,6 +409,16 @@ interfaces:
         type: String
         optional: true
         description: home realm のヒント。
+    requires:
+      - input.wa == "wsignin1.0"
+      - wtrealm_registered(input.wtrealm, context.tenant_id)
+      - reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)
+    ensures:
+      - authentication_fresh_enough(input.wfresh)
+      - requested_authentication_method_satisfied(input.wauth)
+      - subject_assigned_to_application(input.wtrealm, context.tenant_id)
+      - wctx_round_tripped(input.wctx)
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -385,8 +429,6 @@ interfaces:
           - "303"
   WsFederationSignOut:
     description: WS-Federation sign-out。ローカルセッションを破棄する。wsignout1.0 は許可済み wreply への リダイレクトまで行い、wsignoutcleanup1.0 は破棄のみで 200 を返す。
-    steps:
-      - "wtrealm {wtrealm} へ wreply {wreply} で sign-out する"
     input:
       wa:
         type: String
@@ -398,6 +440,14 @@ interfaces:
         type: String
         optional: true
         description: 返信先。許可集合との完全一致のみ。
+    requires:
+      - input.wa == "wsignout1.0" || input.wa == "wsignoutcleanup1.0"
+      - input.wtrealm == null || wtrealm_registered(input.wtrealm, context.tenant_id)
+      - input.wreply == null || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)
+    ensures:
+      - local_session_cleared
+      - no_unregistered_redirect
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -408,8 +458,6 @@ interfaces:
           - "303"
   WsTrustIssue:
     description: WS-Trust 1.3 active STS Issue endpoint。UsernameToken を検証し、 To を現在 realm の active STS endpoint、Action / RequestType を Issue、KeyType を Bearer に限定し、AppliesTo を登録済み WsFedRelyingParty に解決する。RP の claim policy で組み立てた claim を署名済み SAML assertion に載せ、RSTR として返す。未登録 AppliesTo、期限切れ Timestamp、不正な To / Action / RequestType / KeyType / TokenType は fail-closed で拒否する。
-    steps:
-      - "username {username} と applies_to {applies_to} で security token を要求する"
     input:
       request:
         type: WsTrustRequestSecurityToken
@@ -422,6 +470,22 @@ interfaces:
     emits:
       - WsTrustTokenIssued
       - WsTrustTokenRejected
+    requires:
+      - input.request.to == active_sts_endpoint(context.tenant_id)
+      - input.request.action == "Issue"
+      - input.request.request_type == null || input.request.request_type == "Issue"
+      - input.request.key_type == null || input.request.key_type == "Bearer"
+      - applies_to_registered(input.request.applies_to, context.tenant_id)
+      - message_id_not_seen_within_replay_window(input.request.message_id)
+      - timestamp_is_valid(input.request.created_at, input.request.expires_at)
+    ensures:
+      - output.response.relates_to == input.request.message_id
+      - output.response.applies_to == input.request.applies_to
+    access:
+      policies: [UsernameTokenSubject]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -433,6 +497,7 @@ interfaces:
       endpoint:
         type: SecurityTokenEndpoint
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -445,6 +510,7 @@ interfaces:
       endpoint:
         type: SecurityTokenEndpoint
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -465,7 +531,7 @@ interfaces:
         type: String
         description: ImmutableID の元になる不変 user 属性。
       reply_url:
-        type: Uri
+        type: String
         optional: true
         description: Entra が wreply に使う URL。空なら Microsoft Online の既定 URL。
     output:
@@ -478,6 +544,13 @@ interfaces:
       - AccessDeniedError
     emits:
       - EntraFederationConfigured
+    requires:
+      - source_anchor_is_unique_and_normalizable(input.source_anchor_attribute, context.tenant_id)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -494,6 +567,14 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - input.relying_party.tenant_id == context.tenant_id
+      - input.relying_party.reply_urls.size > 0
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -510,6 +591,13 @@ interfaces:
     read_only: true
     errors:
       - AccessDeniedError
+    ensures:
+      - relying_parties_belong_to_tenant(output.relying_parties, context.tenant_id)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -524,6 +612,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: DELETE
@@ -531,64 +624,93 @@ interfaces:
         request_form: query
         successful_status_codes:
           - "204"
-invariants:
-  WsFedReplyAndRealmClosed:
-    description: WS-Fed passive sign-in / sign-out の wtrealm は登録済み RP、wreply は RP の reply_urls と完全一致しなければならない。wreply 省略時は登録済み既定 reply URL のみを使う。
-    target: WsFedRelyingParty
-    always: wtrealm_registered and resolved_wreply in relying_party.reply_urls
-  WsFedFreshRequiresRecentAuthentication:
-    description: wfresh が要求する最大経過時間より認証が古い場合は token を発行せずログインへ戻す。wfresh=0 は再認証を要求する。
-    target: WsFederationSignIn
-    always: wfresh_present implies auth_time_within_wfresh
-  WsFedContextRoundTrip:
-    description: wctx は不透明値として改変せず、RSTR form に同値で返す。
-    target: WsFederationSignIn
-    always: returned_wctx == received_wctx
-  WsTrustMessageIDReplay:
-    description: WS-Trust MessageID は assertion lifetime 内で一度だけ受理する。再送は token を発行せず拒否する。
-    target: WsTrustRequestSecurityToken
-    always: message_id_not_seen_within_replay_window
-  WsTrustRSTClosed:
-    description: RST の To は現在 realm の active STS endpoint、Action / RequestType は Issue、KeyType は空または Bearer、AppliesTo は登録済み RP と一致しなければならない。
-    target: WsTrustRequestSecurityToken
-    always: to == active_sts_endpoint and action == Issue and request_type in [empty, Issue] and key_type in [empty, Bearer] and applies_to_registered
-  FederationApplicationAssignmentGate:
-    description: SAML / WS-Federation trust が Application binding に属する場合、未割当 subject には token / assertion を発行しない。
-    target: WsFedSignInIssued
-    always: application_binding_absent or subject_assigned_to_application
+authorization:
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles || "system_admin" in principal.roles'
+    UsernameTokenSubject:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.id
+    UsernameTokenSubject:
+      effect: permit
+      principal: UsernameTokenSubject
+      when: principal.tenant_id == resource.id
 scenarios:
   WS-Federation passive sign-in succeeds:
-    description: WsFederationSignIn で、登録済み wtrealm、許可 wreply、必要なら wfresh を満たす認証、割当済み subject なら RSTR form を発行し wctx を同値で返す。
-    steps:
+    actor: EndUser
+    given:
+      - wtrealm と wreply は登録済みで subject は対象 Application に割り当てられている
+    main_success:
       - 登録済み RP の wsignin1.0 を受信する
       - wtrealm / wreply / wfresh / subject assignment を検証する
-      - 署名済み assertion を RSTR form で返す
+      - 署名済み assertion を RSTR form で返し wctx を同値で往復する
+    extensions:
+      - at: 2
+        condition: wfresh より認証が古い
+        steps:
+          - token を発行せず再認証へ誘導する
+      - at: 2
+        condition: wtrealm、wreply、wauth、subject assignment のいずれかが不正である
+        steps:
+          - WsFedSignInRejected を発行して fail-closed で拒否する
   WS-Federation passive sign-in rejects untrusted target:
-    description: WsFederationSignIn で、未登録 wtrealm、許可外 wreply、未割当 subject は token を発行せず拒否する。
-    steps:
+    actor: EndUser
+    given:
+      - wtrealm が未登録、wreply が許可外、または subject が未割当である
+    main_success:
       - 不正な wsignin1.0 を受信する
-      - fail-closed で拒否する
+      - token を発行せず WsFedSignInRejected を発行する
   WS-Trust Issue succeeds:
-    description: WsTrustIssue で、UsernameToken、MessageID、To、Action、RequestType、KeyType、AppliesTo が有効なら Bearer SAML assertion を RSTR で返す。
-    steps:
+    actor: SecurityTokenRequester
+    given:
+      - UsernameToken、MessageID、Timestamp、To、Action、RequestType、KeyType、AppliesTo が有効である
+    main_success:
       - WS-Trust Issue RST を受信する
       - UsernameToken と RST の閉集合条件を検証する
       - RSTR を返す
+    extensions:
+      - at: 2
+        condition: MessageID が assertion lifetime 内に再利用されている
+        steps:
+          - WsTrustTokenRejected を発行して protocol error を返す
+      - at: 2
+        condition: UsernameToken credential が不正である
+        steps:
+          - AccessDeniedError を返し token を発行しない
   WS-Trust Issue rejects invalid envelope:
-    description: WsTrustIssue で、To 不一致、MessageID replay、未登録 AppliesTo、Issue 以外の Action / RequestType、Bearer 以外の KeyType は拒否する。
-    steps:
+    actor: SecurityTokenRequester
+    given:
+      - RST の To、MessageID、AppliesTo、Action、RequestType、KeyType のいずれかが不正である
+    main_success:
       - 不正な RST を受信する
       - WsTrustTokenRejected を emit して 400 または 401 を返す
-user_experience:
-  screens:
-    AdminEntraFederation:
-      route: /admin/federation/entra
-      purpose: "管理者がテナント単位で Microsoft Entra domain federation を設定する。検証済みドメイン・\nIssuerUri・sourceAnchor 属性を入力すると、UPN / ImmutableID / persistent NameID の\nclaim preset を持つ relying party を upsert し、Entra に登録する PassiveLogOnUri /\nActiveLogOnUri / MetadataExchangeUri を提示する。個別アプリの設定ではなくドメイン連携の\nため、Application 編集ではなくテナント設定として扱う。\n"
-      interfaces:
-        - ConfigureEntraFederation
-      states:
-        - ready
-        - loading
-        - submitting
-        - access_denied
-        - service_error
+flows:
+  WsFederationBrowserNavigation:
+    entry: RelyingParty
+    transitions:
+      - from: RelyingParty
+        action: sign_in
+        interface: WsFederationSignIn
+        to: RelyingParty
+      - from: RelyingParty
+        action: sign_out
+        interface: WsFederationSignOut
+        to: RelyingParty
+  AdminEntraFederation:
+    entry: AdminEntraFederation
+    transitions:
+      - from: AdminEntraFederation
+        action: configure
+        interface: ConfigureEntraFederation
+        to: AdminEntraFederation

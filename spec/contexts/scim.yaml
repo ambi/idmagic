@@ -1,6 +1,73 @@
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: Scim
+
+standards:
+  RFC7643:
+    title: System for Cross-domain Identity Management Core Schema
+    version: RFC 7643
+    url: https://www.rfc-editor.org/rfc/rfc7643.html
+    roles: [ServiceProvider]
+    scope: SCIM User、Group、ServiceProviderConfig、ResourceType、Schema resource の表現。
+    requirements:
+      - id: RFC7643-SERVICE-PROVIDER-CONFIG
+        section: §5
+        strength: MUST
+        adoption: required
+        statement: ServiceProviderConfig は authenticationSchemes を含み Bearer token 方式を広告する。
+        refs:
+          - interfaces.GetScimServiceProviderConfig
+      - id: RFC7643-CORE-RESOURCES
+        section: "§4.1, §4.2"
+        strength: MUST
+        adoption: required
+        statement: User と Group resource を SCIM core schema に従って表現する。
+        refs:
+          - interfaces.CreateScimUser
+          - interfaces.CreateScimGroup
+  RFC7644:
+    title: System for Cross-domain Identity Management Protocol
+    version: RFC 7644
+    url: https://www.rfc-editor.org/rfc/rfc7644.html
+    roles: [ServiceProvider]
+    scope: SCIM User / Group resource の CRUD、PATCH、Bearer 認証、protocol error。
+    requirements:
+      - id: RFC7644-RESOURCE-OPERATIONS
+        section: "§3.2–§3.6"
+        strength: MUST
+        adoption: required
+        statement: User と Group resource に create、read、replace、delete 操作を提供する。
+        refs:
+          - interfaces.CreateScimUser
+          - interfaces.GetScimUser
+          - interfaces.UpdateScimUser
+          - interfaces.DeleteScimUser
+          - interfaces.CreateScimGroup
+          - interfaces.GetScimGroup
+          - interfaces.UpdateScimGroup
+          - interfaces.DeleteScimGroup
+      - id: RFC7644-PATCH
+        section: §3.5.2
+        strength: SHOULD
+        adoption: required
+        statement: User と Group resource の部分更新を PATCH operation で提供する。
+        refs:
+          - interfaces.PatchScimUser
+          - interfaces.PatchScimGroup
+      - id: RFC7644-BEARER-AUTHORIZATION
+        section: §2
+        strength: MUST
+        adoption: required
+        statement: SCIM protocol endpoint は tenant-scoped Bearer token で認証・認可する。
+        refs:
+          - models.ScimToken
+      - id: RFC7644-ERROR-RESPONSE
+        section: §3.12
+        strength: MUST
+        adoption: required
+        statement: protocol failure は HTTP status と detail を持つ SCIM error response で返す。
+        refs:
+          - models.ScimProtocolError
 
 glossary:
   ScimToken:
@@ -8,12 +75,63 @@ glossary:
     aliases:
       - SCIM アクセストークン
       - access token
+  ScimClient:
+    definition: tenant-scoped Bearer token を提示して SCIM provisioning API を呼び出す外部 agent。
 
 models:
+  User:
+    kind: entity
+    description: IdentityManagement が publish する管理者 principal の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  Agent:
+    kind: entity
+    description: 有効な SCIM Bearer token から解決される provisioning principal。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+  Tenant:
+    kind: entity
+    description: Tenancy が publish するテナント resource の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  InvalidRequestError:
+    kind: error
+    description: SCIM token 管理入力が不正である。
+  AccessDeniedError:
+    kind: error
+    description: SCIM Bearer token または管理者 principal が操作を許可されない。
+  ScimProtocolError:
+    kind: error
+    description: RFC 7644 §3.12 に従う SCIM protocol error response。
+    payload:
+      status:
+        type: String
+      detail:
+        type: String
+        optional: true
+      scim_type:
+        type: String
+        optional: true
   ScimUserRef:
     kind: entity
     description: SCIM 2.0 の ID と IdP 内部の User (sub) を紐付けるマッピング。
-    identity: scim_id
+    identity: [tenant_id, scim_id]
     fields:
       tenant_id:
         type: String
@@ -24,7 +142,7 @@ models:
   ScimGroupRef:
     kind: entity
     description: SCIM 2.0 の ID と IdP 内部の Group (id) を紐付けるマッピング。
-    identity: scim_id
+    identity: [tenant_id, scim_id]
     fields:
       tenant_id:
         type: String
@@ -35,7 +153,7 @@ models:
   ScimToken:
     kind: entity
     description: SCIM 2.0 API アクセス用のアクセストークン。Bearer スキームで提示する。有効なアクセストークンが1本もなければ SCIM API は事実上利用できず、これがテナントごとの有効・無効の唯一の判断軸となる。
-    identity: id
+    identity: [tenant_id, id]
     fields:
       tenant_id:
         type: String
@@ -46,9 +164,9 @@ models:
       description:
         type: String
       created_at:
-        type: Timestamp
+        type: DateTime
       expires_at:
-        type: Timestamp
+        type: DateTime
         optional: true
 interfaces:
   GetScimServiceProviderConfig:
@@ -64,6 +182,11 @@ interfaces:
     output:
       config:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: GET
@@ -76,6 +199,11 @@ interfaces:
     output:
       types:
         type: "Map<String,JSON>[]"
+    errors: [ScimProtocolError]
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: GET
@@ -88,6 +216,11 @@ interfaces:
     output:
       schemas:
         type: "Map<String,JSON>[]"
+    errors: [ScimProtocolError]
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: GET
@@ -102,6 +235,12 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: POST
@@ -116,6 +255,13 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: GET
@@ -132,6 +278,12 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: PATCH
@@ -148,6 +300,12 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: PUT
@@ -159,6 +317,12 @@ interfaces:
         type: String
       id:
         type: String
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: DELETE
@@ -173,6 +337,12 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: POST
@@ -187,6 +357,13 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: GET
@@ -203,6 +380,12 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: PATCH
@@ -219,6 +402,12 @@ interfaces:
     output:
       response:
         type: "Map<String,JSON>"
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: PUT
@@ -230,6 +419,12 @@ interfaces:
         type: String
       id:
         type: String
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: DELETE
@@ -242,6 +437,11 @@ interfaces:
     output:
       tokens:
         type: "Map<String,JSON>[]"
+    errors: [AccessDeniedError]
+    read_only: true
+    access:
+      policies: [ManageScimSettings]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: GET
@@ -258,6 +458,13 @@ interfaces:
     output:
       token:
         type: "Map<String,JSON>"
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - input.tenant_id == context.tenant_id
+      - input.expiry_days > 0
+    access:
+      policies: [ManageScimSettings]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: POST
@@ -269,28 +476,42 @@ interfaces:
         type: String
       id:
         type: String
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ManageScimSettings]
+      resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: DELETE
         path: "/api/admin/scim/tokens/{id}"
-permissions:
-  ScimProvision:
-    description: SCIM 2.0 プロビジョニング API を呼び出す権限。
-    actor: Agent
-    resource: User
-    allow_when: "true"
-  ManageScimSettings:
-    description: SCIM アクセストークンを管理する権限。
-    actor: User
-    resource: ScimToken
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+authorization:
+  principals:
+    ScimBearerClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles || "system_admin" in principal.roles'
+  policies:
+    ScimProvision:
+      effect: permit
+      principal: ScimBearerClient
+      when: principal.tenant_id == resource.id
+    ManageScimSettings:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.id
 scenarios:
   外部IDPからのSCIMユーザー同期ライフサイクル:
-    goal: 外部 IDP からの SCIM ユーザープロビジョニングを処理する。
-    primary_actor: Agent
-    scope: Scim
-    level: user_goal
-    preconditions:
+    actor: ScimBearerClient
+    given:
       - "有効な SCIM アクセストークンが発行されている"
     main_success:
       - "SCIMクライアントが CreateScimUser を呼び出す"
@@ -299,15 +520,44 @@ scenarios:
       - "内部 User が Disabled になる"
       - "SCIMクライアントが DeleteScimUser を呼び出す"
       - "内部 User が PendingDeletion に遷移する"
+    extensions:
+      - at: 1
+        condition: Bearer token が失効済み、期限切れ、または別 tenant の token である
+        steps:
+          - SCIM protocol error を返し User を作成しない
+      - at: 3
+        condition: PATCH body が RFC 7644 の operation 契約を満たさない
+        steps:
+          - invalidValue の ScimProtocolError を返し User を変更しない
+      - at: 5
+        condition: 指定 ID が存在しない
+        steps:
+          - 404 の ScimProtocolError を返す
   外部IDPからのSCIMグループおよびメンバーシップ同期:
-    goal: 外部 IDP からの SCIM グループおよびメンバーシップ同期。
-    primary_actor: Agent
-    scope: Scim
-    level: user_goal
-    preconditions:
+    actor: ScimBearerClient
+    given:
       - "有効な SCIM アクセストークンが発行されている"
     main_success:
       - "SCIMクライアントが CreateScimGroup を呼び出す"
       - "グループが作成される"
       - "SCIMクライアントが PatchScimGroup でメンバー追加を指定する"
       - "GroupMembership が同期され User の有効ロールが更新される"
+    extensions:
+      - at: 3
+        condition: 追加対象 User が別 tenant に属する
+        steps:
+          - ScimProtocolError を返し membership を作成しない
+  テナント管理者はSCIMアクセストークンを管理できる:
+    actor: TenantAdministrator
+    given:
+      - admin は対象 tenant で認証済みである
+    main_success:
+      - admin が CreateScimToken を呼び出す
+      - 平文 token は作成応答で一度だけ返される
+      - admin が RevokeScimToken を呼び出す
+      - 失効した token で SCIM API を呼ぶと拒否される
+    extensions:
+      - at: 1
+        condition: admin が別 tenant の token を作成または失効しようとする
+        steps:
+          - AccessDeniedError を返し token を変更しない
