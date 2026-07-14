@@ -1,8 +1,8 @@
 # idmagic IdentityManagement — SCL
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# Migrated to SCL 3.0 by wi-209 (ADR-103).
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: IdentityManagement
 glossary:
   Administrator:
@@ -21,8 +21,17 @@ glossary:
     aliases:
       - system_admin
       - システム管理者
+  EndUser:
+    definition: 認証済みまたは認証を試みる一般利用者。管理ロールを持たない自己サービス操作 (account portal) の主体。
+    aliases:
+      - end user
+      - 利用者
+      - エンドユーザー
+    not_to_confuse_with:
+      - term: Administrator
+        reason: EndUser は自身のアカウントだけを扱う。Administrator はテナント内の他ユーザーを管理する。
   UserDisablement:
-    definition: User.disabled_at を設定して認証とセッション利用を停止する復活可能な管理操作。削除や PII purge とは異なる。
+    definition: User.status を Disabled に遷移させて認証とセッション利用を停止する復活可能な管理操作。削除や PII purge とは異なる。
     aliases:
       - disable user
   UserImport:
@@ -33,7 +42,7 @@ glossary:
       - ユーザー一括インポート
       - アカウント無効化
   UserDeletion:
-    definition: "User の tombstone 化と関連 aggregate の cascade 削除。`deleted_at` を設定し PII フィールドを匿名化、`id` のみを audit のため保持する。`Deleted` は終端で復元できない。"
+    definition: "User の tombstone 化と関連 aggregate の cascade 削除。`status` を Deleted に遷移させ PII フィールドを匿名化、`id` のみを audit のため保持する。`Deleted` は終端で復元できない。"
     aliases:
       - delete user
       - anonymize user
@@ -42,7 +51,7 @@ glossary:
       - term: UserDisablement
         reason: Disable は復活可能で PII を残す。Delete は終端で PII を即時 anonymize する。
   Deleted:
-    definition: "User の終端状態。`deleted_at != null` で PII が anonymize 済み。login / token / userinfo は active=false 相当。"
+    definition: "User の終端状態。`status == Deleted` で PII が anonymize 済み。login / token / userinfo は active=false 相当。"
     aliases:
       - deleted
   Delete:
@@ -50,7 +59,7 @@ glossary:
     aliases:
       - delete
   PendingDeletion:
-    definition: "User の削除予約状態。`status == PendingDeletion` で PII は温存されるが認証は Disabled と同じく拒否される。猶予期間 (UserSoftDeleteGracePeriod) 内なら Restore で Active に戻せ、経過すると Purge で Deleted (anonymize) に落ちる。"
+    definition: "User の削除予約状態。`status == PendingDeletion` で PII は温存されるが認証は Disabled と同じく拒否される。猶予期間 (states.UserLifecycle の PendingDeletion → Deleted 遷移 guard) 内なら Restore で Active に戻せ、経過すると Purge で Deleted (anonymize) に落ちる。"
     aliases:
       - pending_deletion
       - 削除予約中
@@ -158,9 +167,81 @@ models:
     values:
       - Autonomous
       - Supervised
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
+  AttributeType:
+    kind: enum
+    description: 属性値の sum type discriminator。Tenancy context が所有する定義の published language stub。
+    values:
+      - String
+      - Number
+      - Boolean
+      - Date
+      - StringArray
+  UserAttributeDef:
+    kind: value_object
+    description: 属性 1 件の定義。Tenancy context が所有する BuiltinUserAttributeDefs / TenantUserAttributeSchema の published language stub。
+    fields:
+      key:
+        type: String
+        constraints:
+          - non_empty
+          - pattern: "^[a-z][a-z0-9_]{0,62}$"
+      label:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 100
+      type:
+        type: AttributeType
+      multi_valued:
+        type: Boolean
+        default: false
+      required:
+        type: Boolean
+        default: false
+      editable_by_user:
+        type: Boolean
+        default: false
+      claim_name:
+        type: String
+        optional: true
+      oidc_scope:
+        type: String
+        optional: true
+      visibility:
+        type: String
+        default: Private
+      pii:
+        type: Boolean
+        default: true
+  AccountConsentResponse:
+    kind: value_object
+    description: "end-user の「接続済みアプリ」1 件の projection。OAuth2 context が所有する定義の\npublished language stub (ExportAccountData の入れ子表現専用)。\n"
+    fields:
+      client_id:
+        type: String
+      client_name:
+        type: String
+      scopes:
+        type: "String[]"
+      state:
+        type: String
+      granted_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
   User:
     kind: entity
-    description: "IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを\n型付きで持つ。それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 /\ntenant 定義 custom) は attributes に sparse に格納し、テナントが実際に使う属性\nだけが領域を消費する。\n"
+    description: "IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを\n型付きで持つ。それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 /\ntenant 定義 custom) は attributes に sparse に格納し、テナントが実際に使う属性\nだけが領域を消費する。effective_roles (direct roles ∪ 所属 Group の roles) は\nGroup 集約にまたがる導出値のため本 entity のフィールドとしては持たず、\nUserGroupsResponse.effective_roles に投影する (models.User.constraints では\n表現できない、Group を参照する combination)。\n"
     identity: id
     fields:
       id:
@@ -224,9 +305,9 @@ models:
         optional: true
         description: OIDC optional claim / 組織属性 / custom を統合した sparse 属性。BuiltinUserAttributeDefs + TenantUserAttributeSchema に対して検証する。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         description: 作成時は created_at と同じ値を持ち、以後 User aggregate の管理・自己変更操作ごとに更新する。
   UserLifecycle:
     kind: value_object
@@ -236,14 +317,14 @@ models:
         type: UserStatus
         default: Active
       status_changed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: 現在の status になった時刻。詳細な遷移履歴は監査イベントが持つ。
       last_login_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       password_changed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       required_actions:
         type: "RequiredAction[]"
@@ -275,7 +356,7 @@ models:
           pii: true
   AdminUserCreateRequest:
     kind: value_object
-    description: 管理者がユーザーを作成する JSON リクエスト。初期パスワードには PasswordPolicy objective を適用する。
+    description: 管理者がユーザーを作成する JSON リクエスト。初期パスワードには Authentication context の PasswordPolicy を適用する。
     fields:
       preferred_username:
         type: String
@@ -379,20 +460,21 @@ models:
         optional: true
         description: 次回ログイン時の強制アクション。
       last_login_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: 直近の認証完了時刻。
       password_changed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: 直近のパスワード変更時刻。
       disabled_at:
-        type: Timestamp
+        type: DateTime
         optional: true
+        description: "旧世代の無効化時刻フィールド。User.lifecycle.status + status_changed_at が唯一の真実であり、本フィールドは現状レスポンス後方互換のためだけに残る (別途整理が必要な既存ギャップ、本移行のスコープ外)。"
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         description: 作成時は created_at と同じ値を持ち、以後管理操作ごとに更新する。
   AdminRequiredActionRequest:
     kind: value_object
@@ -522,10 +604,10 @@ models:
       status:
         type: UserStatus
       last_login_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       password_changed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       required_actions:
         type: "RequiredAction[]"
@@ -552,7 +634,7 @@ models:
     description: "end-user 自身の個人データエクスポート (GDPR 第15条 right of access)。本ステージは\n同期生成で、現状 API から得られる profile と接続済みアプリ (consents) をまとめる。\n"
     fields:
       exported_at:
-        type: Timestamp
+        type: DateTime
       profile:
         type: AccountProfileResponse
       consents:
@@ -589,9 +671,9 @@ models:
         type: "String[]"
         description: このグループが付与するロール束。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         optional: true
   GroupMember:
     kind: entity
@@ -605,7 +687,7 @@ models:
       user_id:
         type: String
       created_at:
-        type: Timestamp
+        type: DateTime
   GroupCreateRequest:
     kind: value_object
     description: 管理者がグループを作成する JSON リクエスト。
@@ -665,9 +747,9 @@ models:
       member_count:
         type: Integer
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         optional: true
   GroupListResponse:
     kind: value_object
@@ -686,7 +768,7 @@ models:
         annotations:
           pii: true
       created_at:
-        type: Timestamp
+        type: DateTime
   GroupAddMemberRequest:
     kind: value_object
     description: User 詳細画面など group_id を body で指定して所属させる際の任意リクエスト。
@@ -695,7 +777,7 @@ models:
         type: String
   UserGroupsResponse:
     kind: value_object
-    description: "指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。\n"
+    description: "指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。effective_roles = direct_roles ∪ group_roles で、User と Group\n両方にまたがる導出値であるため models.User の constraint ではなく本 response の\nフィールドとして計算・公開する。\n"
     fields:
       groups:
         type: "GroupSummaryResponse[]"
@@ -710,8 +792,10 @@ models:
         description: direct_roles ∪ group_roles。
   Agent:
     kind: entity
-    description: tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で同一テナントの既存 OAuth2Client に束縛してトークンを得る。owner は同一テナントの既存 User で必須。
+    description: tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で同一テナントの既存 OAuth2Client に束縛してトークンを得る。owner は同一テナントの既存 User で必須。owner_user_id と AgentCredentialBinding.client_id は同一 tenant_id 内の live aggregate だけを指す (tenant isolation)。
     identity: id
+    constraints:
+      - "owner_user_id != ''"
     fields:
       id:
         type: String
@@ -744,7 +828,7 @@ models:
         type: String
         constraints:
           - non_empty
-        description: 所有者 User の id。必須。同一 tenant_id の User でなければならない。
+        description: 所有者 User の id。必須。同一 tenant_id の User でなければならない (AgentReferencesStayTenantLocal、RegisterAgent/UpdateAgent の requires で検証)。
       status:
         type: AgentStatus
         default: Active
@@ -752,20 +836,20 @@ models:
         type: "String[]"
         description: Agent に付与するロール束。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       disabled_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       killed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: 一方向終端 (kill) 時刻。
   AgentCredentialBinding:
     kind: entity
-    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。
+    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。
     identity:
       - agent_id
       - client_id
@@ -775,7 +859,7 @@ models:
       client_id:
         type: String
       created_at:
-        type: Timestamp
+        type: DateTime
   AgentRegisterRequest:
     kind: value_object
     description: 管理者が Agent を登録する JSON リクエスト。owner_user_id 省略時は actor を所有者とする。
@@ -864,15 +948,15 @@ models:
         type: "String[]"
         description: 束縛済み OAuth2Client id。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       disabled_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       killed_at:
-        type: Timestamp
+        type: DateTime
         optional: true
   AgentListResponse:
     kind: value_object
@@ -885,7 +969,7 @@ models:
     description: ローカル user に外部 IdP の identity を紐付けた (account linking)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       userId:
@@ -897,7 +981,7 @@ models:
     description: ローカル user から外部 IdP の identity を解除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       userId:
@@ -909,7 +993,7 @@ models:
     description: "end-user が primary email の変更を起票し、新アドレスへ確認リンクを送った\n(self-service)。実際の email 反映は ConfirmEmailChange まで起きない。\nnewEmailHash は SHA-256 で、平文を audit log に流さない。\n"
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
@@ -923,7 +1007,7 @@ models:
     description: "新アドレスへ送ったワンタイムリンクの確認が完了し、primary email を確定した\n(self-service)。email_verified=true に更新し、verify_email の\nrequired action があれば自動解除する。\n"
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 対象 user の所属テナント ID。
@@ -934,7 +1018,7 @@ models:
     description: 管理者がユーザーを作成した。初期パスワードと password_hash は監査イベントに含めない。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -947,7 +1031,7 @@ models:
     description: 管理者がユーザーのプロフィールまたは roles を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -962,7 +1046,7 @@ models:
     description: 管理者がユーザーを無効化した。対象ユーザーの新規ログインと既存セッション利用を拒否する。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -975,7 +1059,7 @@ models:
     description: 管理者が無効化済みユーザーを再有効化した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -988,7 +1072,7 @@ models:
     description: 管理者がユーザーを SoftDelete した。status は PendingDeletion に遷移し、PII / Consent / RefreshToken / Session は温存される。reason は admin が任意に残せる自由記述。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -1004,7 +1088,7 @@ models:
     description: 管理者が PendingDeletion のユーザーを Restore した。status は Active に戻り、PII / credential は温存されたままでログインが再開する。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -1017,7 +1101,7 @@ models:
     description: 管理者または 猶予期間経過後の自動 purge がユーザーを Purge した。PII は anonymize 済みで、関連 aggregate は cascade 削除されている。reason は admin が任意に残せる自由記述 (自動 purge では auto_purge)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -1033,7 +1117,7 @@ models:
     description: 管理者が次回ログイン時の強制アクション (RequiredAction) を付与した。action は enum 値で、監査に平文で残しても安全。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -1046,7 +1130,7 @@ models:
     description: 強制アクションが解除された。admin の明示解除のほか、本人がパスワードを変更した結果 update_password が自動解除される場合も発火し、その際 actor の id は対象本人の id になる。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: 操作対象テナント ID。actor / target と一致する。
@@ -1060,7 +1144,7 @@ models:
     description: 管理者がグループを作成した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: グループが属するテナント ID。
@@ -1073,7 +1157,7 @@ models:
     description: 管理者がグループの name / description / roles を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: グループが属するテナント ID。
@@ -1088,7 +1172,7 @@ models:
     description: 管理者がグループを削除した。所属 membership は cascade で解除され、各々 GroupMemberRemoved を伴う。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: グループが属するテナント ID。
@@ -1101,7 +1185,7 @@ models:
     description: 管理者が User をグループに所属させた。既に所属済みの場合は emit されない (冪等)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: グループが属するテナント ID。
@@ -1116,7 +1200,7 @@ models:
     description: 管理者が User をグループから外した、またはグループ削除に伴い解除された。所属していない場合は emit されない (冪等)。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: グループが属するテナント ID。
@@ -1131,7 +1215,7 @@ models:
     description: 管理者が Agent を登録した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1144,7 +1228,7 @@ models:
     description: 管理者が Agent の name / description / kind / roles を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1159,7 +1243,7 @@ models:
     description: 管理者が Agent を可逆に運用停止した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1172,7 +1256,7 @@ models:
     description: 管理者が運用停止中の Agent を再稼働した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1185,7 +1269,7 @@ models:
     description: 管理者が Agent を緊急停止した (一方向終端)。以後復帰不能。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1198,7 +1282,7 @@ models:
     description: 管理者が Agent を削除した。束縛は cascade で解除される。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1211,7 +1295,7 @@ models:
     description: 管理者が Agent の所有者 (owner_user_id) を移転した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1228,7 +1312,7 @@ models:
     description: 管理者が Agent に OAuth2Client を束縛した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1243,7 +1327,7 @@ models:
     description: 管理者が Agent から OAuth2Client の束縛を解除した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
         description: Agent が属するテナント ID。
@@ -1255,35 +1339,38 @@ models:
         type: String
 states:
   UserLifecycle:
-    description: "User aggregate のライフサイクル。Active が通常稼働、\nDisable で復活可能な無効化。SoftDelete で削除予約 (PendingDeletion) に入り、\n猶予期間内は Restore で Active に戻せる。Purge で tombstone 化\n(anonymize cascade) となる。Deleted は終端で復元できない。\n"
+    description: "User aggregate のライフサイクル。Active が通常稼働、\nDisable で復活可能な無効化。SoftDelete で削除予約 (PendingDeletion) に入り、\n猶予期間内は Restore で Active に戻せる。Purge で tombstone 化\n(anonymize cascade) となる。Deleted は終端で復元できない。PendingDeletion から\nDeleted への遷移 guard は、猶予期間 (30日、業界標準の 7〜30 日に合わせた既定値) を\n経過したか、admin の明示的 purge=true 指定のいずれかを要求する。経過前に\npurge=false で PendingDeletion の user へ呼び出した場合は DeleteAdminUser.requires\nが InvalidRequestError で拒否し、本遷移は発生しない。\n"
     target: User
     initial: Active
     terminal:
       - Deleted
     transitions:
       - from: Active
-        event: Disable
+        event: UserDisabled
         to: Disabled
       - from: Disabled
-        event: Enable
+        event: UserEnabled
         to: Active
       - from: Active
-        event: SoftDelete
+        event: UserSoftDeleted
         to: PendingDeletion
       - from: Disabled
-        event: SoftDelete
+        event: UserSoftDeleted
         to: PendingDeletion
       - from: PendingDeletion
-        event: Restore
+        event: UserRestored
         to: Active
       - from: PendingDeletion
-        event: Purge
+        event: UserDeleted
         to: Deleted
+        guard: "input.purge == true || duration_since(status_changed_at) >= duration('2592000s')"
+        effect:
+          - UserDeleted
       - from: Active
-        event: Purge
+        event: UserDeleted
         to: Deleted
       - from: Disabled
-        event: Purge
+        event: UserDeleted
         to: Deleted
   GroupLifecycle:
     description: "Group aggregate のライフサイクル。単一状態 Active のみを持つ。\n無効化状態は持たず、削除は aggregate 自体の物理削除 (DeleteGroup) で表す。\n"
@@ -1301,44 +1388,54 @@ states:
       - Killed
     transitions:
       - from: Active
-        event: DisableAgent
+        event: AgentDisabled
         to: Disabled
       - from: Disabled
-        event: EnableAgent
+        event: AgentEnabled
         to: Active
       - from: Active
-        event: KillAgent
+        event: AgentKilled
         to: Killed
       - from: Disabled
-        event: KillAgent
+        event: AgentKilled
         to: Killed
 interfaces:
   GetAccountSummary:
-    description: "認証済みユーザーが自身のアカウント概要を取得する (self-service portal home)。\n対象は actor.id に固定。roles を含まず、最終ログイン・パスワード変更日時・\nMFA 状態・未対応 required actions を返す。admin shell の AccountContext とは\n別契約。\n"
+    description: "認証済みユーザーが自身のアカウント概要を取得する (self-service portal home)。\n対象は subject.id に固定。roles を含まず、最終ログイン・パスワード変更日時・\nMFA 状態・未対応 required actions を返す。admin shell の AccountContext とは\n別契約。\n"
     output:
       summary:
         type: AccountSummary
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: GET
         path: /api/account/summary
   GetUserProfile:
-    description: "認証済みユーザーが自身のプロフィールを取得する (self-service)。対象は\nactor.id に固定するため cross-user 参照は構造的に発生しない。attributes は\nself が読める分のみ、editable_attributes に編集可能定義を併せて返す。\n"
+    description: "認証済みユーザーが自身のプロフィールを取得する (self-service)。対象は\nsubject.id に固定するため cross-user 参照は構造的に発生しない。attributes は\nself が読める分のみ、editable_attributes に編集可能定義を併せて返す。\n"
     output:
       profile:
         type: AccountProfileResponse
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: GET
         path: /api/account/profile
   UpdateUserProfile:
-    description: "認証済みユーザーが自身の表示名と editable_by_user=true の属性を更新する\n(self-service)。actor.id == target.id に固定。属性は key 単位の merge とし、\neditable_by_user=false の key は拒否する。status / roles / organization の変更は\nadmin 専用で本経路では扱わない。\n"
+    description: "認証済みユーザーが自身の表示名と editable_by_user=true の属性を更新する\n(self-service)。subject.id == resource.id に固定。属性は key 単位の merge とし、\neditable_by_user=false の key は拒否する。status / roles / organization の変更は\nadmin 専用で本経路では扱わない。\n"
     input:
       request:
         type: AccountProfileUpdateRequest
@@ -1350,13 +1447,18 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserUpdated
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: PATCH
         path: /api/account/profile
         request_form: body
   RequestEmailChange:
-    description: "認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。actor.id に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n"
+    description: "認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。subject.id に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n"
     input:
       request:
         type: AccountEmailChangeRequest
@@ -1365,16 +1467,20 @@ interfaces:
       - AccessDeniedError
     emits:
       - EmailChangeRequested
-      - EmailSent
     annotations:
       step_up: required
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: POST
         path: /api/account/email/change_request
         request_form: body
   ConfirmEmailChange:
-    description: "新アドレスへ送ったワンタイムリンクを消費して primary email を確定する。\ntoken が新アドレス所有の証左なので認証済みセッションは要求しない。確定時に\nemail_verified=true とし、verify_email の required action があれば自動解除する。\n"
+    description: "新アドレスへ送ったワンタイムリンクを消費して primary email を確定する。\ntoken が新アドレス所有の証左なので認証済みセッションは要求しない。token の\n所持そのものが認可の根拠であり (self-service セッションではなく\ntoken-possession-authenticated)、AuthenticatedSelf/session ベースの access 分類は\n適用しない。確定時に email_verified=true とし、verify_email の required action が\nあれば自動解除する。\n"
     input:
       request:
         type: AccountEmailChangeConfirm
@@ -1382,19 +1488,25 @@ interfaces:
       - InvalidRequestError
     emits:
       - EmailChanged
+    access: public
     bindings:
       - kind: http
         method: POST
         path: /api/account/email/verify
         request_form: body
   ExportAccountData:
-    description: "認証済みユーザーが自身の個人データを JSON で取得する (self-service, GDPR access)。\n対象は actor.id に固定。本ステージは同期生成で profile と consents を含む。\n"
+    description: "認証済みユーザーが自身の個人データを JSON で取得する (self-service, GDPR access)。\n対象は subject.id に固定。本ステージは同期生成で profile と consents を含む。\n"
     output:
       export:
         type: AccountDataExport
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
     bindings:
       - kind: http
         method: GET
@@ -1407,6 +1519,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: UserDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -1423,12 +1540,17 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: GET
         path: "/api/admin/users/{user_id}"
   CreateAdminUser:
-    description: 管理者が PasswordPolicy objective を満たす初期パスワードでユーザーを作成する。
+    description: 管理者が Authentication context の PasswordPolicy を満たす初期パスワードでユーザーを作成する。
     input:
       request:
         type: AdminUserCreateRequest
@@ -1440,6 +1562,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserCreated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: UserDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -1460,6 +1587,15 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - size(input.csv) <= 1048576
+    ensures:
+      - "input.mode != 'dry_run' || usersUnchanged(context.tenant_id)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: UserDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -1479,6 +1615,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: UserImportJob
+        id: input.job_id
     bindings:
       - kind: http
         method: GET
@@ -1498,6 +1639,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: PATCH
@@ -1513,6 +1659,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserDisabled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: POST
@@ -1529,6 +1680,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserEnabled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: POST
@@ -1554,6 +1710,13 @@ interfaces:
     emits:
       - UserSoftDeleted
       - UserDeleted
+    requires:
+      - subject.id != resource.id
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: DELETE
@@ -1562,7 +1725,7 @@ interfaces:
         successful_status_codes:
           - "204"
   RestoreAdminUser:
-    description: "管理者が PendingDeletion のユーザーを Restore する。status を Active\nに戻し PII / credential を温存したまま復元する。猶予期間を過ぎている、または\nPendingDeletion でない user に対しては InvalidRequestError を返す。復元後の\nuser を返す。\n"
+    description: "管理者が PendingDeletion のユーザーを Restore する。status を Active\nに戻し PII / credential を温存したまま復元する。猶予期間を過ぎている、または\nPendingDeletion でない user に対しては InvalidRequestError を返す。復元後の\nuser を返す。自分自身への操作は use case 側で reject する (自爆防止と対称の\n扱い)。\n"
     input:
       user_id:
         type: String
@@ -1574,6 +1737,13 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserRestored
+    requires:
+      - subject.id != resource.id
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: POST
@@ -1595,6 +1765,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserRequiredActionSet
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: POST
@@ -1613,6 +1788,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserRequiredActionCleared
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: DELETE
@@ -1625,6 +1805,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: GroupDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -1643,6 +1828,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Group
+        id: input.group_id
     bindings:
       - kind: http
         method: GET
@@ -1660,6 +1850,13 @@ interfaces:
       - AccessDeniedError
     emits:
       - GroupCreated
+    ensures:
+      - emitted.exists(e, e is GroupCreated)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: GroupDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -1682,6 +1879,13 @@ interfaces:
       - AccessDeniedError
     emits:
       - GroupUpdated
+    ensures:
+      - "changedFields(input.request).size() > 0 ? emitted.exists(e, e is GroupUpdated) : !emitted.exists(e, e is GroupUpdated)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Group
+        id: input.group_id
     bindings:
       - kind: http
         method: PATCH
@@ -1698,6 +1902,14 @@ interfaces:
     emits:
       - GroupDeleted
       - GroupMemberRemoved
+    ensures:
+      - emitted.exists(e, e is GroupDeleted)
+      - emitted.filter(e, e is GroupMemberRemoved).size() == membersOf(input.group_id).size()
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Group
+        id: input.group_id
     bindings:
       - kind: http
         method: DELETE
@@ -1717,6 +1929,13 @@ interfaces:
     emits:
       - GroupMemberAdded
     idempotent: true
+    ensures:
+      - "alreadyMember(input.group_id, input.user_id) ? !emitted.exists(e, e is GroupMemberAdded) : emitted.exists(e, e is GroupMemberAdded)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Group
+        id: input.group_id
     bindings:
       - kind: http
         method: POST
@@ -1736,6 +1955,13 @@ interfaces:
     emits:
       - GroupMemberRemoved
     idempotent: true
+    ensures:
+      - "alreadyMember(input.group_id, input.user_id) ? emitted.exists(e, e is GroupMemberRemoved) : !emitted.exists(e, e is GroupMemberRemoved)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Group
+        id: input.group_id
     bindings:
       - kind: http
         method: DELETE
@@ -1754,6 +1980,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
     bindings:
       - kind: http
         method: GET
@@ -1766,6 +1997,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: AgentDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -1782,6 +2018,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: GET
@@ -1799,6 +2040,13 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentRegistered
+    requires:
+      - "input.request.owner_user_id == null || input.request.owner_user_id in tenantUserIds(context.tenant_id)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: AgentDirectory
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -1822,6 +2070,13 @@ interfaces:
     emits:
       - AgentUpdated
       - AgentOwnerChanged
+    requires:
+      - "input.request.owner_user_id == null || input.request.owner_user_id in tenantUserIds(context.tenant_id)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: PATCH
@@ -1837,6 +2092,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentDisabled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: POST
@@ -1853,6 +2113,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentEnabled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: POST
@@ -1869,6 +2134,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentKilled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: POST
@@ -1885,6 +2155,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentDeleted
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: DELETE
@@ -1903,6 +2178,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentCredentialBound
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: POST
@@ -1922,91 +2202,50 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentCredentialUnbound
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Agent
+        id: input.agent_id
     bindings:
       - kind: http
         method: DELETE
         path: "/api/admin/agents/{agent_id}/credentials/{client_id}"
         successful_status_codes:
           - "204"
-invariants:
-  EffectiveRolesComposition:
-    description: "認可判断で用いる User の有効ロールは、user.roles と所属 Group の roles の\n和集合に等しくなければならない。階層・deny・自動所属は存在しない (union のみ)。\n所属グループが空のとき effective_roles は user.roles に一致する (後方互換)。\n"
-    target: User
-    always: "EffectiveRoles(user) == union(user.roles, flatten(group.roles for group in GroupsOfUser(user)))"
-  GroupMembershipAuditEmission:
-    description: "グループのライフサイクル操作 (create / update / delete) とメンバーシップ操作\n(add / remove) は、状態を変化させた場合に必ず対応する domain event と\nAdminAuditEvent を emit しなければならない。冪等な no-op (既所属の add /\n非所属の remove) では emit しない。DeleteGroup の cascade では解除メンバー\nごとに GroupMemberRemoved を emit する。\n"
-    target: Group
-    always: (GroupCreate | GroupUpdate | GroupDelete | GroupMemberAdd | GroupMemberRemove) changes state => corresponding domain event and AdminAuditEvent are emitted
-  SoftDeletedUserBlockedFromAuth:
-    description: "PendingDeletion (soft-deleted) の User は Deleted と同じく認証系に対して\nfail-close でなければならない。login / authorize / token (refresh / exchange /\ndevice) / userinfo / introspect は Active でない限り成功してはならない。PII が\n温存されている点だけが Deleted との違いで、認証可否は変わらない。\n"
-    target: User
-    always: "user.status != Active => user is not authenticated and issues no new token"
-  AgentReferencesStayTenantLocal:
-    description: "Agent.owner_user_id と AgentCredentialBinding.client_id は同一 tenant_id 内の live aggregate だけを指す。\n反例: tenant A の Agent が tenant B の User や OAuth2Client を参照する = tenant isolation 違反。\n"
-    target: Agent
-    always: "agent.owner_user_id in Users(agent.tenant_id) && binding(agent).client_id in OAuth2Clients(agent.tenant_id)"
-  UserImportDryRunHasNoSideEffects:
-    description: dry_run の CSV インポートはユーザー、グループ、資格情報を変更せず、検証結果だけを job result に保存する。
-    target: UserImportJob
-    always: "job.mode == 'dry_run' => Users(job.tenant_id) are unchanged"
-permissions:
-  AdminUserRead:
-    description: 管理ユーザー情報の一覧・取得。
-    actor: User
-    resource: User
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
-  AdminUserCreate:
-    description: 管理者によるユーザー作成。
-    actor: User
-    resource: User
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
-  AdminUserUpdate:
-    description: 管理者によるプロフィール・roles・有効状態の更新。
-    actor: User
-    resource: User
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true"
-  AdminUserImport:
-    description: 管理者による CSV ユーザーインポートの投入と結果参照。job.tenant_id は actor.tenant_id に一致しなければならない。
-    actor: User
-    resource: UserImportJob
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminUserDelete:
-    description: "管理者によるユーザーの soft-delete (削除予約)。status を PendingDeletion\nに遷移させる。actor.id == resource.id かつ admin / system_admin role を持つ\n場合は use case 側で reject する (自爆防止)。\n"
-    actor: User
-    resource: User
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminUserRestore:
-    description: "管理者による PendingDeletion ユーザーの復元。status を Active に戻す。\nactor.id == resource.id かつ admin / system_admin role を持つ場合は use case\n側で reject する (自爆防止)。\n"
-    actor: User
-    resource: User
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminUserPurge:
-    description: "管理者によるユーザーの完全削除 (purge)。ADR-036 の anonymize cascade で\ntombstone 化する。actor.id == resource.id かつ admin / system_admin role を\n持つ場合は use case 側で reject する (自爆防止)。\n"
-    actor: User
-    resource: User
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminGroupsRead:
-    description: グループ情報の一覧・取得。
-    actor: User
-    resource: Group
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminGroupsWrite:
-    description: グループの作成・更新・削除とメンバーシップ操作。
-    actor: User
-    resource: Group
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminAgentsManage:
-    description: Agent の一覧・登録・更新・無効化・再稼働・緊急停止・削除と資格情報束縛操作。
-    actor: User
-    resource: Agent
-    allow_when: "admin in actor.roles && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+authorization:
+  resources:
+    UserDirectory:
+      description: テナント内の User 一覧・作成対象を表す singleton resource。
+    GroupDirectory:
+      description: テナント内の Group 一覧・作成対象を表す singleton resource。
+    AgentDirectory:
+      description: テナント内の Agent 一覧・登録対象を表す singleton resource。
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles'
+    AuthenticatedSelf:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.tenant_id
+    AuthenticatedSelf:
+      effect: permit
+      principal: AuthenticatedSelf
+      when: principal.id == resource.id
 scenarios:
   管理者は CSV を検証して有効な行だけをインポートできる:
-    goal: 管理者が副作用なしに CSV を検証し、修正可能な行エラーを確認してから有効行を作成する。
-    primary_actor: Administrator
-    scope: IdentityManagement
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のユーザー一覧を開いている"
     main_success:
       - "管理者が CSV を dry_run で投入する"
@@ -2014,20 +2253,19 @@ scenarios:
       - "管理者が修正済み CSV を apply で投入する"
       - "有効行だけが UserCreated として作成され、無効行は結果に残る"
     extensions:
-      - condition: CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超える
+      - at: 1
+        condition: CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超える
         steps:
           - "インポート投入は拒否される"
           - "エラー \"csv_too_large\" または \"too_many_rows\" または \"field_too_large\""
-      - condition: CSV のヘッダー列が preferred_username,email,name,roles と一致しない (password 列を含む場合を含む)
+      - at: 1
+        condition: CSV のヘッダー列が preferred_username,email,name,roles と一致しない (password 列を含む場合を含む)
         steps:
           - "インポート投入は拒否される"
           - "エラー \"invalid_header\""
   管理者はエージェントを登録し client 資格情報をバインドできる:
-    goal: 管理者が非人間エージェントを登録し、資格情報のバインドとライフサイクル操作を行う。
-    primary_actor: Administrator
-    scope: IdentityManagement
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のエージェント一覧を開いている"
     main_success:
       - "管理者 \"operator\" がエージェント \"batch-agent\" を登録する"
@@ -2036,27 +2274,22 @@ scenarios:
       - "管理者 \"operator\" がエージェント \"batch-agent\" を再有効化する"
       - "エージェント一覧に \"batch-agent\" が表示される"
     extensions:
-      - condition: 別テナントの client 資格情報をバインドする
+      - at: 2
+        condition: 別テナントの client 資格情報をバインドする
         steps:
           - "tenant_id \"acme\" の Agent に tenant_id \"default\" の client_id を指定する"
           - "エラー \"InvalidRequestError\""
   管理者は無効化したユーザーを再有効化できる:
-    goal: 管理者が無効化済みユーザーを再有効化する。
-    primary_actor: Administrator
-    scope: IdentityManagement
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "管理者がユーザー \"alice\" を無効化している"
     main_success:
       - "管理者がユーザー \"alice\" を再有効化する"
-      - "ユーザー \"alice\" の disabled_at は空である"
+      - "ユーザー \"alice\" の status は Active である"
       - "\"UserEnabled\" が発行される"
   管理者はユーザーを soft-delete し 猶予期間内に復元できる:
-    goal: 管理者が誤って削除したユーザーを、PII を失わずに 猶予期間内で復元する。
-    primary_actor: Administrator
-    scope: IdentityManagement
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のユーザー一覧を開いている"
       - "ユーザー \"alice\" は Active である"
     main_success:
@@ -2067,21 +2300,15 @@ scenarios:
       - "ユーザー \"alice\" の status は Active である"
       - "\"UserRestored\" が発行される"
   soft-delete されたユーザーはログインを拒否される:
-    goal: 削除予約中のユーザーが認証系に対して fail-close であることを確認する。
-    primary_actor: EndUser
-    scope: IdentityManagement
-    level: user_goal
-    preconditions:
+    actor: EndUser
+    given:
       - "ユーザー \"alice\" は PendingDeletion である"
     main_success:
       - "ユーザー \"alice\" が正しいパスワードでログインを試みる"
       - "ログインは拒否される"
   管理者はユーザーを完全削除できる:
-    goal: 管理者が削除予約中のユーザーを確定削除し PII を anonymize する。
-    primary_actor: Administrator
-    scope: IdentityManagement
-    level: user_goal
-    preconditions:
+    actor: TenantAdministrator
+    given:
       - "ユーザー \"alice\" は PendingDeletion である"
     main_success:
       - "管理者がユーザー \"alice\" を完全削除する"
@@ -2093,186 +2320,267 @@ scenarios:
         steps:
           - "soft-delete / 復元 / 完全削除のいずれも拒否される"
           - "エラー \"self_delete_forbidden\""
-objectives:
-  UserImportCsvLimits:
-    kind: security
-    target: UserImportJob
-    policy: bounded_input
-    value: 1048576
-    description: 同期 upload/stage の負荷を上限化する CSV インポート入力制限。
-  UserSoftDeleteGracePeriod:
-    kind: lifetime
-    target: User
-    ttl: 2592000s
-    description: "SoftDelete (PendingDeletion) から自動 Purge までの 猶予期間。\n業界標準 (Google / Microsoft / Apple) の 7〜30 日に合わせ 30 日を既定とする。\nこの期間内は Restore で Active に戻せる。経過後は lazy-on-access で Purge される。\n"
-user_experience:
-  localization:
-    supported_locales:
-      - ja
-      - en
-    account_portal:
-      requirement: Account の全画面、操作ダイアログ、状態ラベルは選択中の表示言語で表示する。API のメッセージ本文は翻訳せず、stable error code に対応する画面文言だけを翻訳する。
-      date_time_format: Account 画面に表示する日時は選択中の locale を用いて書式化する。
-  screens:
-    AdminUsers:
-      route: /admin/users
-      purpose: 管理者が所属テナントのユーザーを一覧・詳細表示し、プロフィール、ロール、アカウント状態、必須アクション、所属グループを管理する。
-      interfaces:
-        - ListAdminUsers
-        - GetAdminUser
-        - CreateAdminUser
-        - UpdateAdminUser
-        - DisableAdminUser
-        - EnableAdminUser
-        - DeleteAdminUser
-        - RestoreAdminUser
-        - SetUserRequiredAction
-        - ClearUserRequiredAction
-        - ImportAdminUsers
-        - GetAdminUserImport
-        - ListUserGroups
-        - AddGroupMember
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - delete_confirmation
-        - purge_confirmation
-        - import_dry_run_running
-        - import_dry_run_result
-        - import_apply_confirmation
-        - import_apply_running
-        - import_result
-        - access_denied
-        - service_error
-    AdminGroups:
-      route: /admin/groups
-      purpose: 管理者が複数ロールをまとめたグループを作成・更新・削除し、メンバーを追加・削除する。
-      interfaces:
-        - ListGroups
-        - GetGroup
-        - CreateGroup
-        - UpdateGroup
-        - DeleteGroup
-        - AddGroupMember
-        - RemoveGroupMember
-        - ListAdminUsers
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - delete_confirmation
-        - access_denied
-        - service_error
-    AdminAgents:
-      route: /admin/agents
-      purpose: 管理者が非人間プリンシパル(エージェント)を登録・更新し、有効化・無効化・強制終了・削除と client 資格情報のバインド・アンバインドを行う。
-      interfaces:
-        - ListAgents
-        - GetAgent
-        - RegisterAgent
-        - UpdateAgent
-        - DisableAgent
-        - EnableAgent
-        - KillAgent
-        - DeleteAgent
-        - BindAgentCredential
-        - UnbindAgentCredential
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - delete_confirmation
-        - access_denied
-        - service_error
-    AdminRoles:
-      route: /admin/roles
-      purpose: 管理ロールと各ロールに許可される操作、ロールを持つユーザー数を読み取り専用で一覧する。標準ロールは編集・削除できない。
-      states:
-        - ready
-        - loading
-        - empty
-        - access_denied
-        - service_error
-    AccountHome:
-      route: /account
-      purpose: end-userに自身のアカウント概要(最終ログイン、パスワード変更日時、MFA状態、未対応の必須アクション)を提示する。adminロールは含めない。
-      interfaces:
-        - GetAccountSummary
-      states:
-        - ready
-        - loading
-        - access_denied
-        - service_error
-    AccountProfile:
-      route: /account/profile
-      purpose: end-userが自身のプロフィール(表示名と editable_by_user=true の属性)を確認・更新する。
-      interfaces:
-        - GetUserProfile
-        - UpdateUserProfile
-      states:
-        - ready
-        - loading
-        - submitting
-        - access_denied
-        - service_error
-    AccountEmails:
-      route: /account/emails
-      purpose: end-userが primary email の変更を起票し、新アドレスへ確認リンクを送る。
-      interfaces:
-        - RequestEmailChange
-      states:
-        - ready
-        - submitting
-        - change_requested
-        - access_denied
-        - service_error
-    AccountEmailVerify:
-      route: /account/email/verify
-      purpose: メールで届いたワンタイムリンクを開き、新しいメールアドレスをアカウントへ確定する。
-      interfaces:
-        - ConfirmEmailChange
-      states:
-        - idle
-        - submitting
-        - done
-        - invalid_token
-        - service_error
-    AccountData:
-      route: /account/data
-      purpose: end-userが自身のプロフィールと同意を含むアカウントデータをエクスポートする。
-      interfaces:
-        - ExportAccountData
-      states:
-        - ready
-        - submitting
-        - exported
-        - access_denied
-        - service_error
-  transitions:
-    - from: AccountHome
-      to: AccountSecurity
-      trigger: security_selected
-    - from: AccountHome
-      to: AccountProfile
-      trigger: profile_selected
-    - from: AccountHome
-      to: AccountActivity
-      trigger: activity_selected
-    - from: AccountHome
-      to: AccountApplications
-      trigger: connected_apps_selected
-    - from: AccountEmails
-      to: AccountEmailVerify
-      trigger: email_verification_link_opened
-      interface: RequestEmailChange
-      external: true
-    - from: AdminUsers
-      to: AdminGroups
-      trigger: group_management_selected
-    - from: AdminUsers
-      to: AdminApplications
-      trigger: application_management_selected
+  ロールに応じて管理APIのアクセスが制御される:
+    actor: TenantAdministrator
+    given:
+      - "roles に \"admin\" を持つユーザー \"operator\" が認証済みである"
+    main_success:
+      - "管理者 \"operator\" が preferred_username \"bob\" のユーザーを作成する"
+      - "管理者 \"operator\" がユーザー一覧を取得する"
+      - "応答にユーザー \"bob\" が含まれる"
+      - "\"UserCreated\" が発行される"
+    extensions:
+      - at: 2
+        condition: admin ロールを持たないユーザーが管理 API を呼ぶ
+        steps:
+          - "roles が空のユーザー \"alice\" が認証済みである"
+          - "ユーザー \"alice\" がユーザー一覧を取得する"
+          - "エラー \"AccessDeniedError\""
+  管理者はグループを作成しユーザーを所属させると有効ロールにグループ由来ロールが乗る:
+    actor: TenantAdministrator
+    given:
+      - "roles=[\"admin\"] のユーザー \"operator\" が認証済みである"
+      - "roles が空のユーザー \"alice\" が同一テナントに存在する"
+    main_success:
+      - "管理者 \"operator\" が roles=[\"catalog:read\"] のグループ \"engineering\" を作成する"
+      - "\"GroupCreated\" が発行される"
+      - "管理者 \"operator\" がユーザー \"alice\" をグループ \"engineering\" に所属させる"
+      - "\"GroupMemberAdded\" が発行される"
+      - "ユーザー \"alice\" の所属グループを取得すると effective_roles に \"catalog:read\" が含まれる"
+      - "group_roles は \"catalog:read\" を含み direct_roles は空である"
+    extensions:
+      - at: 4
+        condition: 同じユーザーを同じグループへ再度所属させる
+        steps:
+          - "管理者 \"operator\" がユーザー \"alice\" をグループ \"engineering\" に再度所属させる"
+          - "\"GroupMemberAdded\" は再発行されない"
+  ユーザーは自分のプロフィール表示名を更新できる:
+    actor: AuthenticatedSelf
+    given:
+      - "ユーザー \"alice\" が認証済みでマイアカウントのプロフィールを開いている"
+    main_success:
+      - "ユーザー \"alice\" が表示名を更新する"
+      - 更新後のプロフィールに新しい表示名が反映される
+      - editable_by_user=false の属性は更新できない
+  ユーザーはメールアドレス変更を起票し確認リンクで確定できる:
+    actor: AuthenticatedSelf
+    given:
+      - "ユーザー \"alice\" が認証済みでメールアドレス画面を開いている"
+    main_success:
+      - "ユーザー \"alice\" が新しいメールアドレスへの変更を起票する"
+      - 新アドレスへ確認リンクが送られる
+      - "ユーザー \"alice\" が確認リンクのトークンで変更を確定する"
+      - primary email が新しいアドレスへ更新される
+  ユーザーは自分のアカウントデータをエクスポートできる:
+    actor: AuthenticatedSelf
+    given:
+      - "ユーザー \"alice\" が認証済みでデータとプライバシー画面を開いている"
+    main_success:
+      - "ユーザー \"alice\" がアカウントデータをエクスポートする"
+      - 応答に自分の profile と consents が含まれる
+  マイアカウントAPIは他人のリソースを返さない:
+    actor: AuthenticatedSelf
+    given:
+      - "ユーザー \"alice\" が認証済みである"
+    main_success:
+      - "ユーザー \"alice\" のマイアカウント概要を取得する"
+      - "応答は \"alice\" 自身のデータだけで roles を含まない"
+flows:
+  AdminUsers:
+    entry: AdminUsers
+    transitions:
+      - from: AdminUsers
+        action: list
+        interface: ListAdminUsers
+        to: AdminUsers
+      - from: AdminUsers
+        action: view
+        interface: GetAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: create
+        interface: CreateAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: update
+        interface: UpdateAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: disable
+        interface: DisableAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: enable
+        interface: EnableAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: delete
+        interface: DeleteAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: restore
+        interface: RestoreAdminUser
+        to: AdminUsers
+      - from: AdminUsers
+        action: set_required_action
+        interface: SetUserRequiredAction
+        to: AdminUsers
+      - from: AdminUsers
+        action: clear_required_action
+        interface: ClearUserRequiredAction
+        to: AdminUsers
+      - from: AdminUsers
+        action: import
+        interface: ImportAdminUsers
+        to: AdminUsers
+      - from: AdminUsers
+        action: view_import
+        interface: GetAdminUserImport
+        to: AdminUsers
+      - from: AdminUsers
+        action: view_groups
+        interface: ListUserGroups
+        to: AdminUsers
+      - from: AdminUsers
+        action: add_to_group
+        interface: AddGroupMember
+        to: AdminUsers
+      - from: AdminUsers
+        action: group_management_selected
+        to: AdminGroups
+      - from: AdminUsers
+        action: application_management_selected
+        external: true
+  AdminGroups:
+    entry: AdminGroups
+    transitions:
+      - from: AdminGroups
+        action: list
+        interface: ListGroups
+        to: AdminGroups
+      - from: AdminGroups
+        action: view
+        interface: GetGroup
+        to: AdminGroups
+      - from: AdminGroups
+        action: create
+        interface: CreateGroup
+        to: AdminGroups
+      - from: AdminGroups
+        action: update
+        interface: UpdateGroup
+        to: AdminGroups
+      - from: AdminGroups
+        action: delete
+        interface: DeleteGroup
+        to: AdminGroups
+      - from: AdminGroups
+        action: add_member
+        interface: AddGroupMember
+        to: AdminGroups
+      - from: AdminGroups
+        action: remove_member
+        interface: RemoveGroupMember
+        to: AdminGroups
+      - from: AdminGroups
+        action: view_users
+        interface: ListAdminUsers
+        to: AdminUsers
+  AdminAgents:
+    entry: AdminAgents
+    transitions:
+      - from: AdminAgents
+        action: list
+        interface: ListAgents
+        to: AdminAgents
+      - from: AdminAgents
+        action: view
+        interface: GetAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: register
+        interface: RegisterAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: update
+        interface: UpdateAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: disable
+        interface: DisableAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: enable
+        interface: EnableAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: kill
+        interface: KillAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: delete
+        interface: DeleteAgent
+        to: AdminAgents
+      - from: AdminAgents
+        action: bind_credential
+        interface: BindAgentCredential
+        to: AdminAgents
+      - from: AdminAgents
+        action: unbind_credential
+        interface: UnbindAgentCredential
+        to: AdminAgents
+  AdminRoles:
+    entry: AdminRoles
+    transitions:
+      - from: AdminRoles
+        action: list
+        interface: ListAdminUsers
+        to: AdminRoles
+  AccountHome:
+    entry: AccountHome
+    transitions:
+      - from: AccountHome
+        action: view_summary
+        interface: GetAccountSummary
+        to: AccountHome
+      - from: AccountHome
+        action: security_selected
+        to: AccountSecurity
+      - from: AccountHome
+        action: profile_selected
+        to: AccountProfile
+      - from: AccountHome
+        action: activity_selected
+        to: AccountActivity
+      - from: AccountHome
+        action: connected_apps_selected
+        to: AccountApplications
+  AccountProfile:
+    entry: AccountProfile
+    transitions:
+      - from: AccountProfile
+        action: view
+        interface: GetUserProfile
+        to: AccountProfile
+      - from: AccountProfile
+        action: update
+        interface: UpdateUserProfile
+        to: AccountProfile
+  AccountEmails:
+    entry: AccountEmails
+    transitions:
+      - from: AccountEmails
+        action: request_change
+        interface: RequestEmailChange
+        to: AccountEmailVerify
+      - from: AccountEmailVerify
+        action: verify_link_opened
+        interface: ConfirmEmailChange
+        external: true
+  AccountData:
+    entry: AccountData
+    transitions:
+      - from: AccountData
+        action: export
+        interface: ExportAccountData
+        to: AccountData

@@ -1,8 +1,9 @@
 # idmagic System — SCL
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# Migrated to SCL 3.0 by wi-209 (ADR-103). Runtime hardening / i18n tooling
+# configuration formerly under `objectives` now lives in ADR-105.
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: System
 glossary:
   Locale:
@@ -36,6 +37,18 @@ glossary:
     aliases:
       - API error message
       - error description
+  PersistedStateModel:
+    definition: created_at を持ち、作成後に現在状態が更新される場合は updated_at も持つ永続化状態モデルの規約。作成後は不可変で消費・削除のみされる記録モデルは updated_at を持たない。issued_at / granted_at / occurred_at / expires_at / revoked_at などのドメイン時刻は created_at を置き換えない。各 context のモデル定義はこの規約に従う。
+  EndUser:
+    definition: 認証済みまたは認証を試みる一般利用者。
+  Operator:
+    definition: IdP をデプロイ・起動時設定を行う運用者。
+  ResourceOwner:
+    definition: OAuth2/OIDC 認可フローでリソースの所有者として認可判断を行う利用者。EndUser と同一人物を OAuth2 文脈で指す呼称。
+  Administrator:
+    definition: テナント内または横断のリソースを管理する権限を持つ利用者。
+  APIConsumer:
+    definition: HTTP API を直接呼び出す外部クライアント。
 standards:
   WCAG22:
     title: Web Content Accessibility Guidelines 2.2
@@ -77,777 +90,155 @@ standards:
         section: Article 7(3)
         strength: MUST
         adoption: required
-        statement: ResourceOwnerが同意を撤回でき、撤回後の新規発行へ利用しない。
-        relates_to:
-          models:
-            - Consent
-          states:
-            - ConsentLifecycle
+        statement: ResourceOwner が同意を撤回でき、撤回後の新規発行へ利用しない。Consent / ConsentLifecycle は OAuth2 context が所有する。
       - id: GDPR-ERASURE
         section: Article 17
         strength: MUST
         adoption: required
-        statement: 削除要求後は法的保存義務を除くPIIを定義済み期間内に消去する。
-        relates_to:
-          objectives:
-            - PiiPurgeAfterDeletion
+        statement: 削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdentityManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う。
       - id: GDPR-PROCESSING-RECORDS
         section: Article 30
         strength: MUST
         adoption: required
-        statement: セキュリティ・認可イベントの監査記録を定義済み期間保持する。
-        relates_to:
-          objectives:
-            - AuditLogRetention
-invariants:
-  PersistedModelTimestamps:
-    description: "永続化される状態モデルは作成時刻を持つ。作成後に現在状態が更新されるモデルは更新時刻も持つ。作成後は不可変で、消費または削除のみされる記録モデルは更新時刻を持たない。issued_at / granted_at / occurred_at / expires_at / revoked_at / first_seen / last_seen などのドメイン時刻は作成時刻を置き換えない。イベントログは履歴・監査の真実だが、created_at / updated_at は現在状態の検索・表示・同期・運用確認のためのモデル属性である。"
-    target: PersistedStateModel
-    always: "persisted_model has created_at and (mutable_persisted_model implies has updated_at) and (immutable_record implies not has updated_at)"
-  BackendErrorTextIsEnglish:
-    description: すべての BackendErrorText は英語で固定され、表示言語に依存しない。エラーコード、HTTP status、プロトコルで規定された error 値はこの規則によって変更しない。
-    target: BackendErrorResponse
-    always: "backend_error_text is English and backend_error_text is independent_of DisplayLanguage and error_code is unchanged and http_status is unchanged"
-  FrontendLocalizationCompleteness:
-    description: すべての利用者向けUI文言、aria label、空状態、dialog、状態ラベル、UI起因のエラーは、各画面または共通部品に近接したja/en辞書から解決される。日時と数値は選択済みDisplayLanguageで書式化する。
-    target: FrontendUIScreen
-    always: "every user_visible_ui_string is resolved_from_locale_dictionary and every supported_locale has_the_same_translation_keys and date_time_and_number_formatting uses DisplayLanguage"
+        statement: セキュリティ・認可イベントの監査記録を定義済み期間保持する。保持期間は Audit context が所有する。
 interfaces:
   BackendErrorResponse:
-    description: バックエンドの HTTP API とプロトコル endpoint がエラー時に返す共通の外部契約。message、error_description、detail、またはプレーンテキスト本文のいずれも BackendErrorText である。
+    description: |
+      バックエンドの HTTP API とプロトコル endpoint がエラー時に返す共通の外部契約。
+      message、error_description、detail、またはプレーンテキスト本文のいずれも
+      BackendErrorText であり、表示言語 (DisplayLanguage) に関わらず常に英語で固定する。
+      個別 endpoint の error code と HTTP status はこの契約によって変更しない。
     output:
       error: { type: String, optional: true }
       message: { type: String, optional: true }
       error_description: { type: String, optional: true }
       detail: { type: String, optional: true }
+    ensures:
+      - text_is_english(output.message)
+      - text_is_english(output.error_description)
+      - text_is_english(output.detail)
+    access: internal
 scenarios:
   明示的に選択した表示言語でホスト認証画面が描画される:
-    goal: EndUser が言語切り替え UIで Locale を明示的に選択し、対応する文言でホスト認証画面が表示される。
-    primary_actor: EndUser
-    scope: System
-    level: user_goal
-    preconditions:
-      - "未認証セッションで Login 画面を表示している"
+    actor: EndUser
+    given:
+      - 未認証セッションで Login 画面を表示している
     main_success:
       - "EndUser が表示言語 \"en\" を選択する"
       - Login 画面の文言が en 辞書で表示される
       - 選択した Locale がブラウザに保存され、以後のアクセスで保存済み設定として優先される
   未対応localeは既定localeにフォールバックする:
-    goal: ブラウザ言語が未対応 Locale であっても、既定 locale の辞書で画面が表示される。
-    primary_actor: EndUser
-    scope: System
-    level: user_goal
-    preconditions:
+    actor: EndUser
+    given:
       - "ブラウザの言語設定が \"fr\" である"
-      - "表示言語の明示選択も保存済み設定も存在しない"
+      - 表示言語の明示選択も保存済み設定も存在しない
     main_success:
-      - "EndUser が Login 画面を表示する"
-      - 画面の文言は既定 locale \"en\" の辞書で表示される
+      - EndUser が Login 画面を表示する
+      - 画面の文言は既定 locale "en" の辞書で表示される
   起動時設定の既定localeがフォールバックに使われる:
-    goal: Operator がアプリケーション起動時に表示言語の最終フォールバックを設定できる。
-    primary_actor: Operator
-    scope: System
-    level: user_goal
-    preconditions:
-      - "表示言語の明示選択、ui_localesヒント、保存済み設定、対応ブラウザ言語が存在しない"
+    actor: Operator
+    given:
+      - 表示言語の明示選択、ui_locales ヒント、保存済み設定、対応ブラウザ言語が存在しない
     main_success:
       - "Operator が VITE_DEFAULT_LOCALE を \"ja\" に設定してアプリケーションを起動する"
-      - "EndUser が画面を表示する"
-      - "画面の文言は ja 辞書で表示される"
+      - EndUser が画面を表示する
+      - 画面の文言は ja 辞書で表示される
     extensions:
-      - condition: VITE_DEFAULT_LOCALE が未設定または未対応値である
+      - at: 1
+        condition: VITE_DEFAULT_LOCALE が未設定または未対応値である
         steps:
           - "画面の文言は FallbackLocale \"en\" の辞書で表示される"
   OIDC ui_localesヒントにより表示言語が決まる:
-    goal: 認可リクエストの ui_locales ヒントに従い、明示選択も保存済み設定も無い場合にホスト認証画面の表示言語が決まる。
-    primary_actor: ResourceOwner
-    scope: System
-    level: user_goal
-    preconditions:
-      - "未認証セッションで表示言語の明示選択も保存済み設定も存在しない"
+    actor: ResourceOwner
+    given:
+      - 未認証セッションで表示言語の明示選択も保存済み設定も存在しない
     main_success:
       - "\"web-app\" として ui_locales \"en\" で認可リクエストを送信する"
       - Login 画面の文言は en 辞書で表示される
     extensions:
-      - condition: 表示言語が既に明示選択済みの場合はui_localesヒントで上書きされない
+      - at: 1
+        condition: 表示言語が既に明示選択済みの場合は ui_locales ヒントで上書きされない
         steps:
           - "EndUser が表示言語 \"ja\" を明示的に選択済みである"
           - "\"web-app\" として ui_locales \"en\" で認可リクエストを送信する"
           - Login 画面の文言は ja 辞書で表示される
   管理者が選択した表示言語で管理画面が表示される:
-    goal: Administrator が選択した Locale で管理画面の文言が表示される。
-    primary_actor: Administrator
-    scope: System
-    level: user_goal
-    preconditions:
+    actor: Administrator
+    given:
       - "roles に \"admin\" を持つ Administrator が認証済みで AdminDashboard を表示している"
     main_success:
       - "Administrator が表示言語 \"en\" を選択する"
       - AdminDashboard の文言が en 辞書で表示される
   選択した表示言語で全UI画面が描画される:
-    goal: EndUser または Administrator がjaまたはenを選択したとき、shared shell、hosted auth、account、admin、system のすべての画面とその dialog、空状態、状態表示、支援技術向けラベルを同じ言語で利用できる。
-    primary_actor: EndUser
-    scope: System
-    level: user_goal
-    preconditions:
-      - "対応する画面へ遷移できる認証状態である"
+    actor: EndUser
+    given:
+      - 対応する画面へ遷移できる認証状態である
     main_success:
       - "EndUser または Administrator が表示言語 \"en\" を選択する"
-      - "任意のUI画面を表示する"
-      - "画面、shared shell、dialog、empty state、aria label、状態ラベルがen辞書で表示される"
-      - "日時および数値がenの書式で表示される"
+      - 任意のUI画面を表示する
+      - 画面、shared shell、dialog、empty state、aria label、状態ラベルがen辞書で表示される
+      - 日時および数値がenの書式で表示される
     extensions:
-      - condition: jaを選択する
+      - at: 1
+        condition: jaを選択する
         steps:
-          - "同じ要素がja辞書およびjaの書式で表示される"
-      - condition: 翻訳keyが欠落している
+          - 同じ要素がja辞書およびjaの書式で表示される
+      - at: 3
+        condition: 翻訳keyが欠落している
         steps:
-          - "FallbackLocale (en) の対応keyを表示する"
+          - FallbackLocale (en) の対応keyを表示する
   既知のバックエンドエラーコードはUIで翻訳される:
-    goal: UI利用者がstableな既知error codeの失敗を選択した表示言語で理解でき、未知のバックエンドメッセージの意味は改変されない。
-    primary_actor: EndUser
-    scope: System
-    level: user_goal
-    preconditions:
-      - "UI操作に対しバックエンドがエラー応答を返す"
+    actor: EndUser
+    given:
+      - UI操作に対しバックエンドがエラー応答を返す
     main_success:
-      - "バックエンドが既知のstable error codeを返す"
-      - "UIが選択済みDisplayLanguageの辞書にあるerror codeの文言を表示する"
+      - バックエンドが既知のstable error codeを返す
+      - UIが選択済みDisplayLanguageの辞書にあるerror codeの文言を表示する
     extensions:
-      - condition: error codeが未知、またはbackendが任意のmessageだけを返す
+      - at: 1
+        condition: error codeが未知、またはbackendが任意のmessageだけを返す
         steps:
-          - "UIはバックエンドmessageを英語のまま表示する"
+          - UIはバックエンドmessageを英語のまま表示する
   バックエンドAPIエラーは英語で返る:
-    goal: API Consumer が表示言語に関係なく、安定した error code と英語のエラー本文を受け取る。
-    primary_actor: APIConsumer
-    scope: System
-    level: user_goal
+    actor: APIConsumer
     main_success:
-      - "APIConsumer が不正な JSON を HTTP API に送信する"
-      - "System は既存の error code と HTTP status を返す"
-      - "System は英語の message を返す"
+      - APIConsumer が不正な JSON を HTTP API に送信する
+      - System は既存の error code と HTTP status を返す
+      - System は英語の message を返す
     extensions:
-      - condition: OAuth/OIDC redirect endpoint が要求を拒否する
+      - at: 1
+        condition: OAuth/OIDC redirect endpoint が要求を拒否する
         steps:
-          - "System は既存の OAuth error code を返す"
-          - "System は英語の error_description を返す"
-      - condition: 未知の内部エラーが発生する
+          - System は既存の OAuth error code を返す
+          - System は英語の error_description を返す
+      - at: 1
+        condition: 未知の内部エラーが発生する
         steps:
-          - "System は既存の error code と HTTP status を維持する"
-          - "System は英語のエラー本文を返す"
-objectives:
-  DatabaseResilience:
-    kind: security
-    description: "PostgreSQL への接続に対して、プール調整(MaxConns, MinConns, MaxConnIdleTime, MaxConnLifetime)を構成可能とし、接続瞬断時のリトライポリシー、タイムアウト、およびサーキットブレイカーによる障害隔離を提供する。サーキットがオープンした際、リクエストは即座に503エラーで遮断されるが、JWKS などの静的・キャッシュ可能なエンドポイントはメモリキャッシュを利用して縮退運転(グレイスフル劣化)を継続する。"
-    policy: database_resilience
-    target: DatabaseClient
-    value:
-      max_conns: 50
-      min_conns: 2
-      max_conn_idle_time_seconds: 1800
-      max_conn_lifetime_seconds: 3600
-      timeout_seconds: 5
-      circuit_breaker:
-        failure_threshold: 0.5
-        cooldown_seconds: 30
-      retry:
-        max_attempts: 3
-        backoff_factor: 2.0
-  ValkeyResilience:
-    kind: security
-    description: "Valkey への接続および操作に対してタイムアウトを設定し、障害発生時にサーキットブレイカーによる隔離を行う。Valkey 障害によるハングを防止し、即座の 503 エラーによるフェイルファストまたはメモリへの縮退フォールバックを行う。"
-    policy: valkey_resilience
-    target: ValkeyClient
-    value:
-      timeout_seconds: 2
-      circuit_breaker:
-        failure_threshold: 0.5
-        cooldown_seconds: 15
-  CancellationConsistency:
-    kind: security
-    description: "HTTP request context の client abort は、read-only endpoint では処理中断に使ってよい。一方で mutation endpoint は operation context policy を持ち、認可コード、refresh token family、consent、session、audit/outbox が観測不能な中間状態に残らないよう rollback / complete / detached completion のいずれかを明示する。"
-    policy: http_operation_context
-    target: HTTPMutationOperation
-    value:
-      read_only_context: request
-      mutation_context: without_cancel_with_timeout
-      completion_modes:
-        - rollback
-        - complete
-        - detached_completion
-      inconsistent_completion_rate: "0"
-  ClientAbortLogClassification:
-    kind: security
-    description: "client abort 由来の context.Canceled は server error として記録・集計せず、server timeout / upstream timeout と別 label で観測する。"
-    policy: http_cancel_classification
-    target: HTTPErrorHandling
-    value:
-      metric: http_request_aborts_total
-      labels:
-        - client_aborted
-        - server_timeout
-        - upstream_timeout
-      client_aborted_counts_as_server_error: false
-  RequestFaultIsolation:
-    kind: security
-    description: "いずれかの HTTP ハンドラで panic が発生しても、その障害は単一リクエストに局所化する。middleware が panic を捕捉して 500 に変換し stack とともに構造化ログへ記録し、プロセスは継続稼働する。併せて全リクエストに request_id を付与し、レスポンスヘッダとログコンテキストへ伝播する。request_id は secure-by-default で常にアプリが自前生成し、受信 X-Request-ID は運用者が REQUEST_ID_TRUST_INBOUND で明示的にオプトインしたときだけ (信頼できる境界プロキシが所有・消毒している前提で) 再利用する。信頼するか否かに関わらず受信値はサニタイズ (許可文字と長さ制限) してヘッダ/ログインジェクションを防ぐ。panic 由来のみを server error として扱い、client abort (context.Canceled) は ClientAbortLogClassification に従い server error に数えない。"
-    policy: request_fault_isolation
-    target: HTTPRequestMiddleware
-    value:
-      panic_recovery: true
-      panic_response_status: 500
-      panic_counts_as_server_error: true
-      process_continues_after_panic: true
-      request_id_header: X-Request-ID
-      request_id_self_generated_by_default: true
-      request_id_inbound_trust: opt_in
-      request_id_inbound_trust_flag: REQUEST_ID_TRUST_INBOUND
-      request_id_inbound_sanitized: true
-      request_id_in_response: true
-      request_id_in_log_context: true
-  HTTPServerHardening:
-    kind: security
-    description: "インターネットに露出する境界 HTTP サーバとして、基盤 http.Server に read_header / read / write / idle タイムアウトを設定し、リクエストボディに上限を課す。これにより slowloris 等の低速接続によるコネクション枯渇や、巨大ボディによるメモリ枯渇といった単純なリソース枯渇 DoS (gosec G112 / CWE-400) に対する下限の耐性を確保する。値は env で上書きできるが既定は本番安全側に倒す。ボディ上限超過は 413 で拒否する。volumetric / TLS ハンドシェイク DoS の主防御は前段プロキシが担い、本目標はプロキシ非依存の多層防御としてアプリ自身のホップを守る (secure-by-default)。"
-    policy: http_server_hardening
-    target: HTTPBoundaryServer
-    value:
-      read_header_timeout_seconds: 10
-      read_timeout_seconds: 30
-      write_timeout_seconds: 60
-      idle_timeout_seconds: 120
-      max_body_bytes: 1048576
-      env_overridable: true
-      oversize_body_status: 413
-  BuildInfo:
-    kind: security
-    description: "稼働中のバイナリの一意性を確定するため、ビルド時のメタデータ（version、git_commit、build_date、go_version）を埋め込み、露出する。"
-    policy: version_reporting
-    target: SystemBuildVersion
-    value:
-      fields:
-        - version
-        - git_commit
-        - build_date
-        - go_version
-      exposure:
-        - logs
-        - otel_resource
-  StructuredApplicationLog:
-    kind: security
-    description: "アプリケーションログ (debug/info/warn/error) は監査ログと分離し、stdout に構造化 JSON Lines として出力する。各行は必須フィールドを持ち、OTel span context 有効時は trace_id / span_id で trace と相関する。x-pii フィールド (email 等) はアプリケーションログに平文出力しない。"
-    policy: application_logging
-    target: ApplicationLogRecord
-    value:
-      sink: stdout
-      format: json_lines
-      levels:
-        - debug
-        - info
-        - warn
-        - error
-      required_fields:
-        - timestamp
-        - level
-        - service
-        - message
-      correlation_fields:
-        - trace_id
-        - span_id
-      pii_in_application_log: false
-  SecurityResponseHeaders:
-    kind: security
-    description: "境界 HTTP サーバが返す全レスポンスに、セキュリティレスポンスヘッダを middleware で一元的に付与する (secure-by-default)。X-Content-Type-Options: nosniff で MIME スニッフィングを止め、Referrer-Policy: no-referrer でリファラ漏洩を防ぎ、Content-Security-Policy で default-src を 'none' に閉じる (base CSP は script-src を持たず全 script を拒否)。'unsafe-inline' には依存しない。SAML ACS / WS-Fed への自動 POST フォームが必要とする固定のインライン submit script は、その内容を CSP hash (sha256) で当該レスポンスにのみ明示的に許可する (nonce は用いない)。CSP は enforce と report-only を CSP_REPORT_ONLY で切替でき、CSP_REPORT_URI で違反レポート収集先を指定して段階導入できる。Strict-Transport-Security は TLS 終端層が所有すべきヘッダで、TLS を終端している前提が要る。既定 (開発 http) では抑制し、HSTS_ENABLED で明示的にオプトインしたときだけ付与する (エッジプロキシへの委譲を許容)。CSP と frame-ancestors は per-route の機微判断を要しプロキシへ委譲できないためアプリが所有する (詳細は ADR)。"
-    policy: http_security_headers
-    target: HTTPBoundaryResponse
-    value:
-      applies_to: all_backend_responses
-      x_content_type_options: nosniff
-      referrer_policy: no-referrer
-      csp_default_src: none
-      csp_base_uri: none
-      csp_form_action: self
-      csp_inline_script_allowance: hash
-      csp_unsafe_inline: false
-      csp_report_only_toggle: CSP_REPORT_ONLY
-      csp_report_uri_env: CSP_REPORT_URI
-      hsts_owned_by_tls_terminator: true
-      hsts_toggle: HSTS_ENABLED
-      hsts_suppressed_on_dev_http: true
-      hsts_max_age_seconds: 31536000
-      hsts_include_subdomains: true
-  FrameAncestorsPolicy:
-    kind: security
-    description: "login / consent / account portal をはじめ IdP が返す全レスポンスは frame-ancestors 'none' (併せて X-Frame-Options: DENY) とし、iframe 埋め込みを禁止して consent / login のクリックジャッキング (同意の乗っ取り) を防ぐ。frame-ancestors の per-route 判断はアプリの知識でありプロキシへ委譲できない (secure-by-default でアプリ単体で成立させる)。SAML ACS / WS-Fed への自動 POST フォームは cross-origin へ form 送信するため、CSP form-action にのみ送信先を明示的に許可し、frame-ancestors は 'none' を維持する。"
-    policy: frame_ancestors
-    target: HTTPBoundaryResponse
-    value:
-      frame_ancestors: none
-      x_frame_options: DENY
-      applies_to: all_backend_responses
-      auto_post_form_action_allowlist: destination_only
-  SharedEphemeralStateHA:
-    kind: security
-    description: "複数レプリカで水平スケールする本番構成 (PERSISTENCE=postgres_valkey) では、ephemeral / short-lived な状態を全てレプリカ間で共有するストア (Valkey) に載せ、per-replica のプロセスメモリに残さない。共有対象は authorization request / authorization code / PAR / device code / login session / DPoP・client-assertion replay / access-token denylist / login throttle。login throttle をプロセスメモリに残すと閾値がレプリカ数倍に緩むため (LoginThrottlePolicy 参照)、これも共有ストアに載せる。refresh token / audit event / auth-event bucket は Postgres が durable な共有ストアとして所有する。memory adapter は共有ストアを持たず単一レプリカ / テスト専用であり、複数レプリカ運用では Valkey (postgres_valkey ランタイム) が必須である。共有ストア到達不能時の縮退方針は状態ごとに定め、login throttle は fail_closed とする。"
-    policy: shared_ephemeral_state_ha
-    target: RuntimeTopology
-    value:
-      multi_replica_requires_shared_store: true
-      shared_store: valkey
-      shared_in_valkey:
-        - authorization_request
-        - authorization_code
-        - par
-        - device_code
-        - login_session
-        - dpop_replay
-        - client_assertion_replay
-        - access_token_denylist
-        - login_throttle
-      durable_in_postgres:
-        - refresh_token
-        - audit_event
-        - auth_event_bucket
-      memory_adapter_scope: single_replica_or_test
-  HealthProbe:
-    kind: security
-    description: "liveness (生存), readiness (トラフィック受入可否), startup (起動完了) のプローブを個別のエンドポイント /livez, /readyz, /startupz に分離する。既存 /health は起動構成ラベル返却用に維持する。liveness は自己回復不能な致命的デッドロック等のみで fail させ、一時的な依存障害では fail させない。startup は初期化完了時に healthy となる。"
-    policy: health_probe_separation
-    target: HTTPBoundaryServer
-    value:
-      liveness_path: /livez
-      readiness_path: /readyz
-      startup_path: /startupz
-      legacy_path: /health
-  ReadinessCheck:
-    kind: security
-    description: "readiness プローブは PostgreSQL や Valkey などの必須依存に対する疎通（Ping）を短いタイムアウト（既定 1s）で並列実行する。?verbose クエリで各依存の健康状態（healthy, degraded, unavailable）を詳細に列挙する。"
-    policy: dependency_health_check
-    target: HTTPBoundaryServer
-    value:
-      check_timeout_seconds: 1
-      dependencies:
-        - postgres
-        - valkey
-      status_vocabulary:
-        - healthy
-        - degraded
-        - unavailable
-  GracefulDrain:
-    kind: security
-    description: "SIGTERM または SIGINT 受信時、readiness プローブを即座に unavailable に落とし、ロードバランサが経路から外すためのドレイン猶予期間（既定 5秒、環境変数 DRAIN_GRACE_PERIOD_SECONDS で可変）だけ待機してから HTTP サーバをシャットダウンする。"
-    policy: connection_graceful_drain
-    target: HTTPBoundaryServer
-    value:
-      default_drain_grace_period_seconds: 5
-      env_drain_grace_period: DRAIN_GRACE_PERIOD_SECONDS
-  TranslationKeyIntegrity:
-    kind: security
-    description: "ja / en 辞書は translation key の完全な対を持つ。ビルドまたはテストで、一方の辞書にのみ存在するkey、コードから参照されるが辞書に存在しない key を検出して失敗させる。どちらの辞書からも参照されない未使用 key は警告として報告する。"
-    policy: translation_key_parity_check
-    target: FrontendI18nDictionary
-    value:
-      fail_on_missing_key: true
-      fail_on_untranslated_key: true
-      warn_on_unused_key: true
-  FrontendLocalizationCoverage:
-    kind: security
-    description: "利用者向けの画面文字列はfeature-localまたは共通辞書にja/enの対として存在し、ja/enの代表画面描画と直書き検出により回帰を検出する。"
-    policy: frontend_localization_coverage
-    target: FrontendUIScreen
-    value:
-      supported_locales:
-        - ja
-        - en
-      require_feature_local_dictionaries: true
-      require_representative_locale_rendering_tests: true
-      require_user_visible_literal_detection: true
-  BackendErrorLanguageConsistency:
-    kind: security
-    description: "バックエンドが外部へ送信する error text は英語のみとし、レスポンス境界で日本語を検出した場合は英語の安全な既定文言へ置換する。error code と HTTP status は維持する。"
-    policy: backend_error_text_english_only
-    target: BackendErrorResponse
-    value:
-      language: en
-      preserve_error_code: true
-      preserve_http_status: true
-user_experience:
-  accessibility:
-    standard: WCAG22
-    level: AA
-  locales:
-    - ja
-    - en
-  screens:
-    AdminDashboard:
-      route: /admin
-      purpose: 管理者にテナントのユーザー数・登録アプリケーション数・付与済み同意数・直近24時間の監査イベント数と最近のイベントを集約表示する。
-      interfaces:
-        - ListAdminUsers
-        - ListAdminOAuth2Clients
-        - ListAdminConsents
-        - ListAdminAuditEvents
-      states:
-        - ready
-        - loading
-        - empty
-        - access_denied
-        - reauthenticating
-        - service_error
-  transitions:
-    - from: AdminDashboard
-      to: AdminUsers
-      trigger: user_management_selected
-    - from: AdminDashboard
-      to: AdminApplications
-      trigger: application_management_selected
-  requirements:
-    - id: UX-CSRF
-      category: security
-      adoption: required
-      statement: 状態変更を伴うブラウザAPIはSameSite cookieとリクエストトークンを照合してCSRFを拒否する。
-      screens:
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - ForgotPassword
-        - ResetPassword
-        - ChangePassword
-        - AccountProfile
-        - AccountEmails
-        - AccountEmailVerify
-        - AccountSecurity
-        - AccountActivity
-        - AccountApplications
-        - AdminUsers
-        - AdminGroups
-        - AdminAgents
-        - AdminApplications
-        - AdminAuthorizationDetailTypes
-        - AdminConsents
-        - AdminKeys
-        - AdminTenants
-        - AdminTenantAttributes
-        - AdminSettings
-        - AdminEntraFederation
-      interfaces:
-        - SubmitBrowserLogin
-        - SubmitBrowserTotp
-        - SubmitBrowserConsent
-        - SubmitBrowserDevice
-        - RequestPasswordReset
-        - ResetPasswordWithToken
-        - ChangePassword
-        - UpdateUserProfile
-        - RequestEmailChange
-        - ConfirmEmailChange
-        - ConfirmTotpEnrollment
-        - RemoveTotpFactor
-        - RevokeMySession
-        - RevokeMyOtherSessions
-        - RevokeMyConsent
-        - CreateAdminUser
-        - UpdateAdminUser
-        - DisableAdminUser
-        - EnableAdminUser
-        - DeleteAdminUser
-        - CreateGroup
-        - UpdateGroup
-        - DeleteGroup
-        - AddGroupMember
-        - RemoveGroupMember
-        - RegisterAgent
-        - UpdateAgent
-        - DisableAgent
-        - EnableAgent
-        - KillAgent
-        - DeleteAgent
-        - CreateAdminApplication
-        - UpdateAdminApplication
-        - DeleteAdminApplication
-        - RevokeAdminConsent
-        - RotateTenantSigningKey
-        - DisableTenantKey
-        - CreateTenant
-        - UpdateTenant
-        - DisableTenant
-        - EnableTenant
-        - UpdateTenantUserAttributeSchema
-        - UpdateAdminSettings
-        - CreateAdminOAuth2Client
-        - UpdateAdminOAuth2Client
-        - DeleteAdminOAuth2Client
-      standards:
-        - RFC9700
-        - FAPI2SecurityProfile
-    - id: UX-NO-STORE
-      category: privacy
-      adoption: required
-      statement: 認証トランザクション、CSRF token、user_code、管理対象データ、自己アカウントデータを含むブラウザAPI応答は保存キャッシュを禁止する。
-      screens:
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - AccountHome
-        - AccountProfile
-        - AccountSecurity
-        - AccountActivity
-        - AccountApplications
-        - AccountData
-        - AdminUsers
-        - AdminGroups
-        - AdminAgents
-        - AdminApplications
-        - AdminConsents
-        - AdminAuditEvents
-        - AdminKeys
-        - AdminTenants
-        - AdminSettings
-      interfaces:
-        - GetBrowserTransaction
-        - GetBrowserDeviceContext
-        - GetAccountSummary
-        - GetUserProfile
-        - GetAccountSecurity
-        - ListMySessions
-        - ListMyConsents
-        - ExportAccountData
-        - ListAdminUsers
-        - ListGroups
-        - ListAgents
-        - ListAdminApplications
-        - ListAdminConsents
-        - ListAdminAuditEvents
-        - ListAdminKeys
-        - ListTenants
-        - ListAdminOAuth2Clients
-        - GetAdminOAuth2Client
-        - CreateAdminOAuth2Client
-        - UpdateAdminOAuth2Client
-    - id: UX-NO-CREDENTIAL-ECHO
-      category: privacy
-      adoption: required
-      statement: password、token、内部request idを画面、URL、エラーメッセージへ表示しない。
-      screens:
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - Status
-        - Callback
-    - id: UX-ADMIN-TENANT-SCOPE
-      category: security
-      adoption: required
-      statement: 管理画面は現在のrealm prefixを維持し、所属テナント内のリソース(User、Group、Agent、Application/Client、Consent、AuditEvent、Key、設定、属性スキーマ)だけを表示・変更する。
-      screens:
-        - AdminDashboard
-        - AdminUsers
-        - AdminGroups
-        - AdminAgents
-        - AdminRoles
-        - AdminApplications
-        - AdminAuthorizationDetailTypes
-        - AdminConsents
-        - AdminAuditEvents
-        - AdminKeys
-        - AdminTenantAttributes
-        - AdminSettings
-        - AdminEntraFederation
-      interfaces:
-        - ListAdminUsers
-        - ListGroups
-        - ListAgents
-        - ListAdminApplications
-        - ListAuthorizationDetailTypes
-        - ListAdminConsents
-        - ListAdminAuditEvents
-        - ListAdminKeys
-        - GetTenantUserAttributeSchema
-        - GetAdminSettings
-        - ListAdminOAuth2Clients
-        - GetAdminOAuth2Client
-        - CreateAdminOAuth2Client
-        - UpdateAdminOAuth2Client
-        - DeleteAdminOAuth2Client
-    - id: UX-ACCOUNT-SELF-SCOPE
-      category: security
-      adoption: required
-      statement: マイアカウント画面は呼び出しユーザー自身のリソースだけを表示・変更し、他者のプロフィール、セッション、同意、データへはアクセスできない。
-      screens:
-        - AccountHome
-        - AccountProfile
-        - AccountEmails
-        - AccountSecurity
-        - AccountActivity
-        - AccountApplications
-        - AccountData
-      interfaces:
-        - GetAccountSummary
-        - GetUserProfile
-        - UpdateUserProfile
-        - RequestEmailChange
-        - ConfirmEmailChange
-        - GetAccountSecurity
-        - ListMySessions
-        - RevokeMySession
-        - RevokeMyOtherSessions
-        - ListMyConsents
-        - RevokeMyConsent
-        - ExportAccountData
-    - id: UX-PORTAL-SESSION-RECOVERY
-      category: usability
-      adoption: required
-      statement: first-partyの管理コンソール/アカウントポータルは、保持するaccess tokenを提示したAPI呼び出しが401または失効セッションを返したとき行き止まりにしない。保持しているaccess token/refresh tokenとOIDC callback stateを破棄し、直前に開いていた画面への同一オリジン相対return_toを保ったまま再認可を1回だけ開始し、再ログイン完了まで管理APIを再試行しない。再認可後は元の画面パスへ復帰し、復旧できない場合も再ログイン導線を提示する。return_toは相対かつ同一オリジンに限定しopen redirectを防ぐ。
-      screens:
-        - AdminDashboard
-        - AccountHome
-      interfaces:
-        - Authorize
-        - GetBrowserTransaction
-        - SubmitBrowserLogin
-      standards:
-        - RFC9700
-    - id: UX-KEYBOARD
-      category: accessibility
-      adoption: required
-      statement: すべての入力、表示切替、許可、拒否、再試行をキーボードだけで操作可能にする。
-      screens:
-        - Home
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - Status
-        - Callback
-        - ForgotPassword
-        - ResetPassword
-        - AccountHome
-        - AccountApps
-        - AccountProfile
-        - AccountEmails
-        - AccountEmailVerify
-        - AccountSecurity
-        - ChangePassword
-        - AccountActivity
-        - AccountApplications
-        - AccountData
-        - AdminDashboard
-        - AdminUsers
-        - AdminGroups
-        - AdminAgents
-        - AdminRoles
-        - AdminApplications
-        - AdminAuthorizationDetailTypes
-        - AdminConsents
-        - AdminAuditEvents
-        - AdminKeys
-        - AdminTenants
-        - AdminTenantAttributes
-        - AdminSettings
-        - AdminEntraFederation
-      standards:
-        - WCAG22
-    - id: UX-FOCUS
-      category: accessibility
-      adoption: required
-      statement: フォーカス位置を常に視認可能にし、画面遷移後は主見出しまたは最初の入力へ論理的に到達可能にする。
-      screens:
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - Status
-        - Callback
-      standards:
-        - WCAG22
-    - id: UX-LABELS-ERRORS
-      category: accessibility
-      adoption: required
-      statement: 入力には永続的なラベルを関連付け、エラーを色だけに依存せず対象と修正方法が分かる文章で示す。
-      screens:
-        - Login
-        - Totp
-        - Device
-      standards:
-        - WCAG22
-    - id: UX-STATUS-ANNOUNCEMENT
-      category: accessibility
-      adoption: required
-      statement: 非同期送信の失敗と認証結果を支援技術へ通知し、送信中は重複操作を防ぐ。
-      screens:
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - Status
-        - Callback
-        - ForgotPassword
-        - ResetPassword
-        - ChangePassword
-        - AccountProfile
-        - AccountEmails
-        - AccountEmailVerify
-        - AccountSecurity
-        - AccountActivity
-        - AccountApplications
-        - AccountData
-        - AdminUsers
-        - AdminGroups
-        - AdminAgents
-        - AdminApplications
-        - AdminAuthorizationDetailTypes
-        - AdminConsents
-        - AdminKeys
-        - AdminTenants
-        - AdminTenantAttributes
-        - AdminSettings
-        - AdminEntraFederation
-      standards:
-        - WCAG22
-    - id: UX-LOCALE
-      category: localization
-      adoption: required
-      statement: "すべてのUI screen、shared shell、dialog、form、empty state、aria label、状態ラベルおよびUI起因のエラーはjaとenのfeature-localまたは共通辞書で提供する。日時と数値は選択済みDisplayLanguageで書式化する。表示言語(DisplayLanguage)は 明示選択 > OIDCのui_localesヒント > 保存済み設定 > ブラウザ言語 > 起動時設定VITE_DEFAULT_LOCALE > 既定locale(FallbackLocale=en) の優先順で解決する。VITE_DEFAULT_LOCALE はja/enのみを受け付け、未設定または未対応値、未対応locale、辞書keyが欠落しているlocaleは既定locale(en)にフォールバックする。ui_localesヒントは明示選択済みの表示言語を上書きしない。"
-      screens:
-        - Home
-        - Login
-        - Totp
-        - Consent
-        - Device
-        - Status
-        - Callback
-        - ForgotPassword
-        - ResetPassword
-        - ChangePassword
-        - AccountProfile
-        - AccountEmails
-        - AccountEmailVerify
-        - AccountSecurity
-        - AccountActivity
-        - AccountApplications
-        - AccountData
-        - AdminDashboard
-        - AdminUsers
-        - AdminGroups
-        - AdminAgents
-        - AdminRoles
-        - AdminApplications
-        - AdminAuthorizationDetailTypes
-        - AdminSignInPolicy
-        - AdminConsents
-        - AdminAuditEvents
-        - AdminKeys
-        - AdminTenants
-        - AdminTenantAttributes
-        - AdminSettings
-        - AdminEntraFederation
-        - SystemKeyHealth
-      interfaces:
-        - GetOpenidConfiguration
-      standards:
-        - OpenIDConnectDiscovery
-    - id: UX-API-ERROR-ENGLISH-ONLY
-      category: localization
-      adoption: required
-      statement: "バックエンドが返すAPIエラー・validationエラーのmessage/error_descriptionは常に英語で固定し、表示言語(DisplayLanguage)に応じて翻訳しない。UIは stable な error code (例: password_policy, invalid_credentials) を持つ既知のケースについてのみ、その code をkeyとしてUI自身のja/en辞書から文言を選び表示する。UI側で未知のcodeについては、backendのmessage/error_descriptionをそのまま(英語のまま)表示してよい。ネットワーク到達不可時など、backendの応答が無い場合にUIが表示する文言はUI自身の文言なのでja/en化対象である。"
+          - System は既存の error code と HTTP status を維持する
+          - System は英語のエラー本文を返す
+  管理コンソールとアカウントポータルは失効セッションから同一画面に復帰する:
+    actor: Administrator
+    given:
+      - Administrator が first-party の管理コンソールで access token を保持している
+      - 保持している access token が失効している
+    main_success:
+      - Administrator が AdminDashboard で管理 API を呼び出す
+      - API が 401 を返す
+      - 保持していた access token / refresh token と OIDC callback state を破棄する
+      - 直前の画面への同一オリジン相対 return_to を保ったまま再認可を1回だけ開始する
+      - 再ログイン完了後に元の AdminDashboard へ復帰する
+    extensions:
+      - at: 4
+        condition: 再認可から復旧できない
+        steps:
+          - 再ログイン導線を提示する
+flows:
+  AdminDashboard:
+    entry: AdminDashboard
+    transitions:
+      - from: AdminDashboard
+        action: user_management_selected
+        to: AdminUsers
+      - from: AdminDashboard
+        action: application_management_selected
+        to: AdminApplications

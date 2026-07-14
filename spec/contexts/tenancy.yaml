@@ -1,8 +1,8 @@
 # idmagic Tenancy — SCL
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# Migrated to SCL 3.0 by wi-209 (ADR-103).
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: Tenancy
 glossary:
   Tenant:
@@ -43,7 +43,24 @@ glossary:
     definition: "Disabled の対象を Active に戻す。Tenant では `/api/admin/tenants/{id}/enable` から発火。"
     aliases:
       - enable
+  System:
+    definition: IdP プロセス自身。起動時に default テナントを自動作成する。
+  OAuth2Client:
+    definition: OIDC / OAuth2 プロトコルエンドポイントを呼び出す外部クライアントアプリケーション。
 models:
+  User:
+    kind: entity
+    description: IdentityManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
   TenantStatus:
     kind: enum
     description: "テナント状態。Active は通常稼働、Disabled はテナント全体のプロトコル受付を停止 (`/authorize` `/token` 等が一律 invalid_request)。"
@@ -97,19 +114,19 @@ models:
       password_policy_override:
         type: PasswordPolicyOverride
         optional: true
-        description: objectives.PasswordPolicy をこのテナントだけ上書きする値。指定された値のみ上書きされ、それ以外は global default を継承。
+        description: Authentication context が所有する PasswordPolicy 標準値をこのテナントだけ上書きする値。指定された値のみ上書きされ、それ以外は global default を継承。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         description: 作成時は created_at と同じ値を持ち、以後 mutable aggregate の管理操作ごとに更新する。
       disabled_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: テナント無効化時刻。non-null なら /authorize / /token / /login 等を一律拒否。
   PasswordPolicyOverride:
     kind: value_object
-    description: "テナント固有のパスワードポリシー上書き値 (Phase 4)。Phase 0 で固定値とした\nobjectives.PasswordPolicy をテナント解決ポートで差し替えるためのスキーマ。\n省略フィールドは global default を継承し、change_password / reset_password の\n評価経路ではテナント値が global より厳しい方向にのみ働く想定。\n"
+    description: "テナント固有のパスワードポリシー上書き値 (Phase 4)。Phase 0 で固定値とした\nAuthentication context の PasswordPolicy をテナント解決ポートで差し替えるためのスキーマ。\n省略フィールドは global default を継承し、change_password / reset_password の\n評価経路ではテナント値が global より厳しい方向にのみ働く想定。\n"
     fields:
       min_length:
         type: Integer
@@ -179,25 +196,25 @@ models:
         type: "UserAttributeDef[]"
         description: key が一意で組み込み属性と衝突しない定義の並び。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   PasswordPolicyDefaults:
     kind: value_object
-    description: "objectives.PasswordPolicy の現行値。テナント設定 UI が「テナント上書きが\n無いときに実際に適用される値」をユーザに具体数字で示せるよう、API レスポンスに\n埋め込む。同時に override がこの値より弱い場合の reject 閾値でもある。\n"
+    description: "Authentication context の PasswordPolicy の現行値。テナント設定 UI が「テナント上書きが\n無いときに実際に適用される値」をユーザに具体数字で示せるよう、API レスポンスに\n埋め込む。同時に override がこの値より弱い場合の reject 閾値でもある。\n"
     fields:
       min_length:
         type: Integer
-        description: objectives.PasswordPolicy.min_length。
+        description: Authentication context の PasswordPolicy.min_length。
       max_length:
         type: Integer
-        description: objectives.PasswordPolicy.max_length。
+        description: Authentication context の PasswordPolicy.max_length。
       history_depth:
         type: Integer
-        description: objectives.PasswordPolicy.history_depth。
+        description: Authentication context の PasswordPolicy.history_depth。
   AdminSettingsResponse:
     kind: value_object
-    description: "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う objectives 標準値を併せて返す。\n"
+    description: "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う Authentication context の PasswordPolicy 標準値を併せて返す。\n"
     fields:
       tenant_id:
         type: String
@@ -227,9 +244,9 @@ models:
         type: "UserAttributeDef[]"
         description: コード提供の読み取り専用カタログ (BuiltinUserAttributeDefs)。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
   TenantUserAttributeSchemaUpdateRequest:
     kind: value_object
     description: tenant の custom 属性定義を全置換する JSON リクエスト。組み込み属性との key 衝突・重複 key は use case 側で拒否する。
@@ -245,16 +262,18 @@ models:
       - Favicon
   TenantFooterLink:
     kind: value_object
-    description: hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。
+    description: hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。存在する場合は label と url の両方が非空でなければならない (片側だけの指定を拒否する)。
     fields:
       label:
         type: String
         constraints:
+          - non_empty
           - max_length: 80
         description: 利用者に表示するリンクテキスト。HTML / Markdown として解釈しない。
       url:
         type: String
         constraints:
+          - non_empty
           - max_length: 2048
           - pattern: "^https://"
         description: 遷移先。https scheme のみ許可する allowlist。
@@ -315,9 +334,9 @@ models:
           - max_length: 280
         description: footer に表示する補足テキスト (著作権表示等)。プレーンテキストとして描画側の既定エスケープでのみ表示する。
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         description: 更新のたびに進む。公開レスポンスの version / ETag として使う。
   TenantBrandingResponse:
     kind: value_object
@@ -348,7 +367,7 @@ models:
         type: String
         optional: true
       updated_at:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: branding が一度でも設定されていれば version / ETag として使う。未設定なら省略する。
   TenantBrandingUpdateRequest:
@@ -384,7 +403,7 @@ models:
     description: テナント内 admin が branding (テキスト / 色 / リンク / 画像アセット) を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       tenantId:
         type: String
       actorUserId:
@@ -444,12 +463,12 @@ models:
         type: PasswordPolicyOverride
         optional: true
       created_at:
-        type: Timestamp
+        type: DateTime
       updated_at:
-        type: Timestamp
+        type: DateTime
         optional: true
       disabled_at:
-        type: Timestamp
+        type: DateTime
         optional: true
   TenantListResponse:
     kind: value_object
@@ -462,7 +481,7 @@ models:
     description: system_admin が新規テナントを作成した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       actorUserId:
         type: String
       tenantId:
@@ -472,7 +491,7 @@ models:
     description: system_admin がテナントの表示名を更新した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       actorUserId:
         type: String
       tenantId:
@@ -484,7 +503,7 @@ models:
     description: テナント内 admin が custom 属性定義 (TenantUserAttributeSchema) を更新した。値は持たず、変更後の custom 属性 key 一覧のみを記録する。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       actorUserId:
         type: String
       tenantId:
@@ -496,7 +515,7 @@ models:
     description: system_admin がテナントを無効化した。当該テナントのすべてのプロトコルルートは invalid_request で拒否される。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       actorUserId:
         type: String
       tenantId:
@@ -506,11 +525,21 @@ models:
     description: system_admin が無効化済みテナントを再有効化した。
     payload:
       occurredAt:
-        type: Timestamp
+        type: DateTime
       actorUserId:
         type: String
       tenantId:
         type: String
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
 states:
   TenantLifecycle:
     description: テナント のライフサイクル。Active で通常稼働、Disable で全プロトコルルートを停止、Enable で復帰。物理削除は本フェーズ対象外。
@@ -520,10 +549,10 @@ states:
       []
     transitions:
       - from: Active
-        event: Disable
+        event: TenantDisabled
         to: Disabled
       - from: Disabled
-        event: Enable
+        event: TenantEnabled
         to: Active
 interfaces:
   ResolveTenant:
@@ -537,6 +566,7 @@ interfaces:
         type: Tenant
     errors:
       - InvalidRequestError
+    access: internal
   ListTenants:
     description: "system_admin がテナント一覧を取得する。テナント横断操作のため system_admin\nロールでゲートし、システムコンソール (/system) から呼ぶ。default テナントに解決する\nbare path と control-plane path (/realms/default 配下、cookie session 整合) の両方から\n同じ handler に入る。"
     output:
@@ -545,6 +575,11 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: TenantDirectory
+        id: '"tenant_directory"'
     bindings:
       - kind: http
         method: GET
@@ -561,6 +596,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: Tenant
+        id: input.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -578,6 +618,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantCreated
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: TenantDirectory
+        id: '"tenant_directory"'
     bindings:
       - kind: http
         method: POST
@@ -600,6 +645,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantUpdated
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: Tenant
+        id: input.tenant_id
     bindings:
       - kind: http
         method: PATCH
@@ -615,6 +665,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantDisabled
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: Tenant
+        id: input.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -631,6 +686,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantEnabled
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: Tenant
+        id: input.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -638,19 +698,24 @@ interfaces:
         successful_status_codes:
           - "204"
   GetAdminSettings:
-    description: "テナント内 admin が自身のテナントの設定 (表示名 / パスワードポリシー上書き) を取得する。\n対象テナントは actor.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには objectives.PasswordPolicy の現行値 (password_policy_defaults) を\n含め、UI が「上書きしないときに実際に適用される値」を具体数字で示せるようにする。\n"
+    description: "テナント内 admin が自身のテナントの設定 (表示名 / パスワードポリシー上書き) を取得する。\n対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) を\n含め、UI が「上書きしないときに実際に適用される値」を具体数字で示せるようにする。\n"
     output:
       settings:
         type: AdminSettingsResponse
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
         path: /api/admin/settings
   UpdateAdminSettings:
-    description: "テナント内 admin が自身のテナントの設定を更新する。display_name と\npassword_policy_override のいずれかまたは両方を任意フィールドとして受け取り、\nactor.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が objectives.PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。\n"
+    description: "テナント内 admin が自身のテナントの設定を更新する。display_name と\npassword_policy_override のいずれかまたは両方を任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。\n"
     input:
       request:
         type: TenantUpdateRequest
@@ -662,25 +727,35 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
     bindings:
       - kind: http
         method: PATCH
         path: /api/admin/settings
         request_form: body
   GetTenantUserAttributeSchema:
-    description: "テナント内 admin が自身のテナントの custom 属性定義を取得する。\n対象テナントは actor.tenant_id に固定し cross-tenant 読み出しを構造的に排除する。\nレスポンスには tenant 固有の custom 定義に加えて組み込みカタログ (builtin) も\n含め、UI が全属性を一覧しつつ key 衝突を避けられるようにする。\n"
+    description: "テナント内 admin が自身のテナントの custom 属性定義を取得する。\n対象テナントは context.tenant_id に固定し cross-tenant 読み出しを構造的に排除する。\nレスポンスには tenant 固有の custom 定義に加えて組み込みカタログ (builtin) も\n含め、UI が全属性を一覧しつつ key 衝突を避けられるようにする。\n"
     output:
       schema:
         type: TenantUserAttributeSchemaResponse
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantUserAttributeSchema
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
         path: /api/admin/tenant/user_attribute_schema
   UpdateTenantUserAttributeSchema:
-    description: "テナント内 admin が custom 属性定義を全置換する。actor.tenant_id に\n固定した上で、各 UserAttributeDef を検証し、組み込み属性との key 衝突・重複 key を\n拒否する。値そのものは保持せず定義のみを扱う。\n"
+    description: "テナント内 admin が custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 UserAttributeDef を検証し、組み込み属性との key 衝突・重複 key を\n拒否する。値そのものは保持せず定義のみを扱う。\n"
     input:
       request:
         type: TenantUserAttributeSchemaUpdateRequest
@@ -692,6 +767,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantUserAttributeSchemaUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantUserAttributeSchema
+        id: context.tenant_id
     bindings:
       - kind: http
         method: PUT
@@ -702,7 +782,10 @@ interfaces:
     output:
       branding:
         type: TenantBrandingResponse
+    ensures:
+      - output.branding != null
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
@@ -720,6 +803,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantBrandingUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantBranding
+        id: context.tenant_id
     bindings:
       - kind: http
         method: PUT
@@ -740,6 +828,15 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantBrandingUpdated
+    requires:
+      - context.upload.content_type in ["image/png", "image/jpeg", "image/webp", "image/gif"]
+      - context.upload.magic_byte_matches_content_type
+      - size(input.file) <= 262144
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantBranding
+        id: context.tenant_id
     bindings:
       - kind: http
         method: POST
@@ -758,6 +855,11 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantBrandingUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: TenantBranding
+        id: context.tenant_id
     bindings:
       - kind: http
         method: DELETE
@@ -774,206 +876,171 @@ interfaces:
         type: String
     errors:
       - InvalidRequestError
+    ensures:
+      - response.headers["Content-Type"] in ["image/png", "image/jpeg", "image/webp", "image/gif"]
+      - response.headers["X-Content-Type-Options"] == "nosniff"
     read_only: true
+    access: public
     bindings:
       - kind: http
         method: GET
         path: "/tenant-branding-assets/{kind}/{object_key}"
-invariants:
-  TenantBrandingSafeTokens:
-    description: "TenantBranding の色 / footer リンク / テキストは限定トークンのみを許容する。色は `#rrggbb`\n形式、各リンクはラベルと https URL の完全な組、テキストは長さ上限内のプレーンテキストのみを保存できる。\n色のコントラスト比は保存可否に用いず、配色の可読性はテナントが判断する。\n反例: 任意 CSS 宣言や HTML ラベル、`javascript:` リンク、非 https リンク、片側だけのリンクが branding として保存される。\n"
-    target: TenantBranding
-    always: branding_persisted implies (colors_are_hex_tokens_or_unset and footer_links_are_complete_plaintext_https_pairs and text_within_length_limits)
-  TenantBrandingSafeAssetServing:
-    description: TenantBranding のロゴ / favicon は保存時に magic byte とサイズ上限を検証し、配信時は保存済み content-type と nosniff を強制する。SVG や実行可能コンテンツとして扱われる形式は受け付けない。
-    target: TenantBranding
-    always: branding_asset_uploaded implies (content_type in ["image/png","image/jpeg","image/webp","image/gif"] and size_bytes <= 262144 and response_nosniff == true)
-  TenantBrandingAssetTenantIsolation:
-    description: TenantBranding のロゴ / favicon は tenant_id + kind + object_key で参照し、別テナントの object は同じ key でも取得できない。
-    target: TenantBranding
-    always: branding_asset_served implies request.tenant_id == asset.tenant_id
-  TenantBrandingUploadedAssetIsDisplayable:
-    description: "ロゴのアップロードが成功して branding response に logo_url が含まれるとき、その URL は\n同じ realm の公開 asset interface から検証済み画像として取得でき、管理画面プレビューと hosted UI\nで描画可能である。gateway / reverse proxy は realm 配下の asset path を SPA fallback に渡さない。\n"
-    target: TenantBranding
-    always: branding.logo_url_present implies (asset_url.realm == request.realm and asset_response.status == 200 and asset_response.content_type in ["image/png","image/jpeg","image/webp","image/gif"])
-  TenantBrandingFailsOpen:
-    description: "GetTenantBranding は branding 未設定・値不正・アセット欠損のいずれでも例外を投げず\nシステム既定にフォールバックする。hosted login / consent / device の各エンドポイントは\nbranding 解決の失敗によって停止しない。\n反例: 不正な branding 設定が login エンドポイント自体を 500 で落とす。\n"
-    target: TenantBranding
-    never: branding_resolution_failed and login_endpoint_unavailable
-permissions:
-  AdminTenantsManage:
-    description: テナントの作成・更新・無効化・再有効化・一覧取得。system_admin ロールに限定する。
-    actor: User
-    resource: Tenant
-    allow_when: "system_admin in actor.roles && actor.tenant_id == \"default\" && actor.disabled_at == null && context.authenticated == true"
-  AdminSettingsRead:
-    description: "所属テナントの管理設定 (表示名 / パスワードポリシー上書き) を閲覧する。\ntenant 内 admin と system_admin のどちらでも許可する。\n対象は actor.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。\n"
-    actor: User
-    resource: Tenant
-    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  AdminSettingsUpdate:
-    description: "所属テナントの管理設定を更新する。tenant 内 admin に解放し、設定対象は\nactor.tenant_id に固定する。password_policy_override は global\nPasswordPolicy より弱い場合 use case 側で reject する。\n"
-    actor: User
-    resource: Tenant
-    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
-  BrandingUpdate:
-    description: "所属テナントの hosted UI branding (テキスト / 色 / リンク / 画像アセット) を更新する。\ntenant 内 admin に解放し、設定対象は actor.tenant_id に固定する。閲覧 (GetTenantBranding /\nGetTenantBrandingAsset) は presentational のみのため public とし、permission を設けない。\n"
-    actor: User
-    resource: TenantBranding
-    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true && actor.tenant_id == resource.tenant_id"
+authorization:
+  resources:
+    TenantDirectory:
+      description: 全テナントを横断する一覧・作成対象を表す singleton resource。
+  principals:
+    SystemAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"system_admin" in principal.roles'
+        - principal.tenant_id == "default"
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles || "system_admin" in principal.roles'
+  policies:
+    SystemAdministrator:
+      effect: permit
+      principal: SystemAdministrator
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.id
 scenarios:
-  管理者は監査ログを期間で絞り込み参照・エクスポートできる:
-    goal: 管理者が所属テナントの監査イベントを絞り込み、参照・エクスポートする。
-    primary_actor: Administrator
-    scope: Tenancy
-    level: user_goal
-    preconditions:
-      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の監査ログを開いている"
-    main_success:
-      - "管理者 \"operator\" が直近 24 時間で監査イベントを絞り込む"
-      - 一覧に所属テナントの監査イベントだけが表示される
-      - "管理者 \"operator\" が絞り込み結果をエクスポートする"
   管理者はテナント固有のユーザー属性スキーマを定義できる:
-    goal: 管理者がテナント固有のカスタムユーザー属性スキーマを定義する。
-    primary_actor: Administrator
-    scope: Tenancy
-    level: user_goal
-    preconditions:
-      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のユーザー属性を開いている"
+    actor: TenantAdministrator
+    given:
+      - "admin ロールを持つ \"operator\" が認証済みである"
     main_success:
-      - "管理者 \"operator\" が editable_by_user=true の custom_attribute を追加する"
+      - "\"operator\" が editable_by_user=true の custom_attribute を追加する"
       - 更新後のスキーマに追加した属性が含まれる
   default テナントは起動時に自動作成され削除も無効化もできない:
-    goal: default テナントが bootstrap で常在し、削除・無効化を受け付けない。
-    primary_actor: System
-    scope: Tenancy
-    level: user_goal
-    description: bootstrap 不変性。
+    actor: System
     main_success:
       - IdP を起動する
       - "テナント \"default\" が status=Active で存在する"
     extensions:
-      - condition: default テナントの削除を試みる
+      - at: 2
+        condition: default テナントの削除を試みる
         steps:
           - default テナントを削除する API は提供されない
-      - condition: default テナントの無効化を試みる
+      - at: 2
+        condition: default テナントの無効化を試みる
         steps:
           - default テナントの disable は InvalidRequestError で拒否される
   管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に反映される:
-    goal: 管理者がテナントのロゴ・配色・任意ラベルの footer リンクを設定し、未認証の login 画面がそれを表示する。
-    primary_actor: Administrator
-    scope: Tenancy
-    level: user_goal
-    preconditions:
-      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の branding 設定を開いている"
+    actor: TenantAdministrator
+    given:
+      - "admin ロールを持つ \"operator\" が認証済みである"
     main_success:
-      - "管理者 \"operator\" が PNG ロゴをアップロードする"
+      - "\"operator\" が PNG ロゴをアップロードする"
       - アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る
       - 管理画面のロゴプレビューにアップロードした PNG が表示される
-      - "管理者 \"operator\" が primary_color / accent_color / footer_link_1={label: \"ヘルプ\", url: \"https://help.example.test\"} / footer_text を設定する"
+      - "\"operator\" が primary_color / accent_color / footer_link_1={label: \"ヘルプ\", url: \"https://help.example.test\"} / footer_text を設定する"
       - 管理画面は各設定済み色に現在値と「既定に戻す」操作を表示する
       - 管理者がプライマリカラーを既定に戻して保存すると、UpdateTenantBranding には primary_color の空文字列が送られる
       - 未認証の利用者が login 画面を開く
       - login / consent / account portal に設定したロゴが表示され、login 画面にはプライマリカラーのシステム既定・設定済みアクセントカラー・指定ラベルの footer リンク・フッターテキストも表示される
     extensions:
-      - condition: realm 配下の logo_url が gateway で backend に転送されない
+      - at: 2
+        condition: 別テナントの object_key で同じ kind のアセット取得を試みる
+        steps:
+          - アセットは存在しないものとして扱われ InvalidRequestError で拒否される
+      - at: 8
+        condition: realm 配下の logo_url が gateway で backend に転送されない
         steps:
           - 画像取得は成功せず、管理者は設定の成功応答だけでは表示可能と判断しない
   不正な branding 入力は拒否されシステム既定にフォールバックする:
-    goal: XSS / open redirect につながる branding 入力を構造的に拒否し、login エンドポイントを止めない。
-    primary_actor: Administrator
-    scope: Tenancy
-    level: user_goal
-    preconditions:
-      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の branding 設定を開いている"
+    actor: TenantAdministrator
+    given:
+      - "admin ロールを持つ \"operator\" が認証済みである"
     main_success:
-      - "管理者 \"operator\" が branding を一度も設定していないテナントで login 画面を開く"
+      - "\"operator\" が branding を一度も設定していないテナントで login 画面を開く"
       - login 画面はシステム既定 (IdMagic) のブランディングを表示する
     extensions:
-      - condition: "管理者 \"operator\" が footer_link_1.url に javascript: スキームを指定して保存を試みる"
+      - at: 1
+        condition: "\"operator\" が footer_link_1.url に javascript: スキームを指定して保存を試みる"
         steps:
           - InvalidRequestError で拒否され保存されない
-      - condition: "管理者 \"operator\" が footer_link_1 に label だけを指定して保存を試みる"
+      - at: 1
+        condition: "\"operator\" が footer_link_1 に label だけを指定して保存を試みる"
         steps:
           - InvalidRequestError で拒否され保存されない
-      - condition: "管理者 \"operator\" が低コントラストの `#eeeeee` を primary_color に指定して保存を試みる"
+      - at: 1
+        condition: "\"operator\" が低コントラストの `#eeeeee` を primary_color に指定して保存を試みる"
         steps:
           - 保存に成功し、取得した branding と login 画面に `#eeeeee` が反映される
-      - condition: 管理者が SVG ファイルをロゴとしてアップロードしようとする
+      - at: 1
+        condition: 管理者が SVG ファイルをロゴとしてアップロードしようとする
         steps:
           - InvalidRequestError で拒否され保存されない
-  リクエストのテナントは realm prefix から解決される:
-    goal: HTTP リクエストの realm prefix から対象テナントを解決する。
-    primary_actor: OAuth2Client
-    scope: Tenancy
-    level: user_goal
-    description: 下位互換。/.well-known や /authorize が prefix なしでも動く。
+  リクエストのテナントはrealm prefixから解決される:
+    actor: OAuth2Client
     main_success:
       - /realms/ 接頭辞を持たない /authorize にリクエストを送る
       - "解決されたテナントは \"default\""
       - iss claim は base URL + /realms/default
     extensions:
-      - condition: 対象テナントが無効化されている
+      - at: 1
+        condition: 対象テナントが無効化されている
         steps:
           - "tenant_id \"acme\" を作成して無効化する"
           - "無効化済みテナントの \"/realms/acme/authorize\" にリクエストを送る"
           - "テナントの存在を漏らさずエラー \"InvalidRequestError\""
-user_experience:
-  screens:
-    AdminTenants:
-      route: /system/tenants
-      purpose: システムコンソール (system_admin 専用のテナント横断領域) でテナントを一覧・作成・更新し、有効化・無効化する。テナント管理コンソール (/admin) とは別シェルに隔離する。default テナントは削除・無効化できない。
-      interfaces:
-        - ListTenants
-        - GetTenant
-        - CreateTenant
-        - UpdateTenant
-        - DisableTenant
-        - EnableTenant
-      states:
-        - ready
-        - loading
-        - submitting
-        - empty
-        - access_denied
-        - service_error
-    AdminTenantAttributes:
-      route: /admin/tenant/attributes
-      purpose: 管理者がテナント固有のカスタムユーザー属性スキーマを定義・更新する。組み込み属性はコードが提供する。
-      interfaces:
-        - GetTenantUserAttributeSchema
-        - UpdateTenantUserAttributeSchema
-      states:
-        - ready
-        - loading
-        - submitting
-        - access_denied
-        - service_error
-    AdminSettings:
-      route: /admin/settings
-      purpose: 管理者がパスワードポリシーや hosted UI ブランディングなど所属テナントの設定を参照・更新する。footer リンクは固定順の二件までをラベルと HTTPS URL の組で編集・削除でき、ラベルはプレーンテキストとして表示する。ブランディングの色入力は `#rrggbb` 形式のみをエラー表示し、コントラスト比では保存を妨げない。各色は未設定（IdMagic 既定）であることを表示し、設定済みなら個別に既定へ戻せる。
-      interfaces:
-        - GetAdminSettings
-        - UpdateAdminSettings
-        - GetTenantBranding
-        - UpdateTenantBranding
-      states:
-        - ready
-        - loading
-        - submitting
-        - access_denied
-        - service_error
-  requirements:
-    - id: UX-ADMIN-CONTROL-PLANE
-      category: security
-      adoption: required
-      statement: テナント管理画面はsystem_adminロール専用のシステムコンソール(/system)に隔離し、各ルートのガードとサーバ側APIの双方でsystem_adminを必須とする(pathではなくroleでゲート)。通常テナントの管理者には導線も操作も提供しない。
-      screens:
-        - AdminTenants
-      interfaces:
-        - ListTenants
-        - GetTenant
-        - CreateTenant
-        - UpdateTenant
-        - DisableTenant
-        - EnableTenant
+  通常のテナント管理者はシステムコンソールのテナント一覧にアクセスできない:
+    actor: TenantAdministrator
+    given:
+      - "\"operator\" は admin ロールのみを持ち system_admin ロールを持たない"
+    main_success:
+      - "\"operator\" が ListTenants を呼び出す"
+      - AccessDeniedError で拒否される
+  管理者はパスワードポリシー設定を参照・更新できる:
+    actor: TenantAdministrator
+    given:
+      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の設定を開いている"
+    main_success:
+      - "管理者 \"operator\" がパスワードの最小長を更新する"
+      - 更新後の設定に新しい最小長が反映される
+flows:
+  SystemTenantManagement:
+    entry: SystemTenants
+    transitions:
+      - from: SystemTenants
+        action: create
+        interface: CreateTenant
+        to: SystemTenants
+      - from: SystemTenants
+        action: update
+        interface: UpdateTenant
+        to: SystemTenants
+      - from: SystemTenants
+        action: disable
+        interface: DisableTenant
+        to: SystemTenants
+      - from: SystemTenants
+        action: enable
+        interface: EnableTenant
+        to: SystemTenants
+  TenantAttributeManagement:
+    entry: TenantAttributes
+    transitions:
+      - from: TenantAttributes
+        action: update
+        interface: UpdateTenantUserAttributeSchema
+        to: TenantAttributes
+  TenantSettingsManagement:
+    entry: TenantSettings
+    transitions:
+      - from: TenantSettings
+        action: update_settings
+        interface: UpdateAdminSettings
+        to: TenantSettings
+      - from: TenantSettings
+        action: update_branding
+        interface: UpdateTenantBranding
+        to: TenantSettings

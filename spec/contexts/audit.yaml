@@ -1,9 +1,10 @@
 # idmagic Audit — SCL
 # Split from OAuth2 (wi-146): audit events are a cross-context security read
 # model, not an OAuth2-owned concept.
+# Migrated to SCL 3.0 by wi-209 (ADR-103).
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context: Audit
 glossary:
   AuditEventSearchRegistry:
@@ -24,7 +25,36 @@ glossary:
     aliases:
       - actor-vs-target
       - 操作者と対象ユーザー
+  ResolvableUserEventPayloadPolicy:
+    definition: "実アカウントが常に確定するイベント (UserAuthenticated、ConsentGranted、\nAuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued 等) は\npayload に username (平文・hash とも) を持たない (ADR-104)。この制約はイベントを発行する各 context\n自身の event model が username 相当の field を持たないことで構造的に保証される\n(例: Authentication.UserAuthenticated の payload は userId のみを持つ)。管理 UI がユーザー名で\n検索したい場合は AuditEventQuery.username が検索時に UserRepo で user_id へ解決し、既存の\nuser_id 経路で絞り込む。実在しないアカウント名も追跡する必要がある認証失敗イベントだけが、\n例外として actor.username 検索属性に平文 username を持つ。\n"
+    aliases:
+      - resolvable-user-event-payload-policy
+  TenantAdministrator:
+    definition: 所属テナントまたは (system_admin の場合) 全テナント横断で監査イベントを読み出す権限を持つ管理者。
 models:
+  User:
+    kind: entity
+    description: IdentityManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
   AuditEventQuery:
     kind: value_object
     description: "ListAdminAuditEvents のクエリパラメータ。tenant_id は context から付与されるため\nフィールドには含めない。type は SCL events セクションの型名。\n"
@@ -46,11 +76,11 @@ models:
         optional: true
         description: "操作者 (actor) のログイン名による検索 (wi-147, ADR-104)。実アカウントが常に確定する\nイベント (UserAuthenticated、OAuth2 フロー系イベント等) は payload に username を持たないため、\n検索時に UserRepo で user_id へ解決してから user_id と同じ経路で絞り込む。該当ユーザーが\n存在しない場合は 0 件を返す (フィルタ無視で全件返すフォールバックはしない)。実在しないアカウント\n名も追跡する必要がある認証失敗イベントの検索には使えない (filter の actor.username を使う)。\n"
       after:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: occurred_at がこの時刻以降。
       before:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: occurred_at がこの時刻以前。
       limit:
@@ -112,7 +142,7 @@ models:
         description: "operator に応じた値の並び (eq=1 / in=N / time_range=2)。PII 属性は平文入力をサーバ側で transform してから照合する。"
   AdminAuditEventResponse:
     kind: value_object
-    description: "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\n"
+    description: "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\nappend_only で 7 年保持する (GDPR Art. 30、ADR-107)。\n"
     fields:
       id:
         type: String
@@ -124,7 +154,7 @@ models:
         type: String
         description: DomainEvent.type ワイヤ名。
       occurred_at:
-        type: Timestamp
+        type: DateTime
       payload:
         type: JSON
         description: イベント本体 (SCL events セクションの payload 形状)。
@@ -135,7 +165,7 @@ models:
       events:
         type: "AdminAuditEventResponse[]"
       next_after:
-        type: Timestamp
+        type: DateTime
         optional: true
         description: ページング継続用カーソル。
   AuditEventSearchOptionsResponse:
@@ -150,7 +180,7 @@ models:
         description: "選択可能な outcome の値一覧。現時点では success / failure の 2 値 (認証系イベントのみ分類対象)。"
 interfaces:
   ListAdminAuditEvents:
-    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / user_id / username (操作者) による\n絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、\ncategory (authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nuser_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ\n解決する (ADR-104: hash 化しない。該当ユーザーが無ければ 0 件)。filter の actor.username は実在しない\nアカウント名も追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象\nユーザーを指す別概念 (AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント\n横断、admin は所属テナント内に閉じる。\n"
+    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、ページング (after / before / limit) と type / user_id / username (操作者) による\n絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、\ncategory (authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nuser_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ\n解決する (ADR-104: hash 化しない。該当ユーザーが無ければ 0 件)。filter の actor.username は実在しない\nアカウント名も追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象\nユーザーを指す別概念 (AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント\n横断、admin は所属テナント内に閉じる (クエリが tenant_id 入力を取らないため所属テナントに構造的に\n閉じ、system_admin だけが専用経路から横断できる)。\n"
     input:
       query:
         type: AuditEventQuery
@@ -161,12 +191,17 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: AuditEventLog
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
         path: /api/admin/audit_events
   ExportAdminAuditEvents:
-    description: "管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。permission は AdminAuditEventsRead。\n"
+    description: "管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。\n"
     input:
       query:
         type: AuditEventQuery
@@ -177,18 +212,28 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: AuditEventLog
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
         path: /api/admin/audit_events/export
   GetAdminAuditEventSearchOptions:
-    description: "管理者が監査イベント検索フォームの event.type / outcome を選択式にするための選択肢一覧を取得する。\n値は AuditSearchRegistry / auditEventCategoryTypes と同じ Go 側の単一の正から導出し、UI 側で\nハードコードした allowlist との drift を防ぐ。permission は AdminAuditEventsRead と同一。\n"
+    description: "管理者が監査イベント検索フォームの event.type / outcome を選択式にするための選択肢一覧を取得する。\n値は AuditSearchRegistry / auditEventCategoryTypes と同じ Go 側の単一の正から導出し、UI 側で\nハードコードした allowlist との drift を防ぐ。\n"
     output:
       response:
         type: AuditEventSearchOptionsResponse
     errors:
       - AccessDeniedError
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: AuditEventLog
+        id: context.tenant_id
     bindings:
       - kind: http
         method: GET
@@ -204,48 +249,63 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    ensures:
+      - output.event.tenant_id == context.tenant_id
     read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: AdminAuditEventResponse
+        id: input.id
     bindings:
       - kind: http
         method: GET
         path: "/api/admin/audit_events/{id}"
-invariants:
-  ResolvableUserEventsDoNotStoreUsername:
-    description: "実アカウントが常に確定するイベント (UserAuthenticated、ConsentGranted、\nAuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued 等) は\npayload に username (平文・hash とも) を持たない。管理 UI がユーザー名で検索したい場合は\nAuditEventQuery.username が検索時に UserRepo で user_id へ解決し、既存の user_id 経路で絞り込む\n(ADR-104)。実在しないアカウント名も追跡する必要がある認証失敗イベントだけが、例外として\nactor.username 検索属性に平文 username を持つ。\n反例: OAuth2 フロー系イベントの payload に username や usernameHash が含まれる。\n"
-    target: DomainEvent
-    assuming: "e.type in [UserAuthenticated, ConsentGranted, AuthorizationCodeIssued, AuthorizationCodeRedeemed, AccessTokenIssued, RefreshTokenIssued]"
-    always: "!(payload has 'username') && !(payload has 'usernameHash')"
-  DomainEventsAreAuditedRegardlessOfProcess:
-    description: "業務操作 (use case) が発行する DomainEvent は、それを実行するプロセス (idmagic-api /\nidmagic-worker 等) に関わらず AuditEventRepo に記録されなければならない。emit の配線は\nプロセスごとの DI 組み立てコードの責務だが、その配線漏れが監査証跡の欠落として現れてはならない。\nJob キューのライフサイクルイベント (JobEnqueued / JobStarted / JobSucceeded 等) はこの対象外で、\n業務操作そのものではなくジョブ実行の観測用ログであり、別の sink (ログ) へ出力されれば足りる。\n反例: idmagic-worker が実行する CSV インポート apply で UserCreated イベントは発行されるが、\nworker プロセスの DI 組み立てに emit の配線が無いため AuditEventRepo には記録されず、\nユーザー作成自体は成功して見えるのに監査証跡だけが欠落する (wi-205)。\n"
-    target: DomainEvent
-    assuming: "e is emitted by use case business logic as the outcome of an admin/user-facing operation (not a job-queue lifecycle event)"
-    always: "exists a record r in AuditEventRepo such that r.type == e.type && r.occurred_at == e.occurred_at && r.payload == e.payload, independent of the process (idmagic-api / idmagic-worker) that executed the emitting use case"
-permissions:
-  AdminAuditEventsRead:
-    description: "管理者による所属テナントの監査イベント読み出し。admin は所属テナントに閉じ、\nsystem_admin は default tenant 経路から全テナント横断的に参照できる。\n書き込みエンドポイントは存在しないため Read のみ。\n"
-    actor: User
-    resource: AdminAuditEventResponse
-    allow_when: "((admin in actor.roles) || (system_admin in actor.roles)) && actor.disabled_at == null && context.authenticated == true"
-objectives:
-  AuditLogRetention:
-    kind: retention
-    target: DomainEvent
-    policy: append_only
-    retention: 7y
-    reference: GDPR Art. 30
-user_experience:
-  screens:
-    AdminAuditEvents:
-      route: /admin/audit_events
-      purpose: 管理者が監査イベントを対象ユーザーや期間で絞り込んで一覧・参照し、エクスポートする。
-      interfaces:
-        - ListAdminAuditEvents
-        - GetAdminAuditEvent
-        - ExportAdminAuditEvents
-        - GetAdminAuditEventSearchOptions
-      states:
-        - ready
-        - loading
-        - empty
-        - access_denied
-        - service_error
+authorization:
+  resources:
+    AuditEventLog:
+      description: テナント境界内の監査イベント一覧・エクスポート対象を表す singleton resource。
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles || "system_admin" in principal.roles'
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+scenarios:
+  管理者は監査ログを期間で絞り込み参照・エクスポートできる:
+    actor: TenantAdministrator
+    given:
+      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面の監査ログを開いている"
+    main_success:
+      - "管理者 \"operator\" が直近 24 時間で監査イベントを絞り込む"
+      - 一覧に所属テナントの監査イベントだけが表示される
+      - "管理者 \"operator\" が絞り込み結果をエクスポートする"
+  workerプロセスが発行した業務イベントも管理者は監査ログで参照できる:
+    actor: TenantAdministrator
+    given:
+      - CSV インポートの apply が worker プロセスで実行される
+    main_success:
+      - worker プロセスが CSV インポートの apply を実行し UserCreated を発行する
+      - 管理者が ListAdminAuditEvents で type=UserCreated を検索する
+      - 発行元プロセス (idmagic-api / idmagic-worker) に関わらずイベントが監査ログに含まれる
+flows:
+  AdminAuditEvents:
+    entry: AdminAuditEvents
+    transitions:
+      - from: AdminAuditEvents
+        action: list
+        interface: ListAdminAuditEvents
+        to: AdminAuditEvents
+      - from: AdminAuditEvents
+        action: view
+        interface: GetAdminAuditEvent
+        to: AdminAuditEvents
+      - from: AdminAuditEvents
+        action: export
+        interface: ExportAdminAuditEvents
+        to: AdminAuditEvents
