@@ -1,8 +1,8 @@
 # idmagic — SCL context map
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# Root context map for the IdMagic SCL 3.0 workspace.
 
 system: idmagic
-spec_version: "2.0"
+spec_version: "3.0"
 context_map:
   System:
     description: 外部標準、共有語彙、横断ユーザー体験、context 横断シナリオを所有する。

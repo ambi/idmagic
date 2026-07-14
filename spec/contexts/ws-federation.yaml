@@ -1,5 +1,5 @@
 # idmagic WsFederation — SCL
-# Generated from idmagic/spec/scl.yaml during SCL 2.0 context split.
+# WS-Federation bounded-context specification for the IdMagic SCL 3.0 workspace.
 
 system: idmagic
 spec_version: "3.0"

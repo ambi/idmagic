@@ -21,7 +21,7 @@ created_at: 2026-07-10
 - **scl**:
   - `System` または各 context の `objectives` に、大規模テナント時の admin / account 主要画面 p95 / p99、DB query budget、最大 page size、dashboard 集計 freshness を追加する。
   - `scenarios` に大量 users / groups / agents / audit events / applications を持つ tenant での検索・集計・画面表示例を追加する。
-  - `user_experience` に一覧や dashboard が全件取得に依存しないこと、件数は近似または非同期集計を許容する境界を明記する。
+  - `flows` と `scenarios` に一覧や dashboard が全件取得に依存しないこと、件数は近似または非同期集計を許容する境界を明記する。
 - **decision**:
   - 新規 ADR: read model / counter cache / materialized view / search index の採用方針、freshness、再構築、tenant isolation、PII 取り扱いを決める。
 - **persistence**:

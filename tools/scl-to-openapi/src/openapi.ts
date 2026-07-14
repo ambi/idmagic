@@ -96,7 +96,8 @@ function buildOperation(
   }
 
   const parameters: JsonSchema[] = []
-  for (const p of pathParams(path)) {
+  const pathParameterNames = new Set(pathParams(path))
+  for (const p of pathParameterNames) {
     parameters.push({ name: p, in: 'path', required: true, schema: { type: 'string' } })
   }
 
@@ -105,6 +106,7 @@ function buildOperation(
   if (Object.keys(input).length > 0) {
     if (style === 'query') {
       for (const [fname, field] of Object.entries(input)) {
+        if (pathParameterNames.has(fname)) continue
         parameters.push({
           name: fname,
           in: 'query',

@@ -217,7 +217,7 @@
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="iface-checkyaml">
     <header><h3>CheckYaml</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
-    <p class="desc">YAML parse、text lint、選択された version schema、SCL 3.0 semantics、context map、
+    <p class="desc">YAML parse、text lint、SCL 3.0 schema と semantics、context map、
 work-item dependency を決定的な順序で検査する。
 </p>
 
@@ -256,7 +256,7 @@ work-item dependency を決定的な順序で検査する。
     </table>
   </div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.files.size() &gt; 0</code></li></ul></div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.summary.total == input.files.size()</code></li><li><code class="expr">output.exit_code == 0 || output.exit_code == 1 || output.exit_code == 2</code></li><li><code class="expr">output.exit_code == 0 implies output.summary.failed == 0</code></li><li><code class="expr">output.summary.results.size() == output.summary.total</code></li><li><code class="expr">parse_precedes_schema(input.files, output.summary)</code></li><li><code class="expr">schema_validation_is_opt_in(input.schema, output.summary)</code></li><li><code class="expr">schema_name_is_validated_before_file_reads(input.schema, output.exit_code)</code></li><li><code class="expr">one_schema_is_applied_uniformly(input.schema, output.summary)</code></li><li><code class="expr">input_content_executes_no_code(input.files)</code></li><li><code class="expr">input_files_are_not_modified(input.files)</code></li><li><code class="expr">context_map_semantics_are_checked(input.files, output.summary)</code></li><li><code class="expr">work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)</code></li><li><code class="expr">warnings_do_not_fail(output.summary, output.exit_code)</code></li><li><code class="expr">finding_locations_are_within_source(output.summary)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.summary.total == input.files.size()</code></li><li><code class="expr">output.exit_code == 0 || output.exit_code == 1 || output.exit_code == 2</code></li><li><code class="expr">output.exit_code == 0 implies output.summary.failed == 0</code></li><li><code class="expr">output.summary.results.size() == output.summary.total</code></li><li><code class="expr">parse_precedes_schema(input.files, output.summary)</code></li><li><code class="expr">schema_validation_is_opt_in(input.schema, output.summary)</code></li><li><code class="expr">schema_name_is_validated_before_file_reads(input.schema, output.exit_code)</code></li><li><code class="expr">one_schema_is_applied_uniformly(input.schema, output.summary)</code></li><li><code class="expr">scl_schema_accepts_only_spec_version_3(input.schema, output.summary)</code></li><li><code class="expr">input_content_executes_no_code(input.files)</code></li><li><code class="expr">input_files_are_not_modified(input.files)</code></li><li><code class="expr">context_map_semantics_are_checked(input.files, output.summary)</code></li><li><code class="expr">work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)</code></li><li><code class="expr">warnings_do_not_fail(output.summary, output.exit_code)</code></li><li><code class="expr">finding_locations_are_within_source(output.summary)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
     <div class="binding-kind"><span class="badge badge-bkind-cli">cli</span></div>
     <div class="binding-body"><div class="binding-head"><code class="path">yaml-check</code></div><div class="io"><div class="label">Args (positional)</div><table class="fields"><thead><tr><th>Name</th><th>Position</th><th>Presence</th><th>Note</th></tr></thead><tbody><tr>
@@ -325,11 +325,11 @@ work-item dependency を決定的な順序で検査する。
 
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 3.0 の文書を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">schema と semantics の <a class="chip chip-ref" href="#model-finding">Finding</a> はなく exit code 0 になる</li></ol></div>
 
-      </article><article class="card scenario" id="scn-scl-version-schema">
-        <header><h3>SCL version ごとに schema が選択される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scn-scl-2-0">
+        <header><h3>SCL 2.0 文書は拒否される</h3><span class="chip chip-actor">Maintainer</span></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SCL 2.0 と SCL 3.0 の文書をそれぞれ <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">spec_version に対応する単一 schema だけが適用される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 2.0 の文書を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">Schema<a class="chip chip-ref" href="#model-finding">Finding</a> と exit code 1 が返る</li></ol></div>
 
       </article><article class="card scenario" id="scn-scl-3-0">
         <header><h3>SCL 3.0 の未解決参照は拒否される</h3><span class="chip chip-actor">Maintainer</span></header>

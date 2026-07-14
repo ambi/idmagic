@@ -23,10 +23,10 @@ created_at: 2026-07-10
 - **scl**:
   - `Tenancy` context に `TenantQuota` / `TenantUsage` / `QuotaExceeded` 相当の model / event / invariant を追加する。
   - `IdentityManagement`、`Authentication`、`OAuth2`、`Application`、`SigningKeys`、`Jobs` などの作成系 interface に quota precondition を関連づける。
-  - `permissions` に quota 参照・更新権限を追加し、tenant admin と system admin の境界を定義する。
+  - `authorization` と interface `access` に quota 参照・更新権限を追加し、tenant admin と system admin の境界を定義する。
   - `scenarios` に quota 内作成、soft warning、hard quota 超過拒否、system admin override、tenant 境界違反を追加する。
   - `objectives` に quota check の latency、fail-closed、usage counter の整合性、監査発火を追加する。
-  - `user_experience` に AdminSettings または system tenant 画面での quota / usage 表示を追加する。
+  - `flows` と `scenarios` に AdminSettings または system tenant 画面での quota / usage 表示を追加する。
 - **go/domain/usecase**:
   - quota policy、usage read model、作成前チェック、作成/削除/retention 後の usage 更新を導入する。
   - 競合時に上限を超えないよう、DB 制約、transaction、advisory lock、counter table などの方式を決めて実装する。

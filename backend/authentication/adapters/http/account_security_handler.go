@@ -149,7 +149,8 @@ func (d Deps) handleConfirmTotpEnrollment(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	sub, err := d.requireAuthenticatedSub(c)
+	// TOTP factor の確定は認証強度を変更する高 sensitivity 操作。
+	sub, err := d.requireStepUpSub(c)
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}

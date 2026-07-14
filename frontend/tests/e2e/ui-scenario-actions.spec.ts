@@ -59,9 +59,9 @@ beforeAll(async () => {
   await startE2EEnvironment()
 }, 180_000)
 
-afterAll(() => {
-  stopE2EEnvironment()
-})
+afterAll(async () => {
+  await stopE2EEnvironment()
+}, 30_000)
 
 test('account profile can be updated from the browser', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })
@@ -483,7 +483,7 @@ test('admin user list opens a user detail page', async () => {
   try {
     await navigateAndLogin(view, '/admin/users', 'admin-users')
     // 一覧で先頭ユーザーが選択され、右ペインの「詳細」から専用詳細画面へ遷移する。
-    await view.click('a[href^="/admin/users/"]')
+    await view.click('aside a[href^="/admin/users/"]:not([href$="/edit"])')
     await waitForPage(view, 'admin-user-detail')
     await waitForUrl(view, /\/admin\/users\/[^/]+$/)
     await waitForText(view, 'User ID')

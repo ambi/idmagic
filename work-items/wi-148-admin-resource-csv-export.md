@@ -40,13 +40,13 @@ PII の過剰露出、再実行不能な失敗が問題になる。
   - `states/events`: `ResourceExportLifecycle` と `ResourceExportRequested` /
     `ResourceExportStarted` / `ResourceExportSucceeded` / `ResourceExportFailed` /
     `ResourceExportCanceled` / `ResourceExportDownloaded` / `ResourceExportExpired` を追加する。
-  - `invariants`: tenant-scoped、RBAC fail-closed、列 allowlist、PII/sensitive 列の明示選択、
+  - model `constraints`・interface `requires` / `ensures`・state `guard` / `effect`: tenant-scoped、RBAC fail-closed、列 allowlist、PII/sensitive 列の明示選択、
     CSV formula injection 対策、ファイル保持期限、完了済みファイルの再生成不可または再生成条件を明文化する。
-  - `permissions`: `AdminResourceExportStart` / `AdminResourceExportRead` /
+  - `authorization` と interface `access`: `AdminResourceExportStart` / `AdminResourceExportRead` /
     `AdminResourceExportDownload` / `AdminResourceExportCancel` を追加する。
   - `scenarios`: 小規模フィルタ結果の同期エクスポート、大規模全件エクスポートの非同期ジョブ、失敗・キャンセル・
     期限切れダウンロードを追加する。
-  - `user_experience`: AdminUsers / AdminGroups などの一覧画面からエクスポートでき、ジョブ一覧・詳細から
+  - `flows` と `scenarios`: AdminUsers / AdminGroups などの一覧画面からエクスポートでき、ジョブ一覧・詳細から
     進捗とダウンロード状態を確認できることを追加する。
 - **scl** (`spec/scl.yaml` / context map):
   - `IdentityManagement` が `Jobs` の published language を使う前提で、[[wi-126-async-job-runner]] と整合する
@@ -110,7 +110,7 @@ PII の過剰露出、再実行不能な失敗が問題になる。
   大きな説明文でなく、列選択、状態、期限、行数、失敗理由が読める操作面を作る。
 
 ## Tasks
-- [ ] T001 [SCL] `ResourceExport*` の語彙、モデル、状態、イベント、interfaces、permissions、scenarios、UX を追加する。
+- [ ] T001 [SCL] `ResourceExport*` の語彙、モデル、状態、イベント、interfaces、authorization/access、scenarios、UX を追加する。
 - [ ] T002 [ADR] 同期/非同期切替、CSV 形式、列 allowlist、PII/sensitive 除外、CSV injection 対策、保管先、TTL、監査を決定する。
 - [ ] T003 [Dependency] [[wi-126-async-job-runner]] の状態を確認し、未実装なら実装順序または依存関係を明示する。
 - [ ] T004 [Go] User / Group / GroupMembership の export target と列定義を実装する。

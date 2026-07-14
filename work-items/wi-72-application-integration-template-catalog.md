@@ -52,7 +52,7 @@ Okta Integration Network も Entra ID のアプリギャラリーも、よく使
 - UI は browse/search/category/details/configure/review の wizard とし、protocol advanced editor は作成後の Application editor に委ねる。
 
 ## Tasks
-- [ ] T001 [SCL] ApplicationTemplate/FieldSchema/BindingBlueprint、List/Get/Instantiate interfaces、provenance/invariants/scenarios を追加して再生成する。
+- [ ] T001 [SCL] ApplicationTemplate/FieldSchema/BindingBlueprint、List/Get/Instantiate interfaces、provenance/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Catalog] versioned static catalog format、schema validator、duplicate key/version check と初期 OIDC/SAML/WS-Fed/weblink/service entries を追加する。
 - [ ] T003 [Usecase] template input を既存 CreateApplication/ProvisionBinding command に変換し、失敗時 compensation と一回 secret response を実装する。
 - [ ] T004 [HTTP] list/search/get/instantiate endpoint、category/filter、template version conflict error を追加する。

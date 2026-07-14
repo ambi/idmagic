@@ -4,19 +4,13 @@ import (
 	"testing"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestResolvePasswordPolicy(t *testing.T) {
-	scl, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
 	defaults := PasswordPolicySnapshot{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 
-	t.Run("nil tenant uses SCL global", func(t *testing.T) {
-		snap := ResolvePasswordPolicy(scl, nil, defaults)
+	t.Run("nil tenant uses global defaults", func(t *testing.T) {
+		snap := ResolvePasswordPolicy(nil, defaults)
 		if snap.MinLength == 0 || snap.MaxLength == 0 || snap.HistoryDepth == 0 {
 			t.Fatalf("snapshot zero values: %+v", snap)
 		}
@@ -27,8 +21,8 @@ func TestResolvePasswordPolicy(t *testing.T) {
 		tenant := &tenancydomain.Tenant{
 			PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MinLength: &minLength},
 		}
-		base := ResolvePasswordPolicy(scl, nil, defaults)
-		snap := ResolvePasswordPolicy(scl, tenant, defaults)
+		base := ResolvePasswordPolicy(nil, defaults)
+		snap := ResolvePasswordPolicy(tenant, defaults)
 		if snap.MinLength != 16 {
 			t.Fatalf("MinLength override not applied: %d", snap.MinLength)
 		}
@@ -47,8 +41,8 @@ func TestResolvePasswordPolicy(t *testing.T) {
 				HistoryDepth: &zero,
 			},
 		}
-		base := ResolvePasswordPolicy(scl, nil, defaults)
-		snap := ResolvePasswordPolicy(scl, tenant, defaults)
+		base := ResolvePasswordPolicy(nil, defaults)
+		snap := ResolvePasswordPolicy(tenant, defaults)
 		if snap != base {
 			t.Fatalf("guard rail breached: %+v vs base %+v", snap, base)
 		}

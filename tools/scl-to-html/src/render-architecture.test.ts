@@ -16,7 +16,7 @@ const arch: ArchitectureDoc = {
   structural_decisions: 'see repo-ADR-001',
 }
 
-const scl: SclDocument = { system: 'demo', spec_version: '2.0' }
+const scl: SclDocument = { system: 'demo', spec_version: '3.0' }
 
 describe('renderArchitectureTab', () => {
   it('renders frontmatter tables and prose', () => {

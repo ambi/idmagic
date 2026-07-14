@@ -5,35 +5,33 @@ package spec
 import (
 	"bytes"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"slices"
 	"sort"
 
 	"github.com/goccy/go-yaml"
 )
 
-// SCL は context-first SCL 2.0 の集約ビュー。トップレベル scl.yaml は context_map のみを持ち、
+// SCL は context-first SCL 3.0 の集約ビュー。トップレベル scl.yaml は context_map のみを持ち、
 // 各 context ファイル (contexts/*.yaml) の glossary / models / interfaces などをロード時に合成する。
 // 合成されるセクションは `yaml:"-"` とし、トップレベルの strict デコードでは対象にしない。
 type SCL struct {
-	System         string                     `yaml:"system"`
-	SpecVersion    string                     `yaml:"spec_version"`
-	ContextMap     map[string]ContextMapEntry `yaml:"context_map"`
-	Standards      map[string]Standard        `yaml:"-"`
-	Vocabulary     map[string]Vocabulary      `yaml:"-"`
-	Models         map[string]Model           `yaml:"-"`
-	Interfaces     map[string]Interface       `yaml:"-"`
-	States         map[string]StateMachine    `yaml:"-"`
-	Invariants     map[string]Invariant       `yaml:"-"`
-	Scenarios      map[string]Scenario        `yaml:"-"`
-	Permissions    map[string]Permission      `yaml:"-"`
-	Objectives     map[string]Objective       `yaml:"-"`
-	UserExperience UserExperience             `yaml:"-"`
-	Annotations    map[string]any             `yaml:"annotations"`
+	System                 string                     `yaml:"system"`
+	SpecVersion            string                     `yaml:"spec_version"`
+	ContextMap             map[string]ContextMapEntry `yaml:"context_map"`
+	Standards              map[string]Standard        `yaml:"-"`
+	Vocabulary             map[string]Vocabulary      `yaml:"-"`
+	Models                 map[string]Model           `yaml:"-"`
+	Interfaces             map[string]Interface       `yaml:"-"`
+	InterfaceContexts      map[string]string          `yaml:"-"`
+	States                 map[string]StateMachine    `yaml:"-"`
+	Scenarios              map[string]Scenario        `yaml:"-"`
+	AuthorizationByContext map[string]Authorization   `yaml:"-"`
+	Objectives             map[string]Objective       `yaml:"-"`
+	Flows                  map[string]Flow            `yaml:"-"`
+	Annotations            map[string]any             `yaml:"annotations"`
 }
 
 // ContextMapEntry は context_map の 1 つの bounded context エントリ。
@@ -56,20 +54,19 @@ type ContextDependency struct {
 // contextDocument は 1 つの context ファイル (contexts/*.yaml) のデコード対象。
 // 各セクションは集約 SCL に合成される。
 type contextDocument struct {
-	System         string                  `yaml:"system"`
-	SpecVersion    string                  `yaml:"spec_version"`
-	Context        string                  `yaml:"context"`
-	Standards      map[string]Standard     `yaml:"standards"`
-	Glossary       map[string]Vocabulary   `yaml:"glossary"`
-	Models         map[string]Model        `yaml:"models"`
-	States         map[string]StateMachine `yaml:"states"`
-	Interfaces     map[string]Interface    `yaml:"interfaces"`
-	Invariants     map[string]Invariant    `yaml:"invariants"`
-	Permissions    map[string]Permission   `yaml:"permissions"`
-	Objectives     map[string]Objective    `yaml:"objectives"`
-	Scenarios      map[string]Scenario     `yaml:"scenarios"`
-	UserExperience UserExperience          `yaml:"user_experience"`
-	Annotations    map[string]any          `yaml:"annotations"`
+	System        string                  `yaml:"system"`
+	SpecVersion   string                  `yaml:"spec_version"`
+	Context       string                  `yaml:"context"`
+	Standards     map[string]Standard     `yaml:"standards"`
+	Glossary      map[string]Vocabulary   `yaml:"glossary"`
+	Models        map[string]Model        `yaml:"models"`
+	States        map[string]StateMachine `yaml:"states"`
+	Interfaces    map[string]Interface    `yaml:"interfaces"`
+	Authorization Authorization           `yaml:"authorization"`
+	Objectives    map[string]Objective    `yaml:"objectives"`
+	Scenarios     map[string]Scenario     `yaml:"scenarios"`
+	Flows         map[string]Flow         `yaml:"flows"`
+	Annotations   map[string]any          `yaml:"annotations"`
 }
 
 type Standard struct {
@@ -82,60 +79,13 @@ type Standard struct {
 }
 
 type StandardRequirement struct {
-	ID        string              `yaml:"id"`
-	Section   string              `yaml:"section"`
-	Strength  string              `yaml:"strength"`
-	Adoption  string              `yaml:"adoption"`
-	Statement string              `yaml:"statement"`
-	Reason    string              `yaml:"reason"`
-	RelatesTo map[string][]string `yaml:"relates_to"`
-}
-
-type UserExperience struct {
-	Accessibility map[string]string               `yaml:"accessibility"`
-	Locales       []string                        `yaml:"locales"`
-	Localization  *UserExperienceLocalization     `yaml:"localization"`
-	Screens       map[string]UserExperienceScreen `yaml:"screens"`
-	Transitions   []UserExperienceTransition      `yaml:"transitions"`
-	Requirements  []UserExperienceRequirement     `yaml:"requirements"`
-}
-
-type UserExperienceLocalization struct {
-	SupportedLocales []string                             `yaml:"supported_locales"`
-	AccountPortal    UserExperienceLocalizationPortalNote `yaml:"account_portal"`
-}
-
-type UserExperienceLocalizationPortalNote struct {
-	Requirement    string `yaml:"requirement"`
-	DateTimeFormat string `yaml:"date_time_format"`
-}
-
-type UserExperienceScreen struct {
-	Route      string   `yaml:"route"`
-	Purpose    string   `yaml:"purpose"`
-	Interfaces []string `yaml:"interfaces"`
-	States     []string `yaml:"states"`
-}
-
-type UserExperienceTransition struct {
-	From      string `yaml:"from"`
-	To        string `yaml:"to"`
-	Trigger   string `yaml:"trigger"`
-	Interface string `yaml:"interface"`
-	External  bool   `yaml:"external"`
-}
-
-type UserExperienceRequirement struct {
-	ID         string   `yaml:"id"`
-	Category   string   `yaml:"category"`
-	Adoption   string   `yaml:"adoption"`
-	Statement  string   `yaml:"statement"`
-	Reason     string   `yaml:"reason"`
-	Screens    []string `yaml:"screens"`
-	Interfaces []string `yaml:"interfaces"`
-	Standards  []string `yaml:"standards"`
-	Scenarios  []string `yaml:"scenarios"`
-	Invariants []string `yaml:"invariants"`
+	ID        string   `yaml:"id"`
+	Section   string   `yaml:"section"`
+	Strength  string   `yaml:"strength"`
+	Adoption  string   `yaml:"adoption"`
+	Statement string   `yaml:"statement"`
+	Reason    string   `yaml:"reason"`
+	Refs      []string `yaml:"refs"`
 }
 
 type Vocabulary struct {
@@ -159,6 +109,7 @@ type Model struct {
 	Fields      map[string]FieldDef `yaml:"fields"`
 	Values      []string            `yaml:"values"`
 	Payload     map[string]FieldDef `yaml:"payload"`
+	Constraints []string            `yaml:"constraints"`
 	Annotations map[string]any      `yaml:"annotations"`
 }
 
@@ -180,10 +131,67 @@ type Interface struct {
 	Output      map[string]FieldDef `yaml:"output"`
 	Errors      []string            `yaml:"errors"`
 	Emits       []string            `yaml:"emits"`
+	Requires    []string            `yaml:"requires"`
+	Ensures     []string            `yaml:"ensures"`
+	Access      any                 `yaml:"access"`
 	Idempotent  bool                `yaml:"idempotent"`
 	ReadOnly    bool                `yaml:"read_only"`
 	Bindings    []Binding           `yaml:"bindings"`
 	Annotations map[string]any      `yaml:"annotations"`
+}
+
+type ProtectedAccess struct {
+	Policies []string
+	Resource AccessResource
+}
+
+type AccessResource struct {
+	Type string
+	ID   string
+}
+
+// ProtectedInterfaceAccess returns the structured form of a protected SCL 3.0 access declaration.
+func ProtectedInterfaceAccess(iface Interface) (ProtectedAccess, bool) {
+	value, ok := iface.Access.(map[string]any)
+	if !ok {
+		return ProtectedAccess{}, false
+	}
+	policies, ok := stringSlice(value["policies"])
+	if !ok || len(policies) == 0 {
+		return ProtectedAccess{}, false
+	}
+	resource, ok := value["resource"].(map[string]any)
+	if !ok {
+		return ProtectedAccess{}, false
+	}
+	resourceType, typeOK := resource["type"].(string)
+	resourceID, idOK := resource["id"].(string)
+	if !typeOK || !idOK {
+		return ProtectedAccess{}, false
+	}
+	return ProtectedAccess{
+		Policies: policies,
+		Resource: AccessResource{Type: resourceType, ID: resourceID},
+	}, true
+}
+
+func stringSlice(value any) ([]string, bool) {
+	switch values := value.(type) {
+	case []string:
+		return values, true
+	case []any:
+		out := make([]string, 0, len(values))
+		for _, value := range values {
+			item, ok := value.(string)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, item)
+		}
+		return out, true
+	default:
+		return nil, false
+	}
 }
 
 // Binding は generic な map で受け、kind に応じて型変換するスタイル。
@@ -221,65 +229,71 @@ type Transition struct {
 	Effect []string `yaml:"effect"`
 }
 
-type Invariant struct {
-	Description string         `yaml:"description"`
-	Target      string         `yaml:"target"`
-	Assuming    any            `yaml:"assuming"`
-	Always      any            `yaml:"always"`
-	Eventually  any            `yaml:"eventually"`
-	Never       any            `yaml:"never"`
-	Within      string         `yaml:"within"`
-	Severity    string         `yaml:"severity"`
-	Annotations map[string]any `yaml:"annotations"`
-}
-
 type Scenario struct {
-	Goal              string              `yaml:"goal"`
-	PrimaryActor      string              `yaml:"primary_actor"`
-	Scope             string              `yaml:"scope"`
-	Level             string              `yaml:"level"`
-	Preconditions     []string            `yaml:"preconditions"`
-	SuccessGuarantees []string            `yaml:"success_guarantees"`
-	MainSuccess       []string            `yaml:"main_success"`
-	Extensions        []ScenarioExtension `yaml:"extensions"`
-	Steps             []string            `yaml:"steps"`
-	Where             []map[string]any    `yaml:"where"`
-	Tags              []string            `yaml:"tags"`
-	Description       string              `yaml:"description"`
-	Annotations       map[string]any      `yaml:"annotations"`
+	Actor       string              `yaml:"actor"`
+	Given       []string            `yaml:"given"`
+	MainSuccess []string            `yaml:"main_success"`
+	Extensions  []ScenarioExtension `yaml:"extensions"`
+	Tags        []string            `yaml:"tags"`
+	Description string              `yaml:"description"`
+	Annotations map[string]any      `yaml:"annotations"`
 }
 
 type ScenarioExtension struct {
-	At        string   `yaml:"at"`
+	At        any      `yaml:"at"`
 	Condition string   `yaml:"condition"`
 	Steps     []string `yaml:"steps"`
 }
 
-type Permission struct {
+type Authorization struct {
+	Resources  map[string]AuthorizationResource  `yaml:"resources"`
+	Principals map[string]AuthorizationPrincipal `yaml:"principals"`
+	Policies   map[string]AuthorizationPolicy    `yaml:"policies"`
+}
+
+type AuthorizationResource struct {
+	Description string `yaml:"description"`
+}
+
+type AuthorizationPrincipal struct {
+	Type        string         `yaml:"type"`
+	Matches     []string       `yaml:"matches"`
 	Description string         `yaml:"description"`
-	Actor       string         `yaml:"actor"`
-	Action      string         `yaml:"action"`
-	Resource    string         `yaml:"resource"`
-	AllowWhen   any            `yaml:"allow_when"`
-	DenyWhen    any            `yaml:"deny_when"`
+	Annotations map[string]any `yaml:"annotations"`
+}
+
+type AuthorizationPolicy struct {
+	Effect      string         `yaml:"effect"`
+	Principal   string         `yaml:"principal"`
+	When        string         `yaml:"when"`
+	Description string         `yaml:"description"`
 	Annotations map[string]any `yaml:"annotations"`
 }
 
 type Objective struct {
-	Kind        string         `yaml:"kind"`
 	Description string         `yaml:"description"`
-	Reference   string         `yaml:"reference"`
-	Metric      string         `yaml:"metric"`
-	Target      string         `yaml:"target"`
-	Window      string         `yaml:"window"`
-	Policy      string         `yaml:"policy"`
-	Retention   string         `yaml:"retention"`
-	TTL         string         `yaml:"ttl"`
-	SingleUse   bool           `yaml:"single_use"`
-	Value       any            `yaml:"value"`
 	Interface   string         `yaml:"interface"`
-	Note        string         `yaml:"note"`
+	Indicator   string         `yaml:"indicator"`
+	Target      float64        `yaml:"target"`
+	Window      string         `yaml:"window"`
+	Budgeting   string         `yaml:"budgeting"`
+	Slice       string         `yaml:"slice"`
 	Annotations map[string]any `yaml:"annotations"`
+}
+
+type Flow struct {
+	Description string           `yaml:"description"`
+	Entry       string           `yaml:"entry"`
+	Transitions []FlowTransition `yaml:"transitions"`
+	Annotations map[string]any   `yaml:"annotations"`
+}
+
+type FlowTransition struct {
+	From      string `yaml:"from"`
+	Action    string `yaml:"action"`
+	Interface string `yaml:"interface"`
+	To        string `yaml:"to"`
+	External  bool   `yaml:"external"`
 }
 
 // =====================================================================
@@ -333,13 +347,12 @@ func (s *SCL) loadContexts(dir string) error {
 	s.Vocabulary = map[string]Vocabulary{}
 	s.Models = map[string]Model{}
 	s.Interfaces = map[string]Interface{}
+	s.InterfaceContexts = map[string]string{}
 	s.States = map[string]StateMachine{}
-	s.Invariants = map[string]Invariant{}
 	s.Scenarios = map[string]Scenario{}
-	s.Permissions = map[string]Permission{}
+	s.AuthorizationByContext = map[string]Authorization{}
 	s.Objectives = map[string]Objective{}
-	s.UserExperience.Accessibility = map[string]string{}
-	s.UserExperience.Screens = map[string]UserExperienceScreen{}
+	s.Flows = map[string]Flow{}
 
 	// 決定論的なマージ順 (衝突メッセージの安定化) のため context 名を並べる。
 	names := make([]string, 0, len(s.ContextMap))
@@ -371,58 +384,37 @@ func (s *SCL) loadContexts(dir string) error {
 
 // mergeContext は 1 つの context ファイルの各セクションを集約 SCL へ取り込む。
 func (s *SCL) mergeContext(ctxName string, doc contextDocument) error {
-	if err := mergeMap(s.Standards, doc.Standards, ctxName, "standard"); err != nil {
-		return err
-	}
+	mergeStandards(s.Standards, doc.Standards)
 	for name, entry := range doc.Glossary {
 		if entry.Context == "" {
 			entry.Context = ctxName
 		}
-		if _, ok := s.Vocabulary[name]; ok {
-			return fmt.Errorf("loader: glossary %s defined by multiple contexts (last %s)", name, ctxName)
+		current, ok := s.Vocabulary[name]
+		if !ok || vocabularyDetailScore(entry) > vocabularyDetailScore(current) {
+			s.Vocabulary[name] = entry
 		}
-		s.Vocabulary[name] = entry
 	}
-	if err := mergeMap(s.Models, doc.Models, ctxName, "model"); err != nil {
-		return err
-	}
+	mergeModels(s.Models, doc.Models)
 	if err := mergeMap(s.Interfaces, doc.Interfaces, ctxName, "interface"); err != nil {
 		return err
 	}
-	if err := mergeMap(s.States, doc.States, ctxName, "state"); err != nil {
-		return err
+	for name := range doc.Interfaces {
+		s.InterfaceContexts[name] = ctxName
 	}
-	if err := mergeMap(s.Invariants, doc.Invariants, ctxName, "invariant"); err != nil {
+	if err := mergeMap(s.States, doc.States, ctxName, "state"); err != nil {
 		return err
 	}
 	if err := mergeMap(s.Scenarios, doc.Scenarios, ctxName, "scenario"); err != nil {
 		return err
 	}
-	if err := mergeMap(s.Permissions, doc.Permissions, ctxName, "permission"); err != nil {
-		return err
-	}
+	s.AuthorizationByContext[ctxName] = doc.Authorization
 	if err := mergeMap(s.Objectives, doc.Objectives, ctxName, "objective"); err != nil {
 		return err
 	}
-	s.mergeUserExperience(doc.UserExperience)
+	if err := mergeMap(s.Flows, doc.Flows, ctxName, "flow"); err != nil {
+		return err
+	}
 	return nil
-}
-
-// mergeUserExperience は context 横断のユーザー体験を集約する。System context が
-// accessibility / locales / 横断 screen を持ち、各 context が固有 screen / transition / requirement を足す。
-func (s *SCL) mergeUserExperience(ux UserExperience) {
-	maps.Copy(s.UserExperience.Accessibility, ux.Accessibility)
-	for _, locale := range ux.Locales {
-		if !slices.Contains(s.UserExperience.Locales, locale) {
-			s.UserExperience.Locales = append(s.UserExperience.Locales, locale)
-		}
-	}
-	if ux.Localization != nil {
-		s.UserExperience.Localization = ux.Localization
-	}
-	maps.Copy(s.UserExperience.Screens, ux.Screens)
-	s.UserExperience.Transitions = append(s.UserExperience.Transitions, ux.Transitions...)
-	s.UserExperience.Requirements = append(s.UserExperience.Requirements, ux.Requirements...)
 }
 
 // mergeMap は src の各エントリを dst へ移し、キー衝突を拒否する。
@@ -434,6 +426,34 @@ func mergeMap[V any](dst, src map[string]V, ctxName, kind string) error {
 		dst[name] = value
 	}
 	return nil
+}
+
+// mergeModels builds a convenient cross-context lookup while allowing each context to carry
+// published-language stubs. When names overlap, the structurally richer definition wins.
+func mergeModels(dst, src map[string]Model) {
+	for name, value := range src {
+		current, ok := dst[name]
+		if !ok || modelDetailScore(value) > modelDetailScore(current) {
+			dst[name] = value
+		}
+	}
+}
+
+func mergeStandards(dst, src map[string]Standard) {
+	for name, value := range src {
+		current, ok := dst[name]
+		if !ok || len(value.Requirements) > len(current.Requirements) {
+			dst[name] = value
+		}
+	}
+}
+
+func vocabularyDetailScore(entry Vocabulary) int {
+	return len(entry.Definition) + len(entry.Description) + len(entry.Aliases)*8 + len(entry.NotToConfuseWith)*8
+}
+
+func modelDetailScore(model Model) int {
+	return len(model.Fields)*4 + len(model.Payload)*4 + len(model.Constraints)*2 + len(model.Values)
 }
 
 // MustLoadSCL は LoadSCL の panic 版（main 配線で使う）。

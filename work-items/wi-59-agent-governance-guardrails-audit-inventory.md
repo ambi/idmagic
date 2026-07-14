@@ -50,7 +50,7 @@ rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]]) を持つが、エ
 - audit detail は correlation/request ID、policy version、decision reason、actor chain ID を持ち、token/RARの機密値は schema-approved 要約だけ保存する。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] ADR-058 の policy language、evaluation points、CIBA fallback、inventory/events/permissions/scenarios を確定して再生成する。
+- [ ] T001 [ADR/SCL] ADR-058 の policy language、evaluation points、CIBA fallback、inventory/events/authorization/access/scenarios を確定して再生成する。
 - [ ] T002 [Domain] GuardrailPolicy、version、decision/reason と inventory projection model を実装する。
 - [ ] T003 [Persistence] policy repository と event-log cursor/read-model tables を追加し、rebuild/idempotent projection を実装する。
 - [ ] T004 [Enforcement] token issue/exchange、agent credential、brokered action に evaluator を接続し、Agent status/RAR/actor chain/rate result を合成する。

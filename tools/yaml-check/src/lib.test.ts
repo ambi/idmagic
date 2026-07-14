@@ -288,12 +288,12 @@ describe('validateAgainstSchema — work-item', () => {
 })
 
 describe('validateAgainstSchema — scl', () => {
-  it('accepts a minimal frozen SCL 2.0 document', () => {
-    expect(validateAgainstSchema('scl', { system: 'demo', spec_version: '2.0' }, '')).toEqual([])
+  it('accepts a minimal SCL 3.0 document', () => {
+    expect(validateAgainstSchema('scl', { system: 'demo', spec_version: '3.0' }, '')).toEqual([])
   })
 
   it('rejects a missing system field', () => {
-    const f = validateAgainstSchema('scl', { spec_version: '2.0' }, '')
+    const f = validateAgainstSchema('scl', { spec_version: '3.0' }, '')
     expect(f.some((x) => x.message.includes('system'))).toBe(true)
   })
 
@@ -302,7 +302,7 @@ describe('validateAgainstSchema — scl', () => {
       'scl',
       {
         system: 'demo',
-        spec_version: '2.0',
+        spec_version: '3.0',
         models: { Foo: { kind: 'entity' } },
       },
       '',
@@ -316,7 +316,7 @@ describe('validateAgainstSchema — scl', () => {
       'scl',
       {
         system: 'demo',
-        spec_version: '2.0',
+        spec_version: '3.0',
         models: {
           Foo: { kind: 'entity', identity: ['a', 'b'], fields: { a: { type: 'String' } } },
         },
@@ -326,35 +326,12 @@ describe('validateAgainstSchema — scl', () => {
     expect(f).toEqual([])
   })
 
-  it('requires permissions to have actor and resource, and rejects legacy action', () => {
-    const f = validateAgainstSchema(
-      'scl',
-      {
-        system: 'demo',
-        spec_version: '2.0',
-        permissions: { P: { actor: 'User', action: 'Do' } },
-      },
-      '',
-    )
-    expect(f.some((x) => x.message.includes('resource'))).toBe(true)
-    expect(f.some((x) => x.message.includes('additional properties'))).toBe(true)
-  })
-
-  it('requires invariants to declare always / never / eventually', () => {
-    const f = validateAgainstSchema(
-      'scl',
-      { system: 'demo', spec_version: '2.0', invariants: { I: { description: 'x' } } },
-      '',
-    )
-    expect(f.length).toBeGreaterThan(0)
-  })
-
   it('requires http bindings to declare method and path', () => {
     const f = validateAgainstSchema(
       'scl',
       {
         system: 'demo',
-        spec_version: '2.0',
+        spec_version: '3.0',
         interfaces: { Op: { bindings: [{ kind: 'http' }] } },
       },
       '',
@@ -363,9 +340,10 @@ describe('validateAgainstSchema — scl', () => {
     expect(f.some((x) => x.message.includes('path'))).toBe(true)
   })
 
-  it('rejects unknown SCL versions before schema selection', () => {
-    const f = validateAgainstSchema('scl', { system: 'demo', spec_version: '4.0' }, '')
-    expect(f.some((x) => x.message.includes('unsupported SCL version'))).toBe(true)
+  it('rejects pre-3.0 SCL documents', () => {
+    const text = 'system: demo\nspec_version: "2.0"\n'
+    const f = validateAgainstSchema('scl', { system: 'demo', spec_version: '2.0' }, text)
+    expect(f.some((x) => x.line === 2 && x.message.includes('must be equal to constant'))).toBe(true)
   })
 })
 

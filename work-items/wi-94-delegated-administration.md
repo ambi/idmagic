@@ -14,7 +14,7 @@ created_at: 2026-07-03
 
 - Entra ID: Administrative Units + directory roles のスコープ。
 - Okta: admin roles + resource sets。
-- Keycloak: fine-grained admin permissions。
+- Keycloak: fine-grained admin authorization。
 
 本 WI は「対象リソース集合 × 権限」で表す scoped admin role を導入し、
 既存 RBAC ([[wi-15-roles-and-permissions-inspection-page]]) を拡張して、
@@ -22,12 +22,12 @@ created_at: 2026-07-03
 
 ## Scope
 - **decision**:
-  - 新規 ADR: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / permissions との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
+  - 新規 ADR: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / authorization policy・interface access との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
 - **scl**:
   - §3.2 models: AdminRoleAssignment / ResourceSet を追加する。
   - §3.3 interfaces: admin 操作 (users / groups / applications 等) の認可に scope を反映する。副管理者割当の CRUD を追加する。
   - §3.4 states/events: AdminRoleAssigned / AdminRoleRevoked を追加する。
-  - §3.7 permissions: scope 外リソースへの管理操作を構造的に拒否する (既定 deny) ことを明示する。
+  - authorization と interface access: scope 外リソースへの管理操作を構造的に拒否する (既定 deny) ことを明示する。
 - **go**:
   - 認可判定に scope を織り込み、既存 admin usecase のガードを scope 対応に する。scope 評価器を追加する。
 - **http**:
@@ -50,11 +50,11 @@ created_at: 2026-07-03
 - UI navigation/count/exportもscope済みAPIだけを使い、権限外resourceへのリンクや総件数を表示しない。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] 初期scope種類、permission集合、list filtering、再委任禁止を決定し、assignment/interfaces/events/invariants/scenariosを再生成する。
+- [ ] T001 [ADR/SCL] 初期scope種類、policy/access capability集合、list filtering、再委任禁止を決定し、assignment/interfaces/events/constraints/contracts/scenariosを再生成する。
 - [ ] T002 [Domain] typed ResourceScope、Assignment lifecycle/expiry、scope evaluatorとfull-admin/delegated decision合成を実装する。
 - [ ] T003 [Persistence] assignment repository/index、group/application reference integrity、revoke/versionをmemory/PostgreSQLへ追加する。
 - [ ] T004 [Authorization] user/group/application/audit等Scope記載resourceのlist/get/mutation policyとquery filterを順次接続する。
-- [ ] T005 [Management UI] full-admin専用assignment CRUD、principal/permission/scope picker、effective access previewを追加する。
+- [ ] T005 [Management UI] full-admin専用assignment CRUD、principal/policy/scope picker、effective access previewを追加する。
 - [ ] T006 [Verify] list count/ID enumeration、scope移動/削除、expiry/cache、自己昇格/再委任、複数assignment合成、tenant越境を検証する。
 
 ## Verification

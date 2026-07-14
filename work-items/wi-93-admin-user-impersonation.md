@@ -24,9 +24,9 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
   - 新規 ADR: impersonation の許可条件 (専用権限 / 対象制限 / 時間制限)、監査 (開始・終了・操作を impersonator を含む actor chain で記録、 ADR-049 と整合)、可視バナーによる不可視ななりすまし防止、機微操作 (パスワード / MFA 変更 / 削除) の禁止範囲、テナント設定での有効化を記録する。
 - **scl**:
   - §3.3 interfaces: StartImpersonation / EndImpersonation を追加する。
-  - §3.7 permissions: impersonation は専用権限に固定し fail-closed とする。
+  - authorization と interface access: impersonation は専用権限に固定し fail-closed とする。
   - §3.4 states/events: ImpersonationStarted / ImpersonationEnded を追加し、 session に impersonator を保持する。
-  - §3.5 invariants: 全操作が impersonator を含めて監査され、cross-tenant impersonation を禁止することを明示する。
+  - 所有要素の constraints/contracts: 全操作が impersonator を含めて監査され、cross-tenant impersonation を禁止することを明示する。
 - **go**:
   - impersonation usecase を追加し、session に actor + impersonator を持たせ、 機微操作をブロックし、全操作を監査する。
 - **http**:
@@ -49,7 +49,7 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
 - start/end/expiryと実行操作のauditはADR-046に従い短縮・PII masking対象外の必須証跡とし、本人へのsecurity notification（wi-90）を接続する。
 
 ## Tasks
-- [ ] T001 [SCL] 既存eventsを核にsession model、Start/End interfaces、permission/prohibited-actions/invariants/scenariosを追加して再生成する。
+- [ ] T001 [SCL] 既存eventsを核にsession model、Start/End interfaces、permission/prohibited-actions/constraints/contracts/scenariosを追加して再生成する。
 - [ ] T002 [Domain/Persistence] ImpersonationSession、actor/subject/original session、TTL/end reasonとrepositoryを実装する。
 - [ ] T003 [Usecases] step-up/target privilege/reasonを検証するstart、idempotent end/expire、notification/auditを実装する。
 - [ ] T004 [OIDC/Authz] portal session/tokenのactor claim解決と、shared policy contextのactor/subject分離、禁止action gateを実装する。

@@ -30,7 +30,7 @@ opt-out 設定を追加する。
   - §3.3 interfaces: GetNotificationPreferences / UpdateNotificationPreferences (self) を追加する。通知自体は既存イベントの subscriber として実現し、 新規 interface は最小に留める。
   - §3.2 models: NotificationPreferences を追加する。
   - §3.4 states/events: AccountSecurityNotificationSent を追加する (どの種別の通知を送ったかを監査に残す。本文は残さない)。
-  - §3.7 permissions: preference の参照 / 更新は actor.sub に固定する。
+  - authorization と interface access: preference の参照 / 更新は actor.sub に固定する。
 - **go**:
   - notification dispatcher (domain event subscriber → email sender) を追加する。 「新デバイス」判定は sign-in activity / 既知 session ([[wi-20-authentication-event-history]] / [[wi-28-session-management-and-oidc-logout-completion]]) を参照する。通知テンプレートを用意する。
   - preference store (port + memory + postgres + migration) を追加する。

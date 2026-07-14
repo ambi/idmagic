@@ -3,13 +3,13 @@ import { SHARED_KERNEL_MAX, verifyContextMap } from './context-map.ts'
 
 const base = (contextMap: Record<string, unknown>) => ({
   system: 'demo',
-  spec_version: '2.0',
+  spec_version: '3.0',
   context_map: contextMap,
 })
 
 describe('verifyContextMap', () => {
   it('is a no-op when no context_map is present', () => {
-    expect(verifyContextMap({ system: 'demo', spec_version: '2.0' })).toEqual({
+    expect(verifyContextMap({ system: 'demo', spec_version: '3.0' })).toEqual({
       errors: [],
       warnings: [],
     })

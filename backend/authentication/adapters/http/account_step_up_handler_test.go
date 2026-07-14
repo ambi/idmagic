@@ -157,6 +157,7 @@ var stepUpGatedEndpoints = []struct {
 	path string
 }{
 	{"change_password", "/realms/default/api/auth/change_password"},
+	{"totp_enroll_confirm", "/realms/default/api/account/mfa/totp/enroll/confirm"},
 	{"totp_remove", "/realms/default/api/account/mfa/totp/remove"},
 	{"email_change", "/realms/default/api/account/email/change_request"},
 	{"revoke_others", "/realms/default/api/account/sessions/revoke_others"},

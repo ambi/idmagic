@@ -19,16 +19,16 @@ description: SCL-first workflow for feature work. Use before implementing any fe
    | 集約・エンティティ・値・イベントの形や同一性が変わる | `models` |
    | 外部との契約（入力・出力・エラー・前後条件）が増減する | `interfaces` |
    | ライフサイクルの状態や許可される遷移が変わる | `states` |
-   | 常に成り立つべき条件・liveness を足す | `invariants` |
+   | 常に成り立つべき条件・liveness を足す | model `constraints`、interface `requires` / `ensures`、state `guard` / `effect` |
    | Use Case と受け入れ例を足す（原則として常に） | `scenarios` |
-   | 誰が何をできるか（認可ルール）が変わる | `permissions` |
+   | 誰が何をできるか（認可ルール）が変わる | `authorization` と interface `access` |
    | 非機能目標（TTL・レイテンシ・上限など）を決める | `objectives` |
-   | 画面・画面遷移・横断 UX 要件が変わる | `user_experience` |
+   | 画面間の遷移が変わる | `flows` |
 
 2. **抜けやすい節を重点的に埋める。**
    - `scenarios`: 機能には必ず受け入れ例。正常系だけでなく**境界・失敗・拒否を最低 1 つずつ**。
-   - `invariants`: 「壊れていない」と言える不変条件を 1 つ以上。property-based / model-check 可能な形を優先。
-   - `permissions`: 認証・認可を伴う機能は、追加した操作の認可ルールを必ず書く。
+   - 所有要素の contract: 「壊れていない」と言える条件を model / interface / state の実現・検証場所へ置く。
+   - `authorization` / `access`: 認証・認可を伴う機能は、追加した操作の principal、policy、resource を必ず書く。
 
 3. **scl.yaml に wi/ADR/commit 番号を書かない。** scl.yaml は全層の最内で、純粋な仕様文に保つ。
 

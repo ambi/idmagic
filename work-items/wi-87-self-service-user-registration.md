@@ -30,8 +30,8 @@ self-service registration を標準機能として持つ:
   - §3.3 interfaces: RegisterUser (public / unauthenticated / tenant-scoped) と、 browser フロー用の登録トランザクション取得を追加する。
   - §3.2 models: RegistrationRequest (email / password / 表示名) を追加する。
   - §3.4 states/events: UserSelfRegistered イベントを追加する。
-  - §3.5 invariants: tenant 内 email 一意、未検証ユーザは login 不可を明示する。
-  - §3.7 permissions: RegisterUser は public、対象 tenant は解決済み tenant に固定。
+  - 所有要素の constraints/contracts: tenant 内 email 一意、未検証ユーザは login 不可を明示する。
+  - authorization と interface access: RegisterUser は public、対象 tenant は解決済み tenant に固定。
   - tenancy: AdminSettings に allow_self_registration を追加し、 UpdateAdminSettings で切り替え可能にする。
 - **go**:
   - usecase RegisterUser を追加し、既存 email 検証トークンストア (EmailChangeTokenStore / password reset と同パターン) を再利用して VerifyEmail 相当の検証を経てから login 可能にする。
@@ -57,7 +57,7 @@ self-service registration を標準機能として持つ:
 - frontend は realm-aware signup→check-email→verify→password/enrollment→login の導線を既存 auth shell/branding 上に置き、管理 UI は tenant settings で policy を編集する。
 
 ## Tasks
-- [ ] T001 [SCL] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/invariants/scenarios を追加して再生成する。
+- [ ] T001 [SCL] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Domain/Store] registration/token model、normalization、memory/ValkeyまたはPostgreSQL store、TTL/one-time consume を実装する。
 - [ ] T003 [Usecases] start/resend/verify/approve/expire を EmailSender、limiter、password policy、Identity Management user creationへ接続する。
 - [ ] T004 [HTTP] realm-scoped signup/verify endpoints と uniform response、CSRF/browser transaction、secure cookie を追加する。

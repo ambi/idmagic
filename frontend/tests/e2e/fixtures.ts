@@ -118,9 +118,12 @@ export async function startE2EEnvironment(): Promise<void> {
   await waitForUp(uiOrigin)
 }
 
-export function stopE2EEnvironment(): void {
-  goServer?.kill()
-  viteServer?.kill()
+export async function stopE2EEnvironment(): Promise<void> {
+  const servers = [goServer, viteServer].filter(
+    (server): server is Subprocess => server !== undefined,
+  )
+  for (const server of servers) server.kill(9)
+  await Promise.all(servers.map((server) => server.exited))
   callback?.stop(true)
   mailSink?.close()
   goServer = undefined
@@ -549,6 +552,43 @@ export async function clickNavLinkByText(
   if (clicked !== true) {
     throw new Error(`nav link not found: ${navLabel} / ${text}`)
   }
+}
+
+export async function clickNavLinkByAnyText(
+  view: Bun.WebView,
+  navLabels: string[],
+  texts: string[],
+): Promise<void> {
+  const clicked = await view.evaluate(`(() => {
+    const navLabels = ${JSON.stringify(navLabels)}
+    const texts = ${JSON.stringify(texts)}
+    const nav = [...document.querySelectorAll('nav')]
+      .find((candidate) => navLabels.includes(candidate.getAttribute('aria-label') ?? ''))
+    if (!nav) return false
+    const target = [...nav.querySelectorAll('a')]
+      .find((link) => texts.includes((link.textContent ?? '').trim()))
+    if (!target) return false
+    target.click()
+    return true
+  })()`)
+  if (clicked !== true) {
+    throw new Error(`nav link not found: ${navLabels.join(' / ')} / ${texts.join(' / ')}`)
+  }
+}
+
+export async function waitForAnyText(
+  view: Bun.WebView,
+  texts: string[],
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    for (const candidate of texts) {
+      if (await hasText(view, candidate)) return
+    }
+    await Bun.sleep(150)
+  }
+  throw new Error(`timeout waiting for text: ${texts.join(' / ')}`)
 }
 
 export async function loginFromCurrentPage(view: Bun.WebView): Promise<void> {

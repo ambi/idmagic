@@ -59,7 +59,7 @@ idmagic は現状 OIDC の id_token / access_token 発行に閉じており、wa
 
 ## Tasks
 - [ ] T001 [ADR] 初期 credential format、OID4VCI grant、holder binding、OID4VP client_id scheme/response mode、status mechanism、context ownership を決定する。
-- [ ] T002 [SCL/Architecture] VC context の models/states/interfaces/events/invariants/objectives/scenarios と OAuth2/SigningKeys published language を追加し、ARCHITECTURE map と派生物を同期する。
+- [ ] T002 [SCL/Architecture] VC context の models/states/interfaces/events/constraints/contracts/objectives/scenarios と OAuth2/SigningKeys published language を追加し、ARCHITECTURE map と派生物を同期する。
 - [ ] T003 [Domain] CredentialConfiguration、IssuanceTransaction、CredentialRecord/Status、PresentationRequest/Result を実装し、nonce/code/state の一回性をテストする。
 - [ ] T004 [Crypto Ports] issuer signer、holder proof verifier、credential verifier/status resolver を既存 signing-key port 上に定義し、選定 library の adapter を実装する。
 - [ ] T005 [OID4VCI] issuer metadata、offer、authorization/pre-authorized flow、nonce、credential endpoint と deferred error contract を実装する。

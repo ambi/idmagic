@@ -47,13 +47,13 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
   - §3.4 states/events: ConnectorEnrolled / ConnectorDisabled / DirectorySyncStarted /
     DirectorySyncCompleted / DirectorySyncFailed / DirectoryUserProvisioned /
     DirectoryUserDeprovisioned を追加する。
-  - §3.5 invariants: Connector は所属 tenant 以外を更新できないこと、外部 immutable ID を
+  - 所有要素の constraints/contracts: Connector は所属 tenant 以外を更新できないこと、外部 immutable ID を
     tenant + source 内で一意とすること、同一差分の再送は冪等であること、import 属性は
     tenant の属性 schema に整合すること、IdMagic が AD 接続資格情報・ユーザーパスワードを
     保持しないことを明示する。
   - scenarios: 初回同期、差分の再送、削除／無効化、期限切れ・失効済み証明書の拒否、属性
     schema 不整合の部分失敗、Connector 停止からの cursor 再開を受け入れ例として追加する。
-  - permissions: source / Connector 管理は tenant admin に限定し、同期 API は enrollment 済み
+  - authorization/access: source / Connector 管理は tenant admin に限定し、同期 API は enrollment 済み
     Connector の mTLS identity と tenant 所属の双方で認可する。
   - objectives: IdMagic から Connector / AD への inbound 接続を要求しないこと、同期 payload
     と監査ログにパスワードを含めないこと、失敗した差分を安全に再試行できることを定める。
@@ -93,7 +93,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 
 ## Tasks
 - [ ] T001 [ADR/Architecture] connector deployment/trust/secret/bootstrap、sync保証、interactive auth範囲を決定しARCHITECTUREを同期する。
-- [ ] T002 [SCL] DirectoryConnection、cursor/link/quarantine lifecycle、connector/admin interfaces/events/invariants/scenariosを追加して再生成する。
+- [ ] T002 [SCL] DirectoryConnection、cursor/link/quarantine lifecycle、connector/admin interfaces/events/constraints/contracts/scenariosを追加して再生成する。
 - [ ] T003 [Server Domain] connection/mapping/link/sync batch use caseとmemory/PostgreSQL repositoryを実装し、Identity Management commandsへ接続する。
 - [ ] T004 [Connector] LDAPS/StartTLS、paged search、AD DirSyncまたはmodifyTimestamp cursor、objectGUID/entryUUID、nested group解決を実装する。
 - [ ] T005 [Transport/Security] connector registration、credential rotation、mTLS/short-lived token、batch upload/ack/resumeを実装する。

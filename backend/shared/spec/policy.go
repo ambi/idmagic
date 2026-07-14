@@ -1,7 +1,7 @@
 package spec
 
-// AuthZEN スタイルの認可ポリシー evaluate()。SCL permissions セクションを
-// 「名前付きルールの集合」に分解し純粋関数で評価する。
+// AuthZEN スタイルの認可ポリシー evaluate()。SCL authorization/access を
+// 実装側の名前付きルールへ対応させ、純粋関数で評価する。
 // TS src/spec-bindings/policy/client-authorization.ts に対応。
 
 import (
@@ -131,7 +131,7 @@ const (
 	ActionAdminBrandingUpdate                  = "admin:branding_update"
 )
 
-// PascalCase (SCL permissions のキー) → AuthZ action 名。
+// 管理画面の capability 名から AuthZ action 名への対応。
 var actionNameMapping = map[string]string{
 	"TokenGrantAuthorizationCode":          ActionTokenGrantAuthorizationCode,
 	"TokenGrantRefresh":                    ActionTokenGrantRefresh,
@@ -175,8 +175,8 @@ var actionNameMapping = map[string]string{
 	"BrandingUpdate":                       ActionAdminBrandingUpdate,
 }
 
-func ActionNameForPermission(permissionName string) (string, bool) {
-	action, ok := actionNameMapping[permissionName]
+func ActionNameForCapability(capabilityName string) (string, bool) {
+	action, ok := actionNameMapping[capabilityName]
 	return action, ok
 }
 
@@ -438,23 +438,4 @@ func ImplementedRuleIDs() []string {
 		out = append(out, k)
 	}
 	return out
-}
-
-// SCLPermissionsCoverage は SCL permissions の PascalCase 名と AuthZ action マッピングの差分を返す。
-func (s *SCL) SCLPermissionsCoverage() (missing, extra []string) {
-	mapped := map[string]struct{}{}
-	for k := range actionNameMapping {
-		mapped[k] = struct{}{}
-	}
-	for name := range s.Permissions {
-		if _, ok := mapped[name]; !ok {
-			missing = append(missing, name)
-		}
-	}
-	for name := range mapped {
-		if _, ok := s.Permissions[name]; !ok {
-			extra = append(extra, name)
-		}
-	}
-	return missing, extra
 }

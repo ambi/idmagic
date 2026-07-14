@@ -52,7 +52,7 @@ scope で絞って仲介する Token Vault を導入する。
 
 ## Tasks
 - [ ] T001 [Dependency/ADR] ADR-054 を確定し、wi-97 crypto port の利用条件、raw-token非公開、proxy allowlist、refresh failure semantics を固定する。
-- [ ] T002 [SCL/Architecture] connection/connector/grant lifecycle、authorize/callback/execute/revoke interfaces、events/invariants を追加し、新 context を ARCHITECTURE に同期する。
+- [ ] T002 [SCL/Architecture] connection/connector/grant lifecycle、authorize/callback/execute/revoke interfaces、events/constraints/contracts を追加し、新 context を ARCHITECTURE に同期する。
 - [ ] T003 [Domain/Persistence] Connector、FederatedConnection、ExternalGrant、encrypted TokenSet repository と tenant/user/connector key を実装する。
 - [ ] T004 [OAuth Client] PKCE/state 付き authorization、callback code exchange、single-flight refresh、reauthorization transition を実装する。
 - [ ] T005 [Broker] Agent/actor/RAR policy を評価する execute use case と hardened outbound HTTP adapter を実装し、raw token response を禁止する。

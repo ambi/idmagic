@@ -60,7 +60,11 @@ describe('generateOpenApi — unit', () => {
     const out = generateOpenApi(
       doc(undefined, {
         Get: {
-          input: { q: { type: 'String' }, opt: { type: 'String', optional: true } },
+          input: {
+            id: { type: 'String' },
+            q: { type: 'String' },
+            opt: { type: 'String', optional: true },
+          },
           bindings: [{ kind: 'http', method: 'GET', path: '/t/{id}', request_form: 'query' }],
         },
       }),
@@ -70,6 +74,12 @@ describe('generateOpenApi — unit', () => {
     expect(params).toContainEqual({
       name: 'id',
       in: 'path',
+      required: true,
+      schema: { type: 'string' },
+    })
+    expect(params).not.toContainEqual({
+      name: 'id',
+      in: 'query',
       required: true,
       schema: { type: 'string' },
     })

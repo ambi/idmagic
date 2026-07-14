@@ -93,8 +93,9 @@ func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]
 			Description: vocabulary.Definition,
 			Aliases:     slices.Clone(vocabulary.Aliases),
 		}
-		for permissionName, permission := range scl.Permissions {
-			if !permissionAppliesToRole(permission.AllowWhen, definition.name) {
+		for permissionName := range rolePermissionInterfaces {
+			requirements, applies := capabilityRequirements(scl, permissionName, definition.name)
+			if !applies {
 				continue
 			}
 			if definition.name == "system_admin" &&
@@ -105,15 +106,14 @@ func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]
 			if err != nil {
 				return nil, err
 			}
-			action, ok := spec.ActionNameForPermission(permissionName)
+			action, ok := spec.ActionNameForCapability(permissionName)
 			if !ok {
 				return nil, fmt.Errorf("action for permission %s is not mapped", permissionName)
 			}
 			role.Permissions = append(role.Permissions, RolePermission{
 				Name:         permissionName,
 				Action:       action,
-				Description:  permission.Description,
-				Requirements: flattenConditions(permission.AllowWhen),
+				Requirements: requirements,
 				Interfaces:   interfaces,
 			})
 		}
@@ -125,47 +125,55 @@ func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]
 	return roles, nil
 }
 
-func permissionAppliesToRole(condition any, role string) bool {
-	for _, requirement := range flattenConditions(condition) {
+func capabilityRequirements(scl *spec.SCL, capabilityName, role string) ([]string, bool) {
+	var requirements []string
+	for _, interfaceName := range rolePermissionInterfaces[capabilityName] {
+		iface, ok := scl.Interfaces[interfaceName]
+		if !ok {
+			continue
+		}
+		access, protected := spec.ProtectedInterfaceAccess(iface)
+		if !protected {
+			continue
+		}
+		authorization := scl.AuthorizationByContext[scl.InterfaceContexts[interfaceName]]
+		for _, policyName := range access.Policies {
+			policy, ok := authorization.Policies[policyName]
+			if !ok || policy.Effect != "permit" {
+				continue
+			}
+			principal, ok := authorization.Principals[policy.Principal]
+			if !ok || !principalAppliesToRole(principal.Matches, role) {
+				continue
+			}
+			requirements = append(requirements, principal.Matches...)
+			if policy.When != "" {
+				requirements = append(requirements, policy.When)
+			}
+		}
+	}
+	if len(requirements) == 0 {
+		return nil, false
+	}
+	sort.Strings(requirements)
+	return slices.Compact(requirements), true
+}
+
+func principalAppliesToRole(requirements []string, role string) bool {
+	for _, requirement := range requirements {
 		switch role {
 		case "admin":
-			clean := strings.ReplaceAll(requirement, "system_admin in actor.roles", "")
-			if strings.Contains(clean, "admin in actor.roles") {
+			clean := strings.ReplaceAll(requirement, "system_admin", "")
+			if strings.Contains(clean, "admin") && strings.Contains(requirement, "principal.roles") {
 				return true
 			}
 		case "system_admin":
-			if strings.Contains(requirement, "system_admin in actor.roles") {
+			if strings.Contains(requirement, "system_admin") && strings.Contains(requirement, "principal.roles") {
 				return true
 			}
 		}
 	}
 	return false
-}
-
-func flattenConditions(value any) []string {
-	switch typed := value.(type) {
-	case string:
-		return []string{typed}
-	case []any:
-		var out []string
-		for _, item := range typed {
-			out = append(out, flattenConditions(item)...)
-		}
-		return out
-	case map[string]any:
-		var out []string
-		keys := make([]string, 0, len(typed))
-		for key := range typed {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			out = append(out, flattenConditions(typed[key])...)
-		}
-		return out
-	default:
-		return nil
-	}
 }
 
 func rolePolicyInterfaces(scl *spec.SCL, permissionName string) ([]RoleInterface, error) {

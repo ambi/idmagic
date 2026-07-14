@@ -23,7 +23,7 @@ created_at: 2026-07-10
   - `OAuth2` context の `ListAdminAuditEvents` / consent / client 系 interface に同じ pagination contract を適用する。
   - `Application` context の application 一覧 / assignment 一覧へ pagination contract を適用する。
   - `Authentication` context の account activity / admin sign-in activity / auth event bucket 一覧の limit-only 契約を見直し、必要なものを cursor 対応にする。
-  - `user_experience` の AdminUsers / AdminGroups / AdminAgents / AdminApplications / AdminConsents / AdminAuditEvents / AccountActivity などにページング UI 要件を追加する。
+  - `flows` と `scenarios` の AdminUsers / AdminGroups / AdminAgents / AdminApplications / AdminConsents / AdminAuditEvents / AccountActivity などにページング UI 要件を追加する。
   - `scenarios` に先頭ページ、次ページ、フィルタ変更、削除を挟むページ遷移、権限拒否、tenant 境界の代表例を追加する。
   - `objectives` に一覧 API の p95 / p99、最大 page size、安定 sort key、深いページでも劣化しないことを追加する。
 - **go/usecase/http**:

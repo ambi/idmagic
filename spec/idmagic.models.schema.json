@@ -28,13 +28,14 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false,
-      "description": "ResourceOwner が認可を拒否した、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。"
+      "description": "SCIM Bearer token または管理者 principal が操作を許可されない。"
     },
     "AccessTokenClaims": {
       "type": "object",
       "properties": {
         "iss": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "sub": {
           "type": "string",
@@ -79,9 +80,11 @@
           "$ref": "#/$defs/SenderConstraintCnf"
         },
         "act": {
+          "type": "object",
           "description": "RFC 8693 §4.1 actor claim。委任の現在アクターを表す。subject_token に act があれば入れ子で連結される。"
         },
         "may_act": {
+          "type": "object",
           "description": "RFC 8693 §4.4 may_act claim。許可された委任先アクターを表す。"
         },
         "authorization_details": {
@@ -103,7 +106,10 @@
         "iat",
         "jti"
       ],
-      "description": "JWT Access Token クレーム (RFC 9068)。TTL 600 秒。"
+      "description": "JWT Access Token クレーム (RFC 9068)。TTL 600 秒。",
+      "x-scl-untranslated-constraints": [
+        "audience_non_empty(aud)"
+      ]
     },
     "AccessTokenIssued": {
       "type": "object",
@@ -255,7 +261,8 @@
       "type": "object",
       "properties": {
         "new_email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         }
       },
       "additionalProperties": false,
@@ -308,7 +315,8 @@
           "type": "string"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         },
         "email_verified": {
           "type": "boolean"
@@ -319,7 +327,9 @@
         "status": {
           "$ref": "#/$defs/UserStatus"
         },
-        "attributes": {},
+        "attributes": {
+          "type": "object"
+        },
         "editable_attributes": {
           "type": "array",
           "items": {
@@ -351,7 +361,9 @@
         "family_name": {
           "type": "string"
         },
-        "attributes": {}
+        "attributes": {
+          "type": "object"
+        }
       },
       "additionalProperties": false,
       "description": "self-service プロフィール更新リクエスト。表示名と editable_by_user=true の属性\nのみを受け付ける。attributes は key 単位の merge (指定 key のみ upsert、未指定は\n現状維持) で、admin 管理属性 (status / roles / organization) は対象外。\n"
@@ -458,7 +470,8 @@
           "type": "string"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         },
         "email_verified": {
           "type": "boolean"
@@ -595,7 +608,8 @@
           "description": "type=oidc の生成 client 認証方式。作成時に確定し以後不変。"
         },
         "jwks_uri": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
+          "format": "uri",
           "description": "token_endpoint_auth_method=private_key_jwt の公開鍵 JWKS URI。"
         },
         "tls_client_auth_subject_dn": {
@@ -824,6 +838,7 @@
           "format": "date-time"
         },
         "payload": {
+          "type": "object",
           "description": "イベント本体 (SCL events セクションの payload 形状)。"
         }
       },
@@ -835,7 +850,7 @@
         "occurred_at",
         "payload"
       ],
-      "description": "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\n"
+      "description": "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\nappend_only で 7 年保持する (GDPR Art. 30、ADR-107)。\n"
     },
     "AdminConsentListResponse": {
       "type": "object",
@@ -942,9 +957,10 @@
         "created_at": {
           "type": "string",
           "format": "date-time",
-          "description": "鍵生成時刻 (SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。"
+          "description": "鍵生成時刻 ([[ADR-108]] の SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。"
         },
         "public_jwk": {
+          "type": "object",
           "description": "公開鍵 JWK。JWKS と同じ表現。"
         }
       },
@@ -965,7 +981,8 @@
         "redirect_uris": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Uri"
+            "type": "string",
+            "format": "uri"
           },
           "minItems": 1
         },
@@ -996,9 +1013,12 @@
           "type": "string"
         },
         "jwks_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
-        "jwks": {},
+        "jwks": {
+          "type": "object"
+        },
         "tls_client_auth_subject_dn": {
           "type": "string"
         },
@@ -1123,7 +1143,8 @@
         "redirect_uris": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Uri"
+            "type": "string",
+            "format": "uri"
           }
         },
         "grant_types": {
@@ -1145,9 +1166,12 @@
           "type": "string"
         },
         "jwks_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
-        "jwks": {},
+        "jwks": {
+          "type": "object"
+        },
         "tls_client_auth_subject_dn": {
           "type": "string"
         },
@@ -1196,7 +1220,8 @@
         "redirect_uris": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Uri"
+            "type": "string",
+            "format": "uri"
           },
           "minItems": 1
         },
@@ -1319,7 +1344,7 @@
         "display_name",
         "password_policy_defaults"
       ],
-      "description": "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う objectives 標準値を併せて返す。\n"
+      "description": "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う Authentication context の PasswordPolicy 標準値を併せて返す。\n"
     },
     "AdminUserCreateRequest": {
       "type": "object",
@@ -1336,7 +1361,8 @@
           "type": "string"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         },
         "email_verified": {
           "type": "boolean",
@@ -1357,7 +1383,7 @@
         "email_verified",
         "roles"
       ],
-      "description": "管理者がユーザーを作成する JSON リクエスト。初期パスワードには PasswordPolicy objective を適用する。"
+      "description": "管理者がユーザーを作成する JSON リクエスト。初期パスワードには Authentication context の PasswordPolicy を適用する。"
     },
     "AdminUserListResponse": {
       "type": "object",
@@ -1392,7 +1418,8 @@
           "type": "string"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         },
         "email_verified": {
           "type": "boolean"
@@ -1425,7 +1452,8 @@
         },
         "disabled_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "旧世代の無効化時刻フィールド。User.lifecycle.status + status_changed_at が唯一の真実であり、本フィールドは現状レスポンス後方互換のためだけに残る (別途整理が必要な既存ギャップ、本移行のスコープ外)。"
         },
         "created_at": {
           "type": "string",
@@ -1462,7 +1490,8 @@
           "type": "string"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         },
         "email_verified": {
           "type": "boolean"
@@ -1481,77 +1510,22 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64,
-          "description": "生成識別子 agent_<uuid>。不変。"
+          "type": "string"
         },
         "tenant_id": {
-          "type": "string",
-          "default": "default",
-          "description": "所属テナント ID。cross-tenant 参照は禁止。"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100,
-          "description": "テナント内で一意な表示名。"
-        },
-        "description": {
-          "type": "string",
-          "maxLength": 500,
-          "description": "用途 purpose。"
-        },
-        "kind": {
-          "$ref": "#/$defs/AgentKind",
-          "default": "Supervised"
-        },
-        "owner_user_id": {
-          "type": "string",
-          "minLength": 1,
-          "description": "所有者 User の id。必須。同一 tenant_id の User でなければならない。"
+          "type": "string"
         },
         "status": {
-          "$ref": "#/$defs/AgentStatus",
-          "default": "Active"
-        },
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Agent に付与するロール束。"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updated_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "disabled_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "killed_at": {
-          "type": "string",
-          "format": "date-time",
-          "description": "一方向終端 (kill) 時刻。"
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
         "id",
         "tenant_id",
-        "name",
-        "kind",
-        "owner_user_id",
-        "status",
-        "roles",
-        "created_at"
+        "status"
       ],
-      "description": "tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は持たず、AgentCredentialBinding で同一テナントの既存 OAuth2Client に束縛してトークンを得る。owner は同一テナントの既存 User で必須。"
+      "description": "有効な SCIM Bearer token から解決される provisioning principal。"
     },
     "AgentCredentialBindRequest": {
       "type": "object",
@@ -1587,7 +1561,7 @@
         "client_id",
         "created_at"
       ],
-      "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。"
+      "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。"
     },
     "AgentCredentialBound": {
       "type": "object",
@@ -2917,6 +2891,20 @@
       "additionalProperties": false,
       "description": "WS-Federation binding 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。"
     },
+    "Approve": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "device authorization が承認された event。"
+    },
     "AssignmentSubjectType": {
       "type": "string",
       "enum": [
@@ -2952,7 +2940,7 @@
         "Date",
         "StringArray"
       ],
-      "description": "属性値の sum type discriminator。OIDC 標準クレームの組み込み属性と tenant 定義 custom 属性の両方で共通。"
+      "description": "属性値の sum type discriminator。Tenancy context が所有する定義の published language stub。"
     },
     "AttributeValue": {
       "type": "object",
@@ -2989,6 +2977,7 @@
       "type": "object",
       "properties": {
         "one_or_many": {
+          "type": "object",
           "description": "JSON string または1つ以上の JSON string の配列。"
         }
       },
@@ -3151,6 +3140,20 @@
         "none"
       ],
       "description": "検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。ADR-104 (ADR-046 の\nusername/IP 条項を撤回) により、現状は none (raw 保存) のみ存在する。\n"
+    },
+    "AuthenticateUser": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "resource owner 認証が成立した event。"
     },
     "AuthenticationContext": {
       "type": "object",
@@ -3474,7 +3477,8 @@
           }
         },
         "redirect_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "code_challenge": {
           "type": "string"
@@ -3544,7 +3548,10 @@
         "issued_at",
         "expires_at"
       ],
-      "description": "発行済み認可コードの永続レコード。code 本体は短命。状態は AuthorizationCodeRecordLifecycle に従う（AuthorizationCodeFlow とは別軸でコード自体のライフサイクルを表す）。"
+      "description": "発行済み認可コードの永続レコード。code 本体は短命。状態は AuthorizationCodeRecordLifecycle に従う（AuthorizationCodeFlow とは別軸でコード自体のライフサイクルを表す）。",
+      "x-scl-untranslated-constraints": [
+        "expires_at - issued_at <= duration('60s')"
+      ]
     },
     "AuthorizationCodeRecordState": {
       "type": "string",
@@ -3638,6 +3645,7 @@
           "description": "RFC 9396 — 対象に対する権限レベル群。"
         },
         "fields": {
+          "type": "object",
           "description": "type 固有の構造化フィールド (例: instructedAmount, creditorAccount)。登録スキーマで意味論を束縛する。"
         }
       },
@@ -3972,7 +3980,8 @@
           "type": "string"
         },
         "redirect_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "response_type": {
           "$ref": "#/$defs/ResponseType"
@@ -3987,7 +3996,10 @@
           "type": "string"
         },
         "code_challenge": {
-          "type": "string"
+          "type": "string",
+          "not": {
+            "const": ""
+          }
         },
         "code_challenge_method": {
           "$ref": "#/$defs/CodeChallengeMethod"
@@ -3997,7 +4009,11 @@
         },
         "max_age": {
           "type": "integer",
-          "minimum": 0
+          "x-scl-untranslated-constraints": [
+            {
+              "min": 0
+            }
+          ]
         },
         "par_request_uri": {
           "type": "string"
@@ -4053,7 +4069,10 @@
         "created_at",
         "expires_at"
       ],
-      "description": "フロー追跡用のサーバー内部中間ステート。"
+      "description": "フロー追跡用のサーバー内部中間ステート。",
+      "x-scl-untranslated-constraints": [
+        "code_challenge_method == S256"
+      ]
     },
     "AuthorizeParameters": {
       "type": "object",
@@ -4137,7 +4156,9 @@
           "type": "string"
         },
         "new_password": {
-          "type": "string"
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 128
         }
       },
       "additionalProperties": false,
@@ -4201,7 +4222,8 @@
           "type": "string"
         },
         "redirect_to": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         }
       },
       "additionalProperties": false,
@@ -4243,7 +4265,9 @@
           "type": "string"
         },
         "new_password": {
-          "type": "string"
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 128
         }
       },
       "additionalProperties": false,
@@ -4258,7 +4282,7 @@
       "properties": {
         "code": {
           "type": "string",
-          "description": "Authenticator アプリが生成した数字コード (TotpPolicy の digits 桁)。"
+          "description": "Authenticator アプリが生成した数字コード (6 桁、RFC 6238 §4 / RFC 4226 §4)。"
         },
         "return_to": {
           "type": "string",
@@ -4303,6 +4327,7 @@
       "type": "object",
       "properties": {
         "assertion": {
+          "type": "object",
           "description": "PublicKeyCredential (assertion response, WebAuthn Level 3)。"
         },
         "return_to": {
@@ -4318,23 +4343,12 @@
     "ClaimMappingPolicy": {
       "type": "object",
       "properties": {
-        "name_id": {
-          "$ref": "#/$defs/NameIdConfiguration",
-          "description": "NameID の構成。"
-        },
-        "rules": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ClaimMappingRule"
-          },
-          "description": "出力 claim 規則の集合 (空なら NameID のみ)。"
+        "configuration": {
+          "type": "object"
         }
       },
       "additionalProperties": false,
-      "required": [
-        "name_id"
-      ],
-      "description": "RP/SP trust ごとの claim 発行規則一式。NameID と claim 規則集合を束ねる。"
+      "description": "ClaimMapping context が publish する trust ごとの claim 発行規則の最小 stub。"
     },
     "ClaimMappingRule": {
       "type": "object",
@@ -4411,7 +4425,8 @@
         "redirect_uris": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Uri"
+            "type": "string",
+            "format": "uri"
           },
           "minItems": 1
         },
@@ -4441,9 +4456,12 @@
           "type": "string"
         },
         "jwks_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
-        "jwks": {},
+        "jwks": {
+          "type": "object"
+        },
         "tls_client_auth_subject_dn": {
           "type": "string"
         },
@@ -4476,7 +4494,7 @@
         "Public",
         "Confidential"
       ],
-      "description": "クライアントが client_secret を安全に保持できるかどうかの分類。Public はモバイル/SPA など秘匿不可、Confidential はサーバーサイドで秘密鍵を保持可能。"
+      "description": "OAuth2 context が publish する client 種別の published language stub。"
     },
     "CodeChallengeMethod": {
       "type": "string",
@@ -4499,7 +4517,8 @@
           "items": {
             "type": "string"
           },
-          "minItems": 1
+          "minItems": 1,
+          "uniqueItems": true
         },
         "state": {
           "$ref": "#/$defs/ConsentState"
@@ -4545,7 +4564,10 @@
         "granted_at",
         "expires_at"
       ],
-      "description": "GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。user_id と client_id は既存 User と OAuth2Client を指す。"
+      "description": "GDPR 同意取得記録。状態は ConsentLifecycle 状態機械に従う。user_id と client_id は既存 User と OAuth2Client を指す。",
+      "x-scl-untranslated-constraints": [
+        "consent_references_are_tenant_local(user_id, client_id)"
+      ]
     },
     "ConsentGranted": {
       "type": "object",
@@ -4621,6 +4643,20 @@
       ],
       "description": "ConsentLifecycle 状態機械の取りうる状態列挙。GDPR Art.7(3) 撤回権により Granted → Revoked が可能。"
     },
+    "Deny": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "device authorization が拒否された event。"
+    },
     "DeviceAuthorization": {
       "type": "object",
       "properties": {
@@ -4656,7 +4692,11 @@
         },
         "interval_seconds": {
           "type": "integer",
-          "minimum": 1
+          "x-scl-untranslated-constraints": [
+            {
+              "min": 1
+            }
+          ]
         },
         "last_polled_at": {
           "type": "string",
@@ -4804,10 +4844,12 @@
           "type": "string"
         },
         "verification_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "verification_uri_complete": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "expires_in": {
           "type": "integer"
@@ -4841,37 +4883,48 @@
       "type": "object",
       "properties": {
         "issuer": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "authorization_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "token_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "userinfo_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "jwks_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "introspection_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "revocation_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "pushed_authorization_request_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "device_authorization_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "registration_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "end_session_endpoint": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "scopes_supported": {
           "type": "array",
@@ -5143,7 +5196,8 @@
           "type": "string"
         },
         "post_logout_redirect_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "state": {
           "type": "string"
@@ -5151,6 +5205,20 @@
       },
       "additionalProperties": false,
       "description": "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で post_logout_redirect_uri を検証する。"
+    },
+    "EnterUserCode": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "device user code が入力された event。"
     },
     "EntraFederationConfigured": {
       "type": "object",
@@ -5205,15 +5273,15 @@
           "description": "変換後 ImmutableID を格納する合成属性名。既定 entra_immutable_id。"
         },
         "passive_logon_uri": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "Entra PassiveLogOnUri。通常 /wsfed。"
         },
         "active_logon_uri": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "Entra ActiveLogOnUri。通常 /trust/usernamemixed。"
         },
         "metadata_exchange_uri": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "Entra MetadataExchangeUri。通常 /trust/mex。"
         }
       },
@@ -5229,6 +5297,34 @@
       ],
       "description": "Microsoft Entra domain federation 用 profile。IssuerUri、sourceAnchor 属性、 passive / active / MEX endpoint を束ね、UPN / ImmutableID / persistent NameID の claim preset を WS-Fed RP に適用する。"
     },
+    "Exchange": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "device code が token に交換された event。"
+    },
+    "Expire": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "有効期限到達を表す lifecycle event。"
+    },
     "ExpiredTokenError": {
       "type": "object",
       "properties": {},
@@ -5241,7 +5337,7 @@
         "None",
         "Fapi2SecurityProfile"
       ],
-      "description": "クライアントに適用される FAPI セキュリティプロファイル。None は通常クライアント、Fapi2SecurityProfile は金融グレード API 向け（PAR 必須 / DPoP 必須 等の追加制約）。"
+      "description": "OAuth2 context が publish する FAPI セキュリティプロファイルの published language stub。"
     },
     "FederatedAuthenticated": {
       "type": "object",
@@ -5325,6 +5421,20 @@
       ],
       "description": "ローカル user から外部 IdP の identity を解除した。"
     },
+    "GrantConsent": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "resource owner が同意した event。"
+    },
     "GrantType": {
       "type": "string",
       "enum": [
@@ -5334,7 +5444,7 @@
         "DeviceCode",
         "TokenExchange"
       ],
-      "description": "トークン発行の方式。本アプリがサポートする 5 種を列挙する。各値の意味は glossary を参照。"
+      "description": "OAuth2 context が publish するトークン発行方式の published language stub。"
     },
     "Group": {
       "type": "object",
@@ -5704,7 +5814,8 @@
       "type": "object",
       "properties": {
         "iss": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
         "sub": {
           "type": "string"
@@ -5749,7 +5860,8 @@
           "type": "string"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email"
         },
         "email_verified": {
           "type": "boolean"
@@ -5822,6 +5934,7 @@
           "$ref": "#/$defs/SenderConstraintCnf"
         },
         "act": {
+          "type": "object",
           "description": "RFC 8693 §4.1 actor claim。委任トークンの場合に現在アクターとアクター連鎖を返す。"
         }
       },
@@ -5853,7 +5966,7 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false,
-      "description": "リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。"
+      "description": "リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。"
     },
     "InvalidScopeError": {
       "type": "object",
@@ -5866,6 +5979,20 @@
       "properties": {},
       "additionalProperties": false,
       "description": "アクセストークンが期限切れ、改ざん、不正、または失効済み (RFC 6750 §3.1 invalid_token)。"
+    },
+    "IssueCode": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "authorization code を発行する lifecycle event。"
     },
     "IssuedClaim": {
       "type": "object",
@@ -5906,7 +6033,9 @@
         "alg": {
           "type": "string"
         },
-        "extra": {}
+        "extra": {
+          "type": "object"
+        }
       },
       "additionalProperties": false,
       "required": [
@@ -5950,9 +6079,11 @@
           "$ref": "#/$defs/JobStatus"
         },
         "params": {
+          "type": "object",
           "description": "enqueue 時にハンドラへ渡す入力。呼び出し側は生 PII を極力含めない。"
         },
         "result": {
+          "type": "object",
           "description": "ハンドラが Succeeded 時に残す出力。"
         },
         "error": {
@@ -5969,7 +6100,7 @@
         },
         "dedup_key": {
           "type": "string",
-          "description": "(tenant_id, dedup_key) で一意。同じ副作用を重複 enqueue しないための冪等キー。"
+          "description": "(tenant_id, dedup_key) で一意。同じ副作用を重複 enqueue しないための冪等キー。at-least-once 配信下でもハンドラの副作用は1回分しか観測されないことを保証する主な仕組み。"
         },
         "progress": {
           "$ref": "#/$defs/JobProgress",
@@ -6011,7 +6142,7 @@
         "created_at",
         "updated_at"
       ],
-      "description": "enqueue された非同期処理の実行単位。worker がリースを確保して Running にし、\nハンドラが handler_context.tenant_id == job.tenant_id の境界内だけで副作用を起こす。\n"
+      "description": "enqueue された非同期処理の実行単位。worker がリースを確保して Running にし、\nハンドラが handler_context.tenant_id == job.tenant_id の境界内だけで副作用を起こす。\nレコードの保持期間は ADR-100-job-data-retention-and-pii が定める (delete_after 30日)。\n"
     },
     "JobCanceled": {
       "type": "object",
@@ -6103,6 +6234,12 @@
         "user_import_apply"
       ],
       "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
+    },
+    "JobLeaseLostError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "worker が heartbeat / 完了報告 / 失敗報告を行った時点で、既にリースが失効しているか別 worker に奪われている。呼び出し元 worker はハンドラ実行を中断すべきである。"
     },
     "JobProgress": {
       "type": "object",
@@ -6279,11 +6416,17 @@
           "items": {
             "type": "string"
           },
-          "description": "認証成立時の RFC 8176 メソッド列。"
+          "x-scl-untranslated-constraints": [
+            "amr.all(m, m in ['pwd', 'otp', 'webauthn', 'hwk', 'swk', 'rc'])"
+          ],
+          "description": "認証成立時の RFC 8176 メソッド列 (RFC8176-AMR-VOCABULARY)。"
         },
         "acr": {
           "type": "string",
-          "description": "AuthenticationContextPolicy から導出した URN。"
+          "x-scl-untranslated-constraints": [
+            "acr in ['urn:idmagic:acr:pwd', 'urn:idmagic:acr:mfa']"
+          ],
+          "description": "認証コンテキストクラス参照 URN。urn:idmagic:acr:pwd (amr ⊇ [pwd] のみ) または urn:idmagic:acr:mfa (amr が otp / webauthn / hwk / swk / rc のいずれかを含む) のいずれか (OIDC Core §2 / RFC 8176)。"
         },
         "authentication_pending": {
           "type": "boolean",
@@ -6305,7 +6448,7 @@
         "authentication_pending",
         "expires_at"
       ],
-      "description": "ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true はサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加 factor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize 完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。"
+      "description": "ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true はサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加 factor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize 完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。Cookie は http_only かつ same_site=Lax で発行する。"
     },
     "LoginThrottled": {
       "type": "object",
@@ -6338,7 +6481,7 @@
         "keyHash",
         "retryAfterSeconds"
       ],
-      "description": "ログイン試行が per-account / per-IP のスロットリング閾値に到達してロックされた。SIEM の credential stuffing / brute-force 検知の入力イベント。keyHash は username / IP の SHA-256 で、平文を audit log に流さない。"
+      "description": "ログイン試行が per-account (10 回 / 900 秒窓 / 900 秒ロックアウト) または per-IP\n(30 回 / 900 秒窓 / 900 秒ロックアウト) のスロットリング閾値に到達してロックされた。\nSIEM の credential stuffing / brute-force 検知の入力イベント。keyHash は username\n(lowercase) または IP の SHA-256 で、平文を audit log に流さない。\n"
     },
     "MfaChallengeFailed": {
       "type": "object",
@@ -6459,7 +6602,10 @@
         "type",
         "created_at"
       ],
-      "description": "ユーザーが登録した第二要素 (MFA) 1 件。Totp の場合 secret は base32 で保存し、認証時に RFC 6238 (T0=0, STEP=30s, 6-digit) で評価する。User.mfa_enrolled の真値はこの集合の非空性と同義。"
+      "description": "ユーザーが登録した第二要素 (MFA) 1 件。Totp の場合 secret は base32 で保存し、認証時に RFC 6238 (T0=0, STEP=30s, digits 桁, window ±1 step) で評価する。algorithm は SHA1、secret は 20 バイトで生成する。User.mfa_enrolled の真値はこの集合の非空性と同義。",
+      "x-scl-untranslated-constraints": [
+        "type != Totp || (secret == null || size(secret) > 0)"
+      ]
     },
     "MfaFactorEnrolled": {
       "type": "object",
@@ -6663,7 +6809,8 @@
         "redirect_uris": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Uri"
+            "type": "string",
+            "format": "uri"
           },
           "description": "redirect 系グラント (authorization_code) のとき必須。client_credentials のみの M2M クライアントは持たない (RFC 6749 §3.1.2)。"
         },
@@ -6687,9 +6834,12 @@
           "type": "string"
         },
         "jwks_uri": {
-          "$ref": "#/$defs/Uri"
+          "type": "string",
+          "format": "uri"
         },
-        "jwks": {},
+        "jwks": {
+          "type": "object"
+        },
         "tls_client_auth_subject_dn": {
           "type": "string"
         },
@@ -6785,7 +6935,9 @@
         "client_id": {
           "type": "string"
         },
-        "parameters": {},
+        "parameters": {
+          "type": "object"
+        },
         "state": {
           "$ref": "#/$defs/PARRecordState"
         },
@@ -6849,7 +7001,9 @@
     "ParRequest": {
       "type": "object",
       "properties": {
-        "parameters": {}
+        "parameters": {
+          "type": "object"
+        }
       },
       "additionalProperties": false,
       "required": [
@@ -6902,15 +7056,15 @@
       "properties": {
         "min_length": {
           "type": "integer",
-          "description": "objectives.PasswordPolicy.min_length。"
+          "description": "Authentication context の PasswordPolicy.min_length。"
         },
         "max_length": {
           "type": "integer",
-          "description": "objectives.PasswordPolicy.max_length。"
+          "description": "Authentication context の PasswordPolicy.max_length。"
         },
         "history_depth": {
           "type": "integer",
-          "description": "objectives.PasswordPolicy.history_depth。"
+          "description": "Authentication context の PasswordPolicy.history_depth。"
         }
       },
       "additionalProperties": false,
@@ -6919,7 +7073,7 @@
         "max_length",
         "history_depth"
       ],
-      "description": "objectives.PasswordPolicy の現行値。テナント設定 UI が「テナント上書きが\n無いときに実際に適用される値」をユーザに具体数字で示せるよう、API レスポンスに\n埋め込む。同時に override がこの値より弱い場合の reject 閾値でもある。\n"
+      "description": "Authentication context の PasswordPolicy の現行値。テナント設定 UI が「テナント上書きが\n無いときに実際に適用される値」をユーザに具体数字で示せるよう、API レスポンスに\n埋め込む。同時に override がこの値より弱い場合の reject 閾値でもある。\n"
     },
     "PasswordPolicyOverride": {
       "type": "object",
@@ -6938,7 +7092,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "テナント固有のパスワードポリシー上書き値 (Phase 4)。Phase 0 で固定値とした\nobjectives.PasswordPolicy をテナント解決ポートで差し替えるためのスキーマ。\n省略フィールドは global default を継承し、change_password / reset_password の\n評価経路ではテナント値が global より厳しい方向にのみ働く想定。\n"
+      "description": "テナント固有のパスワードポリシー上書き値 (Phase 4)。Phase 0 で固定値とした\nAuthentication context の PasswordPolicy をテナント解決ポートで差し替えるためのスキーマ。\n省略フィールドは global default を継承し、change_password / reset_password の\n評価経路ではテナント値が global より厳しい方向にのみ働く想定。\n"
     },
     "PasswordResetRequested": {
       "type": "object",
@@ -6979,11 +7133,13 @@
         },
         "expires_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "created_at + 1800 秒 (30 分)。"
         },
         "consumed_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "非 null なら使用済みで再利用不可。"
         }
       },
       "additionalProperties": false,
@@ -6993,7 +7149,7 @@
         "created_at",
         "expires_at"
       ],
-      "description": "パスワードリセット用の単発消費トークン。\ntoken は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ。\n期限切れ / consume 済みの行は GC するが、INSERT 時に同 sub の未消費を\n失効させる軽い掃除も行う。\n"
+      "description": "パスワードリセット用の単発消費トークン。\ntoken は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ。\n有効期間は発行から 1800 秒 (30 分) とし、単発消費 (consumed_at 設定後は再利用不可)。\n期限切れ / consume 済みの行は GC するが、INSERT 時に同 sub の未消費を\n失効させる軽い掃除も行う。\n"
     },
     "PortalApplicationCategory": {
       "type": "object",
@@ -7148,7 +7304,7 @@
         "code_hash",
         "generated_at"
       ],
-      "description": "TOTP / WebAuthn 喪失時の backup recovery code 1 件。平文は生成時に一度だけ表示し、\nDB には code_hash (SHA-256 hex) のみ保存する。consumed_at が非 null なら使用済みで\n再利用不可。1 ユーザーの有効な code 集合を 1 set として扱い、再生成で全置換する。\n"
+      "description": "TOTP / WebAuthn 喪失時の backup recovery code 1 件。平文は生成時に一度だけ表示し、\nDB には code_hash (SHA-256 hex) のみ保存する。consumed_at が非 null なら使用済みで\n再利用不可。1 ユーザーの有効な code 集合を 1 set として扱い、再生成で全置換する\n(regenerate_replaces_all)。生成時は count=10 件、各 code_length=10 文字、\nalphabet 23456789abcdefghijkmnpqrstuvwxyz (混同しやすい文字を除いた base32 風) から\n採番し、単独では第二要素にならない backup 専用とする (NIST SP 800-63B §5.1.2 Look-up Secrets)。\n"
     },
     "RecoveryCodeStatus": {
       "type": "object",
@@ -7243,6 +7399,20 @@
       ],
       "description": "本人が backup recovery code を明示的に失効した (step-up 済み)。以降 recovery code は\n第二要素として使えない。\n"
     },
+    "RedeemCode": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "authorization code を単発償還する lifecycle event。"
+    },
     "RefreshTokenIssued": {
       "type": "object",
       "properties": {
@@ -7290,7 +7460,10 @@
         },
         "hash": {
           "type": "string",
-          "description": "SHA-256 ハッシュ。"
+          "description": "SHA-256 ハッシュ。",
+          "not": {
+            "const": ""
+          }
         },
         "family_id": {
           "type": "string",
@@ -7356,7 +7529,12 @@
         "expires_at",
         "absolute_expires_at"
       ],
-      "description": "リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant は global ID の User / OAuth2Client から導出し、token 行に冗長保持しない。use case は両者の tenant-local invariant を検証する。"
+      "description": "リフレッシュトークンのストアレコード。プレーン値は保存しない。状態は RefreshTokenLifecycle 状態機械に従う。tenant は global ID の User / OAuth2Client から導出し、token 行に冗長保持しない。use case は両者の tenant-local invariant を検証する。",
+      "x-scl-untranslated-constraints": [
+        "absolute_expires_at >= expires_at",
+        "refresh_token_references_are_tenant_local(user_id, client_id)",
+        "parent_id == null || parent_in_same_family(parent_id, family_id)"
+      ]
     },
     "RefreshTokenReuseDetected": {
       "type": "object",
@@ -7448,6 +7626,20 @@
       ],
       "description": "RefreshTokenLifecycle 状態機械の取りうる状態列挙。Rotated は子トークンへ消費済み、Revoked は失効済み、Expired は期限切れ。"
     },
+    "Reject": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "lifecycle を拒否終端へ進める event。"
+    },
     "ReorderMyApplicationsRequest": {
       "type": "object",
       "properties": {
@@ -7464,6 +7656,20 @@
         "application_ids"
       ],
       "description": "利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible なアプリのみを含む。"
+    },
+    "RequestConsent": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "resource owner の同意を要求する event。"
     },
     "RequiredAction": {
       "type": "string",
@@ -7511,7 +7717,21 @@
       "enum": [
         "Code"
       ],
-      "description": "/authorize で要求できる応答種別。本アプリでは Authorization Code フロー専用なので Code のみサポート。"
+      "description": "OAuth2 context が publish する /authorize 応答種別の published language stub。"
+    },
+    "RevokeConsent": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "consent を論理撤回する lifecycle event。"
     },
     "RevokeRequest": {
       "type": "object",
@@ -7528,6 +7748,34 @@
         "token"
       ],
       "description": "/revoke リクエスト (RFC 7009 §2.1)。指定したトークンを失効させる。"
+    },
+    "RevokeToken": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "token を失効させる lifecycle event。"
+    },
+    "Rotate": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "refresh token を child token へ rotate する event。"
     },
     "SamlAssertion": {
       "type": "object",
@@ -7547,7 +7795,7 @@
           "description": "SP の audience (既定 entity_id)。"
         },
         "recipient": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "bearer SubjectConfirmationData の Recipient (ACS URL)。"
         },
         "not_before": {
@@ -7598,11 +7846,11 @@
           "description": "SP の entityID。登録済み SamlServiceProvider に解決する。"
         },
         "acs_url": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "要求が指定する AssertionConsumerService URL。許可集合との完全一致のみ受理する。"
         },
         "destination": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "要求が宛てた IdP の SSO endpoint URL。"
         },
         "name_id_format": {
@@ -7673,7 +7921,7 @@
           "description": "Response ID。"
         },
         "destination": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "minLength": 1,
           "description": "確定した ACS URL (許可集合内)。"
         },
@@ -7725,7 +7973,7 @@
           "description": "許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、省略時は先頭を既定の返信先とする。"
         },
         "slo_url": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "SP の SingleLogoutService URL。Single Logout の返送先。"
         },
         "audience": {
@@ -7856,6 +8104,12 @@
       ],
       "description": "SCIM 2.0 の ID と IdP 内部の Group (id) を紐付けるマッピング。"
     },
+    "ScimProtocolError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "RFC 7644 §3.12 に従う SCIM protocol error response。"
+    },
     "ScimToken": {
       "type": "object",
       "properties": {
@@ -7915,7 +8169,7 @@
       "type": "object",
       "properties": {
         "url": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "公開 endpoint URL。"
         },
         "binding": {
@@ -8191,7 +8445,7 @@
         "tenant_id": {
           "type": "string",
           "default": "default",
-          "description": "鍵が属するテナント ID。テナント A の JWKS にテナント B の kid は出ない。"
+          "description": "鍵が属するテナント ID。既存 Tenant を指し、テナント A の JWKS にテナント B の kid は出ない。"
         },
         "kid": {
           "type": "string",
@@ -8249,7 +8503,51 @@
         "created_at",
         "updated_at"
       ],
-      "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。"
+      "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。"
+    },
+    "SigningKeyArchived": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "kid"
+      ],
+      "description": "署名鍵が Retired から Archived (終端、監査保管) に移った。"
+    },
+    "SigningKeyRetired": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "kid"
+      ],
+      "description": "署名鍵が Verifying から Retired に移り JWKS から除去された\n([[ADR-108]] の SigningKeyMinJwksOverlap 経過、または緊急無効化)。\n"
     },
     "SigningKeyRotated": {
       "type": "object",
@@ -8275,7 +8573,7 @@
         "tenantId",
         "newKid"
       ],
-      "description": "JWKS の署名鍵が回転した（90 日ごと、または緊急回転）。"
+      "description": "JWKS の署名鍵が回転した（[[ADR-108]] の既定 90 日ごと、または緊急回転）。"
     },
     "SigningKeyState": {
       "type": "string",
@@ -8445,55 +8743,14 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "description": "不変の UUID 代理キー。テナント生成時に採番し以後不変。全テーブルの tenant_id FK・spec.DefaultTenantID・内部のテナント参照はこの値を用いる。"
-        },
-        "realm": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 63,
-          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
-          "description": "URL `/realms/{realm}/`・OIDC issuer 等の公開語彙に現れる mutable な一意識別子 (旧 id の slug)。予約語 admin は禁止。一意制約の範囲で変更可能 (rename)。"
-        },
-        "display_name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "status": {
-          "$ref": "#/$defs/TenantStatus",
-          "default": "Active"
-        },
-        "password_policy_override": {
-          "$ref": "#/$defs/PasswordPolicyOverride",
-          "description": "objectives.PasswordPolicy をこのテナントだけ上書きする値。指定された値のみ上書きされ、それ以外は global default を継承。"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updated_at": {
-          "type": "string",
-          "format": "date-time",
-          "description": "作成時は created_at と同じ値を持ち、以後 mutable aggregate の管理操作ごとに更新する。"
-        },
-        "disabled_at": {
-          "type": "string",
-          "format": "date-time",
-          "description": "テナント無効化時刻。non-null なら /authorize / /token / /login 等を一律拒否。"
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id",
-        "realm",
-        "display_name",
-        "status",
-        "created_at",
-        "updated_at"
+        "id"
       ],
-      "description": "テナント (realm) 集約。Client / User / Consent / ポリシー / ブランディングはこの境界に閉じる。`default` テナントは起動時に自動作成され、削除・無効化とも不可。live aggregate は tenant_id で既存 Tenant を参照し、履歴・イベント用途の record は監査保持のため tenant 外部キーを持たない場合がある。"
+      "description": "Tenancy が publish するテナント resource の最小 stub。"
     },
     "TenantBranding": {
       "type": "object",
@@ -8850,11 +9107,13 @@
       "properties": {
         "label": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 80,
           "description": "利用者に表示するリンクテキスト。HTML / Markdown として解釈しない。"
         },
         "url": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 2048,
           "pattern": "^https://",
           "description": "遷移先。https scheme のみ許可する allowlist。"
@@ -8865,7 +9124,7 @@
         "label",
         "url"
       ],
-      "description": "hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。"
+      "description": "hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。存在する場合は label と url の両方が非空でなければならない (片側だけの指定を拒否する)。"
     },
     "TenantListResponse": {
       "type": "object",
@@ -8912,7 +9171,7 @@
         },
         "provider_healthy": {
           "type": "boolean",
-          "description": "KeyProvider が到達可能か。false のとき FailClosed で新規発行を止める。"
+          "description": "KeyProvider が到達可能か。false のとき FailClosed で新規発行を止める (強制点は OAuth2.Token)。"
         }
       },
       "additionalProperties": false,
@@ -9148,7 +9407,7 @@
         "TlsClientAuth",
         "None"
       ],
-      "description": "/token エンドポイントにおけるクライアント認証方式 (RFC 6749 §2.3 / RFC 7523 / RFC 8705)。None は public client 専用。"
+      "description": "OAuth2 context が publish する /token クライアント認証方式の published language stub。"
     },
     "TokenExchangeRejected": {
       "type": "object",
@@ -9371,99 +9630,47 @@
       "additionalProperties": false,
       "description": "AuthorizationServer がこの grant_type をサポートしていない (RFC 6749 §5.2 unsupported_grant_type)。"
     },
-    "Uri": {
+    "Use": {
       "type": "object",
       "properties": {
-        "value": {
-          "type": "string"
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false,
       "required": [
-        "value"
+        "occurredAt"
       ],
-      "description": "URI 形式の文字列。"
+      "description": "PAR request_uri を単発消費する lifecycle event。"
     },
     "User": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "description": "User の canonical な domain 識別子。global 一意で tenant 跨ぎでも衝突しない。\nprotocol 境界ではこの id を写像して表現する: OIDC `sub` claim / SAML NameID /\nWS-Fed subject / SCIM リソース参照。protocol vocabulary (`sub` 等) を storage identity\nとして露出させない。pairwise subject など写像を差し替える場合も id 自体は不変。\n"
+          "type": "string"
         },
         "tenant_id": {
-          "type": "string",
-          "default": "default",
-          "description": "所属テナント ID。preferred_username の一意性スコープを決める。"
-        },
-        "preferred_username": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100
-        },
-        "password_hash": {
           "type": "string"
         },
-        "name": {
+        "status": {
           "type": "string"
-        },
-        "given_name": {
-          "type": "string"
-        },
-        "family_name": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string"
-        },
-        "email_verified": {
-          "type": "boolean",
-          "default": false
-        },
-        "mfa_enrolled": {
-          "type": "boolean",
-          "default": false
         },
         "roles": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "default": [],
-          "description": "RBAC ロール名の集合 (重複なし)。値 admin を持つ user だけが /admin/* を呼べる。空配列は通常ユーザ。"
-        },
-        "lifecycle": {
-          "$ref": "#/$defs/UserLifecycle",
-          "description": "運用ライフサイクル (status / 各時刻 / required_actions)。status が無効化・削除の唯一の真実。"
-        },
-        "attributes": {
-          "description": "OIDC optional claim / 組織属性 / custom を統合した sparse 属性。BuiltinUserAttributeDefs + TenantUserAttributeSchema に対して検証する。"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updated_at": {
-          "type": "string",
-          "format": "date-time",
-          "description": "作成時は created_at と同じ値を持ち、以後 User aggregate の管理・自己変更操作ごとに更新する。"
+          }
         }
       },
       "additionalProperties": false,
       "required": [
         "id",
         "tenant_id",
-        "preferred_username",
-        "password_hash",
-        "email_verified",
-        "mfa_enrolled",
-        "roles",
-        "lifecycle",
-        "created_at",
-        "updated_at"
+        "status",
+        "roles"
       ],
-      "description": "IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを\n型付きで持つ。それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 /\ntenant 定義 custom) は attributes に sparse に格納し、テナントが実際に使う属性\nだけが領域を消費する。\n"
+      "description": "IdentityManagement が publish する管理者 principal の最小 stub。"
     },
     "UserAttributeDef": {
       "type": "object",
@@ -9475,16 +9682,14 @@
         },
         "label": {
           "type": "string",
-          "maxLength": 100,
-          "description": "利用者向けの日本語表示名。未設定なら UI は key を表示する。"
+          "maxLength": 100
         },
         "type": {
           "$ref": "#/$defs/AttributeType"
         },
         "multi_valued": {
           "type": "boolean",
-          "default": false,
-          "description": "type == StringArray のときのみ true。"
+          "default": false
         },
         "required": {
           "type": "boolean",
@@ -9492,25 +9697,21 @@
         },
         "editable_by_user": {
           "type": "boolean",
-          "default": false,
-          "description": "self-service 経路で end-user が編集できるか。"
+          "default": false
         },
         "claim_name": {
-          "type": "string",
-          "description": "露出時に UserInfo / ID Token に出す OIDC claim 名。"
+          "type": "string"
         },
         "oidc_scope": {
-          "type": "string",
-          "description": "露出を解禁する OIDC scope (profile / phone / address 等)。"
+          "type": "string"
         },
         "visibility": {
-          "$ref": "#/$defs/AttrVisibility",
+          "type": "string",
           "default": "Private"
         },
         "pii": {
           "type": "boolean",
-          "default": true,
-          "description": "省略時は PII 扱い (監査 hash 化) が安全側 default。"
+          "default": true
         }
       },
       "additionalProperties": false,
@@ -9523,7 +9724,7 @@
         "visibility",
         "pii"
       ],
-      "description": "属性 1 件の定義。OIDC 組み込みカタログ (BuiltinUserAttributeDefs) と tenant 定義 (TenantUserAttributeSchema) の両方で使う。key は snake_case、英字始まり。"
+      "description": "属性 1 件の定義。Tenancy context が所有する BuiltinUserAttributeDefs / TenantUserAttributeSchema の published language stub。"
     },
     "UserAuthenticated": {
       "type": "object",
@@ -9738,7 +9939,7 @@
         "group_roles",
         "effective_roles"
       ],
-      "description": "指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。\n"
+      "description": "指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。effective_roles = direct_roles ∪ group_roles で、User と Group\n両方にまたがる導出値であるため models.User の constraint ではなく本 response の\nフィールドとして計算・公開する。\n"
     },
     "UserImportJob": {
       "type": "object",
@@ -9806,7 +10007,9 @@
         "sub": {
           "type": "string"
         },
-        "claims": {}
+        "claims": {
+          "type": "object"
+        }
       },
       "additionalProperties": false,
       "required": [
@@ -9941,7 +10144,7 @@
           "items": {
             "type": "string"
           },
-          "description": "RFC 8176 / AuthenticationContextPolicy の技術値。UI は pwd=パスワード、otp=認証アプリ、webauthn=パスキー、rc=リカバリコードなど、利用者向けの認証方式名に変換して表示する。"
+          "description": "RFC 8176 の技術値 (RFC8176-AMR-VOCABULARY)。UI は pwd=パスワード、otp=認証アプリ、webauthn=パスキー、rc=リカバリコードなど、利用者向けの認証方式名に変換して表示する。"
         }
       },
       "additionalProperties": false,
@@ -10044,10 +10247,25 @@
       ],
       "description": "管理者がユーザーのプロフィールまたは roles を更新した。"
     },
+    "Validate": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt"
+      ],
+      "description": "認可要求を検証する lifecycle event。"
+    },
     "WebAuthnAssertionOptions": {
       "type": "object",
       "properties": {
         "public_key": {
+          "type": "object",
           "description": "PublicKeyCredentialRequestOptions (WebAuthn Level 3)。"
         }
       },
@@ -10074,7 +10292,7 @@
         },
         "sign_count": {
           "type": "integer",
-          "description": "直近 assertion の署名カウンタ。逆行は clone の疑いとして検出する。"
+          "description": "直近 assertion の署名カウンタ。逆行は clone の疑いとして拒否する (sign_count_regression=reject)。"
         },
         "transports": {
           "type": "array",
@@ -10119,7 +10337,7 @@
         "backup_state",
         "created_at"
       ],
-      "description": "ユーザーが登録した WebAuthn / Passkey credential 1 件。1 ユーザーが複数持てるため\nMfaFactor とは別集合とし、credential_id で一意識別する。public_key は COSE 公開鍵、\nsign_count は clone 検出のための署名カウンタ。origin / RP に束縛された所持要素として\nphishing-resistant MFA / step-up に使う。\n"
+      "description": "ユーザーが登録した WebAuthn / Passkey credential 1 件。1 ユーザーが複数持てるため\nMfaFactor とは別集合とし、credential_id で一意識別する。public_key は COSE 公開鍵、\nsign_count は clone 検出のための署名カウンタ。origin / RP に束縛された所持要素として\nphishing-resistant MFA / step-up に使う。ceremony は RP ID / origin を deployment config\nから解決し、user_verification=preferred・attestation=none (enterprise attestation の厳格\nenforcement は行わない)・resident_key=discouraged (passwordless は対象外)・challenge は 32\nバイト・timeout は 120 秒とする (WebAuthn Level 3 §5 / §7 / §13)。\n"
     },
     "WebAuthnCredentialRegistered": {
       "type": "object",
@@ -10217,6 +10435,7 @@
       "type": "object",
       "properties": {
         "public_key": {
+          "type": "object",
           "description": "PublicKeyCredentialCreationOptions (WebAuthn Level 3)。"
         }
       },
@@ -10230,6 +10449,7 @@
       "type": "object",
       "properties": {
         "attestation": {
+          "type": "object",
           "description": "PublicKeyCredential (attestation response, WebAuthn Level 3)。"
         },
         "label": {
@@ -10411,7 +10631,7 @@
           "description": "WS-Addressing MessageID。replay 防止に使う。"
         },
         "to": {
-          "$ref": "#/$defs/Uri",
+          "type": "string",
           "description": "WS-Addressing To。要求先 STS endpoint。"
         },
         "action": {

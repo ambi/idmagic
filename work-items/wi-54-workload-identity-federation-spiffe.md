@@ -49,7 +49,7 @@ k8s SA token / クラウド federation token) を検証し、
 - bundle refresh は last-known-good と期限を持ち、期限切れ/ambiguous match/disabled agent は fail-closed。発行 access token は短命で、wi-58 の kill/revocation signal を introspection/denylist に接続可能にする。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] ADR-053 の supported SVID、trust/binding model、exchange contract、events/invariants/scenarios を確定して再生成する。
+- [ ] T001 [ADR/SCL] ADR-053 の supported SVID、trust/binding model、exchange contract、events/constraints/contracts/scenarios を確定して再生成する。
 - [ ] T002 [Domain] WorkloadTrustBundle と AgentWorkloadBinding を実装し、pattern overlap、tenant uniqueness、disabled lifecycle をテストする。
 - [ ] T003 [Verification Adapters] JWT-SVID verifier と X.509-SVID verifier、bundle cache/refresh を実装し、alg/chain/SAN/audience/clock skew を検証する。
 - [ ] T004 [Usecase] verified workload identity を既存 token exchange/actor chain/RAR downscope に接続し、agent status と audience policy を再評価する。

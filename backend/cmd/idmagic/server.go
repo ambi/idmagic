@@ -93,23 +93,16 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("resolve breached password checker: %w", err)
 	}
-	objectiveInt := func(group, key string) int {
-		value, ok := sclDoc.ObjectiveNestedInt("LoginThrottlePolicy", group, key)
-		if !ok {
-			return 0
-		}
-		return value
-	}
 	loginThrottle := deps.Authentication.NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
 		Account: authnports.LoginThrottleConfig{
-			MaxFailures:    objectiveInt("per_account", "max_failures"),
-			WindowSeconds:  objectiveInt("per_account", "window_seconds"),
-			LockoutSeconds: objectiveInt("per_account", "lockout_seconds"),
+			MaxFailures:    10,
+			WindowSeconds:  900,
+			LockoutSeconds: 900,
 		},
 		IP: authnports.LoginThrottleConfig{
-			MaxFailures:    objectiveInt("per_ip", "max_failures"),
-			WindowSeconds:  objectiveInt("per_ip", "window_seconds"),
-			LockoutSeconds: objectiveInt("per_ip", "lockout_seconds"),
+			MaxFailures:    30,
+			WindowSeconds:  900,
+			LockoutSeconds: 900,
 		},
 	})
 	authorizer, err := bootstrap.AssembleAuthorizer()

@@ -29,7 +29,7 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
   - §3.3 interfaces: StartEmailLogin (email 入力で challenge 発行) と CompleteEmailLogin (code 入力 / link 検証) を追加する。
   - §3.2 models: EmailLoginChallenge を追加する。
   - §3.4 states/events: EmailLoginChallengeIssued / EmailLoginSucceeded を 追加する。
-  - §3.5 invariants: challenge は単発消費・短命・試行回数制限を明示する。
+  - 所有要素の constraints/contracts: challenge は単発消費・短命・試行回数制限を明示する。
   - §3.6 scenarios: email login 成立と、期限切れ / 再利用拒否のシナリオを追加。
   - tenancy: AdminSettings に allow_passwordless_email を追加する。
 - **go**:
@@ -56,7 +56,7 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 - account disabled/deleted、email変更、password/credential global revoke で未消費 challenge を無効化する。
 
 ## Tasks
-- [ ] T001 [SCL] EmailLoginChallenge states、tenant method policy、Start/Complete interfaces、amr/acr、events/invariants/scenarios を追加して再生成する。
+- [ ] T001 [SCL] EmailLoginChallenge states、tenant method policy、Start/Complete interfaces、amr/acr、events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Domain/Store] challenge、OTP/token hash、attempt/resend/expiry と memory/Valkey adapter を実装する。
 - [ ] T003 [Usecases] uniform start、EmailSender template、magic-link/OTP consume、login session handoff、credential-change revoke を実装する。
 - [ ] T004 [HTTP/UI] realm-aware email start、check-email、OTP入力、cross-browser confirmation、expired/restart 導線を追加する。

@@ -44,9 +44,9 @@ beforeAll(async () => {
   await startE2EEnvironment()
 }, 180_000)
 
-afterAll(() => {
-  stopE2EEnvironment()
-})
+afterAll(async () => {
+  await stopE2EEnvironment()
+}, 30_000)
 
 test('admin console recovers from a stale token and returns to the original page', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })

@@ -34,15 +34,6 @@ just scl-render
 
 これは内部で標準 RA レイアウトを発見し、app と tool spec の派生物を再生成する。
 
-## 個別実行（tools ディレクトリから）
-
-```sh
-cd tools
-bun run scl-to-html -- --scl ../path/to/spec/scl.yaml --title app-name --out ../path/to/spec/app.html
-bun run scl-to-jsonschema -- --scl ../path/to/spec/scl.yaml --out ../path/to/spec/app.models.schema.json
-bun run scl-to-openapi -- --scl ../path/to/spec/scl.yaml --out ../path/to/spec/app.openapi.json
-```
-
 ## 仕上げ
 
 再生成された成果物の diff を確認し、SCL の変更意図と一致しているかを見る。

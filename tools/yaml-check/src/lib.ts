@@ -9,7 +9,6 @@ import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.
 import addFormats from 'ajv-formats'
 import architectureSchema from '../schemas/architecture.schema.json' with { type: 'json' }
 import workItemSchema from '../schemas/work-item.schema.json' with { type: 'json' }
-import sclV2Schema from '../schemas/scl-v2.schema.json' with { type: 'json' }
 import sclV3Schema from '../schemas/scl-v3.schema.json' with { type: 'json' }
 
 export type Finding = { line: number; column: number; message: string }
@@ -17,13 +16,10 @@ export type Finding = { line: number; column: number; message: string }
 const ajv = new Ajv2020({ allErrors: true, strict: false })
 addFormats.default(ajv)
 
-const sclV2Validator = ajv.compile(sclV2Schema)
 const sclV3Validator = ajv.compile(sclV3Schema)
 
 export const SCHEMAS: Record<string, ValidateFunction> = {
   'work-item': ajv.compile(workItemSchema),
-  // `scl` remains one public CLI schema name. validateAgainstSchema dispatches
-  // to the frozen 2.0 or normative 3.0 schema using spec_version.
   scl: sclV3Validator,
   architecture: ajv.compile(architectureSchema),
 }
@@ -163,28 +159,8 @@ export function formatSchemaError(err: ErrorObject): string {
 }
 
 export function validateAgainstSchema(schemaName: string, data: unknown, text: string): Finding[] {
-  let validate = SCHEMAS[schemaName]
+  const validate = SCHEMAS[schemaName]
   if (!validate) return []
-  if (schemaName === 'scl') {
-    const version =
-      data !== null && typeof data === 'object' && !Array.isArray(data)
-        ? (data as Record<string, unknown>).spec_version
-        : undefined
-    if (version === '2.0') validate = sclV2Validator
-    else if (version === '3.0') validate = sclV3Validator
-    else {
-      return [
-        {
-          line: locatePointer(text, '/spec_version'),
-          column: 1,
-          message:
-            version === undefined
-              ? 'schema: / must have required property (missing: spec_version)'
-              : `schema: /spec_version unsupported SCL version '${String(version)}' (allowed: 2.0, 3.0)`,
-        },
-      ]
-    }
-  }
   const ok = validate(data)
   if (ok || !validate.errors) return []
   return validate.errors.map((err) => ({

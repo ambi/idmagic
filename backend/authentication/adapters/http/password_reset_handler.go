@@ -18,7 +18,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// resolvePasswordPolicy は global SCL + tenant override を合成した snapshot を返す。
+// resolvePasswordPolicy は global default + tenant override を合成した snapshot を返す。
 // テナント解決失敗時はサイレントに global default にフォールバックする
 // (パスワードポリシーで認証経路を落とすのは過剰)。
 func (d Deps) resolvePasswordPolicy(ctx context.Context) authusecases.PasswordPolicySnapshot {
@@ -35,14 +35,7 @@ func (d Deps) resolvePasswordPolicy(ctx context.Context) authusecases.PasswordPo
 			}
 		}
 	}
-	if d.SCL == nil {
-		return authusecases.PasswordPolicySnapshot{
-			MinLength:    defaults.MinLength,
-			MaxLength:    defaults.MaxLength,
-			HistoryDepth: defaults.HistoryDepth,
-		}
-	}
-	resolved := domain.ResolvePasswordPolicy(d.SCL, tenant, defaults)
+	resolved := domain.ResolvePasswordPolicy(tenant, defaults)
 	return authusecases.PasswordPolicySnapshot{
 		MinLength:    resolved.MinLength,
 		MaxLength:    resolved.MaxLength,
@@ -76,11 +69,6 @@ func (d Deps) handleForgotPasswordAPI(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	ttl := time.Duration(authusecases.PasswordResetTokenTTLSeconds) * time.Second
-	if d.SCL != nil {
-		if configured, ok := d.SCL.ObjectiveLifetime("PasswordResetTokenLifetime"); ok && configured > 0 {
-			ttl = configured
-		}
-	}
 	if err := authusecases.RequestPasswordReset(
 		c.Request().Context(),
 		authusecases.RequestPasswordResetDeps{

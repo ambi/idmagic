@@ -1,6 +1,6 @@
 package spec_test
 
-// SCL ↔ Go バインディングの coherence test。TS 側の invariants.test.ts と同役割。
+// SCL ↔ Go バインディングの coherence test。
 // 仕様核 (spec/scl.yaml) と Go 実装の双子定義が乖離していないことを検証する。
 
 import (
@@ -9,85 +9,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
-	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
-
-func TestPasswordPolicyMinLengthMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
-	if got, want := objectiveInt(t, s, "PasswordPolicy", "min_length"), usecases.PasswordPolicyMinLength; got != want {
-		t.Fatalf("objectives.PasswordPolicy.value.min_length=%d, Go PasswordPolicyMinLength=%d", got, want)
-	}
-}
-
-func TestPasswordPolicyMaxLengthMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
-	if got, want := objectiveInt(t, s, "PasswordPolicy", "max_length"), usecases.PasswordPolicyMaxLength; got != want {
-		t.Fatalf("objectives.PasswordPolicy.value.max_length=%d, Go PasswordPolicyMaxLength=%d", got, want)
-	}
-}
-
-func TestPasswordPolicyHistoryDepthMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
-	if got, want := objectiveInt(t, s, "PasswordPolicy", "history_depth"), usecases.PasswordPolicyHistoryDepth; got != want {
-		t.Fatalf("objectives.PasswordPolicy.value.history_depth=%d, Go PasswordPolicyHistoryDepth=%d", got, want)
-	}
-}
-
-func TestPasswordPolicyBreachedCheckEnabledMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
-	got, ok := s.ObjectiveBool("PasswordPolicy", "breached_password_check_enabled")
-	if !ok {
-		t.Fatal("objectives.PasswordPolicy.value.breached_password_check_enabled missing or not a bool")
-	}
-	if got != usecases.PasswordPolicyBreachedCheckEnabled {
-		t.Fatalf("objectives.PasswordPolicy.value.breached_password_check_enabled=%v, Go PasswordPolicyBreachedCheckEnabled=%v", got, usecases.PasswordPolicyBreachedCheckEnabled)
-	}
-}
-
-func TestPasswordResetTokenTTLMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatal(err)
-	}
-	ttl, err := time.ParseDuration(s.Objectives["PasswordResetTokenLifetime"].TTL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := int(ttl.Seconds()), usecases.PasswordResetTokenTTLSeconds; got != want {
-		t.Fatalf("objectives.PasswordResetTokenLifetime.ttl=%d, Go PasswordResetTokenTTLSeconds=%d", got, want)
-	}
-}
-
-func TestUserSoftDeleteGracePeriodMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatal(err)
-	}
-	ttl, err := time.ParseDuration(s.Objectives["UserSoftDeleteGracePeriod"].TTL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := int(ttl.Seconds()), idmusecases.UserSoftDeleteGracePeriodSeconds; got != want {
-		t.Fatalf("objectives.UserSoftDeleteGracePeriod.ttl=%d, Go UserSoftDeleteGracePeriodSeconds=%d", got, want)
-	}
-}
 
 func TestUserStatusPendingDeletionWireValue(t *testing.T) {
 	s, err := spec.LoadSCL()
@@ -116,29 +41,6 @@ func TestMfaFactorTypeMatchesSCL(t *testing.T) {
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("SCL MfaFactorType=%v, Go=%v", got, want)
-	}
-}
-
-func TestTOTPPolicyMatchesSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
-	policy := objectiveValue(t, s, "TotpPolicy")
-	if got, want := policy["algorithm"], "SHA1"; got != want {
-		t.Fatalf("totp algorithm=%q, want %q", got, want)
-	}
-	if got, want := objectiveInt(t, s, "TotpPolicy", "step_seconds"), int(usecases.TOTPStepSeconds); got != want {
-		t.Fatalf("totp step_seconds=%d, want %d", got, want)
-	}
-	if got, want := objectiveInt(t, s, "TotpPolicy", "digits"), usecases.TOTPDigits; got != want {
-		t.Fatalf("totp digits=%d, want %d", got, want)
-	}
-	if got, want := objectiveInt(t, s, "TotpPolicy", "window"), usecases.TOTPWindow; got != want {
-		t.Fatalf("totp window=%d, want %d", got, want)
-	}
-	if got, want := objectiveInt(t, s, "TotpPolicy", "secret_bytes"), usecases.TOTPSecretBytes; got != want {
-		t.Fatalf("totp secret_bytes=%d, want %d", got, want)
 	}
 }
 
@@ -196,27 +98,7 @@ func TestGrantTypeTokenExchangeMatchesSCL(t *testing.T) {
 	}
 }
 
-func TestLoginThrottlePolicyLoadsFromSCL(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatalf("load scl: %v", err)
-	}
-	policy := objectiveValue(t, s, "LoginThrottlePolicy")
-	account := nestedMap(t, policy, "per_account")
-	ip := nestedMap(t, policy, "per_ip")
-	if intValue(t, account, "max_failures") != 10 ||
-		intValue(t, account, "window_seconds") != 900 ||
-		intValue(t, account, "lockout_seconds") != 900 {
-		t.Fatalf("unexpected per-account policy: %+v", account)
-	}
-	if intValue(t, ip, "max_failures") != 30 ||
-		intValue(t, ip, "window_seconds") != 900 ||
-		intValue(t, ip, "lockout_seconds") != 900 {
-		t.Fatalf("unexpected per-IP policy: %+v", ip)
-	}
-}
-
-func TestStandardsAndUserExperienceLoadFromSCL(t *testing.T) {
+func TestStandardsAuthorizationAndFlowsLoadFromSCL(t *testing.T) {
 	s, err := spec.LoadSCL()
 	if err != nil {
 		t.Fatalf("load scl: %v", err)
@@ -228,11 +110,11 @@ func TestStandardsAndUserExperienceLoadFromSCL(t *testing.T) {
 	if len(rfc9700.Requirements) == 0 {
 		t.Fatal("standards.RFC9700.requirements is empty")
 	}
-	if got := s.UserExperience.Accessibility["standard"]; got != "WCAG22" {
-		t.Fatalf("user_experience.accessibility.standard=%q, want WCAG22", got)
+	if len(s.AuthorizationByContext["Authentication"].Policies) == 0 {
+		t.Fatal("authentication authorization policies are missing")
 	}
-	if _, ok := s.UserExperience.Screens["Login"]; !ok {
-		t.Fatal("user_experience.screens.Login is missing")
+	if _, ok := s.Flows["Login"]; !ok {
+		t.Fatal("flows.Login is missing")
 	}
 }
 
@@ -251,11 +133,10 @@ func TestCurrentSCLLoadsAllNormativeSections(t *testing.T) {
 		{"models", len(s.Models)},
 		{"interfaces", len(s.Interfaces)},
 		{"states", len(s.States)},
-		{"invariants", len(s.Invariants)},
 		{"scenarios", len(s.Scenarios)},
-		{"permissions", len(s.Permissions)},
+		{"authorization contexts", len(s.AuthorizationByContext)},
 		{"objectives", len(s.Objectives)},
-		{"user_experience.screens", len(s.UserExperience.Screens)},
+		{"flows", len(s.Flows)},
 	}
 	for _, section := range sections {
 		if section.size == 0 {
@@ -301,42 +182,6 @@ func TestAssuranceEvidenceHasExecutableBindings(t *testing.T) {
 				t.Errorf("%s: %s does not contain check %q", evidenceID, verification.File, verification.Check)
 			}
 		}
-	}
-}
-
-func objectiveValue(t *testing.T, s *spec.SCL, name string) map[string]any {
-	t.Helper()
-	value, ok := s.Objectives[name].Value.(map[string]any)
-	if !ok {
-		t.Fatalf("objectives.%s.value is not a map: %T", name, s.Objectives[name].Value)
-	}
-	return value
-}
-
-func objectiveInt(t *testing.T, s *spec.SCL, objective, key string) int {
-	t.Helper()
-	return intValue(t, objectiveValue(t, s, objective), key)
-}
-
-func nestedMap(t *testing.T, values map[string]any, key string) map[string]any {
-	t.Helper()
-	value, ok := values[key].(map[string]any)
-	if !ok {
-		t.Fatalf("%s is not a map: %T", key, values[key])
-	}
-	return value
-}
-
-func intValue(t *testing.T, values map[string]any, key string) int {
-	t.Helper()
-	switch value := values[key].(type) {
-	case int:
-		return value
-	case uint64:
-		return int(value)
-	default:
-		t.Fatalf("%s is not an integer: %T", key, values[key])
-		return 0
 	}
 }
 

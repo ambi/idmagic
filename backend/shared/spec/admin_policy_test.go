@@ -36,13 +36,12 @@ func TestAdminConsentPolicyRequiresRoleAuthenticationAndTenantMatch(t *testing.T
 	}
 }
 
-func TestSCLPermissionsHaveGoActionMappings(t *testing.T) {
+func TestSCLAuthorizationAndInterfaceAccessAreCoherent(t *testing.T) {
 	scl, err := LoadSCL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	missing, extra := scl.SCLPermissionsCoverage()
-	if len(missing) > 0 || len(extra) > 0 {
-		t.Fatalf("permission mappings missing=%v extra=%v", missing, extra)
+	if err := scl.ValidateCoherence(); err != nil {
+		t.Fatal(err)
 	}
 }

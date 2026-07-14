@@ -9,8 +9,8 @@ func (s *SCL) ValidateCoherence() error {
 	if s.System == "" {
 		return fmt.Errorf("system is required")
 	}
-	if s.SpecVersion == "" {
-		return fmt.Errorf("spec_version is required")
+	if s.SpecVersion != "3.0" {
+		return fmt.Errorf("spec_version must be 3.0")
 	}
 	if err := s.validateContextMap(); err != nil {
 		return err
@@ -24,7 +24,10 @@ func (s *SCL) ValidateCoherence() error {
 	if err := s.validateStandardReferences(); err != nil {
 		return err
 	}
-	if err := s.validateUserExperienceReferences(); err != nil {
+	if err := s.validateAuthorizationAndAccess(); err != nil {
+		return err
+	}
+	if err := s.validateFlows(); err != nil {
 		return err
 	}
 	return nil
@@ -91,7 +94,8 @@ func (s *SCL) validFieldType(fieldType string) bool {
 	}
 	builtins := map[string]bool{
 		"String": true, "Integer": true, "Float": true, "Boolean": true, "UUID": true,
-		"Date": true, "Timestamp": true, "Duration": true, "JSON": true, "Bytes": true,
+		"Date": true, "DateTime": true, "Timestamp": true, "Duration": true, "JSON": true,
+		"Bytes": true, "URI": true, "URL": true, "Any": true, "Number": true,
 	}
 	if builtins[fieldType] {
 		return true
@@ -171,15 +175,15 @@ func (s *SCL) validateStates() error {
 			}
 			transitions[key] = struct{}{}
 			if _, ok := s.Vocabulary[transition.Event]; !ok {
-				return fmt.Errorf("state %s: event %s is missing from vocabulary", name, transition.Event)
+				model, modelOK := s.Models[transition.Event]
+				if !modelOK || model.Kind != "event" {
+					return fmt.Errorf("state %s: event %s is unresolved", name, transition.Event)
+				}
 			}
 		}
 		for state := range states {
 			if state == "" {
 				return fmt.Errorf("state %s: state names must not be empty", name)
-			}
-			if _, ok := s.Vocabulary[state]; !ok {
-				return fmt.Errorf("state %s: value %s is missing from vocabulary", name, state)
 			}
 		}
 		for _, terminal := range machine.Terminal {
@@ -196,94 +200,90 @@ func (s *SCL) validateStates() error {
 func (s *SCL) validateStandardReferences() error {
 	for standardName, standard := range s.Standards {
 		for _, requirement := range standard.Requirements {
-			if err := s.validateReferences("standard "+standardName+" requirement "+requirement.ID, requirement.RelatesTo); err != nil {
-				return err
+			for _, ref := range requirement.Refs {
+				section, name, ok := strings.Cut(ref, ".")
+				if !ok || !s.referenceExists(section, name) {
+					return fmt.Errorf("standard %s requirement %s: unknown reference %s", standardName, requirement.ID, ref)
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func (s *SCL) validateUserExperienceReferences() error {
-	validCategories := map[string]bool{
-		"security": true, "accessibility": true, "privacy": true, "localization": true, "usability": true,
-	}
-	for name, screen := range s.UserExperience.Screens {
-		for _, interfaceName := range screen.Interfaces {
-			if _, ok := s.Interfaces[interfaceName]; !ok {
-				return fmt.Errorf("user_experience screen %s: unknown interface %s", name, interfaceName)
+func (s *SCL) validateAuthorizationAndAccess() error {
+	for contextName, authorization := range s.AuthorizationByContext {
+		for name, policy := range authorization.Policies {
+			if _, ok := authorization.Principals[policy.Principal]; !ok {
+				return fmt.Errorf("authorization %s policy %s: unknown principal %s", contextName, name, policy.Principal)
 			}
 		}
 	}
-	for _, transition := range s.UserExperience.Transitions {
-		if transition.From != "" {
-			if _, ok := s.UserExperience.Screens[transition.From]; !ok {
-				return fmt.Errorf("user_experience transition: unknown from screen %s", transition.From)
+	for name, iface := range s.Interfaces {
+		contextName := s.InterfaceContexts[name]
+		authorization := s.AuthorizationByContext[contextName]
+		access, protected := ProtectedInterfaceAccess(iface)
+		if !protected {
+			if kind, ok := iface.Access.(string); !ok || (kind != "public" && kind != "internal") {
+				return fmt.Errorf("interface %s: invalid access", name)
+			}
+			continue
+		}
+		for _, policy := range access.Policies {
+			if _, ok := authorization.Policies[policy]; !ok {
+				return fmt.Errorf("interface %s: unknown authorization policy %s", name, policy)
 			}
 		}
-		if transition.To != "" {
-			if _, ok := s.UserExperience.Screens[transition.To]; !ok {
-				return fmt.Errorf("user_experience transition: unknown to screen %s", transition.To)
+		if _, ok := s.Models[access.Resource.Type]; !ok {
+			if _, ok := authorization.Resources[access.Resource.Type]; !ok {
+				return fmt.Errorf("interface %s: unknown authorization resource %s", name, access.Resource.Type)
 			}
 		}
-		if transition.Interface != "" {
+	}
+	return nil
+}
+
+func (s *SCL) validateFlows() error {
+	for name, flow := range s.Flows {
+		for _, transition := range flow.Transitions {
+			if transition.Interface == "" {
+				continue
+			}
 			if _, ok := s.Interfaces[transition.Interface]; !ok {
-				return fmt.Errorf("user_experience transition: unknown interface %s", transition.Interface)
-			}
-		}
-	}
-	for _, requirement := range s.UserExperience.Requirements {
-		if !validCategories[requirement.Category] {
-			return fmt.Errorf("user_experience requirement %s: invalid category %s", requirement.ID, requirement.Category)
-		}
-		references := map[string][]string{
-			"interfaces": requirement.Interfaces,
-			"standards":  requirement.Standards,
-			"scenarios":  requirement.Scenarios,
-			"invariants": requirement.Invariants,
-		}
-		if err := s.validateReferences("user_experience requirement "+requirement.ID, references); err != nil {
-			return err
-		}
-		for _, screen := range requirement.Screens {
-			if _, ok := s.UserExperience.Screens[screen]; !ok {
-				return fmt.Errorf("user_experience requirement %s: unknown screen %s", requirement.ID, screen)
+				return fmt.Errorf("flow %s: unknown interface %s", name, transition.Interface)
 			}
 		}
 	}
 	return nil
 }
 
-func (s *SCL) validateReferences(owner string, references map[string][]string) error {
-	sections := map[string]map[string]struct{}{
-		"standards":   keysOf(s.Standards),
-		"vocabulary":  keysOf(s.Vocabulary),
-		"models":      keysOf(s.Models),
-		"interfaces":  keysOf(s.Interfaces),
-		"states":      keysOf(s.States),
-		"invariants":  keysOf(s.Invariants),
-		"scenarios":   keysOf(s.Scenarios),
-		"permissions": keysOf(s.Permissions),
-		"objectives":  keysOf(s.Objectives),
+func (s *SCL) referenceExists(section, name string) bool {
+	switch section {
+	case "standards":
+		_, ok := s.Standards[name]
+		return ok
+	case "glossary":
+		_, ok := s.Vocabulary[name]
+		return ok
+	case "models":
+		_, ok := s.Models[name]
+		return ok
+	case "interfaces":
+		_, ok := s.Interfaces[name]
+		return ok
+	case "states":
+		_, ok := s.States[name]
+		return ok
+	case "scenarios":
+		_, ok := s.Scenarios[name]
+		return ok
+	case "objectives":
+		_, ok := s.Objectives[name]
+		return ok
+	case "flows":
+		_, ok := s.Flows[name]
+		return ok
+	default:
+		return false
 	}
-	for section, names := range references {
-		values, ok := sections[section]
-		if !ok {
-			return fmt.Errorf("%s: unknown reference section %s", owner, section)
-		}
-		for _, name := range names {
-			if _, ok := values[name]; !ok {
-				return fmt.Errorf("%s: unknown %s reference %s", owner, section, name)
-			}
-		}
-	}
-	return nil
-}
-
-func keysOf[V any](values map[string]V) map[string]struct{} {
-	keys := make(map[string]struct{}, len(values))
-	for key := range values {
-		keys[key] = struct{}{}
-	}
-	return keys
 }

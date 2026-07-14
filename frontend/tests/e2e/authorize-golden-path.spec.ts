@@ -12,7 +12,7 @@ import { afterAll, beforeAll, expect, test } from 'bun:test'
 import {
   authorizePath,
   clickButtonByAnyText,
-  clickNavLinkByText,
+  clickNavLinkByAnyText,
   demo,
   loginFromCurrentPage,
   startE2EEnvironment,
@@ -27,9 +27,9 @@ beforeAll(async () => {
   await startE2EEnvironment()
 }, 180_000)
 
-afterAll(() => {
-  stopE2EEnvironment()
-})
+afterAll(async () => {
+  await stopE2EEnvironment()
+}, 30_000)
 
 test('authorize golden path: login -> consent -> callback keeps code and iss', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })
@@ -80,7 +80,7 @@ test('admin sidebar navigation is client-side (no full reload)', async () => {
     await view.evaluate('window.__raSpaMarker = "kept"')
 
     // サイドバーの「ユーザー」リンクを click (TanStack Link → client-side 遷移)。
-    await clickNavLinkByText(view, '管理メニュー', 'ユーザー')
+    await clickNavLinkByAnyText(view, ['管理メニュー', 'Admin navigation'], ['ユーザー', 'Users'])
 
     // client-side 遷移は history.pushState のため WebView の view.url には出ない。
     // 実際の location.pathname とページ種別で遷移完了を判定する。

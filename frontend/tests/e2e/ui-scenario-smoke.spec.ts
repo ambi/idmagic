@@ -3,14 +3,14 @@
 // SPA route loader、OIDC RP ログイン、サイドバー遷移、フォーム送信の接続を検証する。
 import { afterAll, beforeAll, test } from 'bun:test'
 import {
-  clickNavLinkByText,
+  clickNavLinkByAnyText,
   demo,
   startE2EEnvironment,
   stopE2EEnvironment,
   uiOrigin,
   waitForLocationPath,
   waitForPage,
-  waitForText,
+  waitForAnyText,
   navigateAndLogin,
 } from './fixtures'
 
@@ -18,9 +18,9 @@ beforeAll(async () => {
   await startE2EEnvironment()
 }, 180_000)
 
-afterAll(() => {
-  stopE2EEnvironment()
-})
+afterAll(async () => {
+  await stopE2EEnvironment()
+}, 30_000)
 
 test('login assistance pages render and forgot password has enumeration-safe success copy', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1600 })
@@ -31,12 +31,12 @@ test('login assistance pages render and forgot password has enumeration-safe suc
     await view.type(demo.email)
     await view.click('button[type="submit"]')
 
-    await waitForText(view, 'アカウントが確認できた場合')
+    await waitForAnyText(view, ['アカウントが確認できた場合', 'If an account exists'])
 
     await view.navigate(`${uiOrigin}/reset_password`)
     await waitForPage(view, 'reset-password')
 
-    await waitForText(view, 'リセットリンクが不正です。')
+    await waitForAnyText(view, ['リセットリンクが不正です。', 'The reset link is invalid.'])
   } finally {
     view.close()
   }
@@ -48,17 +48,17 @@ test('account portal scenarios are reachable after account-audience login', asyn
     await navigateAndLogin(view, '/account', 'account-home')
 
     const pages = [
-      ['アプリ', '/account/apps', 'account-apps'],
-      ['アカウント情報', '/account/profile', 'account-profile'],
-      ['メールアドレス', '/account/emails', 'account-emails'],
-      ['セキュリティ', '/account/security', 'account-security'],
-      ['アクティビティ', '/account/activity', 'account-activity'],
-      ['接続済みアプリ', '/account/applications', 'account-applications'],
-      ['データとプライバシー', '/account/data', 'account-data'],
+      [['アプリ', 'Apps'], '/account/apps', 'account-apps'],
+      [['アカウント情報', 'Profile'], '/account/profile', 'account-profile'],
+      [['メールアドレス', 'Email addresses'], '/account/emails', 'account-emails'],
+      [['セキュリティ', 'Security'], '/account/security', 'account-security'],
+      [['アクティビティ', 'Activity'], '/account/activity', 'account-activity'],
+      [['接続済みアプリ', 'Connected apps'], '/account/applications', 'account-applications'],
+      [['データとプライバシー', 'Data and privacy'], '/account/data', 'account-data'],
     ] as const
 
     for (const [label, path, marker] of pages) {
-      await clickNavLinkByText(view, 'マイページメニュー', label)
+      await clickNavLinkByAnyText(view, ['マイページメニュー', 'Account navigation'], [...label])
       await waitForLocationPath(view, path)
       await waitForPage(view, marker)
     }
@@ -73,16 +73,16 @@ test('admin console scenarios are reachable after admin-audience login', async (
     await navigateAndLogin(view, '/admin', 'admin-dashboard')
 
     const pages = [
-      ['アプリケーション', '/admin/applications', 'admin-applications'],
-      ['エージェント', '/admin/agents', 'admin-agents'],
-      ['監査イベント', '/admin/audit_events', 'admin-audit-events'],
-      ['署名鍵', '/admin/keys', 'admin-keys'],
-      ['ユーザー属性', '/admin/tenant/attributes', 'admin-tenant-attributes'],
-      ['設定', '/admin/settings', 'admin-settings'],
+      [['アプリケーション', 'Applications'], '/admin/applications', 'admin-applications'],
+      [['エージェント', 'Agents'], '/admin/agents', 'admin-agents'],
+      [['監査イベント', 'Audit events'], '/admin/audit_events', 'admin-audit-events'],
+      [['署名鍵', 'Signing keys'], '/admin/keys', 'admin-keys'],
+      [['ユーザー属性', 'User attributes'], '/admin/tenant/attributes', 'admin-tenant-attributes'],
+      [['設定', 'Settings'], '/admin/settings', 'admin-settings'],
     ] as const
 
     for (const [label, path, marker] of pages) {
-      await clickNavLinkByText(view, '管理メニュー', label)
+      await clickNavLinkByAnyText(view, ['管理メニュー', 'Admin navigation'], [...label])
       await waitForLocationPath(view, path)
       await waitForPage(view, marker)
     }

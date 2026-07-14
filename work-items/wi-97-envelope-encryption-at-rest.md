@@ -32,7 +32,7 @@ fail-closed な復号を実現する。署名鍵そのものの鍵管理は
 - **scl**:
   - §3.2 models: TenantDataEncryptionKey / EncryptedSecret (envelope: 鍵 ID + ciphertext + nonce) を追加する。暗号化は主に adapter 層の実装で、SCL への 露出は最小に留める。
   - §3.4 states/events: DataEncryptionKeyRotated を追加する。
-  - §3.5 invariants: 可逆秘密を平文で保存しない、DEK はテナント単位、復号不能時は アクセスを拒否する (fail-closed) ことを明示する。
+  - 所有要素の constraints/contracts: 可逆秘密を平文で保存しない、DEK はテナント単位、復号不能時は アクセスを拒否する (fail-closed) ことを明示する。
 - **go**:
   - crypto adapter (KMS master + per-tenant DEK キャッシュ + AEAD helper) を 追加し、KMS adapter は wi-32 と共有する (初期は AWS or GCP KMS 1 つ + local dev fallback)。
   - 対象 repository (mfa factor store / token vault 等) を暗号化対応にし、 migration で既存平文を暗号化へ再暗号化する。
@@ -58,7 +58,7 @@ fail-closed な復号を実現する。署名鍵そのものの鍵管理は
 
 ## Tasks
 - [ ] T001 [Inventory/ADR] 暗号化対象field/owner、provider/AEAD、AAD、DEK cache/fail mode、rotation/destroy、backup recoveryを決定する。
-- [ ] T002 [SCL] encryption objectives、TenantDataKey lifecycle、rotate/health interfaces、key-loss/fail-closed invariantsを追加して再生成する。
+- [ ] T002 [SCL] encryption objectives、TenantDataKey lifecycle、rotate/health interfaces、key-loss/fail-closed constraints/contractsを追加して再生成する。
 - [ ] T003 [Crypto] EnvelopeCrypto port、provider adapter、AEAD envelope format、zeroization/cacheを実装しknown-answer/tamper/AAD testsを追加する。
 - [ ] T004 [Key Persistence] wrapped tenant DEK/version/status repository、bootstrap/rotate/disable use caseをmemory/PostgreSQLへ実装する。
 - [ ] T005 [Repositories] 対象contextを一つずつdual-read/writeへ移行し、plaintextをevent/log/error DTOへ渡さないcontract testを追加する。

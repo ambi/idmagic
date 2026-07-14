@@ -1,7 +1,7 @@
 package spec
 
 // AssuranceVerification は assurance evidence ID を実行可能な検証 (テスト関数 / CI ジョブ) に
-// 束ねる Go 側レジストリ。SCL 2.0 では assurance セクションは spec から外れたため、本マニフェストは
+// 束ねる Go 側レジストリ。assurance は SCL core の外にあるため、本マニフェストは
 // テストと検証ファイルの対応を保つ独立した台帳として残す。
 type AssuranceVerification struct {
 	File  string
@@ -51,7 +51,7 @@ var AssuranceManifest = map[string][]AssuranceVerification{
 	},
 	"SpecificationBindingTests": {
 		{File: "backend/shared/spec/coherence_test.go", Check: "TestCurrentSCLLoadsAllNormativeSections"},
-		{File: "backend/shared/spec/admin_policy_test.go", Check: "TestSCLPermissionsHaveGoActionMappings"},
+		{File: "backend/shared/spec/admin_policy_test.go", Check: "TestSCLAuthorizationAndInterfaceAccessAreCoherent"},
 	},
 	"CoherenceCheck": {
 		{File: "backend/shared/spec/coherence_test.go", Check: "TestCurrentSCLIsInternallyCoherent"},

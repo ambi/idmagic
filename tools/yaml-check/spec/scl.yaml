@@ -58,7 +58,7 @@ models:
 interfaces:
   CheckYaml:
     description: |
-      YAML parse、text lint、選択された version schema、SCL 3.0 semantics、context map、
+      YAML parse、text lint、SCL 3.0 schema と semantics、context map、
       work-item dependency を決定的な順序で検査する。
     input:
       files: { type: List<String>, constraints: [non_empty] }
@@ -77,6 +77,7 @@ interfaces:
       - schema_validation_is_opt_in(input.schema, output.summary)
       - schema_name_is_validated_before_file_reads(input.schema, output.exit_code)
       - one_schema_is_applied_uniformly(input.schema, output.summary)
+      - scl_schema_accepts_only_spec_version_3(input.schema, output.summary)
       - input_content_executes_no_code(input.files)
       - input_files_are_not_modified(input.files)
       - context_map_semantics_are_checked(input.files, output.summary)
@@ -127,11 +128,11 @@ scenarios:
     main_success:
       - Maintainer が spec_version 3.0 の文書を CheckYaml で検査する
       - schema と semantics の Finding はなく exit code 0 になる
-  SCL version ごとに schema が選択される:
+  SCL 2.0 文書は拒否される:
     actor: Maintainer
     main_success:
-      - SCL 2.0 と SCL 3.0 の文書をそれぞれ CheckYaml で検査する
-      - spec_version に対応する単一 schema だけが適用される
+      - Maintainer が spec_version 2.0 の文書を CheckYaml で検査する
+      - SchemaFinding と exit code 1 が返る
   SCL 3.0 の未解決参照は拒否される:
     actor: Maintainer
     main_success:

@@ -50,7 +50,7 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 
 ## Tasks
 - [ ] T001 [Inventory/ADR] context別export対象/除外/secretRef/logical key、merge/prune、transaction/checkpoint semanticsを決定する。
-- [ ] T002 [SCL/Schema] RealmManifest/Plan/Operation/Result、Export/PlanImport/Apply interfaces/events/invariantsを追加しJSON Schemaと派生物を生成する。
+- [ ] T002 [SCL/Schema] RealmManifest/Plan/Operation/Result、Export/PlanImport/Apply interfaces/events/constraints/contractsを追加しJSON Schemaと派生物を生成する。
 - [ ] T003 [Context Ports] tenancy/identity/application/oauth2/saml/wsfederation等にcanonical export DTOとvalidate/apply command adapterを追加する。
 - [ ] T004 [Planner] version migration、reference graph、redacted semantic diff、dependency order、manifest digest/idempotencyを実装する。
 - [ ] T005 [Executor] stage checkpoint/resume、existing usecase経由apply、explicit prune、failure result/compensationを実装する。

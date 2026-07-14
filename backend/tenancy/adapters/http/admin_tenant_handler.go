@@ -9,6 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
+	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -141,20 +142,11 @@ func tenantChangedFields(input tenantUpdateRequest) []string {
 }
 
 func (d Deps) tenantPolicyFloor() tenantusecases.PolicyFloor {
-	floor := tenantusecases.PolicyFloor{}
-	if d.SCL == nil {
-		return floor
+	return tenantusecases.PolicyFloor{
+		MinLength:    authusecases.PasswordPolicyMinLength,
+		MaxLength:    authusecases.PasswordPolicyMaxLength,
+		HistoryDepth: authusecases.PasswordPolicyHistoryDepth,
 	}
-	if v, ok := d.SCL.ObjectiveInt("PasswordPolicy", "min_length"); ok {
-		floor.MinLength = v
-	}
-	if v, ok := d.SCL.ObjectiveInt("PasswordPolicy", "max_length"); ok {
-		floor.MaxLength = v
-	}
-	if v, ok := d.SCL.ObjectiveInt("PasswordPolicy", "history_depth"); ok {
-		floor.HistoryDepth = v
-	}
-	return floor
 }
 
 func (d Deps) handleDisableTenant(c *echo.Context) error {

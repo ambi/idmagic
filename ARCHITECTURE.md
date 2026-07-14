@@ -166,11 +166,10 @@ UI の画面実装は `frontend/src/features/`、route は `frontend/src/routes/
 
 ## Verification Entry Points
 
-通常の Go 変更では次を使う。
+通常の Go 変更では `justfile` の正規入口を使う。
 
 ```bash
-GOCACHE=/tmp/idmagic-cache go test ./...
-GOCACHE=/tmp/idmagic-cache go test -race ./...
+just verify-go
 ```
 
 UI 変更では `frontend/README.md` と `frontend/tests/e2e/README.md` の検証手順を読む。SCL や work item を変更した場合は、ルートの `tools/yaml-check` 系の検証も対象に含める。
