@@ -8,6 +8,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/labstack/echo/v5"
 )
@@ -36,7 +37,12 @@ type lifecycleDryRunRequest struct {
 }
 
 func (d Deps) workflowDeps() idmusecases.LifecycleWorkflowDeps {
-	return idmusecases.LifecycleWorkflowDeps{Repo: d.LifecycleWorkflowRepo, RunRepo: d.LifecycleWorkflowRunRepo}
+	return idmusecases.LifecycleWorkflowDeps{Repo: d.LifecycleWorkflowRepo, RunRepo: d.LifecycleWorkflowRunRepo, Emit: func(event spec.DomainEvent) error {
+		if d.Emit != nil {
+			d.Emit(event)
+		}
+		return nil
+	}}
 }
 
 type (
@@ -101,6 +107,9 @@ func (d Deps) handleListLifecycleWorkflows(c *echo.Context) error {
 	}
 	out := make([]lifecycleWorkflowResponse, 0, len(workflows))
 	for _, workflow := range workflows {
+		if workflow.Status == idmdomain.LifecycleWorkflowArchived {
+			continue
+		}
 		view, e := d.workflowResponse(c, workflow)
 		if e != nil {
 			return e
@@ -115,7 +124,7 @@ func (d Deps) findWorkflow(c *echo.Context, id string) (*idmdomain.LifecycleWork
 	if err != nil {
 		return nil, err
 	}
-	if workflow == nil {
+	if workflow == nil || workflow.Status == idmdomain.LifecycleWorkflowArchived {
 		return nil, idmusecases.ErrLifecycleWorkflowNotFound
 	}
 	return workflow, nil
@@ -194,7 +203,7 @@ func (d Deps) handleDisableLifecycleWorkflow(c *echo.Context) error {
 	})
 }
 
-func (d Deps) handleArchiveLifecycleWorkflow(c *echo.Context) error {
+func (d Deps) handleDeleteLifecycleWorkflow(c *echo.Context) error {
 	if err := d.requireWorkflowAdmin(c, true); err != nil {
 		return err
 	}
@@ -204,7 +213,11 @@ func (d Deps) handleArchiveLifecycleWorkflow(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	if _, err := idmusecases.ArchiveLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), c.Param("workflow_id"), request.ExpectedRevision, time.Now().UTC()); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	if err := idmusecases.DeleteLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), c.Param("workflow_id"), request.ExpectedRevision, actor.ID, time.Now().UTC()); err != nil {
 		return d.writeLifecycleWorkflowError(c, err)
 	}
 	return c.NoContent(http.StatusNoContent)

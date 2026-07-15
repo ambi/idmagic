@@ -172,6 +172,9 @@ export async function listLifecycleWorkflows(): Promise<AdminLifecycleWorkflow[]
   return (await request<{ workflows: AdminLifecycleWorkflow[] }>('/api/admin/lifecycle_workflows'))
     .workflows
 }
+export async function getLifecycleWorkflow(id: string): Promise<AdminLifecycleWorkflow> {
+  return request(`/api/admin/lifecycle_workflows/${encodeURIComponent(id)}`)
+}
 export async function createLifecycleWorkflow(
   csrfToken: string,
   input: LifecycleWorkflowInput,
@@ -199,7 +202,7 @@ export async function setLifecycleWorkflowState(
     adminRequest(csrfToken, 'POST', { expected_revision }),
   )
 }
-export async function archiveLifecycleWorkflow(
+export async function deleteLifecycleWorkflow(
   csrfToken: string,
   id: string,
   expected_revision: number,

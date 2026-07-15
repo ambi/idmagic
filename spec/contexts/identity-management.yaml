@@ -1520,7 +1520,7 @@ models:
         type: String
   LifecycleWorkflowStatus:
     kind: enum
-    description: LifecycleWorkflow のライフサイクル。archived は終端で履歴保全のため hard delete しない。
+    description: LifecycleWorkflow のライフサイクル。archived は削除済み定義を実行履歴の参照整合性のため内部だけで保持する実装状態で、管理画面と通常 API には公開しない。
     values:
       - draft
       - enabled
@@ -1667,7 +1667,7 @@ models:
         type: DateTime
   LifecycleWorkflow:
     kind: entity
-    description: "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない (再度 enable するまで旧 revision の評価が続く)。\ndisable は新規 trigger を止め、archive は disabled にのみ許可される終端 (hard delete しない)。\n"
+    description: "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない。管理者は状態に関係なく削除でき、削除済み定義は\n一覧・取得・名前重複判定から除外する。既存の run と監査イベントは定義とは独立して保持する。\n"
     identity: id
     fields:
       id:
@@ -2023,9 +2023,9 @@ models:
         type: String
       workflowId:
         type: String
-  LifecycleWorkflowArchived:
+  LifecycleWorkflowDeleted:
     kind: event
-    description: 管理者が disabled の LifecycleWorkflow を archive した (終端)。
+    description: 管理者が LifecycleWorkflow を削除した。削除前の状態にかかわらず発行し、監査証跡として保持する。
     payload:
       occurredAt:
         type: DateTime
@@ -2187,7 +2187,7 @@ states:
         event: AgentKilled
         to: Killed
   WorkflowDefinitionLifecycle:
-    description: "LifecycleWorkflow.status の状態機械。draft で作成し、完全 validation に成功した revision を\nenable すると新規 trigger 評価対象になる。disable は新規 trigger を止め、再度 enable すれば\n(同じか新しい) revision を再評価対象にできる。archive は disabled にのみ許可される終端で、\ndefinition と run history は retention 期間中残る (hard delete しない)。definition の update 自体は\ncurrent_revision を増やすだけで status は変えない (enabled_revision は明示的な再 enable まで固定)。\n"
+    description: "LifecycleWorkflow.status の状態機械。draft で作成し、完全 validation に成功した revision を\nenable すると新規 trigger 評価対象になる。disable は新規 trigger を止め、再度 enable できる。\n管理者の削除は draft/enabled/disabled のすべてから可能で、enabled の削除は新規 trigger を止めて\nqueued run を cancel する。archived は削除済み定義を参照整合性のため内部保持する終端状態であり、\n管理画面と通常 API には公開しない。run 履歴と LifecycleWorkflowDeleted 監査イベントは保持する。\n"
     target: LifecycleWorkflow
     initial: draft
     terminal:
@@ -2202,8 +2202,14 @@ states:
       - from: disabled
         event: LifecycleWorkflowEnabled
         to: enabled
+      - from: draft
+        event: LifecycleWorkflowDeleted
+        to: archived
+      - from: enabled
+        event: LifecycleWorkflowDeleted
+        to: archived
       - from: disabled
-        event: LifecycleWorkflowArchived
+        event: LifecycleWorkflowDeleted
         to: archived
   WorkflowRunLifecycle:
     description: "WorkflowRun.status の状態機械。queued で作成され、dispatcher が job_id を関連付けて\nrunning に遷移する (最初の step 実行開始)。1 attempt では未完了 step を定義順にすべて試し、\nJob の attempt 上限到達時に全 step 成功なら succeeded、成功と失敗が混在すれば\npartially_failed、成功が一つもなければ failed に終端する (no-op は成功として扱う)。\nJobs レベルの retry 中は run.status を running のまま保持する。disable は未開始の queued run を\ncanceled にし、running run は現在 step の checkpoint 後、次 step の前で canceled にする。\n"
@@ -3116,7 +3122,7 @@ interfaces:
         successful_status_codes:
           - "204"
   ListLifecycleWorkflows:
-    description: 管理者が所属テナントの LifecycleWorkflow を一覧する。
+    description: 管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。
     output:
       response:
         type: LifecycleWorkflowListResponse
@@ -3133,7 +3139,7 @@ interfaces:
         method: GET
         path: /api/admin/lifecycle_workflows
   CreateLifecycleWorkflow:
-    description: 管理者が LifecycleWorkflow を作成する。revision 1 の draft になり、name はテナント内で一意。
+    description: 管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。
     input:
       request:
         type: LifecycleWorkflowCreateRequest
@@ -3254,8 +3260,8 @@ interfaces:
       - kind: http
         method: POST
         path: "/api/admin/lifecycle_workflows/{workflow_id}/disable"
-  ArchiveLifecycleWorkflow:
-    description: 管理者が disabled の LifecycleWorkflow を archive する (終端、hard delete しない)。draft/enabled は拒否する。
+  DeleteLifecycleWorkflow:
+    description: 管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。
     input:
       workflow_id:
         type: String
@@ -3265,7 +3271,9 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     emits:
-      - LifecycleWorkflowArchived
+      - LifecycleWorkflowDeleted
+    ensures:
+      - emitted.exists(e, e is LifecycleWorkflowDeleted)
     access:
       policies: [TenantAdministrator]
       resource:
@@ -3572,6 +3580,34 @@ scenarios:
     main_success:
       - 旧 version の membership は直ちに effective roles から除外される
       - 再評価が失敗した User は新 version の membership を取得しない
+  管理者はライフサイクルワークフローを作成できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が認証済みである
+    main_success:
+      - 管理者が一覧画面の新規作成操作から専用の作成画面へ移動する
+      - 管理者が日本語の説明を確認しながら trigger 種別と action 種別を選択する
+      - 管理者が action ごとの必須設定を入力し、複数 action の実行順を並べ替える
+      - 管理者がワークフローを作成すると、選択した trigger と順序付き action が revision 1 の draft として返される
+      - UI は trigger、action、draft、revision、current_revision などの内部識別子を露出せず、日本語の表示名と意味を表示する
+    extensions:
+      - at: 3
+        condition: trigger または action の必須設定が不足している
+        steps:
+          - 作成操作は無効になり、不足している設定が日本語で表示される
+      - at: 2
+        condition: group または application を使う action に選択可能な参照先がない
+        steps:
+          - 作成は拒否され、先に参照先を作成する必要があることが日本語で表示される
+  管理者は既存ライフサイクルワークフローの定義を編集できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が既存ワークフローを選択している
+    main_success:
+      - 管理者が一覧画面の編集操作から専用の編集画面へ移動する
+      - 現在の trigger と順序付き action が日本語の表示名と説明付きでフォームに復元される
+      - 管理者が trigger または action を変更して保存する
+      - current_revision が増え、変更した定義が一覧と編集フォームに反映される
   管理者が定義したworkflowが部署変更でグループとアプリ割当を更新する:
     actor: TenantAdministrator
     given:
@@ -3947,16 +3983,19 @@ flows:
             interface: ListLifecycleWorkflows
             to: AdminLifecycleWorkflows
           - action: create
-            does: trigger と action を型付き form で入力して作成する
-            interface: CreateLifecycleWorkflow
+            does: 新規作成を選び専用の作成画面を開く
             to: AdminLifecycleWorkflowEditor
           - action: view
             does: 一覧から workflow を1件クリックして編集画面を開く
             interface: GetLifecycleWorkflow
             to: AdminLifecycleWorkflowEditor
       AdminLifecycleWorkflowEditor:
-        sees: 構造化editor画面(trigger/filter/action の型付き form、validation summary、保存前の action 順序表示)
+        sees: 一覧から分離された専用editor画面(trigger/filter/action の型付き form、validation summary、保存前の action 順序表示)
         does:
+          - action: create
+            does: 新しい workflow 定義を作成する
+            interface: CreateLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
           - action: update
             does: trigger/actions/表示情報を編集して保存する (expected_revision による楽観ロック)
             interface: UpdateLifecycleWorkflow
@@ -3973,9 +4012,9 @@ flows:
             does: 影響 (未開始 run の cancel、実行中 run の停止範囲) を確認して disable する
             interface: DisableLifecycleWorkflow
             to: AdminLifecycleWorkflowEditor
-          - action: archive
-            does: disabled の workflow を archive する
-            interface: ArchiveLifecycleWorkflow
+          - action: delete
+            does: 確認後、状態に関係なく workflow を削除する
+            interface: DeleteLifecycleWorkflow
             to: AdminLifecycleWorkflows
           - action: view_runs
             does: 実行履歴画面へ移動する

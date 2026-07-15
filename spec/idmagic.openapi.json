@@ -3938,7 +3938,7 @@
     "/api/admin/lifecycle_workflows": {
       "get": {
         "operationId": "ListLifecycleWorkflows",
-        "summary": "管理者が所属テナントの LifecycleWorkflow を一覧する。",
+        "summary": "管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。",
         "security": [
           {
             "SclBearer": []
@@ -3991,7 +3991,7 @@
       },
       "post": {
         "operationId": "CreateLifecycleWorkflow",
-        "summary": "管理者が LifecycleWorkflow を作成する。revision 1 の draft になり、name はテナント内で一意。",
+        "summary": "管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。",
         "x-scl-ensures": [
           "emitted.exists(e, e is LifecycleWorkflowCreated)"
         ],
@@ -4229,8 +4229,12 @@
         }
       },
       "delete": {
-        "operationId": "ArchiveLifecycleWorkflow",
-        "summary": "管理者が disabled の LifecycleWorkflow を archive する (終端、hard delete しない)。draft/enabled は拒否する。",
+        "operationId": "DeleteLifecycleWorkflow",
+        "summary": "管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。",
+        "x-scl-ensures": [
+          "emitted.exists(e, e is LifecycleWorkflowDeleted)"
+        ],
+        "description": "Ensures: emitted.exists(e, e is LifecycleWorkflowDeleted)",
         "security": [
           {
             "SclBearer": []
@@ -20136,33 +20140,7 @@
           "current_revision",
           "created_at"
         ],
-        "description": "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない (再度 enable するまで旧 revision の評価が続く)。\ndisable は新規 trigger を止め、archive は disabled にのみ許可される終端 (hard delete しない)。\n"
-      },
-      "LifecycleWorkflowArchived": {
-        "type": "object",
-        "properties": {
-          "occurredAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "actorUserId": {
-            "type": "string"
-          },
-          "workflowId": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "occurredAt",
-          "tenantId",
-          "actorUserId",
-          "workflowId"
-        ],
-        "description": "管理者が disabled の LifecycleWorkflow を archive した (終端)。"
+        "description": "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない。管理者は状態に関係なく削除でき、削除済み定義は\n一覧・取得・名前重複判定から除外する。既存の run と監査イベントは定義とは独立して保持する。\n"
       },
       "LifecycleWorkflowCreateRequest": {
         "type": "object",
@@ -20227,6 +20205,32 @@
           "workflowId"
         ],
         "description": "管理者が LifecycleWorkflow を作成した (revision 1 の draft)。"
+      },
+      "LifecycleWorkflowDeleted": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "workflowId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "workflowId"
+        ],
+        "description": "管理者が LifecycleWorkflow を削除した。削除前の状態にかかわらず発行し、監査証跡として保持する。"
       },
       "LifecycleWorkflowDisabled": {
         "type": "object",
@@ -20621,7 +20625,7 @@
           "disabled",
           "archived"
         ],
-        "description": "LifecycleWorkflow のライフサイクル。archived は終端で履歴保全のため hard delete しない。"
+        "description": "LifecycleWorkflow のライフサイクル。archived は削除済み定義を実行履歴の参照整合性のため内部だけで保持する実装状態で、管理画面と通常 API には公開しない。"
       },
       "LifecycleWorkflowStepFailed": {
         "type": "object",
@@ -26850,22 +26854,6 @@
             }
           },
           {
-            "name": "ArchiveLifecycleWorkflow",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.workflow_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "LifecycleWorkflow"
-              ]
-            }
-          },
-          {
             "name": "AssignApplication",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -27182,6 +27170,22 @@
               ],
               "resourceTypes": [
                 "Group"
+              ]
+            }
+          },
+          {
+            "name": "DeleteLifecycleWorkflow",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.workflow_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "LifecycleWorkflow"
               ]
             }
           },

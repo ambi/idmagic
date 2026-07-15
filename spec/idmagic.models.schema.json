@@ -6911,33 +6911,7 @@
         "current_revision",
         "created_at"
       ],
-      "description": "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない (再度 enable するまで旧 revision の評価が続く)。\ndisable は新規 trigger を止め、archive は disabled にのみ許可される終端 (hard delete しない)。\n"
-    },
-    "LifecycleWorkflowArchived": {
-      "type": "object",
-      "properties": {
-        "occurredAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "actorUserId": {
-          "type": "string"
-        },
-        "workflowId": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "occurredAt",
-        "tenantId",
-        "actorUserId",
-        "workflowId"
-      ],
-      "description": "管理者が disabled の LifecycleWorkflow を archive した (終端)。"
+      "description": "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない。管理者は状態に関係なく削除でき、削除済み定義は\n一覧・取得・名前重複判定から除外する。既存の run と監査イベントは定義とは独立して保持する。\n"
     },
     "LifecycleWorkflowCreateRequest": {
       "type": "object",
@@ -7002,6 +6976,32 @@
         "workflowId"
       ],
       "description": "管理者が LifecycleWorkflow を作成した (revision 1 の draft)。"
+    },
+    "LifecycleWorkflowDeleted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "workflowId"
+      ],
+      "description": "管理者が LifecycleWorkflow を削除した。削除前の状態にかかわらず発行し、監査証跡として保持する。"
     },
     "LifecycleWorkflowDisabled": {
       "type": "object",
@@ -7396,7 +7396,7 @@
         "disabled",
         "archived"
       ],
-      "description": "LifecycleWorkflow のライフサイクル。archived は終端で履歴保全のため hard delete しない。"
+      "description": "LifecycleWorkflow のライフサイクル。archived は削除済み定義を実行履歴の参照整合性のため内部だけで保持する実装状態で、管理画面と通常 API には公開しない。"
     },
     "LifecycleWorkflowStepFailed": {
       "type": "object",

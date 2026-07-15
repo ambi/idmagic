@@ -11,6 +11,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	"github.com/ambi/idmagic/backend/identitymanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -21,6 +22,57 @@ func workflowContext() context.Context {
 
 func workflowInput() usecases.CreateLifecycleWorkflowInput {
 	return usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)}
+}
+
+type orderedWorkflowRepository struct {
+	workflows map[string]*idmdomain.LifecycleWorkflow
+	order     []string
+}
+
+func (r *orderedWorkflowRepository) List(_ context.Context, tenantID string) ([]*idmdomain.LifecycleWorkflow, error) {
+	workflows := make([]*idmdomain.LifecycleWorkflow, 0, len(r.workflows))
+	for _, workflow := range r.workflows {
+		if workflow.TenantID == tenantID {
+			workflows = append(workflows, workflow)
+		}
+	}
+	return workflows, nil
+}
+
+func (r *orderedWorkflowRepository) Find(_ context.Context, tenantID, workflowID string) (*idmdomain.LifecycleWorkflow, error) {
+	workflow := r.workflows[workflowID]
+	if workflow == nil || workflow.TenantID != tenantID {
+		return nil, errors.New("workflow not found")
+	}
+	return workflow, nil
+}
+
+func (r *orderedWorkflowRepository) Save(_ context.Context, workflow *idmdomain.LifecycleWorkflow) error {
+	r.order = append(r.order, "workflow")
+	r.workflows[workflow.ID] = workflow
+	return nil
+}
+
+func (r *orderedWorkflowRepository) FindRevision(_ context.Context, _, _ string, _ int64) (*idmdomain.LifecycleWorkflowRevision, error) {
+	return nil, errors.New("workflow revision not found")
+}
+
+func (r *orderedWorkflowRepository) SaveRevision(_ context.Context, revision *idmdomain.LifecycleWorkflowRevision) error {
+	r.order = append(r.order, "revision")
+	if r.workflows[revision.WorkflowID] == nil {
+		return errors.New("workflow must be stored before its revision")
+	}
+	return nil
+}
+
+func TestCreateLifecycleWorkflowStoresDefinitionBeforeRevision(t *testing.T) {
+	repo := &orderedWorkflowRepository{workflows: map[string]*idmdomain.LifecycleWorkflow{}}
+	if _, err := usecases.CreateLifecycleWorkflow(workflowContext(), usecases.LifecycleWorkflowDeps{Repo: repo}, workflowInput()); err != nil {
+		t.Fatalf("CreateLifecycleWorkflow: %v", err)
+	}
+	if len(repo.order) != 2 || repo.order[0] != "workflow" || repo.order[1] != "revision" {
+		t.Fatalf("save order = %v, want [workflow revision]", repo.order)
+	}
 }
 
 func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
@@ -39,11 +91,19 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, time.Time{}); err != nil {
 		t.Fatalf("EnableLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, time.Time{}); err != nil {
-		t.Fatalf("DisableLifecycleWorkflow: %v", err)
+	var emitted spec.DomainEvent
+	deps.Emit = func(event spec.DomainEvent) error { emitted = event; return nil }
+	if err := usecases.DeleteLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, "admin", time.Time{}); err != nil {
+		t.Fatalf("DeleteLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.ArchiveLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, time.Time{}); err != nil {
-		t.Fatalf("ArchiveLifecycleWorkflow: %v", err)
+	if emitted == nil || emitted.EventType() != "LifecycleWorkflowDeleted" {
+		t.Fatalf("delete event = %#v", emitted)
+	}
+	if _, err := usecases.UpdateLifecycleWorkflow(workflowContext(), deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
+		t.Fatalf("update deleted workflow error = %v", err)
+	}
+	if _, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner v2", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}}); err != nil {
+		t.Fatalf("reuse deleted workflow name: %v", err)
 	}
 }
 

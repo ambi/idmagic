@@ -53,6 +53,7 @@ import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/impo
 import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
+import { Route as AdminLifecycleWorkflowsNewRouteImport } from './routes/admin/lifecycle-workflows_/new'
 import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
@@ -64,6 +65,7 @@ import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
+import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './routes/admin/lifecycle-workflows_/$workflowId.edit'
 import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
@@ -289,6 +291,12 @@ const AdminRolesNameRoute = AdminRolesNameRouteImport.update({
   path: '/roles/$name',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminLifecycleWorkflowsNewRoute =
+  AdminLifecycleWorkflowsNewRouteImport.update({
+    id: '/lifecycle-workflows_/new',
+    path: '/lifecycle-workflows/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminGroupsNewRoute = AdminGroupsNewRouteImport.update({
   id: '/groups_/new',
   path: '/groups/new',
@@ -346,6 +354,12 @@ const AdminUsersIdEditRoute = AdminUsersIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => AdminUsersIdRoute,
 } as any)
+const AdminLifecycleWorkflowsWorkflowIdEditRoute =
+  AdminLifecycleWorkflowsWorkflowIdEditRouteImport.update({
+    id: '/lifecycle-workflows_/$workflowId/edit',
+    path: '/lifecycle-workflows/$workflowId/edit',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminGroupsGroupIdEditRoute = AdminGroupsGroupIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -409,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups/new': typeof AdminGroupsNewRoute
+  '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/$id': typeof AdminUsersIdRouteWithChildren
@@ -418,6 +433,7 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
+  '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
@@ -464,6 +480,7 @@ export interface FileRoutesByTo {
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
+  '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/import': typeof AdminUsersImportRoute
@@ -471,6 +488,7 @@ export interface FileRoutesByTo {
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
+  '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
@@ -523,6 +541,7 @@ export interface FileRoutesById {
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups_/new': typeof AdminGroupsNewRoute
+  '/admin/lifecycle-workflows_/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles_/$name': typeof AdminRolesNameRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users_/$id': typeof AdminUsersIdRouteWithChildren
@@ -532,6 +551,7 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
+  '/admin/lifecycle-workflows_/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
@@ -585,6 +605,7 @@ export interface FileRouteTypes {
     | '/admin/federation/entra'
     | '/admin/groups/$groupId'
     | '/admin/groups/new'
+    | '/admin/lifecycle-workflows/new'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
     | '/admin/users/$id'
@@ -594,6 +615,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/edit'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
+    | '/admin/lifecycle-workflows/$workflowId/edit'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
@@ -640,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/agents/$agentId'
     | '/admin/federation/entra'
     | '/admin/groups/new'
+    | '/admin/lifecycle-workflows/new'
     | '/admin/roles/$name'
     | '/admin/tenant/attributes'
     | '/admin/users/import'
@@ -647,6 +670,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/edit'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
+    | '/admin/lifecycle-workflows/$workflowId/edit'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
@@ -698,6 +722,7 @@ export interface FileRouteTypes {
     | '/admin/federation/entra'
     | '/admin/groups_/$groupId'
     | '/admin/groups_/new'
+    | '/admin/lifecycle-workflows_/new'
     | '/admin/roles_/$name'
     | '/admin/tenant/attributes'
     | '/admin/users_/$id'
@@ -707,6 +732,7 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId/edit'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
+    | '/admin/lifecycle-workflows_/$workflowId/edit'
     | '/admin/users_/$id/edit'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
@@ -1039,6 +1065,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRolesNameRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/lifecycle-workflows_/new': {
+      id: '/admin/lifecycle-workflows_/new'
+      path: '/lifecycle-workflows/new'
+      fullPath: '/admin/lifecycle-workflows/new'
+      preLoaderRoute: typeof AdminLifecycleWorkflowsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/groups_/new': {
       id: '/admin/groups_/new'
       path: '/groups/new'
@@ -1115,6 +1148,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/$id/edit'
       preLoaderRoute: typeof AdminUsersIdEditRouteImport
       parentRoute: typeof AdminUsersIdRoute
+    }
+    '/admin/lifecycle-workflows_/$workflowId/edit': {
+      id: '/admin/lifecycle-workflows_/$workflowId/edit'
+      path: '/lifecycle-workflows/$workflowId/edit'
+      fullPath: '/admin/lifecycle-workflows/$workflowId/edit'
+      preLoaderRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/groups_/$groupId/edit': {
       id: '/admin/groups_/$groupId/edit'
@@ -1238,12 +1278,14 @@ interface AdminRouteRouteChildren {
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
   AdminGroupsNewRoute: typeof AdminGroupsNewRoute
+  AdminLifecycleWorkflowsNewRoute: typeof AdminLifecycleWorkflowsNewRoute
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
   AdminUsersIdRoute: typeof AdminUsersIdRouteWithChildren
   AdminUsersImportRoute: typeof AdminUsersImportRoute
   AdminUsersNewRoute: typeof AdminUsersNewRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
+  AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1266,12 +1308,15 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminFederationEntraRoute: AdminFederationEntraRoute,
   AdminGroupsGroupIdRoute: AdminGroupsGroupIdRouteWithChildren,
   AdminGroupsNewRoute: AdminGroupsNewRoute,
+  AdminLifecycleWorkflowsNewRoute: AdminLifecycleWorkflowsNewRoute,
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
   AdminUsersIdRoute: AdminUsersIdRouteWithChildren,
   AdminUsersImportRoute: AdminUsersImportRoute,
   AdminUsersNewRoute: AdminUsersNewRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
+  AdminLifecycleWorkflowsWorkflowIdEditRoute:
+    AdminLifecycleWorkflowsWorkflowIdEditRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

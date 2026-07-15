@@ -271,11 +271,11 @@ func (w *LifecycleWorkflow) Disable(now time.Time) error {
 	return nil
 }
 
-func (w *LifecycleWorkflow) Archive(now time.Time) error {
-	if w.Status != LifecycleWorkflowDisabled {
-		return errors.New("only disabled workflow can be archived")
+func (w *LifecycleWorkflow) Delete(now time.Time) error {
+	if w.Status == LifecycleWorkflowArchived {
+		return errors.New("workflow is already deleted")
 	}
-	w.Status, w.UpdatedAt = LifecycleWorkflowArchived, now.UTC()
+	w.Status, w.EnabledRevision, w.UpdatedAt = LifecycleWorkflowArchived, nil, now.UTC()
 	return nil
 }
 

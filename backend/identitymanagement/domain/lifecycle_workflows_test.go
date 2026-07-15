@@ -25,17 +25,22 @@ func TestLifecycleWorkflowTransitions(t *testing.T) {
 	if err := w.Enable(2, now); err != nil {
 		t.Fatalf("Enable: %v", err)
 	}
-	if err := w.Archive(now); err == nil {
-		t.Fatal("archive enabled workflow = nil, want error")
+	if err := w.Delete(now); err != nil {
+		t.Fatalf("Delete enabled workflow: %v", err)
 	}
-	if err := w.Disable(now); err != nil {
-		t.Fatalf("Disable: %v", err)
-	}
-	if err := w.Archive(now); err != nil {
-		t.Fatalf("Archive: %v", err)
+	if w.Status != LifecycleWorkflowArchived || w.EnabledRevision != nil {
+		t.Fatalf("deleted workflow = %#v", w)
 	}
 	if err := w.Enable(2, now); err == nil {
-		t.Fatal("enable archived workflow = nil, want error")
+		t.Fatal("enable deleted workflow = nil, want error")
+	}
+}
+
+func TestLifecycleWorkflowDeleteDraft(t *testing.T) {
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	w := LifecycleWorkflow{ID: "wf", TenantID: "tenant", Name: "Draft", Status: LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
+	if err := w.Delete(now); err != nil {
+		t.Fatalf("Delete draft workflow: %v", err)
 	}
 }
 

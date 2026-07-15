@@ -91,7 +91,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.PUT("/api/admin/lifecycle_workflows/:workflow_id", d.handleUpdateLifecycleWorkflow)
 	g.POST("/api/admin/lifecycle_workflows/:workflow_id/enable", d.handleEnableLifecycleWorkflow)
 	g.POST("/api/admin/lifecycle_workflows/:workflow_id/disable", d.handleDisableLifecycleWorkflow)
-	g.DELETE("/api/admin/lifecycle_workflows/:workflow_id", d.handleArchiveLifecycleWorkflow)
+	g.DELETE("/api/admin/lifecycle_workflows/:workflow_id", d.handleDeleteLifecycleWorkflow)
 	g.POST("/api/admin/lifecycle_workflows/:workflow_id/dry_run", d.handleDryRunLifecycleWorkflow)
 	g.GET("/api/admin/lifecycle_workflows/:workflow_id/runs", d.handleListLifecycleWorkflowRuns)
 	g.GET("/api/admin/lifecycle_workflow_runs/:run_id", d.handleGetLifecycleWorkflowRun)

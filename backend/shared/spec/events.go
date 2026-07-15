@@ -878,6 +878,16 @@ type GroupDeleted struct {
 func (e *GroupDeleted) EventType() string     { return "GroupDeleted" }
 func (e *GroupDeleted) OccurredAt() time.Time { return e.At }
 
+type LifecycleWorkflowDeleted struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	WorkflowID  string    `json:"workflowId"`
+}
+
+func (e *LifecycleWorkflowDeleted) EventType() string     { return "LifecycleWorkflowDeleted" }
+func (e *LifecycleWorkflowDeleted) OccurredAt() time.Time { return e.At }
+
 type GroupMemberAdded struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`

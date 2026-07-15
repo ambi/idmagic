@@ -21,6 +21,7 @@ var (
 type LifecycleWorkflowDeps struct {
 	Repo    idmports.LifecycleWorkflowRepository
 	RunRepo idmports.LifecycleWorkflowRunRepository
+	Emit    func(spec.DomainEvent) error
 }
 
 // PlanLifecycleWorkflowRuns evaluates enabled definitions against one committed
@@ -85,7 +86,7 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 		return nil, err
 	}
 	for _, workflow := range all {
-		if strings.EqualFold(workflow.Name, name) {
+		if workflow.Status != idmdomain.LifecycleWorkflowArchived && strings.EqualFold(workflow.Name, name) {
 			return nil, ErrWorkflowNameConflict
 		}
 	}
@@ -102,10 +103,10 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := workflow.Validate(); err != nil {
 		return nil, err
 	}
-	if err := deps.Repo.SaveRevision(ctx, revision); err != nil {
+	if err := deps.Repo.Save(ctx, workflow); err != nil {
 		return nil, err
 	}
-	if err := deps.Repo.Save(ctx, workflow); err != nil {
+	if err := deps.Repo.SaveRevision(ctx, revision); err != nil {
 		return nil, err
 	}
 	return workflow, nil
@@ -138,7 +139,7 @@ func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 		return nil, err
 	}
 	for _, other := range all {
-		if other.ID != workflow.ID && strings.EqualFold(other.Name, name) {
+		if other.Status != idmdomain.LifecycleWorkflowArchived && other.ID != workflow.ID && strings.EqualFold(other.Name, name) {
 			return nil, ErrWorkflowNameConflict
 		}
 	}
@@ -268,18 +269,27 @@ func RetryLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, 
 	return GetLifecycleWorkflowRun(ctx, deps, runID)
 }
 
-func ArchiveLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
+func DeleteLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) error {
 	workflow, err := tenantWorkflow(ctx, deps, workflowID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if expectedRevision != workflow.CurrentRevision {
-		return nil, ErrWorkflowRevisionConflict
+		return ErrWorkflowRevisionConflict
 	}
-	if err := workflow.Archive(normalizedNow(now)); err != nil {
-		return nil, err
+	now = normalizedNow(now)
+	if err := workflow.Delete(now); err != nil {
+		return err
 	}
-	return workflow, deps.Repo.Save(ctx, workflow)
+	if err := deps.Repo.Save(ctx, workflow); err != nil {
+		return err
+	}
+	if deps.RunRepo != nil {
+		if err := deps.RunRepo.CancelQueuedByWorkflow(ctx, workflow.TenantID, workflow.ID, now); err != nil {
+			return err
+		}
+	}
+	return adminEmit(deps.Emit, &spec.LifecycleWorkflowDeleted{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID})
 }
 
 func normalizedDescription(value *string) *string {
@@ -301,7 +311,7 @@ func tenantWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID 
 	if err != nil {
 		return nil, err
 	}
-	if workflow == nil {
+	if workflow == nil || workflow.Status == idmdomain.LifecycleWorkflowArchived {
 		return nil, ErrLifecycleWorkflowNotFound
 	}
 	return workflow, nil
