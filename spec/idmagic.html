@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>idmagic</title>
-<style>:root{color-scheme:light dark;--bg:#fbfbfd;--surface:#ffffff;--surface-2:#f4f4f7;--fg:#1c1c1f;--fg-soft:#54545a;--muted:#8a8a92;--border:#e5e5ea;--accent:#5b5be6;--accent-soft:#eeeefb;--ok:#117a3d;--ok-soft:rgba(17,122,61,.12);--warn:#a25400;--warn-soft:rgba(162,84,0,.14);--danger:#b3261e;--danger-soft:rgba(179,38,30,.1);--code-bg:#f1f1f5;--shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);}@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--surface:#16181f;--surface-2:#1c1f27;--fg:#e6e6ea;--fg-soft:#b0b0b8;--muted:#7a7a85;--border:#2a2d36;--accent:#8b8bff;--accent-soft:#1f2030;--ok:#5bcc8d;--ok-soft:rgba(91,204,141,.15);--warn:#e0a04f;--warn-soft:rgba(224,160,79,.15);--danger:#ff7a72;--danger-soft:rgba(255,122,114,.15);--code-bg:#1c1f27;--shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);}}*,*::before,*::after{box-sizing:border-box;}html,body{margin:0;padding:0;}body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}code,pre,.name,.path,.type,.chip,.expr{font-family:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;}code{background:var(--code-bg);padding:1px 6px;border-radius:4px;font-size:0.88em;}.app-header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--border);}.app-header-row{display:flex;gap:24px;align-items:center;max-width:1320px;margin:0 auto;padding:12px 24px;}.app-title{font-weight:700;letter-spacing:-0.01em;font-size:15px;color:var(--fg);}.tab-bar{display:flex;gap:4px;}.tab-link{padding:6px 12px;border-radius:8px;font-size:14px;color:var(--fg-soft);border:1px solid transparent;}.tab-link:hover{background:var(--surface-2);text-decoration:none;}.tab-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600;border-color:color-mix(in srgb,var(--accent) 30%,transparent);}.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;max-width:1320px;margin:0 auto;padding:24px 24px 96px;}@media (max-width:900px){.layout{grid-template-columns:1fr;padding:16px;gap:24px;}.toc{position:static;max-height:none;}}.toc{position:sticky;top:80px;align-self:start;max-height:calc(100vh - 100px);overflow-y:auto;font-size:14px;display:none;}.toc.active{display:block;}.toc-title{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}.toc ol{list-style:none;padding:0;margin:0;}.toc li{padding:4px 0;}.toc a{display:block;padding:4px 8px 4px 10px;border-radius:6px;color:var(--fg-soft);border-left:2px solid transparent;transition:background-color .12s,color .12s,border-color .12s;}.toc a:hover{background:var(--surface-2);color:var(--fg);text-decoration:none;}.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600;border-left-color:var(--accent);}.js .toc li[data-scl-context-item]{display:none;}.js .toc li[data-scl-context-item].context-visible{display:list-item;}main{min-width:0;}.tab{display:block;}.js .tab{display:none;}.js .tab.active{display:block;}.context-tab-bar{position:sticky;top:57px;z-index:5;display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:-8px 0 24px;padding:8px 0 10px;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--border);}.context-tab-link{display:inline-flex;align-items:center;min-height:30px;padding:5px 10px;border-radius:8px;font-size:13px;color:var(--fg-soft);border:1px solid transparent;}.context-tab-link:hover{background:var(--surface-2);color:var(--fg);text-decoration:none;}.context-tab-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600;border-color:color-mix(in srgb,var(--accent) 30%,transparent);}.scl-context-pane{display:block;}.js .scl-context-pane{display:none;}.js .scl-context-pane.active{display:block;}section{margin-bottom:56px;scroll-margin-top:88px;}.page-header{margin-bottom:24px;}.eyebrow{font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;}.page-header h1{font-size:38px;letter-spacing:-0.02em;margin:0 0 8px;}.page-meta{display:flex;gap:8px;flex-wrap:wrap;}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:8px;}.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--fg);display:flex;flex-direction:column;gap:2px;transition:border-color .15s,transform .15s;}.stat:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-1px);}.stat-num{font-size:24px;font-weight:700;letter-spacing:-0.02em;}.stat-label{font-size:12px;color:var(--muted);text-transform:capitalize;}section>h2{font-size:26px;margin:0 0 6px;letter-spacing:-0.01em;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;align-items:baseline;gap:10px;}section>h2 .count,.grp-title .count{font-size:13px;font-weight:500;color:var(--muted);background:var(--surface-2);padding:2px 8px;border-radius:999px;border:1px solid var(--border);}.lead{color:var(--fg-soft);margin:8px 0 20px;}.group{margin-top:24px;}.grp-title{font-size:14px;font-weight:600;color:var(--fg-soft);text-transform:capitalize;margin:16px 0 12px;display:flex;align-items:baseline;gap:8px;}.grp-title .count{font-size:11px;padding:1px 7px;}.cards{display:grid;gap:14px;}.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s;}.card:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),var(--shadow);}.card header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}.card header h3{font-size:17px;font-weight:600;letter-spacing:-0.01em;margin:0;}.desc{color:var(--fg-soft);margin:4px 0 12px;white-space:pre-wrap;}.label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;}.label.ok{color:var(--ok);}.label.danger{color:var(--danger);}.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);letter-spacing:0.02em;border:1px solid transparent;}.badge-required{background:var(--danger-soft);color:var(--danger);}.badge-optional{background:var(--surface-2);color:var(--muted);border-color:var(--border);}.badge-readonly,.badge-idempotent{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-version{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-context{background:var(--warn-soft);color:var(--warn);}.badge-kind-entity{background:rgba(91,91,230,.14);color:var(--accent);}.badge-kind-value_object{background:var(--surface-2);color:var(--fg-soft);border:1px solid var(--border);}.badge-kind-enum{background:var(--ok-soft);color:var(--ok);}.badge-kind-event{background:var(--warn-soft);color:var(--warn);}.badge-kind-error{background:var(--danger-soft);color:var(--danger);}.badge-kind-slo,.badge-kind-lifetime,.badge-kind-security,.badge-kind-retention{background:var(--accent-soft);color:var(--accent);}.badge-method-get{background:var(--ok-soft);color:var(--ok);}.badge-method-post{background:rgba(91,91,230,.14);color:var(--accent);}.badge-method-put,.badge-method-patch{background:var(--warn-soft);color:var(--warn);}.badge-method-delete{background:var(--danger-soft);color:var(--danger);}.badge-severity-must,.badge-severity-critical{background:var(--danger-soft);color:var(--danger);}.badge-severity-should,.badge-severity-high{background:var(--warn-soft);color:var(--warn);}.badge-severity-medium{background:var(--warn-soft);color:var(--warn);}.badge-severity-low{background:var(--ok-soft);color:var(--ok);}.badge-adoption-required{background:var(--ok-soft);color:var(--ok);}.badge-adoption-optional{background:var(--warn-soft);color:var(--warn);}.badge-adoption-excluded{background:var(--danger-soft);color:var(--danger);}.badge-strength,.badge-category{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-status-pending{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-status-progress{background:var(--accent-soft);color:var(--accent);}.badge-status-done{background:var(--ok-soft);color:var(--ok);}.badge-status-cancelled{background:var(--surface-2);color:var(--muted);border-color:var(--border);}.badge-risk-low{background:var(--ok-soft);color:var(--ok);}.badge-risk-medium{background:var(--warn-soft);color:var(--warn);}.badge-risk-high{background:var(--danger-soft);color:var(--danger);}.badge-risk-critical{background:var(--danger-soft);color:var(--danger);font-weight:700;}.badge-has-cr{background:var(--ok-soft);color:var(--ok);}.badge-adr-num{background:var(--accent-soft);color:var(--accent);font-weight:700;}.badge-conception{background:var(--warn-soft);color:var(--warn);font-weight:700;}.chip{display:inline-block;background:var(--surface-2);color:var(--fg-soft);border:1px solid var(--border);padding:1px 8px;border-radius:6px;margin:2px 2px 2px 0;font-size:12px;}a.chip{transition:border-color .15s,color .15s;}a.chip:hover{color:var(--accent);border-color:var(--accent);text-decoration:none;}.chip-alias{background:var(--surface-2);}.chip-constraint{background:var(--accent-soft);color:var(--accent);border-color:transparent;}.chip-annotation{background:var(--warn-soft);color:var(--warn);border-color:transparent;}.chip-default{background:var(--surface-2);color:var(--muted);}.chip-enum{background:var(--ok-soft);color:var(--ok);border-color:transparent;}.chip-event-ref{background:var(--warn-soft);color:var(--warn);border-color:transparent;}.chip-error-ref{background:var(--danger-soft);color:var(--danger);border-color:transparent;}.chip-iface-ref{background:rgba(91,91,230,.14);color:var(--accent);border-color:transparent;}.chip-initial{background:rgba(91,91,230,.14);color:var(--accent);border-color:transparent;font-weight:600;}.chip-terminal{background:var(--warn-soft);color:var(--warn);border-color:transparent;}.chip-tag{background:var(--surface-2);color:var(--fg-soft);}.chip-hint{background:var(--surface-2);color:var(--muted);}.chip-has-cr{background:var(--ok-soft);color:var(--ok);border-color:transparent;}.name{color:var(--fg);font-weight:600;}.type{color:var(--fg-soft);}.path{background:var(--surface-2);border:1px solid var(--border);padding:2px 8px;border-radius:6px;font-size:13px;}.muted{color:var(--muted);}.text{color:var(--fg);}.kv{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:4px 14px;align-items:baseline;margin:6px 0;}.kv dt{color:var(--muted);font-size:13px;font-weight:500;padding-top:2px;}.kv dd{margin:0;min-width:0;color:var(--fg);}.kv dl.kv{margin:0;}.vlist{margin:4px 0 0;padding-left:18px;}.vlist li{margin:3px 0;}.chip-row{display:flex;flex-wrap:wrap;gap:4px;}table.fields{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0;}table.fields th,table.fields td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}table.fields thead th{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border);}table.fields tbody tr:last-child td{border-bottom:none;}.enum-vals{display:flex;flex-wrap:wrap;gap:4px;}.vocab-list{display:grid;gap:12px;margin-top:12px;}.vocab-entry{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:grid;grid-template-columns:minmax(160px,200px) 1fr;gap:18px;align-items:start;}.vocab-entry:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}@media (max-width:720px){.vocab-entry{grid-template-columns:1fr;}}.vocab-name{padding-top:2px;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;}.vocab-name .name{font-size:15px;}.def{margin:0 0 8px;color:var(--fg);}.aliases{font-size:13px;color:var(--fg-soft);}.aliases-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-right:6px;}.ntcw{margin-top:10px;padding:8px 10px;background:var(--warn-soft);border-radius:8px;font-size:13px;}.ntcw-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--warn);margin-bottom:4px;}.ntcw ul{margin:0;padding-left:18px;color:var(--fg-soft);}.ntcw li{margin:2px 0;}.sm-row{display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;margin:6px 0 8px;}.sm-row .label{min-width:100px;margin:0;}.sub{margin-top:10px;}.io{margin-top:10px;}.diagram-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:14px 0 18px;box-shadow:var(--shadow);}.diagram-head{display:flex;justify-content:space-between;gap:16px;align-items:start;margin-bottom:10px;}.diagram-head h3{margin:0;font-size:17px;letter-spacing:-0.01em;}.diagram-head .desc{margin-bottom:0;}.diagram-tools{display:flex;gap:4px;flex:0 0 auto;}.diagram-tools button{min-width:32px;height:30px;padding:0 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-soft);font:inherit;font-size:13px;cursor:pointer;}.diagram-tools button:hover{color:var(--accent);border-color:var(--accent);}.diagram-viewport{overflow:hidden;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);min-height:260px;cursor:grab;}.diagram-viewport.dragging{cursor:grabbing;}.diagram-viewport svg{display:block;width:100%;height:320px;touch-action:none;}.diagram-edge line{stroke:var(--muted);stroke-width:1.6;}.diagram-edge text{fill:var(--fg-soft);font-size:11px;text-anchor:middle;paint-order:stroke;stroke:var(--surface-2);stroke-width:5px;stroke-linejoin:round;}.diagram-node rect{fill:var(--surface);stroke:var(--border);stroke-width:1.4;filter:drop-shadow(0 2px 4px rgba(0,0,0,.08));}.diagram-node text{fill:var(--fg);font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:middle;}.diagram-node-initial rect{stroke:var(--accent);fill:var(--accent-soft);}.diagram-node-terminal rect{stroke:var(--warn);fill:var(--warn-soft);}.diagram-node-external rect{stroke-dasharray:5 4;fill:var(--surface-2);}.diagram-card a:hover .diagram-node rect{stroke:var(--accent);}.diagram-card a:hover .diagram-node text{fill:var(--accent);}.diagram-card marker path{fill:var(--muted);}@media (max-width:720px){.diagram-head{flex-direction:column;}.diagram-viewport svg{height:260px;}}.iface-step{margin:6px 0 2px;}.step-tpl{color:var(--fg-soft);}.scn-steps{margin:8px 0 0;padding-left:26px;}.scn-step{padding:3px 0;line-height:1.7;}.scn-step::marker{color:var(--muted);font-size:0.85em;}.step-arg{background:var(--surface-2);color:var(--fg);border:1px solid var(--border);padding:0 5px;border-radius:4px;}.chip-ref{background:var(--accent-soft);color:var(--accent);border-color:transparent;}.requirements{display:grid;gap:10px;margin-top:12px;}.requirement{border:1px solid var(--border);border-radius:9px;padding:12px 14px;background:var(--surface-2);}.requirement:target{border-color:var(--accent);}.requirement header{display:flex;flex-wrap:wrap;align-items:center;gap:7px;}.requirement p{margin:7px 0 0;}.exclusion-reason{color:var(--danger);}.reference-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:8px;}.reference-label{min-width:92px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}.clause{margin:10px 0;padding:10px 12px;background:var(--surface-2);border-radius:8px;}.clause-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}.clause-label.ok{color:var(--ok);}.clause-label.danger{color:var(--danger);}.clause-label.accent{color:var(--accent);}.clause-label.muted{color:var(--muted);}.expr{display:inline-block;padding:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:13px;}.expr-list{margin:0;padding-left:18px;}.expr-list li{margin:4px 0;}.expr-op{margin:6px 0 6px 12px;}.expr-op-label{font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--accent);margin-bottom:4px;}.expr-quant{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 4px 12px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}.expr-quant-sym{color:var(--accent);font-weight:700;font-size:14px;}.clause-assuming{background:var(--surface);border:1px solid var(--border);}.clause-eventually{background:var(--accent-soft);}.within{font-size:11px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:6px;}.acceptance{margin:6px 0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}.acceptance-label{font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--accent);margin-bottom:4px;}.acceptance-leaf{margin:4px 0;}.bindings{display:grid;gap:10px;margin-top:6px;}.binding{display:grid;grid-template-columns:minmax(80px,max-content) 1fr;gap:12px;align-items:start;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;}.binding-kind{padding-top:2px;}.binding-body{min-width:0;}.binding-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}.binding-body .io{margin-top:8px;}.binding-body .kv{margin:6px 0;}.badge-bkind-http{background:rgba(91,91,230,.14);color:var(--accent);}.badge-bkind-grpc{background:var(--ok-soft);color:var(--ok);}.badge-bkind-cli{background:var(--warn-soft);color:var(--warn);}.badge-bkind-event{background:rgba(91,91,230,.10);color:var(--accent);}.badge-bkind-graphql{background:var(--danger-soft);color:var(--danger);}.badge-bkind-sdk{background:var(--surface);color:var(--fg-soft);border:1px solid var(--border);}.badge-bkind-schedule{background:var(--warn-soft);color:var(--warn);}.badge-direction-produce{background:var(--accent-soft);color:var(--accent);}.badge-direction-consume{background:var(--ok-soft);color:var(--ok);}.badge-gql-query{background:var(--ok-soft);color:var(--ok);}.badge-gql-mutation{background:rgba(91,91,230,.14);color:var(--accent);}.badge-gql-subscription{background:var(--warn-soft);color:var(--warn);}.step-kind-label{font-size:10px;font-weight:700;letter-spacing:0.1em;padding:2px 6px;border-radius:4px;background:var(--surface-2);color:var(--muted);}.md{color:var(--fg);}.md h1,.md h2,.md h3,.md h4{letter-spacing:-0.01em;margin:18px 0 8px;}.md h1{font-size:22px;}.md h2{font-size:18px;border-bottom:1px solid var(--border);padding-bottom:4px;}.md h3{font-size:16px;}.md h4{font-size:14px;color:var(--fg-soft);}.md p{margin:8px 0;}.md ul,.md ol{padding-left:22px;margin:8px 0;}.md li{margin:3px 0;}.md code{background:var(--code-bg);padding:1px 6px;border-radius:4px;}.md pre{background:var(--code-bg);padding:12px 14px;border-radius:8px;overflow-x:auto;border:1px solid var(--border);}.md pre code{background:transparent;padding:0;}.md blockquote{border-left:3px solid var(--accent);padding:4px 14px;margin:10px 0;background:var(--accent-soft);color:var(--fg-soft);border-radius:4px;}.md table{border-collapse:collapse;margin:10px 0;font-size:14px;width:100%;}.md th,.md td{padding:6px 10px;border:1px solid var(--border);text-align:left;}.md th{background:var(--surface-2);}.md hr{border:none;border-top:1px solid var(--border);margin:18px 0;}.md a{color:var(--accent);}.decision .doc-toc{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;margin:6px 0 12px;font-size:13px;}.decision .doc-toc summary{cursor:pointer;font-weight:600;color:var(--fg-soft);padding:4px 0;}.decision .doc-toc ol{padding-left:22px;}.decision .doc-toc li.lvl-1{font-weight:600;}.decision .doc-toc li.lvl-2{padding-left:8px;}.decision .doc-toc li.lvl-3{padding-left:16px;color:var(--muted);}.adr-index{display:grid;gap:6px;margin:12px 0 24px;}.adr-index-row{display:grid;grid-template-columns:100px minmax(150px,1fr) 2fr;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);transition:border-color .15s;}.adr-index-row:hover{border-color:var(--accent);text-decoration:none;}.adr-index-row .adr-num{color:var(--accent);font-weight:700;}.adr-index-row .adr-title{font-weight:600;}.adr-index-row .adr-preview{color:var(--muted);font-size:13px;line-height:1.4;overflow:hidden;}@media (max-width:720px){.adr-index-row{grid-template-columns:1fr;gap:4px;}}.ch-index{display:grid;gap:6px;margin:12px 0 24px;}.ch-index-row{display:grid;grid-template-columns:120px minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);transition:border-color .15s;}.ch-index-row:hover{border-color:var(--accent);text-decoration:none;}.ch-index-row .ch-id{color:var(--muted);font-size:12px;}.ch-index-row .ch-title{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.work-item,.completion-record{margin-top:8px;}.wi-header,.cr-header{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:8px;}.wi-header h4,.cr-header h4{margin:0;font-size:15px;}.wi-meta,.cr-meta{display:flex;flex-wrap:wrap;gap:4px;}.change-block{margin:6px 0;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;}.change-block summary{cursor:pointer;font-weight:600;color:var(--fg-soft);padding:2px 0;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;}.change-block[open] summary{color:var(--accent);margin-bottom:6px;}.change-block p{margin:6px 0;}.scope-group{margin:8px 0;}.scope-group h4{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:4px 0;}.change-list{padding-left:22px;margin:6px 0;}.change-list li{margin:4px 0;}.completion-record{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}</style>
+<style>:root{color-scheme:light dark;--bg:#fbfbfd;--surface:#ffffff;--surface-2:#f4f4f7;--fg:#1c1c1f;--fg-soft:#54545a;--muted:#8a8a92;--border:#e5e5ea;--accent:#5b5be6;--accent-soft:#eeeefb;--ok:#117a3d;--ok-soft:rgba(17,122,61,.12);--warn:#a25400;--warn-soft:rgba(162,84,0,.14);--danger:#b3261e;--danger-soft:rgba(179,38,30,.1);--code-bg:#f1f1f5;--shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);}@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--surface:#16181f;--surface-2:#1c1f27;--fg:#e6e6ea;--fg-soft:#b0b0b8;--muted:#7a7a85;--border:#2a2d36;--accent:#8b8bff;--accent-soft:#1f2030;--ok:#5bcc8d;--ok-soft:rgba(91,204,141,.15);--warn:#e0a04f;--warn-soft:rgba(224,160,79,.15);--danger:#ff7a72;--danger-soft:rgba(255,122,114,.15);--code-bg:#1c1f27;--shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);}}*,*::before,*::after{box-sizing:border-box;}html,body{margin:0;padding:0;}body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}code,pre,.name,.path,.type,.chip,.expr{font-family:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;}code{background:var(--code-bg);padding:1px 6px;border-radius:4px;font-size:0.88em;}.app-header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--border);}.app-header-row{display:flex;gap:24px;align-items:center;max-width:1320px;margin:0 auto;padding:12px 24px;}.app-title{font-weight:700;letter-spacing:-0.01em;font-size:15px;color:var(--fg);}.tab-bar{display:flex;gap:4px;}.tab-link{padding:6px 12px;border-radius:8px;font-size:14px;color:var(--fg-soft);border:1px solid transparent;}.tab-link:hover{background:var(--surface-2);text-decoration:none;}.tab-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600;border-color:color-mix(in srgb,var(--accent) 30%,transparent);}.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;max-width:1320px;margin:0 auto;padding:24px 24px 96px;}@media (max-width:900px){.layout{grid-template-columns:1fr;padding:16px;gap:24px;}.toc{position:static;max-height:none;}}.toc{position:sticky;top:80px;align-self:start;max-height:calc(100vh - 100px);overflow-y:auto;font-size:14px;display:none;}.toc.active{display:block;}.toc-title{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}.toc ol{list-style:none;padding:0;margin:0;}.toc li{padding:4px 0;}.toc a{display:block;padding:4px 8px 4px 10px;border-radius:6px;color:var(--fg-soft);border-left:2px solid transparent;transition:background-color .12s,color .12s,border-color .12s;}.toc a:hover{background:var(--surface-2);color:var(--fg);text-decoration:none;}.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600;border-left-color:var(--accent);}.js .toc li[data-scl-context-item]{display:none;}.js .toc li[data-scl-context-item].context-visible{display:list-item;}main{min-width:0;}.tab{display:block;}.js .tab{display:none;}.js .tab.active{display:block;}.context-tab-bar{position:sticky;top:57px;z-index:5;display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:-8px 0 24px;padding:8px 0 10px;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--border);}.context-tab-link{display:inline-flex;align-items:center;min-height:30px;padding:5px 10px;border-radius:8px;font-size:13px;color:var(--fg-soft);border:1px solid transparent;}.context-tab-link:hover{background:var(--surface-2);color:var(--fg);text-decoration:none;}.context-tab-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600;border-color:color-mix(in srgb,var(--accent) 30%,transparent);}.scl-context-pane{display:block;}.js .scl-context-pane{display:none;}.js .scl-context-pane.active{display:block;}section{margin-bottom:56px;scroll-margin-top:88px;}.page-header{margin-bottom:24px;}.eyebrow{font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;}.page-header h1{font-size:38px;letter-spacing:-0.02em;margin:0 0 8px;}.page-meta{display:flex;gap:8px;flex-wrap:wrap;}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:8px;}.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--fg);display:flex;flex-direction:column;gap:2px;transition:border-color .15s,transform .15s;}.stat:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-1px);}.stat-num{font-size:24px;font-weight:700;letter-spacing:-0.02em;}.stat-label{font-size:12px;color:var(--muted);text-transform:capitalize;}section>h2{font-size:26px;margin:0 0 6px;letter-spacing:-0.01em;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;align-items:baseline;gap:10px;}section>h2 .count,.grp-title .count{font-size:13px;font-weight:500;color:var(--muted);background:var(--surface-2);padding:2px 8px;border-radius:999px;border:1px solid var(--border);}.lead{color:var(--fg-soft);margin:8px 0 20px;}.group{margin-top:24px;}.grp-title{font-size:14px;font-weight:600;color:var(--fg-soft);text-transform:capitalize;margin:16px 0 12px;display:flex;align-items:baseline;gap:8px;}.grp-title .count{font-size:11px;padding:1px 7px;}.cards{display:grid;gap:14px;}.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s;}.card:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),var(--shadow);}.card header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}.card header h3{font-size:17px;font-weight:600;letter-spacing:-0.01em;margin:0;}.desc{color:var(--fg-soft);margin:4px 0 12px;white-space:pre-wrap;}.label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;}.label.ok{color:var(--ok);}.label.danger{color:var(--danger);}.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);letter-spacing:0.02em;border:1px solid transparent;}.badge-required{background:var(--danger-soft);color:var(--danger);}.badge-optional{background:var(--surface-2);color:var(--muted);border-color:var(--border);}.badge-readonly,.badge-idempotent{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-version{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-context{background:var(--warn-soft);color:var(--warn);}.badge-kind-entity{background:rgba(91,91,230,.14);color:var(--accent);}.badge-kind-value_object{background:var(--surface-2);color:var(--fg-soft);border:1px solid var(--border);}.badge-kind-enum{background:var(--ok-soft);color:var(--ok);}.badge-kind-event{background:var(--warn-soft);color:var(--warn);}.badge-kind-error{background:var(--danger-soft);color:var(--danger);}.badge-kind-slo,.badge-kind-lifetime,.badge-kind-security,.badge-kind-retention{background:var(--accent-soft);color:var(--accent);}.badge-method-get{background:var(--ok-soft);color:var(--ok);}.badge-method-post{background:rgba(91,91,230,.14);color:var(--accent);}.badge-method-put,.badge-method-patch{background:var(--warn-soft);color:var(--warn);}.badge-method-delete{background:var(--danger-soft);color:var(--danger);}.badge-severity-must,.badge-severity-critical{background:var(--danger-soft);color:var(--danger);}.badge-severity-should,.badge-severity-high{background:var(--warn-soft);color:var(--warn);}.badge-severity-medium{background:var(--warn-soft);color:var(--warn);}.badge-severity-low{background:var(--ok-soft);color:var(--ok);}.badge-adoption-required{background:var(--ok-soft);color:var(--ok);}.badge-adoption-optional{background:var(--warn-soft);color:var(--warn);}.badge-adoption-excluded{background:var(--danger-soft);color:var(--danger);}.badge-strength,.badge-category{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-status-pending{background:var(--surface-2);color:var(--fg-soft);border-color:var(--border);}.badge-status-progress{background:var(--accent-soft);color:var(--accent);}.badge-status-done{background:var(--ok-soft);color:var(--ok);}.badge-status-cancelled{background:var(--surface-2);color:var(--muted);border-color:var(--border);}.badge-risk-low{background:var(--ok-soft);color:var(--ok);}.badge-risk-medium{background:var(--warn-soft);color:var(--warn);}.badge-risk-high{background:var(--danger-soft);color:var(--danger);}.badge-risk-critical{background:var(--danger-soft);color:var(--danger);font-weight:700;}.badge-has-cr{background:var(--ok-soft);color:var(--ok);}.badge-adr-num{background:var(--accent-soft);color:var(--accent);font-weight:700;}.badge-conception{background:var(--warn-soft);color:var(--warn);font-weight:700;}.chip{display:inline-block;background:var(--surface-2);color:var(--fg-soft);border:1px solid var(--border);padding:1px 8px;border-radius:6px;margin:2px 2px 2px 0;font-size:12px;}a.chip{transition:border-color .15s,color .15s;}a.chip:hover{color:var(--accent);border-color:var(--accent);text-decoration:none;}.chip-alias{background:var(--surface-2);}.chip-constraint{background:var(--accent-soft);color:var(--accent);border-color:transparent;}.chip-annotation{background:var(--warn-soft);color:var(--warn);border-color:transparent;}.chip-default{background:var(--surface-2);color:var(--muted);}.chip-enum{background:var(--ok-soft);color:var(--ok);border-color:transparent;}.chip-event-ref{background:var(--warn-soft);color:var(--warn);border-color:transparent;}.chip-error-ref{background:var(--danger-soft);color:var(--danger);border-color:transparent;}.chip-iface-ref{background:rgba(91,91,230,.14);color:var(--accent);border-color:transparent;}.chip-initial{background:rgba(91,91,230,.14);color:var(--accent);border-color:transparent;font-weight:600;}.chip-terminal{background:var(--warn-soft);color:var(--warn);border-color:transparent;}.chip-tag{background:var(--surface-2);color:var(--fg-soft);}.chip-hint{background:var(--surface-2);color:var(--muted);}.chip-has-cr{background:var(--ok-soft);color:var(--ok);border-color:transparent;}.name{color:var(--fg);font-weight:600;}.type{color:var(--fg-soft);}.path{background:var(--surface-2);border:1px solid var(--border);padding:2px 8px;border-radius:6px;font-size:13px;}.muted{color:var(--muted);}.text{color:var(--fg);}.kv{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:4px 14px;align-items:baseline;margin:6px 0;}.kv dt{color:var(--muted);font-size:13px;font-weight:500;padding-top:2px;}.kv dd{margin:0;min-width:0;color:var(--fg);}.kv dl.kv{margin:0;}.vlist{margin:4px 0 0;padding-left:18px;}.vlist li{margin:3px 0;}.chip-row{display:flex;flex-wrap:wrap;gap:4px;}table.fields{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0;}table.fields th,table.fields td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}table.fields thead th{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border);}table.fields tbody tr:last-child td{border-bottom:none;}.enum-vals{display:flex;flex-wrap:wrap;gap:4px;}.flow-view{border-top:1px solid var(--border);padding:12px 0;}.flow-view:first-of-type{border-top:none;padding-top:4px;}.flow-view h4{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:0 0 4px;}.vocab-list{display:grid;gap:12px;margin-top:12px;}.vocab-entry{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:grid;grid-template-columns:minmax(160px,200px) 1fr;gap:18px;align-items:start;}.vocab-entry:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}@media (max-width:720px){.vocab-entry{grid-template-columns:1fr;}}.vocab-name{padding-top:2px;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;}.vocab-name .name{font-size:15px;}.def{margin:0 0 8px;color:var(--fg);}.aliases{font-size:13px;color:var(--fg-soft);}.aliases-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-right:6px;}.ntcw{margin-top:10px;padding:8px 10px;background:var(--warn-soft);border-radius:8px;font-size:13px;}.ntcw-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--warn);margin-bottom:4px;}.ntcw ul{margin:0;padding-left:18px;color:var(--fg-soft);}.ntcw li{margin:2px 0;}.sm-row{display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;margin:6px 0 8px;}.sm-row .label{min-width:100px;margin:0;}.sub{margin-top:10px;}.io{margin-top:10px;}.diagram-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:14px 0 18px;box-shadow:var(--shadow);}.diagram-head{display:flex;justify-content:space-between;gap:16px;align-items:start;margin-bottom:10px;}.diagram-head h3{margin:0;font-size:17px;letter-spacing:-0.01em;}.diagram-head .desc{margin-bottom:0;}.diagram-tools{display:flex;gap:4px;flex:0 0 auto;}.diagram-tools button{min-width:32px;height:30px;padding:0 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-soft);font:inherit;font-size:13px;cursor:pointer;}.diagram-tools button:hover{color:var(--accent);border-color:var(--accent);}.diagram-viewport{overflow:hidden;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);min-height:260px;cursor:grab;}.diagram-viewport.dragging{cursor:grabbing;}.diagram-viewport svg{display:block;width:100%;height:320px;touch-action:none;}.diagram-edge line{stroke:var(--muted);stroke-width:1.6;}.diagram-edge text{fill:var(--fg-soft);font-size:11px;text-anchor:middle;paint-order:stroke;stroke:var(--surface-2);stroke-width:5px;stroke-linejoin:round;}.diagram-node rect{fill:var(--surface);stroke:var(--border);stroke-width:1.4;filter:drop-shadow(0 2px 4px rgba(0,0,0,.08));}.diagram-node text{fill:var(--fg);font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:middle;}.diagram-node-initial rect{stroke:var(--accent);fill:var(--accent-soft);}.diagram-node-terminal rect{stroke:var(--warn);fill:var(--warn-soft);}.diagram-node-external rect{stroke-dasharray:5 4;fill:var(--surface-2);}.diagram-card a:hover .diagram-node rect{stroke:var(--accent);}.diagram-card a:hover .diagram-node text{fill:var(--accent);}.diagram-card marker path{fill:var(--muted);}@media (max-width:720px){.diagram-head{flex-direction:column;}.diagram-viewport svg{height:260px;}}.iface-step{margin:6px 0 2px;}.step-tpl{color:var(--fg-soft);}.scn-steps{margin:8px 0 0;padding-left:26px;}.scn-step{padding:3px 0;line-height:1.7;}.scn-step::marker{color:var(--muted);font-size:0.85em;}.step-arg{background:var(--surface-2);color:var(--fg);border:1px solid var(--border);padding:0 5px;border-radius:4px;}.chip-ref{background:var(--accent-soft);color:var(--accent);border-color:transparent;}.requirements{display:grid;gap:10px;margin-top:12px;}.requirement{border:1px solid var(--border);border-radius:9px;padding:12px 14px;background:var(--surface-2);}.requirement:target{border-color:var(--accent);}.requirement header{display:flex;flex-wrap:wrap;align-items:center;gap:7px;}.requirement p{margin:7px 0 0;}.exclusion-reason{color:var(--danger);}.reference-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:8px;}.reference-label{min-width:92px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}.clause{margin:10px 0;padding:10px 12px;background:var(--surface-2);border-radius:8px;}.clause-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}.clause-label.ok{color:var(--ok);}.clause-label.danger{color:var(--danger);}.clause-label.accent{color:var(--accent);}.clause-label.muted{color:var(--muted);}.expr{display:inline-block;padding:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:13px;}.expr-list{margin:0;padding-left:18px;}.expr-list li{margin:4px 0;}.expr-op{margin:6px 0 6px 12px;}.expr-op-label{font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--accent);margin-bottom:4px;}.expr-quant{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 4px 12px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}.expr-quant-sym{color:var(--accent);font-weight:700;font-size:14px;}.clause-assuming{background:var(--surface);border:1px solid var(--border);}.clause-eventually{background:var(--accent-soft);}.within{font-size:11px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:6px;}.acceptance{margin:6px 0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}.acceptance-label{font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--accent);margin-bottom:4px;}.acceptance-leaf{margin:4px 0;}.bindings{display:grid;gap:10px;margin-top:6px;}.binding{display:grid;grid-template-columns:minmax(80px,max-content) 1fr;gap:12px;align-items:start;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;}.binding-kind{padding-top:2px;}.binding-body{min-width:0;}.binding-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}.binding-body .io{margin-top:8px;}.binding-body .kv{margin:6px 0;}.badge-bkind-http{background:rgba(91,91,230,.14);color:var(--accent);}.badge-bkind-grpc{background:var(--ok-soft);color:var(--ok);}.badge-bkind-cli{background:var(--warn-soft);color:var(--warn);}.badge-bkind-event{background:rgba(91,91,230,.10);color:var(--accent);}.badge-bkind-graphql{background:var(--danger-soft);color:var(--danger);}.badge-bkind-sdk{background:var(--surface);color:var(--fg-soft);border:1px solid var(--border);}.badge-bkind-schedule{background:var(--warn-soft);color:var(--warn);}.badge-direction-produce{background:var(--accent-soft);color:var(--accent);}.badge-direction-consume{background:var(--ok-soft);color:var(--ok);}.badge-gql-query{background:var(--ok-soft);color:var(--ok);}.badge-gql-mutation{background:rgba(91,91,230,.14);color:var(--accent);}.badge-gql-subscription{background:var(--warn-soft);color:var(--warn);}.step-kind-label{font-size:10px;font-weight:700;letter-spacing:0.1em;padding:2px 6px;border-radius:4px;background:var(--surface-2);color:var(--muted);}.md{color:var(--fg);}.md h1,.md h2,.md h3,.md h4{letter-spacing:-0.01em;margin:18px 0 8px;}.md h1{font-size:22px;}.md h2{font-size:18px;border-bottom:1px solid var(--border);padding-bottom:4px;}.md h3{font-size:16px;}.md h4{font-size:14px;color:var(--fg-soft);}.md p{margin:8px 0;}.md ul,.md ol{padding-left:22px;margin:8px 0;}.md li{margin:3px 0;}.md code{background:var(--code-bg);padding:1px 6px;border-radius:4px;}.md pre{background:var(--code-bg);padding:12px 14px;border-radius:8px;overflow-x:auto;border:1px solid var(--border);}.md pre code{background:transparent;padding:0;}.md blockquote{border-left:3px solid var(--accent);padding:4px 14px;margin:10px 0;background:var(--accent-soft);color:var(--fg-soft);border-radius:4px;}.md table{border-collapse:collapse;margin:10px 0;font-size:14px;width:100%;}.md th,.md td{padding:6px 10px;border:1px solid var(--border);text-align:left;}.md th{background:var(--surface-2);}.md hr{border:none;border-top:1px solid var(--border);margin:18px 0;}.md a{color:var(--accent);}.decision .doc-toc{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;margin:6px 0 12px;font-size:13px;}.decision .doc-toc summary{cursor:pointer;font-weight:600;color:var(--fg-soft);padding:4px 0;}.decision .doc-toc ol{padding-left:22px;}.decision .doc-toc li.lvl-1{font-weight:600;}.decision .doc-toc li.lvl-2{padding-left:8px;}.decision .doc-toc li.lvl-3{padding-left:16px;color:var(--muted);}.adr-index{display:grid;gap:6px;margin:12px 0 24px;}.adr-index-row{display:grid;grid-template-columns:100px minmax(150px,1fr) 2fr;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);transition:border-color .15s;}.adr-index-row:hover{border-color:var(--accent);text-decoration:none;}.adr-index-row .adr-num{color:var(--accent);font-weight:700;}.adr-index-row .adr-title{font-weight:600;}.adr-index-row .adr-preview{color:var(--muted);font-size:13px;line-height:1.4;overflow:hidden;}@media (max-width:720px){.adr-index-row{grid-template-columns:1fr;gap:4px;}}.ch-index{display:grid;gap:6px;margin:12px 0 24px;}.ch-index-row{display:grid;grid-template-columns:120px minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);transition:border-color .15s;}.ch-index-row:hover{border-color:var(--accent);text-decoration:none;}.ch-index-row .ch-id{color:var(--muted);font-size:12px;}.ch-index-row .ch-title{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.work-item,.completion-record{margin-top:8px;}.wi-header,.cr-header{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:8px;}.wi-header h4,.cr-header h4{margin:0;font-size:15px;}.wi-meta,.cr-meta{display:flex;flex-wrap:wrap;gap:4px;}.change-block{margin:6px 0;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;}.change-block summary{cursor:pointer;font-weight:600;color:var(--fg-soft);padding:2px 0;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;}.change-block[open] summary{color:var(--accent);margin-bottom:6px;}.change-block p{margin:6px 0;}.scope-group{margin:8px 0;}.scope-group h4{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:4px 0;}.change-list{padding-left:22px;margin:6px 0;}.change-list li{margin:4px 0;}.completion-record{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}</style>
 </head>
 <body>
 <header class="app-header">
@@ -652,7 +652,7 @@ BackendErrorText であり、表示言語 (DisplayLanguage) に関わらず常�
       <div>
         <div class="label">Diagram</div>
         <h3>AdminDashboard navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminDashboard navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -661,36 +661,28 @@ BackendErrorText であり、表示言語 (DisplayLanguage) に関わらず常�
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="AdminDashboard navigation">
+      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="AdminDashboard navigation">
         <defs>
           <marker id="arrow-flow-admindashboard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
           </marker>
         </defs>
-        <a href="#context-system-flow-admindashboard"><g class="diagram-edge" id="context-system-diagram-flow-admindashboard-edge-0">
-        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-admindashboard)"></line>
-        <text x="256.0" y="59.0">user_management_selected</text>
-      </g></a><a href="#context-system-flow-admindashboard"><g class="diagram-edge" id="context-system-diagram-flow-admindashboard-edge-1">
-        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-flow-admindashboard)"></line>
-        <text x="128.0" y="122.0">application_management_selected</text>
-      </g></a>
+
         <a href="#context-system-flow-admindashboard"><g class="diagram-node diagram-node-initial" id="context-system-diagram-flow-admindashboard-node-admindashboard">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">AdminDashboard</text>
-      </g></a><a href="#context-system-flow-admindashboard"><g class="diagram-node diagram-node-view" id="context-system-diagram-flow-admindashboard-node-adminusers">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">AdminUsers</text>
-      </g></a><a href="#context-system-flow-admindashboard"><g class="diagram-node diagram-node-view" id="context-system-diagram-flow-admindashboard-node-adminapplications">
-        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
-        <text x="128" y="196">AdminApplications</text>
       </g></a>
       </svg>
     </div>
   </div><div class="cards"><article class="card" id="context-system-flow-admindashboard">
         <header><h3>AdminDashboard</h3><span class="chip chip-initial">entry: AdminDashboard</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminDashboard</td><td><code>user_management_selected</code></td><td>AdminUsers</td><td></td></tr><tr><td>AdminDashboard</td><td><code>application_management_selected</code></td><td>AdminApplications</td><td></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminDashboard<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">管理コンソールダッシュボード画面(ユーザー管理・アプリケーション管理へのナビゲーション)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>ユーザー管理タブをクリックする <code>user_management_selected</code></td><td>AdminUsers</td><td></td></tr><tr><td>アプリケーション管理タブをクリックする <code>application_management_selected</code></td><td>AdminApplications</td><td></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -2479,7 +2471,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       <div>
         <div class="label">Diagram</div>
         <h3>SystemTenantManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="SystemTenantManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -2518,7 +2510,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       <div>
         <div class="label">Diagram</div>
         <h3>TenantAttributeManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="TenantAttributeManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -2548,7 +2540,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       <div>
         <div class="label">Diagram</div>
         <h3>TenantSettingsManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="TenantSettingsManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -2579,18 +2571,30 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
   </div><div class="cards"><article class="card" id="context-tenancy-flow-systemtenantmanagement">
         <header><h3>SystemTenantManagement</h3><span class="chip chip-initial">entry: SystemTenants</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>SystemTenants</td><td><code>create</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-createtenant">CreateTenant</a></td></tr><tr><td>SystemTenants</td><td><code>update</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenant">UpdateTenant</a></td></tr><tr><td>SystemTenants</td><td><code>disable</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-disabletenant">DisableTenant</a></td></tr><tr><td>SystemTenants</td><td><code>enable</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-enabletenant">EnableTenant</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>SystemTenants<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">システムテナント一覧画面(realm、表示名、ステータス、作成日時)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>作成モーダルを開き、realm と表示名を入力して作成する <code>create</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-createtenant">CreateTenant</a></td></tr><tr><td>編集モーダルを開き、表示名またはパスワードポリシー上書きを変更して更新する <code>update</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenant">UpdateTenant</a></td></tr><tr><td>無効化ボタンをクリックする <code>disable</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-disabletenant">DisableTenant</a></td></tr><tr><td>有効化ボタンをクリックする <code>enable</code></td><td>SystemTenants</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-enabletenant">EnableTenant</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-tenancy-flow-tenantattributemanagement">
         <header><h3>TenantAttributeManagement</h3><span class="chip chip-initial">entry: TenantAttributes</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>TenantAttributes</td><td><code>update</code></td><td>TenantAttributes</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenantuserattributeschema">UpdateTenantUserAttributeSchema</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>TenantAttributes<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">テナント属性設定画面(カスタム属性定義一覧の編集フォーム、組み込み属性カタログの参照表示)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>カスタム属性定義をすべて編集して保存する <code>update</code></td><td>TenantAttributes</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenantuserattributeschema">UpdateTenantUserAttributeSchema</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-tenancy-flow-tenantsettingsmanagement">
         <header><h3>TenantSettingsManagement</h3><span class="chip chip-initial">entry: TenantSettings</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>TenantSettings</td><td><code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updateadminsettings">UpdateAdminSettings</a></td></tr><tr><td>TenantSettings</td><td><code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenantbranding">UpdateTenantBranding</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>TenantSettings<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">テナント設定画面(表示名・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>表示名またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updateadminsettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#context-tenancy-iface-updatetenantbranding">UpdateTenantBranding</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -7607,7 +7611,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AdminUsers navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminUsers navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7616,7 +7620,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="AdminUsers navigation">
+      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="AdminUsers navigation">
         <defs>
           <marker id="arrow-flow-adminusers" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -7664,22 +7668,16 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       </g></a><a href="#context-identitymanagement-iface-addgroupmember"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-adminusers-edge-13">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">add_to_group</text>
-      </g></a><a href="#context-identitymanagement-flow-adminusers"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-adminusers-edge-14">
-        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
-        <text x="256.0" y="59.0">group_management_selected</text>
       </g></a><a href="#context-identitymanagement-flow-adminusers"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-adminusers-edge-15">
-        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-flow-adminusers)"></line>
-        <text x="128.0" y="122.0">application_management_selected</text>
+        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
+        <text x="256.0" y="59.0">application_management_selected</text>
       </g></a>
         <a href="#context-identitymanagement-flow-adminusers"><g class="diagram-node diagram-node-initial" id="context-identitymanagement-diagram-flow-adminusers-node-adminusers">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">AdminUsers</text>
-      </g></a><a href="#context-identitymanagement-flow-adminusers"><g class="diagram-node diagram-node-view" id="context-identitymanagement-diagram-flow-adminusers-node-admingroups">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">AdminGroups</text>
       </g></a><a href="#context-identitymanagement-flow-adminusers"><g class="diagram-node diagram-node-external" id="context-identitymanagement-diagram-flow-adminusers-node-external">
-        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
-        <text x="128" y="196">External</text>
+        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
+        <text x="384" y="70">External</text>
       </g></a>
       </svg>
     </div>
@@ -7688,7 +7686,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AdminGroups navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminGroups navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7697,7 +7695,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="AdminGroups navigation">
+      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="AdminGroups navigation">
         <defs>
           <marker id="arrow-flow-admingroups" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -7736,16 +7734,10 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       </g></a><a href="#context-identitymanagement-iface-disabledynamicgrouprule"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-admingroups-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">disable_dynamic_rule</text>
-      </g></a><a href="#context-identitymanagement-iface-listadminusers"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-admingroups-edge-11">
-        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
-        <text x="256.0" y="59.0">view_users</text>
       </g></a>
         <a href="#context-identitymanagement-flow-admingroups"><g class="diagram-node diagram-node-initial" id="context-identitymanagement-diagram-flow-admingroups-node-admingroups">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">AdminGroups</text>
-      </g></a><a href="#context-identitymanagement-flow-admingroups"><g class="diagram-node diagram-node-view" id="context-identitymanagement-diagram-flow-admingroups-node-adminusers">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">AdminUsers</text>
       </g></a>
       </svg>
     </div>
@@ -7754,7 +7746,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AdminAgents navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminAgents navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7811,7 +7803,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AdminRoles navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminRoles navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7841,7 +7833,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AccountHome navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountHome navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7850,7 +7842,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 768 256" data-diagram-svg data-diagram-viewbox="0 0 768 256" role="img" aria-label="AccountHome navigation">
+      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="AccountHome navigation">
         <defs>
           <marker id="arrow-flow-accounthome" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -7859,34 +7851,10 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
         <a href="#context-identitymanagement-iface-getaccountsummary"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-accounthome-edge-0">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-accounthome)"></line>
         <text x="128.0" y="59.0">view_summary</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-accounthome-edge-1">
-        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-accounthome)"></line>
-        <text x="256.0" y="59.0">security_selected</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-accounthome-edge-2">
-        <line x1="220.0" y1="65.0" x2="548.0" y2="65.0" marker-end="url(#arrow-flow-accounthome)"></line>
-        <text x="384.0" y="59.0">profile_selected</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-accounthome-edge-3">
-        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-flow-accounthome)"></line>
-        <text x="128.0" y="122.0">activity_selected</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-edge" id="context-identitymanagement-diagram-flow-accounthome-edge-4">
-        <line x1="210.5" y1="77.8" x2="301.5" y2="178.2" marker-end="url(#arrow-flow-accounthome)"></line>
-        <text x="256.0" y="122.0">connected_apps_selected</text>
       </g></a>
         <a href="#context-identitymanagement-flow-accounthome"><g class="diagram-node diagram-node-initial" id="context-identitymanagement-diagram-flow-accounthome-node-accounthome">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">AccountHome</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-node diagram-node-view" id="context-identitymanagement-diagram-flow-accounthome-node-accountsecurity">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">AccountSecurity</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-node diagram-node-view" id="context-identitymanagement-diagram-flow-accounthome-node-accountprofile">
-        <rect x="548" y="36" width="184" height="58" rx="8"></rect>
-        <text x="640" y="70">AccountProfile</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-node diagram-node-view" id="context-identitymanagement-diagram-flow-accounthome-node-accountactivity">
-        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
-        <text x="128" y="196">AccountActivity</text>
-      </g></a><a href="#context-identitymanagement-flow-accounthome"><g class="diagram-node diagram-node-view" id="context-identitymanagement-diagram-flow-accounthome-node-accountapplications">
-        <rect x="292" y="162" width="184" height="58" rx="8"></rect>
-        <text x="384" y="196">AccountApplications</text>
       </g></a>
       </svg>
     </div>
@@ -7895,7 +7863,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AccountProfile navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountProfile navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7928,7 +7896,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AccountEmails navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountEmails navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7967,7 +7935,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
       <div>
         <div class="label">Diagram</div>
         <h3>AccountData navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountData navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -7995,43 +7963,80 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
   </div><div class="cards"><article class="card" id="context-identitymanagement-flow-adminusers">
         <header><h3>AdminUsers</h3><span class="chip chip-initial">entry: AdminUsers</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminUsers</td><td><code>list</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listadminusers">ListAdminUsers</a></td></tr><tr><td>AdminUsers</td><td><code>view</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getadminuser">GetAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>create</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-createadminuser">CreateAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>update</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updateadminuser">UpdateAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>disable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-disableadminuser">DisableAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>enable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-enableadminuser">EnableAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>delete</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-deleteadminuser">DeleteAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>restore</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-restoreadminuser">RestoreAdminUser</a></td></tr><tr><td>AdminUsers</td><td><code>set_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-setuserrequiredaction">SetUserRequiredAction</a></td></tr><tr><td>AdminUsers</td><td><code>clear_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-clearuserrequiredaction">ClearUserRequiredAction</a></td></tr><tr><td>AdminUsers</td><td><code>import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-importadminusers">ImportAdminUsers</a></td></tr><tr><td>AdminUsers</td><td><code>view_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getadminuserimport">GetAdminUserImport</a></td></tr><tr><td>AdminUsers</td><td><code>view_groups</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listusergroups">ListUserGroups</a></td></tr><tr><td>AdminUsers</td><td><code>add_to_group</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-addgroupmember">AddGroupMember</a></td></tr><tr><td>AdminUsers</td><td><code>group_management_selected</code></td><td>AdminGroups</td><td></td></tr><tr><td>AdminUsers</td><td><code>application_management_selected</code></td><td>external</td><td></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminUsers<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listadminusers">ListAdminUsers</a></td></tr><tr><td>一覧からユーザーを1件クリックして詳細を表示する <code>view</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getadminuser">GetAdminUser</a></td></tr><tr><td>ユーザー名・初期パスワード等を入力して作成する <code>create</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-createadminuser">CreateAdminUser</a></td></tr><tr><td>プロフィール・email_verified・roles を編集して保存する <code>update</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updateadminuser">UpdateAdminUser</a></td></tr><tr><td>無効化ボタンをクリックする <code>disable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-disableadminuser">DisableAdminUser</a></td></tr><tr><td>有効化ボタンをクリックする <code>enable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-enableadminuser">EnableAdminUser</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-deleteadminuser">DeleteAdminUser</a></td></tr><tr><td>復元ボタンをクリックする <code>restore</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-restoreadminuser">RestoreAdminUser</a></td></tr><tr><td>次回ログイン時の強制アクションを選んで付与する <code>set_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-setuserrequiredaction">SetUserRequiredAction</a></td></tr><tr><td>付与済みの強制アクションを解除する <code>clear_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-clearuserrequiredaction">ClearUserRequiredAction</a></td></tr><tr><td>CSV ファイルを選択して、dry_run または apply を実行する <code>import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-importadminusers">ImportAdminUsers</a></td></tr><tr><td>インポートジョブを選んで、行ごとの検証・適用結果を表示する <code>view_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getadminuserimport">GetAdminUserImport</a></td></tr><tr><td>ユーザーの所属グループとロール内訳を表示する <code>view_groups</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listusergroups">ListUserGroups</a></td></tr><tr><td>所属させるグループを選んで追加する <code>add_to_group</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-addgroupmember">AddGroupMember</a></td></tr><tr><td>グループ管理タブをクリックする <code>group_management_selected</code></td><td>AdminGroups</td><td></td></tr><tr><td>アプリケーション管理へのリンクをクリックする <code>application_management_selected</code></td><td>external</td><td></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-admingroups">
         <header><h3>AdminGroups</h3><span class="chip chip-initial">entry: AdminGroups</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminGroups</td><td><code>list</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listgroups">ListGroups</a></td></tr><tr><td>AdminGroups</td><td><code>view</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getgroup">GetGroup</a></td></tr><tr><td>AdminGroups</td><td><code>create</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-creategroup">CreateGroup</a></td></tr><tr><td>AdminGroups</td><td><code>update</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updategroup">UpdateGroup</a></td></tr><tr><td>AdminGroups</td><td><code>delete</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-deletegroup">DeleteGroup</a></td></tr><tr><td>AdminGroups</td><td><code>add_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-addgroupmember">AddGroupMember</a></td></tr><tr><td>AdminGroups</td><td><code>remove_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-removegroupmember">RemoveGroupMember</a></td></tr><tr><td>AdminGroups</td><td><code>update_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updatedynamicgrouprule">UpdateDynamicGroupRule</a></td></tr><tr><td>AdminGroups</td><td><code>preview_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-previewdynamicgrouprule">PreviewDynamicGroupRule</a></td></tr><tr><td>AdminGroups</td><td><code>enable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-enabledynamicgrouprule">EnableDynamicGroupRule</a></td></tr><tr><td>AdminGroups</td><td><code>disable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-disabledynamicgrouprule">DisableDynamicGroupRule</a></td></tr><tr><td>AdminGroups</td><td><code>view_users</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listadminusers">ListAdminUsers</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminGroups<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">グループ管理画面(グループ一覧、メンバー、動的グループルール)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listgroups">ListGroups</a></td></tr><tr><td>一覧からグループを1件クリックして詳細を表示する <code>view</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getgroup">GetGroup</a></td></tr><tr><td>グループ名を入力して作成する <code>create</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-creategroup">CreateGroup</a></td></tr><tr><td>名前・説明・roles を編集して保存する <code>update</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updategroup">UpdateGroup</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-deletegroup">DeleteGroup</a></td></tr><tr><td>追加するユーザーを選ぶ <code>add_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-addgroupmember">AddGroupMember</a></td></tr><tr><td>メンバーを選んで、外すボタンをクリックする <code>remove_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-removegroupmember">RemoveGroupMember</a></td></tr><tr><td>動的グループの制限 CEL ルールを編集して保存する <code>update_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updatedynamicgrouprule">UpdateDynamicGroupRule</a></td></tr><tr><td>未保存の CEL ルールをプレビューして、現在所属との差分を確認する <code>preview_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-previewdynamicgrouprule">PreviewDynamicGroupRule</a></td></tr><tr><td>動的グループルールを有効化する <code>enable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-enabledynamicgrouprule">EnableDynamicGroupRule</a></td></tr><tr><td>動的グループルールを無効化する <code>disable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-disabledynamicgrouprule">DisableDynamicGroupRule</a></td></tr><tr><td>グループのメンバー一覧からユーザー管理へ移動する <code>view_users</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listadminusers">ListAdminUsers</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-adminagents">
         <header><h3>AdminAgents</h3><span class="chip chip-initial">entry: AdminAgents</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminAgents</td><td><code>list</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listagents">ListAgents</a></td></tr><tr><td>AdminAgents</td><td><code>view</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getagent">GetAgent</a></td></tr><tr><td>AdminAgents</td><td><code>register</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-registeragent">RegisterAgent</a></td></tr><tr><td>AdminAgents</td><td><code>update</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updateagent">UpdateAgent</a></td></tr><tr><td>AdminAgents</td><td><code>disable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-disableagent">DisableAgent</a></td></tr><tr><td>AdminAgents</td><td><code>enable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-enableagent">EnableAgent</a></td></tr><tr><td>AdminAgents</td><td><code>kill</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-killagent">KillAgent</a></td></tr><tr><td>AdminAgents</td><td><code>delete</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-deleteagent">DeleteAgent</a></td></tr><tr><td>AdminAgents</td><td><code>bind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-bindagentcredential">BindAgentCredential</a></td></tr><tr><td>AdminAgents</td><td><code>unbind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-unbindagentcredential">UnbindAgentCredential</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminAgents<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">エージェント管理画面(エージェント一覧、詳細、資格情報の束縛)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listagents">ListAgents</a></td></tr><tr><td>一覧からエージェントを1件クリックして詳細を表示する <code>view</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getagent">GetAgent</a></td></tr><tr><td>名前等を入力して登録する <code>register</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-registeragent">RegisterAgent</a></td></tr><tr><td>名前・説明・種別・所有者・roles を編集して保存する <code>update</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updateagent">UpdateAgent</a></td></tr><tr><td>停止ボタンをクリックする <code>disable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-disableagent">DisableAgent</a></td></tr><tr><td>再開ボタンをクリックする <code>enable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-enableagent">EnableAgent</a></td></tr><tr><td>緊急停止ボタンをクリックする <code>kill</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-killagent">KillAgent</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-deleteagent">DeleteAgent</a></td></tr><tr><td>束縛する OAuth2 client を選ぶ <code>bind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-bindagentcredential">BindAgentCredential</a></td></tr><tr><td>束縛を解除するボタンをクリックする <code>unbind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-unbindagentcredential">UnbindAgentCredential</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-adminroles">
         <header><h3>AdminRoles</h3><span class="chip chip-initial">entry: AdminRoles</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminRoles</td><td><code>list</code></td><td>AdminRoles</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listadminusers">ListAdminUsers</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminRoles<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">ロール一覧画面</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminRoles</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-listadminusers">ListAdminUsers</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-accounthome">
         <header><h3>AccountHome</h3><span class="chip chip-initial">entry: AccountHome</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountHome</td><td><code>view_summary</code></td><td>AccountHome</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getaccountsummary">GetAccountSummary</a></td></tr><tr><td>AccountHome</td><td><code>security_selected</code></td><td>AccountSecurity</td><td></td></tr><tr><td>AccountHome</td><td><code>profile_selected</code></td><td>AccountProfile</td><td></td></tr><tr><td>AccountHome</td><td><code>activity_selected</code></td><td>AccountActivity</td><td></td></tr><tr><td>AccountHome</td><td><code>connected_apps_selected</code></td><td>AccountApplications</td><td></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountHome<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">アカウントホーム画面(最終ログイン・パスワード変更日時・MFA 状態・未対応の必須アクション)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>view_summary</code></td><td>AccountHome</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getaccountsummary">GetAccountSummary</a></td></tr><tr><td>セキュリティタブをクリックする <code>security_selected</code></td><td>AccountSecurity</td><td></td></tr><tr><td>プロフィールタブをクリックする <code>profile_selected</code></td><td>AccountProfile</td><td></td></tr><tr><td>アクティビティタブをクリックする <code>activity_selected</code></td><td>AccountActivity</td><td></td></tr><tr><td>連携アプリタブをクリックする <code>connected_apps_selected</code></td><td>AccountApplications</td><td></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-accountprofile">
         <header><h3>AccountProfile</h3><span class="chip chip-initial">entry: AccountProfile</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountProfile</td><td><code>view</code></td><td>AccountProfile</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getuserprofile">GetUserProfile</a></td></tr><tr><td>AccountProfile</td><td><code>update</code></td><td>AccountProfile</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updateuserprofile">UpdateUserProfile</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountProfile<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">プロフィール画面(表示名、編集可能な属性一覧)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>view</code></td><td>AccountProfile</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-getuserprofile">GetUserProfile</a></td></tr><tr><td>表示名または編集可能な属性を変更して保存する <code>update</code></td><td>AccountProfile</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-updateuserprofile">UpdateUserProfile</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-accountemails">
         <header><h3>AccountEmails</h3><span class="chip chip-initial">entry: AccountEmails</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountEmails</td><td><code>request_change</code></td><td>AccountEmailVerify</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-requestemailchange">RequestEmailChange</a></td></tr><tr><td>AccountEmailVerify</td><td><code>verify_link_opened</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-confirmemailchange">ConfirmEmailChange</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountEmails<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">メールアドレス変更画面(新しいメールアドレス入力フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>新しいメールアドレスを入力して、変更をリクエストする <code>request_change</code></td><td>AccountEmailVerify</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-requestemailchange">RequestEmailChange</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>AccountEmailVerify</h4>
+            <p class="desc">メールアドレス確認待ち画面</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>メールで届いた確認リンクを開く <code>verify_link_opened</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-confirmemailchange">ConfirmEmailChange</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-identitymanagement-flow-accountdata">
         <header><h3>AccountData</h3><span class="chip chip-initial">entry: AccountData</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountData</td><td><code>export</code></td><td>AccountData</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-exportaccountdata">ExportAccountData</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountData<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">アカウントデータ画面(プロフィールと同意済み事項のエクスポート)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>エクスポートボタンをクリックする <code>export</code></td><td>AccountData</td><td><a class="chip chip-iface-ref" href="#context-identitymanagement-iface-exportaccountdata">ExportAccountData</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -11834,7 +11839,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>Login navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="Login navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -11843,40 +11848,22 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 768 256" data-diagram-svg data-diagram-viewbox="0 0 768 256" role="img" aria-label="Login navigation">
+      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="Login navigation">
         <defs>
           <marker id="arrow-flow-login" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
           </marker>
         </defs>
-        <a href="#context-authentication-iface-submitbrowserlogin"><g class="diagram-edge" id="context-authentication-diagram-flow-login-edge-0">
+        <a href="#context-authentication-iface-submitbrowserlogin"><g class="diagram-edge" id="context-authentication-diagram-flow-login-edge-2">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-login)"></line>
-        <text x="256.0" y="59.0">submit</text>
-      </g></a><a href="#context-authentication-iface-submitbrowserlogin"><g class="diagram-edge" id="context-authentication-diagram-flow-login-edge-1">
-        <line x1="220.0" y1="65.0" x2="548.0" y2="65.0" marker-end="url(#arrow-flow-login)"></line>
-        <text x="384.0" y="59.0">submit_enrollment_required</text>
-      </g></a><a href="#context-authentication-iface-submitbrowserlogin"><g class="diagram-edge" id="context-authentication-diagram-flow-login-edge-2">
-        <line x1="210.5" y1="77.8" x2="301.5" y2="178.2" marker-end="url(#arrow-flow-login)"></line>
-        <text x="256.0" y="122.0">submit_and_consent_required</text>
-      </g></a><a href="#context-authentication-flow-login"><g class="diagram-edge" id="context-authentication-diagram-flow-login-edge-3">
-        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-flow-login)"></line>
-        <text x="128.0" y="122.0">forgot_password_selected</text>
+        <text x="256.0" y="59.0">submit_and_consent_required</text>
       </g></a>
         <a href="#context-authentication-flow-login"><g class="diagram-node diagram-node-initial" id="context-authentication-diagram-flow-login-node-login">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">Login</text>
-      </g></a><a href="#context-authentication-flow-login"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-login-node-totp">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">Totp</text>
-      </g></a><a href="#context-authentication-flow-login"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-login-node-mfaenrollment">
-        <rect x="548" y="36" width="184" height="58" rx="8"></rect>
-        <text x="640" y="70">MfaEnrollment</text>
-      </g></a><a href="#context-authentication-flow-login"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-login-node-forgotpassword">
-        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
-        <text x="128" y="196">ForgotPassword</text>
       </g></a><a href="#context-authentication-flow-login"><g class="diagram-node diagram-node-external" id="context-authentication-diagram-flow-login-node-external">
-        <rect x="292" y="162" width="184" height="58" rx="8"></rect>
-        <text x="384" y="196">External</text>
+        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
+        <text x="384" y="70">External</text>
       </g></a>
       </svg>
     </div>
@@ -11885,7 +11872,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>Totp navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="Totp navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -11918,7 +11905,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>MfaEnrollment navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="MfaEnrollment navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -11954,7 +11941,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>PasswordReset navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="PasswordReset navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -11963,7 +11950,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="PasswordReset navigation">
+      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="PasswordReset navigation">
         <defs>
           <marker id="arrow-flow-passwordreset" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -11972,9 +11959,6 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
         <a href="#context-authentication-iface-requestpasswordreset"><g class="diagram-edge" id="context-authentication-diagram-flow-passwordreset-edge-0">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-passwordreset)"></line>
         <text x="256.0" y="59.0">submit</text>
-      </g></a><a href="#context-authentication-iface-resetpasswordwithtoken"><g class="diagram-edge" id="context-authentication-diagram-flow-passwordreset-edge-1">
-        <line x1="301.5" y1="77.8" x2="210.5" y2="178.2" marker-end="url(#arrow-flow-passwordreset)"></line>
-        <text x="256.0" y="122.0">submit</text>
       </g></a>
         <a href="#context-authentication-flow-passwordreset"><g class="diagram-node diagram-node-initial" id="context-authentication-diagram-flow-passwordreset-node-forgotpassword">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
@@ -11982,9 +11966,6 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       </g></a><a href="#context-authentication-flow-passwordreset"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-passwordreset-node-resetpassword">
         <rect x="292" y="36" width="184" height="58" rx="8"></rect>
         <text x="384" y="70">ResetPassword</text>
-      </g></a><a href="#context-authentication-flow-passwordreset"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-passwordreset-node-login">
-        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
-        <text x="128" y="196">Login</text>
       </g></a>
       </svg>
     </div>
@@ -11993,7 +11974,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>AccountSecurity navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountSecurity navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -12002,7 +11983,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="AccountSecurity navigation">
+      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="AccountSecurity navigation">
         <defs>
           <marker id="arrow-flow-accountsecurity" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -12011,9 +11992,6 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
         <a href="#context-authentication-iface-getaccountsecurity"><g class="diagram-edge" id="context-authentication-diagram-flow-accountsecurity-edge-0">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-accountsecurity)"></line>
         <text x="128.0" y="59.0">view</text>
-      </g></a><a href="#context-authentication-flow-accountsecurity"><g class="diagram-edge" id="context-authentication-diagram-flow-accountsecurity-edge-1">
-        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-accountsecurity)"></line>
-        <text x="256.0" y="59.0">change_password_selected</text>
       </g></a><a href="#context-authentication-iface-starttotpenrollment"><g class="diagram-edge" id="context-authentication-diagram-flow-accountsecurity-edge-2">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-accountsecurity)"></line>
         <text x="128.0" y="59.0">enroll_totp</text>
@@ -12033,9 +12011,6 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
         <a href="#context-authentication-flow-accountsecurity"><g class="diagram-node diagram-node-initial" id="context-authentication-diagram-flow-accountsecurity-node-accountsecurity">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">AccountSecurity</text>
-      </g></a><a href="#context-authentication-flow-accountsecurity"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-accountsecurity-node-changepassword">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">ChangePassword</text>
       </g></a>
       </svg>
     </div>
@@ -12044,7 +12019,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>ChangePassword navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="ChangePassword navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -12053,22 +12028,16 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 512 130" data-diagram-svg data-diagram-viewbox="0 0 512 130" role="img" aria-label="ChangePassword navigation">
+      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="ChangePassword navigation">
         <defs>
           <marker id="arrow-flow-changepassword" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
           </marker>
         </defs>
-        <a href="#context-authentication-iface-changepassword"><g class="diagram-edge" id="context-authentication-diagram-flow-changepassword-edge-0">
-        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-changepassword)"></line>
-        <text x="256.0" y="59.0">submit</text>
-      </g></a>
+
         <a href="#context-authentication-flow-changepassword"><g class="diagram-node diagram-node-initial" id="context-authentication-diagram-flow-changepassword-node-changepassword">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">ChangePassword</text>
-      </g></a><a href="#context-authentication-flow-changepassword"><g class="diagram-node diagram-node-view" id="context-authentication-diagram-flow-changepassword-node-accountsecurity">
-        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">AccountSecurity</text>
       </g></a>
       </svg>
     </div>
@@ -12077,7 +12046,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       <div>
         <div class="label">Diagram</div>
         <h3>AccountActivity navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountActivity navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -12114,38 +12083,71 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
   </div><div class="cards"><article class="card" id="context-authentication-flow-login">
         <header><h3>Login</h3><span class="chip chip-initial">entry: Login</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>Login</td><td><code>submit</code></td><td>Totp</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowserlogin">SubmitBrowserLogin</a></td></tr><tr><td>Login</td><td><code>submit_enrollment_required</code></td><td>MfaEnrollment</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowserlogin">SubmitBrowserLogin</a></td></tr><tr><td>Login</td><td><code>submit_and_consent_required</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowserlogin">SubmitBrowserLogin</a></td></tr><tr><td>Login</td><td><code>forgot_password_selected</code></td><td>ForgotPassword</td><td></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>Login<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">ログイン画面(ユーザー名入力フォーム、パスワード入力フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>ユーザー名とパスワードを入力して、ログインボタンをクリックする <code>submit</code></td><td>Totp</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowserlogin">SubmitBrowserLogin</a></td></tr><tr><td>ユーザー名とパスワードを入力して、ログインボタンをクリックする(MFA 未登録のため登録へ進む) <code>submit_enrollment_required</code></td><td>MfaEnrollment</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowserlogin">SubmitBrowserLogin</a></td></tr><tr><td>ユーザー名とパスワードを入力して、ログインボタンをクリックする(MFA 不要のためそのまま認可へ進む) <code>submit_and_consent_required</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowserlogin">SubmitBrowserLogin</a></td></tr><tr><td>パスワードを忘れた場合のリンクをクリックする <code>forgot_password_selected</code></td><td>ForgotPassword</td><td></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-authentication-flow-totp">
         <header><h3>Totp</h3><span class="chip chip-initial">entry: Totp</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>Totp</td><td><code>submit</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowsertotp">SubmitBrowserTotp</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>Totp<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">TOTP コード入力画面</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>認証アプリに表示された6桁のコードを入力して、確認ボタンをクリックする <code>submit</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-submitbrowsertotp">SubmitBrowserTotp</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-authentication-flow-mfaenrollment">
         <header><h3>MfaEnrollment</h3><span class="chip chip-initial">entry: MfaEnrollment</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>MfaEnrollment</td><td><code>start_totp</code></td><td>MfaEnrollment</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-startbrowsermfaenrollment">StartBrowserMfaEnrollment</a></td></tr><tr><td>MfaEnrollment</td><td><code>confirm_totp</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-confirmbrowsermfaenrollment">ConfirmBrowserMfaEnrollment</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>MfaEnrollment<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">MFA 登録画面(TOTP QR コード表示、確認コード入力フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開いて TOTP 登録用の QR コードを表示する <code>start_totp</code></td><td>MfaEnrollment</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-startbrowsermfaenrollment">StartBrowserMfaEnrollment</a></td></tr><tr><td>表示された QR コードを認証アプリで読み取り、確認コードを入力して登録を確定する <code>confirm_totp</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-confirmbrowsermfaenrollment">ConfirmBrowserMfaEnrollment</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-authentication-flow-passwordreset">
         <header><h3>PasswordReset</h3><span class="chip chip-initial">entry: ForgotPassword</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>ForgotPassword</td><td><code>submit</code></td><td>ResetPassword</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-requestpasswordreset">RequestPasswordReset</a></td></tr><tr><td>ResetPassword</td><td><code>submit</code></td><td>Login</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-resetpasswordwithtoken">ResetPasswordWithToken</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>ForgotPassword<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">パスワード再設定申請画面(メールアドレス入力フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>メールアドレスを入力して、送信ボタンをクリックする <code>submit</code></td><td>ResetPassword</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-requestpasswordreset">RequestPasswordReset</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>ResetPassword</h4>
+            <p class="desc">パスワード再設定画面(新しいパスワード入力フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>メールで届いたリンクから開き、新しいパスワードを入力して、再設定ボタンをクリックする <code>submit</code></td><td>Login</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-resetpasswordwithtoken">ResetPasswordWithToken</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-authentication-flow-accountsecurity">
         <header><h3>AccountSecurity</h3><span class="chip chip-initial">entry: AccountSecurity</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountSecurity</td><td><code>view</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-getaccountsecurity">GetAccountSecurity</a></td></tr><tr><td>AccountSecurity</td><td><code>change_password_selected</code></td><td>ChangePassword</td><td></td></tr><tr><td>AccountSecurity</td><td><code>enroll_totp</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-starttotpenrollment">StartTotpEnrollment</a></td></tr><tr><td>AccountSecurity</td><td><code>confirm_totp</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-confirmtotpenrollment">ConfirmTotpEnrollment</a></td></tr><tr><td>AccountSecurity</td><td><code>remove_totp</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-removetotpfactor">RemoveTotpFactor</a></td></tr><tr><td>AccountSecurity</td><td><code>start_step_up</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-startstepupauthentication">StartStepUpAuthentication</a></td></tr><tr><td>AccountSecurity</td><td><code>complete_step_up</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-completestepupauthentication">CompleteStepUpAuthentication</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountSecurity<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">アカウントセキュリティ画面(パスワード変更日時、MFA(TOTP)登録状態)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>view</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-getaccountsecurity">GetAccountSecurity</a></td></tr><tr><td>パスワードを変更するリンクをクリックする <code>change_password_selected</code></td><td>ChangePassword</td><td></td></tr><tr><td>TOTP を登録するボタンをクリックする <code>enroll_totp</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-starttotpenrollment">StartTotpEnrollment</a></td></tr><tr><td>表示された QR コードを認証アプリで読み取り、確認コードを入力して登録を確定する <code>confirm_totp</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-confirmtotpenrollment">ConfirmTotpEnrollment</a></td></tr><tr><td>有効な TOTP コードを入力して、TOTP を解除するボタンをクリックする <code>remove_totp</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-removetotpfactor">RemoveTotpFactor</a></td></tr><tr><td>再認証を開始するボタンをクリックする <code>start_step_up</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-startstepupauthentication">StartStepUpAuthentication</a></td></tr><tr><td>パスワードまたは TOTP コードを入力して、再認証を完了する <code>complete_step_up</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-completestepupauthentication">CompleteStepUpAuthentication</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-authentication-flow-changepassword">
         <header><h3>ChangePassword</h3><span class="chip chip-initial">entry: ChangePassword</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>ChangePassword</td><td><code>submit</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-changepassword">ChangePassword</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>ChangePassword<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">パスワード変更画面(現在のパスワード入力フォーム、新しいパスワード入力フォーム)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>現在のパスワードと新しいパスワードを入力して、変更ボタンをクリックする <code>submit</code></td><td>AccountSecurity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-changepassword">ChangePassword</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-authentication-flow-accountactivity">
         <header><h3>AccountActivity</h3><span class="chip chip-initial">entry: AccountActivity</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountActivity</td><td><code>list_sessions</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-listmysessions">ListMySessions</a></td></tr><tr><td>AccountActivity</td><td><code>revoke_session</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-revokemysession">RevokeMySession</a></td></tr><tr><td>AccountActivity</td><td><code>revoke_other_sessions</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-revokemyothersessions">RevokeMyOtherSessions</a></td></tr><tr><td>AccountActivity</td><td><code>list_signin_activity</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-listmysigninactivity">ListMySignInActivity</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountActivity<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">アカウントアクティビティ画面(有効なセッション一覧、直近サインイン履歴)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list_sessions</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-listmysessions">ListMySessions</a></td></tr><tr><td>セッションを1件選んで、終了するボタンをクリックする <code>revoke_session</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-revokemysession">RevokeMySession</a></td></tr><tr><td>他のセッションをすべて終了するボタンをクリックする <code>revoke_other_sessions</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-revokemyothersessions">RevokeMyOtherSessions</a></td></tr><tr><td>サインイン履歴タブを開く <code>list_signin_activity</code></td><td>AccountActivity</td><td><a class="chip chip-iface-ref" href="#context-authentication-iface-listmysigninactivity">ListMySignInActivity</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -20030,7 +20032,7 @@ actor.id == target.id に固定。次回その client の認可では consent �
       <div>
         <div class="label">Diagram</div>
         <h3>Authorization navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="Authorization navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -20072,7 +20074,7 @@ actor.id == target.id に固定。次回その client の認可では consent �
       <div>
         <div class="label">Diagram</div>
         <h3>DeviceAuthorization navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="DeviceAuthorization navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -20108,7 +20110,7 @@ actor.id == target.id に固定。次回その client の認可では consent �
       <div>
         <div class="label">Diagram</div>
         <h3>AdminAuthorizationDetailTypes navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminAuthorizationDetailTypes navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -20147,7 +20149,7 @@ actor.id == target.id に固定。次回その client の認可では consent �
       <div>
         <div class="label">Diagram</div>
         <h3>AdminConsents navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminConsents navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -20180,7 +20182,7 @@ actor.id == target.id に固定。次回その client の認可では consent �
       <div>
         <div class="label">Diagram</div>
         <h3>AccountApplications navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountApplications navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -20211,28 +20213,57 @@ actor.id == target.id に固定。次回その client の認可では consent �
   </div><div class="cards"><article class="card" id="context-oauth2-flow-authorization">
         <header><h3>Authorization</h3><span class="chip chip-initial">entry: Home</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>Home</td><td><code>authorization_started</code></td><td>Consent</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-authorize">Authorize</a></td></tr><tr><td>Consent</td><td><code>consent_allowed</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserconsent">SubmitBrowserConsent</a></td></tr><tr><td>Consent</td><td><code>consent_denied</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserconsent">SubmitBrowserConsent</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>Home<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">クライアントアプリケーション画面(ここから認可リクエストが開始される)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>クライアントアプリケーションが認可リクエストを送信する <code>authorization_started</code></td><td>Consent</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-authorize">Authorize</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>Consent</h4>
+            <p class="desc">認可同意画面(要求された scope、クライアント名の表示)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>許可するボタンをクリックする <code>consent_allowed</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserconsent">SubmitBrowserConsent</a></td></tr><tr><td>拒否するボタンをクリックする <code>consent_denied</code></td><td>external</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserconsent">SubmitBrowserConsent</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-oauth2-flow-deviceauthorization">
         <header><h3>DeviceAuthorization</h3><span class="chip chip-initial">entry: Device</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>Device</td><td><code>device_approved</code></td><td>Status</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserdevice">SubmitBrowserDevice</a></td></tr><tr><td>Device</td><td><code>device_denied</code></td><td>Status</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserdevice">SubmitBrowserDevice</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>Device<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">デバイス認可承認画面(user_code の確認、クライアント名表示)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>内容を確認して、承認するボタンをクリックする <code>device_approved</code></td><td>Status</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserdevice">SubmitBrowserDevice</a></td></tr><tr><td>拒否するボタンをクリックする <code>device_denied</code></td><td>Status</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-submitbrowserdevice">SubmitBrowserDevice</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>Status</h4>
+            <p class="desc">デバイス認可結果画面(承認/拒否の結果表示)</p>
+
+          </div>
       </article><article class="card" id="context-oauth2-flow-adminauthorizationdetailtypes">
         <header><h3>AdminAuthorizationDetailTypes</h3><span class="chip chip-initial">entry: AdminAuthorizationDetailTypes</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminAuthorizationDetailTypes</td><td><code>list</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-listauthorizationdetailtypes">ListAuthorizationDetailTypes</a></td></tr><tr><td>AdminAuthorizationDetailTypes</td><td><code>create</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-createauthorizationdetailtype">CreateAuthorizationDetailType</a></td></tr><tr><td>AdminAuthorizationDetailTypes</td><td><code>update</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-updateauthorizationdetailtype">UpdateAuthorizationDetailType</a></td></tr><tr><td>AdminAuthorizationDetailTypes</td><td><code>delete</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-deleteauthorizationdetailtype">DeleteAuthorizationDetailType</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminAuthorizationDetailTypes<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">authorization_details type 管理画面(type 一覧、schema、display_template)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-listauthorizationdetailtypes">ListAuthorizationDetailTypes</a></td></tr><tr><td>type・schema・display_template を入力して登録する <code>create</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-createauthorizationdetailtype">CreateAuthorizationDetailType</a></td></tr><tr><td>schema・display_template・description・state を編集して保存する <code>update</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-updateauthorizationdetailtype">UpdateAuthorizationDetailType</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminAuthorizationDetailTypes</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-deleteauthorizationdetailtype">DeleteAuthorizationDetailType</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-oauth2-flow-adminconsents">
         <header><h3>AdminConsents</h3><span class="chip chip-initial">entry: AdminConsents</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminConsents</td><td><code>list</code></td><td>AdminConsents</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-listadminconsents">ListAdminConsents</a></td></tr><tr><td>AdminConsents</td><td><code>revoke</code></td><td>AdminConsents</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-revokeadminconsent">RevokeAdminConsent</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminConsents<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">Consent 監査一覧画面</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminConsents</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-listadminconsents">ListAdminConsents</a></td></tr><tr><td>Consent を選んで、撤回するボタンをクリックする <code>revoke</code></td><td>AdminConsents</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-revokeadminconsent">RevokeAdminConsent</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-oauth2-flow-accountapplications">
         <header><h3>AccountApplications</h3><span class="chip chip-initial">entry: AccountApplications</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountApplications</td><td><code>list</code></td><td>AccountApplications</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-listmyconsents">ListMyConsents</a></td></tr><tr><td>AccountApplications</td><td><code>revoke</code></td><td>AccountApplications</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-revokemyconsent">RevokeMyConsent</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountApplications<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">連携アプリ一覧画面(接続済みアプリ、許可済み scope)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AccountApplications</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-listmyconsents">ListMyConsents</a></td></tr><tr><td>アプリを選んで、接続を解除するボタンをクリックする <code>revoke</code></td><td>AccountApplications</td><td><a class="chip chip-iface-ref" href="#context-oauth2-iface-revokemyconsent">RevokeMyConsent</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -20844,7 +20875,7 @@ filter の field は registry allowlist のみ。
       <div>
         <div class="label">Diagram</div>
         <h3>AdminAuditEvents navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminAuditEvents navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -20878,8 +20909,12 @@ filter の field は registry allowlist のみ。
   </div><div class="cards"><article class="card" id="context-audit-flow-adminauditevents">
         <header><h3>AdminAuditEvents</h3><span class="chip chip-initial">entry: AdminAuditEvents</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminAuditEvents</td><td><code>list</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#context-audit-iface-listadminauditevents">ListAdminAuditEvents</a></td></tr><tr><td>AdminAuditEvents</td><td><code>view</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#context-audit-iface-getadminauditevent">GetAdminAuditEvent</a></td></tr><tr><td>AdminAuditEvents</td><td><code>export</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#context-audit-iface-exportadminauditevents">ExportAdminAuditEvents</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminAuditEvents<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">監査イベント一覧画面(時系列降順の DomainEvent、種別/操作者/期間の絞り込み、テキスト検索)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>絞り込み条件を指定して一覧を検索する <code>list</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#context-audit-iface-listadminauditevents">ListAdminAuditEvents</a></td></tr><tr><td>一覧からイベントを1件クリックして詳細を表示する <code>view</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#context-audit-iface-getadminauditevent">GetAdminAuditEvent</a></td></tr><tr><td>絞り込み条件を指定してエクスポートボタンをクリックする <code>export</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#context-audit-iface-exportadminauditevents">ExportAdminAuditEvents</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -24036,7 +24071,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       <div>
         <div class="label">Diagram</div>
         <h3>AdminApplicationManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminApplicationManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -24117,7 +24152,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       <div>
         <div class="label">Diagram</div>
         <h3>AdminSignInPolicyManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminSignInPolicyManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -24147,7 +24182,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       <div>
         <div class="label">Diagram</div>
         <h3>AccountAppsManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AccountAppsManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -24175,18 +24210,30 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
   </div><div class="cards"><article class="card" id="context-application-flow-adminapplicationmanagement">
         <header><h3>AdminApplicationManagement</h3><span class="chip chip-initial">entry: AdminApplications</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminApplications</td><td><code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-createadminapplication">CreateAdminApplication</a></td></tr><tr><td>AdminApplications</td><td><code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateadminapplication">UpdateAdminApplication</a></td></tr><tr><td>AdminApplications</td><td><code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-deleteadminapplication">DeleteAdminApplication</a></td></tr><tr><td>AdminApplications</td><td><code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-uploadapplicationicon">UploadApplicationIcon</a></td></tr><tr><td>AdminApplications</td><td><code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-deleteapplicationicon">DeleteApplicationIcon</a></td></tr><tr><td>AdminApplications</td><td><code>attach_binding</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-attachprotocolbinding">AttachProtocolBinding</a></td></tr><tr><td>AdminApplications</td><td><code>detach_binding</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-detachprotocolbinding">DetachProtocolBinding</a></td></tr><tr><td>AdminApplications</td><td><code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationoidcconfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>AdminApplications</td><td><code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationwsfedconfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>AdminApplications</td><td><code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-assignapplication">AssignApplication</a></td></tr><tr><td>AdminApplications</td><td><code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-unassignapplication">UnassignApplication</a></td></tr><tr><td>AdminApplications</td><td><code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateappsigninpolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>AdminApplications</td><td><code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-createapplicationcategory">CreateApplicationCategory</a></td></tr><tr><td>AdminApplications</td><td><code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationcategory">UpdateApplicationCategory</a></td></tr><tr><td>AdminApplications</td><td><code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-deleteapplicationcategory">DeleteApplicationCategory</a></td></tr><tr><td>AdminApplications</td><td><code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-setapplicationcategories">SetApplicationCategories</a></td></tr><tr><td>AdminApplications</td><td><code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminApplications<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-createadminapplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateadminapplication">UpdateAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-deleteadminapplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-uploadapplicationicon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-deleteapplicationicon">DeleteApplicationIcon</a></td></tr><tr><td>protocol binding を追加接続する <code>attach_binding</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-attachprotocolbinding">AttachProtocolBinding</a></td></tr><tr><td>protocol binding を解除する <code>detach_binding</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-detachprotocolbinding">DetachProtocolBinding</a></td></tr><tr><td>OIDC binding が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationoidcconfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>WS-Fed binding が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationwsfedconfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-assignapplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-unassignapplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateappsigninpolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-createapplicationcategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updateapplicationcategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-deleteapplicationcategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#context-application-iface-setapplicationcategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-application-flow-adminsigninpolicymanagement">
         <header><h3>AdminSignInPolicyManagement</h3><span class="chip chip-initial">entry: AdminSignInPolicy</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminSignInPolicy</td><td><code>update_default</code></td><td>AdminSignInPolicy</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updatetenantdefaultsigninpolicy">UpdateTenantDefaultSignInPolicy</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminSignInPolicy<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">テナントデフォルト sign-in policy 設定画面(MFA 必須化条件、強制開始日時、enrollment bypass 猶予、管理者承認可否)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>sign-in policy の条件をすべて編集して保存する <code>update_default</code></td><td>AdminSignInPolicy</td><td><a class="chip chip-iface-ref" href="#context-application-iface-updatetenantdefaultsigninpolicy">UpdateTenantDefaultSignInPolicy</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-application-flow-accountappsmanagement">
         <header><h3>AccountAppsManagement</h3><span class="chip chip-initial">entry: AccountApps</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AccountApps</td><td><code>reorder</code></td><td>AccountApps</td><td><a class="chip chip-iface-ref" href="#context-application-iface-reordermyapplications">ReorderMyApplications</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AccountApps<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">マイアプリ一覧画面(割当済みで表示可能なアプリケーションのアイコンと並び順)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>アプリケーションをドラッグして並び順を変更する <code>reorder</code></td><td>AccountApps</td><td><a class="chip chip-iface-ref" href="#context-application-iface-reordermyapplications">ReorderMyApplications</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -25305,7 +25352,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
       <div>
         <div class="label">Diagram</div>
         <h3>AdminKeyManagement navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminKeyManagement navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -25336,8 +25383,12 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
   </div><div class="cards"><article class="card" id="context-signingkeys-flow-adminkeymanagement">
         <header><h3>AdminKeyManagement</h3><span class="chip chip-initial">entry: AdminKeys</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminKeys</td><td><code>rotate</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#context-signingkeys-iface-rotatetenantsigningkey">RotateTenantSigningKey</a></td></tr><tr><td>AdminKeys</td><td><code>disable</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#context-signingkeys-iface-disabletenantkey">DisableTenantKey</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminKeys<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">署名鍵管理画面(鍵一覧、状態、JWKS)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>鍵を回転するボタンをクリックする <code>rotate</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#context-signingkeys-iface-rotatetenantsigningkey">RotateTenantSigningKey</a></td></tr><tr><td>kid を指定して、無効化するボタンをクリックする <code>disable</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#context-signingkeys-iface-disabletenantkey">DisableTenantKey</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -26434,7 +26485,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
       <div>
         <div class="label">Diagram</div>
         <h3>WsFederationBrowserNavigation navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="WsFederationBrowserNavigation navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -26467,7 +26518,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
       <div>
         <div class="label">Diagram</div>
         <h3>AdminEntraFederation navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="AdminEntraFederation navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -26495,13 +26546,21 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
   </div><div class="cards"><article class="card" id="context-wsfederation-flow-wsfederationbrowsernavigation">
         <header><h3>WsFederationBrowserNavigation</h3><span class="chip chip-initial">entry: RelyingParty</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>RelyingParty</td><td><code>sign_in</code></td><td>RelyingParty</td><td><a class="chip chip-iface-ref" href="#context-wsfederation-iface-wsfederationsignin">WsFederationSignIn</a></td></tr><tr><td>RelyingParty</td><td><code>sign_out</code></td><td>RelyingParty</td><td><a class="chip chip-iface-ref" href="#context-wsfederation-iface-wsfederationsignout">WsFederationSignOut</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>RelyingParty<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">RP からの WS-Federation リクエスト受信画面(wtrealm で指定された relying party)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>RP からのサインインリクエストを受け取り、必要に応じてログインする <code>sign_in</code></td><td>RelyingParty</td><td><a class="chip chip-iface-ref" href="#context-wsfederation-iface-wsfederationsignin">WsFederationSignIn</a></td></tr><tr><td>RP からのサインアウトリクエストを受け取る <code>sign_out</code></td><td>RelyingParty</td><td><a class="chip chip-iface-ref" href="#context-wsfederation-iface-wsfederationsignout">WsFederationSignOut</a></td></tr></tbody></table>
+          </div>
       </article><article class="card" id="context-wsfederation-flow-adminentrafederation">
         <header><h3>AdminEntraFederation</h3><span class="chip chip-initial">entry: AdminEntraFederation</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>AdminEntraFederation</td><td><code>configure</code></td><td>AdminEntraFederation</td><td><a class="chip chip-iface-ref" href="#context-wsfederation-iface-configureentrafederation">ConfigureEntraFederation</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>AdminEntraFederation<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">Entra ドメインフェデレーション設定画面(検証済み domain、IssuerUri、sourceAnchor 属性)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>domain・IssuerUri・sourceAnchor 属性を入力して設定する <code>configure</code></td><td>AdminEntraFederation</td><td><a class="chip chip-iface-ref" href="#context-wsfederation-iface-configureentrafederation">ConfigureEntraFederation</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>
@@ -27307,7 +27366,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
       <div>
         <div class="label">Diagram</div>
         <h3>SamlBrowserNavigation navigation</h3>
-        <p class="desc">View node と transition edge は flows から派生する。</p>
+        <p class="desc">View node と action edge は flows から派生する。</p>
       </div>
       <div class="diagram-tools" aria-label="SamlBrowserNavigation navigation controls">
         <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
@@ -27338,8 +27397,12 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
   </div><div class="cards"><article class="card" id="context-saml-flow-samlbrowsernavigation">
         <header><h3>SamlBrowserNavigation</h3><span class="chip chip-initial">entry: ServiceProvider</span></header>
 
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody><tr><td>ServiceProvider</td><td><code>sign_in</code></td><td>ServiceProvider</td><td><a class="chip chip-iface-ref" href="#context-saml-iface-samlsinglesignon">SamlSingleSignOn</a></td></tr><tr><td>ServiceProvider</td><td><code>sign_out</code></td><td>ServiceProvider</td><td><a class="chip chip-iface-ref" href="#context-saml-iface-samlsinglelogout">SamlSingleLogout</a></td></tr></tbody></table>
+        <div class="flow-view">
+            <h4>ServiceProvider<span class="chip chip-initial">entry</span></h4>
+            <p class="desc">SP からの SAML リクエスト受信画面(SP-initiated AuthnRequest または IdP-initiated entityID 選択)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>SP からの SAML 認証リクエストを受け取り、必要に応じてログインする <code>sign_in</code></td><td>ServiceProvider</td><td><a class="chip chip-iface-ref" href="#context-saml-iface-samlsinglesignon">SamlSingleSignOn</a></td></tr><tr><td>SP からの SAML ログアウトリクエストを受け取る <code>sign_out</code></td><td>ServiceProvider</td><td><a class="chip chip-iface-ref" href="#context-saml-iface-samlsinglelogout">SamlSingleLogout</a></td></tr></tbody></table>
+          </div>
       </article></div>
   </section>
       </div>

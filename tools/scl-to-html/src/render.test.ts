@@ -82,7 +82,15 @@ const sampleScl = (): SclDocument => ({
   flows: {
     Demo: {
       entry: 'Login',
-      transitions: [{ from: 'Login', action: 'success', to: 'Done', interface: 'DoIt' }],
+      views: {
+        Login: {
+          sees: 'ログイン画面(メールアドレス入力フォーム、パスワード入力フォーム)',
+          does: [{ action: 'success', does: '入力して、ログインボタンをクリックする', to: 'Done', interface: 'DoIt' }],
+        },
+        Done: {
+          sees: 'ログイン完了画面',
+        },
+      },
     },
   },
 })
@@ -147,6 +155,12 @@ describe('renderSclTab', () => {
     expect(html).toContain('published_language')
     expect(html).toContain('Submit')
     expect(html).toContain('success')
+  })
+
+  it('renders flow view sees/does content', () => {
+    expect(html).toContain('ログイン画面(メールアドレス入力フォーム、パスワード入力フォーム)')
+    expect(html).toContain('入力して、ログインボタンをクリックする')
+    expect(html).toContain('ログイン完了画面')
   })
 
   it('lists section titles in TOC items', () => {

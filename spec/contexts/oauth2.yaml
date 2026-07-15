@@ -4300,68 +4300,88 @@ scenarios:
 flows:
   Authorization:
     entry: Home
-    transitions:
-      - from: Home
-        action: authorization_started
-        interface: Authorize
-        to: Consent
-      - from: Consent
-        action: consent_allowed
-        interface: SubmitBrowserConsent
-        external: true
-      - from: Consent
-        action: consent_denied
-        interface: SubmitBrowserConsent
-        external: true
+    views:
+      Home:
+        sees: クライアントアプリケーション画面(ここから認可リクエストが開始される)
+        does:
+          - action: authorization_started
+            does: クライアントアプリケーションが認可リクエストを送信する
+            interface: Authorize
+            to: Consent
+      Consent:
+        sees: 認可同意画面(要求された scope、クライアント名の表示)
+        does:
+          - action: consent_allowed
+            does: 許可するボタンをクリックする
+            interface: SubmitBrowserConsent
+            external: true
+          - action: consent_denied
+            does: 拒否するボタンをクリックする
+            interface: SubmitBrowserConsent
+            external: true
   DeviceAuthorization:
     entry: Device
-    transitions:
-      - from: Device
-        action: device_approved
-        interface: SubmitBrowserDevice
-        to: Status
-      - from: Device
-        action: device_denied
-        interface: SubmitBrowserDevice
-        to: Status
+    views:
+      Device:
+        sees: デバイス認可承認画面(user_code の確認、クライアント名表示)
+        does:
+          - action: device_approved
+            does: 内容を確認して、承認するボタンをクリックする
+            interface: SubmitBrowserDevice
+            to: Status
+          - action: device_denied
+            does: 拒否するボタンをクリックする
+            interface: SubmitBrowserDevice
+            to: Status
+      Status:
+        sees: デバイス認可結果画面(承認/拒否の結果表示)
   AdminAuthorizationDetailTypes:
     entry: AdminAuthorizationDetailTypes
-    transitions:
-      - from: AdminAuthorizationDetailTypes
-        action: list
-        interface: ListAuthorizationDetailTypes
-        to: AdminAuthorizationDetailTypes
-      - from: AdminAuthorizationDetailTypes
-        action: create
-        interface: CreateAuthorizationDetailType
-        to: AdminAuthorizationDetailTypes
-      - from: AdminAuthorizationDetailTypes
-        action: update
-        interface: UpdateAuthorizationDetailType
-        to: AdminAuthorizationDetailTypes
-      - from: AdminAuthorizationDetailTypes
-        action: delete
-        interface: DeleteAuthorizationDetailType
-        to: AdminAuthorizationDetailTypes
+    views:
+      AdminAuthorizationDetailTypes:
+        sees: authorization_details type 管理画面(type 一覧、schema、display_template)
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListAuthorizationDetailTypes
+            to: AdminAuthorizationDetailTypes
+          - action: create
+            does: type・schema・display_template を入力して登録する
+            interface: CreateAuthorizationDetailType
+            to: AdminAuthorizationDetailTypes
+          - action: update
+            does: schema・display_template・description・state を編集して保存する
+            interface: UpdateAuthorizationDetailType
+            to: AdminAuthorizationDetailTypes
+          - action: delete
+            does: 削除ボタンをクリックする
+            interface: DeleteAuthorizationDetailType
+            to: AdminAuthorizationDetailTypes
   AdminConsents:
     entry: AdminConsents
-    transitions:
-      - from: AdminConsents
-        action: list
-        interface: ListAdminConsents
-        to: AdminConsents
-      - from: AdminConsents
-        action: revoke
-        interface: RevokeAdminConsent
-        to: AdminConsents
+    views:
+      AdminConsents:
+        sees: Consent 監査一覧画面
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListAdminConsents
+            to: AdminConsents
+          - action: revoke
+            does: Consent を選んで、撤回するボタンをクリックする
+            interface: RevokeAdminConsent
+            to: AdminConsents
   AccountApplications:
     entry: AccountApplications
-    transitions:
-      - from: AccountApplications
-        action: list
-        interface: ListMyConsents
-        to: AccountApplications
-      - from: AccountApplications
-        action: revoke
-        interface: RevokeMyConsent
-        to: AccountApplications
+    views:
+      AccountApplications:
+        sees: 連携アプリ一覧画面(接続済みアプリ、許可済み scope)
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListMyConsents
+            to: AccountApplications
+          - action: revoke
+            does: アプリを選んで、接続を解除するボタンをクリックする
+            interface: RevokeMyConsent
+            to: AccountApplications

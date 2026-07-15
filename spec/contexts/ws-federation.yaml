@@ -698,19 +698,25 @@ scenarios:
 flows:
   WsFederationBrowserNavigation:
     entry: RelyingParty
-    transitions:
-      - from: RelyingParty
-        action: sign_in
-        interface: WsFederationSignIn
-        to: RelyingParty
-      - from: RelyingParty
-        action: sign_out
-        interface: WsFederationSignOut
-        to: RelyingParty
+    views:
+      RelyingParty:
+        sees: RP からの WS-Federation リクエスト受信画面(wtrealm で指定された relying party)
+        does:
+          - action: sign_in
+            does: RP からのサインインリクエストを受け取り、必要に応じてログインする
+            interface: WsFederationSignIn
+            to: RelyingParty
+          - action: sign_out
+            does: RP からのサインアウトリクエストを受け取る
+            interface: WsFederationSignOut
+            to: RelyingParty
   AdminEntraFederation:
     entry: AdminEntraFederation
-    transitions:
-      - from: AdminEntraFederation
-        action: configure
-        interface: ConfigureEntraFederation
-        to: AdminEntraFederation
+    views:
+      AdminEntraFederation:
+        sees: Entra ドメインフェデレーション設定画面(検証済み domain、IssuerUri、sourceAnchor 属性)
+        does:
+          - action: configure
+            does: domain・IssuerUri・sourceAnchor 属性を入力して設定する
+            interface: ConfigureEntraFederation
+            to: AdminEntraFederation

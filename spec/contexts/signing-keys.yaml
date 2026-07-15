@@ -488,12 +488,15 @@ scenarios:
 flows:
   AdminKeyManagement:
     entry: AdminKeys
-    transitions:
-      - from: AdminKeys
-        action: rotate
-        interface: RotateTenantSigningKey
-        to: AdminKeys
-      - from: AdminKeys
-        action: disable
-        interface: DisableTenantKey
-        to: AdminKeys
+    views:
+      AdminKeys:
+        sees: 署名鍵管理画面(鍵一覧、状態、JWKS)
+        does:
+          - action: rotate
+            does: 鍵を回転するボタンをクリックする
+            interface: RotateTenantSigningKey
+            to: AdminKeys
+          - action: disable
+            does: kid を指定して、無効化するボタンをクリックする
+            interface: DisableTenantKey
+            to: AdminKeys

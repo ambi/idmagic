@@ -296,16 +296,19 @@ scenarios:
 flows:
   AdminAuditEvents:
     entry: AdminAuditEvents
-    transitions:
-      - from: AdminAuditEvents
-        action: list
-        interface: ListAdminAuditEvents
-        to: AdminAuditEvents
-      - from: AdminAuditEvents
-        action: view
-        interface: GetAdminAuditEvent
-        to: AdminAuditEvents
-      - from: AdminAuditEvents
-        action: export
-        interface: ExportAdminAuditEvents
-        to: AdminAuditEvents
+    views:
+      AdminAuditEvents:
+        sees: 監査イベント一覧画面(時系列降順の DomainEvent、種別/操作者/期間の絞り込み、テキスト検索)
+        does:
+          - action: list
+            does: 絞り込み条件を指定して一覧を検索する
+            interface: ListAdminAuditEvents
+            to: AdminAuditEvents
+          - action: view
+            does: 一覧からイベントを1件クリックして詳細を表示する
+            interface: GetAdminAuditEvent
+            to: AdminAuditEvents
+          - action: export
+            does: 絞り込み条件を指定してエクスポートボタンをクリックする
+            interface: ExportAdminAuditEvents
+            to: AdminAuditEvents

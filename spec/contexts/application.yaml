@@ -1700,85 +1700,94 @@ scenarios:
 flows:
   AdminApplicationManagement:
     entry: AdminApplications
-    transitions:
-      - from: AdminApplications
-        action: create
-        interface: CreateAdminApplication
-        to: AdminApplications
-      - from: AdminApplications
-        action: update
-        interface: UpdateAdminApplication
-        to: AdminApplications
-      - from: AdminApplications
-        action: delete
-        interface: DeleteAdminApplication
-        to: AdminApplications
-      - from: AdminApplications
-        action: upload_icon
-        interface: UploadApplicationIcon
-        to: AdminApplications
-      - from: AdminApplications
-        action: delete_icon
-        interface: DeleteApplicationIcon
-        to: AdminApplications
-      - from: AdminApplications
-        action: attach_binding
-        interface: AttachProtocolBinding
-        to: AdminApplications
-      - from: AdminApplications
-        action: detach_binding
-        interface: DetachProtocolBinding
-        to: AdminApplications
-      - from: AdminApplications
-        action: update_oidc_config
-        interface: UpdateApplicationOidcConfig
-        to: AdminApplications
-      - from: AdminApplications
-        action: update_wsfed_config
-        interface: UpdateApplicationWsFedConfig
-        to: AdminApplications
-      - from: AdminApplications
-        action: assign
-        interface: AssignApplication
-        to: AdminApplications
-      - from: AdminApplications
-        action: unassign
-        interface: UnassignApplication
-        to: AdminApplications
-      - from: AdminApplications
-        action: update_sign_in_policy
-        interface: UpdateAppSignInPolicy
-        to: AdminApplications
-      - from: AdminApplications
-        action: create_category
-        interface: CreateApplicationCategory
-        to: AdminApplications
-      - from: AdminApplications
-        action: update_category
-        interface: UpdateApplicationCategory
-        to: AdminApplications
-      - from: AdminApplications
-        action: delete_category
-        interface: DeleteApplicationCategory
-        to: AdminApplications
-      - from: AdminApplications
-        action: set_categories
-        interface: SetApplicationCategories
-        to: AdminApplications
-      - from: AdminApplications
-        action: manage_users
-        external: true
+    views:
+      AdminApplications:
+        sees: アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy)
+        does:
+          - action: create
+            does: 種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成)
+            interface: CreateAdminApplication
+            to: AdminApplications
+          - action: update
+            does: アプリケーションのメタデータを編集して保存する
+            interface: UpdateAdminApplication
+            to: AdminApplications
+          - action: delete
+            does: 削除ボタンをクリックする
+            interface: DeleteAdminApplication
+            to: AdminApplications
+          - action: upload_icon
+            does: アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする
+            interface: UploadApplicationIcon
+            to: AdminApplications
+          - action: delete_icon
+            does: 保存済みアイコンを削除する
+            interface: DeleteApplicationIcon
+            to: AdminApplications
+          - action: attach_binding
+            does: protocol binding を追加接続する
+            interface: AttachProtocolBinding
+            to: AdminApplications
+          - action: detach_binding
+            does: protocol binding を解除する
+            interface: DetachProtocolBinding
+            to: AdminApplications
+          - action: update_oidc_config
+            does: OIDC binding が指す OAuth2 client の設定を編集して保存する
+            interface: UpdateApplicationOidcConfig
+            to: AdminApplications
+          - action: update_wsfed_config
+            does: WS-Fed binding が指す relying party の設定を編集して保存する
+            interface: UpdateApplicationWsFedConfig
+            to: AdminApplications
+          - action: assign
+            does: ユーザーまたはグループを割当てる
+            interface: AssignApplication
+            to: AdminApplications
+          - action: unassign
+            does: 割当を解除する
+            interface: UnassignApplication
+            to: AdminApplications
+          - action: update_sign_in_policy
+            does: sign-in policy を編集して保存する
+            interface: UpdateAppSignInPolicy
+            to: AdminApplications
+          - action: create_category
+            does: カテゴリ名を入力して作成する
+            interface: CreateApplicationCategory
+            to: AdminApplications
+          - action: update_category
+            does: カテゴリの名前または並び順を編集して保存する
+            interface: UpdateApplicationCategory
+            to: AdminApplications
+          - action: delete_category
+            does: カテゴリを削除する
+            interface: DeleteApplicationCategory
+            to: AdminApplications
+          - action: set_categories
+            does: アプリケーションに付与するカテゴリ集合を選び直して保存する
+            interface: SetApplicationCategories
+            to: AdminApplications
+          - action: manage_users
+            does: ユーザー管理へのリンクをクリックする
+            external: true
   AdminSignInPolicyManagement:
     entry: AdminSignInPolicy
-    transitions:
-      - from: AdminSignInPolicy
-        action: update_default
-        interface: UpdateTenantDefaultSignInPolicy
-        to: AdminSignInPolicy
+    views:
+      AdminSignInPolicy:
+        sees: テナントデフォルト sign-in policy 設定画面(MFA 必須化条件、強制開始日時、enrollment bypass 猶予、管理者承認可否)
+        does:
+          - action: update_default
+            does: sign-in policy の条件をすべて編集して保存する
+            interface: UpdateTenantDefaultSignInPolicy
+            to: AdminSignInPolicy
   AccountAppsManagement:
     entry: AccountApps
-    transitions:
-      - from: AccountApps
-        action: reorder
-        interface: ReorderMyApplications
-        to: AccountApps
+    views:
+      AccountApps:
+        sees: マイアプリ一覧画面(割当済みで表示可能なアプリケーションのアイコンと並び順)
+        does:
+          - action: reorder
+            does: アプリケーションをドラッグして並び順を変更する
+            interface: ReorderMyApplications
+            to: AccountApps

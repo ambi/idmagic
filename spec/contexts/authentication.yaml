@@ -2057,104 +2057,128 @@ scenarios:
 flows:
   Login:
     entry: Login
-    transitions:
-      - from: Login
-        action: submit
-        interface: SubmitBrowserLogin
-        to: Totp
-      - from: Login
-        action: submit_enrollment_required
-        interface: SubmitBrowserLogin
-        to: MfaEnrollment
-      - from: Login
-        action: submit_and_consent_required
-        interface: SubmitBrowserLogin
-        external: true
-      - from: Login
-        action: forgot_password_selected
-        to: ForgotPassword
+    views:
+      Login:
+        sees: ログイン画面(ユーザー名入力フォーム、パスワード入力フォーム)
+        does:
+          - action: submit
+            does: ユーザー名とパスワードを入力して、ログインボタンをクリックする
+            interface: SubmitBrowserLogin
+            to: Totp
+          - action: submit_enrollment_required
+            does: ユーザー名とパスワードを入力して、ログインボタンをクリックする(MFA 未登録のため登録へ進む)
+            interface: SubmitBrowserLogin
+            to: MfaEnrollment
+          - action: submit_and_consent_required
+            does: ユーザー名とパスワードを入力して、ログインボタンをクリックする(MFA 不要のためそのまま認可へ進む)
+            interface: SubmitBrowserLogin
+            external: true
+          - action: forgot_password_selected
+            does: パスワードを忘れた場合のリンクをクリックする
+            to: ForgotPassword
   Totp:
     entry: Totp
-    transitions:
-      - from: Totp
-        action: submit
-        interface: SubmitBrowserTotp
-        external: true
+    views:
+      Totp:
+        sees: TOTP コード入力画面
+        does:
+          - action: submit
+            does: 認証アプリに表示された6桁のコードを入力して、確認ボタンをクリックする
+            interface: SubmitBrowserTotp
+            external: true
   MfaEnrollment:
     entry: MfaEnrollment
-    transitions:
-      - from: MfaEnrollment
-        action: start_totp
-        interface: StartBrowserMfaEnrollment
-        to: MfaEnrollment
-      - from: MfaEnrollment
-        action: confirm_totp
-        interface: ConfirmBrowserMfaEnrollment
-        external: true
+    views:
+      MfaEnrollment:
+        sees: MFA 登録画面(TOTP QR コード表示、確認コード入力フォーム)
+        does:
+          - action: start_totp
+            does: 画面を開いて TOTP 登録用の QR コードを表示する
+            interface: StartBrowserMfaEnrollment
+            to: MfaEnrollment
+          - action: confirm_totp
+            does: 表示された QR コードを認証アプリで読み取り、確認コードを入力して登録を確定する
+            interface: ConfirmBrowserMfaEnrollment
+            external: true
   PasswordReset:
     entry: ForgotPassword
-    transitions:
-      - from: ForgotPassword
-        action: submit
-        interface: RequestPasswordReset
-        to: ResetPassword
-      - from: ResetPassword
-        action: submit
-        interface: ResetPasswordWithToken
-        to: Login
+    views:
+      ForgotPassword:
+        sees: パスワード再設定申請画面(メールアドレス入力フォーム)
+        does:
+          - action: submit
+            does: メールアドレスを入力して、送信ボタンをクリックする
+            interface: RequestPasswordReset
+            to: ResetPassword
+      ResetPassword:
+        sees: パスワード再設定画面(新しいパスワード入力フォーム)
+        does:
+          - action: submit
+            does: メールで届いたリンクから開き、新しいパスワードを入力して、再設定ボタンをクリックする
+            interface: ResetPasswordWithToken
+            to: Login
   AccountSecurity:
     entry: AccountSecurity
-    transitions:
-      - from: AccountSecurity
-        action: view
-        interface: GetAccountSecurity
-        to: AccountSecurity
-      - from: AccountSecurity
-        action: change_password_selected
-        to: ChangePassword
-      - from: AccountSecurity
-        action: enroll_totp
-        interface: StartTotpEnrollment
-        to: AccountSecurity
-      - from: AccountSecurity
-        action: confirm_totp
-        interface: ConfirmTotpEnrollment
-        to: AccountSecurity
-      - from: AccountSecurity
-        action: remove_totp
-        interface: RemoveTotpFactor
-        to: AccountSecurity
-      - from: AccountSecurity
-        action: start_step_up
-        interface: StartStepUpAuthentication
-        to: AccountSecurity
-      - from: AccountSecurity
-        action: complete_step_up
-        interface: CompleteStepUpAuthentication
-        to: AccountSecurity
+    views:
+      AccountSecurity:
+        sees: アカウントセキュリティ画面(パスワード変更日時、MFA(TOTP)登録状態)
+        does:
+          - action: view
+            does: 画面を開く
+            interface: GetAccountSecurity
+            to: AccountSecurity
+          - action: change_password_selected
+            does: パスワードを変更するリンクをクリックする
+            to: ChangePassword
+          - action: enroll_totp
+            does: TOTP を登録するボタンをクリックする
+            interface: StartTotpEnrollment
+            to: AccountSecurity
+          - action: confirm_totp
+            does: 表示された QR コードを認証アプリで読み取り、確認コードを入力して登録を確定する
+            interface: ConfirmTotpEnrollment
+            to: AccountSecurity
+          - action: remove_totp
+            does: 有効な TOTP コードを入力して、TOTP を解除するボタンをクリックする
+            interface: RemoveTotpFactor
+            to: AccountSecurity
+          - action: start_step_up
+            does: 再認証を開始するボタンをクリックする
+            interface: StartStepUpAuthentication
+            to: AccountSecurity
+          - action: complete_step_up
+            does: パスワードまたは TOTP コードを入力して、再認証を完了する
+            interface: CompleteStepUpAuthentication
+            to: AccountSecurity
   ChangePassword:
     entry: ChangePassword
-    transitions:
-      - from: ChangePassword
-        action: submit
-        interface: ChangePassword
-        to: AccountSecurity
+    views:
+      ChangePassword:
+        sees: パスワード変更画面(現在のパスワード入力フォーム、新しいパスワード入力フォーム)
+        does:
+          - action: submit
+            does: 現在のパスワードと新しいパスワードを入力して、変更ボタンをクリックする
+            interface: ChangePassword
+            to: AccountSecurity
   AccountActivity:
     entry: AccountActivity
-    transitions:
-      - from: AccountActivity
-        action: list_sessions
-        interface: ListMySessions
-        to: AccountActivity
-      - from: AccountActivity
-        action: revoke_session
-        interface: RevokeMySession
-        to: AccountActivity
-      - from: AccountActivity
-        action: revoke_other_sessions
-        interface: RevokeMyOtherSessions
-        to: AccountActivity
-      - from: AccountActivity
-        action: list_signin_activity
-        interface: ListMySignInActivity
-        to: AccountActivity
+    views:
+      AccountActivity:
+        sees: アカウントアクティビティ画面(有効なセッション一覧、直近サインイン履歴)
+        does:
+          - action: list_sessions
+            does: 画面を開く
+            interface: ListMySessions
+            to: AccountActivity
+          - action: revoke_session
+            does: セッションを1件選んで、終了するボタンをクリックする
+            interface: RevokeMySession
+            to: AccountActivity
+          - action: revoke_other_sessions
+            does: 他のセッションをすべて終了するボタンをクリックする
+            interface: RevokeMyOtherSessions
+            to: AccountActivity
+          - action: list_signin_activity
+            does: サインイン履歴タブを開く
+            interface: ListMySignInActivity
+            to: AccountActivity

@@ -2632,215 +2632,242 @@ scenarios:
 flows:
   AdminUsers:
     entry: AdminUsers
-    transitions:
-      - from: AdminUsers
-        action: list
-        interface: ListAdminUsers
-        to: AdminUsers
-      - from: AdminUsers
-        action: view
-        interface: GetAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: create
-        interface: CreateAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: update
-        interface: UpdateAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: disable
-        interface: DisableAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: enable
-        interface: EnableAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: delete
-        interface: DeleteAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: restore
-        interface: RestoreAdminUser
-        to: AdminUsers
-      - from: AdminUsers
-        action: set_required_action
-        interface: SetUserRequiredAction
-        to: AdminUsers
-      - from: AdminUsers
-        action: clear_required_action
-        interface: ClearUserRequiredAction
-        to: AdminUsers
-      - from: AdminUsers
-        action: import
-        interface: ImportAdminUsers
-        to: AdminUsers
-      - from: AdminUsers
-        action: view_import
-        interface: GetAdminUserImport
-        to: AdminUsers
-      - from: AdminUsers
-        action: view_groups
-        interface: ListUserGroups
-        to: AdminUsers
-      - from: AdminUsers
-        action: add_to_group
-        interface: AddGroupMember
-        to: AdminUsers
-      - from: AdminUsers
-        action: group_management_selected
-        to: AdminGroups
-      - from: AdminUsers
-        action: application_management_selected
-        external: true
+    views:
+      AdminUsers:
+        sees: ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート)
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListAdminUsers
+            to: AdminUsers
+          - action: view
+            does: 一覧からユーザーを1件クリックして詳細を表示する
+            interface: GetAdminUser
+            to: AdminUsers
+          - action: create
+            does: ユーザー名・初期パスワード等を入力して作成する
+            interface: CreateAdminUser
+            to: AdminUsers
+          - action: update
+            does: プロフィール・email_verified・roles を編集して保存する
+            interface: UpdateAdminUser
+            to: AdminUsers
+          - action: disable
+            does: 無効化ボタンをクリックする
+            interface: DisableAdminUser
+            to: AdminUsers
+          - action: enable
+            does: 有効化ボタンをクリックする
+            interface: EnableAdminUser
+            to: AdminUsers
+          - action: delete
+            does: 削除ボタンをクリックする
+            interface: DeleteAdminUser
+            to: AdminUsers
+          - action: restore
+            does: 復元ボタンをクリックする
+            interface: RestoreAdminUser
+            to: AdminUsers
+          - action: set_required_action
+            does: 次回ログイン時の強制アクションを選んで付与する
+            interface: SetUserRequiredAction
+            to: AdminUsers
+          - action: clear_required_action
+            does: 付与済みの強制アクションを解除する
+            interface: ClearUserRequiredAction
+            to: AdminUsers
+          - action: import
+            does: CSV ファイルを選択して、dry_run または apply を実行する
+            interface: ImportAdminUsers
+            to: AdminUsers
+          - action: view_import
+            does: インポートジョブを選んで、行ごとの検証・適用結果を表示する
+            interface: GetAdminUserImport
+            to: AdminUsers
+          - action: view_groups
+            does: ユーザーの所属グループとロール内訳を表示する
+            interface: ListUserGroups
+            to: AdminUsers
+          - action: add_to_group
+            does: 所属させるグループを選んで追加する
+            interface: AddGroupMember
+            to: AdminUsers
+          - action: group_management_selected
+            does: グループ管理タブをクリックする
+            to: AdminGroups
+          - action: application_management_selected
+            does: アプリケーション管理へのリンクをクリックする
+            external: true
   AdminGroups:
     entry: AdminGroups
-    transitions:
-      - from: AdminGroups
-        action: list
-        interface: ListGroups
-        to: AdminGroups
-      - from: AdminGroups
-        action: view
-        interface: GetGroup
-        to: AdminGroups
-      - from: AdminGroups
-        action: create
-        interface: CreateGroup
-        to: AdminGroups
-      - from: AdminGroups
-        action: update
-        interface: UpdateGroup
-        to: AdminGroups
-      - from: AdminGroups
-        action: delete
-        interface: DeleteGroup
-        to: AdminGroups
-      - from: AdminGroups
-        action: add_member
-        interface: AddGroupMember
-        to: AdminGroups
-      - from: AdminGroups
-        action: remove_member
-        interface: RemoveGroupMember
-        to: AdminGroups
-      - from: AdminGroups
-        action: update_dynamic_rule
-        interface: UpdateDynamicGroupRule
-        to: AdminGroups
-      - from: AdminGroups
-        action: preview_dynamic_rule
-        interface: PreviewDynamicGroupRule
-        to: AdminGroups
-      - from: AdminGroups
-        action: enable_dynamic_rule
-        interface: EnableDynamicGroupRule
-        to: AdminGroups
-      - from: AdminGroups
-        action: disable_dynamic_rule
-        interface: DisableDynamicGroupRule
-        to: AdminGroups
-      - from: AdminGroups
-        action: view_users
-        interface: ListAdminUsers
-        to: AdminUsers
+    views:
+      AdminGroups:
+        sees: グループ管理画面(グループ一覧、メンバー、動的グループルール)
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListGroups
+            to: AdminGroups
+          - action: view
+            does: 一覧からグループを1件クリックして詳細を表示する
+            interface: GetGroup
+            to: AdminGroups
+          - action: create
+            does: グループ名を入力して作成する
+            interface: CreateGroup
+            to: AdminGroups
+          - action: update
+            does: 名前・説明・roles を編集して保存する
+            interface: UpdateGroup
+            to: AdminGroups
+          - action: delete
+            does: 削除ボタンをクリックする
+            interface: DeleteGroup
+            to: AdminGroups
+          - action: add_member
+            does: 追加するユーザーを選ぶ
+            interface: AddGroupMember
+            to: AdminGroups
+          - action: remove_member
+            does: メンバーを選んで、外すボタンをクリックする
+            interface: RemoveGroupMember
+            to: AdminGroups
+          - action: update_dynamic_rule
+            does: 動的グループの制限 CEL ルールを編集して保存する
+            interface: UpdateDynamicGroupRule
+            to: AdminGroups
+          - action: preview_dynamic_rule
+            does: 未保存の CEL ルールをプレビューして、現在所属との差分を確認する
+            interface: PreviewDynamicGroupRule
+            to: AdminGroups
+          - action: enable_dynamic_rule
+            does: 動的グループルールを有効化する
+            interface: EnableDynamicGroupRule
+            to: AdminGroups
+          - action: disable_dynamic_rule
+            does: 動的グループルールを無効化する
+            interface: DisableDynamicGroupRule
+            to: AdminGroups
+          - action: view_users
+            does: グループのメンバー一覧からユーザー管理へ移動する
+            interface: ListAdminUsers
+            to: AdminUsers
   AdminAgents:
     entry: AdminAgents
-    transitions:
-      - from: AdminAgents
-        action: list
-        interface: ListAgents
-        to: AdminAgents
-      - from: AdminAgents
-        action: view
-        interface: GetAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: register
-        interface: RegisterAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: update
-        interface: UpdateAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: disable
-        interface: DisableAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: enable
-        interface: EnableAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: kill
-        interface: KillAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: delete
-        interface: DeleteAgent
-        to: AdminAgents
-      - from: AdminAgents
-        action: bind_credential
-        interface: BindAgentCredential
-        to: AdminAgents
-      - from: AdminAgents
-        action: unbind_credential
-        interface: UnbindAgentCredential
-        to: AdminAgents
+    views:
+      AdminAgents:
+        sees: エージェント管理画面(エージェント一覧、詳細、資格情報の束縛)
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListAgents
+            to: AdminAgents
+          - action: view
+            does: 一覧からエージェントを1件クリックして詳細を表示する
+            interface: GetAgent
+            to: AdminAgents
+          - action: register
+            does: 名前等を入力して登録する
+            interface: RegisterAgent
+            to: AdminAgents
+          - action: update
+            does: 名前・説明・種別・所有者・roles を編集して保存する
+            interface: UpdateAgent
+            to: AdminAgents
+          - action: disable
+            does: 停止ボタンをクリックする
+            interface: DisableAgent
+            to: AdminAgents
+          - action: enable
+            does: 再開ボタンをクリックする
+            interface: EnableAgent
+            to: AdminAgents
+          - action: kill
+            does: 緊急停止ボタンをクリックする
+            interface: KillAgent
+            to: AdminAgents
+          - action: delete
+            does: 削除ボタンをクリックする
+            interface: DeleteAgent
+            to: AdminAgents
+          - action: bind_credential
+            does: 束縛する OAuth2 client を選ぶ
+            interface: BindAgentCredential
+            to: AdminAgents
+          - action: unbind_credential
+            does: 束縛を解除するボタンをクリックする
+            interface: UnbindAgentCredential
+            to: AdminAgents
   AdminRoles:
     entry: AdminRoles
-    transitions:
-      - from: AdminRoles
-        action: list
-        interface: ListAdminUsers
-        to: AdminRoles
+    views:
+      AdminRoles:
+        sees: ロール一覧画面
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListAdminUsers
+            to: AdminRoles
   AccountHome:
     entry: AccountHome
-    transitions:
-      - from: AccountHome
-        action: view_summary
-        interface: GetAccountSummary
-        to: AccountHome
-      - from: AccountHome
-        action: security_selected
-        to: AccountSecurity
-      - from: AccountHome
-        action: profile_selected
-        to: AccountProfile
-      - from: AccountHome
-        action: activity_selected
-        to: AccountActivity
-      - from: AccountHome
-        action: connected_apps_selected
-        to: AccountApplications
+    views:
+      AccountHome:
+        sees: アカウントホーム画面(最終ログイン・パスワード変更日時・MFA 状態・未対応の必須アクション)
+        does:
+          - action: view_summary
+            does: 画面を開く
+            interface: GetAccountSummary
+            to: AccountHome
+          - action: security_selected
+            does: セキュリティタブをクリックする
+            to: AccountSecurity
+          - action: profile_selected
+            does: プロフィールタブをクリックする
+            to: AccountProfile
+          - action: activity_selected
+            does: アクティビティタブをクリックする
+            to: AccountActivity
+          - action: connected_apps_selected
+            does: 連携アプリタブをクリックする
+            to: AccountApplications
   AccountProfile:
     entry: AccountProfile
-    transitions:
-      - from: AccountProfile
-        action: view
-        interface: GetUserProfile
-        to: AccountProfile
-      - from: AccountProfile
-        action: update
-        interface: UpdateUserProfile
-        to: AccountProfile
+    views:
+      AccountProfile:
+        sees: プロフィール画面(表示名、編集可能な属性一覧)
+        does:
+          - action: view
+            does: 画面を開く
+            interface: GetUserProfile
+            to: AccountProfile
+          - action: update
+            does: 表示名または編集可能な属性を変更して保存する
+            interface: UpdateUserProfile
+            to: AccountProfile
   AccountEmails:
     entry: AccountEmails
-    transitions:
-      - from: AccountEmails
-        action: request_change
-        interface: RequestEmailChange
-        to: AccountEmailVerify
-      - from: AccountEmailVerify
-        action: verify_link_opened
-        interface: ConfirmEmailChange
-        external: true
+    views:
+      AccountEmails:
+        sees: メールアドレス変更画面(新しいメールアドレス入力フォーム)
+        does:
+          - action: request_change
+            does: 新しいメールアドレスを入力して、変更をリクエストする
+            interface: RequestEmailChange
+            to: AccountEmailVerify
+      AccountEmailVerify:
+        sees: メールアドレス確認待ち画面
+        does:
+          - action: verify_link_opened
+            does: メールで届いた確認リンクを開く
+            interface: ConfirmEmailChange
+            external: true
   AccountData:
     entry: AccountData
-    transitions:
-      - from: AccountData
-        action: export
-        interface: ExportAccountData
-        to: AccountData
+    views:
+      AccountData:
+        sees: アカウントデータ画面(プロフィールと同意済み事項のエクスポート)
+        does:
+          - action: export
+            does: エクスポートボタンをクリックする
+            interface: ExportAccountData
+            to: AccountData

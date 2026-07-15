@@ -532,12 +532,15 @@ scenarios:
 flows:
   SamlBrowserNavigation:
     entry: ServiceProvider
-    transitions:
-      - from: ServiceProvider
-        action: sign_in
-        interface: SamlSingleSignOn
-        to: ServiceProvider
-      - from: ServiceProvider
-        action: sign_out
-        interface: SamlSingleLogout
-        to: ServiceProvider
+    views:
+      ServiceProvider:
+        sees: SP からの SAML リクエスト受信画面(SP-initiated AuthnRequest または IdP-initiated entityID 選択)
+        does:
+          - action: sign_in
+            does: SP からの SAML 認証リクエストを受け取り、必要に応じてログインする
+            interface: SamlSingleSignOn
+            to: ServiceProvider
+          - action: sign_out
+            does: SP からの SAML ログアウトリクエストを受け取る
+            interface: SamlSingleLogout
+            to: ServiceProvider

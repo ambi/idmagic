@@ -4,10 +4,20 @@
   "flows": {
     "Broken": {
       "entry": "Start",
-      "transitions": [
-        { "from": "Start", "action": "finish", "external": true },
-        { "from": "Unreachable", "action": "save", "interface": "Missing" }
-      ]
+      "views": {
+        "Start": {
+          "sees": "start screen",
+          "does": [
+            { "action": "finish", "does": "click finish", "external": true }
+          ]
+        },
+        "Unreachable": {
+          "sees": "unreachable screen",
+          "does": [
+            { "action": "save", "does": "click save", "interface": "Missing" }
+          ]
+        }
+      }
     }
   }
 }

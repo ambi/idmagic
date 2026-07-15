@@ -89,10 +89,20 @@
   "flows": {
     "TenantManagement": {
       "entry": "TenantList",
-      "transitions": [
-        { "from": "TenantList", "action": "edit", "to": "TenantEdit" },
-        { "from": "TenantEdit", "action": "submit", "interface": "UpdateTenant", "to": "TenantList" }
-      ]
+      "views": {
+        "TenantList": {
+          "sees": "テナント一覧画面",
+          "does": [
+            { "action": "edit", "does": "編集ボタンをクリックする", "to": "TenantEdit" }
+          ]
+        },
+        "TenantEdit": {
+          "sees": "テナント編集画面(名称入力フォーム)",
+          "does": [
+            { "action": "submit", "does": "名称を入力して、保存ボタンをクリックする", "interface": "UpdateTenant", "to": "TenantList" }
+          ]
+        }
+      }
     }
   }
 }

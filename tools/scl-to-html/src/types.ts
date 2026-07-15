@@ -189,17 +189,24 @@ export interface Objective {
   slice?: string
 }
 
+export interface FlowAction {
+  action: string
+  does: string
+  interface?: string
+  to?: string
+  external?: boolean
+}
+
+export interface FlowView {
+  sees: string
+  does?: FlowAction[]
+}
+
 export interface Flow {
   description?: string
   annotations?: Record<string, unknown>
   entry: string
-  transitions: Array<{
-    from: string
-    action: string
-    interface?: string
-    to?: string
-    external?: boolean
-  }>
+  views: Record<string, FlowView>
 }
 
 // ─── Decisions (CONCEPTION + ADR) ──────────────────────────────────

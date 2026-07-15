@@ -348,6 +348,11 @@ table.fields thead th {
 table.fields tbody tr:last-child td { border-bottom: none; }
 .enum-vals { display: flex; flex-wrap: wrap; gap: 4px; }
 
+/* flow views */
+.flow-view { border-top: 1px solid var(--border); padding: 12px 0; }
+.flow-view:first-of-type { border-top: none; padding-top: 4px; }
+.flow-view h4 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+
 /* glossary */
 .vocab-list { display: grid; gap: 12px; margin-top: 12px; }
 .vocab-entry {

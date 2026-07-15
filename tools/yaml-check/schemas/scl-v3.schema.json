@@ -345,30 +345,44 @@
     },
     "Flow": {
       "type": "object",
-      "required": ["entry", "transitions"],
+      "required": ["entry", "views"],
       "additionalProperties": false,
       "properties": {
         "entry": { "$ref": "#/$defs/NonEmptyString" },
-        "transitions": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["from", "action"],
-            "additionalProperties": false,
-            "properties": {
-              "from": { "$ref": "#/$defs/NonEmptyString" },
-              "action": { "$ref": "#/$defs/NonEmptyString" },
-              "interface": { "$ref": "#/$defs/NonEmptyString" },
-              "to": { "$ref": "#/$defs/NonEmptyString" },
-              "external": { "const": true }
-            },
-            "allOf": [
-              { "if": { "required": ["external"] }, "then": { "not": { "required": ["to"] } } }
-            ]
-          }
+        "views": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/FlowView" }
         }
       }
+    },
+    "FlowView": {
+      "type": "object",
+      "required": ["sees"],
+      "additionalProperties": false,
+      "properties": {
+        "sees": { "$ref": "#/$defs/NonEmptyString" },
+        "does": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/FlowAction" }
+        }
+      }
+    },
+    "FlowAction": {
+      "type": "object",
+      "required": ["action", "does"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "$ref": "#/$defs/NonEmptyString" },
+        "does": { "$ref": "#/$defs/NonEmptyString" },
+        "interface": { "$ref": "#/$defs/NonEmptyString" },
+        "to": { "$ref": "#/$defs/NonEmptyString" },
+        "external": { "const": true }
+      },
+      "allOf": [
+        { "if": { "required": ["external"] }, "then": { "not": { "required": ["to"] } } }
+      ]
     }
   }
 }

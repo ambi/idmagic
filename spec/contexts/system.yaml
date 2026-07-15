@@ -235,10 +235,13 @@ scenarios:
 flows:
   AdminDashboard:
     entry: AdminDashboard
-    transitions:
-      - from: AdminDashboard
-        action: user_management_selected
-        to: AdminUsers
-      - from: AdminDashboard
-        action: application_management_selected
-        to: AdminApplications
+    views:
+      AdminDashboard:
+        sees: 管理コンソールダッシュボード画面(ユーザー管理・アプリケーション管理へのナビゲーション)
+        does:
+          - action: user_management_selected
+            does: ユーザー管理タブをクリックする
+            to: AdminUsers
+          - action: application_management_selected
+            does: アプリケーション管理タブをクリックする
+            to: AdminApplications

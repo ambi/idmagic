@@ -981,18 +981,17 @@ const renderObjectivesV3 = (objectives: Record<string, Objective>): string => {
 const renderFlows = (flows: Record<string, Flow>): string => {
   const diagrams = Object.entries(flows)
     .map(([name, flow]) => {
-      const views = new Set<string>([flow.entry])
-      for (const transition of flow.transitions) {
-        views.add(transition.from)
-        if (transition.to) views.add(transition.to)
-      }
-      const nodes = [...views].map((view) => ({
+      const viewEntries = Object.entries(flow.views)
+      const nodes = viewEntries.map(([view]) => ({
         id: view,
         label: view,
         href: `#flow-${slug(name)}`,
         kind: view === flow.entry ? 'initial' : 'view',
       }))
-      if (flow.transitions.some((transition) => transition.external)) {
+      const hasExternal = viewEntries.some(([, view]) =>
+        (view.does ?? []).some((action) => action.external),
+      )
+      if (hasExternal) {
         nodes.push({
           id: '__external__',
           label: 'External',
@@ -1000,35 +999,50 @@ const renderFlows = (flows: Record<string, Flow>): string => {
           kind: 'external',
         })
       }
-      const edges = flow.transitions.map((transition) => ({
-        from: transition.from,
-        to: transition.external ? '__external__' : (transition.to ?? transition.from),
-        label: transition.action,
-        href: transition.interface ? `#iface-${slug(transition.interface)}` : `#flow-${slug(name)}`,
-      }))
+      const edges = viewEntries.flatMap(([viewName, view]) =>
+        (view.does ?? []).map((action) => ({
+          from: viewName,
+          to: action.external ? '__external__' : (action.to ?? viewName),
+          label: action.action,
+          href: action.interface ? `#iface-${slug(action.interface)}` : `#flow-${slug(name)}`,
+        })),
+      )
       return renderDiagram(
         `flow-${slug(name)}`,
         `${name} navigation`,
-        'View node と transition edge は flows から派生する。',
+        'View node と action edge は flows から派生する。',
         nodes,
         edges,
       )
     })
     .join('')
   const cards = Object.entries(flows)
-    .map(
-      ([name, flow]) => `<article class="card" id="flow-${esc(slug(name))}">
+    .map(([name, flow]) => {
+      const viewBlocks = Object.entries(flow.views)
+        .map(
+          ([viewName, view]) => `<div class="flow-view">
+            <h4>${esc(viewName)}${viewName === flow.entry ? chip('entry', 'initial') : ''}</h4>
+            <p class="desc">${esc(view.sees)}</p>
+            ${
+              view.does?.length
+                ? `<table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody>${view.does
+                     .map(
+                       (action) =>
+                         `<tr><td>${esc(action.does)} <code>${esc(action.action)}</code></td><td>${esc(action.external ? 'external' : (action.to ?? 'end'))}</td><td>${action.interface ? link(`#iface-${slug(action.interface)}`, action.interface, 'iface-ref') : ''}</td></tr>`,
+                     )
+                     .join('')}</tbody></table>`
+                : ''
+            }
+          </div>`,
+        )
+        .join('')
+      return `<article class="card" id="flow-${esc(slug(name))}">
         <header><h3>${esc(name)}</h3>${chip(`entry: ${flow.entry}`, 'initial')}</header>
         ${flow.description ? `<p class="desc">${esc(flow.description)}</p>` : ''}
-        <table class="fields"><thead><tr><th>From</th><th>Action</th><th>To</th><th>Interface</th></tr></thead>
-        <tbody>${flow.transitions
-          .map(
-            (transition) =>
-              `<tr><td>${esc(transition.from)}</td><td><code>${esc(transition.action)}</code></td><td>${esc(transition.external ? 'external' : (transition.to ?? 'end'))}</td><td>${transition.interface ? link(`#iface-${slug(transition.interface)}`, transition.interface, 'iface-ref') : ''}</td></tr>`,
-          )
-          .join('')}</tbody></table>
-      </article>`,
-    )
+        ${viewBlocks}
+      </article>`
+    })
     .join('')
   return wrapSection(
     'flows',

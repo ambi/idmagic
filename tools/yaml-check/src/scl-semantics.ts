@@ -413,42 +413,59 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
   for (const [flowName, flowValue] of Object.entries(flows)) {
     const flow = dict(flowValue)
     const entry = typeof flow.entry === 'string' ? flow.entry : ''
-    const transitions = Array.isArray(flow.transitions) ? flow.transitions : []
+    const views = dict(flow.views)
     const reachable = new Set([entry])
     let changed = true
     while (changed) {
       changed = false
-      for (const transitionValue of transitions) {
-        const transition = dict(transitionValue)
-        if (
-          typeof transition.from === 'string' &&
-          reachable.has(transition.from) &&
-          typeof transition.to === 'string' &&
-          !reachable.has(transition.to)
-        ) {
-          reachable.add(transition.to)
-          changed = true
+      for (const viewName of reachable) {
+        const view = dict(views[viewName])
+        const does = Array.isArray(view.does) ? view.does : []
+        for (const actionValue of does) {
+          const action = dict(actionValue)
+          if (typeof action.to === 'string' && action.to in views && !reachable.has(action.to)) {
+            reachable.add(action.to)
+            changed = true
+          }
         }
       }
     }
-    transitions.forEach((transitionValue, index) => {
-      const transition = dict(transitionValue)
-      if (typeof transition.from === 'string' && !reachable.has(transition.from)) {
+    for (const viewName of Object.keys(views)) {
+      if (!reachable.has(viewName)) {
         addFinding(
           findings,
           text,
-          `/flows/${flowName}/transitions/${index}/from`,
-          `flow '${flowName}' contains unreachable view '${transition.from}'`,
+          `/flows/${flowName}/views/${viewName}`,
+          `flow '${flowName}' contains unreachable view '${viewName}'`,
         )
       }
-      if (typeof transition.interface === 'string' && !(transition.interface in interfaces)) {
-        addFinding(
-          findings,
-          text,
-          `/flows/${flowName}/transitions/${index}/interface`,
-          `flow '${flowName}' references unknown interface '${transition.interface}'`,
-        )
-      }
+    }
+    Object.entries(views).forEach(([viewName, viewValue]) => {
+      const view = dict(viewValue)
+      const does = Array.isArray(view.does) ? view.does : []
+      const seenActions = new Set<string>()
+      does.forEach((actionValue, index) => {
+        const action = dict(actionValue)
+        if (typeof action.action === 'string') {
+          if (seenActions.has(action.action)) {
+            addFinding(
+              findings,
+              text,
+              `/flows/${flowName}/views/${viewName}/does/${index}/action`,
+              `flow '${flowName}' view '${viewName}' duplicates action '${action.action}'`,
+            )
+          }
+          seenActions.add(action.action)
+        }
+        if (typeof action.interface === 'string' && !(action.interface in interfaces)) {
+          addFinding(
+            findings,
+            text,
+            `/flows/${flowName}/views/${viewName}/does/${index}/interface`,
+            `flow '${flowName}' references unknown interface '${action.interface}'`,
+          )
+        }
+      })
     })
   }
 

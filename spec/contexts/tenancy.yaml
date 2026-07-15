@@ -1009,38 +1009,47 @@ scenarios:
 flows:
   SystemTenantManagement:
     entry: SystemTenants
-    transitions:
-      - from: SystemTenants
-        action: create
-        interface: CreateTenant
-        to: SystemTenants
-      - from: SystemTenants
-        action: update
-        interface: UpdateTenant
-        to: SystemTenants
-      - from: SystemTenants
-        action: disable
-        interface: DisableTenant
-        to: SystemTenants
-      - from: SystemTenants
-        action: enable
-        interface: EnableTenant
-        to: SystemTenants
+    views:
+      SystemTenants:
+        sees: システムテナント一覧画面(realm、表示名、ステータス、作成日時)
+        does:
+          - action: create
+            does: 作成モーダルを開き、realm と表示名を入力して作成する
+            interface: CreateTenant
+            to: SystemTenants
+          - action: update
+            does: 編集モーダルを開き、表示名またはパスワードポリシー上書きを変更して更新する
+            interface: UpdateTenant
+            to: SystemTenants
+          - action: disable
+            does: 無効化ボタンをクリックする
+            interface: DisableTenant
+            to: SystemTenants
+          - action: enable
+            does: 有効化ボタンをクリックする
+            interface: EnableTenant
+            to: SystemTenants
   TenantAttributeManagement:
     entry: TenantAttributes
-    transitions:
-      - from: TenantAttributes
-        action: update
-        interface: UpdateTenantUserAttributeSchema
-        to: TenantAttributes
+    views:
+      TenantAttributes:
+        sees: テナント属性設定画面(カスタム属性定義一覧の編集フォーム、組み込み属性カタログの参照表示)
+        does:
+          - action: update
+            does: カスタム属性定義をすべて編集して保存する
+            interface: UpdateTenantUserAttributeSchema
+            to: TenantAttributes
   TenantSettingsManagement:
     entry: TenantSettings
-    transitions:
-      - from: TenantSettings
-        action: update_settings
-        interface: UpdateAdminSettings
-        to: TenantSettings
-      - from: TenantSettings
-        action: update_branding
-        interface: UpdateTenantBranding
-        to: TenantSettings
+    views:
+      TenantSettings:
+        sees: テナント設定画面(表示名・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム)
+        does:
+          - action: update_settings
+            does: 表示名またはパスワードポリシー上書きを変更して保存する
+            interface: UpdateAdminSettings
+            to: TenantSettings
+          - action: update_branding
+            does: 製品名・色・フッターリンク・フッターテキストを変更して保存する
+            interface: UpdateTenantBranding
+            to: TenantSettings

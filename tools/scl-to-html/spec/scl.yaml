@@ -203,12 +203,43 @@ scenarios:
 flows:
   SpecificationNavigation:
     entry: Overview
-    transitions:
-      - { from: Overview, action: open_scl, to: Scl }
-      - { from: Overview, action: open_architecture, to: Architecture }
-      - { from: Overview, action: open_decisions, to: Decisions }
-      - { from: Overview, action: open_work_items, to: WorkItems }
-      - { from: Scl, action: back, to: Overview }
-      - { from: Architecture, action: back, to: Overview }
-      - { from: Decisions, action: back, to: Overview }
-      - { from: WorkItems, action: back, to: Overview }
+    views:
+      Overview:
+        sees: 概要タブ(system 名、spec_version、tab 一覧)
+        does:
+          - action: open_scl
+            does: SCL タブをクリックする
+            to: Scl
+          - action: open_architecture
+            does: Architecture タブをクリックする
+            to: Architecture
+          - action: open_decisions
+            does: Decisions タブをクリックする
+            to: Decisions
+          - action: open_work_items
+            does: Work Items タブをクリックする
+            to: WorkItems
+      Scl:
+        sees: SCL タブ(standards・context_map・glossary・models・interfaces・states・authorization・objectives・scenarios・flows の各 section)
+        does:
+          - action: back
+            does: 概要タブへ戻るボタンをクリックする
+            to: Overview
+      Architecture:
+        sees: Architecture タブ(ARCHITECTURE.md の contexts・modules・overview・structure・stack)
+        does:
+          - action: back
+            does: 概要タブへ戻るボタンをクリックする
+            to: Overview
+      Decisions:
+        sees: Decisions タブ(ADR 一覧。各 ADR の id・title・本文)
+        does:
+          - action: back
+            does: 概要タブへ戻るボタンをクリックする
+            to: Overview
+      WorkItems:
+        sees: Work Items タブ(work item 一覧。各 work item の Plan・Tasks・completion)
+        does:
+          - action: back
+            does: 概要タブへ戻るボタンをクリックする
+            to: Overview
