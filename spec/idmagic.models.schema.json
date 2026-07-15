@@ -3066,7 +3066,7 @@
           "items": {
             "$ref": "#/$defs/AuditEventFilterExpression"
           },
-          "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で (ADR-104:\nhash 化はしない)、実アカウントが確定するイベントの検索には username query param を使う\n(本フィールドとは別経路)。client.ip も平文一致で照合する (truncate/hash はしない)。event.type は\nSCL events セクションの型名 (owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の\nenum (success / failure) から選ぶ選択式の値であり、自由入力ではない (AuditActorVsTarget /\nAuditSearchRegistry 参照)。actor.id / actor.username は操作者、target.id は管理操作の対象ユーザーを\n指し、意味が異なる。"
+          "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で (ADR-104:\nhash 化はしない)、実アカウントが確定するイベントの検索には username query param を使う\n(本フィールドとは別経路)。client.ip も平文一致で照合する (truncate/hash はしない)。event.type は\nSCL events セクションの型名 (owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の\nenum (success / failure) から選ぶ選択式の値であり、自由入力ではない (AuditActorVsTarget /\nAuditSearchRegistry 参照)。actor.id / actor.username は操作者、target.id は管理操作の対象ユーザーを\n指し、意味が異なる。workflow.id / workflow_run.id / workflow_step.id は\nIdentityManagement.LifecycleWorkflow* / WorkflowRun* / WorkflowStepFailed イベントの\nworkflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、attribute value や email\n本文は payload に含まないため検索対象にもならない。"
         }
       },
       "additionalProperties": false,
@@ -6659,7 +6659,8 @@
         "noop_echo",
         "user_import_preview",
         "user_import_apply",
-        "dynamic_group_reconcile"
+        "dynamic_group_reconcile",
+        "lifecycle_workflow_run"
       ],
       "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
     },
@@ -6825,6 +6826,682 @@
         "Signing"
       ],
       "description": "鍵の用途。現状は OAuth2/OIDC の JWT 署名 (Signing) のみ。JWE 暗号鍵や SAML/WS-* の X.509 は将来の用途として枠だけ残す。"
+    },
+    "LifecycleNotificationDelivery": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "step_index": {
+          "type": "integer"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "template_key": {
+          "type": "string"
+        },
+        "delivered_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "step_index",
+        "tenant_id",
+        "template_key",
+        "delivered_at"
+      ],
+      "description": "send_email action の delivery 冪等キー。(run_id, step_index) 単位で一回分だけ送信したことを記録する。"
+    },
+    "LifecycleWorkflow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "生成識別子。UUID v4。不変。"
+        },
+        "tenant_id": {
+          "type": "string",
+          "default": "default",
+          "description": "所属テナント ID。cross-tenant 参照は禁止。"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "テナント内で一意な表示名。"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "status": {
+          "$ref": "#/$defs/LifecycleWorkflowStatus",
+          "default": "draft"
+        },
+        "current_revision": {
+          "type": "integer",
+          "description": "直近に作成した revision 番号。"
+        },
+        "enabled_revision": {
+          "type": "integer",
+          "description": "現在 trigger 評価対象になっている revision。draft/disabled/archived では未設定のことがある。"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "name",
+        "status",
+        "current_revision",
+        "created_at"
+      ],
+      "description": "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない (再度 enable するまで旧 revision の評価が続く)。\ndisable は新規 trigger を止め、archive は disabled にのみ許可される終端 (hard delete しない)。\n"
+    },
+    "LifecycleWorkflowArchived": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "workflowId"
+      ],
+      "description": "管理者が disabled の LifecycleWorkflow を archive した (終端)。"
+    },
+    "LifecycleWorkflowCreateRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "trigger": {
+          "$ref": "#/$defs/WorkflowTriggerDef"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowActionDef"
+          },
+          "x-scl-untranslated-constraints": [
+            {
+              "min_items": 1
+            },
+            {
+              "max_items": 20
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "trigger",
+        "actions"
+      ],
+      "description": "workflow 作成リクエスト。作成すると revision 1 の draft になる。"
+    },
+    "LifecycleWorkflowCreated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "workflowId"
+      ],
+      "description": "管理者が LifecycleWorkflow を作成した (revision 1 の draft)。"
+    },
+    "LifecycleWorkflowDisabled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "workflowId"
+      ],
+      "description": "管理者が LifecycleWorkflow を disable した。新規 trigger を止め、未開始の queued run を canceled にする。"
+    },
+    "LifecycleWorkflowDryRunRequest": {
+      "type": "object",
+      "properties": {
+        "target_user_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target_user_id"
+      ],
+      "description": "dry-run 対象 user_id の入力。対象 revision は enabled_revision (未指定なら current_revision)。"
+    },
+    "LifecycleWorkflowDryRunResponse": {
+      "type": "object",
+      "properties": {
+        "workflow_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "target_user_id": {
+          "type": "string"
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LifecycleWorkflowDryRunStepResult"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "workflow_id",
+        "revision",
+        "target_user_id",
+        "evaluated_at",
+        "steps"
+      ],
+      "description": "dry-run 結果。WorkflowRun / Job / membership / assignment / required action / status / email\nのいずれも作成・変更しない。evaluated_at と revision を含め、本実行の保証とは表示しない。\n"
+    },
+    "LifecycleWorkflowDryRunStepResult": {
+      "type": "object",
+      "properties": {
+        "action_kind": {
+          "$ref": "#/$defs/WorkflowActionKind"
+        },
+        "would_change": {
+          "type": "string",
+          "description": "would_change / no_op / blocked のいずれか。"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "action_kind",
+        "would_change"
+      ],
+      "description": "dry-run の action 1 件分の判定結果。属性値や email address は含まない。"
+    },
+    "LifecycleWorkflowEnabled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "workflowId",
+        "revision"
+      ],
+      "description": "管理者が current_revision を validation に成功させ enabled_revision として enable した。"
+    },
+    "LifecycleWorkflowListResponse": {
+      "type": "object",
+      "properties": {
+        "workflows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LifecycleWorkflowResponse"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "workflows"
+      ],
+      "description": "workflow 一覧レスポンス。"
+    },
+    "LifecycleWorkflowResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/LifecycleWorkflowStatus"
+        },
+        "current_revision": {
+          "type": "integer"
+        },
+        "enabled_revision": {
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/WorkflowTriggerDef"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowActionDef"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "status",
+        "current_revision",
+        "trigger",
+        "actions",
+        "created_at"
+      ],
+      "description": "workflow 定義の表現 (current_revision の内容を含む)。"
+    },
+    "LifecycleWorkflowRevision": {
+      "type": "object",
+      "properties": {
+        "workflow_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/WorkflowTriggerDef"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowActionDef"
+          },
+          "x-scl-untranslated-constraints": [
+            {
+              "min_items": 1
+            },
+            {
+              "max_items": 20
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "workflow_id",
+        "tenant_id",
+        "revision",
+        "trigger",
+        "actions",
+        "created_at"
+      ],
+      "description": "LifecycleWorkflow の不変な definition 断面。意味の変わる update ごとに revision を 1 増やし、\n過去 revision は immutable に残す。enable された revision だけが新規 WorkflowRun を生成する。\n"
+    },
+    "LifecycleWorkflowRunCanceled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "workflowId",
+        "runId",
+        "targetUserId"
+      ],
+      "description": "disable により未開始の queued run が、または実行中の run が現在 step の checkpoint 後に停止した。"
+    },
+    "LifecycleWorkflowRunFailed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "workflowId",
+        "runId",
+        "targetUserId"
+      ],
+      "description": "WorkflowRun が attempt 上限に達し、成功した step が一つもないまま終端した。"
+    },
+    "LifecycleWorkflowRunPartiallyFailed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "workflowId",
+        "runId",
+        "targetUserId"
+      ],
+      "description": "WorkflowRun が attempt 上限に達し、成功と失敗が混在したまま終端した。"
+    },
+    "LifecycleWorkflowRunStarted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "workflowId",
+        "runId",
+        "targetUserId"
+      ],
+      "description": "dispatcher が WorkflowRun を worker に渡し、最初の step 実行を開始した。"
+    },
+    "LifecycleWorkflowRunSucceeded": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "workflowId",
+        "runId",
+        "targetUserId"
+      ],
+      "description": "WorkflowRun の全 step が changed または no_op で終端した。"
+    },
+    "LifecycleWorkflowStatus": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "enabled",
+        "disabled",
+        "archived"
+      ],
+      "description": "LifecycleWorkflow のライフサイクル。archived は終端で履歴保全のため hard delete しない。"
+    },
+    "LifecycleWorkflowStepFailed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "stepIndex": {
+          "type": "integer"
+        },
+        "actionKind": {
+          "$ref": "#/$defs/WorkflowActionKind"
+        },
+        "errorCode": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "workflowId",
+        "runId",
+        "stepIndex",
+        "actionKind",
+        "errorCode"
+      ],
+      "description": "WorkflowStep 1 件が failed outcome で確定した。監査検索用に workflow_id/run_id/step_id/error_code を残す。"
+    },
+    "LifecycleWorkflowUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "expected_revision": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "trigger": {
+          "$ref": "#/$defs/WorkflowTriggerDef"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowActionDef"
+          },
+          "x-scl-untranslated-constraints": [
+            {
+              "min_items": 1
+            },
+            {
+              "max_items": 20
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "expected_revision"
+      ],
+      "description": "workflow 更新リクエスト。expected_revision と現在の current_revision が一致しない場合は\nWorkflowRevisionConflictError で拒否する (lost update 防止)。\n"
+    },
+    "LifecycleWorkflowUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "newRevision": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "workflowId"
+      ],
+      "description": "管理者が LifecycleWorkflow を更新した。trigger/actions が変わり revision が増えた場合は newRevision を含む。"
     },
     "LoginPendingPurpose": {
       "type": "string",
@@ -11227,6 +11904,408 @@
         "Hybrid"
       ],
       "description": "WebAuthn authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4 AuthenticatorTransport)。\n"
+    },
+    "WorkflowActionDef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/WorkflowActionKind"
+        },
+        "group_id": {
+          "type": "string",
+          "description": "kind=add_group_member/remove_group_member のとき必須。dynamic group を指定した場合は\n保存時に validation error。\n"
+        },
+        "application_id": {
+          "type": "string",
+          "description": "kind=assign_application/unassign_application のとき必須。"
+        },
+        "visibility": {
+          "$ref": "#/$defs/AssignmentVisibility",
+          "description": "kind=assign_application のとき任意 (省略時 visible)。Application context が所有する定義の published language stub。"
+        },
+        "required_action": {
+          "$ref": "#/$defs/RequiredAction",
+          "description": "kind=set_required_action/clear_required_action のとき必須。"
+        },
+        "reason": {
+          "type": "string",
+          "description": "kind=enable_user/disable_user のとき任意の記録用理由。"
+        },
+        "template_key": {
+          "type": "string",
+          "description": "kind=send_email のとき必須。固定 template key (custom template editor は対象外)。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "description": "LifecycleWorkflowRevision が固定する action 定義 1 件。kind ごとに使うフィールドが異なり、\ncreate/update と enable の双方で参照先の存在を検証する。\n"
+    },
+    "WorkflowActionKind": {
+      "type": "string",
+      "enum": [
+        "add_group_member",
+        "remove_group_member",
+        "assign_application",
+        "unassign_application",
+        "set_required_action",
+        "clear_required_action",
+        "enable_user",
+        "disable_user",
+        "send_email"
+      ],
+      "description": "WorkflowAction の種別。いずれも desired-state で、既に目的状態なら no_op になる冪等操作。"
+    },
+    "WorkflowFilter": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "TenantUserAttributeSchema.key または User の built-in attribute key。"
+        },
+        "operator": {
+          "$ref": "#/$defs/WorkflowFilterOperator"
+        },
+        "value": {
+          "type": "object",
+          "description": "operator=exists では未指定。field の AttributeType と一致する型付き値 (in は配列)。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "operator"
+      ],
+      "description": "WorkflowTrigger.filters の1項。TenantUserAttributeSchema に存在し型が一致する field\nだけを保存でき、PII の自由文字 regex や未知 field は保存時に拒否する。複数 filter は AND。\n"
+    },
+    "WorkflowFilterOperator": {
+      "type": "string",
+      "enum": [
+        "eq",
+        "not_eq",
+        "in",
+        "exists"
+      ],
+      "description": "WorkflowFilter で使える比較演算子。eq/not_eq は完全一致・不一致、in は値集合のいずれか一致、exists は値の有無判定。"
+    },
+    "WorkflowRevisionConflictError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "UpdateLifecycleWorkflow が input.request.expected_revision と現在の\nLifecycleWorkflow.current_revision の不一致を検出した (lost update の拒否)。呼び出し側は\n最新 revision を再取得してから再試行する。\n"
+    },
+    "WorkflowRun": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "生成識別子。UUID v4。"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "workflow_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/WorkflowRunTriggerSnapshot"
+        },
+        "target_user_id": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowActionDef"
+          },
+          "description": "revision から展開・固定した action list。definition が後から変わっても本 run の意味は変わらない。"
+        },
+        "status": {
+          "$ref": "#/$defs/WorkflowRunStatus"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "dispatcher が enqueue 後に関連付ける Jobs.JobRef.id。未 enqueue の間は未設定。"
+        },
+        "triggered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "workflow_id",
+        "revision",
+        "trigger",
+        "target_user_id",
+        "actions",
+        "status",
+        "triggered_at"
+      ],
+      "description": "WorkflowTrigger の発火 1 回から生成される実行単位。作成時の workflow_id、revision、\ntrigger snapshot、target_user_id、展開済み action list を固定し、後から definition を変更しても\n既存 run の意味は変わらない。job_id は dispatcher が enqueue 後に関連付ける。\n(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id) が一意制約。\n"
+    },
+    "WorkflowRunListResponse": {
+      "type": "object",
+      "properties": {
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowRunResponse"
+          }
+        },
+        "next_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ページング継続用カーソル。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "runs"
+      ],
+      "description": "workflow の run 一覧レスポンス。"
+    },
+    "WorkflowRunResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "workflow_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/WorkflowRunTriggerSnapshot"
+        },
+        "target_user_id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/WorkflowRunStatus"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowStepResponse"
+          }
+        },
+        "triggered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workflow_id",
+        "revision",
+        "trigger",
+        "target_user_id",
+        "status",
+        "steps",
+        "triggered_at"
+      ],
+      "description": "run detail レスポンス。trigger、固定 revision、target user、Job attempt、各 step の\noutcome/error_code/timestamp を表示し、secret / email 本文 / attribute value は含めない。\n"
+    },
+    "WorkflowRunStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "partially_failed",
+        "failed",
+        "canceled"
+      ],
+      "description": "WorkflowRunLifecycle の状態。no-op は成功として扱う。"
+    },
+    "WorkflowRunTriggerSnapshot": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/WorkflowTriggerKind"
+        },
+        "source_occurrence_id": {
+          "type": "string",
+          "description": "発火元の User mutation domain event ID。同一 occurrence の再配送は同じ run に収束する (dedup)。"
+        },
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "kind=user_attributes_changed のとき、実際に変化した field 名一覧 (値は含まない)。"
+        },
+        "from_status": {
+          "$ref": "#/$defs/UserStatus"
+        },
+        "to_status": {
+          "$ref": "#/$defs/UserStatus"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source_occurrence_id",
+        "changed_fields"
+      ],
+      "description": "WorkflowRun 作成時に固定する trigger 発火の要約。履歴には changed field 名と predicate の\n成否だけを残し、属性値そのものは保持しない (PII 保護)。\n"
+    },
+    "WorkflowStep": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "step_index": {
+          "type": "integer",
+          "description": "WorkflowRun.actions 内の 0 始まり順序。"
+        },
+        "action_kind": {
+          "$ref": "#/$defs/WorkflowActionKind"
+        },
+        "outcome": {
+          "$ref": "#/$defs/WorkflowStepOutcome",
+          "default": "pending"
+        },
+        "error_code": {
+          "type": "string",
+          "description": "sanitised error code。attribute 値や email 本文は含めない。"
+        },
+        "attempted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "tenant_id",
+        "step_index",
+        "action_kind",
+        "outcome"
+      ],
+      "description": "WorkflowRun 内の action 1 件分の実行記録。定義順の index を持ち、outcome と sanitised\nerror code を checkpoint する。attribute value / email 本文 / secret は保持しない。\n"
+    },
+    "WorkflowStepOutcome": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "changed",
+        "no_op",
+        "failed",
+        "canceled"
+      ],
+      "description": "WorkflowStep 1 件の実行結果。pending はまだ試行されていない初期値。"
+    },
+    "WorkflowStepResponse": {
+      "type": "object",
+      "properties": {
+        "step_index": {
+          "type": "integer"
+        },
+        "action_kind": {
+          "$ref": "#/$defs/WorkflowActionKind"
+        },
+        "outcome": {
+          "$ref": "#/$defs/WorkflowStepOutcome"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "attempted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "step_index",
+        "action_kind",
+        "outcome"
+      ],
+      "description": "run detail 内の step 表現。secret / email 本文 / attribute value は含めない。"
+    },
+    "WorkflowTriggerDef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/WorkflowTriggerKind"
+        },
+        "watched_attributes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "kind=user_attributes_changed のとき必須。列挙した field のいずれかが実際に変化した\n場合だけ発火する (request に含まれただけで値が同じ場合は発火しない)。\n"
+        },
+        "from_status": {
+          "$ref": "#/$defs/UserStatus",
+          "description": "kind=user_status_changed のとき必須。許可された UserLifecycle 遷移の from。"
+        },
+        "to_status": {
+          "$ref": "#/$defs/UserStatus",
+          "description": "kind=user_status_changed のとき必須。許可された UserLifecycle 遷移の to。"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowFilter"
+          },
+          "x-scl-untranslated-constraints": [
+            {
+              "max_items": 20
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "filters"
+      ],
+      "description": "LifecycleWorkflowRevision が固定する trigger 定義。kind に応じて watched_attributes\nまたは from_status/to_status を用いる。filters は 0〜20 件で AND。\n"
+    },
+    "WorkflowTriggerKind": {
+      "type": "string",
+      "enum": [
+        "user_created",
+        "user_attributes_changed",
+        "user_status_changed"
+      ],
+      "description": "WorkflowTrigger の発火条件種別。初期版は User mutation 起点の3種のみ (日付・cron・待機 step は対象外)。"
     },
     "WsFedRelyingParty": {
       "type": "object",

@@ -940,6 +940,43 @@ models:
     kind: error
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
 interfaces:
+  AssignApplicationDesiredState:
+    description: "呼び出し元 bounded context (IdentityManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの application_id / user_id だけを渡す。\n"
+    input:
+      tenant_id:
+        type: String
+      application_id:
+        type: String
+      user_id:
+        type: String
+      visibility:
+        type: AssignmentVisibility
+        optional: true
+        description: 省略時 visible。
+    output:
+      assignment:
+        type: ApplicationAssignmentResponse
+      changed:
+        type: Boolean
+        description: 割当を新規作成または visibility を変更した場合 true、既に目的状態だった場合 false。
+    errors:
+      - InvalidRequestError
+    access: internal
+  UnassignApplicationDesiredState:
+    description: "呼び出し元 bounded context が Application への user 割当を desired-state で解除する内部\nインターフェース。割当が存在しない場合も no-op (changed=false) で正常終了する (冪等)。\n"
+    input:
+      tenant_id:
+        type: String
+      application_id:
+        type: String
+      user_id:
+        type: String
+    output:
+      changed:
+        type: Boolean
+    errors:
+      - InvalidRequestError
+    access: internal
   ListAdminApplications:
     description: 管理者が所属テナントの Application を一覧する。
     output:
@@ -1697,6 +1734,20 @@ scenarios:
     main_success:
       - "\"alice\" が ListAdminApplications を呼び出す"
       - AccessDeniedError で拒否される
+  desired-state割当はgroup経由の割当を変更しない:
+    actor: TenantAdministrator
+    given:
+      - "IdentityManagement の LifecycleWorkflow が \"alice\" に対して AssignApplicationDesiredState を呼び出す"
+      - "\"alice\" は dynamic group 経由で \"portal\" への group assignment (subject_type=group) を既に持つ"
+    main_success:
+      - "AssignApplicationDesiredState が \"alice\" 個人への direct user assignment (subject_type=user) を新規作成する"
+      - group assignment (subject_type=group) の行は変更されない
+      - "後から UnassignApplicationDesiredState を呼んでも group assignment は残り、federation は引き続き許可される"
+    extensions:
+      - at: 1
+        condition: "個人の direct assignment が既に指定どおりの visibility で存在する"
+        steps:
+          - AssignApplicationDesiredState は変更を行わず changed=false を返す
 flows:
   AdminApplicationManagement:
     entry: AdminApplications

@@ -146,6 +146,7 @@ models:
       - user_import_preview
       - user_import_apply
       - dynamic_group_reconcile
+      - lifecycle_workflow_run
   JobProgress:
     kind: value_object
     description: ハンドラが Running 中に任意で報告する進捗スナップショット。
@@ -429,3 +430,18 @@ scenarios:
         condition: ハンドラが誤って他テナントの集約 ID を渡された
         steps:
           - handler_execution_context.tenant_id と対象集約の tenant_id が不一致のため操作が拒否される
+  同じdedup_keyのlifecycle_workflow_runは重複enqueueされない:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" で IdentityManagement が dedup_key=\"lifecycle-workflow-run:run-1\" の\n        kind=\"lifecycle_workflow_run\" Job を EnqueueJob 済みである\n"
+    main_success:
+      - "IdentityManagement が同じ dedup_key で再度 EnqueueJob を呼ぶ (at-least-once 配信の再送や dispatcher の重複実行を模す)"
+      - 新規 Job は作成されず既存 Job の JobRef が返る
+  API processのenqueueが失敗してもperiodicなdispatcherが未関連付けのrunを回収する:
+    actor: System
+    given:
+      - "IdentityManagement が User mutation と同じ transaction で WorkflowRun (job_id 未設定、status=queued) を確定したが、API process の即時 EnqueueJob 呼び出しには失敗した"
+    main_success:
+      - worker process の periodic dispatcher が job_id が未関連付けの queued run を再走査する
+      - dispatcher が dedup_key=lifecycle-workflow-run:{run_id} で EnqueueJob を呼び job_id を関連付ける
+      - worker が Job を claim してハンドラを実行する

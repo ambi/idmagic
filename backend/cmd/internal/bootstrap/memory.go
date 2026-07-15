@@ -42,9 +42,10 @@ func assembleMemory() (*Dependencies, error) {
 			BrandingAssetStore: tenancymemory.NewTenantBrandingAssetStore(),
 		},
 		IdentityManagement: identitymanagement.Module{
-			UserRepo:  idmmemory.NewUserRepository(),
-			GroupRepo: idmmemory.NewGroupRepository(),
-			AgentRepo: idmmemory.NewAgentRepository(),
+			UserRepo:              idmmemory.NewUserRepository(),
+			GroupRepo:             idmmemory.NewGroupRepository(),
+			AgentRepo:             idmmemory.NewAgentRepository(),
+			LifecycleWorkflowRepo: idmmemory.NewLifecycleWorkflowRepository(),
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),

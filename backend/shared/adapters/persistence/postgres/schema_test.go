@@ -69,6 +69,8 @@ func TestPostgresSchemaTimestampColumnPolicy(t *testing.T) {
 		"scim_tokens",
 		"scim_user_refs",
 		"scim_group_refs",
+		"lifecycle_workflows",
+		"lifecycle_workflow_revisions",
 	}
 	for _, table := range allTables {
 		block := postgresTableBlock(t, schema, table)
@@ -105,6 +107,7 @@ func TestPostgresSchemaTimestampColumnPolicy(t *testing.T) {
 		"scim_tokens",
 		"scim_user_refs",
 		"scim_group_refs",
+		"lifecycle_workflows",
 	}
 	for _, table := range updatedTables {
 		block := postgresTableBlock(t, schema, table)

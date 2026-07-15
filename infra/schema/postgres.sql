@@ -729,3 +729,39 @@ CREATE INDEX jobs_lease_expiry_idx ON jobs (lease_expires_at) WHERE status = 'ru
 CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
     ON jobs (tenant_id, dedup_key)
     WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running');
+
+-- IdentityManagement lifecycle workflow definitions. Revisions are append-only;
+-- execution records will reference the revision they expand, never mutable JSON.
+CREATE TABLE lifecycle_workflows (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('draft', 'enabled', 'disabled', 'archived')),
+    current_revision BIGINT NOT NULL CHECK (current_revision >= 1),
+    enabled_revision BIGINT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lifecycle_workflows_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT lifecycle_workflows_tenant_name_unique UNIQUE (tenant_id, name),
+    CONSTRAINT lifecycle_workflows_enabled_revision_check CHECK (
+        (status = 'enabled' AND enabled_revision IS NOT NULL) OR
+        (status <> 'enabled' AND enabled_revision IS NULL)
+    )
+);
+
+CREATE TABLE lifecycle_workflow_revisions (
+    workflow_id UUID NOT NULL,
+    tenant_id UUID NOT NULL,
+    revision BIGINT NOT NULL CHECK (revision >= 1),
+    trigger JSONB NOT NULL,
+    actions JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (workflow_id, revision),
+    CONSTRAINT lifecycle_workflow_revisions_workflow_fkey
+        FOREIGN KEY (workflow_id) REFERENCES lifecycle_workflows(id) ON DELETE RESTRICT,
+    CONSTRAINT lifecycle_workflow_revisions_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX lifecycle_workflows_tenant_status_idx ON lifecycle_workflows (tenant_id, status);

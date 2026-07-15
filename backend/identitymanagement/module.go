@@ -11,7 +11,8 @@ import (
 
 // Module は identity-management context が所有する永続化 port の束。
 type Module struct {
-	UserRepo  ports.UserRepository
-	GroupRepo ports.GroupRepository
-	AgentRepo ports.AgentRepository
+	UserRepo              ports.UserRepository
+	GroupRepo             ports.GroupRepository
+	AgentRepo             ports.AgentRepository
+	LifecycleWorkflowRepo ports.LifecycleWorkflowRepository
 }

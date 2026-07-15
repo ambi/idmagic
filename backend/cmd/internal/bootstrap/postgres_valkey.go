@@ -123,9 +123,10 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
 		},
 		IdentityManagement: identitymanagement.Module{
-			UserRepo:  &idmpostgres.UserRepository{Pool: resilientDB},
-			GroupRepo: &idmpostgres.GroupRepository{Pool: resilientDB},
-			AgentRepo: &idmpostgres.AgentRepository{Pool: resilientDB},
+			UserRepo:              &idmpostgres.UserRepository{Pool: resilientDB},
+			GroupRepo:             &idmpostgres.GroupRepository{Pool: resilientDB},
+			AgentRepo:             &idmpostgres.AgentRepository{Pool: resilientDB},
+			LifecycleWorkflowRepo: &idmpostgres.LifecycleWorkflowRepository{Pool: resilientDB},
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
