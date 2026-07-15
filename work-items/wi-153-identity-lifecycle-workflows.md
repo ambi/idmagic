@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-126-async-job-runner]
 status: pending
 authors: ["tn"]
 risk: high
@@ -26,7 +26,7 @@ required action、通知、無効化などを実行する identity lifecycle wor
   - workflow run events と失敗時の監査モデルを追加する。
 - **go**:
   - workflow definition validator、trigger dispatcher、action executor、run repository を実装する。
-  - `wi-126-async-job-runner` が利用可能なら workflow run を job として実行する境界を用意する。
+  - `wi-126-async-job-runner` の job として workflow run を実行し、対象ユーザー数に関わらず HTTP リクエストをブロックしない。
 - **http**:
   - workflow CRUD、dry-run、run history API を追加する。
 - **ui**:
@@ -39,12 +39,14 @@ required action、通知、無効化などを実行する identity lifecycle wor
 - 外部 SaaS connector や webhook action の本番実装。
 - durable async job 基盤そのもの。これは `wi-126-async-job-runner` が扱う。
 - HR system からの inbound provisioning 実装。
+- 定期的な access 再確認 (certification / recertification)。これは [[wi-213-access-certification-campaigns]] が扱う。
+- ユーザー起点の access 要求と承認 workflow。これは [[wi-214-self-service-access-request-and-approval]] が扱う。
 
 ## Plan
 - 初期は identity lifecycle に閉じた構造化 workflow とし、trigger / action を enum で制約する。
 - action は冪等に実装し、同じ event の再処理で重複割当や重複 required action が起きないようにする。
 - workflow は dry-run を必須機能にし、対象ユーザーと実行予定 action を管理者が確認できるようにする。
-- async job 基盤が未完了でも同期実行で最小実装できるよう usecase 境界を分離し、基盤完了後に載せ替えられるようにする。
+- workflow run は `wi-126-async-job-runner` 上で非同期実行し、usecase 境界を job runner の実装詳細から分離する。
 
 ## Tasks
 - [ ] T001 [SCL] Workflow model、trigger/action、run events、scenarios を追加する。
