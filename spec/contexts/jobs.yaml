@@ -365,6 +365,13 @@ interfaces:
     errors:
       - InvalidRequestError
     access: internal
+objectives:
+  StandardDevelopmentStackStartup:
+    description: embedded PostgreSQL binary が取得済みの環境では、標準開発コマンドが API、worker、UI を利用可能な状態にするまでを 5 秒未満に保つ。初回の binary 取得時間は除く。
+    indicator: measurement.startup_latency < duration("5s")
+    target: 0.95
+    window: 30d
+    budgeting: occurrences
 scenarios:
   Dockerなしの標準開発環境でworkerがジョブを完了する:
     actor: Developer
@@ -375,6 +382,7 @@ scenarios:
       - 開発者が標準開発コマンドを実行する
       - embedded PostgreSQL と開発用 Valkey 互換 endpoint が起動し schema が適用される
       - API、worker、UI が起動する
+      - 初回 binary 取得を除き、標準開発コマンドの開始から API、worker、UI が利用可能になるまで 5 秒未満である
       - API が Job を enqueue する
       - worker が同じ Job を claim して Succeeded にする
       - API と worker は同じ PostgreSQL queue と Valkey 互換 endpoint を共有する
@@ -383,6 +391,23 @@ scenarios:
         condition: binary 取得、ポート確保、または schema 適用に失敗する
         steps:
           - 標準開発環境は API と UI を起動せず fail-fast する
+  Go source が未変更の標準開発環境は既存バイナリを再利用する:
+    actor: Developer
+    given:
+      - embedded PostgreSQL binary が取得済みである
+      - 前回の標準開発コマンドが API、worker、開発用インフラのバイナリを正常に生成している
+      - 前回の生成以降、backend 配下の Go source、go.mod、go.sum が変更されていない
+      - 開発用ポートが利用可能である
+    main_success:
+      - 開発者が標準開発コマンドを実行する
+      - 前回生成済みの API、worker、開発用インフラのバイナリを再利用する
+      - API、worker、UI が起動する
+      - 標準開発コマンドの開始から API、worker、UI が利用可能になるまで 5 秒未満である
+    extensions:
+      - at: 2
+        condition: backend 配下の Go source、go.mod、または go.sum が前回の生成以降に変更されている
+        steps:
+          - API、worker、開発用インフラのバイナリを再生成してから起動する
   ジョブをenqueueするとworkerが実行して成功する:
     actor: System
     given:

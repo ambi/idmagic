@@ -47,20 +47,23 @@ if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
 fi
 
 echo "Building local development binaries..."
-(
-  cd "$ROOT_DIR"
-  go build -o "$RUN_DIR/idmagic" ./backend/cmd/idmagic
-)
+if [ "$MODE" = "durable" ]; then
+  (
+    cd "$ROOT_DIR"
+    # Build all commands in one invocation so shared packages are compiled once
+    # and Go can schedule the independent command packages concurrently.
+    go build -o "$RUN_DIR/" ./backend/cmd/idmagic ./backend/cmd/idmagic-worker ./backend/cmd/idmagic-dev-infra
+  )
+else
+  (
+    cd "$ROOT_DIR"
+    go build -o "$RUN_DIR/idmagic" ./backend/cmd/idmagic
+  )
+fi
 
 DATABASE_URL=
 VALKEY_URL=
 if [ "$MODE" = "durable" ]; then
-  (
-    cd "$ROOT_DIR"
-    go build -o "$RUN_DIR/idmagic-worker" ./backend/cmd/idmagic-worker
-    go build -o "$RUN_DIR/idmagic-dev-infra" ./backend/cmd/idmagic-dev-infra
-  )
-
   READY_FILE="$RUN_DIR/infra-ready.json"
   echo "Starting embedded PostgreSQL and Valkey-compatible development endpoint"
   (
@@ -76,11 +79,11 @@ if [ "$MODE" = "durable" ]; then
       echo "Development infrastructure exited before becoming ready" >&2
       exit 1
     fi
-    if [ "$ready_wait" -ge 300 ]; then
+    if [ "$ready_wait" -ge 1800 ]; then
       echo "Timed out waiting for development infrastructure" >&2
       exit 1
     fi
-    sleep 1
+    sleep 0.05
     ready_wait=$((ready_wait + 1))
   done
 
