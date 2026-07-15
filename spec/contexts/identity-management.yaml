@@ -1728,7 +1728,7 @@ models:
         optional: true
   WorkflowRun:
     kind: entity
-    description: "WorkflowTrigger の発火 1 回から生成される実行単位。作成時の workflow_id、revision、\ntrigger snapshot、target_user_id、展開済み action list を固定し、後から definition を変更しても\n既存 run の意味は変わらない。job_id は dispatcher が enqueue 後に関連付ける。\n(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id) が一意制約。\n"
+    description: "WorkflowTrigger の発火 1 回から生成される実行単位。作成時の workflow_id、revision、\ntrigger snapshot、target_user_id、展開済み action list を固定し、後から definition を変更しても\n既存 run の意味は変わらない。job_id は dispatcher が enqueue 後に関連付ける。action 実行直前に\ntenant 内の対象 user と resource を再検証し、同一 target_user_id の run は triggered_at 順に\n直列化する。\n(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id) が一意制約。\n"
     identity: id
     fields:
       id:
@@ -3645,6 +3645,14 @@ scenarios:
       - Jobs が backoff 後に同じ run の Job を再試行する
       - retry では changed / no_op 済み step は再実行されず failed step だけが再実行される
       - "管理者が run detail を確認すると status は succeeded である"
+  同一ユーザーのrunは発火順に直列化され副作用前に再検証される:
+    actor: TenantAdministrator
+    given:
+      - "同じ target user に対する queued WorkflowRun が triggered_at 順に2件ある"
+    main_success:
+      - worker は先行 run が terminal になるまで後続 run の action を開始しない
+      - 各 action の直前に対象 user と group/application resource を同一 tenant 内で再取得する
+      - 削除済みまたは別 tenant の resource を参照する step は sanitised error code で failed checkpoint される
   disableは未開始のqueued runをcancelし実行中のrunはstep境界で止まる:
     actor: TenantAdministrator
     given:

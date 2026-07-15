@@ -60,7 +60,10 @@ func RunWorker() error {
 			return nil
 		},
 	}))
-	handlers.Register(domain.KindLifecycleWorkflowRun, idmusecases.LifecycleWorkflowRunHandler(deps.IdentityManagement.LifecycleWorkflowRunRepo))
+	handlers.Register(domain.KindLifecycleWorkflowRun, idmusecases.LifecycleWorkflowRunHandler(idmusecases.LifecycleWorkflowExecutorDeps{
+		RunRepo: deps.IdentityManagement.LifecycleWorkflowRunRepo, UserRepo: deps.IdentityManagement.UserRepo, GroupRepo: deps.IdentityManagement.GroupRepo,
+		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, EmailSender: deps.Authentication.EmailSender,
+	}))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())

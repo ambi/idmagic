@@ -2,6 +2,7 @@ package usecases_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -46,5 +47,38 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	stored, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
 	if err != nil || stored.JobID == nil {
 		t.Fatalf("run job attachment = %#v, %v", stored, err)
+	}
+}
+
+func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	users := idmmemory.NewUserRepository()
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: idmdomain.WorkflowStepPending}}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users})
+	params, _ := json.Marshal(map[string]string{"run_id": run.ID})
+	job := &jobsdomain.Job{TenantID: run.TenantID, Params: params}
+	if _, err := handler(ctx, job); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := users.FindBySub(ctx, user.ID)
+	if err != nil || stored.Lifecycle.Status != idmdomain.UserStatusDisabled {
+		t.Fatalf("user status = %#v, %v", stored, err)
+	}
+	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
+	if err != nil || storedSteps[0].Outcome != idmdomain.WorkflowStepChanged {
+		t.Fatalf("steps = %#v, %v", storedSteps, err)
+	}
+	if _, err := handler(ctx, job); err == nil {
+		t.Fatal("terminal run must not execute again")
 	}
 }

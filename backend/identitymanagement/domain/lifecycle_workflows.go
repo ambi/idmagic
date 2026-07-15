@@ -291,7 +291,7 @@ type WorkflowRun struct {
 }
 
 func (r WorkflowRun) Validate() error {
-	if r.ID == "" || r.TenantID == "" || r.WorkflowID == "" || r.Revision < 1 || r.SourceOccurrenceID == "" || r.TargetUserID == "" || !r.TriggerKind.Valid() || r.Status != WorkflowRunQueued || r.TriggeredAt.IsZero() || len(r.Actions) == 0 {
+	if r.ID == "" || r.TenantID == "" || r.WorkflowID == "" || r.Revision < 1 || r.SourceOccurrenceID == "" || r.TargetUserID == "" || !r.TriggerKind.Valid() || !r.Status.Valid() || r.TriggeredAt.IsZero() || len(r.Actions) == 0 {
 		return errors.New("invalid workflow run")
 	}
 	for _, action := range r.Actions {
@@ -300,6 +300,10 @@ func (r WorkflowRun) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (s WorkflowRunStatus) Valid() bool {
+	return s == WorkflowRunQueued || s == WorkflowRunRunning || s == WorkflowRunSucceeded || s == WorkflowRunPartiallyFailed || s == WorkflowRunFailed || s == WorkflowRunCanceled
 }
 
 type WorkflowStep struct {
@@ -312,10 +316,14 @@ type WorkflowStep struct {
 }
 
 func (s WorkflowStep) Validate() error {
-	if s.RunID == "" || s.Index < 0 || s.Outcome != WorkflowStepPending {
+	if s.RunID == "" || s.Index < 0 || !s.Outcome.Valid() {
 		return errors.New("invalid workflow step")
 	}
 	return s.Action.Validate()
+}
+
+func (o WorkflowStepOutcome) Valid() bool {
+	return o == WorkflowStepPending || o == WorkflowStepChanged || o == WorkflowStepNoop || o == WorkflowStepFailed || o == WorkflowStepCanceled
 }
 
 // TriggerMatch は User mutation が trigger を発火させたときに run に残す最小情報。

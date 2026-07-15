@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
@@ -13,13 +14,14 @@ import (
 type LifecycleWorkflowRunRepository struct {
 	mu          sync.RWMutex
 	runs        map[string]*idmdomain.WorkflowRun
+	steps       map[string][]idmdomain.WorkflowStep
 	occurrences map[string]string
 }
 
 var _ idmports.LifecycleWorkflowRunRepository = (*LifecycleWorkflowRunRepository)(nil)
 
 func NewLifecycleWorkflowRunRepository() *LifecycleWorkflowRunRepository {
-	return &LifecycleWorkflowRunRepository{runs: map[string]*idmdomain.WorkflowRun{}, occurrences: map[string]string{}}
+	return &LifecycleWorkflowRunRepository{runs: map[string]*idmdomain.WorkflowRun{}, steps: map[string][]idmdomain.WorkflowStep{}, occurrences: map[string]string{}}
 }
 func runKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
 func occurrenceKey(r *idmdomain.WorkflowRun) string {
@@ -56,8 +58,54 @@ func (r *LifecycleWorkflowRunRepository) SaveRun(_ context.Context, run *idmdoma
 		return false, nil
 	}
 	r.runs[runKey(run.TenantID, run.ID)] = cloneRun(run)
+	r.steps[runKey(run.TenantID, run.ID)] = slices.Clone(steps)
 	r.occurrences[key] = run.ID
 	return true, nil
+}
+
+func (r *LifecycleWorkflowRunRepository) ListSteps(_ context.Context, tenantID, runID string) ([]idmdomain.WorkflowStep, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return slices.Clone(r.steps[runKey(tenantID, runID)]), nil
+}
+
+func (r *LifecycleWorkflowRunRepository) StartRun(_ context.Context, tenantID, runID string, now time.Time) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	run := r.runs[runKey(tenantID, runID)]
+	if run == nil || run.Status != idmdomain.WorkflowRunQueued {
+		return false, nil
+	}
+	for _, other := range r.runs {
+		if other.TenantID == tenantID && other.TargetUserID == run.TargetUserID && other.ID != run.ID && !other.Status.Terminal() && other.TriggeredAt.Before(run.TriggeredAt) {
+			return false, nil
+		}
+	}
+	run.Status = idmdomain.WorkflowRunRunning
+	return true, nil
+}
+
+func (r *LifecycleWorkflowRunRepository) CheckpointStep(_ context.Context, tenantID, runID string, step idmdomain.WorkflowStep) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := runKey(tenantID, runID)
+	steps := r.steps[key]
+	if step.Index < 0 || step.Index >= len(steps) {
+		return nil
+	}
+	steps[step.Index] = step
+	r.steps[key] = steps
+	return nil
+}
+
+func (r *LifecycleWorkflowRunRepository) CompleteRun(_ context.Context, tenantID, runID string, status idmdomain.WorkflowRunStatus, _ time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	run := r.runs[runKey(tenantID, runID)]
+	if run != nil {
+		run.Status = status
+	}
+	return nil
 }
 
 func (r *LifecycleWorkflowRunRepository) FindRun(_ context.Context, tenantID, runID string) (*idmdomain.WorkflowRun, error) {

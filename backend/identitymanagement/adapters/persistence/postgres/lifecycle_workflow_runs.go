@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
@@ -119,4 +120,46 @@ func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(ctx context.Context,
 func (r *LifecycleWorkflowRunRepository) AttachJob(ctx context.Context, tenantID, runID, jobID string) (bool, error) {
 	tag, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_runs SET job_id=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND status='queued' AND job_id IS NULL`, tenantID, runID, jobID)
 	return tag.RowsAffected() == 1, err
+}
+
+func (r *LifecycleWorkflowRunRepository) ListSteps(ctx context.Context, tenantID, runID string) ([]idmdomain.WorkflowStep, error) {
+	rows, err := r.Pool.Query(ctx, `SELECT s.step_index,s.action,s.outcome,COALESCE(s.error_code,''),s.completed_at FROM lifecycle_workflow_steps s JOIN lifecycle_workflow_runs r ON r.id=s.run_id WHERE r.tenant_id=$1 AND s.run_id=$2 ORDER BY s.step_index`, tenantID, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []idmdomain.WorkflowStep{}
+	for rows.Next() {
+		var step idmdomain.WorkflowStep
+		var action []byte
+		var completed pgtype.Timestamptz
+		step.RunID = runID
+		if err := rows.Scan(&step.Index, &action, &step.Outcome, &step.ErrorCode, &completed); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(action, &step.Action); err != nil {
+			return nil, err
+		}
+		if completed.Valid {
+			v := completed.Time
+			step.CompletedAt = &v
+		}
+		out = append(out, step)
+	}
+	return out, rows.Err()
+}
+
+func (r *LifecycleWorkflowRunRepository) StartRun(ctx context.Context, tenantID, runID string, _ time.Time) (bool, error) {
+	tag, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_runs candidate SET status='running',updated_at=now() WHERE candidate.tenant_id=$1 AND candidate.id=$2 AND candidate.status='queued' AND NOT EXISTS (SELECT 1 FROM lifecycle_workflow_runs prior WHERE prior.tenant_id=candidate.tenant_id AND prior.target_user_id=candidate.target_user_id AND prior.id<>candidate.id AND prior.status IN ('queued','running') AND prior.triggered_at<candidate.triggered_at)`, tenantID, runID)
+	return tag.RowsAffected() == 1, err
+}
+
+func (r *LifecycleWorkflowRunRepository) CheckpointStep(ctx context.Context, tenantID, runID string, step idmdomain.WorkflowStep) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_steps SET outcome=$3,error_code=NULLIF($4,''),completed_at=$5 WHERE run_id=$1 AND step_index=$2 AND EXISTS (SELECT 1 FROM lifecycle_workflow_runs WHERE id=$1 AND tenant_id=$6)`, runID, step.Index, step.Outcome, step.ErrorCode, step.CompletedAt, tenantID)
+	return err
+}
+
+func (r *LifecycleWorkflowRunRepository) CompleteRun(ctx context.Context, tenantID, runID string, status idmdomain.WorkflowRunStatus, _ time.Time) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_runs SET status=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenantID, runID, status)
+	return err
 }
