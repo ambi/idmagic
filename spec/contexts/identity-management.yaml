@@ -666,7 +666,7 @@ models:
         constraints:
           - non_empty
           - max_length: 64
-        description: 生成識別子 group_<uuid>。不変。
+        description: 生成識別子。UUID v4。不変。
       tenant_id:
         type: String
         default: default
@@ -894,7 +894,7 @@ models:
         constraints:
           - non_empty
           - max_length: 64
-        description: 生成識別子 agent_<uuid>。不変。
+        description: 生成識別子。UUID v4。不変。
       tenant_id:
         type: String
         default: default

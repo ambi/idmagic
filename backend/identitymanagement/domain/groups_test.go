@@ -43,12 +43,12 @@ func TestGroupValidate(t *testing.T) {
 	}
 }
 
-func TestNewGroupIDPrefix(t *testing.T) {
+func TestNewGroupIDIsUUID(t *testing.T) {
 	id, err := idmdomain.NewGroupID()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(id) <= len("group_") || id[:len("group_")] != "group_" {
+	if len(id) != 36 {
 		t.Fatalf("unexpected group id %q", id)
 	}
 }

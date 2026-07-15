@@ -79,11 +79,7 @@ func (b AgentCredentialBinding) Validate() error {
 	return spec.Validate(agentCredentialBindingSchema, &b)
 }
 
-// NewAgentID は不変の Agent 識別子 agent_<uuid> を生成する。
+// NewAgentID は不変の Agent 識別子 (UUID v4) を生成する。
 func NewAgentID() (string, error) {
-	id, err := spec.NewUUIDv4()
-	if err != nil {
-		return "", err
-	}
-	return "agent_" + id, nil
+	return spec.NewUUIDv4()
 }

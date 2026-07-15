@@ -82,11 +82,10 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 			return nil, NewOAuthError("invalid_client_metadata", "private_key_jwt requires non-empty inline jwks")
 		}
 	}
-	id, err := generateOpaqueToken(16)
+	clientID, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, err
 	}
-	clientID := "c_" + id
 	var secret string
 	var secretHash *string
 	usesSecret := in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretBasic ||

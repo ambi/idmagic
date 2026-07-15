@@ -112,20 +112,20 @@ func TestValidateHappyAndFailure(t *testing.T) {
 	}
 }
 
-func TestNewIDPrefixes(t *testing.T) {
+func TestNewIDsAreUUIDs(t *testing.T) {
 	agentID, err := idmdomain.NewAgentID()
 	if err != nil {
 		t.Fatalf("NewAgentID: %v", err)
 	}
-	if len(agentID) <= len("agent_") || agentID[:6] != "agent_" {
-		t.Fatalf("NewAgentID = %q, want agent_ prefix", agentID)
+	if len(agentID) != 36 {
+		t.Fatalf("NewAgentID = %q, want UUID", agentID)
 	}
 	groupID, err := idmdomain.NewGroupID()
 	if err != nil {
 		t.Fatalf("NewGroupID: %v", err)
 	}
-	if len(groupID) <= len("group_") || groupID[:6] != "group_" {
-		t.Fatalf("NewGroupID = %q, want group_ prefix", groupID)
+	if len(groupID) != 36 {
+		t.Fatalf("NewGroupID = %q, want UUID", groupID)
 	}
 }
 

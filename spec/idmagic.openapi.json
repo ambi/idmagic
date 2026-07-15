@@ -18213,7 +18213,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "description": "生成識別子 group_<uuid>。不変。"
+            "description": "生成識別子。UUID v4。不変。"
           },
           "tenant_id": {
             "type": "string",

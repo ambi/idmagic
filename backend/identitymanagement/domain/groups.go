@@ -127,13 +127,9 @@ func (r DynamicGroupRule) Validate() error {
 	return nil
 }
 
-// NewGroupID は不変の Group 識別子 group_<uuid> を生成する。
+// NewGroupID は不変の Group 識別子 (UUID v4) を生成する。
 func NewGroupID() (string, error) {
-	id, err := spec.NewUUIDv4()
-	if err != nil {
-		return "", err
-	}
-	return "group_" + id, nil
+	return spec.NewUUIDv4()
 }
 
 // EffectiveRoles は認可で用いる有効ロール集合を返す (ADR-038)。
