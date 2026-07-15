@@ -34,6 +34,8 @@ func assembleMemory() (*Dependencies, error) {
 	if err != nil {
 		return nil, err
 	}
+	userRepo := idmmemory.NewUserRepository()
+	workflowRunRepo := idmmemory.NewLifecycleWorkflowRunRepository()
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenancymemory.NewTenantRepository(),
@@ -42,10 +44,12 @@ func assembleMemory() (*Dependencies, error) {
 			BrandingAssetStore: tenancymemory.NewTenantBrandingAssetStore(),
 		},
 		IdentityManagement: identitymanagement.Module{
-			UserRepo:              idmmemory.NewUserRepository(),
-			GroupRepo:             idmmemory.NewGroupRepository(),
-			AgentRepo:             idmmemory.NewAgentRepository(),
-			LifecycleWorkflowRepo: idmmemory.NewLifecycleWorkflowRepository(),
+			UserRepo:                 userRepo,
+			GroupRepo:                idmmemory.NewGroupRepository(),
+			AgentRepo:                idmmemory.NewAgentRepository(),
+			LifecycleWorkflowRepo:    idmmemory.NewLifecycleWorkflowRepository(),
+			LifecycleWorkflowRunRepo: workflowRunRepo,
+			UserWorkflowCapture:      &idmmemory.UserWorkflowCapture{Users: userRepo, Runs: workflowRunRepo},
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),

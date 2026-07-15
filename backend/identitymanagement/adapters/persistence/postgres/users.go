@@ -128,6 +128,10 @@ func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*idmdo
 }
 
 func (r *UserRepository) Save(ctx context.Context, u *idmdomain.User) error {
+	return saveUser(ctx, r.Pool, u)
+}
+
+func saveUser(ctx context.Context, db sqlcgen.DBTX, u *idmdomain.User) error {
 	// lifecycle / attributes は JSONB に格納する (ADR-039)。多値属性は本 PR では
 	// 単一カラムで持ち、検索が要るようになった段階で別テーブル化する。
 	roles, err := json.Marshal(u.Roles)
@@ -142,7 +146,7 @@ func (r *UserRepository) Save(ctx context.Context, u *idmdomain.User) error {
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).SaveUser(ctx, sqlcgen.SaveUserParams{
+	return sqlcgen.New(db).SaveUser(ctx, sqlcgen.SaveUserParams{
 		ID:                u.ID,
 		TenantID:          u.TenantID,
 		PreferredUsername: u.PreferredUsername,

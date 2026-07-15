@@ -60,6 +60,8 @@ func RunWorker() error {
 			return nil
 		},
 	}))
+	handlers.Register(domain.KindLifecycleWorkflowRun, idmusecases.LifecycleWorkflowRunHandler(deps.IdentityManagement.LifecycleWorkflowRunRepo))
+	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
 	runner := usecases.NewRunner(
@@ -118,6 +120,21 @@ func RunWorker() error {
 	return nil
 }
 
+func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		if err := idmusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, idmusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdentityManagement.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
+			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
 // newAdminUserDeps builds the AdminUserDeps used by worker-run admin job
 // handlers (currently CSV user import). Emit is wired through
 // bootstrap.Dependencies.NewEmitFunc so business DomainEvents reach
@@ -137,6 +154,9 @@ func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmus
 		MfaFactorRepo:       deps.Authentication.MfaFactorRepo,
 		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo,
+		WorkflowRepo:        deps.IdentityManagement.LifecycleWorkflowRepo,
+		WorkflowRunRepo:     deps.IdentityManagement.LifecycleWorkflowRunRepo,
+		WorkflowCapture:     deps.IdentityManagement.UserWorkflowCapture,
 		Emit: func(event spec.DomainEvent) error {
 			emit(event)
 			return nil

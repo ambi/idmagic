@@ -7,6 +7,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -54,6 +55,9 @@ type AdminUserDeps struct {
 	PasswordHasher      authnports.PasswordHasher
 	PasswordHistoryRepo authnports.PasswordHistoryRepository
 	Emit                func(spec.DomainEvent) error
+	WorkflowRepo        idmports.LifecycleWorkflowRepository
+	WorkflowRunRepo     idmports.LifecycleWorkflowRunRepository
+	WorkflowCapture     idmports.UserWorkflowCapture
 	// SoftDeleteGraceSeconds は soft-delete の猶予期間 (秒)。0 のとき
 	// UserSoftDeleteGracePeriodSeconds を既定として使う。テストで短縮するために注入する。
 	SoftDeleteGraceSeconds int
@@ -117,7 +121,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	if err := user.Validate(); err != nil {
 		return nil, err
 	}
-	if err := deps.UserRepo.Save(ctx, user); err != nil {
+	if err := captureUserMutation(ctx, deps, nil, user, nil, now); err != nil {
 		return nil, err
 	}
 	if deps.GroupRepo != nil {
@@ -132,6 +136,39 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 		return nil, err
 	}
 	return user, nil
+}
+
+// captureUserMutation commits the user state and every run derived from the
+// same occurrence together when the configured adapter supports it. The
+// fallback keeps lightweight unit-test wiring usable; production adapters
+// always provide WorkflowCapture.
+func captureUserMutation(ctx context.Context, deps AdminUserDeps, before, after *idmdomain.User, changed []string, now time.Time) error {
+	if deps.WorkflowRepo == nil {
+		return deps.UserRepo.Save(ctx, after)
+	}
+	occurrenceID, err := spec.NewUUIDv4()
+	if err != nil {
+		return err
+	}
+	runs, steps, err := PlanLifecycleWorkflowRuns(ctx, deps.WorkflowRepo, before, after, changed, occurrenceID, "", now)
+	if err != nil {
+		return err
+	}
+	if deps.WorkflowCapture != nil {
+		return deps.WorkflowCapture.SaveUserAndRuns(ctx, after, runs, steps)
+	}
+	if err := deps.UserRepo.Save(ctx, after); err != nil {
+		return err
+	}
+	if deps.WorkflowRunRepo == nil {
+		return nil
+	}
+	for i, run := range runs {
+		if _, err := deps.WorkflowRunRepo.SaveRun(ctx, run, steps[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type UpdateUserInput struct {
@@ -200,7 +237,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*i
 			return nil, errors.Join(ErrInvalidAttribute, err)
 		}
 		updated.Attributes = *in.Attributes
-		changed = append(changed, "attributes")
+		changed = append(changed, changedAttributeFields(user.Attributes, updated.Attributes)...)
 	}
 	if in.Email != nil && !equalOptionalString(user.Email, in.Email) {
 		updated.Email = in.Email
@@ -228,7 +265,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*i
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
+	if err := captureUserMutation(ctx, deps, user, &updated, changed, now); err != nil {
 		return nil, err
 	}
 	if deps.GroupRepo != nil {
@@ -280,7 +317,7 @@ func SetUserDisabled(
 		updated.Lifecycle.StatusChangedAt = &now
 	}
 	updated.UpdatedAt = now
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
+	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
 		return nil, err
 	}
 	if deps.GroupRepo != nil {
@@ -429,6 +466,24 @@ func equalOptionalString(left, right *string) bool {
 		left != nil && right != nil && *left == *right
 }
 
+func changedAttributeFields(before, after map[string]idmdomain.AttributeValue) []string {
+	keys := make(map[string]struct{}, len(before)+len(after))
+	for key := range before {
+		keys[key] = struct{}{}
+	}
+	for key := range after {
+		keys[key] = struct{}{}
+	}
+	changed := make([]string, 0, len(keys))
+	for key := range keys {
+		if !reflect.DeepEqual(before[key], after[key]) {
+			changed = append(changed, key)
+		}
+	}
+	slices.Sort(changed)
+	return changed
+}
+
 func adminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error {
 	if sink == nil {
 		return nil
@@ -539,7 +594,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err := updated.Validate(); err != nil {
 		return err
 	}
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
+	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
 		return err
 	}
 	if deps.GroupRepo != nil {
@@ -577,7 +632,7 @@ func RestoreUser(
 	updated.Lifecycle.Status = idmdomain.UserStatusActive
 	updated.Lifecycle.StatusChangedAt = &now
 	updated.UpdatedAt = now
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
+	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
 		return nil, err
 	}
 	if deps.GroupRepo != nil {

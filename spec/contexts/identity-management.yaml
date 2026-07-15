@@ -3577,6 +3577,19 @@ scenarios:
       - "worker が run を実行し add_group_member と assign_application の step が changed になる"
       - "run の status は succeeded である"
       - "\"LifecycleWorkflowRunSucceeded\" が発行される"
+  User変更とWorkflowRunのcaptureは同じ整合性境界で確定しenqueue障害から回復する:
+    actor: TenantAdministrator
+    given:
+      - "user_created / user_attributes_changed / user_status_changed のいずれかに一致する enabled workflow がある"
+    main_success:
+      - User mutation と重複排除キー (tenant_id, workflow_id, revision, source_occurrence_id, target_user_id) を持つ queued WorkflowRun および pending WorkflowStep が同一 transaction で確定する
+      - 同じ source occurrence の再配送は既存 WorkflowRun に収束し、step を重複作成しない
+    extensions:
+      - at: 2
+        condition: Job enqueue が一時的に失敗する
+        steps:
+          - WorkflowRun は job_id 未設定の queued 状態で残る
+          - worker の周期的 dispatcher が未 enqueue run を再走査し、重複しない lifecycle_workflow_run Job を関連付ける
   既に目的状態のactionはno_opとして扱われる:
     actor: TenantAdministrator
     given:

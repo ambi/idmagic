@@ -22,6 +22,46 @@ type LifecycleWorkflowDeps struct {
 	Repo idmports.LifecycleWorkflowRepository
 }
 
+// PlanLifecycleWorkflowRuns evaluates enabled definitions against one committed
+// mutation. It intentionally stores no before/after attribute values.
+func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkflowRepository, before, after *idmdomain.User, changed []string, occurrenceID, originRunID string, now time.Time) ([]*idmdomain.WorkflowRun, [][]idmdomain.WorkflowStep, error) {
+	if repo == nil || after == nil || occurrenceID == "" {
+		return nil, nil, nil
+	}
+	workflows, err := repo.List(ctx, after.TenantID)
+	if err != nil {
+		return nil, nil, err
+	}
+	runs := []*idmdomain.WorkflowRun{}
+	plans := [][]idmdomain.WorkflowStep{}
+	for _, workflow := range workflows {
+		if workflow.Status != idmdomain.LifecycleWorkflowEnabled || workflow.EnabledRevision == nil {
+			continue
+		}
+		revision, findErr := repo.FindRevision(ctx, after.TenantID, workflow.ID, *workflow.EnabledRevision)
+		if findErr != nil {
+			return nil, nil, findErr
+		}
+		if revision == nil {
+			continue
+		}
+		match, ok := idmdomain.EvaluateWorkflowTrigger(revision.Trigger, before, after, changed, originRunID)
+		if !ok {
+			continue
+		}
+		id, idErr := spec.NewUUIDv4()
+		if idErr != nil {
+			return nil, nil, idErr
+		}
+		run, steps, planErr := idmdomain.PlanWorkflowRun(id, *revision, after.ID, occurrenceID, match, now)
+		if planErr != nil {
+			return nil, nil, planErr
+		}
+		runs, plans = append(runs, run), append(plans, steps)
+	}
+	return runs, plans, nil
+}
+
 type CreateLifecycleWorkflowInput struct {
 	Name    string
 	Trigger idmdomain.WorkflowTrigger

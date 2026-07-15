@@ -765,3 +765,38 @@ CREATE TABLE lifecycle_workflow_revisions (
 );
 
 CREATE INDEX lifecycle_workflows_tenant_status_idx ON lifecycle_workflows (tenant_id, status);
+
+CREATE TABLE lifecycle_workflow_runs (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    workflow_id UUID NOT NULL,
+    revision BIGINT NOT NULL,
+    source_occurrence_id TEXT NOT NULL,
+    target_user_id UUID NOT NULL,
+    trigger_kind TEXT NOT NULL,
+    changed_fields JSONB NOT NULL DEFAULT '[]'::jsonb,
+    actions JSONB NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'partially_failed', 'failed', 'canceled')),
+    job_id UUID,
+    triggered_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lifecycle_workflow_runs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT lifecycle_workflow_runs_workflow_fkey FOREIGN KEY (workflow_id) REFERENCES lifecycle_workflows(id) ON DELETE RESTRICT,
+    CONSTRAINT lifecycle_workflow_runs_target_user_fkey FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT lifecycle_workflow_runs_occurrence_unique UNIQUE (tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)
+);
+
+CREATE TABLE lifecycle_workflow_steps (
+    run_id UUID NOT NULL,
+    step_index INTEGER NOT NULL CHECK (step_index >= 0),
+    action JSONB NOT NULL,
+    outcome TEXT NOT NULL CHECK (outcome IN ('pending', 'changed', 'no_op', 'failed', 'canceled')),
+    error_code TEXT,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (run_id, step_index),
+    CONSTRAINT lifecycle_workflow_steps_run_fkey FOREIGN KEY (run_id) REFERENCES lifecycle_workflow_runs(id) ON DELETE CASCADE
+);
+
+CREATE INDEX lifecycle_workflow_runs_unenqueued_idx ON lifecycle_workflow_runs (triggered_at) WHERE status = 'queued' AND job_id IS NULL;

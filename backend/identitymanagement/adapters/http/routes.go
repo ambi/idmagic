@@ -23,21 +23,24 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 
-	UserRepo              idmports.UserRepository
-	GroupRepo             idmports.GroupRepository
-	AgentRepo             idmports.AgentRepository
-	ClientRepo            oauthports.OAuth2ClientRepository
-	ScimRepo              scimports.ScimRepository
-	AttrSchemaRepo        tenantports.TenantUserAttributeSchemaRepository
-	ConsentRepo           oauthports.ConsentRepository
-	RefreshStore          oauthports.RefreshTokenStore
-	DeviceCodeStore       oauthports.DeviceCodeStore
-	MfaFactorRepo         authnports.MfaFactorRepository
-	PasswordHasher        authnports.PasswordHasher
-	PasswordHistoryRepo   authnports.PasswordHistoryRepository
-	EmailChangeTokenStore authnports.EmailChangeTokenStore
-	EmailSender           authnports.EmailSender
-	JobRepo               jobsports.JobRepository
+	UserRepo                 idmports.UserRepository
+	GroupRepo                idmports.GroupRepository
+	AgentRepo                idmports.AgentRepository
+	ClientRepo               oauthports.OAuth2ClientRepository
+	ScimRepo                 scimports.ScimRepository
+	AttrSchemaRepo           tenantports.TenantUserAttributeSchemaRepository
+	ConsentRepo              oauthports.ConsentRepository
+	RefreshStore             oauthports.RefreshTokenStore
+	DeviceCodeStore          oauthports.DeviceCodeStore
+	MfaFactorRepo            authnports.MfaFactorRepository
+	PasswordHasher           authnports.PasswordHasher
+	PasswordHistoryRepo      authnports.PasswordHistoryRepository
+	EmailChangeTokenStore    authnports.EmailChangeTokenStore
+	EmailSender              authnports.EmailSender
+	JobRepo                  jobsports.JobRepository
+	LifecycleWorkflowRepo    idmports.LifecycleWorkflowRepository
+	LifecycleWorkflowRunRepo idmports.LifecycleWorkflowRunRepository
+	UserWorkflowCapture      idmports.UserWorkflowCapture
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {

@@ -290,6 +290,18 @@ type WorkflowRun struct {
 	TriggeredAt        time.Time           `json:"triggered_at"`
 }
 
+func (r WorkflowRun) Validate() error {
+	if r.ID == "" || r.TenantID == "" || r.WorkflowID == "" || r.Revision < 1 || r.SourceOccurrenceID == "" || r.TargetUserID == "" || !r.TriggerKind.Valid() || r.Status != WorkflowRunQueued || r.TriggeredAt.IsZero() || len(r.Actions) == 0 {
+		return errors.New("invalid workflow run")
+	}
+	for _, action := range r.Actions {
+		if err := action.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type WorkflowStep struct {
 	RunID       string              `json:"run_id"`
 	Index       int                 `json:"index"`
@@ -297,6 +309,13 @@ type WorkflowStep struct {
 	Outcome     WorkflowStepOutcome `json:"outcome"`
 	ErrorCode   string              `json:"error_code,omitempty"`
 	CompletedAt *time.Time          `json:"completed_at,omitempty"`
+}
+
+func (s WorkflowStep) Validate() error {
+	if s.RunID == "" || s.Index < 0 || s.Outcome != WorkflowStepPending {
+		return errors.New("invalid workflow step")
+	}
+	return s.Action.Validate()
 }
 
 // TriggerMatch は User mutation が trigger を発火させたときに run に残す最小情報。

@@ -39,10 +39,13 @@ const (
 	KindUserImportPreview     JobKind = "user_import_preview"
 	KindUserImportApply       JobKind = "user_import_apply"
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
+	// KindLifecycleWorkflowRun executes a captured lifecycle workflow run.
+	// The handler is registered by IdentityManagement's worker wiring.
+	KindLifecycleWorkflowRun JobKind = "lifecycle_workflow_run"
 )
 
 func (k JobKind) Valid() bool {
-	return k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply || k == KindDynamicGroupReconcile
+	return k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply || k == KindDynamicGroupReconcile || k == KindLifecycleWorkflowRun
 }
 
 // JobLifecycleEvent is a JobLifecycle state machine event.
