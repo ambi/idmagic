@@ -282,15 +282,18 @@ type Objective struct {
 }
 
 type Flow struct {
-	Description string           `yaml:"description"`
-	Entry       string           `yaml:"entry"`
-	Transitions []FlowTransition `yaml:"transitions"`
-	Annotations map[string]any   `yaml:"annotations"`
+	Entry string              `yaml:"entry"`
+	Views map[string]FlowView `yaml:"views"`
 }
 
-type FlowTransition struct {
-	From      string `yaml:"from"`
+type FlowView struct {
+	Sees string       `yaml:"sees"`
+	Does []FlowAction `yaml:"does"`
+}
+
+type FlowAction struct {
 	Action    string `yaml:"action"`
+	Does      string `yaml:"does"`
 	Interface string `yaml:"interface"`
 	To        string `yaml:"to"`
 	External  bool   `yaml:"external"`

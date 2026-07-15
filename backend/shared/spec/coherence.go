@@ -245,12 +245,14 @@ func (s *SCL) validateAuthorizationAndAccess() error {
 
 func (s *SCL) validateFlows() error {
 	for name, flow := range s.Flows {
-		for _, transition := range flow.Transitions {
-			if transition.Interface == "" {
-				continue
-			}
-			if _, ok := s.Interfaces[transition.Interface]; !ok {
-				return fmt.Errorf("flow %s: unknown interface %s", name, transition.Interface)
+		for _, view := range flow.Views {
+			for _, action := range view.Does {
+				if action.Interface == "" {
+					continue
+				}
+				if _, ok := s.Interfaces[action.Interface]; !ok {
+					return fmt.Errorf("flow %s: unknown interface %s", name, action.Interface)
+				}
 			}
 		}
 	}
