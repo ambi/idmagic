@@ -900,6 +900,53 @@ type GroupMemberRemoved struct {
 func (e *GroupMemberRemoved) EventType() string     { return "GroupMemberRemoved" }
 func (e *GroupMemberRemoved) OccurredAt() time.Time { return e.At }
 
+type DynamicGroupRuleUpdated struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
+	RuleVersion int64     `json:"ruleVersion"`
+}
+
+func (e *DynamicGroupRuleUpdated) EventType() string     { return "DynamicGroupRuleUpdated" }
+func (e *DynamicGroupRuleUpdated) OccurredAt() time.Time { return e.At }
+
+type DynamicGroupRuleEnabled struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
+	RuleVersion int64     `json:"ruleVersion"`
+}
+
+func (e *DynamicGroupRuleEnabled) EventType() string     { return "DynamicGroupRuleEnabled" }
+func (e *DynamicGroupRuleEnabled) OccurredAt() time.Time { return e.At }
+
+type DynamicGroupRuleDisabled struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	GroupID     string    `json:"groupId"`
+	RuleVersion int64     `json:"ruleVersion"`
+}
+
+func (e *DynamicGroupRuleDisabled) EventType() string     { return "DynamicGroupRuleDisabled" }
+func (e *DynamicGroupRuleDisabled) OccurredAt() time.Time { return e.At }
+
+type DynamicMembershipEvaluated struct {
+	At             time.Time `json:"-"`
+	TenantID       string    `json:"tenantId"`
+	GroupID        string    `json:"groupId"`
+	RuleVersion    int64     `json:"ruleVersion"`
+	AddedCount     int       `json:"addedCount"`
+	RemovedCount   int       `json:"removedCount"`
+	UnchangedCount int       `json:"unchangedCount"`
+	ErrorCount     int       `json:"errorCount"`
+}
+
+func (e *DynamicMembershipEvaluated) EventType() string     { return "DynamicMembershipEvaluated" }
+func (e *DynamicMembershipEvaluated) OccurredAt() time.Time { return e.At }
+
 type MfaEnrollmentRequired struct {
 	At        time.Time `json:"-"`
 	TenantID  string    `json:"tenantId"`

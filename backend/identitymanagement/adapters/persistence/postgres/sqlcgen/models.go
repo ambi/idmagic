@@ -163,6 +163,17 @@ type Consent struct {
 	RevokedAt pgtype.Timestamptz
 }
 
+type DynamicGroupRule struct {
+	GroupID              string
+	TenantID             string
+	Expression           string
+	Enabled              bool
+	Version              int64
+	ReferencedAttributes []byte
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
 type EmailChangeToken struct {
 	TokenHash string
 	UserID    string
@@ -172,19 +183,22 @@ type EmailChangeToken struct {
 }
 
 type Group struct {
-	ID          string
-	TenantID    string
-	Name        string
-	Description pgtype.Text
-	Roles       []byte
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             string
+	TenantID       string
+	Name           string
+	Description    pgtype.Text
+	Roles          []byte
+	MembershipType string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type GroupMember struct {
-	GroupID   string
-	UserID    string
-	CreatedAt time.Time
+	GroupID     string
+	UserID      string
+	CreatedAt   time.Time
+	Source      string
+	RuleVersion pgtype.Int8
 }
 
 type Job struct {

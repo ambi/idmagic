@@ -71,6 +71,23 @@ imported users are required to set a password on first sign-in. CSV jobs require
 the standard `just dev` or `just dev-compose`; they are unavailable in
 `just dev-memory`.
 
+### Dynamic groups
+
+Tenant administrators can create either manual groups or CEL-based dynamic groups.
+Dynamic rules are boolean expressions over the `user` object, for example
+`user.department == "Engineering" && user.email.endsWith("@example.com")`.
+Attribute names come from the tenant user-attribute schema; string comparison is
+case-sensitive unless the rule explicitly applies `lowerAscii()`. The supported
+surface is intentionally restricted to boolean/comparison operators, list macros,
+safe string helpers, timestamps, and bounded regular expressions.
+
+Dynamic memberships are exclusive from manual membership changes. Rule edits and
+enabling enqueue a full reconciliation job, while a single user's attribute or
+lifecycle change is evaluated synchronously. Memberships carry the rule version;
+stale versions never contribute roles or application assignments. Evaluation errors
+fail closed, and an attribute referenced by a stored rule cannot be deleted or have
+its type changed until the rule is updated.
+
 ### Manual Local Run
 
 If you prefer separate terminals, start shared PostgreSQL/Valkey yourself and

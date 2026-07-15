@@ -19,9 +19,12 @@ import {
   getAdminGroup,
   listAdminGroups,
   listAdminUsers,
+  previewDynamicGroupRule,
   removeAdminGroupMember,
+  setDynamicGroupRuleEnabled,
   tenantURL,
   updateAdminGroup,
+  updateDynamicGroupRule,
 } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
@@ -38,7 +41,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
-import type { AdminGroup, AdminGroupMember, AdminUser } from '../../types'
+import type { AdminGroup, AdminGroupMember, AdminUser, DynamicGroupPreview } from '../../types'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 
 export function AdminGroupsPage({
@@ -287,6 +290,10 @@ function GroupDetailCard({
   const [localBusy, setLocalBusy] = useState(false)
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [rule, setRule] = useState(group?.dynamic_rule)
+  const [ruleExpression, setRuleExpression] = useState(group?.dynamic_rule?.expression ?? '')
+  const [previewUserIDs, setPreviewUserIDs] = useState<string[]>([])
+  const [preview, setPreview] = useState<DynamicGroupPreview[]>([])
   const t = useDictionary(adminGroupsDictionary)
 
   useEffect(() => {
@@ -301,6 +308,10 @@ function GroupDetailCard({
       if (cancelled) return
       setMembers(detail.members)
       setAllUsers(users)
+      setRule(detail.group.dynamic_rule)
+      setRuleExpression(detail.group.dynamic_rule?.expression ?? '')
+      setPreview([])
+      setPreviewUserIDs([])
     })
     return () => {
       cancelled = true
@@ -438,6 +449,105 @@ function GroupDetailCard({
         </div>
       </dl>
 
+      {group.membership_type === 'dynamic' ? (
+        <section className="border-t border-slate-100 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
+              {t.dynamicRuleHeading}
+            </h3>
+            <span
+              className={`rounded-md px-2 py-1 text-xs font-semibold ${rule?.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}
+            >
+              {rule?.enabled ? t.ruleEnabled : t.ruleDisabled}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">{t.dynamicRuleHelp}</p>
+          <textarea
+            value={ruleExpression}
+            onChange={(event) => setRuleExpression(event.target.value)}
+            aria-label={t.dynamicRuleExpression}
+            className="mt-3 min-h-28 w-full rounded-md border border-slate-300 bg-white p-3 font-mono text-sm"
+            placeholder={'user.department == "Engineering"'}
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              disabled={localBusy || !ruleExpression.trim()}
+              onClick={() =>
+                void withLocal(async () => {
+                  const saved = await updateDynamicGroupRule(csrfToken, group.id, ruleExpression)
+                  setRule(saved)
+                })
+              }
+            >
+              {t.saveRule}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={localBusy || !ruleExpression.trim() || previewUserIDs.length === 0}
+              onClick={() =>
+                void withLocal(async () => {
+                  const result = await previewDynamicGroupRule(
+                    csrfToken,
+                    group.id,
+                    ruleExpression,
+                    previewUserIDs,
+                  )
+                  setPreview(result.results)
+                })
+              }
+            >
+              {t.previewRule}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={localBusy || !rule}
+              onClick={() =>
+                void withLocal(async () => {
+                  const saved = await setDynamicGroupRuleEnabled(
+                    csrfToken,
+                    group.id,
+                    !rule?.enabled,
+                  )
+                  setRule(saved)
+                  await reloadMembers()
+                })
+              }
+            >
+              {rule?.enabled ? t.disableRule : t.enableRule}
+            </Button>
+          </div>
+          <Label htmlFor={`dynamic-preview-${group.id}`} className="mt-4 block">
+            {t.previewUsers}
+          </Label>
+          <select
+            id={`dynamic-preview-${group.id}`}
+            multiple
+            value={previewUserIDs}
+            onChange={(event) =>
+              setPreviewUserIDs(
+                Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+              )
+            }
+            className="mt-1 min-h-24 w-full rounded-md border border-slate-300 bg-white p-2 text-sm"
+          >
+            {allUsers.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.preferred_username}
+              </option>
+            ))}
+          </select>
+          {preview.length > 0 ? (
+            <ul className="mt-3 grid gap-1 text-sm">
+              {preview.map((item) => (
+                <li key={item.user_id} className="rounded bg-slate-50 px-2 py-1 font-mono">
+                  {item.user_id}: {item.matched ? t.matches : t.doesNotMatch} ({item.change})
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="border-t border-slate-100 p-5">
         <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
           {t.membersHeading.replace('{count}', String(members.length))}
@@ -456,10 +566,15 @@ function GroupDetailCard({
               >
                 {member.preferred_username}
               </a>
+              {member.source === 'dynamic_rule' ? (
+                <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                  {t.dynamicMembership}
+                </span>
+              ) : null}
               <Button
                 variant="ghost"
                 className="text-rose-700 hover:bg-rose-50"
-                disabled={localBusy || !!group.scim_source}
+                disabled={localBusy || !!group.scim_source || group.membership_type === 'dynamic'}
                 onClick={() =>
                   withLocal(async () => {
                     await removeAdminGroupMember(csrfToken, group.id, member.user_id)
@@ -479,7 +594,7 @@ function GroupDetailCard({
           <select
             value={addSub}
             onChange={(e) => setAddSub(e.target.value)}
-            disabled={!!group.scim_source}
+            disabled={!!group.scim_source || group.membership_type === 'dynamic'}
             className="h-9 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
             aria-label={t.selectUserToAddAria}
           >
@@ -491,7 +606,9 @@ function GroupDetailCard({
             ))}
           </select>
           <Button
-            disabled={localBusy || !addSub || !!group.scim_source}
+            disabled={
+              localBusy || !addSub || !!group.scim_source || group.membership_type === 'dynamic'
+            }
             onClick={() =>
               withLocal(async () => {
                 await addAdminGroupMember(csrfToken, group.id, addSub)
@@ -526,6 +643,7 @@ export function AdminGroupCreatePage({
   const listPath = tenantURL('/admin/groups')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [membershipType, setMembershipType] = useState<'manual' | 'dynamic'>('manual')
   const t = useDictionary(adminGroupsDictionary)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -542,6 +660,11 @@ export function AdminGroupCreatePage({
         name,
         description: optionalValue(data.get('description')),
         roles: parseRoles(String(data.get('roles') ?? '')),
+        membership_type: membershipType,
+        dynamic_rule:
+          membershipType === 'dynamic'
+            ? { expression: String(data.get('dynamic-rule') ?? '').trim() }
+            : undefined,
       })
       window.location.assign(tenantURL(`/admin/groups/${encodeURIComponent(created.id)}`))
     } catch (cause) {
@@ -581,6 +704,34 @@ export function AdminGroupCreatePage({
                 <Input id="group-name" name="name" required placeholder="engineering" />
                 <p className="text-xs text-slate-500">{t.groupNameHelp}</p>
               </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="group-membership-type">{t.membershipType}</Label>
+                <select
+                  id="group-membership-type"
+                  value={membershipType}
+                  onChange={(event) =>
+                    setMembershipType(event.target.value as 'manual' | 'dynamic')
+                  }
+                  className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm"
+                >
+                  <option value="manual">{t.manualMembership}</option>
+                  <option value="dynamic">{t.dynamicMembership}</option>
+                </select>
+              </div>
+              {membershipType === 'dynamic' ? (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="group-dynamic-rule">{t.dynamicRuleExpression}</Label>
+                  <textarea
+                    id="group-dynamic-rule"
+                    name="dynamic-rule"
+                    required
+                    className="min-h-28 rounded-md border border-slate-300 bg-white p-3 font-mono text-sm"
+                    placeholder={'user.department == "Engineering"'}
+                  />
+                  <p className="text-xs text-slate-500">{t.dynamicRuleHelp}</p>
+                </div>
+              ) : null}
 
               <div className="grid gap-1.5">
                 <Label htmlFor="group-description">{t.descriptionOptionalLabel}</Label>

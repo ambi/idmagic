@@ -262,7 +262,7 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 
 func (d Deps) adminUserDeps() idmusecases.AdminUserDeps {
 	deps := idmusecases.AdminUserDeps{
-		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo,
+		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AttrSchemaRepo: d.AttrSchemaRepo,
 		ConsentRepo: d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, MfaFactorRepo: d.MfaFactorRepo,
 		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,

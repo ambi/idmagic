@@ -21,6 +21,7 @@ type Deps struct {
 	BrandingRepo       tenantports.TenantBrandingRepository
 	BrandingAssetStore tenantports.TenantBrandingAssetStore
 	UserRepo           idmports.UserRepository
+	GroupRepo          idmports.GroupRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・

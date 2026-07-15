@@ -25,7 +25,7 @@ type Querier interface {
 	FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error)
 	ListAgentBindingsByAgent(ctx context.Context, arg ListAgentBindingsByAgentParams) ([]*AgentCredentialBinding, error)
 	ListAgentsByTenant(ctx context.Context, tenantID string) ([]*Agent, error)
-	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*GroupMember, error)
+	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)
 	ListGroupsByTenant(ctx context.Context, tenantID string) ([]*Group, error)
 	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error)
 	ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error)

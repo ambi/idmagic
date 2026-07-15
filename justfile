@@ -57,6 +57,10 @@ format-go:
 test-go:
     GOCACHE={{go_cache}} go test ./...
 
+# Synchronize Go module requirements and checksums.
+go-mod-tidy:
+    GOCACHE={{go_cache}} go mod tidy
+
 # Run race-enabled Go tests.
 test-go-race:
     GOCACHE={{go_cache}} go test -race ./...

@@ -430,6 +430,34 @@ export type CreateAdminGroupInput = {
   name: string
   description?: string
   roles?: string[]
+  membership_type?: AdminGroup['membership_type']
+  dynamic_rule?: { expression: string }
+}
+
+export async function updateDynamicGroupRule(csrfToken: string, id: string, expression: string) {
+  return request<NonNullable<AdminGroup['dynamic_rule']>>(
+    `/api/admin/groups/${encodeURIComponent(id)}/dynamic-rule`,
+    adminRequest(csrfToken, 'PUT', { expression }),
+  )
+}
+
+export async function previewDynamicGroupRule(
+  csrfToken: string,
+  id: string,
+  expression: string,
+  userIDs: string[],
+) {
+  return request<{ results: import('../types').DynamicGroupPreview[] }>(
+    `/api/admin/groups/${encodeURIComponent(id)}/dynamic-rule/preview`,
+    adminRequest(csrfToken, 'POST', { expression, user_ids: userIDs }),
+  )
+}
+
+export async function setDynamicGroupRuleEnabled(csrfToken: string, id: string, enabled: boolean) {
+  return request<NonNullable<AdminGroup['dynamic_rule']>>(
+    `/api/admin/groups/${encodeURIComponent(id)}/dynamic-rule/${enabled ? 'enable' : 'disable'}`,
+    adminRequest(csrfToken, 'POST'),
+  )
 }
 
 export type UpdateAdminGroupInput = {

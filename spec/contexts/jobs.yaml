@@ -145,6 +145,7 @@ models:
       - noop_echo
       - user_import_preview
       - user_import_apply
+      - dynamic_group_reconcile
   JobProgress:
     kind: value_object
     description: ハンドラが Running 中に任意で報告する進捗スナップショット。

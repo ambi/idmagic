@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	z "github.com/Oudwins/zog"
@@ -17,13 +19,46 @@ import (
 // 階層・deny ルール・属性自動所属は持たない (effective_roles は union のみ)。
 // ID は不変の生成識別子 (group_<uuid>)、Name はテナント内で一意な編集可能ラベル。
 type Group struct {
-	ID          string    `json:"id"`
-	TenantID    string    `json:"tenant_id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-	Roles       []string  `json:"roles"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             string              `json:"id"`
+	TenantID       string              `json:"tenant_id"`
+	Name           string              `json:"name"`
+	Description    *string             `json:"description,omitempty"`
+	Roles          []string            `json:"roles"`
+	MembershipType GroupMembershipType `json:"membership_type"`
+	CreatedAt      time.Time           `json:"created_at"`
+	UpdatedAt      time.Time           `json:"updated_at"`
+}
+
+type GroupMembershipType string
+
+const (
+	GroupMembershipManual  GroupMembershipType = "manual"
+	GroupMembershipDynamic GroupMembershipType = "dynamic"
+)
+
+func (t GroupMembershipType) Effective() GroupMembershipType {
+	if t == "" {
+		return GroupMembershipManual
+	}
+	return t
+}
+
+func (t GroupMembershipType) Valid() bool {
+	return t == "" || t == GroupMembershipManual || t == GroupMembershipDynamic
+}
+
+type GroupMembershipSource string
+
+const (
+	MembershipSourceManual      GroupMembershipSource = "manual"
+	MembershipSourceDynamicRule GroupMembershipSource = "dynamic_rule"
+)
+
+func (s GroupMembershipSource) Effective() GroupMembershipSource {
+	if s == "" {
+		return MembershipSourceManual
+	}
+	return s
 }
 
 var groupSchema = z.Struct(z.Shape{
@@ -37,14 +72,19 @@ var groupSchema = z.Struct(z.Shape{
 })
 
 func (g Group) Validate() error {
+	if !g.MembershipType.Valid() {
+		return fmt.Errorf("invalid group membership type %q", g.MembershipType)
+	}
 	return spec.Validate(groupSchema, &g)
 }
 
 // GroupMember は User と Group の所属関係。group_id × user_sub で一意。
 type GroupMember struct {
-	GroupID   string    `json:"group_id"`
-	UserID    string    `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
+	GroupID     string                `json:"group_id"`
+	UserID      string                `json:"user_id"`
+	Source      GroupMembershipSource `json:"source"`
+	RuleVersion *int64                `json:"rule_version,omitempty"`
+	CreatedAt   time.Time             `json:"created_at"`
 }
 
 var groupMemberSchema = z.Struct(z.Shape{
@@ -54,7 +94,37 @@ var groupMemberSchema = z.Struct(z.Shape{
 })
 
 func (m GroupMember) Validate() error {
+	if m.Source == "" {
+		m.Source = MembershipSourceManual
+	}
+	if m.Source != MembershipSourceManual && m.Source != MembershipSourceDynamicRule {
+		return fmt.Errorf("invalid membership source %q", m.Source)
+	}
+	if m.Source == MembershipSourceDynamicRule && m.RuleVersion == nil {
+		return fmt.Errorf("dynamic membership requires rule version")
+	}
 	return spec.Validate(groupMemberSchema, &m)
+}
+
+type DynamicGroupRule struct {
+	GroupID              string    `json:"group_id"`
+	TenantID             string    `json:"tenant_id"`
+	Expression           string    `json:"expression"`
+	Enabled              bool      `json:"enabled"`
+	Version              int64     `json:"version"`
+	ReferencedAttributes []string  `json:"referenced_attributes"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+
+func (r DynamicGroupRule) Validate() error {
+	if r.GroupID == "" || r.TenantID == "" || strings.TrimSpace(r.Expression) == "" {
+		return fmt.Errorf("dynamic group rule identifiers and expression are required")
+	}
+	if len(r.Expression) > 4096 || r.Version < 1 {
+		return fmt.Errorf("invalid dynamic group rule limits")
+	}
+	return nil
 }
 
 // NewGroupID は不変の Group 識別子 group_<uuid> を生成する。

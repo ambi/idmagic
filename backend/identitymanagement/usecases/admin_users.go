@@ -44,6 +44,7 @@ const deletedPasswordHashSentinel = "$deleted$"
 
 type AdminUserDeps struct {
 	UserRepo            idmports.UserRepository
+	GroupRepo           idmports.GroupRepository
 	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
 	ConsentRepo         oauthports.ConsentRepository
 	RefreshStore        oauthports.RefreshTokenStore
@@ -118,6 +119,11 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	}
 	if err := deps.UserRepo.Save(ctx, user); err != nil {
 		return nil, err
+	}
+	if deps.GroupRepo != nil {
+		if err := SyncDynamicGroupsForUser(ctx, DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, user, now); err != nil {
+			return nil, err
+		}
 	}
 	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, passwordHash, now); err != nil {
 		return nil, err
@@ -225,6 +231,11 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*i
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
+	if deps.GroupRepo != nil {
+		if err := SyncDynamicGroupsForUser(ctx, DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
+			return nil, err
+		}
+	}
 	if err := adminEmit(deps.Emit, &spec.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, ChangedFields: changed,
 	}); err != nil {
@@ -271,6 +282,11 @@ func SetUserDisabled(
 	updated.UpdatedAt = now
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
+	}
+	if deps.GroupRepo != nil {
+		if err := SyncDynamicGroupsForUser(ctx, DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
+			return nil, err
+		}
 	}
 	var emitErr error
 	if disabled {
@@ -526,6 +542,11 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return err
 	}
+	if deps.GroupRepo != nil {
+		if err := SyncDynamicGroupsForUser(ctx, DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
+			return err
+		}
+	}
 	return adminEmit(deps.Emit, &spec.UserSoftDeleted{
 		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
 	})
@@ -558,6 +579,11 @@ func RestoreUser(
 	updated.UpdatedAt = now
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
+	}
+	if deps.GroupRepo != nil {
+		if err := SyncDynamicGroupsForUser(ctx, DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
+			return nil, err
+		}
 	}
 	if err := adminEmit(deps.Emit, &spec.UserRestored{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: updated.ID,

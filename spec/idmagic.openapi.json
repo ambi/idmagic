@@ -2807,6 +2807,373 @@
         }
       }
     },
+    "/api/admin/groups/{group_id}/dynamic-rule": {
+      "put": {
+        "operationId": "UpdateDynamicGroupRule",
+        "summary": "管理者が dynamic group の制限 CEL rule を検証して保存する。未知属性、型不一致、非 Boolean、許可外構文、上限超過は拒否する。",
+        "x-scl-requires": [
+          "group(input.group_id).membership_type == dynamic"
+        ],
+        "description": "Requires: group(input.group_id).membership_type == dynamic",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Group",
+            "id": "input.group_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "group_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/DynamicGroupRuleRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "group_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rule": {
+                      "$ref": "#/components/schemas/DynamicGroupRule"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "rule"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/dynamic-rule/preview": {
+      "post": {
+        "operationId": "PreviewDynamicGroupRule",
+        "summary": "最大100 Userに未保存 CEL を副作用なしで評価し、現在所属との差分だけを返す。",
+        "x-scl-requires": [
+          "input.request.user_ids.size() <= 100"
+        ],
+        "description": "Requires: input.request.user_ids.size() <= 100",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Group",
+            "id": "input.group_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "group_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/DynamicGroupPreviewRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "group_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DynamicGroupPreviewResult"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "results"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/dynamic-rule/enable": {
+      "post": {
+        "operationId": "EnableDynamicGroupRule",
+        "summary": "検証済み rule を有効化し、旧 version membership を即時無効化して全件再評価 Job を予約する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Group",
+            "id": "input.group_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "group_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "group_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rule": {
+                      "$ref": "#/components/schemas/DynamicGroupRule"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "rule"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/dynamic-rule/disable": {
+      "post": {
+        "operationId": "DisableDynamicGroupRule",
+        "summary": "rule を無効化して、全 dynamic membership を認可・割当判定から即時除外する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Group",
+            "id": "input.group_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "group_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "group_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rule": {
+                      "$ref": "#/components/schemas/DynamicGroupRule"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "rule"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users/{user_id}/groups": {
       "get": {
         "operationId": "ListUserGroups",
@@ -17137,6 +17504,369 @@
         ],
         "description": "RFC 8414 / OIDC Discovery 1.0 メタデータ。"
       },
+      "DynamicGroupPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string"
+          },
+          "user_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "expression",
+          "user_ids"
+        ],
+        "description": "保存前 CEL と最大100 userの read-only preview入力。"
+      },
+      "DynamicGroupPreviewResult": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "matched": {
+            "type": "boolean"
+          },
+          "change": {
+            "type": "string"
+          },
+          "error_code": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "user_id",
+          "matched",
+          "change"
+        ],
+        "description": "Userごとの一致と現在所属との差分。属性値は含めない。"
+      },
+      "DynamicGroupRule": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "version": {
+            "type": "integer"
+          },
+          "referenced_attributes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "group_id",
+          "tenant_id",
+          "expression",
+          "enabled",
+          "version",
+          "referenced_attributes",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "dynamic Group と一対一の制限 CEL rule。expression は Boolean を返し、未知属性・許可外関数・過大な式を保存できない。"
+      },
+      "DynamicGroupRuleDisabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "groupId",
+          "ruleVersion"
+        ],
+        "description": "管理者が rule を無効化し旧 dynamic membership を即時無効にした。"
+      },
+      "DynamicGroupRuleEnabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "groupId",
+          "ruleVersion"
+        ],
+        "description": "管理者が検証済み rule を有効化し全件再評価を予約した。"
+      },
+      "DynamicGroupRuleRequest": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "expression"
+        ],
+        "description": "CEL rule の作成・更新入力。"
+      },
+      "DynamicGroupRuleUpdated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "groupId",
+          "ruleVersion"
+        ],
+        "description": "管理者が dynamic group の CEL rule を新しい version へ更新した。"
+      },
+      "DynamicMembershipEvaluated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "integer"
+          },
+          "addedCount": {
+            "type": "integer"
+          },
+          "removedCount": {
+            "type": "integer"
+          },
+          "unchangedCount": {
+            "type": "integer"
+          },
+          "errorCount": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "groupId",
+          "ruleVersion",
+          "addedCount",
+          "removedCount",
+          "unchangedCount",
+          "errorCount"
+        ],
+        "description": "rule version の全件再評価が完了した。属性値は持たず差分件数だけを記録する。"
+      },
+      "DynamicMembershipEvaluation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "group_id": {
+            "type": "string"
+          },
+          "rule_version": {
+            "type": "integer"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DynamicMembershipEvaluationStatus"
+          },
+          "added_count": {
+            "type": "integer",
+            "default": 0
+          },
+          "removed_count": {
+            "type": "integer",
+            "default": 0
+          },
+          "unchanged_count": {
+            "type": "integer",
+            "default": 0
+          },
+          "error_count": {
+            "type": "integer",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "group_id",
+          "rule_version",
+          "status",
+          "added_count",
+          "removed_count",
+          "unchanged_count",
+          "error_count",
+          "created_at"
+        ],
+        "description": "rule version の全件再評価と所属差分の監査可能な結果。"
+      },
+      "DynamicMembershipEvaluationFailed": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "groupId",
+          "ruleVersion"
+        ],
+        "description": "dynamic membership 全件再評価が失敗し、対象 rule version は fail-closed のままになった。"
+      },
+      "DynamicMembershipEvaluationStarted": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "groupId",
+          "ruleVersion"
+        ],
+        "description": "worker が dynamic membership 全件再評価を開始した。"
+      },
+      "DynamicMembershipEvaluationStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed"
+        ],
+        "description": "rule version 単位の全件再評価状態。"
+      },
       "EmailChangeRequested": {
         "type": "object",
         "properties": {
@@ -17507,6 +18237,11 @@
             },
             "description": "このグループが付与するロール束。"
           },
+          "membership_type": {
+            "$ref": "#/components/schemas/GroupMembershipType",
+            "default": "manual",
+            "description": "作成時に固定し、manual と dynamic を混在させない。"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -17522,6 +18257,7 @@
           "tenant_id",
           "name",
           "roles",
+          "membership_type",
           "created_at"
         ],
         "description": "tenant-scoped ロール束集約。所属 User に roles を一斉付与する。id は不変の生成識別子、name はテナント内で一意な編集可能ラベル。"
@@ -17556,6 +18292,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "membership_type": {
+            "$ref": "#/components/schemas/GroupMembershipType"
+          },
+          "dynamic_rule": {
+            "$ref": "#/components/schemas/DynamicGroupRuleRequest"
           }
         },
         "additionalProperties": false,
@@ -17643,6 +18385,14 @@
           "user_id": {
             "type": "string"
           },
+          "source": {
+            "$ref": "#/components/schemas/GroupMembershipSource",
+            "default": "manual"
+          },
+          "rule_version": {
+            "type": "integer",
+            "description": "dynamic_rule の場合に評価した DynamicGroupRule.version。"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -17652,6 +18402,7 @@
         "required": [
           "group_id",
           "user_id",
+          "source",
           "created_at"
         ],
         "description": "User と Group の所属関係。group_id × user_id で一意。"
@@ -17740,6 +18491,22 @@
         ],
         "description": "グループ所属メンバー表現。"
       },
+      "GroupMembershipSource": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "dynamic_rule"
+        ],
+        "description": "GroupMember を作成した唯一の経路。"
+      },
+      "GroupMembershipType": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "dynamic"
+        ],
+        "description": "Group の所属管理方式。作成後は変更できない。"
+      },
       "GroupSummaryResponse": {
         "type": "object",
         "properties": {
@@ -17764,6 +18531,12 @@
           "member_count": {
             "type": "integer"
           },
+          "membership_type": {
+            "$ref": "#/components/schemas/GroupMembershipType"
+          },
+          "dynamic_rule": {
+            "$ref": "#/components/schemas/DynamicGroupRule"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -17780,6 +18553,7 @@
           "name",
           "roles",
           "member_count",
+          "membership_type",
           "created_at"
         ],
         "description": "グループ表現。管理 UI の一覧と詳細で同じ表現を返す。"
@@ -18261,7 +19035,8 @@
         "enum": [
           "noop_echo",
           "user_import_preview",
-          "user_import_apply"
+          "user_import_apply",
+          "dynamic_group_reconcile"
         ],
         "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
       },
@@ -24548,6 +25323,22 @@
             }
           },
           {
+            "name": "DisableDynamicGroupRule",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.group_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Group"
+              ]
+            }
+          },
+          {
             "name": "DisableTenantKey",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -24592,6 +25383,22 @@
               ],
               "resourceTypes": [
                 "Agent"
+              ]
+            }
+          },
+          {
+            "name": "EnableDynamicGroupRule",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.group_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Group"
               ]
             }
           },
@@ -25156,6 +25963,22 @@
             }
           },
           {
+            "name": "PreviewDynamicGroupRule",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.group_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Group"
+              ]
+            }
+          },
+          {
             "name": "RegisterAgent",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -25504,6 +26327,22 @@
               ],
               "resourceTypes": [
                 "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "UpdateDynamicGroupRule",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.group_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Group"
               ]
             }
           },

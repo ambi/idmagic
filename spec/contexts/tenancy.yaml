@@ -755,7 +755,7 @@ interfaces:
         method: GET
         path: /api/admin/tenant/user_attribute_schema
   UpdateTenantUserAttributeSchema:
-    description: "テナント内 admin が custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 UserAttributeDef を検証し、組み込み属性との key 衝突・重複 key を\n拒否する。値そのものは保持せず定義のみを扱う。\n"
+    description: "テナント内 admin が custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 UserAttributeDef を検証し、組み込み属性との key 衝突・重複 key を\n拒否する。DynamicGroupRule が参照中の key は削除または型変更できない。値そのものは保持せず定義のみを扱う。\n"
     input:
       request:
         type: TenantUserAttributeSchemaUpdateRequest

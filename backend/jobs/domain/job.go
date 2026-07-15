@@ -35,13 +35,14 @@ type JobKind string
 
 const (
 	// KindNoopEcho is the wi-126 core-runtime smoke-test job kind.
-	KindNoopEcho          JobKind = "noop_echo"
-	KindUserImportPreview JobKind = "user_import_preview"
-	KindUserImportApply   JobKind = "user_import_apply"
+	KindNoopEcho              JobKind = "noop_echo"
+	KindUserImportPreview     JobKind = "user_import_preview"
+	KindUserImportApply       JobKind = "user_import_apply"
+	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
 )
 
 func (k JobKind) Valid() bool {
-	return k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply
+	return k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply || k == KindDynamicGroupReconcile
 }
 
 // JobLifecycleEvent is a JobLifecycle state machine event.

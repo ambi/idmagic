@@ -26,4 +26,8 @@ type GroupRepository interface {
 	// RemoveMember は membership を削除し、削除されたなら true を返す。非所属なら
 	// false を返し no-op とする (冪等)。
 	RemoveMember(ctx context.Context, tenantID, groupID, userID string) (bool, error)
+
+	FindDynamicRule(ctx context.Context, tenantID, groupID string) (*idmdomain.DynamicGroupRule, error)
+	ListDynamicRules(ctx context.Context, tenantID string) ([]*idmdomain.DynamicGroupRule, error)
+	SaveDynamicRule(ctx context.Context, rule *idmdomain.DynamicGroupRule) error
 }

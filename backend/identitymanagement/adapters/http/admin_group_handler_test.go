@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,4 +126,47 @@ func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("group-derived admin denied: status=%d body=%s", response.Code, response.Body.String())
 	}
+}
+
+func TestDynamicGroupRulePreviewEnableAndManualMembershipRejection(t *testing.T) {
+	e, _ := newAdminGroupHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups", csrf, cookie, map[string]any{
+		"name": "alice-only", "membership_type": "dynamic",
+		"dynamic_rule": map[string]any{"expression": `user.preferred_username == "alice"`},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	preview := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/dynamic-rule/preview", csrf, cookie, map[string]any{
+		"expression": `user.preferred_username == "alice"`, "user_ids": []string{"alice"},
+	})
+	if preview.Code != http.StatusOK || !containsJSON(preview.Body.Bytes(), `"matched":true`) {
+		t.Fatalf("preview status=%d body=%s", preview.Code, preview.Body.String())
+	}
+	enable := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/dynamic-rule/enable", csrf, cookie, nil)
+	if enable.Code != http.StatusOK {
+		t.Fatalf("enable status=%d body=%s", enable.Code, enable.Body.String())
+	}
+	detailRequest := httptest.NewRequest(http.MethodGet, "/api/admin/groups/"+created.ID, http.NoBody)
+	detailRequest.Header.Set("X-Demo-Sub", "admin")
+	detail := httptest.NewRecorder()
+	e.ServeHTTP(detail, detailRequest)
+	if detail.Code != http.StatusOK || !containsJSON(detail.Body.Bytes(), `"preferred_username":"alice"`) {
+		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
+	}
+	manual := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/members/admin", csrf, cookie, nil)
+	if manual.Code != http.StatusConflict {
+		t.Fatalf("manual membership status=%d body=%s", manual.Code, manual.Body.String())
+	}
+}
+
+func containsJSON(body []byte, fragment string) bool {
+	return strings.Contains(string(body), fragment)
 }

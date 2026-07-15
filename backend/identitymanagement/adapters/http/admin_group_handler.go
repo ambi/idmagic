@@ -16,9 +16,20 @@ import (
 )
 
 type groupCreateRequest struct {
-	Name        string   `json:"name"`
-	Description *string  `json:"description"`
-	Roles       []string `json:"roles"`
+	Name           string                        `json:"name"`
+	Description    *string                       `json:"description"`
+	Roles          []string                      `json:"roles"`
+	MembershipType idmdomain.GroupMembershipType `json:"membership_type"`
+	DynamicRule    *dynamicRuleRequest           `json:"dynamic_rule"`
+}
+
+type dynamicRuleRequest struct {
+	Expression string `json:"expression"`
+}
+
+type dynamicRulePreviewRequest struct {
+	Expression string   `json:"expression"`
+	UserIDs    []string `json:"user_ids"`
 }
 
 type groupUpdateRequest struct {
@@ -28,21 +39,25 @@ type groupUpdateRequest struct {
 }
 
 type groupSummaryResponse struct {
-	ID          string    `json:"id"`
-	TenantID    string    `json:"tenant_id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-	Roles       []string  `json:"roles"`
-	MemberCount int       `json:"member_count"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	ScimSource  *string   `json:"scim_source,omitempty"`
+	ID             string                        `json:"id"`
+	TenantID       string                        `json:"tenant_id"`
+	Name           string                        `json:"name"`
+	Description    *string                       `json:"description,omitempty"`
+	Roles          []string                      `json:"roles"`
+	MemberCount    int                           `json:"member_count"`
+	CreatedAt      time.Time                     `json:"created_at"`
+	UpdatedAt      time.Time                     `json:"updated_at"`
+	ScimSource     *string                       `json:"scim_source,omitempty"`
+	MembershipType idmdomain.GroupMembershipType `json:"membership_type"`
+	DynamicRule    *idmdomain.DynamicGroupRule   `json:"dynamic_rule,omitempty"`
 }
 
 type groupMemberResponse struct {
-	UserID            string    `json:"user_id"`
-	PreferredUsername string    `json:"preferred_username"`
-	CreatedAt         time.Time `json:"created_at"`
+	UserID            string                          `json:"user_id"`
+	PreferredUsername string                          `json:"preferred_username"`
+	Source            idmdomain.GroupMembershipSource `json:"source"`
+	RuleVersion       *int64                          `json:"rule_version,omitempty"`
+	CreatedAt         time.Time                       `json:"created_at"`
 }
 
 type userGroupsResponse struct {
@@ -76,6 +91,12 @@ func (d Deps) handleGetGroup(c *echo.Context) error {
 		return d.writeAdminGroupError(c, err)
 	}
 	res := toGroupSummaryResponse(group, len(members))
+	if group.MembershipType.Effective() == idmdomain.GroupMembershipDynamic {
+		res.DynamicRule, err = d.GroupRepo.FindDynamicRule(c.Request().Context(), group.TenantID, group.ID)
+		if err != nil {
+			return err
+		}
+	}
 	if d.ScimRepo != nil {
 		ref, _ := d.ScimRepo.FindGroupRefByGroupID(c.Request().Context(), group.TenantID, group.ID)
 		if ref != nil {
@@ -101,13 +122,93 @@ func (d Deps) handleCreateGroup(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
+	if input.MembershipType.Effective() == idmdomain.GroupMembershipDynamic && input.DynamicRule != nil {
+		defs := idmdomain.BuiltinUserAttributeDefs()
+		if d.AttrSchemaRepo != nil {
+			schema, schemaErr := d.AttrSchemaRepo.FindByTenant(c.Request().Context(), actor.TenantID)
+			if schemaErr != nil {
+				return schemaErr
+			}
+			if schema != nil {
+				defs = schema.EffectiveDefs()
+			}
+		}
+		if _, compileErr := idmdomain.CompileDynamicGroupRule(input.DynamicRule.Expression, defs); compileErr != nil {
+			return d.writeAdminGroupError(c, errors.Join(idmusecases.ErrInvalidDynamicGroupRule, compileErr))
+		}
+	}
 	group, err := idmusecases.CreateGroup(c.Request().Context(), d.adminGroupDeps(), idmusecases.CreateGroupInput{
-		ActorUserID: actor.ID, Name: input.Name, Description: input.Description, Roles: input.Roles, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, Name: input.Name, Description: input.Description, Roles: input.Roles, MembershipType: input.MembershipType, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeAdminGroupError(c, err)
 	}
+	if input.DynamicRule != nil && group.MembershipType.Effective() == idmdomain.GroupMembershipDynamic {
+		if _, err := idmusecases.UpdateDynamicGroupRule(c.Request().Context(), d.dynamicGroupDeps(), actor.ID, group.ID, input.DynamicRule.Expression, time.Now().UTC()); err != nil {
+			return d.writeAdminGroupError(c, err)
+		}
+	}
 	return support.NoStoreJSON(c, http.StatusCreated, toGroupSummaryResponse(group, 0))
+}
+
+func (d Deps) handleUpdateDynamicGroupRule(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input dynamicRuleRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+	}
+	rule, err := idmusecases.UpdateDynamicGroupRule(c.Request().Context(), d.dynamicGroupDeps(), actor.ID, c.Param("group_id"), input.Expression, time.Now().UTC())
+	if err != nil {
+		return d.writeAdminGroupError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, rule)
+}
+
+func (d Deps) handlePreviewDynamicGroupRule(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input dynamicRulePreviewRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+	}
+	preview, err := idmusecases.PreviewDynamicGroupRule(c.Request().Context(), d.dynamicGroupDeps(), c.Param("group_id"), input.Expression, input.UserIDs)
+	if err != nil {
+		return d.writeAdminGroupError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"results": preview})
+}
+
+func (d Deps) handleSetDynamicGroupRuleEnabled(c *echo.Context, enabled bool) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	rule, err := idmusecases.SetDynamicGroupRuleEnabled(c.Request().Context(), d.dynamicGroupDeps(), actor.ID, c.Param("group_id"), enabled, time.Now().UTC())
+	if err != nil {
+		return d.writeAdminGroupError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, rule)
+}
+
+func (d Deps) handleEnableDynamicGroupRule(c *echo.Context) error {
+	return d.handleSetDynamicGroupRuleEnabled(c, true)
+}
+
+func (d Deps) handleDisableDynamicGroupRule(c *echo.Context) error {
+	return d.handleSetDynamicGroupRuleEnabled(c, false)
 }
 
 func (d Deps) handleUpdateGroup(c *echo.Context) error {
@@ -209,6 +310,10 @@ func (d Deps) adminGroupDeps() idmusecases.AdminGroupDeps {
 	return idmusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
 }
 
+func (d Deps) dynamicGroupDeps() idmusecases.DynamicGroupDeps {
+	return idmusecases.DynamicGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, JobRepo: d.JobRepo, Emit: d.legacyEmit()}
+}
+
 func (d Deps) toGroupMemberResponses(ctx context.Context, members []*idmdomain.GroupMember) []groupMemberResponse {
 	out := make([]groupMemberResponse, len(members))
 	for i, member := range members {
@@ -216,7 +321,7 @@ func (d Deps) toGroupMemberResponses(ctx context.Context, members []*idmdomain.G
 		if user, err := d.UserRepo.FindBySub(ctx, member.UserID); err == nil && user != nil {
 			username = user.PreferredUsername
 		}
-		out[i] = groupMemberResponse{UserID: member.UserID, PreferredUsername: username, CreatedAt: member.CreatedAt}
+		out[i] = groupMemberResponse{UserID: member.UserID, PreferredUsername: username, Source: member.Source.Effective(), RuleVersion: member.RuleVersion, CreatedAt: member.CreatedAt}
 	}
 	return out
 }
@@ -225,7 +330,7 @@ func toGroupSummaryResponse(group *idmdomain.Group, memberCount int) groupSummar
 	return groupSummaryResponse{
 		ID: group.ID, TenantID: group.TenantID, Name: group.Name, Description: group.Description,
 		Roles: slices.Clone(group.Roles), MemberCount: memberCount,
-		CreatedAt: group.CreatedAt, UpdatedAt: group.UpdatedAt,
+		MembershipType: group.MembershipType.Effective(), CreatedAt: group.CreatedAt, UpdatedAt: group.UpdatedAt,
 	}
 }
 
@@ -241,6 +346,10 @@ func (d Deps) writeAdminGroupError(c *echo.Context, err error) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "group_name_required", "グループ名は必須です")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "roleが不正です")
+	case errors.Is(err, idmusecases.ErrDynamicMembershipManaged):
+		return support.WriteBrowserError(c, http.StatusConflict, "dynamic_membership_managed_by_rule", "動的グループの所属はルールで管理されます")
+	case errors.Is(err, idmusecases.ErrInvalidDynamicGroupRule):
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_dynamic_group_rule", err.Error())
 	default:
 		return err
 	}

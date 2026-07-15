@@ -18,12 +18,14 @@ type GroupRepository struct {
 	mu      sync.RWMutex
 	groups  map[string]*idmdomain.Group         // key: sharedmem.TenantKey(tenant_id, id)
 	members map[string][]*idmdomain.GroupMember // key: sharedmem.TenantKey(tenant_id, group_id)
+	rules   map[string]*idmdomain.DynamicGroupRule
 }
 
 func NewGroupRepository() *GroupRepository {
 	return &GroupRepository{
 		groups:  map[string]*idmdomain.Group{},
 		members: map[string][]*idmdomain.GroupMember{},
+		rules:   map[string]*idmdomain.DynamicGroupRule{},
 	}
 }
 
@@ -68,6 +70,41 @@ func (r *GroupRepository) Delete(_ context.Context, tenantID, id string) error {
 	defer r.mu.Unlock()
 	delete(r.groups, sharedmem.TenantKey(tenantID, id))
 	delete(r.members, sharedmem.TenantKey(tenantID, id))
+	delete(r.rules, sharedmem.TenantKey(tenantID, id))
+	return nil
+}
+
+func cloneDynamicRule(rule *idmdomain.DynamicGroupRule) *idmdomain.DynamicGroupRule {
+	if rule == nil {
+		return nil
+	}
+	cloned := *rule
+	cloned.ReferencedAttributes = slices.Clone(rule.ReferencedAttributes)
+	return &cloned
+}
+
+func (r *GroupRepository) FindDynamicRule(_ context.Context, tenantID, groupID string) (*idmdomain.DynamicGroupRule, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return cloneDynamicRule(r.rules[sharedmem.TenantKey(tenantID, groupID)]), nil
+}
+
+func (r *GroupRepository) ListDynamicRules(_ context.Context, tenantID string) ([]*idmdomain.DynamicGroupRule, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*idmdomain.DynamicGroupRule{}
+	for _, rule := range r.rules {
+		if rule.TenantID == tenantID {
+			out = append(out, cloneDynamicRule(rule))
+		}
+	}
+	return out, nil
+}
+
+func (r *GroupRepository) SaveDynamicRule(_ context.Context, rule *idmdomain.DynamicGroupRule) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.rules[sharedmem.TenantKey(rule.TenantID, rule.GroupID)] = cloneDynamicRule(rule)
 	return nil
 }
 
@@ -89,16 +126,31 @@ func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID s
 	defer r.mu.RUnlock()
 	out := make([]*idmdomain.Group, 0)
 	for key, members := range r.members {
-		if !slices.ContainsFunc(members, func(m *idmdomain.GroupMember) bool { return m.UserID == userID }) {
+		var membership *idmdomain.GroupMember
+		for _, member := range members {
+			if member.UserID == userID {
+				membership = member
+				break
+			}
+		}
+		if membership == nil {
 			continue
 		}
 		group := r.groups[key]
-		if group != nil && group.TenantID == tenantID {
+		if group != nil && group.TenantID == tenantID && r.membershipEffective(key, group, membership) {
 			out = append(out, cloneGroup(group))
 		}
 	}
 	slices.SortFunc(out, func(a, b *idmdomain.Group) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
+}
+
+func (r *GroupRepository) membershipEffective(key string, group *idmdomain.Group, member *idmdomain.GroupMember) bool {
+	if group.MembershipType.Effective() == idmdomain.GroupMembershipManual {
+		return member.Source.Effective() == idmdomain.MembershipSourceManual
+	}
+	rule := r.rules[key]
+	return rule != nil && rule.Enabled && member.Source == idmdomain.MembershipSourceDynamicRule && member.RuleVersion != nil && *member.RuleVersion == rule.Version
 }
 
 func (r *GroupRepository) CountMembers(_ context.Context, tenantID, groupID string) (int, error) {

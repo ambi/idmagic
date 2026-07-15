@@ -51,6 +51,15 @@ func RunWorker() error {
 	adminDeps := newAdminUserDeps(deps, logger)
 	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
 	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
+	handlers.Register(domain.KindDynamicGroupReconcile, idmusecases.DynamicGroupReconcileHandler(idmusecases.DynamicGroupDeps{
+		GroupRepo:  deps.IdentityManagement.GroupRepo,
+		UserRepo:   deps.IdentityManagement.UserRepo,
+		SchemaRepo: deps.Tenancy.AttrSchemaRepo,
+		Emit: func(event spec.DomainEvent) error {
+			deps.NewEmitFunc(logger)(event)
+			return nil
+		},
+	}))
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
 	runner := usecases.NewRunner(
@@ -120,6 +129,7 @@ func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmus
 	emit := deps.NewEmitFunc(logger)
 	return idmusecases.AdminUserDeps{
 		UserRepo:            deps.IdentityManagement.UserRepo,
+		GroupRepo:           deps.IdentityManagement.GroupRepo,
 		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
 		ConsentRepo:         deps.OAuth2.ConsentRepo,
 		RefreshStore:        deps.OAuth2.RefreshStore,

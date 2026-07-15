@@ -35,7 +35,7 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 	}
 
 	members, err := repo.ListMembersByGroup(ctx, tenant.ID, group.ID)
-	if err != nil || len(members) != 1 || members[0].UserID != user.ID {
+	if err != nil || len(members) != 1 || members[0].UserID != user.ID || members[0].Source != idmdomain.MembershipSourceManual {
 		t.Fatalf("list members: %v %+v", err, members)
 	}
 

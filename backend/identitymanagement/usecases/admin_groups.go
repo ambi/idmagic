@@ -23,9 +23,10 @@ import (
 )
 
 var (
-	ErrGroupNotFound     = errors.New("group not found")
-	ErrGroupNameConflict = errors.New("group name already exists")
-	ErrGroupNameEmpty    = errors.New("group name is required")
+	ErrGroupNotFound            = errors.New("group not found")
+	ErrGroupNameConflict        = errors.New("group name already exists")
+	ErrGroupNameEmpty           = errors.New("group name is required")
+	ErrDynamicMembershipManaged = errors.New("dynamic membership is managed by rule")
 )
 
 type AdminGroupDeps struct {
@@ -76,11 +77,12 @@ func GetGroup(ctx context.Context, deps AdminGroupDeps, id string) (*idmdomain.G
 }
 
 type CreateGroupInput struct {
-	ActorUserID string
-	Name        string
-	Description *string
-	Roles       []string
-	Now         time.Time
+	ActorUserID    string
+	Name           string
+	Description    *string
+	Roles          []string
+	MembershipType idmdomain.GroupMembershipType
+	Now            time.Time
 }
 
 func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) (*idmdomain.Group, error) {
@@ -103,7 +105,7 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	now := normalizedNow(in.Now)
 	group := &idmdomain.Group{
 		ID: id, TenantID: tenantID, Name: name, Description: normalizeDescription(in.Description),
-		Roles: roles, CreatedAt: now, UpdatedAt: now,
+		Roles: roles, MembershipType: in.MembershipType.Effective(), CreatedAt: now, UpdatedAt: now,
 	}
 	if err := group.Validate(); err != nil {
 		return nil, err
@@ -232,6 +234,9 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, u
 	if group == nil {
 		return ErrGroupNotFound
 	}
+	if group.MembershipType.Effective() == idmdomain.GroupMembershipDynamic {
+		return ErrDynamicMembershipManaged
+	}
 	user, err := deps.UserRepo.FindBySub(ctx, userID)
 	if err != nil {
 		return err
@@ -241,7 +246,7 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, u
 	}
 	now = normalizedNow(now)
 	added, err := deps.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
-		GroupID: groupID, UserID: userID, CreatedAt: now,
+		GroupID: groupID, UserID: userID, Source: idmdomain.MembershipSourceManual, CreatedAt: now,
 	})
 	if err != nil {
 		return err
@@ -263,6 +268,9 @@ func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID
 	}
 	if group == nil {
 		return ErrGroupNotFound
+	}
+	if group.MembershipType.Effective() == idmdomain.GroupMembershipDynamic {
+		return ErrDynamicMembershipManaged
 	}
 	now = normalizedNow(now)
 	removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, groupID, userID)

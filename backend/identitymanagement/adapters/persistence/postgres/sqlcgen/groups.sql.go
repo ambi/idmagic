@@ -13,18 +13,26 @@ import (
 )
 
 const addGroupMember = `-- name: AddGroupMember :execrows
-INSERT INTO group_members (group_id,user_id,created_at) VALUES ($1,$2,$3)
+INSERT INTO group_members (group_id,user_id,source,rule_version,created_at) VALUES ($1,$2,$3,$4,$5)
 ON CONFLICT (group_id,user_id) DO NOTHING
 `
 
 type AddGroupMemberParams struct {
-	GroupID   string
-	UserID    string
-	CreatedAt time.Time
+	GroupID     string
+	UserID      string
+	Source      string
+	RuleVersion pgtype.Int8
+	CreatedAt   time.Time
 }
 
 func (q *Queries) AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (int64, error) {
-	result, err := q.db.Exec(ctx, addGroupMember, arg.GroupID, arg.UserID, arg.CreatedAt)
+	result, err := q.db.Exec(ctx, addGroupMember,
+		arg.GroupID,
+		arg.UserID,
+		arg.Source,
+		arg.RuleVersion,
+		arg.CreatedAt,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -63,7 +71,7 @@ func (q *Queries) DeleteGroup(ctx context.Context, arg DeleteGroupParams) error 
 }
 
 const findGroupByID = `-- name: FindGroupByID :one
-SELECT id,tenant_id,name,description,roles,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 AND id=$2
 `
 
@@ -81,6 +89,7 @@ func (q *Queries) FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*
 		&i.Name,
 		&i.Description,
 		&i.Roles,
+		&i.MembershipType,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -88,7 +97,7 @@ func (q *Queries) FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*
 }
 
 const listGroupMembersByGroup = `-- name: ListGroupMembersByGroup :many
-SELECT gm.group_id,gm.user_id,gm.created_at
+SELECT gm.group_id,gm.user_id,gm.source,gm.rule_version,gm.created_at
 FROM group_members gm JOIN groups g ON g.id=gm.group_id
 WHERE g.tenant_id=$1 AND gm.group_id=$2 ORDER BY gm.user_id
 `
@@ -98,16 +107,30 @@ type ListGroupMembersByGroupParams struct {
 	GroupID  string
 }
 
-func (q *Queries) ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*GroupMember, error) {
+type ListGroupMembersByGroupRow struct {
+	GroupID     string
+	UserID      string
+	Source      string
+	RuleVersion pgtype.Int8
+	CreatedAt   time.Time
+}
+
+func (q *Queries) ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error) {
 	rows, err := q.db.Query(ctx, listGroupMembersByGroup, arg.TenantID, arg.GroupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*GroupMember
+	var items []*ListGroupMembersByGroupRow
 	for rows.Next() {
-		var i GroupMember
-		if err := rows.Scan(&i.GroupID, &i.UserID, &i.CreatedAt); err != nil {
+		var i ListGroupMembersByGroupRow
+		if err := rows.Scan(
+			&i.GroupID,
+			&i.UserID,
+			&i.Source,
+			&i.RuleVersion,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)
@@ -119,7 +142,7 @@ func (q *Queries) ListGroupMembersByGroup(ctx context.Context, arg ListGroupMemb
 }
 
 const listGroupsByTenant = `-- name: ListGroupsByTenant :many
-SELECT id,tenant_id,name,description,roles,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 ORDER BY name
 `
 
@@ -138,6 +161,7 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 			&i.Name,
 			&i.Description,
 			&i.Roles,
+			&i.MembershipType,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -152,9 +176,13 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 }
 
 const listGroupsByUser = `-- name: ListGroupsByUser :many
-SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.created_at,g.updated_at
+SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.membership_type,g.created_at,g.updated_at
 FROM groups g JOIN group_members gm ON gm.group_id=g.id
-WHERE g.tenant_id=$1 AND gm.user_id=$2 ORDER BY g.name
+LEFT JOIN dynamic_group_rules dgr ON dgr.group_id=g.id AND dgr.tenant_id=g.tenant_id
+WHERE g.tenant_id=$1 AND gm.user_id=$2
+  AND ((g.membership_type='manual' AND gm.source='manual')
+    OR (g.membership_type='dynamic' AND dgr.enabled AND gm.source='dynamic_rule' AND gm.rule_version=dgr.version))
+ORDER BY g.name
 `
 
 type ListGroupsByUserParams struct {
@@ -177,6 +205,7 @@ func (q *Queries) ListGroupsByUser(ctx context.Context, arg ListGroupsByUserPara
 			&i.Name,
 			&i.Description,
 			&i.Roles,
+			&i.MembershipType,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -211,20 +240,21 @@ func (q *Queries) RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberPa
 }
 
 const saveGroup = `-- name: SaveGroup :exec
-INSERT INTO groups (id,tenant_id,name,description,roles,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7)
+INSERT INTO groups (id,tenant_id,name,description,roles,membership_type,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,
  roles=EXCLUDED.roles,updated_at=EXCLUDED.updated_at
 `
 
 type SaveGroupParams struct {
-	ID          string
-	TenantID    string
-	Name        string
-	Description pgtype.Text
-	Roles       []byte
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             string
+	TenantID       string
+	Name           string
+	Description    pgtype.Text
+	Roles          []byte
+	MembershipType string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 func (q *Queries) SaveGroup(ctx context.Context, arg SaveGroupParams) error {
@@ -234,6 +264,7 @@ func (q *Queries) SaveGroup(ctx context.Context, arg SaveGroupParams) error {
 		arg.Name,
 		arg.Description,
 		arg.Roles,
+		arg.MembershipType,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

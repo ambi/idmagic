@@ -371,11 +371,33 @@ export type AdminGroup = {
   created_at: string
   updated_at?: string
   scim_source?: string
+  membership_type?: 'manual' | 'dynamic'
+  dynamic_rule?: DynamicGroupRule
+}
+
+export type DynamicGroupRule = {
+  group_id: string
+  tenant_id: string
+  expression: string
+  enabled: boolean
+  version: number
+  referenced_attributes: string[]
+  created_at: string
+  updated_at: string
+}
+
+export type DynamicGroupPreview = {
+  user_id: string
+  matched: boolean
+  change: 'add' | 'remove' | 'unchanged'
+  error_code?: string
 }
 
 export type AdminGroupMember = {
   user_id: string
   preferred_username: string
+  source?: 'manual' | 'dynamic_rule'
+  rule_version?: number
   created_at: string
 }
 

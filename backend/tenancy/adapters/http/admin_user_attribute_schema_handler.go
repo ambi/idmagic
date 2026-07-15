@@ -64,6 +64,35 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
+	if d.GroupRepo != nil {
+		existing, findErr := d.AttrSchemaRepo.FindByTenant(c.Request().Context(), actor.TenantID)
+		if findErr != nil {
+			return findErr
+		}
+		nextTypes := make(map[string]idmdomain.AttributeType, len(input.Attributes))
+		for _, def := range input.Attributes {
+			nextTypes[def.Key] = def.Type
+		}
+		changed := map[string]bool{}
+		if existing != nil {
+			for _, def := range existing.Attributes {
+				if next, ok := nextTypes[def.Key]; !ok || next != def.Type {
+					changed[def.Key] = true
+				}
+			}
+		}
+		rules, listErr := d.GroupRepo.ListDynamicRules(c.Request().Context(), actor.TenantID)
+		if listErr != nil {
+			return listErr
+		}
+		for _, rule := range rules {
+			for _, key := range rule.ReferencedAttributes {
+				if changed[key] {
+					return support.WriteBrowserError(c, http.StatusConflict, "attribute_referenced_by_dynamic_group", "動的グループのルールが参照している属性は削除または型変更できません")
+				}
+			}
+		}
+	}
 	schema, err := tenantusecases.UpdateUserAttributeSchema(
 		c.Request().Context(), d.AttrSchemaRepo, actor.TenantID, input.Attributes, time.Now().UTC(),
 	)

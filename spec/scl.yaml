@@ -29,6 +29,11 @@ context_map:
         uses:
           - TenantRef
         reason: identity principal と管理 API はテナント境界内に閉じる。
+      Jobs:
+        via: published_language
+        uses:
+          - JobRef
+        reason: dynamic group rule の全件再評価を durable job として実行する。
   Authentication:
     description: エンドユーザ (Subject) の資格情報検証、MFA、ログインセッション、パスワード変更・リセット、step-up、認証イベントを所有する。User / Group / Agent の identity ライフサイクルは IdentityManagement が所有する。
     path: contexts/authentication.yaml

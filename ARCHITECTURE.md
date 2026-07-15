@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-12
+updated_at: 2026-07-15
 modules:
   backend:
     path: backend
@@ -38,6 +38,7 @@ modules:
 ## Stack
 
 - Go、React/TypeScript、Bun、PostgreSQL、Valkey、Docker Compose。
+- User 属性による動的 Group membership の式評価には、制限付き CEL (`cel-go`) を使う。
 
 ## Structural Decisions
 
@@ -45,6 +46,7 @@ modules:
 - Runtime と database infrastructure 資材の配置は [ADR-102](decisions/ADR-102-infrastructure-root-for-runtime-and-database-assets.md) に従う。
 - technical shared context と context-owned adapter の分離、および context 固有の永続化 adapter の同居は [ADR-070](decisions/ADR-070-technical-shared-context-for-cross-context-adapters.md) と [ADR-090](decisions/ADR-090-context-local-persistence-and-sqlc.md) に従う。
 - durable job queue (PostgreSQL `FOR UPDATE SKIP LOCKED` リース) と `idmagic-worker` プロセス分離・耐障害性は [ADR-098](decisions/ADR-098-durable-job-queue-skip-locked-lease.md) と [ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md) に従う。
+- 動的 Group membership の CEL 環境、排他的 membership type、rule version による fail-closed は [ADR-111](decisions/ADR-111-cel-dynamic-group-membership-rules.md) に従う。
 
 ## 読む順序
 
@@ -81,7 +83,7 @@ SCL context と Go package の主な対応は次の通り。
 | --- | --- | --- |
 | `System` | `backend/cmd/internal/bootstrap`, `backend/shared/adapters/http/server`, `frontend/` | 横断 UX、起動、ルーティング集約、health。 |
 | `Tenancy` | `backend/tenancy` | tenant / realm、tenant-scoped settings、user attribute schema、control-plane tenant 管理。 |
-| `IdentityManagement` | `backend/identitymanagement` | User、Group、Agent、自己プロフィール、identity lifecycle。 |
+| `IdentityManagement` | `backend/identitymanagement` | User、Group、Agent、自己プロフィール、identity lifecycle、CEL 動的 membership rule と再評価。 |
 | `Authentication` | `backend/authentication` | 資格情報検証、MFA、ログインセッション、step-up、パスワード変更・リセット、認証イベント。 |
 | `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC protocol endpoint、client、consent、token、role policy。 |
 | `Application` | `backend/application` | Application catalog、protocol binding、assignment、portal ordering/category。 |

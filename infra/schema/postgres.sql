@@ -362,6 +362,7 @@ CREATE TABLE groups (
     name TEXT NOT NULL,
     description TEXT,
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
+    membership_type TEXT NOT NULL DEFAULT 'manual' CHECK (membership_type IN ('manual','dynamic')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT groups_tenant_id_fkey
@@ -374,6 +375,8 @@ CREATE TABLE group_members (
     group_id UUID NOT NULL,
     user_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','dynamic_rule')),
+    rule_version BIGINT,
     PRIMARY KEY (group_id, user_id),
     CONSTRAINT group_members_group_id_fkey
         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
@@ -382,6 +385,18 @@ CREATE TABLE group_members (
 );
 
 CREATE INDEX group_members_user_id_idx ON group_members (user_id);
+
+CREATE TABLE dynamic_group_rules (
+    group_id UUID PRIMARY KEY REFERENCES groups(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    expression TEXT NOT NULL CHECK (char_length(expression) BETWEEN 1 AND 4096),
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    version BIGINT NOT NULL CHECK (version > 0),
+    referenced_attributes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (tenant_id, group_id)
+);
 
 CREATE TABLE tenant_user_attribute_schemas (
     tenant_id UUID PRIMARY KEY,

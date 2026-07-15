@@ -87,11 +87,16 @@ glossary:
       - term: Tenant
         reason: Tenant は認可境界、Group はその境界内のロール束。Group は単独で認証境界を成さない。
   GroupMembership:
-    definition: User と Group の所属関係 (GroupMember)。membership の追加・削除はそれぞれ監査イベントを伴う。effective_roles(user) = user.roles ∪ ⋃ membership.group.roles。
+    definition: User と Group の所属関係 (GroupMember)。manual は管理者操作、dynamic は有効な CEL rule の評価結果だけから変更される。effective_roles(user) = user.roles ∪ ⋃ membership.group.roles。
     aliases:
       - group membership
       - グループ所属
       - membership
+  DynamicGroupRule:
+    definition: User の core 属性と TenantUserAttributeSchema で定義された属性だけを参照し、所属可否を Boolean で返す制限 CEL 式。rule version が一致する dynamic membership だけが有効になる。
+    aliases:
+      - dynamic membership rule
+      - 動的グループルール
   EffectiveRoles:
     definition: 認可判断で用いる User の有効ロール集合。user.roles と所属 Group の roles の和集合。admin RBAC ゲートと /account 自己コンテキストで参照する。
     aliases:
@@ -134,6 +139,18 @@ glossary:
     aliases:
       - supervised
 models:
+  GroupMembershipType:
+    kind: enum
+    description: Group の所属管理方式。作成後は変更できない。
+    values: [manual, dynamic]
+  GroupMembershipSource:
+    kind: enum
+    description: GroupMember を作成した唯一の経路。
+    values: [manual, dynamic_rule]
+  DynamicMembershipEvaluationStatus:
+    kind: enum
+    description: rule version 単位の全件再評価状態。
+    values: [queued, running, succeeded, failed]
   UserStatus:
     kind: enum
     description: User の運用状態の唯一の真実。状態機械 UserLifecycle (Active / Disabled / PendingDeletion / Deleted) と一致し、Okta lifecycle_state / Keycloak 相当の Locked / Staged / Suspended を追加する。Active 以外は認証不可、PendingDeletion は 猶予期間内に復元可能な削除予約、Deleted は終端 (tombstone)。「いつ遷移したか」は監査イベントと status_changed_at が持つ。
@@ -670,6 +687,10 @@ models:
       roles:
         type: "String[]"
         description: このグループが付与するロール束。
+      membership_type:
+        type: GroupMembershipType
+        default: manual
+        description: 作成時に固定し、manual と dynamic を混在させない。
       created_at:
         type: DateTime
       updated_at:
@@ -686,8 +707,68 @@ models:
         type: String
       user_id:
         type: String
+      source:
+        type: GroupMembershipSource
+        default: manual
+      rule_version:
+        type: Integer
+        optional: true
+        description: dynamic_rule の場合に評価した DynamicGroupRule.version。
       created_at:
         type: DateTime
+  DynamicGroupRule:
+    kind: entity
+    description: dynamic Group と一対一の制限 CEL rule。expression は Boolean を返し、未知属性・許可外関数・過大な式を保存できない。
+    identity: group_id
+    fields:
+      group_id: { type: String }
+      tenant_id: { type: String }
+      expression:
+        type: String
+        constraints: [non_empty, { max_length: 4096 }]
+      enabled: { type: Boolean, default: false }
+      version: { type: Integer }
+      referenced_attributes: { type: "String[]" }
+      created_at: { type: DateTime }
+      updated_at: { type: DateTime }
+  DynamicMembershipEvaluation:
+    kind: entity
+    description: rule version の全件再評価と所属差分の監査可能な結果。
+    identity: id
+    fields:
+      id: { type: String }
+      tenant_id: { type: String }
+      group_id: { type: String }
+      rule_version: { type: Integer }
+      job_id: { type: String, optional: true }
+      status: { type: DynamicMembershipEvaluationStatus }
+      added_count: { type: Integer, default: 0 }
+      removed_count: { type: Integer, default: 0 }
+      unchanged_count: { type: Integer, default: 0 }
+      error_count: { type: Integer, default: 0 }
+      created_at: { type: DateTime }
+      completed_at: { type: DateTime, optional: true }
+  DynamicGroupRuleRequest:
+    kind: value_object
+    description: CEL rule の作成・更新入力。
+    fields:
+      expression:
+        type: String
+        constraints: [non_empty, { max_length: 4096 }]
+  DynamicGroupPreviewRequest:
+    kind: value_object
+    description: 保存前 CEL と最大100 userの read-only preview入力。
+    fields:
+      expression: { type: String }
+      user_ids: { type: "String[]" }
+  DynamicGroupPreviewResult:
+    kind: value_object
+    description: Userごとの一致と現在所属との差分。属性値は含めない。
+    fields:
+      user_id: { type: String }
+      matched: { type: Boolean }
+      change: { type: String }
+      error_code: { type: String, optional: true }
   GroupCreateRequest:
     kind: value_object
     description: 管理者がグループを作成する JSON リクエスト。
@@ -706,6 +787,12 @@ models:
           - max_length: 500
       roles:
         type: "String[]"
+        optional: true
+      membership_type:
+        type: GroupMembershipType
+        optional: true
+      dynamic_rule:
+        type: DynamicGroupRuleRequest
         optional: true
   GroupUpdateRequest:
     kind: value_object
@@ -746,6 +833,11 @@ models:
         type: "String[]"
       member_count:
         type: Integer
+      membership_type:
+        type: GroupMembershipType
+      dynamic_rule:
+        type: DynamicGroupRule
+        optional: true
       created_at:
         type: DateTime
       updated_at:
@@ -1210,6 +1302,61 @@ models:
         type: String
       userId:
         type: String
+  DynamicGroupRuleUpdated:
+    kind: event
+    description: 管理者が dynamic group の CEL rule を新しい version へ更新した。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      actorUserId: { type: String }
+      groupId: { type: String }
+      ruleVersion: { type: Integer }
+  DynamicGroupRuleEnabled:
+    kind: event
+    description: 管理者が検証済み rule を有効化し全件再評価を予約した。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      actorUserId: { type: String }
+      groupId: { type: String }
+      ruleVersion: { type: Integer }
+  DynamicGroupRuleDisabled:
+    kind: event
+    description: 管理者が rule を無効化し旧 dynamic membership を即時無効にした。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      actorUserId: { type: String }
+      groupId: { type: String }
+      ruleVersion: { type: Integer }
+  DynamicMembershipEvaluated:
+    kind: event
+    description: rule version の全件再評価が完了した。属性値は持たず差分件数だけを記録する。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      groupId: { type: String }
+      ruleVersion: { type: Integer }
+      addedCount: { type: Integer }
+      removedCount: { type: Integer }
+      unchangedCount: { type: Integer }
+      errorCount: { type: Integer }
+  DynamicMembershipEvaluationStarted:
+    kind: event
+    description: worker が dynamic membership 全件再評価を開始した。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      groupId: { type: String }
+      ruleVersion: { type: Integer }
+  DynamicMembershipEvaluationFailed:
+    kind: event
+    description: dynamic membership 全件再評価が失敗し、対象 rule version は fail-closed のままになった。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      groupId: { type: String }
+      ruleVersion: { type: Integer }
   AgentRegistered:
     kind: event
     description: 管理者が Agent を登録した。
@@ -1372,14 +1519,15 @@ states:
       - from: Disabled
         event: UserDeleted
         to: Deleted
-  GroupLifecycle:
-    description: "Group aggregate のライフサイクル。単一状態 Active のみを持つ。\n無効化状態は持たず、削除は aggregate 自体の物理削除 (DeleteGroup) で表す。\n"
-    target: Group
-    initial: Active
-    terminal:
-      []
+  DynamicMembershipEvaluationLifecycle:
+    description: 全件再評価は queued から running を経て succeeded または failed へ終端する。
+    target: DynamicMembershipEvaluation
+    initial: queued
+    terminal: [succeeded, failed]
     transitions:
-      []
+      - { from: queued, event: DynamicMembershipEvaluationStarted, to: running }
+      - { from: running, event: DynamicMembershipEvaluated, to: succeeded }
+      - { from: running, event: DynamicMembershipEvaluationFailed, to: failed }
   AgentLifecycle:
     description: "Agent aggregate のライフサイクル。Active が通常稼働、Disable で\n復活可能な運用停止、Kill で一方向終端 (緊急停止) となる。Killed は終端で\n復元できず、Active 以外は新規トークンを発行しない (fail-closed)。\n"
     target: Agent
@@ -1968,6 +2116,74 @@ interfaces:
         path: "/api/admin/groups/{group_id}/members/{user_id}"
         successful_status_codes:
           - "204"
+  UpdateDynamicGroupRule:
+    description: 管理者が dynamic group の制限 CEL rule を検証して保存する。未知属性、型不一致、非 Boolean、許可外構文、上限超過は拒否する。
+    input:
+      group_id: { type: String }
+      request: { type: DynamicGroupRuleRequest }
+    output:
+      rule: { type: DynamicGroupRule }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DynamicGroupRuleUpdated]
+    requires:
+      - group(input.group_id).membership_type == dynamic
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: Group, id: input.group_id }
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/groups/{group_id}/dynamic-rule"
+        request_form: body
+  PreviewDynamicGroupRule:
+    description: 最大100 Userに未保存 CEL を副作用なしで評価し、現在所属との差分だけを返す。
+    input:
+      group_id: { type: String }
+      request: { type: DynamicGroupPreviewRequest }
+    output:
+      results: { type: "DynamicGroupPreviewResult[]" }
+    errors: [InvalidRequestError, AccessDeniedError]
+    read_only: true
+    requires:
+      - input.request.user_ids.size() <= 100
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: Group, id: input.group_id }
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/groups/{group_id}/dynamic-rule/preview"
+        request_form: body
+  EnableDynamicGroupRule:
+    description: 検証済み rule を有効化し、旧 version membership を即時無効化して全件再評価 Job を予約する。
+    input:
+      group_id: { type: String }
+    output:
+      rule: { type: DynamicGroupRule }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DynamicGroupRuleEnabled]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: Group, id: input.group_id }
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/groups/{group_id}/dynamic-rule/enable"
+  DisableDynamicGroupRule:
+    description: rule を無効化して、全 dynamic membership を認可・割当判定から即時除外する。
+    input:
+      group_id: { type: String }
+    output:
+      rule: { type: DynamicGroupRule }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DynamicGroupRuleDisabled]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: Group, id: input.group_id }
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/groups/{group_id}/dynamic-rule/disable"
   ListUserGroups:
     description: 管理者が指定 User の所属グループと有効ロール内訳 (明示 / グループ由来 / union) を取得する。
     input:
@@ -2385,6 +2601,34 @@ scenarios:
     main_success:
       - "ユーザー \"alice\" のマイアカウント概要を取得する"
       - "応答は \"alice\" 自身のデータだけで roles を含まない"
+  管理者はCELルールで動的グループ所属を管理できる:
+    actor: TenantAdministrator
+    given:
+      - department 属性が定義され Engineering の User と Sales の User が存在する
+      - membership_type=dynamic のグループが存在する
+    main_success:
+      - 管理者が `user.department == "Engineering"` を保存して有効化する
+      - 全件再評価後に Engineering の Active User だけが dynamic_rule source で所属する
+      - effective_roles と application assignment はその所属を参照する
+  CELルールは保存前に選択ユーザーでプレビューできる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が最大100 Userを選択している
+    main_success:
+      - 未保存 CEL を評価する
+      - 応答は matched と add/remove/unchanged を返し属性値を返さない
+  不正なCELルールと動的グループの手動操作は拒否される:
+    actor: TenantAdministrator
+    main_success:
+      - 未定義属性または許可外関数を参照する CEL の保存は拒否される
+      - dynamic group への手動 AddGroupMember と RemoveGroupMember は拒否される
+  評価不能なルールは権限を付与しない:
+    actor: TenantAdministrator
+    given:
+      - 有効な dynamic rule の version が更新された
+    main_success:
+      - 旧 version の membership は直ちに effective roles から除外される
+      - 再評価が失敗した User は新 version の membership を取得しない
 flows:
   AdminUsers:
     entry: AdminUsers
@@ -2481,6 +2725,22 @@ flows:
       - from: AdminGroups
         action: remove_member
         interface: RemoveGroupMember
+        to: AdminGroups
+      - from: AdminGroups
+        action: update_dynamic_rule
+        interface: UpdateDynamicGroupRule
+        to: AdminGroups
+      - from: AdminGroups
+        action: preview_dynamic_rule
+        interface: PreviewDynamicGroupRule
+        to: AdminGroups
+      - from: AdminGroups
+        action: enable_dynamic_rule
+        interface: EnableDynamicGroupRule
+        to: AdminGroups
+      - from: AdminGroups
+        action: disable_dynamic_rule
+        interface: DisableDynamicGroupRule
         to: AdminGroups
       - from: AdminGroups
         action: view_users
