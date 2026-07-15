@@ -3211,6 +3211,8 @@ interfaces:
     input:
       workflow_id:
         type: String
+      expected_revision:
+        type: Integer
     output:
       workflow:
         type: LifecycleWorkflowResponse
@@ -3233,6 +3235,8 @@ interfaces:
     input:
       workflow_id:
         type: String
+      expected_revision:
+        type: Integer
     output:
       workflow:
         type: LifecycleWorkflowResponse
@@ -3255,6 +3259,8 @@ interfaces:
     input:
       workflow_id:
         type: String
+      expected_revision:
+        type: Integer
     errors:
       - InvalidRequestError
       - AccessDeniedError

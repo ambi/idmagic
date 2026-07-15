@@ -39,10 +39,10 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, time.Time{}); err != nil {
 		t.Fatalf("EnableLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, time.Time{}); err != nil {
+	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, time.Time{}); err != nil {
 		t.Fatalf("DisableLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.ArchiveLifecycleWorkflow(workflowContext(), deps, workflow.ID, time.Time{}); err != nil {
+	if _, err := usecases.ArchiveLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, time.Time{}); err != nil {
 		t.Fatalf("ArchiveLifecycleWorkflow: %v", err)
 	}
 }
@@ -54,7 +54,7 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	other := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
-	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
+	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("cross-tenant access error = %v", err)
 	}
 }

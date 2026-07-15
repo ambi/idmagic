@@ -219,6 +219,54 @@ type Job struct {
 	UpdatedAt      time.Time
 }
 
+type LifecycleWorkflow struct {
+	ID              string
+	TenantID        string
+	Name            string
+	Description     pgtype.Text
+	Status          string
+	CurrentRevision int64
+	EnabledRevision pgtype.Int8
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type LifecycleWorkflowRevision struct {
+	WorkflowID string
+	TenantID   string
+	Revision   int64
+	Trigger    []byte
+	Actions    []byte
+	CreatedAt  time.Time
+}
+
+type LifecycleWorkflowRun struct {
+	ID                 string
+	TenantID           string
+	WorkflowID         string
+	Revision           int64
+	SourceOccurrenceID string
+	TargetUserID       string
+	TriggerKind        string
+	ChangedFields      []byte
+	Actions            []byte
+	Status             string
+	JobID              pgtype.UUID
+	TriggeredAt        time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type LifecycleWorkflowStep struct {
+	RunID       string
+	StepIndex   int32
+	Action      []byte
+	Outcome     string
+	ErrorCode   pgtype.Text
+	CompletedAt pgtype.Timestamptz
+	CreatedAt   time.Time
+}
+
 type MfaEnrollmentBypass struct {
 	ID         string
 	TenantID   string

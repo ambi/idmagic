@@ -736,6 +736,7 @@ CREATE TABLE lifecycle_workflows (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
+    description TEXT,
     status TEXT NOT NULL CHECK (status IN ('draft', 'enabled', 'disabled', 'archived')),
     current_revision BIGINT NOT NULL CHECK (current_revision >= 1),
     enabled_revision BIGINT,

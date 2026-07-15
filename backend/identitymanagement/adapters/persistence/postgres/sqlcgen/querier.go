@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	AddAgentBinding(ctx context.Context, arg AddAgentBindingParams) (int64, error)
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (int64, error)
+	CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) error
 	CountGroupMembers(ctx context.Context, arg CountGroupMembersParams) (int64, error)
 	DeleteAgent(ctx context.Context, arg DeleteAgentParams) error
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error
@@ -18,6 +19,8 @@ type Querier interface {
 	FindAgentByClientID(ctx context.Context, arg FindAgentByClientIDParams) (*Agent, error)
 	FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*Agent, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
+	FindLifecycleWorkflow(ctx context.Context, arg FindLifecycleWorkflowParams) (*LifecycleWorkflow, error)
+	FindLifecycleWorkflowRevision(ctx context.Context, arg FindLifecycleWorkflowRevisionParams) (*LifecycleWorkflowRevision, error)
 	FindTenantUserAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantUserAttributeSchema, error)
 	FindUserByEmail(ctx context.Context, arg FindUserByEmailParams) (*User, error)
 	FindUserBySub(ctx context.Context, id string) (*User, error)
@@ -28,11 +31,17 @@ type Querier interface {
 	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)
 	ListGroupsByTenant(ctx context.Context, tenantID string) ([]*Group, error)
 	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error)
+	ListLifecycleWorkflowRuns(ctx context.Context, arg ListLifecycleWorkflowRunsParams) ([]*ListLifecycleWorkflowRunsRow, error)
+	ListLifecycleWorkflowsByTenant(ctx context.Context, tenantID string) ([]*LifecycleWorkflow, error)
 	ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error)
 	RemoveAgentBinding(ctx context.Context, arg RemoveAgentBindingParams) (int64, error)
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
+	ResetFailedLifecycleWorkflowSteps(ctx context.Context, runID string) error
+	RetryLifecycleWorkflowRun(ctx context.Context, arg RetryLifecycleWorkflowRunParams) (int64, error)
 	SaveAgent(ctx context.Context, arg SaveAgentParams) error
 	SaveGroup(ctx context.Context, arg SaveGroupParams) error
+	SaveLifecycleWorkflow(ctx context.Context, arg SaveLifecycleWorkflowParams) error
+	SaveLifecycleWorkflowRevision(ctx context.Context, arg SaveLifecycleWorkflowRevisionParams) error
 	SaveTenantUserAttributeSchema(ctx context.Context, arg SaveTenantUserAttributeSchemaParams) error
 	SaveUser(ctx context.Context, arg SaveUserParams) error
 }

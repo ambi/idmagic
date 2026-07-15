@@ -32,6 +32,10 @@ import type {
   WsFedClaimMappingRule,
   WsFedRelyingParty,
   WsFedTokenType,
+  AdminLifecycleWorkflow,
+  WorkflowAction,
+  WorkflowTrigger,
+  WorkflowRun,
 } from '../types'
 import { AuthenticationAPIError, adminRequest, request, tenantURL } from './core'
 
@@ -155,6 +159,81 @@ export async function importAdminUsers(
 
 export async function getAdminUserImport(jobId: string): Promise<UserImportJob> {
   return request(`/api/admin/users/imports/${encodeURIComponent(jobId)}`)
+}
+
+export type LifecycleWorkflowInput = {
+  expected_revision?: number
+  name: string
+  description?: string
+  trigger: WorkflowTrigger
+  actions: WorkflowAction[]
+}
+export async function listLifecycleWorkflows(): Promise<AdminLifecycleWorkflow[]> {
+  return (await request<{ workflows: AdminLifecycleWorkflow[] }>('/api/admin/lifecycle_workflows'))
+    .workflows
+}
+export async function createLifecycleWorkflow(
+  csrfToken: string,
+  input: LifecycleWorkflowInput,
+): Promise<AdminLifecycleWorkflow> {
+  return request('/api/admin/lifecycle_workflows', adminRequest(csrfToken, 'POST', input))
+}
+export async function updateLifecycleWorkflow(
+  csrfToken: string,
+  id: string,
+  input: LifecycleWorkflowInput,
+): Promise<AdminLifecycleWorkflow> {
+  return request(
+    `/api/admin/lifecycle_workflows/${encodeURIComponent(id)}`,
+    adminRequest(csrfToken, 'PUT', input),
+  )
+}
+export async function setLifecycleWorkflowState(
+  csrfToken: string,
+  id: string,
+  state: 'enable' | 'disable',
+  expected_revision: number,
+): Promise<AdminLifecycleWorkflow> {
+  return request(
+    `/api/admin/lifecycle_workflows/${encodeURIComponent(id)}/${state}`,
+    adminRequest(csrfToken, 'POST', { expected_revision }),
+  )
+}
+export async function archiveLifecycleWorkflow(
+  csrfToken: string,
+  id: string,
+  expected_revision: number,
+): Promise<void> {
+  await request(
+    `/api/admin/lifecycle_workflows/${encodeURIComponent(id)}`,
+    adminRequest(csrfToken, 'DELETE', { expected_revision }),
+  )
+}
+export async function dryRunLifecycleWorkflow(
+  csrfToken: string,
+  id: string,
+  targetUserID: string,
+): Promise<{ steps: { action_kind: string; would_change: string; reason?: string }[] }> {
+  return request(
+    `/api/admin/lifecycle_workflows/${encodeURIComponent(id)}/dry_run`,
+    adminRequest(csrfToken, 'POST', { target_user_id: targetUserID }),
+  )
+}
+export async function listLifecycleWorkflowRuns(id: string): Promise<WorkflowRun[]> {
+  return (
+    await request<{ runs: WorkflowRun[] }>(
+      `/api/admin/lifecycle_workflows/${encodeURIComponent(id)}/runs`,
+    )
+  ).runs
+}
+export async function retryLifecycleWorkflowRun(
+  csrfToken: string,
+  id: string,
+): Promise<WorkflowRun> {
+  return request(
+    `/api/admin/lifecycle_workflow_runs/${encodeURIComponent(id)}/retry`,
+    adminRequest(csrfToken, 'POST'),
+  )
 }
 
 // authorization_details type (RFC 9396 / ADR-050) の管理 API クライアント。

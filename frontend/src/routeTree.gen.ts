@@ -31,6 +31,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
+import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
 import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
 import { Route as AdminConsentsRouteImport } from './routes/admin/consents'
@@ -175,6 +176,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminRolesRoute = AdminRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminLifecycleWorkflowsRoute = AdminLifecycleWorkflowsRouteImport.update({
+  id: '/lifecycle-workflows',
+  path: '/lifecycle-workflows',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminKeysRoute = AdminKeysRouteImport.update({
@@ -386,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
+  '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
@@ -442,6 +449,7 @@ export interface FileRoutesByTo {
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
+  '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
@@ -498,6 +506,7 @@ export interface FileRoutesById {
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
+  '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
@@ -559,6 +568,7 @@ export interface FileRouteTypes {
     | '/admin/consents'
     | '/admin/groups'
     | '/admin/keys'
+    | '/admin/lifecycle-workflows'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
@@ -615,6 +625,7 @@ export interface FileRouteTypes {
     | '/admin/consents'
     | '/admin/groups'
     | '/admin/keys'
+    | '/admin/lifecycle-workflows'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
@@ -670,6 +681,7 @@ export interface FileRouteTypes {
     | '/admin/consents'
     | '/admin/groups'
     | '/admin/keys'
+    | '/admin/lifecycle-workflows'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
@@ -871,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/roles'
       fullPath: '/admin/roles'
       preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/lifecycle-workflows': {
+      id: '/admin/lifecycle-workflows'
+      path: '/lifecycle-workflows'
+      fullPath: '/admin/lifecycle-workflows'
+      preLoaderRoute: typeof AdminLifecycleWorkflowsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/keys': {
@@ -1208,6 +1227,7 @@ interface AdminRouteRouteChildren {
   AdminConsentsRoute: typeof AdminConsentsRoute
   AdminGroupsRoute: typeof AdminGroupsRoute
   AdminKeysRoute: typeof AdminKeysRoute
+  AdminLifecycleWorkflowsRoute: typeof AdminLifecycleWorkflowsRoute
   AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSignInPolicyRoute: typeof AdminSignInPolicyRoute
@@ -1234,6 +1254,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminConsentsRoute: AdminConsentsRoute,
   AdminGroupsRoute: AdminGroupsRoute,
   AdminKeysRoute: AdminKeysRoute,
+  AdminLifecycleWorkflowsRoute: AdminLifecycleWorkflowsRoute,
   AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSignInPolicyRoute: AdminSignInPolicyRoute,

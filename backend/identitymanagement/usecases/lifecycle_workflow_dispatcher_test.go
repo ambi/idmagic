@@ -65,7 +65,10 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users})
-	params, _ := json.Marshal(map[string]string{"run_id": run.ID})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
 	job := &jobsdomain.Job{TenantID: run.TenantID, Params: params}
 	if _, err := handler(ctx, job); err != nil {
 		t.Fatal(err)

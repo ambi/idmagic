@@ -228,6 +228,7 @@ type LifecycleWorkflow struct {
 	ID              string                  `json:"id"`
 	TenantID        string                  `json:"tenant_id"`
 	Name            string                  `json:"name"`
+	Description     *string                 `json:"description,omitempty"`
 	Status          LifecycleWorkflowStatus `json:"status"`
 	CurrentRevision int64                   `json:"current_revision"`
 	EnabledRevision *int64                  `json:"enabled_revision,omitempty"`
@@ -238,6 +239,9 @@ type LifecycleWorkflow struct {
 func (w LifecycleWorkflow) Validate() error {
 	if w.ID == "" || w.TenantID == "" || strings.TrimSpace(w.Name) == "" || w.CurrentRevision < 1 || w.CreatedAt.IsZero() || w.UpdatedAt.IsZero() || !w.Status.Valid() {
 		return errors.New("invalid lifecycle workflow")
+	}
+	if w.Description != nil && len(*w.Description) > 500 {
+		return errors.New("workflow description is too long")
 	}
 	if w.Status == LifecycleWorkflowEnabled && (w.EnabledRevision == nil || *w.EnabledRevision < 1 || *w.EnabledRevision > w.CurrentRevision) {
 		return errors.New("enabled workflow must select an existing revision")

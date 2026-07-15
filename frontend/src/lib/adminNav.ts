@@ -21,6 +21,7 @@ export type AdminNavKey =
   | 'users'
   | 'groups'
   | 'agents'
+  | 'workflows'
   | 'roles'
   | 'applications'
   | 'sign-in-policy'
@@ -70,6 +71,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconRobot,
       href: tenantURL('/admin/agents'),
       active: active === 'agents',
+    },
+    {
+      key: 'workflows',
+      label: 'ワークフロー',
+      icon: IconActivity,
+      href: tenantURL('/admin/lifecycle-workflows'),
+      active: active === 'workflows',
     },
     {
       key: 'roles',

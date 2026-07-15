@@ -1,6 +1,6 @@
 ---
 depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-219-lifecycle-workflow-admin-api]
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-16
@@ -28,10 +28,10 @@ created_at: 2026-07-16
 
 ## Tasks
 
-- [ ] T001 [UI] typed editor と validation summary を実装する。
-- [ ] T002 [UI] dry-run/run history/failure detail を実装する。
-- [ ] T003 [Docs] delivery semantics と recovery runbook を同期する。
-- [ ] T004 [Verify] UI/E2E と全体 verify を通す。
+- [x] T001 [UI] typed editor と validation summary を実装する。
+- [x] T002 [UI] dry-run/run history/failure detail を実装する。
+- [x] T003 [Docs] delivery semantics と recovery runbook を同期する。
+- [x] T004 [Verify] UI/E2E と全体 verify を通す。
 
 ## Verification
 
@@ -42,3 +42,13 @@ created_at: 2026-07-16
 ## Risk Notes
 
 画面に attribute value、email 本文、secret を表示しない。API response と表示 model の両方で最小化する。
+
+## Completion
+
+- **Completed At**: 2026-07-16
+- **Summary**: Lifecycle workflow 管理画面、dry-run・run 履歴・retry 表示、および運用手順を追加した。
+- **Affected Guarantees State**: attribute value、email 本文、secret を画面に表示しない。
+- **Verification Results**:
+  - `just verify-ui` — passed
+  - `just verify` — passed
+- **Evidence**: ローカル開発環境で Codex が UI ビルド・全体検証を実行した。

@@ -73,6 +73,55 @@ export const REQUIRED_ACTIONS = [
 
 export type RequiredActionValue = (typeof REQUIRED_ACTIONS)[number]
 
+export type LifecycleWorkflowStatus = 'draft' | 'enabled' | 'disabled' | 'archived'
+export type WorkflowActionKind =
+  | 'add_group_member'
+  | 'remove_group_member'
+  | 'assign_application'
+  | 'unassign_application'
+  | 'set_required_action'
+  | 'clear_required_action'
+  | 'enable_user'
+  | 'disable_user'
+  | 'send_email'
+export type WorkflowTrigger = {
+  kind: 'user_created' | 'user_attributes_changed' | 'user_status_changed'
+  watched_attributes?: string[]
+  from_status?: string
+  to_status?: string
+  filters?: unknown[]
+}
+export type WorkflowAction = {
+  kind: WorkflowActionKind
+  group_id?: string
+  application_id?: string
+  visibility?: string
+  required_action?: string
+  reason?: string
+  template_key?: string
+}
+export type AdminLifecycleWorkflow = {
+  id: string
+  name: string
+  description?: string
+  status: LifecycleWorkflowStatus
+  current_revision: number
+  enabled_revision?: number
+  trigger: WorkflowTrigger
+  actions: WorkflowAction[]
+  created_at: string
+  updated_at: string
+}
+export type WorkflowRun = {
+  id: string
+  workflow_id: string
+  revision: number
+  target_user_id: string
+  status: string
+  triggered_at: string
+  steps: { step_index: number; action_kind: string; outcome: string; error_code?: string }[]
+}
+
 // requiredActionLabel は内部値を利用者向けの表示名(現在locale)へ変換する。未知の値でも
 // 内部表現をそのまま見せず、一般的な文言にフォールバックする。t は呼び出し側が
 // useDictionary(domainLabelsDictionary) で取得したものを渡す。

@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"slices"
+	"sort"
 	"sync"
 	"time"
 
@@ -112,6 +113,50 @@ func (r *LifecycleWorkflowRunRepository) FindRun(_ context.Context, tenantID, ru
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneRun(r.runs[runKey(tenantID, runID)]), nil
+}
+
+func (r *LifecycleWorkflowRunRepository) ListRuns(_ context.Context, tenantID, workflowID string, limit int) ([]*idmdomain.WorkflowRun, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*idmdomain.WorkflowRun{}
+	for _, run := range r.runs {
+		if run.TenantID == tenantID && run.WorkflowID == workflowID {
+			out = append(out, cloneRun(run))
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].TriggeredAt.After(out[j].TriggeredAt) })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (r *LifecycleWorkflowRunRepository) RetryRun(_ context.Context, tenantID, runID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := runKey(tenantID, runID)
+	run := r.runs[key]
+	if run == nil || (run.Status != idmdomain.WorkflowRunFailed && run.Status != idmdomain.WorkflowRunPartiallyFailed) {
+		return false, nil
+	}
+	for i := range r.steps[key] {
+		if r.steps[key][i].Outcome == idmdomain.WorkflowStepFailed {
+			r.steps[key][i].Outcome, r.steps[key][i].ErrorCode, r.steps[key][i].CompletedAt = idmdomain.WorkflowStepPending, "", nil
+		}
+	}
+	run.Status, run.JobID = idmdomain.WorkflowRunQueued, nil
+	return true, nil
+}
+
+func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(_ context.Context, tenantID, workflowID string, _ time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, run := range r.runs {
+		if run.TenantID == tenantID && run.WorkflowID == workflowID && run.Status == idmdomain.WorkflowRunQueued {
+			run.Status = idmdomain.WorkflowRunCanceled
+		}
+	}
+	return nil
 }
 
 func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(_ context.Context, limit int) ([]*idmdomain.WorkflowRun, error) {

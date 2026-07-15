@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"time"
 
+	"github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres/sqlcgen"
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
@@ -98,6 +100,53 @@ func (r *LifecycleWorkflowRunRepository) FindRun(ctx context.Context, tenantID, 
 		return nil, nil
 	}
 	return run, err
+}
+
+func (r *LifecycleWorkflowRunRepository) ListRuns(ctx context.Context, tenantID, workflowID string, limit int) ([]*idmdomain.WorkflowRun, error) {
+	if limit < 1 || limit > math.MaxInt32 {
+		return nil, errors.New("invalid workflow run limit")
+	}
+	rows, err := sqlcgen.New(r.Pool).ListLifecycleWorkflowRuns(ctx, sqlcgen.ListLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID, Limit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*idmdomain.WorkflowRun, 0, len(rows))
+	for _, row := range rows {
+		run := &idmdomain.WorkflowRun{ID: row.ID, TenantID: row.TenantID, WorkflowID: row.WorkflowID, Revision: row.Revision, SourceOccurrenceID: row.SourceOccurrenceID, TargetUserID: row.TargetUserID, TriggerKind: idmdomain.WorkflowTriggerKind(row.TriggerKind), Status: idmdomain.WorkflowRunStatus(row.Status), TriggeredAt: row.TriggeredAt}
+		if err := json.Unmarshal(row.ChangedFields, &run.ChangedFields); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(row.Actions, &run.Actions); err != nil {
+			return nil, err
+		}
+		if row.JobID.Valid {
+			value := row.JobID.String()
+			run.JobID = &value
+		}
+		out = append(out, run)
+	}
+	return out, nil
+}
+
+func (r *LifecycleWorkflowRunRepository) RetryRun(ctx context.Context, tenantID, runID string) (bool, error) {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := sqlcgen.New(tx)
+	affected, err := q.RetryLifecycleWorkflowRun(ctx, sqlcgen.RetryLifecycleWorkflowRunParams{TenantID: tenantID, ID: runID})
+	if err != nil || affected != 1 {
+		return false, err
+	}
+	if err := q.ResetFailedLifecycleWorkflowSteps(ctx, runID); err != nil {
+		return false, err
+	}
+	return true, tx.Commit(ctx)
+}
+
+func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(ctx context.Context, tenantID, workflowID string, _ time.Time) error {
+	return sqlcgen.New(r.Pool).CancelQueuedLifecycleWorkflowRuns(ctx, sqlcgen.CancelQueuedLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID})
 }
 
 func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(ctx context.Context, limit int) ([]*idmdomain.WorkflowRun, error) {

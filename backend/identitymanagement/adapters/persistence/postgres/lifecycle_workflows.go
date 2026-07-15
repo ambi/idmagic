@@ -17,13 +17,18 @@ type LifecycleWorkflowRepository struct{ Pool sharedpg.DB }
 
 var _ idmports.LifecycleWorkflowRepository = (*LifecycleWorkflowRepository)(nil)
 
-const lifecycleWorkflowColumns = `id,tenant_id,name,status,current_revision,enabled_revision,created_at,updated_at`
+const lifecycleWorkflowColumns = `id,tenant_id,name,description,status,current_revision,enabled_revision,created_at,updated_at`
 
 func scanLifecycleWorkflow(row sharedpg.RowScanner) (*idmdomain.LifecycleWorkflow, error) {
 	workflow := &idmdomain.LifecycleWorkflow{}
 	var enabled pgtype.Int8
-	if err := row.Scan(&workflow.ID, &workflow.TenantID, &workflow.Name, &workflow.Status, &workflow.CurrentRevision, &enabled, &workflow.CreatedAt, &workflow.UpdatedAt); err != nil {
+	var description pgtype.Text
+	if err := row.Scan(&workflow.ID, &workflow.TenantID, &workflow.Name, &description, &workflow.Status, &workflow.CurrentRevision, &enabled, &workflow.CreatedAt, &workflow.UpdatedAt); err != nil {
 		return nil, err
+	}
+	if description.Valid {
+		value := description.String
+		workflow.Description = &value
 	}
 	if enabled.Valid {
 		value := enabled.Int64
@@ -65,7 +70,7 @@ func (r *LifecycleWorkflowRepository) Save(ctx context.Context, workflow *idmdom
 	if workflow.EnabledRevision != nil {
 		enabled = pgtype.Int8{Int64: *workflow.EnabledRevision, Valid: true}
 	}
-	_, err := r.Pool.Exec(ctx, `INSERT INTO lifecycle_workflows (id,tenant_id,name,status,current_revision,enabled_revision,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,status=EXCLUDED.status,current_revision=EXCLUDED.current_revision,enabled_revision=EXCLUDED.enabled_revision,updated_at=EXCLUDED.updated_at WHERE lifecycle_workflows.tenant_id=EXCLUDED.tenant_id`, workflow.ID, workflow.TenantID, workflow.Name, workflow.Status, workflow.CurrentRevision, enabled, workflow.CreatedAt, workflow.UpdatedAt)
+	_, err := r.Pool.Exec(ctx, `INSERT INTO lifecycle_workflows (id,tenant_id,name,description,status,current_revision,enabled_revision,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,status=EXCLUDED.status,current_revision=EXCLUDED.current_revision,enabled_revision=EXCLUDED.enabled_revision,updated_at=EXCLUDED.updated_at WHERE lifecycle_workflows.tenant_id=EXCLUDED.tenant_id`, workflow.ID, workflow.TenantID, workflow.Name, workflow.Description, workflow.Status, workflow.CurrentRevision, enabled, workflow.CreatedAt, workflow.UpdatedAt)
 	return err
 }
 

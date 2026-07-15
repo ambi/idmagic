@@ -41,6 +41,10 @@ func cloneWorkflow(workflow *idmdomain.LifecycleWorkflow) *idmdomain.LifecycleWo
 		value := *workflow.EnabledRevision
 		cloned.EnabledRevision = &value
 	}
+	if workflow.Description != nil {
+		value := *workflow.Description
+		cloned.Description = &value
+	}
 	return &cloned
 }
 

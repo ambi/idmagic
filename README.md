@@ -410,6 +410,14 @@ See [infra/schema/README.md](infra/schema/README.md) for the full workflow.
 
 ## Documentation Guide
 
+## Lifecycle workflow operations
+
+Lifecycle workflow runs are delivered at least once through the durable Jobs queue. A changed or no-op step is checkpointed and is not performed again when a Job retries. When a run reaches `failed` or `partially_failed`, an administrator may retry it from the workflow run detail; only failed steps return to pending.
+
+Use dry-run before enabling a changed definition. It evaluates the selected user without creating a WorkflowRun, Job, membership, assignment, required action, status change, or email. Treat its result as a point-in-time prediction, not a guarantee of a later run.
+
+If a run fails, inspect the sanitized step error code and the affected resource. Correct the external dependency or definition, then retry the run. Disabling a workflow prevents new triggers and cancels queued runs; it does not undo already completed actions.
+
 - Product specification: [spec/scl.yaml](spec/scl.yaml)
 - Implementation index: [ARCHITECTURE.md](ARCHITECTURE.md)
 - UI design and test policy: [frontend/README.md](frontend/README.md)

@@ -85,6 +85,17 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/agents/:agent_id", d.handleDeleteAgent)
 	g.POST("/api/admin/agents/:agent_id/credentials", d.handleBindAgentCredential)
 	g.DELETE("/api/admin/agents/:agent_id/credentials/:client_id", d.handleUnbindAgentCredential)
+	g.GET("/api/admin/lifecycle_workflows", d.handleListLifecycleWorkflows)
+	g.GET("/api/admin/lifecycle_workflows/:workflow_id", d.handleGetLifecycleWorkflow)
+	g.POST("/api/admin/lifecycle_workflows", d.handleCreateLifecycleWorkflow)
+	g.PUT("/api/admin/lifecycle_workflows/:workflow_id", d.handleUpdateLifecycleWorkflow)
+	g.POST("/api/admin/lifecycle_workflows/:workflow_id/enable", d.handleEnableLifecycleWorkflow)
+	g.POST("/api/admin/lifecycle_workflows/:workflow_id/disable", d.handleDisableLifecycleWorkflow)
+	g.DELETE("/api/admin/lifecycle_workflows/:workflow_id", d.handleArchiveLifecycleWorkflow)
+	g.POST("/api/admin/lifecycle_workflows/:workflow_id/dry_run", d.handleDryRunLifecycleWorkflow)
+	g.GET("/api/admin/lifecycle_workflows/:workflow_id/runs", d.handleListLifecycleWorkflowRuns)
+	g.GET("/api/admin/lifecycle_workflow_runs/:run_id", d.handleGetLifecycleWorkflowRun)
+	g.POST("/api/admin/lifecycle_workflow_runs/:run_id/retry", d.handleRetryLifecycleWorkflowRun)
 }
 
 func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {

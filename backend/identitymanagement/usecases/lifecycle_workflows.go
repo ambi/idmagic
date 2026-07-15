@@ -19,7 +19,8 @@ var (
 )
 
 type LifecycleWorkflowDeps struct {
-	Repo idmports.LifecycleWorkflowRepository
+	Repo    idmports.LifecycleWorkflowRepository
+	RunRepo idmports.LifecycleWorkflowRunRepository
 }
 
 // PlanLifecycleWorkflowRuns evaluates enabled definitions against one committed
@@ -63,10 +64,11 @@ func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkf
 }
 
 type CreateLifecycleWorkflowInput struct {
-	Name    string
-	Trigger idmdomain.WorkflowTrigger
-	Actions []idmdomain.WorkflowAction
-	Now     time.Time
+	Name        string
+	Description *string
+	Trigger     idmdomain.WorkflowTrigger
+	Actions     []idmdomain.WorkflowAction
+	Now         time.Time
 }
 
 func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, input CreateLifecycleWorkflowInput) (*idmdomain.LifecycleWorkflow, error) {
@@ -96,7 +98,7 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := revision.Validate(); err != nil {
 		return nil, err
 	}
-	workflow := &idmdomain.LifecycleWorkflow{ID: id, TenantID: tenantID, Name: name, Status: idmdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
+	workflow := &idmdomain.LifecycleWorkflow{ID: id, TenantID: tenantID, Name: name, Description: normalizedDescription(input.Description), Status: idmdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
 	if err := workflow.Validate(); err != nil {
 		return nil, err
 	}
@@ -113,6 +115,7 @@ type UpdateLifecycleWorkflowInput struct {
 	WorkflowID       string
 	ExpectedRevision int64
 	Name             string
+	Description      *string
 	Trigger          idmdomain.WorkflowTrigger
 	Actions          []idmdomain.WorkflowAction
 	Now              time.Time
@@ -145,7 +148,7 @@ func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := revision.Validate(); err != nil {
 		return nil, err
 	}
-	workflow.Name, workflow.CurrentRevision, workflow.UpdatedAt = name, next, now
+	workflow.Name, workflow.Description, workflow.CurrentRevision, workflow.UpdatedAt = name, normalizedDescription(input.Description), next, now
 	if err := deps.Repo.SaveRevision(ctx, revision); err != nil {
 		return nil, err
 	}
@@ -176,26 +179,118 @@ func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, wo
 	return workflow, deps.Repo.Save(ctx, workflow)
 }
 
-func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
+func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
 	workflow, err := tenantWorkflow(ctx, deps, workflowID)
 	if err != nil {
 		return nil, err
+	}
+	if expectedRevision != workflow.CurrentRevision {
+		return nil, ErrWorkflowRevisionConflict
 	}
 	if err := workflow.Disable(normalizedNow(now)); err != nil {
 		return nil, err
 	}
-	return workflow, deps.Repo.Save(ctx, workflow)
+	if err := deps.Repo.Save(ctx, workflow); err != nil {
+		return nil, err
+	}
+	if deps.RunRepo != nil {
+		if err := deps.RunRepo.CancelQueuedByWorkflow(ctx, workflow.TenantID, workflow.ID, now); err != nil {
+			return nil, err
+		}
+	}
+	return workflow, nil
 }
 
-func ArchiveLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
+type LifecycleWorkflowRunView struct {
+	Run   *idmdomain.WorkflowRun
+	Steps []idmdomain.WorkflowStep
+}
+
+func ListLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, limit int) ([]LifecycleWorkflowRunView, error) {
+	if _, err := tenantWorkflow(ctx, deps, workflowID); err != nil {
+		return nil, err
+	}
+	if deps.RunRepo == nil {
+		return nil, errors.New("lifecycle workflow run repository is required")
+	}
+	runs, err := deps.RunRepo.ListRuns(ctx, tenancy.TenantID(ctx), workflowID, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]LifecycleWorkflowRunView, 0, len(runs))
+	for _, run := range runs {
+		steps, err := deps.RunRepo.ListSteps(ctx, run.TenantID, run.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, LifecycleWorkflowRunView{Run: run, Steps: steps})
+	}
+	return out, nil
+}
+
+func GetLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, runID string) (*LifecycleWorkflowRunView, error) {
+	if deps.RunRepo == nil {
+		return nil, errors.New("lifecycle workflow run repository is required")
+	}
+	run, err := deps.RunRepo.FindRun(ctx, tenancy.TenantID(ctx), runID)
+	if err != nil {
+		return nil, err
+	}
+	if run == nil {
+		return nil, ErrLifecycleWorkflowNotFound
+	}
+	steps, err := deps.RunRepo.ListSteps(ctx, run.TenantID, run.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &LifecycleWorkflowRunView{Run: run, Steps: steps}, nil
+}
+
+func RetryLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, runID string) (*LifecycleWorkflowRunView, error) {
+	view, err := GetLifecycleWorkflowRun(ctx, deps, runID)
+	if err != nil {
+		return nil, err
+	}
+	workflow, err := tenantWorkflow(ctx, deps, view.Run.WorkflowID)
+	if err != nil {
+		return nil, err
+	}
+	if workflow.Status != idmdomain.LifecycleWorkflowEnabled {
+		return nil, errors.New("workflow is disabled")
+	}
+	ok, err := deps.RunRepo.RetryRun(ctx, view.Run.TenantID, view.Run.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, errors.New("workflow run is not retryable")
+	}
+	return GetLifecycleWorkflowRun(ctx, deps, runID)
+}
+
+func ArchiveLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
 	workflow, err := tenantWorkflow(ctx, deps, workflowID)
 	if err != nil {
 		return nil, err
+	}
+	if expectedRevision != workflow.CurrentRevision {
+		return nil, ErrWorkflowRevisionConflict
 	}
 	if err := workflow.Archive(normalizedNow(now)); err != nil {
 		return nil, err
 	}
 	return workflow, deps.Repo.Save(ctx, workflow)
+}
+
+func normalizedDescription(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func tenantWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string) (*idmdomain.LifecycleWorkflow, error) {
