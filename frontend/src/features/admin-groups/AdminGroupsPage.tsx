@@ -291,9 +291,6 @@ function GroupDetailCard({
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [rule, setRule] = useState(group?.dynamic_rule)
-  const [ruleExpression, setRuleExpression] = useState(group?.dynamic_rule?.expression ?? '')
-  const [previewUserIDs, setPreviewUserIDs] = useState<string[]>([])
-  const [preview, setPreview] = useState<DynamicGroupPreview[]>([])
   const t = useDictionary(adminGroupsDictionary)
 
   useEffect(() => {
@@ -309,9 +306,6 @@ function GroupDetailCard({
       setMembers(detail.members)
       setAllUsers(users)
       setRule(detail.group.dynamic_rule)
-      setRuleExpression(detail.group.dynamic_rule?.expression ?? '')
-      setPreview([])
-      setPreviewUserIDs([])
     })
     return () => {
       cancelled = true
@@ -461,90 +455,14 @@ function GroupDetailCard({
               {rule?.enabled ? t.ruleEnabled : t.ruleDisabled}
             </span>
           </div>
-          <p className="mt-2 text-xs text-slate-500">{t.dynamicRuleHelp}</p>
-          <textarea
-            value={ruleExpression}
-            onChange={(event) => setRuleExpression(event.target.value)}
-            aria-label={t.dynamicRuleExpression}
-            className="mt-3 min-h-28 w-full rounded-md border border-slate-300 bg-white p-3 font-mono text-sm"
-            placeholder={'user.department == "Engineering"'}
-          />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              disabled={localBusy || !ruleExpression.trim()}
-              onClick={() =>
-                void withLocal(async () => {
-                  const saved = await updateDynamicGroupRule(csrfToken, group.id, ruleExpression)
-                  setRule(saved)
-                })
-              }
-            >
-              {t.saveRule}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={localBusy || !ruleExpression.trim() || previewUserIDs.length === 0}
-              onClick={() =>
-                void withLocal(async () => {
-                  const result = await previewDynamicGroupRule(
-                    csrfToken,
-                    group.id,
-                    ruleExpression,
-                    previewUserIDs,
-                  )
-                  setPreview(result.results)
-                })
-              }
-            >
-              {t.previewRule}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={localBusy || !rule}
-              onClick={() =>
-                void withLocal(async () => {
-                  const saved = await setDynamicGroupRuleEnabled(
-                    csrfToken,
-                    group.id,
-                    !rule?.enabled,
-                  )
-                  setRule(saved)
-                  await reloadMembers()
-                })
-              }
-            >
-              {rule?.enabled ? t.disableRule : t.enableRule}
-            </Button>
-          </div>
-          <Label htmlFor={`dynamic-preview-${group.id}`} className="mt-4 block">
-            {t.previewUsers}
-          </Label>
-          <select
-            id={`dynamic-preview-${group.id}`}
-            multiple
-            value={previewUserIDs}
-            onChange={(event) =>
-              setPreviewUserIDs(
-                Array.from(event.currentTarget.selectedOptions, (option) => option.value),
-              )
-            }
-            className="mt-1 min-h-24 w-full rounded-md border border-slate-300 bg-white p-2 text-sm"
-          >
-            {allUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.preferred_username}
-              </option>
-            ))}
-          </select>
-          {preview.length > 0 ? (
-            <ul className="mt-3 grid gap-1 text-sm">
-              {preview.map((item) => (
-                <li key={item.user_id} className="rounded bg-slate-50 px-2 py-1 font-mono">
-                  {item.user_id}: {item.matched ? t.matches : t.doesNotMatch} ({item.change})
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          {rule?.expression ? (
+            <pre className="mt-3 whitespace-pre-wrap break-words rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-sm text-slate-700">
+              {rule.expression}
+            </pre>
+          ) : (
+            <p className="mt-3 text-sm text-slate-400">{t.dynamicRuleNoneNotice}</p>
+          )}
+          <p className="mt-2 text-xs text-slate-500">{t.dynamicRuleReadOnlyHint}</p>
         </section>
       ) : null}
 
@@ -782,7 +700,37 @@ export function AdminGroupEditPage({
   const [roles, setRoles] = useState(group.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [rule, setRule] = useState(group.dynamic_rule)
+  const [ruleExpression, setRuleExpression] = useState(group.dynamic_rule?.expression ?? '')
+  const [allUsers, setAllUsers] = useState<AdminUser[]>([])
+  const [previewUserIDs, setPreviewUserIDs] = useState<string[]>([])
+  const [preview, setPreview] = useState<DynamicGroupPreview[]>([])
+  const [ruleBusy, setRuleBusy] = useState(false)
+  const [ruleError, setRuleError] = useState('')
   const t = useDictionary(adminGroupsDictionary)
+
+  useEffect(() => {
+    if (group.membership_type !== 'dynamic') return
+    let cancelled = false
+    void listAdminUsers().then((users) => {
+      if (!cancelled) setAllUsers(users)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [group.membership_type])
+
+  async function withRule(action: () => Promise<void>) {
+    setRuleBusy(true)
+    setRuleError('')
+    try {
+      await action()
+    } catch (cause) {
+      setRuleError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
+    } finally {
+      setRuleBusy(false)
+    }
+  }
 
   const trimmedName = name.trim()
   const nextRoles = parseRoles(roles)
@@ -907,6 +855,114 @@ export function AdminGroupEditPage({
           </form>
         </Card>
       </div>
+
+      {group.membership_type === 'dynamic' ? (
+        <div className="mt-6 max-w-2xl">
+          <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
+            <div className="grid gap-4 p-6">
+              {ruleError && <Alert variant="destructive">{ruleError}</Alert>}
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
+                  {t.dynamicRuleHeading}
+                </h3>
+                <span
+                  className={`rounded-md px-2 py-1 text-xs font-semibold ${rule?.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}
+                >
+                  {rule?.enabled ? t.ruleEnabled : t.ruleDisabled}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">{t.dynamicRuleHelp}</p>
+              <textarea
+                value={ruleExpression}
+                onChange={(event) => setRuleExpression(event.target.value)}
+                aria-label={t.dynamicRuleExpression}
+                className="min-h-28 w-full rounded-md border border-slate-300 bg-white p-3 font-mono text-sm"
+                placeholder={'user.department == "Engineering"'}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  disabled={ruleBusy || !ruleExpression.trim()}
+                  onClick={() =>
+                    void withRule(async () => {
+                      const saved = await updateDynamicGroupRule(
+                        csrfToken,
+                        group.id,
+                        ruleExpression,
+                      )
+                      setRule(saved)
+                    })
+                  }
+                >
+                  {t.saveRule}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={ruleBusy || !ruleExpression.trim() || previewUserIDs.length === 0}
+                  onClick={() =>
+                    void withRule(async () => {
+                      const result = await previewDynamicGroupRule(
+                        csrfToken,
+                        group.id,
+                        ruleExpression,
+                        previewUserIDs,
+                      )
+                      setPreview(result.results)
+                    })
+                  }
+                >
+                  {t.previewRule}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={ruleBusy || !rule}
+                  onClick={() =>
+                    void withRule(async () => {
+                      const saved = await setDynamicGroupRuleEnabled(
+                        csrfToken,
+                        group.id,
+                        !rule?.enabled,
+                      )
+                      setRule(saved)
+                    })
+                  }
+                >
+                  {rule?.enabled ? t.disableRule : t.enableRule}
+                </Button>
+              </div>
+              <Label htmlFor="group-editor-dynamic-preview">{t.previewUsers}</Label>
+              <select
+                id="group-editor-dynamic-preview"
+                multiple
+                value={previewUserIDs}
+                onChange={(event) =>
+                  setPreviewUserIDs(
+                    Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+                  )
+                }
+                className="min-h-24 w-full rounded-md border border-slate-300 bg-white p-2 text-sm"
+              >
+                {allUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.preferred_username}
+                  </option>
+                ))}
+              </select>
+              {preview.length > 0 ? (
+                <ul className="grid gap-1 text-sm">
+                  {preview.map((item) => (
+                    <li key={item.user_id} className="rounded bg-slate-50 px-2 py-1 font-mono">
+                      {item.user_id}: {item.matched ? t.matches : t.doesNotMatch} ({item.change})
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </AdminShell>
   )
 }

@@ -72,6 +72,8 @@ export const adminGroupsDictionary = defineDictionary(
     previewUsers: 'プレビュー対象ユーザー (最大100件)',
     matches: '一致',
     doesNotMatch: '不一致',
+    dynamicRuleReadOnlyHint: 'ルールの編集は「編集」画面から行ってください。',
+    dynamicRuleNoneNotice: 'ルールは未設定です。',
   },
   {
     genericActionError: 'Could not complete the group action.',
@@ -144,5 +146,7 @@ export const adminGroupsDictionary = defineDictionary(
     previewUsers: 'Preview users (up to 100)',
     matches: 'matches',
     doesNotMatch: 'does not match',
+    dynamicRuleReadOnlyHint: 'Edit this rule from the group edit screen.',
+    dynamicRuleNoneNotice: 'No rule configured yet.',
   },
 )
