@@ -31,6 +31,7 @@ type Config struct {
 	SchemaPath   string
 	ReadyFile    string
 	RuntimeDir   string
+	DataPath     string
 	Logger       io.Writer
 }
 
@@ -80,15 +81,28 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 	}
 	rt.valkey = valkey
 
-	pg := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().
+	postgresConfig := embeddedpostgres.DefaultConfig().
 		Port(cfg.PostgresPort).
 		Database("idmagic").
 		Username("idmagic").
 		Password("idmagic").
 		RuntimePath(filepath.Join(cfg.RuntimeDir, "runtime")).
-		DataPath(filepath.Join(cfg.RuntimeDir, "data")).
+		StartParameters(map[string]string{
+			// The development cluster is recreated logically on every start, so
+			// durability settings only slow the local feedback loop.
+			"fsync":              "off",
+			"full_page_writes":   "off",
+			"shared_buffers":     "16MB",
+			"synchronous_commit": "off",
+		}).
 		Logger(cfg.Logger).
-		StartTimeout(90 * time.Second))
+		StartTimeout(90 * time.Second)
+	if cfg.DataPath != "" {
+		postgresConfig = postgresConfig.DataPath(cfg.DataPath)
+	} else {
+		postgresConfig = postgresConfig.DataPath(filepath.Join(cfg.RuntimeDir, "data"))
+	}
+	pg := embeddedpostgres.NewDatabase(postgresConfig)
 	if err := pg.Start(); err != nil {
 		return fail(fmt.Errorf("start embedded PostgreSQL: %w", err))
 	}
@@ -103,6 +117,11 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		return fail(fmt.Errorf("connect embedded PostgreSQL: %w", err))
 	}
 	rt.pool = pool
+	if cfg.DataPath != "" {
+		if err := resetSchema(ctx, pool); err != nil {
+			return fail(err)
+		}
+	}
 	if err := applySchema(ctx, pool, cfg.SchemaPath); err != nil {
 		return fail(err)
 	}
@@ -112,6 +131,13 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		}
 	}
 	return rt, ready, nil
+}
+
+func resetSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public"); err != nil {
+		return fmt.Errorf("reset PostgreSQL schema: %w", err)
+	}
+	return nil
 }
 
 func applySchema(ctx context.Context, pool *pgxpool.Pool, path string) error {

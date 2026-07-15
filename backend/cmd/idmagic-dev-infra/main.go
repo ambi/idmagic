@@ -25,6 +25,7 @@ func run() error {
 	flag.IntVar(&cfg.ValkeyPort, "valkey-port", devinfra.DefaultValkeyPort, "development Valkey-compatible port")
 	flag.StringVar(&cfg.SchemaPath, "schema", "infra/schema/postgres.sql", "PostgreSQL schema path")
 	flag.StringVar(&cfg.ReadyFile, "ready-file", "", "ready marker JSON path")
+	flag.StringVar(&cfg.DataPath, "data-dir", "", "persistent embedded PostgreSQL data directory; schema is reset on each start")
 	flag.Parse()
 	cfg.PostgresPort = uint32(postgresPort)
 

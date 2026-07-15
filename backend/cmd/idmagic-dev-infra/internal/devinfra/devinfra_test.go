@@ -106,6 +106,68 @@ func TestEmbeddedInfrastructureSharesJobQueueWithRunner(t *testing.T) {
 	t.Fatalf("job %s did not reach succeeded", job.ID)
 }
 
+func TestPersistentClusterResetsSchemaOnStart(t *testing.T) {
+	dataPath := filepath.Join(t.TempDir(), "postgres-data")
+	schemaPath := filepath.Join("..", "..", "infra", "schema", "postgres.sql")
+
+	first, firstReady, err := Start(t.Context(), Config{
+		PostgresPort: uint32(freePort(t)),
+		ValkeyPort:   freePort(t),
+		SchemaPath:   schemaPath,
+		RuntimeDir:   t.TempDir(),
+		DataPath:     dataPath,
+		Logger:       io.Discard,
+	})
+	if err != nil {
+		t.Skipf("embedded PostgreSQL unavailable: %v", err)
+	}
+	pool, err := sharedpg.Open(t.Context(), firstReady.DatabaseURL, sharedpg.DBConfig{
+		MaxConns: 1, ConnectTimeout: 5 * time.Second, QueryTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		_ = first.Close()
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `INSERT INTO tenants
+		(id, realm, display_name, status) VALUES ('00000000-0000-4000-8000-000000000000', 'default', 'Default', 'active')`); err != nil {
+		pool.Close()
+		_ = first.Close()
+		t.Fatal(err)
+	}
+	pool.Close()
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	second, secondReady, err := Start(t.Context(), Config{
+		PostgresPort: uint32(freePort(t)),
+		ValkeyPort:   freePort(t),
+		SchemaPath:   schemaPath,
+		RuntimeDir:   t.TempDir(),
+		DataPath:     dataPath,
+		Logger:       io.Discard,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = second.Close() })
+	pool, err = sharedpg.Open(t.Context(), secondReady.DatabaseURL, sharedpg.DBConfig{
+		MaxConns: 1, ConnectTimeout: 5 * time.Second, QueryTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	var count int
+	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM tenants").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("tenant count after schema reset = %d, want 0", count)
+	}
+}
+
 func freePort(t *testing.T) int {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
