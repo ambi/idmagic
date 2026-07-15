@@ -126,6 +126,9 @@ func Run() error {
 	e := echo.New()
 	// Echo フレームワークのログも同じ構造化ハンドラ (ADR-018 の field 規約) に載せる。
 	e.Logger = slogLogger
+	// DefaultHTTPErrorHandler は仕様上エラーをログに残さない。ハンドラが返す
+	// 生エラー (panic ではないもの) が 500 になったとき原因を追えるようにする。
+	e.HTTPErrorHandler = httpsupport.ErrorHandler(logger)
 	// RequestFaultIsolation objective: request_id を最外で付与し、その内側で
 	// panic を捕捉して 500 に局所化する。以降の otel / ハンドラの panic とログは
 	// 同じ request_id 配下に入る。受信 X-Request-ID は secure-by-default で無視し
