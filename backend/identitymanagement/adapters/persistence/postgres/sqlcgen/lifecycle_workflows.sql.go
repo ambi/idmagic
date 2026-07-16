@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const cancelQueuedLifecycleWorkflowRuns = `-- name: CancelQueuedLifecycleWorkflowRuns :exec
-UPDATE lifecycle_workflow_runs SET status='canceled',updated_at=now() WHERE tenant_id=$1 AND workflow_id=$2 AND status='queued'
+const cancelQueuedLifecycleWorkflowRuns = `-- name: CancelQueuedLifecycleWorkflowRuns :many
+UPDATE lifecycle_workflow_runs SET status='canceled',updated_at=now() WHERE tenant_id=$1 AND workflow_id=$2 AND status='queued' RETURNING id,target_user_id
 `
 
 type CancelQueuedLifecycleWorkflowRunsParams struct {
@@ -21,9 +21,29 @@ type CancelQueuedLifecycleWorkflowRunsParams struct {
 	WorkflowID string
 }
 
-func (q *Queries) CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) error {
-	_, err := q.db.Exec(ctx, cancelQueuedLifecycleWorkflowRuns, arg.TenantID, arg.WorkflowID)
-	return err
+type CancelQueuedLifecycleWorkflowRunsRow struct {
+	ID           string
+	TargetUserID string
+}
+
+func (q *Queries) CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) ([]*CancelQueuedLifecycleWorkflowRunsRow, error) {
+	rows, err := q.db.Query(ctx, cancelQueuedLifecycleWorkflowRuns, arg.TenantID, arg.WorkflowID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*CancelQueuedLifecycleWorkflowRunsRow
+	for rows.Next() {
+		var i CancelQueuedLifecycleWorkflowRunsRow
+		if err := rows.Scan(&i.ID, &i.TargetUserID); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const findLifecycleWorkflow = `-- name: FindLifecycleWorkflow :one

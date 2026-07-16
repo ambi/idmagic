@@ -161,7 +161,11 @@ func (d Deps) handleCreateLifecycleWorkflow(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	workflow, err := idmusecases.CreateLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), idmusecases.CreateLifecycleWorkflowInput{Name: request.Name, Description: request.Description, Trigger: request.Trigger, Actions: request.Actions, Now: time.Now().UTC()})
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	workflow, err := idmusecases.CreateLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), idmusecases.CreateLifecycleWorkflowInput{Name: request.Name, Description: request.Description, Trigger: request.Trigger, Actions: request.Actions, ActorUserID: actor.ID, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeLifecycleWorkflowError(c, err)
 	}
@@ -180,7 +184,11 @@ func (d Deps) handleUpdateLifecycleWorkflow(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	workflow, err := idmusecases.UpdateLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), idmusecases.UpdateLifecycleWorkflowInput{WorkflowID: c.Param("workflow_id"), ExpectedRevision: request.ExpectedRevision, Name: request.Name, Description: request.Description, Trigger: request.Trigger, Actions: request.Actions, Now: time.Now().UTC()})
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	workflow, err := idmusecases.UpdateLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), idmusecases.UpdateLifecycleWorkflowInput{WorkflowID: c.Param("workflow_id"), ExpectedRevision: request.ExpectedRevision, Name: request.Name, Description: request.Description, Trigger: request.Trigger, Actions: request.Actions, ActorUserID: actor.ID, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeLifecycleWorkflowError(c, err)
 	}
@@ -192,14 +200,14 @@ func (d Deps) handleUpdateLifecycleWorkflow(c *echo.Context) error {
 }
 
 func (d Deps) handleEnableLifecycleWorkflow(c *echo.Context) error {
-	return d.changeLifecycleWorkflow(c, func(id string, revision int64) (*idmdomain.LifecycleWorkflow, error) {
-		return idmusecases.EnableLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), id, revision, time.Now().UTC())
+	return d.changeLifecycleWorkflow(c, func(id string, revision int64, actorUserID string) (*idmdomain.LifecycleWorkflow, error) {
+		return idmusecases.EnableLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), id, revision, actorUserID, time.Now().UTC())
 	})
 }
 
 func (d Deps) handleDisableLifecycleWorkflow(c *echo.Context) error {
-	return d.changeLifecycleWorkflow(c, func(id string, revision int64) (*idmdomain.LifecycleWorkflow, error) {
-		return idmusecases.DisableLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), id, revision, time.Now().UTC())
+	return d.changeLifecycleWorkflow(c, func(id string, revision int64, actorUserID string) (*idmdomain.LifecycleWorkflow, error) {
+		return idmusecases.DisableLifecycleWorkflow(c.Request().Context(), d.workflowDeps(), id, revision, actorUserID, time.Now().UTC())
 	})
 }
 
@@ -223,7 +231,7 @@ func (d Deps) handleDeleteLifecycleWorkflow(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) changeLifecycleWorkflow(c *echo.Context, change func(string, int64) (*idmdomain.LifecycleWorkflow, error)) error {
+func (d Deps) changeLifecycleWorkflow(c *echo.Context, change func(string, int64, string) (*idmdomain.LifecycleWorkflow, error)) error {
 	if err := d.requireWorkflowAdmin(c, true); err != nil {
 		return err
 	}
@@ -233,7 +241,11 @@ func (d Deps) changeLifecycleWorkflow(c *echo.Context, change func(string, int64
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	workflow, err := change(c.Param("workflow_id"), request.ExpectedRevision)
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	workflow, err := change(c.Param("workflow_id"), request.ExpectedRevision, actor.ID)
 	if err != nil {
 		return d.writeLifecycleWorkflowError(c, err)
 	}

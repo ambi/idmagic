@@ -148,15 +148,17 @@ func (r *LifecycleWorkflowRunRepository) RetryRun(_ context.Context, tenantID, r
 	return true, nil
 }
 
-func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(_ context.Context, tenantID, workflowID string, _ time.Time) error {
+func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(_ context.Context, tenantID, workflowID string, _ time.Time) ([]*idmdomain.WorkflowRun, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	canceled := []*idmdomain.WorkflowRun{}
 	for _, run := range r.runs {
 		if run.TenantID == tenantID && run.WorkflowID == workflowID && run.Status == idmdomain.WorkflowRunQueued {
 			run.Status = idmdomain.WorkflowRunCanceled
+			canceled = append(canceled, cloneRun(run))
 		}
 	}
-	return nil
+	return canceled, nil
 }
 
 func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(_ context.Context, limit int) ([]*idmdomain.WorkflowRun, error) {

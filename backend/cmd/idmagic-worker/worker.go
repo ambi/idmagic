@@ -63,6 +63,10 @@ func RunWorker() error {
 	handlers.Register(domain.KindLifecycleWorkflowRun, idmusecases.LifecycleWorkflowRunHandler(idmusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: deps.IdentityManagement.LifecycleWorkflowRunRepo, UserRepo: deps.IdentityManagement.UserRepo, GroupRepo: deps.IdentityManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, EmailSender: deps.Authentication.EmailSender,
+		Emit: func(event spec.DomainEvent) error {
+			deps.NewEmitFunc(logger)(event)
+			return nil
+		},
 	}))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 

@@ -11,7 +11,7 @@ import (
 type Querier interface {
 	AddAgentBinding(ctx context.Context, arg AddAgentBindingParams) (int64, error)
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (int64, error)
-	CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) error
+	CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) ([]*CancelQueuedLifecycleWorkflowRunsRow, error)
 	CountGroupMembers(ctx context.Context, arg CountGroupMembersParams) (int64, error)
 	DeleteAgent(ctx context.Context, arg DeleteAgentParams) error
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error

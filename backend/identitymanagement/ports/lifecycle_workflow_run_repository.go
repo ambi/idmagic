@@ -20,7 +20,10 @@ type LifecycleWorkflowRunRepository interface {
 	CheckpointStep(ctx context.Context, tenantID, runID string, step idmdomain.WorkflowStep) error
 	CompleteRun(ctx context.Context, tenantID, runID string, status idmdomain.WorkflowRunStatus, now time.Time) error
 	RetryRun(ctx context.Context, tenantID, runID string) (bool, error)
-	CancelQueuedByWorkflow(ctx context.Context, tenantID, workflowID string, now time.Time) error
+	// CancelQueuedByWorkflow cancels every queued run for the workflow and
+	// returns the canceled runs so callers can emit LifecycleWorkflowRunCanceled
+	// per run.
+	CancelQueuedByWorkflow(ctx context.Context, tenantID, workflowID string, now time.Time) ([]*idmdomain.WorkflowRun, error)
 }
 
 // UserWorkflowCapture is the transaction boundary for a User mutation and its

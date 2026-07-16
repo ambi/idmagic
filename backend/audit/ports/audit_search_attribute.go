@@ -146,6 +146,27 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
 		UIVisible:        true,
 	},
+	"workflow.id": {
+		Field:            "workflow.id",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
+	"workflow_run.id": {
+		Field:            "workflow_run.id",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
+	"workflow_step.id": {
+		Field:            "workflow_step.id",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
 }
 
 // LookupSearchAttribute は field 名で registry を引く。第 2 戻り値は存在有無。

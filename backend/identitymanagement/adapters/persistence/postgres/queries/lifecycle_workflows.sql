@@ -23,5 +23,5 @@ UPDATE lifecycle_workflow_runs SET status='queued',job_id=NULL,updated_at=now() 
 -- name: ResetFailedLifecycleWorkflowSteps :exec
 UPDATE lifecycle_workflow_steps SET outcome='pending',error_code=NULL,completed_at=NULL WHERE run_id=$1 AND outcome='failed';
 
--- name: CancelQueuedLifecycleWorkflowRuns :exec
-UPDATE lifecycle_workflow_runs SET status='canceled',updated_at=now() WHERE tenant_id=$1 AND workflow_id=$2 AND status='queued';
+-- name: CancelQueuedLifecycleWorkflowRuns :many
+UPDATE lifecycle_workflow_runs SET status='canceled',updated_at=now() WHERE tenant_id=$1 AND workflow_id=$2 AND status='queued' RETURNING id,target_user_id;

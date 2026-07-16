@@ -50,6 +50,36 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 	}
 }
 
+// wi-221: LifecycleWorkflow* / WorkflowRun* / WorkflowStepFailed の workflowId /
+// runId / stepIndex が workflow.id / workflow_run.id / workflow_step.id の
+// sidecar 検索属性として抽出され、admin が filter で監査ログを検索できること。
+func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing.T) {
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	rec, err := NewAuditEventRecord(&spec.LifecycleWorkflowCreated{At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.SearchAttributes["workflow.id"] != "workflow-1" {
+		t.Fatalf("workflow.id = %q, want workflow-1", rec.SearchAttributes["workflow.id"])
+	}
+
+	rec, err = NewAuditEventRecord(&spec.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.SearchAttributes["workflow.id"] != "workflow-1" || rec.SearchAttributes["workflow_run.id"] != "run-1" {
+		t.Fatalf("search attrs = %#v, want workflow.id=workflow-1 workflow_run.id=run-1", rec.SearchAttributes)
+	}
+
+	rec, err = NewAuditEventRecord(&spec.LifecycleWorkflowStepFailed{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.SearchAttributes["workflow_run.id"] != "run-1" || rec.SearchAttributes["workflow_step.id"] != "2" {
+		t.Fatalf("search attrs = %#v, want workflow_run.id=run-1 workflow_step.id=2", rec.SearchAttributes)
+	}
+}
+
 // tenantId を持たない event は従来どおり空テナントで記録される (回帰の境界)。
 // wi-36: SigningKeyRotated は per-tenant 鍵が無いため意図的に tenant_id 空。
 func TestNewAuditEventRecordWithoutTenantIDStaysEmpty(t *testing.T) {

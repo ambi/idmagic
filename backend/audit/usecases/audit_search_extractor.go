@@ -8,6 +8,8 @@ package usecases
 // 確定しないイベント (AuthenticationFailed 等、payload.username を持つイベント) でのみ値を持つ。
 
 import (
+	"strconv"
+
 	"github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -62,6 +64,9 @@ func ExtractSearchAttributes(rec *ports.AuditEventRecord) map[string]string {
 	set("request.id", payloadString(rec.Payload, "requestId"))
 	set("actor.username", payloadString(rec.Payload, "username"))
 	set("client.ip", payloadString(rec.Payload, "ip"))
+	set("workflow.id", payloadString(rec.Payload, "workflowId"))
+	set("workflow_run.id", payloadString(rec.Payload, "runId"))
+	set("workflow_step.id", payloadNumberString(rec.Payload, "stepIndex"))
 
 	if len(attrs) == 0 {
 		return nil
@@ -87,6 +92,19 @@ func payloadString(payload map[string]any, key string) string {
 	}
 	if v, ok := payload[key].(string); ok {
 		return v
+	}
+	return ""
+}
+
+// payloadNumberString reads a JSON number field (decoded as float64 by
+// encoding/json into map[string]any) and renders it as an integer string,
+// e.g. WorkflowStepFailed.stepIndex for the workflow_step.id search attribute.
+func payloadNumberString(payload map[string]any, key string) string {
+	if payload == nil {
+		return ""
+	}
+	if v, ok := payload[key].(float64); ok {
+		return strconv.FormatInt(int64(v), 10)
 	}
 	return ""
 }

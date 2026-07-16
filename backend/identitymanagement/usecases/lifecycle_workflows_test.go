@@ -85,10 +85,10 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 	if err != nil || updated.CurrentRevision != 2 {
 		t.Fatalf("UpdateLifecycleWorkflow = %#v, %v", updated, err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, time.Time{}); !errors.Is(err, usecases.ErrWorkflowRevisionConflict) {
+	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin", time.Time{}); !errors.Is(err, usecases.ErrWorkflowRevisionConflict) {
 		t.Fatalf("stale enable error = %v", err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, time.Time{}); err != nil {
+	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin", time.Time{}); err != nil {
 		t.Fatalf("EnableLifecycleWorkflow: %v", err)
 	}
 	var emitted spec.DomainEvent
@@ -107,6 +107,71 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 	}
 }
 
+// wi-221: Create/Update/Enable/Disable がそれぞれ対応する audit event を発行する
+// こと。以前は DeleteLifecycleWorkflow 以外の操作が一切 event を発行していなかった。
+func TestLifecycleWorkflowCreateUpdateEnableDisableEmitAuditEvents(t *testing.T) {
+	deps := usecases.LifecycleWorkflowDeps{Repo: idmmemory.NewLifecycleWorkflowRepository(), RunRepo: idmmemory.NewLifecycleWorkflowRunRepository()}
+	var events []spec.DomainEvent
+	deps.Emit = func(event spec.DomainEvent) error { events = append(events, event); return nil }
+
+	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", ActorUserID: "admin-1", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatalf("CreateLifecycleWorkflow: %v", err)
+	}
+	if _, err := usecases.UpdateLifecycleWorkflow(workflowContext(), deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", ActorUserID: "admin-1", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionEnableUser}}}); err != nil {
+		t.Fatalf("UpdateLifecycleWorkflow: %v", err)
+	}
+	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin-1", time.Time{}); err != nil {
+		t.Fatalf("EnableLifecycleWorkflow: %v", err)
+	}
+	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin-1", time.Time{}); err != nil {
+		t.Fatalf("DisableLifecycleWorkflow: %v", err)
+	}
+
+	want := []string{"LifecycleWorkflowCreated", "LifecycleWorkflowUpdated", "LifecycleWorkflowEnabled", "LifecycleWorkflowDisabled"}
+	if len(events) != len(want) {
+		t.Fatalf("events = %#v, want %d events", events, len(want))
+	}
+	for i, eventType := range want {
+		if events[i].EventType() != eventType {
+			t.Fatalf("events[%d] = %s, want %s", i, events[i].EventType(), eventType)
+		}
+	}
+}
+
+// wi-221: disable は未開始の queued run を cancel し、canceled になった run ごとに
+// LifecycleWorkflowRunCanceled を発行する。
+func TestDisableLifecycleWorkflowEmitsRunCanceledForQueuedRuns(t *testing.T) {
+	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()
+	runRepo := idmmemory.NewLifecycleWorkflowRunRepository()
+	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo, RunRepo: runRepo}
+	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin-1", time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: workflow.ID, Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: "user-1", TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)}
+	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: idmdomain.WorkflowStepPending}}
+	if created, err := runRepo.SaveRun(workflowContext(), run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+
+	var events []spec.DomainEvent
+	deps.Emit = func(event spec.DomainEvent) error { events = append(events, event); return nil }
+	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin-1", time.Time{}); err != nil {
+		t.Fatalf("DisableLifecycleWorkflow: %v", err)
+	}
+	if len(events) != 2 || events[0].EventType() != "LifecycleWorkflowDisabled" || events[1].EventType() != "LifecycleWorkflowRunCanceled" {
+		t.Fatalf("events = %#v, want [LifecycleWorkflowDisabled LifecycleWorkflowRunCanceled]", events)
+	}
+	canceledEvent, ok := events[1].(*spec.LifecycleWorkflowRunCanceled)
+	if !ok || canceledEvent.RunID != run.ID || canceledEvent.TargetUserID != run.TargetUserID {
+		t.Fatalf("canceled event = %#v", events[1])
+	}
+}
+
 func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 	deps := usecases.LifecycleWorkflowDeps{Repo: idmmemory.NewLifecycleWorkflowRepository()}
 	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
@@ -114,7 +179,7 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	other := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
-	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
+	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, "admin", time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("cross-tenant access error = %v", err)
 	}
 }
@@ -132,7 +197,7 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflowRepo}, workflow.ID, 1, time.Time{}); err != nil {
+		if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflowRepo}, workflow.ID, 1, "admin", time.Time{}); err != nil {
 			t.Fatal(err)
 		}
 	}

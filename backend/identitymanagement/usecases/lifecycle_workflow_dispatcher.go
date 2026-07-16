@@ -15,6 +15,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type (
@@ -34,6 +35,7 @@ type LifecycleWorkflowExecutorDeps struct {
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	EmailSender     authnports.EmailSender
+	Emit            func(spec.DomainEvent) error
 }
 
 // DispatchQueuedLifecycleWorkflowRuns is safe to invoke after every mutation and
@@ -61,9 +63,11 @@ func DispatchQueuedLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWork
 	return nil
 }
 
-// LifecycleWorkflowRunHandler is intentionally side-effect free in WI-217: it
-// fail-closes tenant mismatches and confirms the durable handoff. WI-218 adds the
-// step executor behind the same handler registration.
+// LifecycleWorkflowRunHandler executes a WorkflowRun's pending/failed steps and
+// checkpoints each outcome (WI-218). It emits the audit events ADR-113 assigns
+// to the run/step lifecycle: RunStarted on the queued->running transition,
+// StepFailed per action that fails this attempt, and exactly one of
+// RunSucceeded/RunPartiallyFailed/RunFailed when the run terminates.
 func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(context.Context, *jobsdomain.Job) (json.RawMessage, error) {
 	return func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
 		var params lifecycleWorkflowJobParams
@@ -85,14 +89,19 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 			if !started {
 				return nil, fmt.Errorf("lifecycle workflow run is waiting for an earlier user run")
 			}
+			emitWorkflowEvent(deps.Emit, &spec.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 		}
 		steps, err := deps.RunRepo.ListSteps(ctx, job.TenantID, run.ID)
 		if err != nil {
 			return nil, err
 		}
-		failed := false
+		succeeded, failed := 0, 0
 		for _, step := range steps {
-			if step.Outcome == idmdomain.WorkflowStepChanged || step.Outcome == idmdomain.WorkflowStepNoop || step.Outcome == idmdomain.WorkflowStepCanceled {
+			if step.Outcome == idmdomain.WorkflowStepChanged || step.Outcome == idmdomain.WorkflowStepNoop {
+				succeeded++
+				continue
+			}
+			if step.Outcome == idmdomain.WorkflowStepCanceled {
 				continue
 			}
 			outcome, code := executeLifecycleAction(ctx, deps, run, step.Action)
@@ -101,19 +110,46 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 			if err := deps.RunRepo.CheckpointStep(ctx, job.TenantID, run.ID, step); err != nil {
 				return nil, err
 			}
-			if outcome == idmdomain.WorkflowStepFailed {
-				failed = true
+			switch outcome {
+			case idmdomain.WorkflowStepChanged, idmdomain.WorkflowStepNoop:
+				succeeded++
+			case idmdomain.WorkflowStepFailed:
+				failed++
+				emitWorkflowEvent(deps.Emit, &spec.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
 			}
 		}
 		status := idmdomain.WorkflowRunSucceeded
-		if failed {
+		switch {
+		case failed > 0 && succeeded == 0:
+			status = idmdomain.WorkflowRunFailed
+		case failed > 0:
 			status = idmdomain.WorkflowRunPartiallyFailed
 		}
 		if err := deps.RunRepo.CompleteRun(ctx, job.TenantID, run.ID, status, time.Now().UTC()); err != nil {
 			return nil, err
 		}
+		emitWorkflowRunCompletion(deps.Emit, status, run)
 		return json.Marshal(map[string]string{"run_id": run.ID, "status": string(status)})
 	}
+}
+
+func emitWorkflowRunCompletion(emit func(spec.DomainEvent) error, status idmdomain.WorkflowRunStatus, run *idmdomain.WorkflowRun) {
+	now := time.Now().UTC()
+	switch status {
+	case idmdomain.WorkflowRunSucceeded:
+		emitWorkflowEvent(emit, &spec.LifecycleWorkflowRunSucceeded{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case idmdomain.WorkflowRunPartiallyFailed:
+		emitWorkflowEvent(emit, &spec.LifecycleWorkflowRunPartiallyFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case idmdomain.WorkflowRunFailed:
+		emitWorkflowEvent(emit, &spec.LifecycleWorkflowRunFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	}
+}
+
+func emitWorkflowEvent(emit func(spec.DomainEvent) error, event spec.DomainEvent) {
+	if emit == nil {
+		return
+	}
+	_ = emit(event)
 }
 
 func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *idmdomain.WorkflowRun, action idmdomain.WorkflowAction) (idmdomain.WorkflowStepOutcome, string) {

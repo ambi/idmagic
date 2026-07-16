@@ -13,6 +13,7 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type failOnceJobRepository struct {
@@ -83,5 +84,119 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 	}
 	if _, err := handler(ctx, job); err == nil {
 		t.Fatal("terminal run must not execute again")
+	}
+}
+
+// wi-221: a run whose only step succeeds emits RunStarted then RunSucceeded.
+func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	users := idmmemory.NewUserRepository()
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: idmdomain.WorkflowStepPending}}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	var events []spec.DomainEvent
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"LifecycleWorkflowRunStarted", "LifecycleWorkflowRunSucceeded"}
+	if len(events) != len(want) {
+		t.Fatalf("events = %#v, want %v", events, want)
+	}
+	for i, eventType := range want {
+		if events[i].EventType() != eventType {
+			t.Fatalf("events[%d] = %s, want %s", i, events[i].EventType(), eventType)
+		}
+	}
+}
+
+// wi-221: a run where every step fails must terminate as WorkflowRunFailed (not
+// PartiallyFailed) and emit StepFailed followed by RunFailed. Before this fix
+// the handler only ever distinguished succeeded/partially_failed, so a run with
+// zero successful steps was misclassified as partially_failed.
+func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	users := idmmemory.NewUserRepository()
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	action := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: "group-1"}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{action}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: idmdomain.WorkflowStepPending}}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	// GroupRepo left nil so the step fails with dependency_unavailable.
+	var events []spec.DomainEvent
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params}); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := runs.FindRun(ctx, run.TenantID, run.ID)
+	if err != nil || stored.Status != idmdomain.WorkflowRunFailed {
+		t.Fatalf("run status = %#v, %v, want failed", stored, err)
+	}
+	want := []string{"LifecycleWorkflowRunStarted", "LifecycleWorkflowStepFailed", "LifecycleWorkflowRunFailed"}
+	if len(events) != len(want) {
+		t.Fatalf("events = %#v, want %v", events, want)
+	}
+	for i, eventType := range want {
+		if events[i].EventType() != eventType {
+			t.Fatalf("events[%d] = %s, want %s", i, events[i].EventType(), eventType)
+		}
+	}
+}
+
+// wi-221: a run with one failing step and one succeeding step terminates as
+// WorkflowRunPartiallyFailed.
+func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	users := idmmemory.NewUserRepository()
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	failing := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: "group-1"}
+	succeeding := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionDisableUser}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{failing, succeeding}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []idmdomain.WorkflowStep{
+		{RunID: run.ID, Index: 0, Action: failing, Outcome: idmdomain.WorkflowStepPending},
+		{RunID: run.ID, Index: 1, Action: succeeding, Outcome: idmdomain.WorkflowStepPending},
+	}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params}); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := runs.FindRun(ctx, run.TenantID, run.ID)
+	if err != nil || stored.Status != idmdomain.WorkflowRunPartiallyFailed {
+		t.Fatalf("run status = %#v, %v, want partially_failed", stored, err)
 	}
 }

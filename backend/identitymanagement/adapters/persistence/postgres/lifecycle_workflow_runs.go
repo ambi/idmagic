@@ -145,8 +145,16 @@ func (r *LifecycleWorkflowRunRepository) RetryRun(ctx context.Context, tenantID,
 	return true, tx.Commit(ctx)
 }
 
-func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(ctx context.Context, tenantID, workflowID string, _ time.Time) error {
-	return sqlcgen.New(r.Pool).CancelQueuedLifecycleWorkflowRuns(ctx, sqlcgen.CancelQueuedLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID})
+func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(ctx context.Context, tenantID, workflowID string, _ time.Time) ([]*idmdomain.WorkflowRun, error) {
+	rows, err := sqlcgen.New(r.Pool).CancelQueuedLifecycleWorkflowRuns(ctx, sqlcgen.CancelQueuedLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID})
+	if err != nil {
+		return nil, err
+	}
+	canceled := make([]*idmdomain.WorkflowRun, 0, len(rows))
+	for _, row := range rows {
+		canceled = append(canceled, &idmdomain.WorkflowRun{ID: row.ID, TenantID: tenantID, WorkflowID: workflowID, TargetUserID: row.TargetUserID})
+	}
+	return canceled, nil
 }
 
 func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(ctx context.Context, limit int) ([]*idmdomain.WorkflowRun, error) {
