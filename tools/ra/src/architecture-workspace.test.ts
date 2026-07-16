@@ -64,6 +64,37 @@ describe('architecture production import graph', () => {
     ])
   })
 
+  it('reports production sources and workspace-local import targets outside declared modules', () => {
+    const findings = evaluateArchitectureWorkspace(architecture, {
+      goModulePath: 'example.test/app',
+      files: [
+        {
+          path: 'backend/unmapped/job.go',
+          content: 'package unmapped\n',
+        },
+        {
+          path: 'backend/accounts/usecases/create.go',
+          content: 'package usecases\nimport "example.test/app/backend/unknown"\n',
+        },
+      ],
+    })
+
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'import',
+          path: 'backend/unmapped/job.go',
+          message: expect.stringContaining('belongs to no declared module'),
+        }),
+        expect.objectContaining({
+          kind: 'import',
+          path: 'backend/accounts/usecases/create.go',
+          message: expect.stringContaining("import target 'backend/unknown'"),
+        }),
+      ]),
+    )
+  })
+
   it('resolves extensionless TypeScript imports to file modules', () => {
     const findings = evaluateArchitectureWorkspace(architecture, {
       files: [

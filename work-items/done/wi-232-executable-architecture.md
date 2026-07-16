@@ -14,8 +14,15 @@ initial_context:
   tests: [tools/yaml-check/src, tools/ra/src]
   stop_before_reading: [backend/domain, frontend/src/features]
 affected_spec:
+  - { context: ra, kind: model, element: WorkspaceConfig }
+  - { context: ra, kind: model, element: ArchitectureReport }
   - { context: ra, kind: interface, element: CheckArchitecture }
+  - { context: ra, kind: scenario, element: ExecutableArchitectureAcceptsDeclaredWorkspace }
+  - { context: ra, kind: scenario, element: ExecutableArchitectureRejectsDrift }
+  - { context: yaml-check, kind: model, element: SchemaName }
+  - { context: yaml-check, kind: model, element: FindingKind }
   - { context: yaml-check, kind: interface, element: CheckYaml }
+  - { context: yaml-check, kind: scenario, element: 実行可能な Architecture map を検査する }
 ---
 
 # Architecture を context・RA layer・依存・SCL realization の実行可能な地図にする
@@ -24,6 +31,7 @@ affected_spec:
 現行 `ARCHITECTURE.md` の機械可読 frontmatter は backend/frontend/specification の3モジュールだけで、全 SCL context、RA layer、runtime unit、依存方向を検査していない。本文と実装が乖離しても module path が存在するだけで検証を通るため、アーキテクチャ複雑化を変更時に止められない。
 
 ## Scope
+- SCL sections: `ra.models`、`ra.interfaces`、`ra.scenarios`、`yaml-check.models`、`yaml-check.interfaces`、`yaml-check.scenarios`。
 - `tools/ra/spec/scl.yaml` の `models.ArchitectureReport`、`interfaces.CheckArchitecture`、scenario。
 - `tools/yaml-check/spec/scl.yaml` の `models.SchemaName`、`interfaces.CheckYaml`、scenario。
 - `ARCHITECTURE_FORMAT.md` と Architecture schema に context spec、module context/layer、SCL realization、declared dependency、runtime unit/entrypoint を追加する。
@@ -51,6 +59,9 @@ affected_spec:
 - [x] T004 [Map] IdMagic root Architecture を全 context/module/runtime unit へ同期する。
 - [x] T005 [Budget] complexity budget と期限付き debt の検査を追加する。
 - [x] T006 [Verify] positive/negative fixture と実 workspace 検証を通す。
+- [x] T007 [Imports] 未登録 production source と workspace-local import 先を拒否する。
+- [x] T008 [Runtime] entrypoint が runtime の composed module に所属することを検査する。
+- [x] T009 [Evidence] SCL 派生物、完了証跡、affected spec を現 revision に同期する。
 
 ## Verification
 - `just test-tools`
@@ -64,14 +75,14 @@ affected_spec:
 
 ## Completion
 - **Completed At**: 2026-07-17
-- **Summary**: 全19 SCL context、実装 module、4 runtime unit を root Architecture map に同期し、context-local realization、RA layer 依存、Go/TypeScript import、循環、complexity budget を workspace 検証へ統合した。既存の complexity 超過は後続 `wi-234-complexity-ratchet`、owner、期限、現在値を持つ22件の debt として固定した。
+- **Summary**: 全19 SCL context、実装 module、4 runtime unit を root Architecture map に同期し、context-local realization、RA layer 依存、Go/TypeScript import、循環、complexity budget を workspace 検証へ統合した。未登録 production source と workspace-local import 先を拒否し、runtime entrypoint が composed module に所属することまで検査する。既存の complexity 超過は後続 `wi-234-complexity-ratchet`、owner、期限、現在値を持つ22件の debt として固定した。
 - **Verification Results**:
   - `just yaml-check-architecture` - passed
-  - `just test-tools` - passed (240 tests)
+  - `just test-tools` - passed (243 tests)
   - `just typecheck-tools` - passed
   - `just lint-tools` - passed
   - `just yaml-check` - passed
   - `just scl-render` - passed
   - `just verify` - passed (SCL/Architecture/traceability、Go lint/race test、UI format/lint/typecheck/test/build)
-- **Affected Guarantees State**: Architecture map と実 workspace の context、module、dependency、runtime、complexity の乖離を検出する。新規 complexity 超過は拒否し、既存 debt は期限付きで追跡する。
-- **Evidence**: macOS arm64 上の source revision `63b46e1b` で上記 recipe を実行し、SCL 派生 HTML を再生成した。
+- **Affected Guarantees State**: Architecture map と実 workspace の context、全 production source の module 所属、workspace-local import、dependency、runtime composition、complexity の乖離を検出する。新規 complexity 超過は、owner・後続 work item・期限・ceiling を持つ bounded debt として明示登録しない限り拒否する。
+- **Evidence**: Codex が macOS arm64 上で、base revision `4cfff003` に本 Completion と実装差分を加えた source tree（対象版はこの記録を含む commit tree）へ `just yaml-check-architecture`、`just test-tools`、`just typecheck-tools`、`just lint-tools`、`just yaml-check`、`just scl-render`、`just verify` を実行した。全 recipe が成功し、tools 243 tests、Go lint/race tests、UI 356 tests と production build が green。派生物は `tools/ra/spec/ra.html` と `tools/yaml-check/spec/yaml-check.html` に保存した。

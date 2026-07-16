@@ -184,10 +184,18 @@ scenarios:
     actor: Maintainer
     main_success:
       - Maintainer が context、module、runtime、budget を宣言した Architecture map を CheckYaml で検査する
-      - schema、SCL realization、dependency、import、complexity の Finding はなく exit code 0 になる
+      - schema、SCL realization、全 production source の module 所属、dependency、import、runtime composition、complexity の Finding はなく exit code 0 になる
     extensions:
       - at: 1
+        condition: production source または workspace-local import 先がどの module にも所属しない
+        steps:
+          - Architecture Finding と exit code 1 が返る
+      - at: 1
         condition: 実 import が宣言 module dependency または許可 RA layer 方向に違反する
+        steps:
+          - Architecture Finding と exit code 1 が返る
+      - at: 1
+        condition: runtime entrypoint が runtime の composed module に所属しない
         steps:
           - Architecture Finding と exit code 1 が返る
       - at: 1

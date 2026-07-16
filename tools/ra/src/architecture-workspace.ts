@@ -350,17 +350,35 @@ export function evaluateArchitectureWorkspace(
     string,
     { source: ModuleRecord; target: ModuleRecord; file: ArchitectureSourceFile; specifier: string }
   >()
+  const unmappedImportTargets = new Map<
+    string,
+    { file: ArchitectureSourceFile; specifier: string; targetPath: string }
+  >()
 
   for (const file of files) {
     const source = moduleForPath(file.path, modules)
-    if (!source) continue
+    if (!source) {
+      findings.push({
+        kind: 'import',
+        path: file.path,
+        message: `architecture: production source '${file.path}' belongs to no declared module`,
+      })
+      continue
+    }
     const specifiers =
       extname(file.path) === '.go' ? goImports(file.content) : tsImports(file.content)
     for (const specifier of new Set(specifiers)) {
       const targetPath = importTarget(file, specifier, snapshot)
       if (!targetPath) continue
       const target = moduleForPath(targetPath, modules)
-      if (!target || target.id === source.id || source.dependencies.has(target.id)) continue
+      if (!target) {
+        const key = `${file.path}\0${targetPath}`
+        if (!unmappedImportTargets.has(key)) {
+          unmappedImportTargets.set(key, { file, specifier, targetPath })
+        }
+        continue
+      }
+      if (target.id === source.id || source.dependencies.has(target.id)) continue
       const key = `${source.id}\0${target.id}`
       if (!undeclaredImports.has(key)) {
         undeclaredImports.set(key, { source, target, file, specifier })
@@ -372,6 +390,13 @@ export function evaluateArchitectureWorkspace(
       kind: 'import',
       path: file.path,
       message: `architecture: module '${source.id}' imports '${target.id}' via '${specifier}' without declaring it in depends_on`,
+    })
+  }
+  for (const { file, specifier, targetPath } of unmappedImportTargets.values()) {
+    findings.push({
+      kind: 'import',
+      path: file.path,
+      message: `architecture: workspace-local import target '${targetPath}' via '${specifier}' belongs to no declared module`,
     })
   }
 

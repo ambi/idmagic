@@ -398,9 +398,15 @@ work-item dependency を決定的な順序で検査する。
         <header><h3>実行可能な Architecture map を検査する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/実行可能な Architecture map を検査する</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が context、module、runtime、budget を宣言した Architecture map を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">schema、SCL realization、dependency、import、complexity の <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> はなく exit code 0 になる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が context、module、runtime、budget を宣言した Architecture map を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">schema、SCL realization、全 production source の module 所属、dependency、import、runtime composition、complexity の <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> はなく exit code 0 になる</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">production source または workspace-local import 先がどの module にも所属しない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">Architecture <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> と exit code 1 が返る</li></ol></div>
+          </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">実 import が宣言 module dependency または許可 RA layer 方向に違反する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">Architecture <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> と exit code 1 が返る</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">runtime entrypoint が runtime の composed module に所属しない</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">Architecture <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> と exit code 1 が返る</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">complexity debt が期限切れまたは ceiling を超える</code></header>

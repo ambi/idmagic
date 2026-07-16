@@ -429,7 +429,7 @@
   </article>
 <article class="card" id="scl-ra/interface/CheckArchitecture">
     <header><h3>CheckArchitecture</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">ra/interface/CheckArchitecture</code></header>
-    <p class="desc">Architecture map を SCL context、module path、RA layer、declared dependency、runtime entrypoint、実 import、complexity budget と照合する。</p>
+    <p class="desc">Architecture map を SCL context、全 production source の module 所属、RA layer、declared dependency、runtime entrypoint、実 import、complexity budget と照合する。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -455,7 +455,7 @@
   </tr></tbody>
     </table>
   </div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.report.passed implies output.report.findings.size() == 0</code></li><li><code class="expr">every_workspace_scl_context_is_declared(input.workspace, output.report)</code></li><li><code class="expr">module_dependencies_are_acyclic_and_point_inward(input.workspace, output.report)</code></li><li><code class="expr">production_imports_match_declared_dependencies(input.workspace, output.report)</code></li><li><code class="expr">runtime_entrypoints_resolve_to_declared_modules(input.workspace, output.report)</code></li><li><code class="expr">complexity_debt_is_bounded_and_not_expired(input.workspace, output.report)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.report.passed implies output.report.findings.size() == 0</code></li><li><code class="expr">every_workspace_scl_context_is_declared(input.workspace, output.report)</code></li><li><code class="expr">every_production_source_belongs_to_a_declared_module(input.workspace, output.report)</code></li><li><code class="expr">module_dependencies_are_acyclic_and_point_inward(input.workspace, output.report)</code></li><li><code class="expr">workspace_local_import_targets_belong_to_declared_modules(input.workspace, output.report)</code></li><li><code class="expr">production_imports_match_declared_dependencies(input.workspace, output.report)</code></li><li><code class="expr">runtime_entrypoints_belong_to_composed_modules(input.workspace, output.report)</code></li><li><code class="expr">complexity_debt_is_bounded_and_not_expired(input.workspace, output.report)</code></li></ul></div>
   </article></div>
   </section>
 <section id="objectives">
@@ -523,7 +523,7 @@
         <header><h3>ExecutableArchitectureAcceptsDeclaredWorkspace</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/ExecutableArchitectureAcceptsDeclaredWorkspace</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">全 SCL context、module、runtime、dependency、complexity budget を宣言した workspace がある</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/CheckArchitecture">CheckArchitecture</a> を実行する</li><li class="scn-step">実 path と production import が宣言へ解決される</li><li class="scn-step">report は成功する</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/CheckArchitecture">CheckArchitecture</a> を実行する</li><li class="scn-step">全 production source、workspace-local import、runtime entrypoint が宣言 module へ解決される</li><li class="scn-step">report は成功する</li></ol></div>
 
       </article><article class="card scenario" id="scl-ra/scenario/ExecutableArchitectureRejectsDrift">
         <header><h3>ExecutableArchitectureRejectsDrift</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/ExecutableArchitectureRejectsDrift</code></header>
@@ -531,6 +531,12 @@
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">未宣言 module import または許可されない外向き layer dependency がある</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/CheckArchitecture">CheckArchitecture</a> を実行する</li><li class="scn-step">drift が finding に分類される</li><li class="scn-step">report は失敗する</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">production source または workspace-local import 先がどの module にも所属しない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">import finding として拒否される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">runtime entrypoint が runtime の composed module に所属しない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">architecture finding として拒否される</li></ol></div>
+          </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">complexity debt が期限切れまたは baseline ceiling を超える</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">complexity finding として拒否される</li></ol></div>
           </article></div>

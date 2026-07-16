@@ -63,7 +63,7 @@ const validDoc = () => ({
   runtime_units: {
     api: {
       kind: 'api',
-      entrypoint: 'backend/cmd/api/main.go',
+      entrypoint: 'backend/audit/adapter/main.go',
       modules: ['identity_api', 'audit_adapter'],
     },
   },
@@ -226,6 +226,36 @@ describe('verifyArchitecture', () => {
       expect.arrayContaining([
         expect.stringContaining("entrypoint 'backend/cmd/missing/main.go' does not exist"),
         expect.stringContaining("references unknown module 'missing'"),
+      ]),
+    )
+  })
+
+  it('requires a runtime entrypoint to belong to one of its composed modules', () => {
+    const doc = validDoc()
+    doc.runtime_units.api.entrypoint = 'backend/identity/domain/worker.go'
+
+    const report = verifyArchitecture(doc, opts())
+
+    expect(report.errors.map((error) => error.message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "entrypoint 'backend/identity/domain/worker.go' belongs to module 'identity_domain', which is not composed by the runtime",
+        ),
+      ]),
+    )
+  })
+
+  it('requires a runtime entrypoint to belong to a declared module', () => {
+    const doc = validDoc()
+    doc.runtime_units.api.entrypoint = 'backend/unmapped/main.go'
+
+    const report = verifyArchitecture(doc, opts())
+
+    expect(report.errors.map((error) => error.message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "entrypoint 'backend/unmapped/main.go' belongs to no declared module",
+        ),
       ]),
     )
   })

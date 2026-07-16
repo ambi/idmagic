@@ -117,7 +117,7 @@ interfaces:
     access: internal
     read_only: true
   CheckArchitecture:
-    description: Architecture map を SCL context、module path、RA layer、declared dependency、runtime entrypoint、実 import、complexity budget と照合する。
+    description: Architecture map を SCL context、全 production source の module 所属、RA layer、declared dependency、runtime entrypoint、実 import、complexity budget と照合する。
     input:
       workspace: { type: WorkspaceConfig }
     output:
@@ -125,9 +125,11 @@ interfaces:
     ensures:
       - output.report.passed implies output.report.findings.size() == 0
       - every_workspace_scl_context_is_declared(input.workspace, output.report)
+      - every_production_source_belongs_to_a_declared_module(input.workspace, output.report)
       - module_dependencies_are_acyclic_and_point_inward(input.workspace, output.report)
+      - workspace_local_import_targets_belong_to_declared_modules(input.workspace, output.report)
       - production_imports_match_declared_dependencies(input.workspace, output.report)
-      - runtime_entrypoints_resolve_to_declared_modules(input.workspace, output.report)
+      - runtime_entrypoints_belong_to_composed_modules(input.workspace, output.report)
       - complexity_debt_is_bounded_and_not_expired(input.workspace, output.report)
     access: internal
     read_only: true
@@ -202,7 +204,7 @@ scenarios:
       - 全 SCL context、module、runtime、dependency、complexity budget を宣言した workspace がある
     main_success:
       - Maintainer が CheckArchitecture を実行する
-      - 実 path と production import が宣言へ解決される
+      - 全 production source、workspace-local import、runtime entrypoint が宣言 module へ解決される
       - report は成功する
   ExecutableArchitectureRejectsDrift:
     actor: Maintainer
@@ -213,6 +215,14 @@ scenarios:
       - drift が finding に分類される
       - report は失敗する
     extensions:
+      - at: 1
+        condition: production source または workspace-local import 先がどの module にも所属しない
+        steps:
+          - import finding として拒否される
+      - at: 1
+        condition: runtime entrypoint が runtime の composed module に所属しない
+        steps:
+          - architecture finding として拒否される
       - at: 1
         condition: complexity debt が期限切れまたは baseline ceiling を超える
         steps:

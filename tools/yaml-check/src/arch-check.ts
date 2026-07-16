@@ -156,6 +156,25 @@ function crossContextEdgeAllowed(sourceRole: Role, targetRole: Role, via: CrossC
   return sourceRole === via
 }
 
+function normalizedArchitecturePath(value: string): string {
+  return value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '')
+}
+
+function moduleForArchitecturePath(
+  path: string,
+  modules: Dict,
+): { id: string; path: string } | undefined {
+  const target = normalizedArchitecturePath(path)
+  return Object.entries(modules)
+    .flatMap(([id, value]) => {
+      const modulePath = dict(value).path
+      if (!nonEmptyString(modulePath)) return []
+      return [{ id, path: normalizedArchitecturePath(modulePath) }]
+    })
+    .sort((left, right) => right.path.length - left.path.length || left.id.localeCompare(right.id))
+    .find((module) => target === module.path || target.startsWith(`${module.path}/`))
+}
+
 /** Cross-check an Architecture map against its SCL index and workspace. */
 export function verifyArchitecture(doc: unknown, opts: ArchCheckOptions): ArchReport {
   const errors: Finding[] = []
@@ -374,6 +393,20 @@ export function verifyArchitecture(doc: unknown, opts: ArchCheckOptions): ArchRe
           )
         }
       })
+      if (nonEmptyString(entrypoint)) {
+        const entrypointModule = moduleForArchitecturePath(entrypoint, modules)
+        if (!entrypointModule) {
+          addError(
+            `/runtime_units/${id}/entrypoint`,
+            `runtime unit '${id}' entrypoint '${entrypoint}' belongs to no declared module`,
+          )
+        } else if (!runtime.modules.includes(entrypointModule.id)) {
+          addError(
+            `/runtime_units/${id}/entrypoint`,
+            `runtime unit '${id}' entrypoint '${entrypoint}' belongs to module '${entrypointModule.id}', which is not composed by the runtime`,
+          )
+        }
+      }
     }
   }
 
