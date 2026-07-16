@@ -4,7 +4,9 @@ import brokenFlow from './fixtures/scl-v3/invalid/broken-flow.json' with { type:
 import invalidCelScope from './fixtures/scl-v3/invalid/invalid-cel-scope.json' with { type: 'json' }
 import legacySection from './fixtures/scl-v3/invalid/legacy-section.json' with { type: 'json' }
 import missingAccess from './fixtures/scl-v3/invalid/missing-access.json' with { type: 'json' }
-import unresolvedAuthorization from './fixtures/scl-v3/invalid/unresolved-authorization.json' with { type: 'json' }
+import unresolvedAuthorization from './fixtures/scl-v3/invalid/unresolved-authorization.json' with {
+  type: 'json',
+}
 import tenancy from './fixtures/scl-v3/valid/tenancy.json' with { type: 'json' }
 import { validateAgainstSchema } from './lib.ts'
 import { verifySclSemantics } from './scl-semantics.ts'
@@ -97,14 +99,20 @@ describe('SCL 3.0 validation', () => {
     const messages = verifySclSemantics(invalid).map((finding) => finding.message)
     expect(messages.some((message) => message.includes("unknown field 'missing_id'"))).toBe(true)
     expect(messages.some((message) => message.includes("unknown type 'MissingModel'"))).toBe(true)
-    expect(messages.some((message) => message.includes("unknown error model 'MissingError'"))).toBe(true)
-    expect(messages.some((message) => message.includes("unknown event model 'MissingEvent'"))).toBe(true)
-    expect(messages.some((message) => message.includes("unknown state value 'Unknown'"))).toBe(true)
-    expect(messages.some((message) => message.includes('transition from terminal state'))).toBe(true)
-    expect(messages.some((message) => message.includes("unknown interface 'Missing'"))).toBe(true)
-    expect(messages.some((message) => message.includes("unknown SCL element 'interfaces.Missing'"))).toBe(
+    expect(messages.some((message) => message.includes("unknown error model 'MissingError'"))).toBe(
       true,
     )
+    expect(messages.some((message) => message.includes("unknown event model 'MissingEvent'"))).toBe(
+      true,
+    )
+    expect(messages.some((message) => message.includes("unknown state value 'Unknown'"))).toBe(true)
+    expect(messages.some((message) => message.includes('transition from terminal state'))).toBe(
+      true,
+    )
+    expect(messages.some((message) => message.includes("unknown interface 'Missing'"))).toBe(true)
+    expect(
+      messages.some((message) => message.includes("unknown SCL element 'interfaces.Missing'")),
+    ).toBe(true)
   })
 
   it('requires timeslice budgeting to declare a slice', () => {

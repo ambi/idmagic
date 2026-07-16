@@ -156,10 +156,7 @@ describe('SCL element reference', () => {
       },
     }
     expect(
-      buildSclWorkspaceIndex(
-        { context_map: { System: {} } },
-        { System: duplicate },
-      ),
+      buildSclWorkspaceIndex({ context_map: { System: {} } }, { System: duplicate }),
     ).toMatchObject({ ok: false, errors: [{ code: 'duplicate_requirement' }] })
   })
 
@@ -171,8 +168,8 @@ describe('SCL element reference', () => {
     }
     expect(canonicalSclElementReference(slash)).toBe('A~1B/scenario/Foo~0Bar~1Baz')
     expect(sclElementAnchor(slash)).toBe('scl-A~2FB/scenario/Foo~7EBar~2FBaz')
-    expect(
-      sclElementAnchor({ context: 'A', kind: 'model', element: 'Foo Bar' }),
-    ).not.toBe(sclElementAnchor({ context: 'A', kind: 'model', element: 'foo-bar' }))
+    expect(sclElementAnchor({ context: 'A', kind: 'model', element: 'Foo Bar' })).not.toBe(
+      sclElementAnchor({ context: 'A', kind: 'model', element: 'foo-bar' }),
+    )
   })
 })

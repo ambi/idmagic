@@ -11,7 +11,10 @@
     "context": { "type": "string", "minLength": 1 },
     "annotations": { "type": "object" },
     "standards": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Standard" } },
-    "context_map": { "type": "object", "additionalProperties": { "$ref": "#/$defs/ContextMapEntry" } },
+    "context_map": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/ContextMapEntry" }
+    },
     "glossary": { "type": "object", "additionalProperties": { "$ref": "#/$defs/GlossaryEntry" } },
     "models": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Model" } },
     "interfaces": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Interface" } },
@@ -96,7 +99,10 @@
                 "items": { "type": "string", "pattern": "^[a-z_]+\\.[^.]+$" }
               }
             },
-            "if": { "properties": { "adoption": { "const": "excluded" } }, "required": ["adoption"] },
+            "if": {
+              "properties": { "adoption": { "const": "excluded" } },
+              "required": ["adoption"]
+            },
             "then": { "required": ["reason"] }
           }
         }
@@ -118,7 +124,15 @@
             "additionalProperties": false,
             "properties": {
               "uses": { "type": "array", "items": { "$ref": "#/$defs/NonEmptyString" } },
-              "via": { "enum": ["shared_kernel", "published_language", "customer_supplier", "conformist", "anticorruption_layer"] },
+              "via": {
+                "enum": [
+                  "shared_kernel",
+                  "published_language",
+                  "customer_supplier",
+                  "conformist",
+                  "anticorruption_layer"
+                ]
+              },
               "reason": { "$ref": "#/$defs/NonEmptyString" }
             }
           }
@@ -170,9 +184,18 @@
         "payload": { "$ref": "#/$defs/FieldMap" }
       },
       "allOf": [
-        { "if": { "properties": { "kind": { "const": "entity" } }, "required": ["kind"] }, "then": { "required": ["identity", "fields"] } },
-        { "if": { "properties": { "kind": { "const": "value_object" } }, "required": ["kind"] }, "then": { "required": ["fields"] } },
-        { "if": { "properties": { "kind": { "const": "enum" } }, "required": ["kind"] }, "then": { "required": ["values"] } }
+        {
+          "if": { "properties": { "kind": { "const": "entity" } }, "required": ["kind"] },
+          "then": { "required": ["identity", "fields"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "value_object" } }, "required": ["kind"] },
+          "then": { "required": ["fields"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "enum" } }, "required": ["kind"] },
+          "then": { "required": ["values"] }
+        }
       ]
     },
     "Access": {
@@ -225,13 +248,82 @@
         "description": { "type": "string" }
       },
       "allOf": [
-        { "if": { "properties": { "kind": { "const": "http" } }, "required": ["kind"] }, "then": { "required": ["method", "path"], "properties": { "method": { "$ref": "#/$defs/NonEmptyString" }, "path": { "$ref": "#/$defs/NonEmptyString" }, "successful_status_codes": { "type": "array", "items": { "type": "string" } }, "request_form": { "enum": ["body", "query", "form"] }, "headers": { "$ref": "#/$defs/FieldMap" } } } },
-        { "if": { "properties": { "kind": { "const": "grpc" } }, "required": ["kind"] }, "then": { "required": ["service", "method"], "properties": { "service": { "$ref": "#/$defs/NonEmptyString" }, "method": { "$ref": "#/$defs/NonEmptyString" }, "streaming": { "enum": ["unary", "client", "server", "bidi"] } } } },
-        { "if": { "properties": { "kind": { "const": "cli" } }, "required": ["kind"] }, "then": { "required": ["command"], "properties": { "command": { "$ref": "#/$defs/NonEmptyString" }, "args": { "type": "array" }, "flags": { "type": "array" }, "exit_codes": { "type": "object" } } } },
-        { "if": { "properties": { "kind": { "const": "event" } }, "required": ["kind"] }, "then": { "required": ["channel", "direction"], "properties": { "channel": { "$ref": "#/$defs/NonEmptyString" }, "direction": { "enum": ["produce", "consume"] }, "delivery": { "enum": ["at_most_once", "at_least_once", "exactly_once"] }, "ordering": { "enum": ["none", "per_key", "global"] }, "partition_key": { "type": "string" } } } },
-        { "if": { "properties": { "kind": { "const": "graphql" } }, "required": ["kind"] }, "then": { "required": ["operation", "field"], "properties": { "operation": { "enum": ["query", "mutation", "subscription"] }, "field": { "$ref": "#/$defs/NonEmptyString" } } } },
-        { "if": { "properties": { "kind": { "const": "sdk" } }, "required": ["kind"] }, "then": { "required": ["function"], "properties": { "function": { "$ref": "#/$defs/NonEmptyString" } } } },
-        { "if": { "properties": { "kind": { "const": "schedule" } }, "required": ["kind"] }, "then": { "oneOf": [{ "required": ["cron"] }, { "required": ["every"] }], "properties": { "cron": { "$ref": "#/$defs/NonEmptyString" }, "every": { "$ref": "#/$defs/NonEmptyString" } } } }
+        {
+          "if": { "properties": { "kind": { "const": "http" } }, "required": ["kind"] },
+          "then": {
+            "required": ["method", "path"],
+            "properties": {
+              "method": { "$ref": "#/$defs/NonEmptyString" },
+              "path": { "$ref": "#/$defs/NonEmptyString" },
+              "successful_status_codes": { "type": "array", "items": { "type": "string" } },
+              "request_form": { "enum": ["body", "query", "form"] },
+              "headers": { "$ref": "#/$defs/FieldMap" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "grpc" } }, "required": ["kind"] },
+          "then": {
+            "required": ["service", "method"],
+            "properties": {
+              "service": { "$ref": "#/$defs/NonEmptyString" },
+              "method": { "$ref": "#/$defs/NonEmptyString" },
+              "streaming": { "enum": ["unary", "client", "server", "bidi"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "cli" } }, "required": ["kind"] },
+          "then": {
+            "required": ["command"],
+            "properties": {
+              "command": { "$ref": "#/$defs/NonEmptyString" },
+              "args": { "type": "array" },
+              "flags": { "type": "array" },
+              "exit_codes": { "type": "object" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "event" } }, "required": ["kind"] },
+          "then": {
+            "required": ["channel", "direction"],
+            "properties": {
+              "channel": { "$ref": "#/$defs/NonEmptyString" },
+              "direction": { "enum": ["produce", "consume"] },
+              "delivery": { "enum": ["at_most_once", "at_least_once", "exactly_once"] },
+              "ordering": { "enum": ["none", "per_key", "global"] },
+              "partition_key": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "graphql" } }, "required": ["kind"] },
+          "then": {
+            "required": ["operation", "field"],
+            "properties": {
+              "operation": { "enum": ["query", "mutation", "subscription"] },
+              "field": { "$ref": "#/$defs/NonEmptyString" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "sdk" } }, "required": ["kind"] },
+          "then": {
+            "required": ["function"],
+            "properties": { "function": { "$ref": "#/$defs/NonEmptyString" } }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "schedule" } }, "required": ["kind"] },
+          "then": {
+            "oneOf": [{ "required": ["cron"] }, { "required": ["every"] }],
+            "properties": {
+              "cron": { "$ref": "#/$defs/NonEmptyString" },
+              "every": { "$ref": "#/$defs/NonEmptyString" }
+            }
+          }
+        }
       ]
     },
     "StateMachine": {
@@ -317,7 +409,14 @@
         "annotations": { "$ref": "#/$defs/Annotation" }
       },
       "allOf": [
-        { "if": { "properties": { "budgeting": { "const": "timeslices" } }, "required": ["budgeting"] }, "then": { "required": ["slice"] }, "else": { "not": { "required": ["slice"] } } }
+        {
+          "if": {
+            "properties": { "budgeting": { "const": "timeslices" } },
+            "required": ["budgeting"]
+          },
+          "then": { "required": ["slice"] },
+          "else": { "not": { "required": ["slice"] } }
+        }
       ]
     },
     "Scenario": {
@@ -380,9 +479,7 @@
         "to": { "$ref": "#/$defs/NonEmptyString" },
         "external": { "const": true }
       },
-      "allOf": [
-        { "if": { "required": ["external"] }, "then": { "not": { "required": ["to"] } } }
-      ]
+      "allOf": [{ "if": { "required": ["external"] }, "then": { "not": { "required": ["to"] } } }]
     }
   }
 }

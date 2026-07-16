@@ -27,13 +27,13 @@ const BUILTIN_TYPES = new Set([
 ])
 
 function dict(value: unknown): Dict {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Dict)
-    : {}
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Dict) : {}
 }
 
 function strings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 function addFinding(findings: Finding[], text: string, pointer: string, message: string): void {
@@ -140,7 +140,8 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
     validateFieldTypes(fields, models, text, `/models/${modelName}/fields`, findings)
     validateFieldTypes(model.payload, models, text, `/models/${modelName}/payload`, findings)
 
-    const identities = typeof model.identity === 'string' ? [model.identity] : strings(model.identity)
+    const identities =
+      typeof model.identity === 'string' ? [model.identity] : strings(model.identity)
     identities.forEach((identity, index) => {
       if (!(identity in fields)) {
         addFinding(
@@ -162,8 +163,20 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
 
   for (const [interfaceName, interfaceValue] of Object.entries(interfaces)) {
     const operation = dict(interfaceValue)
-    validateFieldTypes(operation.input, models, text, `/interfaces/${interfaceName}/input`, findings)
-    validateFieldTypes(operation.output, models, text, `/interfaces/${interfaceName}/output`, findings)
+    validateFieldTypes(
+      operation.input,
+      models,
+      text,
+      `/interfaces/${interfaceName}/input`,
+      findings,
+    )
+    validateFieldTypes(
+      operation.output,
+      models,
+      text,
+      `/interfaces/${interfaceName}/output`,
+      findings,
+    )
 
     strings(operation.errors).forEach((name, index) => {
       if (modelKind(models, name) !== 'error') {
@@ -202,7 +215,11 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
     )
 
     const access = operation.access
-    if (access === 'internal' && Array.isArray(operation.bindings) && operation.bindings.length > 0) {
+    if (
+      access === 'internal' &&
+      Array.isArray(operation.bindings) &&
+      operation.bindings.length > 0
+    ) {
       addFinding(
         findings,
         text,
@@ -300,13 +317,17 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
     for (const fieldValue of Object.values(dict(dict(models[target]).fields))) {
       const type = dict(fieldValue).type
       if (typeof type === 'string' && modelKind(models, type) === 'enum') {
-        strings(dict(models[type]).values).forEach((value) => stateValues.add(value))
+        strings(dict(models[type]).values).forEach((value) => {
+          stateValues.add(value)
+        })
       }
     }
     const allowed = new Set([...targetFields, 'input'])
     const transitions = Array.isArray(machine.transitions) ? machine.transitions : []
     const terminal = new Set(strings(machine.terminal))
-    const stateReferences: Array<[unknown, string]> = [[machine.initial, `/states/${stateName}/initial`]]
+    const stateReferences: Array<[unknown, string]> = [
+      [machine.initial, `/states/${stateName}/initial`],
+    ]
     transitions.forEach((transitionValue, index) => {
       const transition = dict(transitionValue)
       stateReferences.push(
@@ -349,9 +370,9 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
       )
     })
     if (stateValues.size > 0) {
-      strings(machine.terminal).forEach((value, index) =>
-        stateReferences.push([value, `/states/${stateName}/terminal/${index}`]),
-      )
+      strings(machine.terminal).forEach((value, index) => {
+        stateReferences.push([value, `/states/${stateName}/terminal/${index}`])
+      })
       for (const [value, pointer] of stateReferences) {
         if (typeof value === 'string' && !stateValues.has(value)) {
           addFinding(

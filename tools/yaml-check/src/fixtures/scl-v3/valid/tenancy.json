@@ -92,14 +92,17 @@
       "views": {
         "TenantList": {
           "sees": "テナント一覧画面",
-          "does": [
-            { "action": "edit", "does": "編集ボタンをクリックする", "to": "TenantEdit" }
-          ]
+          "does": [{ "action": "edit", "does": "編集ボタンをクリックする", "to": "TenantEdit" }]
         },
         "TenantEdit": {
           "sees": "テナント編集画面(名称入力フォーム)",
           "does": [
-            { "action": "submit", "does": "名称を入力して、保存ボタンをクリックする", "interface": "UpdateTenant", "to": "TenantList" }
+            {
+              "action": "submit",
+              "does": "名称を入力して、保存ボタンをクリックする",
+              "interface": "UpdateTenant",
+              "to": "TenantList"
+            }
           ]
         }
       }

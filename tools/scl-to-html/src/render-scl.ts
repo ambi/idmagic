@@ -34,7 +34,6 @@ import {
   type SclContextDocument,
   type SclDocument,
   type SectionKind,
-  type Standard,
   type StateMachine,
 } from './types.ts'
 import {
@@ -53,8 +52,7 @@ const namedReference = (
   element: string,
 ): SclElementReference => ({ context, kind, element })
 
-const referenceHref = (reference: SclElementReference): string =>
-  `#${sclElementAnchor(reference)}`
+const referenceHref = (reference: SclElementReference): string => `#${sclElementAnchor(reference)}`
 
 const canonicalReference = (reference: SclElementReference): string =>
   `<code class="canonical-ref">${esc(canonicalSclElementReference(reference))}</code>`
@@ -1167,7 +1165,9 @@ const renderOneSection = (k: SectionKind, scl: SclDocument): string => {
     case 'objectives':
       return scl.objectives ? renderObjectivesV3(context, scl.objectives) : ''
     case 'scenarios':
-      return scl.scenarios ? renderScenariosV3(context, scl.scenarios, buildXrefV3(context, scl)) : ''
+      return scl.scenarios
+        ? renderScenariosV3(context, scl.scenarios, buildXrefV3(context, scl))
+        : ''
     case 'flows':
       return scl.flows ? renderFlows(context, scl.flows) : ''
   }

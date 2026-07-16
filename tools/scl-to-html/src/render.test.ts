@@ -97,7 +97,14 @@ const sampleScl = (): SclDocument => ({
       views: {
         Login: {
           sees: 'ログイン画面(メールアドレス入力フォーム、パスワード入力フォーム)',
-          does: [{ action: 'success', does: '入力して、ログインボタンをクリックする', to: 'Done', interface: 'DoIt' }],
+          does: [
+            {
+              action: 'success',
+              does: '入力して、ログインボタンをクリックする',
+              to: 'Done',
+              interface: 'DoIt',
+            },
+          ],
         },
         Done: {
           sees: 'ログイン完了画面',

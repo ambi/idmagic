@@ -7,15 +7,11 @@
       "views": {
         "Start": {
           "sees": "start screen",
-          "does": [
-            { "action": "finish", "does": "click finish", "external": true }
-          ]
+          "does": [{ "action": "finish", "does": "click finish", "external": true }]
         },
         "Unreachable": {
           "sees": "unreachable screen",
-          "does": [
-            { "action": "save", "does": "click save", "interface": "Missing" }
-          ]
+          "does": [{ "action": "save", "does": "click save", "interface": "Missing" }]
         }
       }
     }
