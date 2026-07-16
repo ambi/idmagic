@@ -1,12 +1,8 @@
 #!/usr/bin/env bun
 import { existsSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
-import { basename, dirname, extname, join, resolve } from 'node:path'
-import {
-  collectSclElements,
-  parseArchitectureDoc,
-  verifyArchitecture,
-} from '../../yaml-check/src/arch-check.ts'
+import { basename, dirname, extname, join, relative, resolve } from 'node:path'
+import { parseArchitectureDoc, verifyArchitecture } from '../../yaml-check/src/arch-check.ts'
 import { loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
 import {
   type WorkItemDependencyRecord,
@@ -15,6 +11,10 @@ import {
 import { buildSclWorkspaceIndex } from '../../yaml-check/src/scl-element-reference.ts'
 import { resolveSclElementReference } from '../../yaml-check/src/scl-element-reference.ts'
 import { loadWorkspaceSclIndex } from './workspace-scl-index.ts'
+import {
+  collectArchitectureWorkspace,
+  evaluateArchitectureWorkspace,
+} from './architecture-workspace.ts'
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
@@ -214,28 +214,32 @@ if (runIds && checkIdsArgs.length > 1) await runTool(checkIdsArgs)
 
 // Architecture maps: schema-validate the frontmatter, then cross-check that the
 // map has not drifted from the workspace it describes (ARCHITECTURE_FORMAT.md §4).
-async function collectWorkspaceSclElements(): Promise<Set<string>> {
-  const set = new Set<string>()
-  const sclFiles: string[] = []
+async function collectExpectedArchitectureContexts(): Promise<Map<string, string>> {
+  const contexts = new Map<string, string>()
   for (const app of config.apps) {
-    sclFiles.push(rootPath(app.scl))
-    if (app.contextGlob) {
-      const glob = new Bun.Glob(app.contextGlob)
-      for await (const match of glob.scan({ cwd: rootPath('.'), absolute: true })) {
-        sclFiles.push(match)
+    const rootFile = rootPath(app.scl)
+    const root = Bun.YAML.parse(await readFile(rootFile, 'utf8')) as Record<string, unknown>
+    const contextMap = root.context_map as Record<string, unknown> | undefined
+    if (contextMap && Object.keys(contextMap).length > 0) {
+      for (const [context, entry] of Object.entries(contextMap)) {
+        const path = (entry as { path?: unknown } | null)?.path
+        if (typeof path !== 'string') continue
+        contexts.set(context, relative(rootPath('.'), resolve(dirname(rootFile), path)))
       }
+      continue
     }
+    const context = root.context ?? root.system
+    if (typeof context === 'string') contexts.set(context, app.scl)
   }
-  for (const spec of config.toolSpecs ?? []) sclFiles.push(rootPath(spec))
-  for (const file of sclFiles) {
-    try {
-      const doc = Bun.YAML.parse(await readFile(file, 'utf8'))
-      for (const ref of collectSclElements(doc)) set.add(ref)
-    } catch {
-      // A malformed SCL file is reported by the --scl pass above; skip it here.
-    }
+  for (const spec of config.toolSpecs ?? []) {
+    const document = Bun.YAML.parse(await readFile(rootPath(spec), 'utf8')) as Record<
+      string,
+      unknown
+    >
+    const context = document.context ?? document.system
+    if (typeof context === 'string') contexts.set(context, spec)
   }
-  return set
+  return contexts
 }
 
 const architectureDocs = config.architectureDocs ?? []
@@ -246,7 +250,15 @@ if (runArchitecture && architectureDocs.length > 0) {
     ...architectureDocs.map((doc) => rootPath(doc)),
   ])
 
-  const sclElements = await collectWorkspaceSclElements()
+  const { index: sclIndex, errors: sclIndexErrors } = await loadWorkspaceSclIndex(config)
+  if (sclIndexErrors.length > 0) {
+    for (const error of sclIndexErrors) {
+      console.error(`scl-element-reference: ${error.message}`)
+    }
+    process.exit(1)
+  }
+  const expectedContexts = await collectExpectedArchitectureContexts()
+  const architectureWorkspace = await collectArchitectureWorkspace(rootPath('.'))
   let archFailed = 0
   for (const rel of architectureDocs) {
     const abs = rootPath(rel)
@@ -256,17 +268,22 @@ if (runArchitecture && architectureDocs.length > 0) {
       text,
       archDir: dirname(abs),
       workspaceRoot: rootPath('.'),
-      sclElements,
+      sclIndex,
+      expectedContexts,
       pathExists: existsSync,
       join,
     })
-    if (errors.length === 0) {
+    const workspaceFindings = evaluateArchitectureWorkspace(data, architectureWorkspace)
+    if (errors.length === 0 && workspaceFindings.length === 0) {
       console.log(`ok  ${rel} (architecture cross-check)`)
       continue
     }
     archFailed++
     console.log(`FAIL ${rel}`)
     for (const e of errors) console.log(`${rel}:${e.line}:${e.column}: ${e.message}`)
+    for (const finding of workspaceFindings) {
+      console.log(`${rel}:1:1: ${finding.message} (${finding.path})`)
+    }
   }
   if (archFailed > 0) {
     console.error(`\n${archFailed} architecture doc(s) failed cross-check.`)

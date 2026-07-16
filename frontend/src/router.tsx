@@ -6,10 +6,6 @@ import { markErrorPage } from './routes/-page'
 import { commonDictionary } from './lib/i18n/common.i18n'
 import { useDictionary } from './lib/i18n'
 
-export function preloadPageChunks() {
-  // File-based routes with autoCodeSplitting let TanStack Router/Vite own route chunk loading.
-}
-
 // portalReauthTarget は現在のパスが first-party portal (admin/account) 配下なら、
 // 再ログイン後に戻す audience と同一オリジンの return_to を返す。行き止まり画面から
 // 元の画面へ復帰する再ログイン導線を出すために使う (open redirect を避けるため

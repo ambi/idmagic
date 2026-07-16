@@ -5,14 +5,68 @@ import {
   parseArchitectureDoc,
   verifyArchitecture,
 } from './arch-check.ts'
+import type { SclWorkspaceIndex } from './scl-element-reference.ts'
+
+const sclIndex: SclWorkspaceIndex = {
+  root: {},
+  contexts: new Map([
+    ['Identity', { context: 'Identity', interfaces: { ResolveUser: {} }, models: { User: {} } }],
+    ['Audit', { context: 'Audit', interfaces: { WriteEvent: {} } }],
+  ]),
+}
 
 const opts = (over: Partial<ArchCheckOptions> = {}): ArchCheckOptions => ({
   archDir: '/ws',
   workspaceRoot: '/ws',
-  sclElements: new Set<string>(),
+  sclIndex,
+  expectedContexts: new Map([
+    ['Identity', 'spec/contexts/identity.yaml'],
+    ['Audit', 'spec/contexts/audit.yaml'],
+  ]),
   pathExists: () => true,
   join: (...parts) => parts.join('/'),
   ...over,
+})
+
+const validDoc = () => ({
+  context: 'repo',
+  contexts: {
+    Identity: { spec: 'spec/contexts/identity.yaml', summary: 'identity' },
+    Audit: { spec: 'spec/contexts/audit.yaml', summary: 'audit' },
+  },
+  modules: {
+    identity_domain: {
+      path: 'backend/identity/domain',
+      context: 'Identity',
+      layer: 'domain',
+      role: 'implementation',
+      realizes: [{ context: 'Identity', kind: 'model', element: 'User' }],
+      depends_on: [] as { module: string; via: string }[],
+    },
+    identity_api: {
+      path: 'backend/identity/api',
+      context: 'Identity',
+      layer: 'adapters',
+      role: 'published_interface',
+      realizes: [{ context: 'Identity', kind: 'interface', element: 'ResolveUser' }],
+      depends_on: [{ module: 'identity_domain', via: 'published_interface' }],
+    },
+    audit_adapter: {
+      path: 'backend/audit/adapter',
+      context: 'Audit',
+      layer: 'infrastructure',
+      role: 'implementation',
+      realizes: [{ context: 'Audit', kind: 'interface', element: 'WriteEvent' }],
+      depends_on: [{ module: 'identity_api', via: 'published_interface' }],
+    },
+  },
+  runtime_units: {
+    api: {
+      kind: 'api',
+      entrypoint: 'backend/cmd/api/main.go',
+      modules: ['identity_api', 'audit_adapter'],
+    },
+  },
 })
 
 describe('parseArchitectureDoc', () => {
@@ -24,7 +78,6 @@ modules:
   ra:
     path: tools/ra
     responsibility: "cli"
-    realizes: [interfaces.DiscoverWorkspace]
 ---
 
 # Architecture: repo
@@ -70,44 +123,110 @@ describe('collectSclElements', () => {
 })
 
 describe('verifyArchitecture', () => {
-  it('accepts a map whose paths, realizes and contexts all resolve', () => {
-    const doc = {
-      context: 'repo',
-      modules: { ra: { path: 'tools/ra', realizes: ['interfaces.DiscoverWorkspace'] } },
-      contexts: { repo: { root: '.' } },
-    }
+  it('accepts a complete executable map', () => {
+    expect(verifyArchitecture(validDoc(), opts())).toEqual({ errors: [], warnings: [] })
+  })
+
+  it('requires an exact context-to-spec projection and existing spec paths', () => {
+    const doc = validDoc()
+    doc.contexts.Identity.spec = 'spec/wrong.yaml'
+    delete (doc.contexts as Record<string, unknown>).Audit
+    ;(doc.contexts as Record<string, unknown>).Ghost = { spec: 'spec/ghost.yaml' }
     const report = verifyArchitecture(
       doc,
-      opts({ sclElements: new Set(['interfaces.DiscoverWorkspace']) }),
+      opts({ pathExists: (path) => !path.endsWith('ghost.yaml') }),
     )
-    expect(report.errors).toEqual([])
+    expect(report.errors.map((error) => error.message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("context 'Identity' spec must be 'spec/contexts/identity.yaml'"),
+        expect.stringContaining("SCL context 'Audit' is missing"),
+        expect.stringContaining("context 'Ghost' is not declared"),
+        expect.stringContaining("spec 'spec/ghost.yaml' does not exist"),
+      ]),
+    )
   })
 
-  it('flags a module path that does not exist', () => {
-    const doc = { modules: { ra: { path: 'tools/gone' } } }
-    const report = verifyArchitecture(doc, opts({ pathExists: () => false }))
-    expect(report.errors).toHaveLength(1)
-    expect(report.errors[0]?.message).toContain("path 'tools/gone' does not exist")
+  it('checks module path, context, layer and role', () => {
+    const doc = validDoc()
+    Object.assign(doc.modules.identity_domain, {
+      path: 'backend/missing',
+      context: 'Missing',
+      layer: 'presentation',
+      role: 'helper',
+    })
+    const report = verifyArchitecture(
+      doc,
+      opts({ pathExists: (path) => !path.endsWith('backend/missing') }),
+    )
+    expect(report.errors.map((error) => error.message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("path 'backend/missing' does not exist"),
+        expect.stringContaining("context 'Missing' is not declared"),
+        expect.stringContaining("invalid layer 'presentation'"),
+        expect.stringContaining("invalid role 'helper'"),
+      ]),
+    )
   })
 
-  it('flags a realizes ref that no SCL element defines', () => {
-    const doc = { modules: { ra: { path: 'tools/ra', realizes: ['interfaces.Ghost'] } } }
-    const report = verifyArchitecture(doc, opts())
-    expect(report.errors).toHaveLength(1)
-    expect(report.errors[0]?.message).toContain("realizes 'interfaces.Ghost'")
+  it('resolves direct SCL references and enforces context locality', () => {
+    const doc = validDoc()
+    doc.modules.identity_domain.realizes = [{ context: 'Audit', kind: 'model', element: 'Missing' }]
+    const messages = verifyArchitecture(doc, opts()).errors.map((error) => error.message)
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("cannot realize context 'Audit'"),
+        expect.stringContaining("has no model 'Missing'"),
+      ]),
+    )
   })
 
-  it('flags a context that is not among the declared contexts', () => {
-    const doc = { context: 'idp', contexts: { repo: { root: '.' } } }
-    const report = verifyArchitecture(doc, opts())
-    expect(report.errors.some((e) => e.message.includes("context 'idp' is not among"))).toBe(true)
+  it('flags unknown dependency targets and outer-layer dependencies', () => {
+    const doc = validDoc()
+    doc.modules.identity_domain.depends_on = [
+      { module: 'identity_api', via: 'published_interface' },
+      { module: 'missing', via: 'published_interface' },
+    ]
+    const messages = verifyArchitecture(doc, opts()).errors.map((error) => error.message)
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("layer 'domain' cannot depend on outer layer 'adapters'"),
+        expect.stringContaining("depends on unknown module 'missing'"),
+      ]),
+    )
   })
 
-  it('flags a context root that does not exist', () => {
-    const doc = { context: 'repo', contexts: { repo: { root: 'nowhere' } } }
-    const report = verifyArchitecture(doc, opts({ pathExists: () => false }))
-    expect(report.errors.some((e) => e.message.includes("root 'nowhere' does not exist"))).toBe(
-      true,
+  it('flags dependency cycles', () => {
+    const doc = validDoc()
+    doc.modules.identity_domain.depends_on = [
+      { module: 'identity_api', via: 'published_interface' },
+    ]
+    expect(
+      verifyArchitecture(doc, opts()).errors.some((error) =>
+        error.message.includes('module dependency cycle'),
+      ),
+    ).toBe(true)
+  })
+
+  it('requires role-compatible via for cross-context dependencies', () => {
+    const doc = validDoc()
+    doc.modules.audit_adapter.depends_on = [{ module: 'identity_domain', via: 'binding' }]
+    const messages = verifyArchitecture(doc, opts()).errors.map((error) => error.message)
+    expect(messages.some((message) => message.includes("via 'binding' is incompatible"))).toBe(true)
+  })
+
+  it('checks runtime entrypoint existence and composed module references', () => {
+    const doc = validDoc()
+    doc.runtime_units.api.entrypoint = 'backend/cmd/missing/main.go'
+    doc.runtime_units.api.modules = ['identity_api', 'missing']
+    const report = verifyArchitecture(
+      doc,
+      opts({ pathExists: (path) => !path.includes('/cmd/missing/') }),
+    )
+    expect(report.errors.map((error) => error.message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("entrypoint 'backend/cmd/missing/main.go' does not exist"),
+        expect.stringContaining("references unknown module 'missing'"),
+      ]),
     )
   })
 })

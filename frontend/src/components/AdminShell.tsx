@@ -1,11 +1,10 @@
 import { IconChevronDown, IconLogout, IconUserCircle } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { logout, tenantBasePath } from '../api'
 import { adminNavItems, type AdminNavKey } from '../lib/adminNav'
 import { cn } from '../lib/utils'
 import { useDictionary, useLocale } from '../lib/i18n'
-import { preloadPageChunks } from '../router'
 import { Brand } from './Brand'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { shellDictionary } from './shell.i18n'
@@ -49,10 +48,6 @@ export function AdminShell({
   const { locale } = useLocale()
   const items = adminNavItems(active, locale)
   const currentItem = items.find((item) => item.active)
-  // 管理コンソールに入ったら全ページ chunk をバックグラウンド先読みし、サイドバー遷移の空白を防ぐ。
-  useEffect(() => {
-    preloadPageChunks()
-  }, [])
   return (
     <div className="app-surface">
       <header className="app-header">

@@ -4,6 +4,7 @@
   "title": "Architecture",
   "description": "ARCHITECTURE_FORMAT.md を正本とする Architecture（構成）のスキーマ（同文書からの派生物）。ARCHITECTURE.md の Frontmatter（構造）と本文（叙述）を検証する。",
   "type": "object",
+  "additionalProperties": false,
   "required": ["context", "updated_at", "overview", "structure", "structural_decisions"],
   "properties": {
     "context": {
@@ -24,6 +25,14 @@
       "description": "モジュール／パッケージ台帳。id → オブジェクト。",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/Module" }
+    },
+    "runtime_units": {
+      "description": "実行単位の台帳。id → オブジェクト。",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/RuntimeUnit" }
+    },
+    "complexity": {
+      "$ref": "#/$defs/Complexity"
     },
     "overview": {
       "description": "本文 ## Overview。構成の全体像。",
@@ -59,7 +68,8 @@
   "$defs": {
     "Module": {
       "type": "object",
-      "required": ["path", "responsibility"],
+      "required": ["path", "responsibility", "context", "layer", "role"],
+      "additionalProperties": false,
       "properties": {
         "path": {
           "description": "モジュールの実体があるディレクトリ／ファイル。ARCHITECTURE.md の位置からの相対パス。横断検査で実在を確認する。",
@@ -71,19 +81,45 @@
           "type": "string",
           "minLength": 1
         },
+        "context": {
+          "description": "所属する contexts の接頭辞。横断検査で解決する。",
+          "type": "string",
+          "minLength": 1
+        },
+        "layer": {
+          "description": "Regenerative Architecture の層。依存は同層または内層だけを許可する。",
+          "enum": [
+            "specification_core",
+            "decision_record",
+            "domain",
+            "use_cases",
+            "adapters",
+            "infrastructure",
+            "deploy_pipeline"
+          ]
+        },
+        "role": {
+          "$ref": "#/$defs/ModuleRole"
+        },
         "realizes": {
-          "description": "そのモジュールが実現する SCL 要素の参照（例 interfaces.DiscoverWorkspace）。横断検査で解決を確認する。",
+          "description": "そのモジュールが実現する context-qualified direct SCL element reference。横断検査で解決と context locality を確認する。",
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z_]+\\.[A-Za-z0-9_]+$" }
+          "items": { "$ref": "#/$defs/SclElementReference" }
+        },
+        "depends_on": {
+          "description": "宣言済み module 依存。横断検査で参照、循環、layer 方向、cross-context 境界を確認する。",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Dependency" }
         }
       }
     },
     "Context": {
       "type": "object",
-      "required": ["root"],
+      "required": ["spec", "summary"],
+      "additionalProperties": false,
       "properties": {
-        "root": {
-          "description": "そのコンテキストのルートディレクトリ。",
+        "spec": {
+          "description": "そのコンテキストを定義する SCL YAML の Architecture からの相対パス。",
           "type": "string",
           "minLength": 1
         },
@@ -93,6 +129,136 @@
           "minLength": 1
         }
       }
+    },
+    "ModuleRole": {
+      "enum": [
+        "implementation",
+        "published_interface",
+        "binding",
+        "technical_shared",
+        "composition_root"
+      ]
+    },
+    "Dependency": {
+      "type": "object",
+      "required": ["module", "via"],
+      "additionalProperties": false,
+      "properties": {
+        "module": {
+          "description": "依存先 module id。",
+          "type": "string",
+          "minLength": 1
+        },
+        "via": {
+          "description": "依存境界を通す module role。",
+          "enum": ["published_interface", "binding", "technical_shared", "composition_root"]
+        }
+      }
+    },
+    "SclElementReference": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["context", "kind", "element"],
+          "additionalProperties": false,
+          "properties": {
+            "context": { "type": "string", "minLength": 1 },
+            "kind": {
+              "enum": [
+                "model",
+                "interface",
+                "state",
+                "authorization_resource",
+                "authorization_principal",
+                "authorization_policy",
+                "objective",
+                "scenario",
+                "flow"
+              ]
+            },
+            "element": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["context", "kind", "standard", "requirement"],
+          "additionalProperties": false,
+          "properties": {
+            "context": { "type": "string", "minLength": 1 },
+            "kind": { "const": "standard_requirement" },
+            "standard": { "type": "string", "minLength": 1 },
+            "requirement": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "RuntimeUnit": {
+      "type": "object",
+      "required": ["kind", "entrypoint", "modules"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["api", "worker", "relay", "ui"] },
+        "entrypoint": { "type": "string", "minLength": 1 },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "Complexity": {
+      "type": "object",
+      "required": ["budgets", "debts"],
+      "additionalProperties": false,
+      "properties": {
+        "budgets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ComplexityBudget" }
+        },
+        "debts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ComplexityDebt" }
+        }
+      }
+    },
+    "ComplexityBudget": {
+      "type": "object",
+      "required": ["id", "include", "metric", "limit"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "metric": { "enum": ["source_lines", "react_local_state_hooks"] },
+        "limit": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "ComplexityDebt": {
+      "type": "object",
+      "required": ["id", "budget", "path", "ceiling", "owner", "reason", "work_item", "expires_at"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "budget": { "$ref": "#/$defs/Id" },
+        "path": { "type": "string", "minLength": 1 },
+        "ceiling": { "type": "integer", "minimum": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "work_item": { "$ref": "#/$defs/Id" },
+        "expires_at": { "type": "string", "format": "date" }
+      }
+    },
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]*$"
     }
   }
 }

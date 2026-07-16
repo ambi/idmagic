@@ -11,12 +11,11 @@ import {
   IconUserCircle,
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { logout } from '../api'
 import { tenantBrandStyle, useTenantBranding } from '../lib/useTenantBranding'
 import { cn } from '../lib/utils'
 import { useDictionary } from '../lib/i18n'
-import { preloadPageChunks } from '../router'
 import { Brand } from './Brand'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { shellDictionary } from './shell.i18n'
@@ -71,10 +70,6 @@ export function AccountShell({
     { key: 'applications', label: t.connectedApps, href: '/account/applications', icon: IconApps },
     { key: 'data', label: t.dataAndPrivacy, href: '/account/data', icon: IconDatabaseCog },
   ]
-  // アカウントポータルに入ったら全ページ chunk をバックグラウンド先読みし、遷移の空白を防ぐ。
-  useEffect(() => {
-    preloadPageChunks()
-  }, [])
   const branding = useTenantBranding()
   return (
     <div className="app-surface" style={tenantBrandStyle(branding)}>

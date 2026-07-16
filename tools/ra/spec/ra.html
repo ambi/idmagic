@@ -28,10 +28,10 @@
       <div class="eyebrow">Specification Core Language · spec 3.0</div>
       <h1>ra</h1>
     </header>
-    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">8</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">6</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">4</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">7</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">5</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">8</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="glossary">
-    <h2>Glossary <span class="count">8</span></h2>
+    <h2>Glossary <span class="count">9</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="glossary-raworkspace">
       <div class="vocab-name"><code class="name">RaWorkspace</code></div>
@@ -104,13 +104,22 @@
 
 
       </div>
+    </article>
+<article class="vocab-entry" id="glossary-executablearchitecture">
+      <div class="vocab-name"><code class="name">ExecutableArchitecture</code></div>
+      <div class="vocab-body">
+        <p class="def">workspace の SCL context、module、runtime、実 import、complexity budget を直接照合する現在状態の地図。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
+
+
+      </div>
     </article></div>
   </section>
 <section id="models">
-    <h2>Models <span class="count">6</span></h2>
+    <h2>Models <span class="count">7</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">value object <span class="count">3</span></h3>
+      <h3 class="grp-title">value object <span class="count">4</span></h3>
       <div class="cards"><article class="card" id="scl-ra/model/WorkspaceApp">
     <header><h3>WorkspaceApp</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">ra/model/WorkspaceApp</code></header>
     <p class="desc">標準レイアウトから発見されたアプリケーション仕様。</p>
@@ -181,6 +190,12 @@
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">architecture_docs</code></td>
+    <td><code class="type">List&lt;String&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
   </tr></tbody>
   </table>
 
@@ -200,6 +215,28 @@
   </tr><tr>
     <td><code class="name">strict</code></td>
     <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">passed</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-ra/model/ArchitectureReport">
+    <header><h3>ArchitectureReport</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">ra/model/ArchitectureReport</code></header>
+    <p class="desc">Architecture map と workspace 実装の構造 drift を分類した検査結果。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">findings</code></td>
+    <td><code class="type">List&lt;String&gt;</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -252,7 +289,7 @@
     </div>
   </section>
 <section id="interfaces">
-    <h2>Interfaces <span class="count">4</span></h2>
+    <h2>Interfaces <span class="count">5</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-ra/interface/DiscoverWorkspace">
     <header><h3>DiscoverWorkspace</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">ra/interface/DiscoverWorkspace</code></header>
@@ -389,6 +426,36 @@
     </table>
   </div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.report.strict == input.strict</code></li><li><code class="expr">output.report.passed implies output.report.findings.size() == 0 || input.strict == false</code></li><li><code class="expr">successful_evidence_targets_revision(input.source_revision)</code></li></ul></div>
+  </article>
+<article class="card" id="scl-ra/interface/CheckArchitecture">
+    <header><h3>CheckArchitecture</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">ra/interface/CheckArchitecture</code></header>
+    <p class="desc">Architecture map を SCL context、module path、RA layer、declared dependency、runtime entrypoint、実 import、complexity budget と照合する。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">workspace</code></td>
+    <td><code class="type">WorkspaceConfig</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">report</code></td>
+    <td><code class="type">ArchitectureReport</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.report.passed implies output.report.findings.size() == 0</code></li><li><code class="expr">every_workspace_scl_context_is_declared(input.workspace, output.report)</code></li><li><code class="expr">module_dependencies_are_acyclic_and_point_inward(input.workspace, output.report)</code></li><li><code class="expr">production_imports_match_declared_dependencies(input.workspace, output.report)</code></li><li><code class="expr">runtime_entrypoints_resolve_to_declared_modules(input.workspace, output.report)</code></li><li><code class="expr">complexity_debt_is_bounded_and_not_expired(input.workspace, output.report)</code></li></ul></div>
   </article></div>
   </section>
 <section id="objectives">
@@ -408,7 +475,7 @@
       </article></div>
   </section>
 <section id="scenarios">
-    <h2>Scenarios <span class="count">6</span></h2>
+    <h2>Scenarios <span class="count">8</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-ra/scenario/StandardAppWithoutRegistry">
         <header><h3>StandardAppWithoutRegistry</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/StandardAppWithoutRegistry</code></header>
@@ -451,6 +518,21 @@
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">evidence の target revision が現在の source revision と異なる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">stale_evidence として分類される</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-ra/scenario/ExecutableArchitectureAcceptsDeclaredWorkspace">
+        <header><h3>ExecutableArchitectureAcceptsDeclaredWorkspace</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/ExecutableArchitectureAcceptsDeclaredWorkspace</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">全 SCL context、module、runtime、dependency、complexity budget を宣言した workspace がある</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/CheckArchitecture">CheckArchitecture</a> を実行する</li><li class="scn-step">実 path と production import が宣言へ解決される</li><li class="scn-step">report は成功する</li></ol></div>
+
+      </article><article class="card scenario" id="scl-ra/scenario/ExecutableArchitectureRejectsDrift">
+        <header><h3>ExecutableArchitectureRejectsDrift</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/ExecutableArchitectureRejectsDrift</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">未宣言 module import または許可されない外向き layer dependency がある</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/CheckArchitecture">CheckArchitecture</a> を実行する</li><li class="scn-step">drift が finding に分類される</li><li class="scn-step">report は失敗する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">complexity debt が期限切れまたは baseline ceiling を超える</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">complexity finding として拒否される</li></ol></div>
           </article></div>
       </article></div>
   </section>

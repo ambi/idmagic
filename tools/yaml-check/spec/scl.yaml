@@ -14,16 +14,18 @@ glossary:
     definition: SCL section 間の参照、CEL binding、graph の意味的不整合を表す Finding。
   DirectSpecReference:
     definition: Work Item や verification manifest から context-qualified に指す SCL 規範要素参照。
+  ExecutableArchitecture:
+    definition: context、RA layer、module dependency、runtime、SCL realization、complexity budget を実装と照合できる Architecture map。
   Maintainer:
     definition: YAML と SCL 文書を検証する利用者。
 
 models:
   SchemaName:
     kind: enum
-    values: [work-item, scl, verification-manifest, verification-evidence]
+    values: [work-item, scl, architecture, verification-manifest, verification-evidence]
   FindingKind:
     kind: enum
-    values: [parse, lint, schema, semantic, context_map]
+    values: [parse, lint, schema, semantic, context_map, architecture]
   Severity:
     kind: enum
     values: [error, warning]
@@ -86,6 +88,7 @@ interfaces:
       - work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)
       - work_item_spec_impact_fields_are_conditionally_required(input.files, output.summary)
       - direct_spec_references_resolve_in_workspace(input.files, output.summary)
+      - architecture_schema_and_workspace_semantics_are_checked(input.files, output.summary)
       - warnings_do_not_fail(output.summary, output.exit_code)
       - finding_locations_are_within_source(output.summary)
     access: public
@@ -177,6 +180,20 @@ scenarios:
     main_success:
       - 循環した context_map を CheckYaml で検査する
       - ContextMap Finding と exit code 1 が返る
+  実行可能な Architecture map を検査する:
+    actor: Maintainer
+    main_success:
+      - Maintainer が context、module、runtime、budget を宣言した Architecture map を CheckYaml で検査する
+      - schema、SCL realization、dependency、import、complexity の Finding はなく exit code 0 になる
+    extensions:
+      - at: 1
+        condition: 実 import が宣言 module dependency または許可 RA layer 方向に違反する
+        steps:
+          - Architecture Finding と exit code 1 が返る
+      - at: 1
+        condition: complexity debt が期限切れまたは ceiling を超える
+        steps:
+          - Architecture Finding と exit code 1 が返る
   warning だけなら成功する:
     actor: Maintainer
     main_success:
