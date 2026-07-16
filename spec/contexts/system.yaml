@@ -152,6 +152,22 @@ interfaces:
       - text_is_english(output.error_description)
       - text_is_english(output.detail)
     access: internal
+  MetricsExposition:
+    description: |
+      Prometheus/OpenMetrics 形式でスクレイプ可能な集約メトリクスを公開する management endpoint。
+      HTTP RED (リクエスト数・エラー率・レイテンシ) と認証ドメインのゴールデンシグナル (login 成否、
+      token 発行、throttle ヒット) を含む。tenant_id、user_id、client_id、path 実値など高カーディナリティな
+      値は label に含めず、route template や outcome class などの有限集合だけを label とする。
+      application API の tenant middleware から分離し、deploy policy で loopback/management network
+      または認証のいずれかにより公開範囲を制限する。
+    output:
+      body: { type: String, description: "OpenMetrics text format" }
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /metrics
 scenarios:
   orchestration probeはprocess lifecycleと依存状態を区別する:
     actor: Operator

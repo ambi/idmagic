@@ -54,6 +54,17 @@ services:
       - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
     ports: ["4318:4318"]
 
+  # MetricsExposition の /metrics を pull-scrape する最小例。recording/alert
+  # rule と dashboard は wi-11 (Kubernetes/monitoring 資産) が所有する。
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-rules.yml:/etc/prometheus/rules.yml:ro
+    ports: ["9090:9090"]
+    depends_on:
+      idp: { condition: service_started }
+
   idp:
     image: idmagic:dev
     build:

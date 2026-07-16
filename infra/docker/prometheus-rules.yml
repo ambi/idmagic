@@ -1,0 +1,73 @@
+# Minimal recording/alert rules built only on the metric catalog exposed by
+# GET /metrics (system.yaml MetricsExposition; see README "Metrics" section).
+# wi-11 (Kubernetes/monitoring assets) turns these into the cluster
+# PrometheusRule/ServiceMonitor/Grafana provisioning; this file is its input,
+# not a production deployment artifact.
+#
+# `route` carries the Echo route template. Because the same handler is
+# reachable both unprefixed (default tenant) and under
+# /realms/:tenant_id/..., matching both forms uses a suffix regex rather than
+# an exact match — it never matches on a resolved tenant_id value.
+groups:
+  - name: idmagic-http-red
+    rules:
+      - record: idmagic:http_request_error_ratio:ratio_rate5m
+        expr: |
+          sum by (route) (rate(http_requests_total{status_code=~"5.."}[5m]))
+          / sum by (route) (rate(http_requests_total[5m]))
+      - record: idmagic:http_request_duration_seconds:p99_5m
+        expr: |
+          histogram_quantile(0.99, sum by (route, le) (rate(http_request_duration_seconds_bucket[5m])))
+
+  - name: idmagic-authentication-golden-signals
+    rules:
+      - record: idmagic:login_failure_ratio:ratio_rate5m
+        expr: |
+          sum(rate(authn_login_attempts_total{outcome="failure"}[5m]))
+          / sum(rate(authn_login_attempts_total[5m]))
+      - record: idmagic:login_throttle_hit_ratio:ratio_rate5m
+        expr: |
+          sum(rate(authn_login_throttle_total{outcome="throttled"}[5m]))
+          / sum(rate(authn_login_throttle_total[5m]))
+
+  # target/window below mirror the SCL objectives these alerts guard:
+  # oauth2.yaml TokenLatency/TokenErrorRate, authentication.yaml
+  # LoginLatency/LoginErrorRate (30d window; alert thresholds use the same
+  # ratio/duration target evaluated over a 5m burn-rate window).
+  - name: idmagic-slo-alerts
+    rules:
+      - alert: TokenErrorRateBudgetBurn
+        expr: idmagic:http_request_error_ratio:ratio_rate5m{route=~".*/token"} > 0.001
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "/token non-5xx rate below oauth2.yaml TokenErrorRate objective (99.9%)"
+      - alert: TokenLatencyBudgetBurn
+        expr: idmagic:http_request_duration_seconds:p99_5m{route=~".*/token"} > 0.3
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "/token p99 latency exceeds oauth2.yaml TokenLatency objective (300ms)"
+      - alert: LoginErrorRateBudgetBurn
+        expr: idmagic:http_request_error_ratio:ratio_rate5m{route=~".*/api/auth/login"} > 0.001
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "/api/auth/login non-5xx rate below authentication.yaml LoginErrorRate objective (99.9%)"
+      - alert: LoginLatencyBudgetBurn
+        expr: idmagic:http_request_duration_seconds:p99_5m{route=~".*/api/auth/login"} > 0.3
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "/api/auth/login p99 latency exceeds authentication.yaml LoginLatency objective (300ms)"
+      - alert: LoginThrottleHitRatioHigh
+        expr: idmagic:login_throttle_hit_ratio:ratio_rate5m > 0.2
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "sustained high login-throttle hit ratio; possible credential stuffing"

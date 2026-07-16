@@ -1929,6 +1929,21 @@ authorization:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.tenant_id
+objectives:
+  LoginLatency:
+    description: /api/auth/login 応答の99%以上を300ms未満で返す。
+    interface: SubmitBrowserLogin
+    indicator: measurement.latency < duration("300ms")
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
+  LoginErrorRate:
+    description: /api/auth/login 応答を規定の非5xx成功率以上で返す。認証情報不一致やthrottleは4xxで表現し5xxに含めない。
+    interface: SubmitBrowserLogin
+    indicator: measurement.status_code < 500
+    target: 0.999
+    window: 30d
+    budgeting: occurrences
 scenarios:
   browser bootstrap contextは認証状態とCSRF境界を保持する:
     actor: AuthenticatedSelf

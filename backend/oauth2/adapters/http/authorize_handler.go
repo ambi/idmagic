@@ -271,12 +271,14 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	if result, err := d.acquireLoginThrottle(c, authnports.LoginThrottleAccount, normalizedUsername); err != nil {
 		return err
 	} else if !result.Allowed {
+		d.recordLoginOutcome("throttled", "", "password")
 		return writeLoginThrottled(c, result.RetryAfterSeconds)
 	}
 	if clientIP != "" {
 		if result, err := d.acquireLoginThrottle(c, authnports.LoginThrottleIP, clientIP); err != nil {
 			return err
 		} else if !result.Allowed {
+			d.recordLoginOutcome("throttled", "", "password")
 			return writeLoginThrottled(c, result.RetryAfterSeconds)
 		}
 	}
@@ -294,6 +296,9 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		ok, err = d.PasswordHasher.Verify(input.Password, hashToVerify)
 	}
 	if user == nil || err != nil || !ok {
+		// 監査イベントは集約時に抑制されるが (下記)、golden signal のカウンタは
+		// 集約の有無に関わらず確定した失敗ごとに記録する (攻撃バーストで無音化しない)。
+		d.recordLoginOutcome("failure", "invalid_credentials", "password")
 		aggregated, ferr := d.recordLoginFailure(c, normalizedUsername, clientIP)
 		if ferr != nil {
 			return ferr
@@ -305,6 +310,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_credentials", "ユーザー名またはパスワードを確認してください。")
 	}
 	if !user.IsActive() {
+		d.recordLoginOutcome("failure", "account_disabled", "password")
 		d.emitAuthenticationFailure(c, input.Username, "account_disabled")
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_credentials", "ユーザー名またはパスワードを確認してください。")
 	}
@@ -476,7 +482,11 @@ func (d Deps) emitAuthenticationSuccess(
 	authn *authdomain.AuthenticationContext,
 	clientID string,
 ) {
-	if d.Emit == nil || user == nil {
+	if user == nil {
+		return
+	}
+	d.recordLoginOutcome("success", "", loginMethod(authn))
+	if d.Emit == nil {
 		return
 	}
 	d.Emit(&spec.UserAuthenticated{
@@ -484,6 +494,25 @@ func (d Deps) emitAuthenticationSuccess(
 		AMR: authn.AMR, SessionID: authn.SessionID, ClientID: clientID, ACR: authn.ACR,
 		IP: extractClientIP(c.Request(), d.TrustedForwardedHops), UserAgent: c.Request().UserAgent(),
 	})
+}
+
+// loginMethod returns the just-completed authentication factor (the last AMR
+// entry) as the bounded "method" label for the login golden signal, or
+// "unknown" when AMR is empty.
+func loginMethod(authn *authdomain.AuthenticationContext) string {
+	if authn == nil || len(authn.AMR) == 0 {
+		return "unknown"
+	}
+	return authn.AMR[len(authn.AMR)-1]
+}
+
+// recordLoginOutcome records one confirmed login decision point (independent
+// of whether the corresponding audit event was aggregated/suppressed, so the
+// golden signal stays accurate under a credential-stuffing burst).
+func (d Deps) recordLoginOutcome(outcome, reasonClass, method string) {
+	if d.Metrics != nil {
+		d.Metrics.RecordLoginOutcome(outcome, reasonClass, method)
+	}
 }
 
 // recordLoginAndRequiredAction は full authentication 完了時に last_login_at を
@@ -541,6 +570,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 		return err
 	}
 	if !result.OK {
+		d.recordLoginOutcome("failure", result.Reason, "otp")
 		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "TOTPコードを確認してください。")
 	}
@@ -865,7 +895,18 @@ func (d Deps) acquireLoginThrottle(
 	if d.LoginAttemptThrottle == nil {
 		return authnports.LoginThrottleResult{Allowed: true}, nil
 	}
-	return d.LoginAttemptThrottle.TryAcquire(c.Request().Context(), kind, key, time.Now().UTC())
+	result, err := d.LoginAttemptThrottle.TryAcquire(c.Request().Context(), kind, key, time.Now().UTC())
+	if d.Metrics != nil {
+		outcome := "allowed"
+		switch {
+		case err != nil:
+			outcome = "store_unavailable"
+		case !result.Allowed:
+			outcome = "throttled"
+		}
+		d.Metrics.RecordLoginThrottle(string(kind), outcome)
+	}
+	return result, err
 }
 
 // recordLoginFailure は失敗を throttle に記録し、閾値超過 (Locked) の key については

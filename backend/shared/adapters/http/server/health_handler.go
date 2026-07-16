@@ -31,6 +31,18 @@ func (d Deps) handleHealth(c *echo.Context) error {
 	})
 }
 
+// handleMetrics serves GET /metrics (system.yaml MetricsExposition). The
+// route is always registered, matching /health and the probe endpoints, but
+// returns 503 when no MetricsHandler was wired at composition root so an
+// unconfigured deployment fails the scrape loudly rather than 404ing.
+func (d Deps) handleMetrics(c *echo.Context) error {
+	if d.MetricsHandler == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+	}
+	d.MetricsHandler.ServeHTTP(c.Response(), c.Request())
+	return nil
+}
+
 func (d Deps) handleLivez(c *echo.Context) error {
 	// Liveness: プロセス自体が動作していれば常に healthy。
 	// デッドロック検知などを組み込む余地を残すが、一時的な依存障害では fail させない。

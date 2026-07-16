@@ -2,6 +2,8 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 	audithttp "github.com/ambi/idmagic/backend/audit/adapters/http"
@@ -35,6 +37,11 @@ import (
 // Deps は HTTP アダプタ全体の起動に必要な全依存関係。
 type Deps struct {
 	support.Deps
+
+	// MetricsHandler serves GET /metrics (system.yaml MetricsExposition). Nil
+	// leaves the route unregistered, matching the endpoint's deploy-policy
+	// gated exposure.
+	MetricsHandler http.Handler
 
 	Tenancy tenancy.Module
 	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
@@ -113,6 +120,7 @@ func Register(e *echo.Echo, d Deps) {
 	e.GET("/livez", d.handleLivez)
 	e.GET("/readyz", d.handleReadyz)
 	e.GET("/startupz", d.handleStartupz)
+	e.GET("/metrics", d.handleMetrics)
 }
 
 func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authentication.Module {

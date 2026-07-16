@@ -24,6 +24,7 @@ type Deps struct {
 	OperationTimeout          time.Duration
 	DetachedCompletionTimeout time.Duration
 	AbortMetrics              HTTPAbortMetrics
+	Metrics                   Metrics
 	Emit                      func(spec.DomainEvent)
 	HealthInfo                HealthInfo
 	DbPing                    func(context.Context) error

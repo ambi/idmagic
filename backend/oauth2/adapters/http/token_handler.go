@@ -17,7 +17,29 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+// handleToken dispatches by grant_type and records the token issuance golden
+// signal (oauth2_token_issuance_total/_duration_seconds{grant_type,outcome})
+// exactly once per call, regardless of which branch or error path the grant
+// dispatch takes, by observing the final response status after dispatchToken
+// returns rather than instrumenting every return statement individually.
 func (d Deps) handleToken(c *echo.Context) error {
+	grantType := c.Request().PostFormValue("grant_type")
+	start := time.Now()
+	err := d.dispatchToken(c)
+	if d.Metrics != nil {
+		outcome := "error"
+		if response, ok := c.Response().(*echo.Response); ok && response.Status >= 200 && response.Status < 300 {
+			outcome = "success"
+		}
+		if grantType == "" {
+			grantType = "unknown"
+		}
+		d.Metrics.RecordTokenIssuance(grantType, outcome, time.Since(start))
+	}
+	return err
+}
+
+func (d Deps) dispatchToken(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
 		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
 	}

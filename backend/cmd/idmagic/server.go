@@ -142,6 +142,14 @@ func Run() error {
 	e.Use(httpsupport.SecurityHeadersMiddleware(bootstrap.LoadSecurityHeaders(os.Getenv)))
 	// HTTPServerHardening objective: ボディ上限を全リクエストに課し、超過は 413 で拒否する。
 	// request_id 付与と panic recover の内側に置き、拒否レスポンスも相関/回復対象にする。
+	// MetricsExposition objective: pull-based /metrics は OTLP collector の有無に
+	// 依存しないため、OBSERVABILITY 設定 (OTLP push tracing/metrics) とは独立に
+	// 常時構築する。RED middleware はここで組み立てた Meter へ記録する。
+	appMetrics, err := observability.NewMetrics(bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
+	if err != nil {
+		return fmt.Errorf("initialize metrics: %w", err)
+	}
+	e.Use(httpsupport.MetricsMiddleware(appMetrics))
 	hardening := bootstrap.LoadHTTPServerHardening()
 	e.Use(middleware.BodyLimit(hardening.MaxBodyBytes))
 	var otelProvider *observability.Provider
@@ -154,6 +162,7 @@ func Run() error {
 	}
 	emit := deps.NewEmitFunc(logger)
 	httpadapter.Register(e, httpadapter.Deps{
+		MetricsHandler: appMetrics.Handler(),
 		Deps: httpsupport.Deps{
 			Issuer:                    issuer,
 			SCL:                       sclDoc,
@@ -161,6 +170,8 @@ func Run() error {
 			TrustedForwardedHops:      bootstrap.EnvInt("TRUSTED_FORWARDED_HOPS", 0),
 			OperationTimeout:          0, // 必要なら設定
 			DetachedCompletionTimeout: 0,
+			AbortMetrics:              appMetrics,
+			Metrics:                   appMetrics,
 			Emit:                      emit,
 			DbPing:                    deps.DbPing,
 			ValkeyPing:                deps.ValkeyPing,
@@ -255,6 +266,9 @@ func Run() error {
 		if err := otelProvider.Shutdown(shutdownCtx); err != nil {
 			logger.Error(shutdownCtx, "shutdown OpenTelemetry failed", "error", err)
 		}
+	}
+	if err := appMetrics.Shutdown(shutdownCtx); err != nil {
+		logger.Error(shutdownCtx, "shutdown metrics failed", "error", err)
 	}
 	return runErr
 }

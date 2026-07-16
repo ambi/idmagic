@@ -102,6 +102,35 @@
         }
       }
     },
+    "/metrics": {
+      "get": {
+        "operationId": "MetricsExposition",
+        "summary": "Prometheus/OpenMetrics 形式でスクレイプ可能な集約メトリクスを公開する management endpoint。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "body": {
+                      "type": "string",
+                      "description": "OpenMetrics text format"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "body"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/tenants": {
       "get": {
         "operationId": "ListTenants",

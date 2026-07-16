@@ -109,8 +109,16 @@ just dev-ui
 ## Docker Development Stack
 
 The compose stack starts PostgreSQL, Valkey, Redpanda/Kafka, OpenTelemetry
-Collector, the Go API, the UI gateway, and the outbox relay. Caddy exposes the
-combined app at <http://localhost:8080/>.
+Collector, Prometheus, the Go API, the UI gateway, and the outbox relay. Caddy
+exposes the combined app at <http://localhost:8080/>. Prometheus scrapes the
+Go API's `/metrics` directly on the compose network (`infra/docker/prometheus.yml`);
+it is deliberately not proxied through Caddy — see
+[Metrics (`/metrics`)](#metrics-metrics) below. Browse Prometheus at
+<http://localhost:9090/>. `infra/docker/prometheus-rules.yml` (recording +
+SLO burn-rate alert rules) and `infra/docker/grafana-dashboard.json` (a
+minimal panel set) are built only from the metric catalog above; wi-11
+(Kubernetes/monitoring assets) turns them into cluster
+PrometheusRule/ServiceMonitor/dashboard provisioning.
 
 ```bash
 just dev-compose
@@ -301,6 +309,32 @@ spoof or collide correlation ids. Choose one of two setups:
 
 Regardless of the setting, a reused inbound value is sanitized (bounded length,
 restricted character set) as defense in depth against header/log injection.
+
+### Metrics (`/metrics`)
+
+`GET /metrics` exposes Prometheus/OpenMetrics-format metrics (the
+`MetricsExposition` interface, `spec/contexts/system.yaml`): HTTP RED (request
+count, error rate via `status_code`, duration, in-flight) for every route
+template, plus authentication golden signals for SLO/alerting:
+
+| Metric | Labels | Verifies |
+| --- | --- | --- |
+| `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight` | `route`, `method`, `status_code` | per-interface latency/error-rate objectives (e.g. `oauth2.yaml` `TokenLatency`/`TokenErrorRate`, `authentication.yaml` `LoginLatency`/`LoginErrorRate`) |
+| `authn_login_attempts_total` | `outcome`, `reason_class`, `method` | login success/failure golden signal (recorded once per confirmed decision, independent of audit-event aggregation under a credential-stuffing burst) |
+| `authn_login_throttle_total` | `policy` (`account`/`ip`), `outcome` (`allowed`/`throttled`/`store_unavailable`) | login throttle hit rate |
+| `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | `/token` issuance rate/latency by grant |
+| `http_request_aborts_total`, `operation_detached_completion_failures_total` | `kind` | `RequestFaultIsolation` / cancellation policy (ADR-074) |
+
+Every label is a bounded, finite set (route templates, HTTP methods/status
+codes, grant types, outcome/reason classes). `tenant_id`, `user_id`,
+`client_id`, and resolved request paths are never labels — the endpoint is
+scraped outside the tenant-resolution middleware and separated from the
+application API for this reason. It is always registered but returns `503`
+until the process finishes constructing its Prometheus registry at startup,
+and works independently of `OBSERVABILITY` (OTLP tracing/push-metrics),
+because a pull-based scrape needs no collector configured. Expose it only on
+a loopback/management network, or in front of an authenticating proxy — never
+on the public gateway.
 
 ### HTTP Server Hardening
 

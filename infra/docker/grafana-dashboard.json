@@ -1,0 +1,94 @@
+{
+  "title": "IdMagic — HTTP & Authentication Golden Signals",
+  "description": "Minimal dashboard built only on the GET /metrics catalog (system.yaml MetricsExposition). wi-11 (Kubernetes/monitoring assets) owns cluster provisioning and any richer panels; this is its input.",
+  "editable": true,
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP request rate by route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP non-2xx/3xx error ratio by route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "idmagic:http_request_error_ratio:ratio_rate5m",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "HTTP p99 latency by route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "idmagic:http_request_duration_seconds:p99_5m",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP requests in flight",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (route) (http_requests_in_flight)",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Login attempts by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(authn_login_attempts_total[5m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Login throttle hit ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "idmagic:login_throttle_hit_ratio:ratio_rate5m",
+          "legendFormat": "throttled"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Token issuance rate by grant_type/outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum by (grant_type, outcome) (rate(oauth2_token_issuance_total[5m]))",
+          "legendFormat": "{{grant_type}}/{{outcome}}"
+        }
+      ]
+    }
+  ]
+}

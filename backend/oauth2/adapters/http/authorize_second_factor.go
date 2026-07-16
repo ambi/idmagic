@@ -138,6 +138,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 	if _, err := authusecases.FinishWebAuthnAssertion(
 		c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
 	); err != nil {
+		d.recordLoginOutcome("failure", "webauthn_invalid", "webauthn")
 		d.emitAuthenticationFailure(c, authn.UserID, "webauthn_invalid")
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_webauthn", "パスキー認証に失敗しました。")
 	}
@@ -176,6 +177,7 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 		c.Request().Context(), d.recoveryCodesDeps(), authn.UserID, input.Code, time.Now().UTC(),
 	); err != nil {
 		if errors.Is(err, authusecases.ErrRecoveryCodeInvalid) {
+			d.recordLoginOutcome("failure", "recovery_code_invalid", "recovery_code")
 			d.emitAuthenticationFailure(c, authn.UserID, "recovery_code_invalid")
 			return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_recovery_code", "リカバリコードを確認してください。")
 		}
