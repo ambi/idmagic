@@ -57,6 +57,89 @@ contexts:
     spec: tools/scl-to-openapi/spec/scl.yaml
     summary: "SCL OpenAPI generator。"
 modules:
+  claimmapping-domain:
+    path: backend/claimmapping/domain
+    responsibility: "protocol-neutral な claim release policy と issued claim の公開語彙。"
+    context: ClaimMapping
+    layer: domain
+    role: published_interface
+    realizes:
+      - { context: ClaimMapping, kind: model, element: ClaimMappingSource }
+      - { context: ClaimMapping, kind: model, element: ClaimMappingRule }
+      - { context: ClaimMapping, kind: model, element: NameIdConfiguration }
+      - { context: ClaimMapping, kind: model, element: ClaimMappingPolicy }
+      - { context: ClaimMapping, kind: model, element: IssuedClaim }
+  claimmapping-usecases:
+    path: backend/claimmapping/usecases
+    responsibility: "identity 属性から protocol-neutral claim を fail-closed で射影する公開 application service。"
+    context: ClaimMapping
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: claimmapping-domain, via: published_interface }
+      - { module: identitymanagement-domain, via: published_interface }
+  signingkeys-domain:
+    path: backend/signingkeys/domain
+    responsibility: "tenant-scoped signing key metadata、状態語彙、domain event。"
+    context: SigningKeys
+    layer: domain
+    role: published_interface
+    realizes:
+      - { context: SigningKeys, kind: model, element: SignatureAlgorithm }
+      - { context: SigningKeys, kind: model, element: KeyProvider }
+      - { context: SigningKeys, kind: model, element: KeyUsage }
+      - { context: SigningKeys, kind: model, element: SigningKey }
+  signingkeys-ports:
+    path: backend/signingkeys/ports
+    responsibility: "SigningKeys の鍵 repository/provider port。"
+    context: SigningKeys
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: signingkeys-domain, via: published_interface }
+  signingkeys-usecases:
+    path: backend/signingkeys/usecases
+    responsibility: "鍵 rotation と tenant key health の application service。"
+    context: SigningKeys
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-ports, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
+  signingkeys-adapters:
+    path: backend/signingkeys/adapters
+    responsibility: "SigningKeys の HTTP、memory/PostgreSQL/Vault/crypto adapter。"
+    context: SigningKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: http-support, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-ports, via: published_interface }
+      - { module: signingkeys-usecases, via: published_interface }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
+  signingkeys-public:
+    path: backend/signingkeys/
+    responsibility: "SigningKeys root package の公開 facade。"
+    context: SigningKeys
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: signingkeys-ports, via: published_interface }
+  signingkeys-composition:
+    path: backend/signingkeys/module.go
+    responsibility: "SigningKeys の adapter と port を束ねる composition module。"
+    context: SigningKeys
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - { module: signingkeys-ports, via: published_interface }
   application-domain:
     path: backend/application/domain
     responsibility: "Application のドメインモデルと純粋な規則。"
@@ -94,6 +177,7 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: claimmapping-domain, via: published_interface }
       - { module: application-domain, via: published_interface }
       - { module: application-ports, via: published_interface }
       - { module: application-usecases, via: published_interface }
@@ -315,6 +399,7 @@ modules:
     role: published_interface
     depends_on:
       - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
       - { module: tenancy-domain, via: published_interface }
   oauth2-ports:
     path: backend/oauth2/ports
@@ -341,6 +426,7 @@ modules:
       - { module: oauth2-ports, via: published_interface }
       - { module: shared-kernel, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
@@ -366,6 +452,8 @@ modules:
       - { module: oauth2-usecases, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-ports, via: published_interface }
       - { module: tenancy-domain, via: binding }
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
@@ -377,6 +465,7 @@ modules:
     layer: domain
     role: published_interface
     depends_on:
+      - { module: claimmapping-domain, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   saml-ports:
     path: backend/saml/ports
@@ -394,6 +483,7 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - { module: claimmapping-usecases, via: published_interface }
       - { module: application-domain, via: published_interface }
       - { module: authentication-domain, via: published_interface }
       - { module: identitymanagement-ports, via: published_interface }
@@ -409,6 +499,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: claimmapping-domain, via: published_interface }
+      - { module: claimmapping-usecases, via: published_interface }
       - { module: application-domain, via: binding }
       - { module: authentication-domain, via: binding }
       - { module: authentication-usecases, via: binding }
@@ -521,6 +613,7 @@ modules:
     layer: domain
     role: published_interface
     depends_on:
+      - { module: claimmapping-domain, via: published_interface }
       - { module: identitymanagement-domain, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   wsfederation-ports:
@@ -539,6 +632,7 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - { module: claimmapping-usecases, via: published_interface }
       - { module: application-domain, via: published_interface }
       - { module: authentication-domain, via: published_interface }
       - { module: identitymanagement-domain, via: published_interface }
@@ -554,6 +648,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: claimmapping-usecases, via: published_interface }
+      - { module: claimmapping-domain, via: published_interface }
       - { module: application-domain, via: binding }
       - { module: authentication-domain, via: binding }
       - { module: authentication-ports, via: binding }
@@ -805,6 +901,8 @@ modules:
       - { module: shared-kernel, via: technical_shared }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-ports, via: published_interface }
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   http-support:
@@ -857,6 +955,9 @@ modules:
       - { module: saml-public, via: composition_root }
       - { module: scim-public, via: composition_root }
       - { module: shared-adapters, via: technical_shared }
+      - { module: signingkeys-adapters, via: composition_root }
+      - { module: signingkeys-public, via: composition_root }
+      - { module: signingkeys-ports, via: composition_root }
       - { module: tenancy-adapters, via: composition_root }
       - { module: tenancy-domain, via: composition_root }
       - { module: tenancy-ports, via: composition_root }
@@ -901,6 +1002,7 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: claimmapping-domain, via: composition_root }
       - { module: application-adapters, via: composition_root }
       - { module: application-domain, via: composition_root }
       - { module: application-ports, via: composition_root }
@@ -934,6 +1036,10 @@ modules:
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-adapters, via: composition_root }
+      - { module: signingkeys-domain, via: composition_root }
+      - { module: signingkeys-ports, via: composition_root }
+      - { module: signingkeys-public, via: composition_root }
       - { module: tenancy-adapters, via: composition_root }
       - { module: tenancy-domain, via: composition_root }
       - { module: tenancy-public, via: composition_root }
@@ -1391,7 +1497,7 @@ complexity:
 
 ```text
 .
-├── backend/       # Go bounded contexts, shared, および cmd/ (起動 entry point 等)
+├── backend/       # Go bounded contexts（claimmapping / signingkeys を含む）、shared、cmd/
 ├── frontend/      # React UI と gateway
 ├── spec/          # SCL と派生契約
 ├── infra/         # コンテナ・ローカル実行・database schema 資材
@@ -1458,10 +1564,10 @@ SCL context と Go package の主な対応は次の通り。
 | `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC protocol endpoint、client、consent、token、role policy。 |
 | `Application` | `backend/application` | Application catalog、protocol binding、assignment、portal ordering/category。 |
 | `Audit` | `backend/audit` | authentication / identity-management / oauth2 / tenancy / signing-keys / application / saml / wsfederation を横断する監査イベントの read model。検索属性 registry、PII 変換、管理 API、保持期間を所有する。 |
-| `ClaimMapping` | 現状は protocol context と persistence adapter に分散 | Claim release policy の概念境界。protocol-neutral へ切り出すときは SCL を先に調整する。 |
+| `ClaimMapping` | `backend/claimmapping` | protocol-neutral な claim release policy、identity 属性 projection、fail-closed validation。 |
 | `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用非同期ジョブ基盤。durable job queue (PostgreSQL SKIP LOCKED リース)、worker runtime、handler registry を所有する。業務ロジックは呼び出し元 context の usecase に残る。管理 UI/API は `wi-157`。 |
-| `SigningKeys` | `backend/oauth2`, `backend/shared/adapters/crypto`, persistence adapters | 鍵ライフサイクルの規範は SCL。JWK/JWT/XML signer は adapter。 |
+| `SigningKeys` | `backend/signingkeys` | tenant-scoped 鍵 metadata、rotation、repository port、管理/JWKS HTTP、memory/PostgreSQL/Vault adapter。JWT/XML wire signer は protocol/technical adapter に残す。 |
 | `WsFederation` | `backend/wsfederation` | WS-Fed passive、WS-Trust active STS、federation metadata、MEX、RP trust。 |
 | `Saml` | `backend/saml` | SAML 2.0 IdP、SP trust、metadata、SSO/SLO。 |
 
@@ -1483,7 +1589,7 @@ backend/<context>/
 
 `domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、4 層すべてを機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `identitymanagement`（User/Group/Agent 集約、属性スキーマ、field validation）や `saml` / `wsfederation`（プロトコル固有の解析・claim mapping）のように固有ロジックを持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`adapters/http` は wire と HTTP 境界に閉じる。
 
-`backend/shared/` は「複数 context が本当に共有する technical capability」だけに使う。context 固有の概念を便利だからという理由で `shared` に置くと、次の変更で読む範囲が広がる。
+`backend/shared/` は「複数 context が本当に共有する technical capability」だけに使う。context 固有の概念を便利だからという理由で `shared` に置くと、次の変更で読む範囲が広がる。domain event の具象 struct は owning context の `domain/events.go` に置き、`backend/shared/spec/events.go` は event envelope interface と wire marshal だけを持つ。Audit の分類は具象型 registry ではなく安定した event type discriminator を読む。
 
 ## HTTP Routing
 

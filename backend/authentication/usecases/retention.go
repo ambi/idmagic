@@ -12,8 +12,9 @@ import (
 	"context"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // RetentionPolicy は種類別の保持日数と global cap。0 以下の日数は「無期限保持」を意味する。
@@ -42,32 +43,32 @@ func DefaultRetentionPolicy() RetentionPolicy {
 // 保持期間の種類分け。impersonation は短縮対象外なので Keep に入れる。
 var (
 	retentionFailTypes = []string{
-		(&spec.AuthenticationFailed{}).EventType(),
-		(&spec.AuthenticationStepFailed{}).EventType(),
+		(&authdomain.AuthenticationFailed{}).EventType(),
+		(&authdomain.AuthenticationStepFailed{}).EventType(),
 	}
 	retentionAggregatedTypes = []string{
-		(&spec.AuthenticationEventAggregated{}).EventType(),
+		(&authdomain.AuthenticationEventAggregated{}).EventType(),
 	}
 	retentionMfaTypes = []string{
-		(&spec.MfaChallengeIssued{}).EventType(),
-		(&spec.MfaChallengeSucceeded{}).EventType(),
-		(&spec.MfaChallengeFailed{}).EventType(),
-		(&spec.BackupCodeConsumed{}).EventType(),
-		(&spec.MfaEnrollmentRequired{}).EventType(),
-		(&spec.MfaEnrollmentCompleted{}).EventType(),
-		(&spec.MfaEnrollmentBypassIssued{}).EventType(),
-		(&spec.MfaEnrollmentBypassConsumed{}).EventType(),
-		(&spec.MfaEnrollmentBypassRevoked{}).EventType(),
-		(&spec.MfaEnrollmentBypassExpired{}).EventType(),
+		(&authdomain.MfaChallengeIssued{}).EventType(),
+		(&authdomain.MfaChallengeSucceeded{}).EventType(),
+		(&authdomain.MfaChallengeFailed{}).EventType(),
+		(&authdomain.BackupCodeConsumed{}).EventType(),
+		(&authdomain.MfaEnrollmentRequiredEvent{}).EventType(),
+		(&authdomain.MfaEnrollmentCompleted{}).EventType(),
+		(&authdomain.MfaEnrollmentBypassIssued{}).EventType(),
+		(&authdomain.MfaEnrollmentBypassConsumed{}).EventType(),
+		(&authdomain.MfaEnrollmentBypassRevoked{}).EventType(),
+		(&authdomain.MfaEnrollmentBypassExpired{}).EventType(),
 	}
 	retentionSessionTypes = []string{
-		(&spec.SessionStarted{}).EventType(),
-		(&spec.SessionRefreshed{}).EventType(),
-		(&spec.SessionEnded{}).EventType(),
+		(&authdomain.SessionStarted{}).EventType(),
+		(&authdomain.SessionRefreshed{}).EventType(),
+		(&authdomain.SessionEnded{}).EventType(),
 	}
 	retentionImpersonationTypes = []string{
-		(&spec.SessionImpersonationStarted{}).EventType(),
-		(&spec.SessionImpersonationEnded{}).EventType(),
+		(&authdomain.SessionImpersonationStarted{}).EventType(),
+		(&authdomain.SessionImpersonationEnded{}).EventType(),
 	}
 )
 

@@ -2,6 +2,8 @@ package spec
 
 import (
 	"testing"
+
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 )
 
 // wi-129: 純粋ドメイン (enum Valid / Validate / コンストラクタ / 状態機械) のカバレッジ補強。
@@ -33,17 +35,17 @@ func TestEnumValid(t *testing.T) {
 		{"response code", ResponseTypeCode, true},
 		{"response bad", ResponseType("token"), false},
 
-		{"sig ps256", SigAlgPS256, true},
-		{"sig es256", SigAlgES256, true},
-		{"sig bad", SignatureAlgorithm("RS256"), false},
+		{"sig ps256", signingdomain.SigAlgPS256, true},
+		{"sig es256", signingdomain.SigAlgES256, true},
+		{"sig bad", signingdomain.SignatureAlgorithm("RS256"), false},
 
-		{"keyprovider local", KeyProviderLocal, true},
-		{"keyprovider postgres", KeyProviderPostgres, true},
-		{"keyprovider vault", KeyProviderVaultTransit, true},
-		{"keyprovider bad", KeyProvider("x"), false},
+		{"keyprovider local", signingdomain.KeyProviderLocal, true},
+		{"keyprovider postgres", signingdomain.KeyProviderPostgres, true},
+		{"keyprovider vault", signingdomain.KeyProviderVaultTransit, true},
+		{"keyprovider bad", signingdomain.KeyProvider("x"), false},
 
-		{"keyusage signing", KeyUsageSigning, true},
-		{"keyusage bad", KeyUsage("enc"), false},
+		{"keyusage signing", signingdomain.KeyUsageSigning, true},
+		{"keyusage bad", signingdomain.KeyUsage("enc"), false},
 
 		{"cc method s256", CodeChallengeMethodS256, true},
 		{"cc method bad", CodeChallengeMethod("plain"), false},

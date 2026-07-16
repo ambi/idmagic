@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/application/domain"
@@ -73,34 +75,34 @@ type oidcConfig struct {
 }
 
 type wsfedConfig struct {
-	Wtrealm      string                   `json:"wtrealm"`
-	ReplyURLs    []string                 `json:"reply_urls"`
-	Audience     string                   `json:"audience"`
-	TokenType    feddomain.WsFedTokenType `json:"token_type"`
-	NameIDFormat string                   `json:"name_id_format"`
-	NameIDSource string                   `json:"name_id_source"`
-	Rules        []spec.ClaimMappingRule  `json:"rules"`
+	Wtrealm      string                         `json:"wtrealm"`
+	ReplyURLs    []string                       `json:"reply_urls"`
+	Audience     string                         `json:"audience"`
+	TokenType    feddomain.WsFedTokenType       `json:"token_type"`
+	NameIDFormat string                         `json:"name_id_format"`
+	NameIDSource string                         `json:"name_id_source"`
+	Rules        []claimdomain.ClaimMappingRule `json:"rules"`
 }
 
 type samlConfig struct {
-	EntityID                          string                  `json:"entity_id"`
-	ACSURLs                           []string                `json:"acs_urls"`
-	SLOURL                            string                  `json:"slo_url"`
-	Audience                          string                  `json:"audience"`
-	NameIDFormat                      string                  `json:"name_id_format"`
-	NameIDSource                      string                  `json:"name_id_source"`
-	SignAssertion                     bool                    `json:"sign_assertion"`
-	SignResponse                      bool                    `json:"sign_response"`
-	WantAuthnRequestsSigned           bool                    `json:"want_authn_requests_signed"`
-	AuthnRequestSigningCertificatePEM string                  `json:"authn_request_signing_certificate_pem"`
-	Rules                             []spec.ClaimMappingRule `json:"rules"`
+	EntityID                          string                         `json:"entity_id"`
+	ACSURLs                           []string                       `json:"acs_urls"`
+	SLOURL                            string                         `json:"slo_url"`
+	Audience                          string                         `json:"audience"`
+	NameIDFormat                      string                         `json:"name_id_format"`
+	NameIDSource                      string                         `json:"name_id_source"`
+	SignAssertion                     bool                           `json:"sign_assertion"`
+	SignResponse                      bool                           `json:"sign_response"`
+	WantAuthnRequestsSigned           bool                           `json:"want_authn_requests_signed"`
+	AuthnRequestSigningCertificatePEM string                         `json:"authn_request_signing_certificate_pem"`
+	Rules                             []claimdomain.ClaimMappingRule `json:"rules"`
 }
 
 // nonNilRules は nil スライスを空スライスに正規化する。claim 規則を持たない RP/SP の
 // JSON が null ではなく [] になり、UI 側の .length 参照が安全になる。
-func nonNilRules(rules []spec.ClaimMappingRule) []spec.ClaimMappingRule {
+func nonNilRules(rules []claimdomain.ClaimMappingRule) []claimdomain.ClaimMappingRule {
 	if rules == nil {
-		return []spec.ClaimMappingRule{}
+		return []claimdomain.ClaimMappingRule{}
 	}
 	return rules
 }
@@ -194,7 +196,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		}
 		rp := &feddomain.WsFedRelyingParty{
 			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
-			ClaimPolicy: spec.ClaimMappingPolicy{NameID: spec.NameIdConfiguration{
+			ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 				Format: nonEmpty(req.NameIDFormat, defaultNameIDFormat), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
 			}},
 			CreatedAt: now,
@@ -227,7 +229,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		sp := &samldomain.SamlServiceProvider{
 			TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.Name,
 			ACSURLs: req.ACSURLs, SLOURL: strings.TrimSpace(req.SLOURL),
-			ClaimPolicy: spec.ClaimMappingPolicy{NameID: spec.NameIdConfiguration{
+			ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 				Format: nonEmpty(req.NameIDFormat, samldomain.SamlNameIDFormatPersistent), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
 			}},
 			SignAssertion: true, SignResponse: req.SignResponse,
@@ -359,12 +361,12 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 }
 
 type updateWsFedRequest struct {
-	ReplyURLs    *[]string                 `json:"reply_urls"`
-	Audience     *string                   `json:"audience"`
-	TokenType    *feddomain.WsFedTokenType `json:"token_type"`
-	NameIDFormat *string                   `json:"name_id_format"`
-	NameIDSource *string                   `json:"name_id_source"`
-	Rules        *[]spec.ClaimMappingRule  `json:"rules"`
+	ReplyURLs    *[]string                       `json:"reply_urls"`
+	Audience     *string                         `json:"audience"`
+	TokenType    *feddomain.WsFedTokenType       `json:"token_type"`
+	NameIDFormat *string                         `json:"name_id_format"`
+	NameIDSource *string                         `json:"name_id_source"`
+	Rules        *[]claimdomain.ClaimMappingRule `json:"rules"`
 }
 
 func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
@@ -421,16 +423,16 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 }
 
 type updateSamlRequest struct {
-	ACSURLs                           *[]string                `json:"acs_urls"`
-	SLOURL                            *string                  `json:"slo_url"`
-	Audience                          *string                  `json:"audience"`
-	NameIDFormat                      *string                  `json:"name_id_format"`
-	NameIDSource                      *string                  `json:"name_id_source"`
-	SignAssertion                     *bool                    `json:"sign_assertion"`
-	SignResponse                      *bool                    `json:"sign_response"`
-	WantAuthnRequestsSigned           *bool                    `json:"want_authn_requests_signed"`
-	AuthnRequestSigningCertificatePEM *string                  `json:"authn_request_signing_certificate_pem"`
-	Rules                             *[]spec.ClaimMappingRule `json:"rules"`
+	ACSURLs                           *[]string                       `json:"acs_urls"`
+	SLOURL                            *string                         `json:"slo_url"`
+	Audience                          *string                         `json:"audience"`
+	NameIDFormat                      *string                         `json:"name_id_format"`
+	NameIDSource                      *string                         `json:"name_id_source"`
+	SignAssertion                     *bool                           `json:"sign_assertion"`
+	SignResponse                      *bool                           `json:"sign_response"`
+	WantAuthnRequestsSigned           *bool                           `json:"want_authn_requests_signed"`
+	AuthnRequestSigningCertificatePEM *string                         `json:"authn_request_signing_certificate_pem"`
+	Rules                             *[]claimdomain.ClaimMappingRule `json:"rules"`
 }
 
 func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {

@@ -43,37 +43,6 @@ const ResponseTypeCode ResponseType = "code"
 
 func (r ResponseType) Valid() bool { return r == ResponseTypeCode }
 
-type SignatureAlgorithm string
-
-const (
-	SigAlgPS256 SignatureAlgorithm = "PS256"
-	SigAlgES256 SignatureAlgorithm = "ES256"
-)
-
-func (s SignatureAlgorithm) Valid() bool { return s == SigAlgPS256 || s == SigAlgES256 }
-
-// KeyProvider は署名鍵マテリアルの保管場所と署名の実行主体。
-// Local / Postgres は private key をプロセス内に保持する dev/test 用、
-// VaultTransit は private key を Vault 内に保持し署名を Vault へ委譲する本番用。
-type KeyProvider string
-
-const (
-	KeyProviderLocal        KeyProvider = "Local"
-	KeyProviderPostgres     KeyProvider = "Postgres"
-	KeyProviderVaultTransit KeyProvider = "VaultTransit"
-)
-
-func (p KeyProvider) Valid() bool {
-	return p == KeyProviderLocal || p == KeyProviderPostgres || p == KeyProviderVaultTransit
-}
-
-// KeyUsage は鍵の用途。現状は OAuth2/OIDC の JWT 署名のみ。
-type KeyUsage string
-
-const KeyUsageSigning KeyUsage = "Signing"
-
-func (u KeyUsage) Valid() bool { return u == KeyUsageSigning }
-
 type CodeChallengeMethod string
 
 const CodeChallengeMethodS256 CodeChallengeMethod = "S256"

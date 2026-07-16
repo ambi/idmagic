@@ -81,8 +81,9 @@ context_map:
       SigningKeys:
         via: published_language
         uses:
-          - SigningKeyRef
+          - SigningKey
           - JWKS
+          - SignatureAlgorithm
         reason: ID Token / access token / JWK Set の署名鍵ライフサイクルと公開は SigningKeys が所有する。
       Application:
         via: published_language
@@ -118,11 +119,16 @@ context_map:
           - UserRef
           - GroupRef
         reason: 割当の subject は User / Group の identity principal である。
+      ClaimMapping:
+        via: published_language
+        uses:
+          - ClaimMappingPolicy
+        reason: protocol binding の claim release 設定は ClaimMapping の公開 policy を参照する。
   ClaimMapping:
     description: "identity principal の属性を外部 relying party / service provider / client へ出すための\nrelease policy と protocol-neutral な claim projection を所有する。属性解決と出力許可を\n共通化し、OIDC JSON claims、SAML AttributeStatement、WS-Fed claim URI への wire 変換は\n各 protocol context が所有する。\n"
     path: contexts/claim-mapping.yaml
     publishes:
-      - ClaimMappingPolicyRef
+      - ClaimMappingPolicy
       - IssuedClaim
     depends_on:
       Tenancy:
@@ -139,7 +145,7 @@ context_map:
     description: "tenant-scoped signing key material のライフサイクル、ローテーション、公開重複期間、監査を\nprotocol 横断で所有する。OAuth2/OIDC は JWK/JWKS と JWT signer、SAML / WS-* は X.509\n証明書と XML signer adapter を使うが、鍵用途・ローテーション・tenant isolation の規範は\nここに集約する。\n"
     path: contexts/signing-keys.yaml
     publishes:
-      - SigningKeyRef
+      - SigningKey
       - JWKS
       - SignatureAlgorithm
     depends_on:
@@ -173,7 +179,8 @@ context_map:
       ClaimMapping:
         via: published_language
         uses:
-          - ClaimMappingPolicyRef
+          - ClaimMappingPolicy
+          - IssuedClaim
         reason: WS-Fed / WS-Trust の assertion claim は ClaimMapping policy で組み立てる。
       Application:
         via: published_language
@@ -183,7 +190,7 @@ context_map:
       SigningKeys:
         via: published_language
         uses:
-          - SigningKeyRef
+          - SigningKey
         reason: SAML assertion 署名証明書と metadata への証明書広告は SigningKeys の鍵境界に従う。
   Saml:
     description: "SAML 2.0 IdP の service provider binding、IdP metadata、AuthnRequest / Response、\nAssertionConsumerService / Single Logout を所有する protocol context。Web Browser SSO Profile に\n基づき SP-initiated / IdP-initiated SSO を提供する。WS-Fed / WS-Trust とは claim release と\nXML signing capability だけを共有する。\n"
@@ -210,7 +217,8 @@ context_map:
       ClaimMapping:
         via: published_language
         uses:
-          - ClaimMappingPolicyRef
+          - ClaimMappingPolicy
+          - IssuedClaim
         reason: SAML AttributeStatement / NameID は ClaimMapping policy を利用する。
       Application:
         via: published_language
@@ -220,7 +228,7 @@ context_map:
       SigningKeys:
         via: published_language
         uses:
-          - SigningKeyRef
+          - SigningKey
         reason: SAML assertion / metadata 署名は SigningKeys の鍵境界に従う。
   Scim:
     description: "SCIM 2.0 Inbound Provisioning プロトコルファミリーの全責務を所有する。/scim/v2/Users, /scim/v2/Groups などのエンドポイントを提供し、外部の IDP/Identity Provider (Okta, Google IAM, Entra ID) からのユーザー・グループ同期を処理する。"

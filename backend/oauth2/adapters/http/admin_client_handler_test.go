@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -124,7 +126,7 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 		RedirectURIs:            []string{"https://portal.example/callback"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
 	request := httptest.NewRequest(http.MethodGet, "/api/admin/clients/portal", http.NoBody)

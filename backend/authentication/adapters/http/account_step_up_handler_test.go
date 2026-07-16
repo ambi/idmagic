@@ -272,7 +272,7 @@ func TestStepUpCompleteFlipsGateForStaleSession(t *testing.T) {
 	// StepUpCompleted が記録されている。
 	found := false
 	for _, ev := range *events {
-		if c, ok := ev.(*spec.StepUpCompleted); ok && c.Method == "password" {
+		if c, ok := ev.(*authdomain.StepUpCompleted); ok && c.Method == "password" {
 			found = true
 		}
 	}

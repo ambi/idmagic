@@ -125,7 +125,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 	if len(details) > 0 && d.Emit != nil {
-		d.Emit(&spec.AuthorizationDetailsRequested{
+		d.Emit(&oauthdomain.AuthorizationDetailsRequested{
 			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), ClientID: out.Request.ClientID,
 			DetailTypes: oauthdomain.DetailTypes(details),
 		})
@@ -489,7 +489,7 @@ func (d Deps) emitAuthenticationSuccess(
 	if d.Emit == nil {
 		return
 	}
-	d.Emit(&spec.UserAuthenticated{
+	d.Emit(&authdomain.UserAuthenticated{
 		At: at, TenantID: user.TenantID, UserID: user.ID,
 		AMR: authn.AMR, SessionID: authn.SessionID, ClientID: clientID, ACR: authn.ACR,
 		IP: extractClientIP(c.Request(), d.TrustedForwardedHops), UserAgent: c.Request().UserAgent(),
@@ -615,7 +615,7 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 		if d.Emit != nil {
 			d.Emit(&oauthdomain.ConsentGrantedEvent{At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID, Scopes: scopes})
 			if len(req.AuthorizationDetails) > 0 {
-				d.Emit(&spec.AuthorizationDetailsConsented{
+				d.Emit(&oauthdomain.AuthorizationDetailsConsented{
 					At: now, TenantID: support.RequestTenantID(c), UserID: authn.UserID, ClientID: req.ClientID,
 					DetailTypes: oauthdomain.DetailTypes(req.AuthorizationDetails),
 				})
@@ -778,7 +778,7 @@ func (d Deps) issueCodeURL(
 		return "", err
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.AuthorizationCodeIssued{
+		d.Emit(&oauthdomain.AuthorizationCodeIssued{
 			At: time.Now().UTC(), TenantID: tenantID, ClientID: req.ClientID, UserID: authn.UserID,
 			Scopes: out.Code.Scopes, CodeChallengeMethod: req.CodeChallengeMethod,
 		})
@@ -880,7 +880,7 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 
 func (d Deps) emitAuthenticationFailure(c *echo.Context, username, reason string) {
 	if d.Emit != nil {
-		d.Emit(&spec.AuthenticationFailed{
+		d.Emit(&authdomain.AuthenticationFailed{
 			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), Username: username, Reason: reason,
 			IP: extractClientIP(c.Request(), d.TrustedForwardedHops), UserAgent: c.Request().UserAgent(),
 		})
@@ -940,7 +940,7 @@ func (d Deps) recordLoginFailure(c *echo.Context, username, clientIP string) (bo
 		}
 		keyHash := d.correlationHash(c, attempt.key)
 		if d.Emit != nil {
-			d.Emit(&spec.LoginThrottled{
+			d.Emit(&authdomain.LoginThrottled{
 				At: now, TenantID: support.RequestTenantID(c), Kind: string(attempt.kind),
 				KeyHash:           keyHash,
 				RetryAfterSeconds: result.RetryAfterSeconds,
@@ -986,7 +986,7 @@ func (d Deps) recordFailedLoginBucket(c *echo.Context, keyHash string, now time.
 	}
 	if result.FirstInWindow && d.Emit != nil {
 		bucket := result.Bucket
-		d.Emit(&spec.AuthenticationEventAggregated{
+		d.Emit(&authdomain.AuthenticationEventAggregated{
 			At: now, TenantID: bucket.TenantID, Kind: string(bucket.Kind),
 			BucketKey: failedLoginBucketKey(bucket),
 			KeyHash:   bucket.KeyHash, Count: bucket.Count,

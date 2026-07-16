@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -48,7 +50,7 @@ func idTokenTestUser() *idmdomain.User {
 }
 
 func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
-	ks, err := NewInMemoryKeyStore()
+	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,7 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 }
 
 func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
-	ks, err := NewInMemoryKeyStore()
+	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

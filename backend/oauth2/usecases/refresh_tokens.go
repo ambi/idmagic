@@ -62,12 +62,12 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	if record.ClientID != client.ClientID {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
-		emit(deps.Emit, &spec.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
+		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
 		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンの所有者が一致しません")
 	}
 	if domain.IsRefreshTokenReplay(record) {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
-		emit(deps.Emit, &spec.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
+		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
 		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンはすでに使用されています")
 	}
 	if domain.IsRefreshTokenAbsoluteExpired(record, now) {
@@ -109,7 +109,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		return nil, NewOAuthError("invalid_grant", "並行リフレッシュにより失効")
 	}
-	emit(deps.Emit, &spec.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
+	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
 
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:           client,
@@ -121,7 +121,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &spec.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: record.UserID, Scopes: record.Scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
+	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: record.UserID, Scopes: record.Scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
 
 	tokenType := "Bearer"
 	if record.SenderConstraint != nil && record.SenderConstraint.Type == spec.SenderConstraintDPoP {

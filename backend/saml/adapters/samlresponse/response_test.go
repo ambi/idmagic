@@ -11,15 +11,16 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
 	"github.com/ambi/idmagic/backend/saml/adapters/samlresponse"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 func newSigner(t *testing.T) (*samltoken.Signer, *x509.Certificate) {
@@ -63,10 +64,10 @@ func sampleAssertion(t *testing.T) *etree.Element {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(5 * time.Minute),
 		AuthnInstant: now,
-		Result: domain.ClaimIssuanceResult{
+		Result: claimusecases.ClaimIssuanceResult{
 			NameIDFormat: samldomain.SamlNameIDFormatPersistent,
 			NameIDValue:  "alice",
-			Claims: []spec.IssuedClaim{
+			Claims: []claimdomain.IssuedClaim{
 				{ClaimType: "email", Values: []string{"alice@example.com"}},
 			},
 		},

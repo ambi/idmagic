@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -11,7 +13,7 @@ import (
 )
 
 func TestSignAccessTokenIncludesAuthorizationDetails(t *testing.T) {
-	ks, err := NewInMemoryKeyStore()
+	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +40,7 @@ func TestSignAccessTokenIncludesAuthorizationDetails(t *testing.T) {
 }
 
 func TestSignAccessTokenOmitsAuthorizationDetailsWhenAbsent(t *testing.T) {
-	ks, err := NewInMemoryKeyStore()
+	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -53,7 +53,7 @@ func NewVaultKeyStore(engine TransitEngine, keyNamePrefix string) *VaultKeyStore
 
 func (s *VaultKeyStore) keyName(tenantID string) string { return s.prefix + tenantID }
 
-func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey, error) {
+func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	if tk := s.byTenant[tenantID]; tk != nil {
@@ -69,20 +69,20 @@ func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey, er
 	return s.loadOrRotate(ctx, tenantID, false)
 }
 
-func (s *VaultKeyStore) GetAllKeys(ctx context.Context) ([]*ports.SigningKey, error) {
+func (s *VaultKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	tk := s.byTenant[tenantID]
 	if tk == nil {
-		return []*ports.SigningKey{}, nil
+		return []*signingdomain.SigningKey{}, nil
 	}
-	out := make([]*ports.SigningKey, len(tk.keys))
+	out := make([]*signingdomain.SigningKey, len(tk.keys))
 	copy(out, tk.keys)
 	return out, nil
 }
 
-func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -98,7 +98,7 @@ func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*ports.Signi
 	return nil, nil //nolint:nilnil // 契約: 見つからない場合は (nil, nil)。
 }
 
-func (s *VaultKeyStore) Rotate(ctx context.Context) (*ports.SigningKey, error) {
+func (s *VaultKeyStore) Rotate(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	had := s.byTenant[tenantID] != nil && len(s.byTenant[tenantID].keys) > 0
@@ -106,7 +106,7 @@ func (s *VaultKeyStore) Rotate(ctx context.Context) (*ports.SigningKey, error) {
 	return s.loadOrRotate(ctx, tenantID, had)
 }
 
-func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -115,7 +115,7 @@ func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*ports.Signing
 		return nil, nil //nolint:nilnil // 契約: 対象鍵が無ければ (nil, nil)。
 	}
 	remaining := tk.keys[:0]
-	var disabled *ports.SigningKey
+	var disabled *signingdomain.SigningKey
 	for _, k := range tk.keys {
 		if k.Kid == kid {
 			disabled = k
@@ -130,13 +130,15 @@ func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*ports.Signing
 	return disabled, nil
 }
 
-func (s *VaultKeyStore) Provider() spec.KeyProvider { return spec.KeyProviderVaultTransit }
+func (s *VaultKeyStore) Provider() signingdomain.KeyProvider {
+	return signingdomain.KeyProviderVaultTransit
+}
 
 func (s *VaultKeyStore) Healthy(ctx context.Context) bool { return s.engine.Healthy(ctx) }
 
 // loadOrRotate は Vault の鍵を用意し、最新公開鍵をミラーに取り込んで active にする。
 // advance=true のときは新しいバージョンへ回転してから取り込む。
-func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, advance bool) (*ports.SigningKey, error) {
+func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, advance bool) (*signingdomain.SigningKey, error) {
 	name := s.keyName(tenantID)
 	if err := s.engine.EnsureKey(ctx, name); err != nil {
 		return nil, err
@@ -160,14 +162,14 @@ func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, advan
 		return nil, err
 	}
 	publicJWK["kid"] = kid
-	publicJWK["alg"] = string(spec.SigAlgPS256)
+	publicJWK["alg"] = string(signingdomain.SigAlgPS256)
 	publicJWK["use"] = "sig"
-	key := &ports.SigningKey{
+	key := &signingdomain.SigningKey{
 		TenantID:   tenantID,
 		Kid:        kid,
-		Alg:        spec.SigAlgPS256,
-		Provider:   spec.KeyProviderVaultTransit,
-		Usage:      spec.KeyUsageSigning,
+		Alg:        signingdomain.SigAlgPS256,
+		Provider:   signingdomain.KeyProviderVaultTransit,
+		Usage:      signingdomain.KeyUsageSigning,
 		PrivateKey: vaultSigner{engine: s.engine, name: name, version: version, pub: pub},
 		PublicKey:  pub,
 		PublicJWK:  publicJWK,

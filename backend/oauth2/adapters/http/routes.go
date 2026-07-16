@@ -15,6 +15,7 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -31,7 +32,7 @@ type Deps struct {
 	ClientRepo                 oauthports.OAuth2ClientRepository
 	ConsentRepo                oauthports.ConsentRepository
 	ClientDisplayNameResolver  *support.ClientDisplayNameResolver
-	KeyStore                   oauthports.KeyStore
+	KeyStore                   signingports.KeyStore
 	TenantRepo                 tenantports.TenantRepository
 	PARStore                   oauthports.PARStore
 	RequestStore               oauthports.AuthorizationRequestStore
@@ -91,7 +92,6 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/device_authorization", d.handleDeviceAuthorization)
 	g.GET("/.well-known/openid-configuration", d.handleDiscovery)
 	g.GET("/.well-known/oauth-authorization-server", d.handleDiscovery)
-	g.GET("/jwks", d.handleJWKS)
 	g.GET("/api/admin/clients", d.handleListAdminOAuth2Clients)
 	g.GET("/api/admin/clients/:client_id", d.handleGetAdminOAuth2Client)
 	g.POST("/api/admin/clients", d.handleCreateAdminOAuth2Client)
@@ -105,11 +105,6 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/consents", d.handleListAdminConsents)
 	g.GET("/api/admin/consents/:sub/:client_id", d.handleGetAdminConsent)
 	g.DELETE("/api/admin/consents/:sub/:client_id", d.handleRevokeAdminConsent)
-	g.GET("/api/admin/keys", d.handleListAdminKeys)
-	g.GET("/api/admin/keys/health", d.handleListTenantKeyHealth)
-	g.GET("/api/admin/keys/:kid", d.handleGetAdminKey)
-	g.POST("/api/admin/keys/rotate", d.handleRotateTenantKey)
-	g.POST("/api/admin/keys/:kid/disable", d.handleDisableTenantKey)
 	g.GET("/api/admin/policy/roles", d.handleListAdminRolePolicies)
 }
 

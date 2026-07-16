@@ -1,13 +1,16 @@
-package spec
+package spec_test
 
 import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestMarshalDomainEventUsesContractFieldNames(t *testing.T) {
-	data, err := MarshalDomainEvent(&RefreshTokenIssued{
+	data, err := spec.MarshalDomainEvent(&oauthdomain.RefreshTokenIssued{
 		At:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		TokenID: "token", FamilyID: "family", ClientID: "client", UserID: "user",
 	})

@@ -15,6 +15,9 @@ import (
 	"testing"
 	"time"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -83,7 +86,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "idmagic.admin",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
@@ -99,7 +102,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

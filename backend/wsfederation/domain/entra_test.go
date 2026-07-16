@@ -3,7 +3,7 @@ package domain
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 )
 
 func TestNormalizeImmutableID_GUIDUsesMicrosoftByteOrder(t *testing.T) {
@@ -27,9 +27,9 @@ func TestNormalizeImmutableID_AcceptsExistingBase64(t *testing.T) {
 }
 
 func TestApplyEntraProfileAddsSyntheticImmutableID(t *testing.T) {
-	attrs, err := ApplyEntraProfile(Attributes{
+	attrs, err := ApplyEntraProfile(claimdomain.Attributes{
 		"object_guid": {"6f9619ff-8b86-d011-b42d-00c04fc964ff"},
-	}, &spec.EntraFederationProfile{SourceAnchorAttribute: "object_guid"})
+	}, &EntraFederationProfile{SourceAnchorAttribute: "object_guid"})
 	if err != nil {
 		t.Fatalf("ApplyEntraProfile: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestApplyEntraProfileAddsSyntheticImmutableID(t *testing.T) {
 }
 
 func TestApplyEntraProfileRejectsMissingSourceAnchor(t *testing.T) {
-	if _, err := ApplyEntraProfile(Attributes{}, &spec.EntraFederationProfile{SourceAnchorAttribute: "object_guid"}); err == nil {
+	if _, err := ApplyEntraProfile(claimdomain.Attributes{}, &EntraFederationProfile{SourceAnchorAttribute: "object_guid"}); err == nil {
 		t.Fatal("expected missing sourceAnchor error")
 	}
 }

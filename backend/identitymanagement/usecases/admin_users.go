@@ -132,7 +132,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, passwordHash, now); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID}); err != nil {
+	if err := adminEmit(deps.Emit, &idmdomain.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID}); err != nil {
 		return nil, err
 	}
 	return user, nil
@@ -273,7 +273,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*i
 			return nil, err
 		}
 	}
-	if err := adminEmit(deps.Emit, &spec.UserUpdated{
+	if err := adminEmit(deps.Emit, &idmdomain.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, ChangedFields: changed,
 	}); err != nil {
 		return nil, err
@@ -327,9 +327,9 @@ func SetUserDisabled(
 	}
 	var emitErr error
 	if disabled {
-		emitErr = adminEmit(deps.Emit, &spec.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
+		emitErr = adminEmit(deps.Emit, &idmdomain.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
-		emitErr = adminEmit(deps.Emit, &spec.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
+		emitErr = adminEmit(deps.Emit, &idmdomain.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	}
 	if emitErr != nil {
 		return nil, emitErr
@@ -369,7 +369,7 @@ func SetUserRequiredAction(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.UserRequiredActionSet{
+	if err := adminEmit(deps.Emit, &idmdomain.UserRequiredActionSet{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
 	}); err != nil {
 		return nil, err
@@ -407,7 +407,7 @@ func ClearUserRequiredAction(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.UserRequiredActionCleared{
+	if err := adminEmit(deps.Emit, &idmdomain.UserRequiredActionCleared{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
 	}); err != nil {
 		return nil, err
@@ -536,7 +536,7 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := cascadeDeleteForSub(ctx, deps, user.ID); err != nil {
 		return err
 	}
-	return adminEmit(deps.Emit, &spec.UserDeleted{
+	return adminEmit(deps.Emit, &idmdomain.UserDeleted{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, Reason: in.Reason,
 	})
 }
@@ -602,7 +602,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 			return err
 		}
 	}
-	return adminEmit(deps.Emit, &spec.UserSoftDeleted{
+	return adminEmit(deps.Emit, &idmdomain.UserSoftDeleted{
 		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
 	})
 }
@@ -640,7 +640,7 @@ func RestoreUser(
 			return nil, err
 		}
 	}
-	if err := adminEmit(deps.Emit, &spec.UserRestored{
+	if err := adminEmit(deps.Emit, &idmdomain.UserRestored{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: updated.ID,
 	}); err != nil {
 		return nil, err

@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -63,7 +65,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
@@ -76,7 +78,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodNone,
 		Scope:                    "openid profile idmagic.admin",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		FirstParty:               true,
 		CreatedAt:                now,
@@ -216,7 +218,7 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	}
 	found := false
 	for _, e := range *emitted {
-		if _, ok := e.(*spec.AuthorizationCodeIssued); ok {
+		if _, ok := e.(*domain.AuthorizationCodeIssued); ok {
 			found = true
 		}
 	}

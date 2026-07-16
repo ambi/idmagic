@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/saml/adapters/samlresponse"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
@@ -150,7 +152,7 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 }
 
 // buildAssertion は claim 発行結果から SAML 2.0 assertion を組み立て、SP 設定に従って署名する。
-func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider, validated samldomain.ValidatedSignIn, result feddomain.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time) (*etree.Element, error) {
+func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider, validated samldomain.ValidatedSignIn, result claimusecases.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time) (*etree.Element, error) {
 	authnMethod := feddomain.AuthnUnspecified
 	if slices.Contains(authn.AMR, "pwd") {
 		authnMethod = feddomain.AuthnPassword

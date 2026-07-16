@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -35,12 +35,12 @@ func GenerateRSAJWKPair() (*rsa.PrivateKey, map[string]any, map[string]any, stri
 		return nil, nil, nil, "", err
 	}
 	publicJWK["kid"] = kid
-	publicJWK["alg"] = string(spec.SigAlgPS256)
+	publicJWK["alg"] = string(signingdomain.SigAlgPS256)
 	publicJWK["use"] = "sig"
 	privateJWK := map[string]any{
 		"kty": "RSA",
 		"kid": kid,
-		"alg": string(spec.SigAlgPS256),
+		"alg": string(signingdomain.SigAlgPS256),
 		"n":   base64.RawURLEncoding.EncodeToString(priv.N.Bytes()),
 		"e":   base64.RawURLEncoding.EncodeToString(bigIntFromInt(priv.E)),
 		"d":   base64.RawURLEncoding.EncodeToString(priv.D.Bytes()),
@@ -87,9 +87,33 @@ func ImportRSAJWK(publicJWK, privateJWK map[string]any) (crypto.PublicKey, crypt
 	return rsaPub, priv, nil
 }
 
+func publicKeyFromJWK(jwk map[string]any) (crypto.PublicKey, error) {
+	if kty, _ := jwk["kty"].(string); kty != "RSA" {
+		return nil, errors.New("public JWK is not RSA")
+	}
+	nValue, _ := jwk["n"].(string)
+	eValue, _ := jwk["e"].(string)
+	nBytes, err := base64.RawURLEncoding.DecodeString(nValue)
+	if err != nil {
+		return nil, err
+	}
+	eBytes, err := base64.RawURLEncoding.DecodeString(eValue)
+	if err != nil {
+		return nil, err
+	}
+	exponent := 0
+	for _, b := range eBytes {
+		exponent = exponent<<8 | int(b)
+	}
+	if len(nBytes) == 0 || exponent == 0 {
+		return nil, errors.New("public JWK missing RSA modulus or exponent")
+	}
+	return &rsa.PublicKey{N: new(big.Int).SetBytes(nBytes), E: exponent}, nil
+}
+
 // tenantKeys は 1 テナント分の署名鍵集合と active kid を保持する。
 type tenantKeys struct {
-	keys   []*ports.SigningKey
+	keys   []*signingdomain.SigningKey
 	active string
 }
 
@@ -109,7 +133,7 @@ func NewInMemoryKeyStore() (*InMemoryKeyStore, error) {
 	return ks, nil
 }
 
-func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey, error) {
+func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	if tk := s.byTenant[tenantID]; tk != nil {
@@ -125,49 +149,49 @@ func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey,
 	return s.rotateInternal(tenantID)
 }
 
-func (s *InMemoryKeyStore) GetAllKeys(ctx context.Context) ([]*ports.SigningKey, error) {
+func (s *InMemoryKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	tk := s.byTenant[tenantID]
 	if tk == nil {
-		return []*ports.SigningKey{}, nil
+		return []*signingdomain.SigningKey{}, nil
 	}
-	out := make([]*ports.SigningKey, len(tk.keys))
+	out := make([]*signingdomain.SigningKey, len(tk.keys))
 	copy(out, tk.keys)
 	return out, nil
 }
 
-func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	tk := s.byTenant[tenantID]
 	if tk == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
 	}
 	for _, k := range tk.keys {
 		if k.Kid == kid {
 			return k, nil
 		}
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
 }
 
-func (s *InMemoryKeyStore) Rotate(ctx context.Context) (*ports.SigningKey, error) {
+func (s *InMemoryKeyStore) Rotate(ctx context.Context) (*signingdomain.SigningKey, error) {
 	return s.rotateInternal(tenancy.TenantID(ctx))
 }
 
-func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	tk := s.byTenant[tenantID]
 	if tk == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
 	}
 	remaining := tk.keys[:0]
-	var disabled *ports.SigningKey
+	var disabled *signingdomain.SigningKey
 	for _, k := range tk.keys {
 		if k.Kid == kid {
 			disabled = k
@@ -182,11 +206,13 @@ func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*ports.Sign
 	return disabled, nil
 }
 
-func (s *InMemoryKeyStore) Provider() spec.KeyProvider { return spec.KeyProviderLocal }
+func (s *InMemoryKeyStore) Provider() signingdomain.KeyProvider {
+	return signingdomain.KeyProviderLocal
+}
 
 func (s *InMemoryKeyStore) Healthy(_ context.Context) bool { return true }
 
-func (s *InMemoryKeyStore) rotateInternal(tenantID string) (*ports.SigningKey, error) {
+func (s *InMemoryKeyStore) rotateInternal(tenantID string) (*signingdomain.SigningKey, error) {
 	priv, jwk, _, kid, err := GenerateRSAJWKPair()
 	if err != nil {
 		return nil, err
@@ -202,12 +228,12 @@ func (s *InMemoryKeyStore) rotateInternal(tenantID string) (*ports.SigningKey, e
 	for _, k := range tk.keys {
 		k.Active = false
 	}
-	key := &ports.SigningKey{
+	key := &signingdomain.SigningKey{
 		TenantID:   tenantID,
 		Kid:        kid,
-		Alg:        spec.SigAlgPS256,
-		Provider:   spec.KeyProviderLocal,
-		Usage:      spec.KeyUsageSigning,
+		Alg:        signingdomain.SigAlgPS256,
+		Provider:   signingdomain.KeyProviderLocal,
+		Usage:      signingdomain.KeyUsageSigning,
 		PrivateKey: priv,
 		PublicKey:  &priv.PublicKey,
 		PublicJWK:  jwk,

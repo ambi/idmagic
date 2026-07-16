@@ -121,7 +121,7 @@ func StepUpStart(
 		return nil, ErrUserNotFound
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.StepUpRequested{
+		deps.Emit(&domain.StepUpRequested{
 			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), UserID: sub, SessionID: sessionID,
 		})
 	}
@@ -201,7 +201,7 @@ func CompleteStepUp(ctx context.Context, deps StepUpDeps, in CompleteStepUpInput
 		}
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.StepUpCompleted{
+		deps.Emit(&domain.StepUpCompleted{
 			At: now, TenantID: tenancy.TenantID(ctx), UserID: in.Sub,
 			SessionID: in.SessionID, Method: string(in.Method),
 		})

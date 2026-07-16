@@ -10,13 +10,14 @@ import (
 	"context"
 	"time"
 
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 // ApplicationAccessDecision は割当ゲートの判定結果。
@@ -70,7 +71,7 @@ type SignInOutcome struct {
 	// SignInIssued のときの発行データ。
 	SP          samldomain.SamlServiceProvider
 	Validated   samldomain.ValidatedSignIn
-	ClaimResult feddomain.ClaimIssuanceResult
+	ClaimResult claimusecases.ClaimIssuanceResult
 	Authn       *authdomain.AuthenticationContext
 	Now         time.Time
 }
@@ -144,7 +145,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil
 	}
 
-	result, err := feddomain.IssueClaims(sp.ClaimPolicy, feddomain.ResolveUserAttributes(*user))
+	result, err := claimusecases.IssueClaims(sp.ClaimPolicy, claimusecases.ResolveUserAttributes(*user))
 	if err != nil {
 		return s.rejected(in.TenantID, sp.EntityID, "claim issuance failed", err), nil
 	}

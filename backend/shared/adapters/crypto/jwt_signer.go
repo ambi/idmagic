@@ -16,11 +16,14 @@ import (
 	"strings"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -31,17 +34,17 @@ const (
 
 type JWTSigner struct {
 	Issuer   string
-	KeyStore ports.KeyStore
+	KeyStore signingports.KeyStore
 }
 
-func NewJWTSigner(issuer string, ks ports.KeyStore) *JWTSigner {
+func NewJWTSigner(issuer string, ks signingports.KeyStore) *JWTSigner {
 	return &JWTSigner{Issuer: issuer, KeyStore: ks}
 }
 
 func (s *JWTSigner) AccessTokenTTLSeconds() int { return accessTokenTTLSeconds }
 func (s *JWTSigner) IDTokenTTLSeconds() int     { return idTokenTTLSeconds }
 
-func (s *JWTSigner) SignAccessToken(ctx context.Context, in ports.AccessTokenInput) (string, string, error) {
+func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	key, err := s.KeyStore.GetActiveKey(ctx)
 	if err != nil {
 		return "", "", err
@@ -109,7 +112,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in ports.AccessTokenInp
 	return tok, jti, nil
 }
 
-func (s *JWTSigner) SignIDToken(ctx context.Context, in ports.IDTokenInput) (string, error) {
+func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput) (string, error) {
 	key, err := s.KeyStore.GetActiveKey(ctx)
 	if err != nil {
 		return "", err
@@ -162,7 +165,7 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in ports.IDTokenInput) (str
 }
 
 // IntrospectAccessToken は JWT を全鍵で検証する。
-func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*ports.IntrospectionResult, error) {
+func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*oauthports.IntrospectionResult, error) {
 	keys, err := s.KeyStore.GetAllKeys(ctx)
 	if err != nil {
 		return nil, err
@@ -171,16 +174,16 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*p
 	if err != nil {
 		// RFC 7662 §2.2: invalid/expired/unparsable token → active:false で 200 OK。
 		// 検証エラーは leak しない（呼び出し側 RS のクライアントに署名失敗を知らせない）。
-		return &ports.IntrospectionResult{Active: false}, nil //nolint:nilerr // intentional per RFC 7662
+		return &oauthports.IntrospectionResult{Active: false}, nil //nolint:nilerr // intentional per RFC 7662
 	}
 	if iss, _ := payload["iss"].(string); iss != tenancy.Issuer(ctx, s.Issuer) {
-		return &ports.IntrospectionResult{Active: false}, nil
+		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	if expF, _ := payload["exp"].(float64); int64(expF) < nowUnix() {
-		return &ports.IntrospectionResult{Active: false}, nil
+		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	_ = header
-	res := &ports.IntrospectionResult{Active: true, TokenType: "access_token"}
+	res := &oauthports.IntrospectionResult{Active: true, TokenType: "access_token"}
 	if v, ok := payload["jti"].(string); ok {
 		res.JTI = v
 	}
@@ -256,7 +259,7 @@ func normalizeAudience(v any) []string {
 // PS256 署名・検証ヘルパ (jose ライブラリ非依存)
 // =====================================================================
 
-func signPS256(key *ports.SigningKey, extraHeader map[string]string, claims map[string]any) (string, error) {
+func signPS256(key *signingdomain.SigningKey, extraHeader map[string]string, claims map[string]any) (string, error) {
 	// crypto.Signer 経由で署名する。Local / Postgres provider の *rsa.PrivateKey は
 	// crypto.Signer を満たし、VaultTransit provider は署名を Vault へ委譲する Signer を渡す。
 	signer, ok := key.PrivateKey.(crypto.Signer)
@@ -284,7 +287,7 @@ func signPS256(key *ports.SigningKey, extraHeader map[string]string, claims map[
 	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig), nil
 }
 
-func verifyPS256AnyKey(token string, keys []*ports.SigningKey) (map[string]any, map[string]any, error) {
+func verifyPS256AnyKey(token string, keys []*signingdomain.SigningKey) (map[string]any, map[string]any, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return nil, nil, errors.New("malformed JWT")

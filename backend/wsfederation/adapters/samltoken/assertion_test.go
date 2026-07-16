@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
@@ -63,10 +65,10 @@ func sampleInput() AssertionInput {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(5 * time.Minute),
 		AuthnInstant: now,
-		Result: domain.ClaimIssuanceResult{
+		Result: claimusecases.ClaimIssuanceResult{
 			NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
 			NameIDValue:  "AAECAwQFBgc=",
-			Claims: []spec.IssuedClaim{
+			Claims: []claimdomain.IssuedClaim{
 				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Values: []string{"alice@contoso.com"}},
 				{ClaimType: "http://schemas.xmlsoap.org/claims/Group", Values: []string{"admins", "users"}},
 			},
@@ -214,7 +216,7 @@ func TestBuildAssertion_InputValidation(t *testing.T) {
 	for name, mutate := range bad {
 		t.Run(name, func(t *testing.T) {
 			in := base
-			in.Result.Claims = append([]spec.IssuedClaim(nil), base.Result.Claims...)
+			in.Result.Claims = append([]claimdomain.IssuedClaim(nil), base.Result.Claims...)
 			mutate(&in)
 			if _, _, err := BuildAssertion(in); err == nil {
 				t.Fatalf("%s: expected error, got nil", name)

@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 )
 
@@ -15,15 +17,15 @@ func TestResolveUserAttributes_StandardFields(t *testing.T) {
 		Name:              new("Alice Example"),
 		Roles:             []string{"admin", "user"},
 	}
-	attrs := ResolveUserAttributes(u)
+	attrs := claimusecases.ResolveUserAttributes(u)
 
 	cases := map[string][]string{
-		AttrSub:               {"user-1"},
-		AttrPreferredUsername: {"alice"},
-		AttrEmail:             {"alice@contoso.com"},
-		AttrEmailVerified:     {"true"},
-		AttrName:              {"Alice Example"},
-		AttrRoles:             {"admin", "user"},
+		claimusecases.AttrSub:               {"user-1"},
+		claimusecases.AttrPreferredUsername: {"alice"},
+		claimusecases.AttrEmail:             {"alice@contoso.com"},
+		claimusecases.AttrEmailVerified:     {"true"},
+		claimusecases.AttrName:              {"Alice Example"},
+		claimusecases.AttrRoles:             {"admin", "user"},
 	}
 	for key, want := range cases {
 		got, ok := attrs[key]
@@ -40,7 +42,7 @@ func TestResolveUserAttributes_StandardFields(t *testing.T) {
 		}
 	}
 	// 未設定の任意フィールドはキーごと省略される。
-	if _, ok := attrs[AttrGivenName]; ok {
+	if _, ok := attrs[claimusecases.AttrGivenName]; ok {
 		t.Fatal("given_name should be omitted when unset")
 	}
 }
@@ -58,7 +60,7 @@ func TestResolveUserAttributes_CustomAttributes(t *testing.T) {
 			"blank":       {Type: idmdomain.AttributeTypeString, String: new("  ")},
 		},
 	}
-	attrs := ResolveUserAttributes(u)
+	attrs := claimusecases.ResolveUserAttributes(u)
 
 	if got := attrs["object_guid"]; len(got) != 1 || got[0] != "AAECAwQFBgc=" {
 		t.Fatalf("object_guid = %v", got)

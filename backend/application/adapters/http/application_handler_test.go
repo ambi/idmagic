@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -357,7 +359,7 @@ func TestSamlApplicationDetailReturnsEmptyRulesNotNull(t *testing.T) {
 	}
 	var body struct {
 		Saml *struct {
-			Rules []spec.ClaimMappingRule `json:"rules"`
+			Rules []claimdomain.ClaimMappingRule `json:"rules"`
 		} `json:"saml"`
 	}
 	if err := json.Unmarshal(detail.Body.Bytes(), &body); err != nil {

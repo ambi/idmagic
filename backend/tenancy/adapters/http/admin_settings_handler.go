@@ -10,7 +10,6 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -93,7 +92,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantUpdated{
+		d.Emit(&domain.TenantUpdated{
 			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			ChangedFields: adminSettingsChangedFields(input),
 		})

@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -38,7 +40,7 @@ func TestEmitAuthenticationFailureRecordsPlaintextAttributes(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d", rec.Code)
 	}
-	ev, ok := emitted.(*spec.AuthenticationFailed)
+	ev, ok := emitted.(*authdomain.AuthenticationFailed)
 	if !ok {
 		t.Fatalf("emitted %#v, want AuthenticationFailed", emitted)
 	}

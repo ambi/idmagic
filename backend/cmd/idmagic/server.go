@@ -110,7 +110,7 @@ func Run() error {
 		return err
 	}
 	sessionManager := authusecases.NewSessionManager(deps.Authentication.SessionStore)
-	tokenSigner := crypto.NewJWTSigner(issuer, deps.KeyStore)
+	tokenSigner := crypto.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := crypto.NewJWKResolver()
 	deps.OAuth2.TokenIssuer = tokenSigner
 	deps.OAuth2.TokenIntrospector = tokenSigner
@@ -189,7 +189,7 @@ func Run() error {
 		IdentityManagement: deps.IdentityManagement,
 		Authentication:     deps.Authentication,
 		OAuth2:             deps.OAuth2,
-		KeyStore:           deps.KeyStore,
+		SigningKeys:        deps.SigningKeys,
 		Audit:              deps.Audit,
 		JWKResolver:        jwkResolver,
 		WsFederation:       deps.WsFederation,

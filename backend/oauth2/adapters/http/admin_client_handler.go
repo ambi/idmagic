@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
@@ -39,7 +41,7 @@ type adminClientResponse struct {
 	JWKS                               map[string]any                      `json:"jwks,omitempty"`
 	JwksURI                            *string                             `json:"jwks_uri,omitempty"`
 	TlsClientAuthSubjectDN             *string                             `json:"tls_client_auth_subject_dn,omitempty"`
-	IDTokenSignedResponseAlg           spec.SignatureAlgorithm             `json:"id_token_signed_response_alg"`
+	IDTokenSignedResponseAlg           signingdomain.SignatureAlgorithm    `json:"id_token_signed_response_alg"`
 	RequirePushedAuthorizationRequests bool                                `json:"require_pushed_authorization_requests"`
 	DpopBoundAccessTokens              bool                                `json:"dpop_bound_access_tokens"`
 	FapiProfile                        oauthdomain.FapiProfile             `json:"fapi_profile"`

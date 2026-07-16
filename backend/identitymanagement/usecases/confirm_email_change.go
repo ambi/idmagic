@@ -73,9 +73,9 @@ func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in Con
 		return nil, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.EmailChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
+		deps.Emit(&idmdomain.EmailChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
 		if clearedVerifyEmail {
-			deps.Emit(&spec.UserRequiredActionCleared{
+			deps.Emit(&idmdomain.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
 				Action: string(idmdomain.RequiredActionVerifyEmail),
 			})

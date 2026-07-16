@@ -162,7 +162,7 @@ func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("events=%d want 1", len(*events))
 	}
-	updated, ok := (*events)[0].(*spec.TenantUpdated)
+	updated, ok := (*events)[0].(*domain.TenantUpdated)
 	if !ok {
 		t.Fatalf("event type=%T", (*events)[0])
 	}

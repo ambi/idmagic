@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -74,7 +76,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 			TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,
 			JWKS:                     in.JWKS,
 			JwksURI:                  in.JwksURI,
-			IDTokenSignedResponseAlg: spec.SigAlgPS256,
+			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 			FapiProfile:              domain.FapiNone,
 			CreatedAt:                now,
 		}
@@ -120,7 +122,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		JWKS:                               in.JWKS,
 		JwksURI:                            in.JwksURI,
 		TlsClientAuthSubjectDN:             in.TlsClientAuthSubjectDN,
-		IDTokenSignedResponseAlg:           spec.SigAlgPS256,
+		IDTokenSignedResponseAlg:           signingdomain.SigAlgPS256,
 		RequirePushedAuthorizationRequests: in.RequirePAR,
 		DpopBoundAccessTokens:              in.DpopBoundAccessTokens,
 		FapiProfile:                        fapiProfile,

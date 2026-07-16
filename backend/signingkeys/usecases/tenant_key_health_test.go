@@ -5,40 +5,39 @@ import (
 	"errors"
 	"testing"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-
-	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type fakeKeyStore struct {
-	keys       []*ports.SigningKey
+	keys       []*signingdomain.SigningKey
 	getKeysErr error
 }
 
-func (f *fakeKeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey, error) {
+func (f *fakeKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (f *fakeKeyStore) GetAllKeys(ctx context.Context) ([]*ports.SigningKey, error) {
+func (f *fakeKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	return f.keys, f.getKeysErr
 }
 
-func (f *fakeKeyStore) FindByKID(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (f *fakeKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (f *fakeKeyStore) Rotate(ctx context.Context) (*ports.SigningKey, error) {
+func (f *fakeKeyStore) Rotate(ctx context.Context) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (f *fakeKeyStore) Disable(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (f *fakeKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
-func (f *fakeKeyStore) Provider() spec.KeyProvider       { return spec.KeyProviderPostgres }
-func (f *fakeKeyStore) Healthy(ctx context.Context) bool { return true }
+func (f *fakeKeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderPostgres }
+func (f *fakeKeyStore) Healthy(ctx context.Context) bool    { return true }
 
 func TestListTenantKeyHealth(t *testing.T) {
 	ctx := context.Background()
@@ -55,7 +54,7 @@ func TestListTenantKeyHealth(t *testing.T) {
 	_ = tenantRepo.Save(ctx, &tenancydomain.Tenant{ID: "tenant-b"})
 
 	t.Run("Succeeds", func(t *testing.T) {
-		keyStore.keys = []*ports.SigningKey{
+		keyStore.keys = []*signingdomain.SigningKey{
 			{Kid: "key-1", Active: false},
 			{Kid: "key-2", Active: true},
 		}

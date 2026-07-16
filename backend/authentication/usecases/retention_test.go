@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func daysAgo(now time.Time, d int) time.Time {
@@ -47,17 +48,17 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	store := auditmemory.NewAuditEventStore(0)
 
 	// 失敗詳細 30 日: 29 日前は残り 31 日前は消える。
-	seedAudit(t, store, "fail-29", (&spec.AuthenticationFailed{}).EventType(), daysAgo(now, 29))
-	seedAudit(t, store, "fail-31", (&spec.AuthenticationFailed{}).EventType(), daysAgo(now, 31))
+	seedAudit(t, store, "fail-29", (&authdomain.AuthenticationFailed{}).EventType(), daysAgo(now, 29))
+	seedAudit(t, store, "fail-31", (&authdomain.AuthenticationFailed{}).EventType(), daysAgo(now, 31))
 	// 成功 365 日: 364 日前は残り 366 日前は消える。
-	seedAudit(t, store, "ok-364", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 364))
-	seedAudit(t, store, "ok-366", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 366))
+	seedAudit(t, store, "ok-364", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 364))
+	seedAudit(t, store, "ok-366", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 366))
 	// セッション / bucket 90 日: 89 日前は残り 91 日前は消える。
-	seedAudit(t, store, "sess-89", (&spec.SessionStarted{}).EventType(), daysAgo(now, 89))
-	seedAudit(t, store, "sess-91", (&spec.SessionStarted{}).EventType(), daysAgo(now, 91))
-	seedAudit(t, store, "agg-91", (&spec.AuthenticationEventAggregated{}).EventType(), daysAgo(now, 91))
+	seedAudit(t, store, "sess-89", (&authdomain.SessionStarted{}).EventType(), daysAgo(now, 89))
+	seedAudit(t, store, "sess-91", (&authdomain.SessionStarted{}).EventType(), daysAgo(now, 91))
+	seedAudit(t, store, "agg-91", (&authdomain.AuthenticationEventAggregated{}).EventType(), daysAgo(now, 91))
 	// impersonation: cap 未設定なら無期限保持 (400 日前でも残る)。
-	seedAudit(t, store, "imp-400", (&spec.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400))
+	seedAudit(t, store, "imp-400", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400))
 
 	res, err := usecases.RunRetentionSweep(ctx, store, nil, usecases.DefaultRetentionPolicy(), now)
 	if err != nil {
@@ -89,7 +90,7 @@ func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
 	store := auditmemory.NewAuditEventStore(0)
 	oldFailure := &auditports.AuditEventRecord{
 		ID: "fail-8", TenantID: tenancydomain.DefaultTenantID,
-		Type: (&spec.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
+		Type: (&authdomain.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
 		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID, "username": "alice"},
 	}
 	if err := store.Append(ctx, oldFailure); err != nil {
@@ -113,9 +114,9 @@ func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := auditmemory.NewAuditEventStore(0)
 	// global cap 30 日: 成功も impersonation も 31 日前は消える。
-	seedAudit(t, store, "ok-31", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 31))
-	seedAudit(t, store, "ok-29", (&spec.UserAuthenticated{}).EventType(), daysAgo(now, 29))
-	seedAudit(t, store, "imp-31", (&spec.SessionImpersonationStarted{}).EventType(), daysAgo(now, 31))
+	seedAudit(t, store, "ok-31", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 31))
+	seedAudit(t, store, "ok-29", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 29))
+	seedAudit(t, store, "imp-31", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 31))
 
 	policy := usecases.DefaultRetentionPolicy()
 	policy.MaxDays = 30

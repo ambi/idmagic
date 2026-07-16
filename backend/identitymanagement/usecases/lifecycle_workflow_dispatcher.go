@@ -89,7 +89,7 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 			if !started {
 				return nil, fmt.Errorf("lifecycle workflow run is waiting for an earlier user run")
 			}
-			emitWorkflowEvent(deps.Emit, &spec.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+			emitWorkflowEvent(deps.Emit, &idmdomain.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 		}
 		steps, err := deps.RunRepo.ListSteps(ctx, job.TenantID, run.ID)
 		if err != nil {
@@ -115,7 +115,7 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 				succeeded++
 			case idmdomain.WorkflowStepFailed:
 				failed++
-				emitWorkflowEvent(deps.Emit, &spec.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
+				emitWorkflowEvent(deps.Emit, &idmdomain.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
 			}
 		}
 		status := idmdomain.WorkflowRunSucceeded
@@ -137,11 +137,11 @@ func emitWorkflowRunCompletion(emit func(spec.DomainEvent) error, status idmdoma
 	now := time.Now().UTC()
 	switch status {
 	case idmdomain.WorkflowRunSucceeded:
-		emitWorkflowEvent(emit, &spec.LifecycleWorkflowRunSucceeded{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+		emitWorkflowEvent(emit, &idmdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 	case idmdomain.WorkflowRunPartiallyFailed:
-		emitWorkflowEvent(emit, &spec.LifecycleWorkflowRunPartiallyFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+		emitWorkflowEvent(emit, &idmdomain.LifecycleWorkflowRunPartiallyFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 	case idmdomain.WorkflowRunFailed:
-		emitWorkflowEvent(emit, &spec.LifecycleWorkflowRunFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+		emitWorkflowEvent(emit, &idmdomain.LifecycleWorkflowRunFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 	}
 }
 

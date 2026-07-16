@@ -113,7 +113,7 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err := deps.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.GroupCreated{At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID}); err != nil {
+	if err := adminEmit(deps.Emit, &idmdomain.GroupCreated{At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID}); err != nil {
 		return nil, err
 	}
 	return group, nil
@@ -180,7 +180,7 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 	if err := deps.GroupRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.GroupUpdated{
+	if err := adminEmit(deps.Emit, &idmdomain.GroupUpdated{
 		At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID, ChangedFields: changed,
 	}); err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 			return err
 		}
 		if removed {
-			if err := adminEmit(deps.Emit, &spec.GroupMemberRemoved{
+			if err := adminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
 				At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id, UserID: member.UserID,
 			}); err != nil {
 				return err
@@ -220,7 +220,7 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 	if err := deps.GroupRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	return adminEmit(deps.Emit, &spec.GroupDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id})
+	return adminEmit(deps.Emit, &idmdomain.GroupDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id})
 }
 
 // AddMember は同一テナントの User をグループに所属させる。既所属なら no-op で
@@ -252,7 +252,7 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, u
 		return err
 	}
 	if added {
-		return adminEmit(deps.Emit, &spec.GroupMemberAdded{
+		return adminEmit(deps.Emit, &idmdomain.GroupMemberAdded{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
 		})
 	}
@@ -278,7 +278,7 @@ func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID
 		return err
 	}
 	if removed {
-		return adminEmit(deps.Emit, &spec.GroupMemberRemoved{
+		return adminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
 		})
 	}

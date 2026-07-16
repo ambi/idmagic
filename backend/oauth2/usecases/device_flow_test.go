@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -39,7 +41,7 @@ func newDeviceFixture() deviceFixture {
 		},
 		TokenEndpointAuthMethod:  domain.AuthMethodNone,
 		Scope:                    "openid profile",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})

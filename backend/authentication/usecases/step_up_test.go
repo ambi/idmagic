@@ -123,7 +123,7 @@ func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(*events))
 	}
-	completed, ok := (*events)[0].(*spec.StepUpCompleted)
+	completed, ok := (*events)[0].(*domain.StepUpCompleted)
 	if !ok || completed.Method != "password" || completed.UserID != "user-1" {
 		t.Fatalf("unexpected event %#v", (*events)[0])
 	}

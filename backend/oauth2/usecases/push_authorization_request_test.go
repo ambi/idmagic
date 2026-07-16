@@ -65,7 +65,7 @@ func TestPushAuthorizationRequest(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*spec.PARStored)
+		ev, ok := emitted[0].(*domain.PARStored)
 		if !ok {
 			t.Fatalf("expected PARStored, got %T", emitted[0])
 		}

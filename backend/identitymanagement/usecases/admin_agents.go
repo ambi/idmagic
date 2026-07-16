@@ -134,7 +134,7 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err := deps.AgentRepo.Save(ctx, agent); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.AgentRegistered{At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID}); err != nil {
+	if err := adminEmit(deps.Emit, &idmdomain.AgentRegistered{At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID}); err != nil {
 		return nil, err
 	}
 	return agent, nil
@@ -229,13 +229,13 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.AgentUpdated{
+	if err := adminEmit(deps.Emit, &idmdomain.AgentUpdated{
 		At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID, ChangedFields: changed,
 	}); err != nil {
 		return nil, err
 	}
 	if ownerChanged {
-		if err := adminEmit(deps.Emit, &spec.AgentOwnerChanged{
+		if err := adminEmit(deps.Emit, &idmdomain.AgentOwnerChanged{
 			At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID,
 			PreviousOwnerUserID: previousOwner, NewOwnerUserID: updated.OwnerUserID,
 		}); err != nil {
@@ -277,9 +277,9 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 	}
 	var emitErr error
 	if disabled {
-		emitErr = adminEmit(deps.Emit, &spec.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+		emitErr = adminEmit(deps.Emit, &idmdomain.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	} else {
-		emitErr = adminEmit(deps.Emit, &spec.AgentEnabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+		emitErr = adminEmit(deps.Emit, &idmdomain.AgentEnabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	}
 	if emitErr != nil {
 		return nil, emitErr
@@ -312,7 +312,7 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string,
 	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
+	if err := adminEmit(deps.Emit, &idmdomain.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
 		return nil, err
 	}
 	return &updated, nil
@@ -335,7 +335,7 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 	if err := deps.AgentRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	return adminEmit(deps.Emit, &spec.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
+	return adminEmit(deps.Emit, &idmdomain.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
 }
 
 // BindCredential は Agent に同一テナントの OAuth2Client を束縛する。既束縛なら no-op
@@ -389,7 +389,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 		}
 	}
 	if added {
-		return adminEmit(deps.Emit, &spec.AgentCredentialBound{
+		return adminEmit(deps.Emit, &idmdomain.AgentCredentialBound{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}
@@ -427,7 +427,7 @@ func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, age
 		return err
 	}
 	if removed {
-		return adminEmit(deps.Emit, &spec.AgentCredentialUnbound{
+		return adminEmit(deps.Emit, &idmdomain.AgentCredentialUnbound{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}

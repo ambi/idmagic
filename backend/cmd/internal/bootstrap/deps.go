@@ -12,9 +12,9 @@ import (
 	"github.com/ambi/idmagic/backend/identitymanagement"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/scim"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
@@ -28,7 +28,7 @@ type Dependencies struct {
 	IdentityManagement identitymanagement.Module
 	Authentication     authentication.Module
 	OAuth2             oauth2.Module
-	KeyStore           oauthports.KeyStore
+	SigningKeys        signingkeys.Module
 	Audit              audit.Module
 	WsFederation       wsfederation.Module
 	Saml               saml.Module

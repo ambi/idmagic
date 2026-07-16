@@ -62,12 +62,12 @@ func IssueMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, actor
 	if expired, err := deps.BypassRepo.ExpireOpen(ctx, user.TenantID, userID, now); err != nil {
 		return nil, err
 	} else if expired != nil {
-		emitMfaEnrollmentEvent(deps.Emit, &spec.MfaEnrollmentBypassExpired{At: now, TenantID: user.TenantID, UserID: userID, BypassID: expired.ID})
+		emitMfaEnrollmentEvent(deps.Emit, &domain.MfaEnrollmentBypassExpired{At: now, TenantID: user.TenantID, UserID: userID, BypassID: expired.ID})
 	}
 	if existing, err := deps.BypassRepo.RevokeActive(ctx, user.TenantID, userID, now); err != nil {
 		return nil, err
 	} else if existing != nil {
-		emitMfaEnrollmentEvent(deps.Emit, &spec.MfaEnrollmentBypassRevoked{At: now, TenantID: user.TenantID, ActorUserID: actorID, UserID: userID, BypassID: existing.ID})
+		emitMfaEnrollmentEvent(deps.Emit, &domain.MfaEnrollmentBypassRevoked{At: now, TenantID: user.TenantID, ActorUserID: actorID, UserID: userID, BypassID: existing.ID})
 	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
@@ -77,7 +77,7 @@ func IssueMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, actor
 	if err := deps.BypassRepo.Save(ctx, bypass); err != nil {
 		return nil, err
 	}
-	emitMfaEnrollmentEvent(deps.Emit, &spec.MfaEnrollmentBypassIssued{At: now, TenantID: user.TenantID, ActorUserID: actorID, UserID: userID, BypassID: id, ExpiresAt: bypass.ExpiresAt})
+	emitMfaEnrollmentEvent(deps.Emit, &domain.MfaEnrollmentBypassIssued{At: now, TenantID: user.TenantID, ActorUserID: actorID, UserID: userID, BypassID: id, ExpiresAt: bypass.ExpiresAt})
 	return bypass, nil
 }
 
@@ -90,7 +90,7 @@ func RevokeMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, acto
 		return err
 	}
 	if bypass != nil {
-		emitMfaEnrollmentEvent(deps.Emit, &spec.MfaEnrollmentBypassRevoked{At: now, TenantID: bypass.TenantID, ActorUserID: actorID, UserID: userID, BypassID: bypass.ID})
+		emitMfaEnrollmentEvent(deps.Emit, &domain.MfaEnrollmentBypassRevoked{At: now, TenantID: bypass.TenantID, ActorUserID: actorID, UserID: userID, BypassID: bypass.ID})
 	}
 	return nil
 }

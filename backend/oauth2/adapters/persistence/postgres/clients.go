@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -25,7 +27,7 @@ func clientFromRow(row *sqlcgen.Client) (*domain.OAuth2Client, error) {
 		ClientType:                         spec.ClientType(row.ClientType),
 		TokenEndpointAuthMethod:            domain.TokenEndpointAuthMethod(row.TokenEndpointAuthMethod),
 		Scope:                              row.Scope,
-		IDTokenSignedResponseAlg:           spec.SignatureAlgorithm(row.IDTokenSignedResponseAlg),
+		IDTokenSignedResponseAlg:           signingdomain.SignatureAlgorithm(row.IDTokenSignedResponseAlg),
 		RequirePushedAuthorizationRequests: row.RequirePushedAuthorizationRequests,
 		DpopBoundAccessTokens:              row.DpopBoundAccessTokens,
 		FapiProfile:                        domain.FapiProfile(row.FapiProfile),

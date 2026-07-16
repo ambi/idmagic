@@ -73,7 +73,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	tenantID := tenancy.TenantID(ctx)
 
 	reject := func(actorUserID string, err *OAuthError) (*ExchangeTokenResult, error) {
-		emit(deps.Emit, &spec.TokenExchangeRejected{At: now, TenantID: tenantID, ActorUserID: actorUserID, Reason: err.Code})
+		emit(deps.Emit, &domain.TokenExchangeRejected{At: now, TenantID: tenantID, ActorUserID: actorUserID, Reason: err.Code})
 		return nil, err
 	}
 
@@ -213,11 +213,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return nil, err
 	}
 
-	emit(deps.Emit, &spec.AccessTokenIssued{
+	emit(deps.Emit, &domain.AccessTokenIssued{
 		At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID,
 		UserID: subject.Sub, Scopes: grantedScopes, SenderConstraint: senderConstraintTag(sc),
 	})
-	emit(deps.Emit, &spec.TokenExchanged{
+	emit(deps.Emit, &domain.TokenExchanged{
 		At: now, TenantID: tenantID, ActorUserID: currentActorSub, SubjectUserID: subject.Sub,
 		Audience: resource, DelegationDepth: depth,
 	})

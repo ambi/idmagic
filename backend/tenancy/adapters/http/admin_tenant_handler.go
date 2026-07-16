@@ -13,7 +13,6 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -87,7 +86,7 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantCreated{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
+		d.Emit(&domain.TenantCreated{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, tenant)
 }
@@ -122,7 +121,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantUpdated{
+		d.Emit(&domain.TenantUpdated{
 			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			ChangedFields: tenantChangedFields(input),
 		})
@@ -178,9 +177,9 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	}
 	if d.Emit != nil {
 		if disabled {
-			d.Emit(&spec.TenantDisabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
+			d.Emit(&domain.TenantDisabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 		} else {
-			d.Emit(&spec.TenantEnabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
+			d.Emit(&domain.TenantEnabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 		}
 	}
 	return c.NoContent(http.StatusNoContent)

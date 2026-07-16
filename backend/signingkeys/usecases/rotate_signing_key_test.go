@@ -9,12 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +55,7 @@ func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
 	if len(emitted) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(emitted))
 	}
-	ev, ok := emitted[0].(*spec.SigningKeyRotated)
+	ev, ok := emitted[0].(*signingdomain.SigningKeyRotated)
 	if !ok || ev.PreviousKID != prev.Kid || ev.NewKID != next.Kid {
 		t.Fatalf("unexpected event: %+v", emitted[0])
 	}

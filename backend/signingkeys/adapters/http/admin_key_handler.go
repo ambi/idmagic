@@ -1,7 +1,7 @@
 package http
 
 // SCL interfaces: ListAdminKeys / GetAdminKey / RotateTenantSigningKey /
-// DisableTenantKey / ListTenantKeyHealth (bounded_context: OAuth2)。
+// DisableTenantKey / ListTenantKeyHealth (bounded_context: SigningKeys)。
 // SCL permissions: AdminKeysRead / TenantKeysRotate / TenantKeysDisable は
 // admin / system_admin が自テナントに対して、SystemKeyHealthRead は system_admin。
 // Rotate は tenantId 付きの SigningKeyRotated を emit する。
@@ -11,9 +11,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/signingkeys/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -198,7 +199,7 @@ func (d Deps) requireSystemKeyHealthReader(c *echo.Context) error {
 	return nil
 }
 
-func toAdminKeyResponse(k *ports.SigningKey) AdminKeyResponse {
+func toAdminKeyResponse(k *signingdomain.SigningKey) AdminKeyResponse {
 	return AdminKeyResponse{
 		Kid:       k.Kid,
 		Alg:       string(k.Alg),

@@ -153,6 +153,32 @@ func publicKeyFromJWK(jwk map[string]any) (crypto.PublicKey, error) {
 	return nil, fmt.Errorf("unsupported kty %q", kty)
 }
 
+func rsaPublicJWK(pub *rsa.PublicKey) map[string]any {
+	return map[string]any{
+		"kty": "RSA",
+		"n":   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+		"e":   base64.RawURLEncoding.EncodeToString(new(big.Int).SetInt64(int64(pub.E)).Bytes()),
+	}
+}
+
+func jwkThumbprint(jwk map[string]any) (string, error) {
+	required := []string{"e", "kty", "n"}
+	canonical := map[string]any{}
+	for _, key := range required {
+		value, ok := jwk[key]
+		if !ok {
+			return "", fmt.Errorf("jwk missing required member: %s", key)
+		}
+		canonical[key] = value
+	}
+	encoded, err := json.Marshal(canonical)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return base64.RawURLEncoding.EncodeToString(digest[:]), nil
+}
+
 // verifyJWTSignature は alg ごとに署名を検証する。
 func verifyJWTSignature(parts []string, alg string, pub crypto.PublicKey) error {
 	sig, err := base64.RawURLEncoding.DecodeString(parts[2])

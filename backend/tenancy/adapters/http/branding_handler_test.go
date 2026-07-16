@@ -129,7 +129,7 @@ func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("events=%d want 1", len(*events))
 	}
-	if _, ok := (*events)[0].(*spec.TenantBrandingUpdated); !ok {
+	if _, ok := (*events)[0].(*domain.TenantBrandingUpdated); !ok {
 		t.Fatalf("event type=%T", (*events)[0])
 	}
 

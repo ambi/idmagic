@@ -11,25 +11,24 @@ import (
 	"strconv"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // failureEventTypes / successAuthEventTypes は outcome 属性の分類 (認証系のみ)。
 // spec の EventType 文字列と一致させ、handler の category マップとドリフトしないようにする。
 var failureEventTypes = map[string]bool{
-	(&spec.AuthenticationFailed{}).EventType():     true,
-	(&spec.AuthenticationStepFailed{}).EventType(): true,
-	(&spec.MfaChallengeFailed{}).EventType():       true,
+	"AuthenticationFailed":     true,
+	"AuthenticationStepFailed": true,
+	"MfaChallengeFailed":       true,
 }
 
 var successAuthEventTypes = map[string]bool{
-	(&spec.UserAuthenticated{}).EventType():           true,
-	(&spec.AuthenticationStepCompleted{}).EventType(): true,
-	(&spec.MfaChallengeSucceeded{}).EventType():       true,
-	(&spec.MfaEnrollmentRequired{}).EventType():       true,
-	(&spec.MfaEnrollmentCompleted{}).EventType():      true,
-	(&spec.MfaEnrollmentBypassConsumed{}).EventType(): true,
-	(&spec.SessionStarted{}).EventType():              true,
+	"UserAuthenticated":           true,
+	"AuthenticationStepCompleted": true,
+	"MfaChallengeSucceeded":       true,
+	"MfaEnrollmentRequired":       true,
+	"MfaEnrollmentCompleted":      true,
+	"MfaEnrollmentBypassConsumed": true,
+	"SessionStarted":              true,
 }
 
 // ExtractSearchAttributes は監査イベントレコードから sidecar 検索属性 (attr_name -> 値) を返す。

@@ -105,7 +105,7 @@ func UpdateUserProfile(
 		return nil, nil, err
 	}
 	// self 編集は actorUserID == targetUserID。changedFields の粒度で記録する (ADR-018)。
-	if err := adminEmit(deps.Emit, &spec.UserUpdated{
+	if err := adminEmit(deps.Emit, &idmdomain.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID, ChangedFields: changed,
 	}); err != nil {
 		return nil, nil, err

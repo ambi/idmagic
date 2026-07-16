@@ -13,10 +13,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-var (
-	discoveryCache sync.Map // tenantID -> map[string]any
-	jwksCache      sync.Map // tenantID -> []map[string]any
-)
+var discoveryCache sync.Map // tenantID -> map[string]any
 
 func (d Deps) handleDiscovery(c *echo.Context) error {
 	if d.SCL == nil {
@@ -53,26 +50,4 @@ func (d Deps) handleDiscovery(c *echo.Context) error {
 	// 成功したのでキャッシュを更新
 	discoveryCache.Store(tenantID, doc)
 	return c.JSON(http.StatusOK, doc)
-}
-
-func (d Deps) handleJWKS(c *echo.Context) error {
-	tenantID := support.RequestTenantID(c)
-	keys, err := d.KeyStore.GetAllKeys(c.Request().Context())
-	if err != nil {
-		// DBエラー時はメモリキャッシュからフォールバック
-		if cachedKeys, ok := jwksCache.Load(tenantID); ok {
-			if keysList, ok := cachedKeys.([]map[string]any); ok {
-				return c.JSON(http.StatusOK, map[string]any{"keys": keysList})
-			}
-		}
-		return writeOAuthError(c, err)
-	}
-	jwks := make([]map[string]any, 0, len(keys))
-	for _, k := range keys {
-		jwks = append(jwks, k.PublicJWK)
-	}
-
-	// 成功したのでキャッシュを更新
-	jwksCache.Store(tenantID, jwks)
-	return c.JSON(http.StatusOK, map[string]any{"keys": jwks})
 }

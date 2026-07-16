@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -107,7 +108,7 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 		for i, def := range schema.Attributes {
 			keys[i] = def.Key
 		}
-		d.Emit(&spec.TenantUserAttributeSchemaUpdated{
+		d.Emit(&tenancydomain.TenantUserAttributeSchemaUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, AttributeKeys: keys,
 		})
 	}

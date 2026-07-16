@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -17,7 +18,7 @@ func tenantCtx(id string) context.Context {
 
 // TenantJwksIsolation 不変条件: テナント指定 JWKS に載る鍵はすべて当該テナントに属する。
 func TestInMemoryKeyStoreTenantIsolation(t *testing.T) {
-	ks, err := crypto.NewInMemoryKeyStore()
+	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +38,7 @@ func TestInMemoryKeyStoreTenantIsolation(t *testing.T) {
 	if keyA.TenantID != "tenant-a" || keyB.TenantID != "tenant-b" {
 		t.Fatalf("tenant ids mismatch: a=%s b=%s", keyA.TenantID, keyB.TenantID)
 	}
-	if keyA.Provider != spec.KeyProviderLocal {
+	if keyA.Provider != signingdomain.KeyProviderLocal {
 		t.Fatalf("provider=%s want Local", keyA.Provider)
 	}
 
@@ -57,7 +58,7 @@ func TestInMemoryKeyStoreTenantIsolation(t *testing.T) {
 
 // Rotate は当該テナントの旧鍵を JWKS に残しつつ新鍵を active にする。
 func TestInMemoryKeyStoreRotateKeepsTenantScope(t *testing.T) {
-	ks, err := crypto.NewInMemoryKeyStore()
+	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

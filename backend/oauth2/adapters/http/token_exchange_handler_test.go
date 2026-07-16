@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -45,7 +47,7 @@ func newTokenExchangeServer(t *testing.T) string {
 		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

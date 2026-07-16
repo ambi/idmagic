@@ -6,21 +6,22 @@ import (
 	"errors"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/spec"
+	sharedpostgres "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 // KeyStore (OAuth2: 署名鍵)。tenant scope は ctx (tenancy.TenantID) から解決する。
 // 秘密鍵マテリアルを app DB に置く dev/test 用の provider。本番は VaultTransit を使う。
-type KeyStore struct{ Pool DB }
+type KeyStore struct{ Pool sharedpostgres.DB }
 
-func NewKeyStore(ctx context.Context, pool DB) (*KeyStore, error) {
+func NewKeyStore(ctx context.Context, pool sharedpostgres.DB) (*KeyStore, error) {
 	store := &KeyStore{Pool: pool}
 	// default テナントの active 鍵が無ければ 1 本作る (後方互換)。
 	var exists bool
@@ -37,7 +38,7 @@ func NewKeyStore(ctx context.Context, pool DB) (*KeyStore, error) {
 	return store, nil
 }
 
-func (s *KeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey, error) {
+func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	key, err := scanSigningKey(s.Pool.QueryRow(ctx,
 		keySelect+" WHERE active=TRUE AND tenant_id=$1 LIMIT 1", tenantID))
@@ -51,7 +52,7 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*ports.SigningKey, error) 
 	return key, nil
 }
 
-func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*ports.SigningKey, error) {
+func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	rows, err := s.Pool.Query(ctx,
 		keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 ORDER BY created_at DESC", tenantID)
@@ -59,7 +60,7 @@ func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*ports.SigningKey, error) 
 		return nil, err
 	}
 	defer rows.Close()
-	out := []*ports.SigningKey{}
+	out := []*signingdomain.SigningKey{}
 	for rows.Next() {
 		key, err := scanSigningKey(rows)
 		if err != nil {
@@ -70,18 +71,18 @@ func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*ports.SigningKey, error) 
 	return out, rows.Err()
 }
 
-func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	return scanSigningKey(s.Pool.QueryRow(ctx,
 		keySelect+" WHERE kid=$1 AND tenant_id=$2", kid, tenantID))
 }
 
-func (s *KeyStore) Rotate(ctx context.Context) (*ports.SigningKey, error) {
+func (s *KeyStore) Rotate(ctx context.Context) (*signingdomain.SigningKey, error) {
 	return s.rotateForTenant(ctx, tenancy.TenantID(ctx))
 }
 
 // Disable は ctx テナントの鍵 1 件を archive し JWKS から即時に外す。
-func (s *KeyStore) Disable(ctx context.Context, kid string) (*ports.SigningKey, error) {
+func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	key, err := scanSigningKey(s.Pool.QueryRow(ctx,
 		keySelect+" WHERE kid=$1 AND tenant_id=$2", kid, tenantID))
@@ -97,12 +98,12 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*ports.SigningKey, 
 	return key, nil
 }
 
-func (s *KeyStore) Provider() spec.KeyProvider { return spec.KeyProviderPostgres }
+func (s *KeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderPostgres }
 
 func (s *KeyStore) Healthy(ctx context.Context) bool { return s.Pool.Ping(ctx) == nil }
 
-func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string) (*ports.SigningKey, error) {
-	priv, publicJWK, privateJWK, kid, err := crypto.GenerateRSAJWKPair()
+func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string) (*signingdomain.SigningKey, error) {
+	priv, publicJWK, privateJWK, kid, err := signingcrypto.GenerateRSAJWKPair()
 	if err != nil {
 		return nil, err
 	}
@@ -138,9 +139,9 @@ VALUES ($1,$2,'PS256','Postgres','Signing',$3,$4,TRUE)`,
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return &ports.SigningKey{
-		TenantID: tenantID, Kid: kid, Alg: spec.SigAlgPS256,
-		Provider: spec.KeyProviderPostgres, Usage: spec.KeyUsageSigning,
+	return &signingdomain.SigningKey{
+		TenantID: tenantID, Kid: kid, Alg: signingdomain.SigAlgPS256,
+		Provider: signingdomain.KeyProviderPostgres, Usage: signingdomain.KeyUsageSigning,
 		PrivateKey: priv, PublicKey: &priv.PublicKey,
 		PublicJWK: publicJWK, Active: true, CreatedAt: time.Now().UTC(),
 	}, nil
@@ -148,8 +149,8 @@ VALUES ($1,$2,'PS256','Postgres','Signing',$3,$4,TRUE)`,
 
 const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active,created_at FROM signing_keys`
 
-func scanSigningKey(row RowScanner) (*ports.SigningKey, error) {
-	var key ports.SigningKey
+func scanSigningKey(row sharedpostgres.RowScanner) (*signingdomain.SigningKey, error) {
+	var key signingdomain.SigningKey
 	var publicJSON, privateJSON []byte
 	err := row.Scan(&key.Kid, &key.TenantID, &key.Alg, &key.Provider, &key.Usage,
 		&publicJSON, &privateJSON, &key.Active, &key.CreatedAt)
@@ -166,7 +167,7 @@ func scanSigningKey(row RowScanner) (*ports.SigningKey, error) {
 	if err := json.Unmarshal(privateJSON, &privateJWK); err != nil {
 		return nil, err
 	}
-	pub, priv, err := crypto.ImportRSAJWK(publicJWK, privateJWK)
+	pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
 	if err != nil {
 		return nil, err
 	}

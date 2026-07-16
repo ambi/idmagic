@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -33,7 +35,7 @@ func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	_, err := Authorize(tenantContext("acme"), AuthorizeDeps{
@@ -74,7 +76,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	users := idmmemory.NewUserRepository()
@@ -107,7 +109,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 		GrantTypes:              []spec.GrantType{spec.GrantDeviceCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{},
 		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: domain.FapiNone,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	users := idmmemory.NewUserRepository()

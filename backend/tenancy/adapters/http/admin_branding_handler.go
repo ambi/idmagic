@@ -88,7 +88,7 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 		return d.writeBrandingError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantBrandingUpdated{
+		d.Emit(&domain.TenantBrandingUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID,
 			ChangedFields: brandingChangedFields(input),
 		})
@@ -135,7 +135,7 @@ func (d Deps) handleUploadBrandingAsset(c *echo.Context) error {
 		return d.writeBrandingError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantBrandingUpdated{
+		d.Emit(&domain.TenantBrandingUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, ChangedFields: []string{string(kind)},
 		})
 	}
@@ -161,7 +161,7 @@ func (d Deps) handleDeleteBrandingAsset(c *echo.Context) error {
 		return d.writeBrandingError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.TenantBrandingUpdated{
+		d.Emit(&domain.TenantBrandingUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, ChangedFields: []string{string(kind)},
 		})
 	}

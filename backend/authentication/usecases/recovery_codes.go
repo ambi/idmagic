@@ -78,7 +78,7 @@ func GenerateRecoveryCodes(
 		return nil, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.RecoveryCodesGenerated{
+		deps.Emit(&domain.RecoveryCodesGenerated{
 			At: now, TenantID: user.TenantID, UserID: user.ID, Count: len(plain),
 		})
 	}
@@ -101,7 +101,7 @@ func RevokeRecoveryCodes(
 		return err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.RecoveryCodesRevoked{At: now, TenantID: user.TenantID, UserID: user.ID})
+		deps.Emit(&domain.RecoveryCodesRevoked{At: now, TenantID: user.TenantID, UserID: user.ID})
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func ConsumeRecoveryCode(
 	}
 	if deps.Emit != nil {
 		count := remaining
-		deps.Emit(&spec.BackupCodeConsumed{
+		deps.Emit(&domain.BackupCodeConsumed{
 			At: now, TenantID: user.TenantID, UserID: user.ID, RemainingCount: &count,
 		})
 	}

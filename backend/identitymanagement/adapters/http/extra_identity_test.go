@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -100,7 +102,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
 		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 	})
 
 	// --- 1. Agent 1 (Create, Update, Bind, Unbind, Delete) ---

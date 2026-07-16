@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmpg "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
@@ -81,7 +83,7 @@ func seedClient(t *testing.T, db sharedpg.DB, tenantID string) *domain.OAuth2Cli
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid offline_access",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 		UpdatedAt:                now,

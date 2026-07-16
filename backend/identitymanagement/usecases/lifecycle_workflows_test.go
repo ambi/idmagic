@@ -166,7 +166,7 @@ func TestDisableLifecycleWorkflowEmitsRunCanceledForQueuedRuns(t *testing.T) {
 	if len(events) != 2 || events[0].EventType() != "LifecycleWorkflowDisabled" || events[1].EventType() != "LifecycleWorkflowRunCanceled" {
 		t.Fatalf("events = %#v, want [LifecycleWorkflowDisabled LifecycleWorkflowRunCanceled]", events)
 	}
-	canceledEvent, ok := events[1].(*spec.LifecycleWorkflowRunCanceled)
+	canceledEvent, ok := events[1].(*idmdomain.LifecycleWorkflowRunCanceled)
 	if !ok || canceledEvent.RunID != run.ID || canceledEvent.TargetUserID != run.TargetUserID {
 		t.Fatalf("canceled event = %#v", events[1])
 	}

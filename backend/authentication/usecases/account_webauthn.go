@@ -15,7 +15,6 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const webAuthnRegistrationKeyPrefix = "reg:"
@@ -112,7 +111,7 @@ func FinishWebAuthnRegistration(
 		return err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.WebAuthnCredentialRegistered{At: now, TenantID: user.TenantID, UserID: user.ID})
+		deps.Emit(&domain.WebAuthnCredentialRegistered{At: now, TenantID: user.TenantID, UserID: user.ID})
 	}
 	return nil
 }
@@ -145,7 +144,7 @@ func RemoveWebAuthnCredential(
 		return err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.WebAuthnCredentialRemoved{At: now, TenantID: user.TenantID, UserID: user.ID})
+		deps.Emit(&domain.WebAuthnCredentialRemoved{At: now, TenantID: user.TenantID, UserID: user.ID})
 	}
 	return nil
 }

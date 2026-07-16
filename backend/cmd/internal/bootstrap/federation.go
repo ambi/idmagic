@@ -10,11 +10,12 @@ import (
 	"math/big"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
@@ -54,14 +55,14 @@ func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 		Wtrealm:     "urn:idmagic:demo-rp",
 		DisplayName: "Demo WS-Federation RP",
 		ReplyURLs:   []string{"https://rp.example/wsfed"},
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{
 				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
 				SourceAttribute: "sub",
 			},
-			Rules: []spec.ClaimMappingRule{
-				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: spec.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
-				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: spec.ClaimSourceUserAttribute, SourceKey: "email"},
+			Rules: []claimdomain.ClaimMappingRule{
+				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
+				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "email"},
 			},
 		},
 		CreatedAt: now,
@@ -77,14 +78,14 @@ func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProv
 		EntityID:    "urn:idmagic:demo-sp",
 		DisplayName: "Demo SAML SP",
 		ACSURLs:     []string{"https://sp.example/saml/acs"},
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{
 				Format:          samldomain.SamlNameIDFormatPersistent,
 				SourceAttribute: "sub",
 			},
-			Rules: []spec.ClaimMappingRule{
-				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: spec.ClaimSourceUserAttribute, SourceKey: "email"},
-				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Source: spec.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
+			Rules: []claimdomain.ClaimMappingRule{
+				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "email"},
+				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
 			},
 		},
 		SignAssertion: true,

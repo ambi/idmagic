@@ -30,6 +30,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	sharedvalkey "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
 	"github.com/ambi/idmagic/backend/shared/resilience"
+	"github.com/ambi/idmagic/backend/signingkeys"
+	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
@@ -96,7 +98,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		return nil, err
 	}
 
-	keyStore, err := postgres.NewKeyStore(ctx, resilientDB)
+	keyStore, err := signingpostgres.NewKeyStore(ctx, resilientDB)
 	if err != nil {
 		pool.Close()
 		_ = valkeyClient.Close()
@@ -159,7 +161,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			AccessTokenDenylist:        &oauth2valkey.AccessTokenDenylist{Client: valkeyClient},
 			EventSink:                  sink,
 		},
-		KeyStore: selectKeyStore(keyStore),
+		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
 		Audit: audit.Module{
 			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},
 			TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),

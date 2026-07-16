@@ -135,7 +135,7 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 		return err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.MfaFactorEnrolled{
+		deps.Emit(&domain.MfaFactorEnrolled{
 			At: now, TenantID: user.TenantID, UserID: user.ID, FactorType: spec.MfaFactorTOTP,
 		})
 	}
@@ -175,7 +175,7 @@ func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFac
 		return err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.MfaFactorRemoved{
+		deps.Emit(&domain.MfaFactorRemoved{
 			At: now, TenantID: user.TenantID, UserID: user.ID, FactorType: spec.MfaFactorTOTP,
 		})
 	}

@@ -14,6 +14,9 @@ import (
 	"testing"
 	"time"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -21,23 +24,22 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	signinghttp "github.com/ambi/idmagic/backend/signingkeys/adapters/http"
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
 
-func newKeyAdminServer(t *testing.T, actor *idmdomain.User) (*echo.Echo, *crypto.InMemoryKeyStore, *[]spec.DomainEvent) {
+func newKeyAdminServer(t *testing.T, actor *idmdomain.User) (*echo.Echo, *signingcrypto.InMemoryKeyStore, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmmemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +142,7 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Keys []oauth2http.AdminKeyResponse `json:"keys"`
+		Keys []signinghttp.AdminKeyResponse `json:"keys"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -217,7 +219,7 @@ func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body oauth2http.AdminRotateKeyResponse
+	var body signinghttp.AdminRotateKeyResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -233,9 +235,9 @@ func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("expected 1 emitted event, got %d", len(*events))
 	}
-	rotated, ok := (*events)[0].(*spec.SigningKeyRotated)
+	rotated, ok := (*events)[0].(*signingdomain.SigningKeyRotated)
 	if !ok {
-		t.Fatalf("event type=%T, want *spec.SigningKeyRotated", (*events)[0])
+		t.Fatalf("event type=%T, want *signingdomain.SigningKeyRotated", (*events)[0])
 	}
 	// wi-36 から繰り延べた残課題: 回転イベントは帰属テナントを持つ。
 	if rotated.TenantID != tenancydomain.DefaultTenantID {
@@ -251,7 +253,7 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Tenants []oauth2http.TenantKeyHealthResponse `json:"tenants"`
+		Tenants []signinghttp.TenantKeyHealthResponse `json:"tenants"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
@@ -260,7 +262,7 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 		t.Fatal("health must list at least the default tenant")
 	}
 	for _, h := range body.Tenants {
-		if h.Provider == "" || h.Usage != string(spec.KeyUsageSigning) {
+		if h.Provider == "" || h.Usage != string(signingdomain.KeyUsageSigning) {
 			t.Fatalf("unexpected health entry: %+v", h)
 		}
 	}

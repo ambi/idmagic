@@ -9,8 +9,9 @@ import (
 	"context"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const (
@@ -40,7 +41,7 @@ func ListSignInActivity(
 	limit = clampSignInActivityLimit(limit)
 	records, err := repo.List(ctx, auditports.AuditEventQuery{
 		TenantID: tenantID,
-		Type:     (&spec.UserAuthenticated{}).EventType(),
+		Type:     (&authdomain.UserAuthenticated{}).EventType(),
 		UserID:   sub,
 		Limit:    limit,
 	})

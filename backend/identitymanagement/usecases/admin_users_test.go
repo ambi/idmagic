@@ -210,7 +210,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if last, ok := events[len(events)-1].(*spec.UserDeleted); !ok || last.TargetUserID != user.ID || last.Reason != "leaving company" {
+	if last, ok := events[len(events)-1].(*idmdomain.UserDeleted); !ok || last.TargetUserID != user.ID || last.Reason != "leaving company" {
 		t.Fatalf("expected UserDeleted event with target=%s reason set, got %+v", user.ID, events[len(events)-1])
 	}
 	tombstone, err := userRepo.FindBySubIncludingDeleted(ctx, user.ID)
@@ -344,7 +344,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	last, ok := events[len(events)-1].(*spec.UserSoftDeleted)
+	last, ok := events[len(events)-1].(*idmdomain.UserSoftDeleted)
 	if !ok || last.TargetUserID != "alice-1" || last.Reason != "maybe leaving" {
 		t.Fatalf("expected UserSoftDeleted with target/reason, got %+v", events[len(events)-1])
 	}
@@ -473,7 +473,7 @@ func TestPurgeExpiredSoftDeletedAnonymizesAfterGrace(t *testing.T) {
 	if tombstone == nil || !tombstone.IsDeleted() {
 		t.Fatalf("expected tombstone after auto-purge, got %+v", tombstone)
 	}
-	last, ok := events[len(events)-1].(*spec.UserDeleted)
+	last, ok := events[len(events)-1].(*idmdomain.UserDeleted)
 	if !ok || last.Reason != "auto_purge" {
 		t.Fatalf("expected UserDeleted(auto_purge), got %+v", events[len(events)-1])
 	}

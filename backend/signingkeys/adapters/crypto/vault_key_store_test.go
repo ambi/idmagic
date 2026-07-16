@@ -11,8 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	adaptercrypto "github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/spec"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
+	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 )
 
 // fakeTransit は Vault Transit を in-memory の RSA 鍵で模擬する。
@@ -91,7 +92,7 @@ func TestVaultKeyStoreSignsViaEngineAndVerifies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if key.Provider != spec.KeyProviderVaultTransit {
+	if key.Provider != signingdomain.KeyProviderVaultTransit {
 		t.Fatalf("provider=%s want VaultTransit", key.Provider)
 	}
 	// 秘密鍵はアプリ側に無い (Vault 内)。crypto.Signer 経由で署名を委譲する。

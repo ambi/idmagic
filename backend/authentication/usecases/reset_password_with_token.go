@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -111,9 +113,9 @@ func ResetPasswordWithToken(
 		return nil, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&spec.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
+		deps.Emit(&authdomain.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
 		if clearedUpdatePassword {
-			deps.Emit(&spec.UserRequiredActionCleared{
+			deps.Emit(&idmdomain.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
 				Action: string(idmdomain.RequiredActionUpdatePassword),
 			})

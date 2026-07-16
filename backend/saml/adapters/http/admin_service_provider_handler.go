@@ -7,24 +7,25 @@ import (
 	"strings"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
 
 type serviceProviderRequest struct {
-	EntityID                string                  `json:"entity_id"`
-	DisplayName             string                  `json:"display_name"`
-	ACSURLs                 []string                `json:"acs_urls"`
-	SLOURL                  string                  `json:"slo_url"`
-	Audience                string                  `json:"audience"`
-	ClaimPolicy             spec.ClaimMappingPolicy `json:"claim_policy"`
-	SignAssertion           *bool                   `json:"sign_assertion"`
-	SignResponse            bool                    `json:"sign_response"`
-	WantAuthnRequestsSigned bool                    `json:"want_authn_requests_signed"`
-	SigningCertificatePEM   string                  `json:"authn_request_signing_certificate_pem"`
+	EntityID                string                         `json:"entity_id"`
+	DisplayName             string                         `json:"display_name"`
+	ACSURLs                 []string                       `json:"acs_urls"`
+	SLOURL                  string                         `json:"slo_url"`
+	Audience                string                         `json:"audience"`
+	ClaimPolicy             claimdomain.ClaimMappingPolicy `json:"claim_policy"`
+	SignAssertion           *bool                          `json:"sign_assertion"`
+	SignResponse            bool                           `json:"sign_response"`
+	WantAuthnRequestsSigned bool                           `json:"want_authn_requests_signed"`
+	SigningCertificatePEM   string                         `json:"authn_request_signing_certificate_pem"`
 }
 
 func (r serviceProviderRequest) validate() error {

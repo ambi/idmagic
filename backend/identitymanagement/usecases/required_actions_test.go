@@ -130,7 +130,7 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 	}
 	var sawCleared bool
 	for _, e := range *events {
-		if cleared, ok := e.(*spec.UserRequiredActionCleared); ok {
+		if cleared, ok := e.(*idmdomain.UserRequiredActionCleared); ok {
 			sawCleared = true
 			if cleared.ActorUserID != user.ID {
 				t.Fatalf("auto-clear actorUserID=%s, want self %s", cleared.ActorUserID, user.ID)

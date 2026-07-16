@@ -17,6 +17,9 @@ import (
 	"testing"
 	"time"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -80,7 +83,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
@@ -96,7 +99,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
@@ -156,7 +159,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
@@ -227,7 +230,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		}
 	}
 
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
@@ -1138,7 +1141,7 @@ func mustJSON(t *testing.T, value any) string {
 func TestHealthProbes(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmmemory.NewUserRepository()
-	keyStore, _ := crypto.NewInMemoryKeyStore()
+	keyStore, _ := signingcrypto.NewInMemoryKeyStore()
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
 	hasher := crypto.NewArgon2idPasswordHasher()

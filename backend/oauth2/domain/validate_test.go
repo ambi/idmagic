@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -19,7 +21,7 @@ func TestValidateHappyAndFailure(t *testing.T) {
 		ClientID: "demo", ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{"https://app.example.com/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantAuthorizationCode}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: AuthMethodClientSecretBasic, IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		TokenEndpointAuthMethod: AuthMethodClientSecretBasic, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile: FapiNone, CreatedAt: now, UpdatedAt: now,
 	}
 	// authorization_code グラントだが redirect_uris が無いので失敗する。

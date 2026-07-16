@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	"github.com/ambi/idmagic/backend/oauth2"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -81,13 +83,13 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	rpRepo.Seed(&feddomain.WsFedRelyingParty{
 		Wtrealm:   "urn:idmagic:demo-rp",
 		ReplyURLs: []string{"https://rp.example/wsfed"},
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{
 				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
 				SourceAttribute: "sub",
 			},
-			Rules: []spec.ClaimMappingRule{
-				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: spec.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
+			Rules: []claimdomain.ClaimMappingRule{
+				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
 			},
 		},
 	})

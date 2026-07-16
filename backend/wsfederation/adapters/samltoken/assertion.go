@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
@@ -54,17 +56,17 @@ const (
 
 // AssertionInput は 1 つの SAML assertion を組み立てるための入力。
 type AssertionInput struct {
-	Version      SAMLVersion                // SAML バージョン (既定 2.0)。
-	Issuer       string                     // IdP の entityID (issuer)。
-	Audience     string                     // RP の entityID / wtrealm。
-	Recipient    string                     // 任意。bearer の Recipient (ACS / wreply)。
-	InResponseTo string                     // 任意。SP-initiated の AuthnRequest ID (SAML 2.0 のみ)。
-	IssueInstant time.Time                  // 発行時刻。
-	NotBefore    time.Time                  // 有効期間の開始。
-	NotOnOrAfter time.Time                  // 有効期間の終了。
-	AuthnInstant time.Time                  // 認証時刻。
-	AuthnMethod  domain.AuthnMethodClass    // 認証方式クラス (wauth 尊重結果)。
-	Result       domain.ClaimIssuanceResult // claim 発行エンジンの出力 (NameID + claims)。
+	Version      SAMLVersion                       // SAML バージョン (既定 2.0)。
+	Issuer       string                            // IdP の entityID (issuer)。
+	Audience     string                            // RP の entityID / wtrealm。
+	Recipient    string                            // 任意。bearer の Recipient (ACS / wreply)。
+	InResponseTo string                            // 任意。SP-initiated の AuthnRequest ID (SAML 2.0 のみ)。
+	IssueInstant time.Time                         // 発行時刻。
+	NotBefore    time.Time                         // 有効期間の開始。
+	NotOnOrAfter time.Time                         // 有効期間の終了。
+	AuthnInstant time.Time                         // 認証時刻。
+	AuthnMethod  domain.AuthnMethodClass           // 認証方式クラス (wauth 尊重結果)。
+	Result       claimusecases.ClaimIssuanceResult // claim 発行エンジンの出力 (NameID + claims)。
 }
 
 func (in AssertionInput) validate() error {

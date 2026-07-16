@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -65,7 +67,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 		CreatedAt:               time.Now().UTC(),
 	})
 
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

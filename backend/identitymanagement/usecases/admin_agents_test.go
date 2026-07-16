@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -32,7 +34,7 @@ func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent
 		RedirectURIs:             []string{"https://app.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: spec.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
 	userRepo.Seed(&idmdomain.User{
 		ID: "operator", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "operator",

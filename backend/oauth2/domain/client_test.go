@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -14,7 +16,7 @@ func TestClientValidateRequiresGrantTypes(t *testing.T) {
 		RedirectURIs:             []string{"https://app.example.com/cb"},
 		GrantTypes:               nil,
 		TokenEndpointAuthMethod:  AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	}

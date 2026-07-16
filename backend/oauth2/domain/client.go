@@ -9,6 +9,8 @@ import (
 	"slices"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	z "github.com/Oudwins/zog"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -43,23 +45,23 @@ const (
 func (f FapiProfile) Valid() bool { return f == FapiNone || f == FapiSecurityProfileV2 }
 
 type OAuth2Client struct {
-	TenantID                           string                  `json:"tenant_id"`
-	ClientID                           string                  `json:"client_id"`
-	ClientSecretHash                   *string                 `json:"client_secret_hash,omitempty"`
-	ClientName                         *string                 `json:"client_name,omitempty"`
-	ClientType                         spec.ClientType         `json:"client_type"`
-	RedirectURIs                       []string                `json:"redirect_uris"`
-	GrantTypes                         []spec.GrantType        `json:"grant_types"`
-	ResponseTypes                      []spec.ResponseType     `json:"response_types"`
-	TokenEndpointAuthMethod            TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	Scope                              string                  `json:"scope"`
-	JWKS                               map[string]any          `json:"jwks,omitempty"`
-	JwksURI                            *string                 `json:"jwks_uri,omitempty"`
-	TlsClientAuthSubjectDN             *string                 `json:"tls_client_auth_subject_dn,omitempty"`
-	IDTokenSignedResponseAlg           spec.SignatureAlgorithm `json:"id_token_signed_response_alg"`
-	RequirePushedAuthorizationRequests bool                    `json:"require_pushed_authorization_requests"`
-	DpopBoundAccessTokens              bool                    `json:"dpop_bound_access_tokens"`
-	FapiProfile                        FapiProfile             `json:"fapi_profile"`
+	TenantID                           string                           `json:"tenant_id"`
+	ClientID                           string                           `json:"client_id"`
+	ClientSecretHash                   *string                          `json:"client_secret_hash,omitempty"`
+	ClientName                         *string                          `json:"client_name,omitempty"`
+	ClientType                         spec.ClientType                  `json:"client_type"`
+	RedirectURIs                       []string                         `json:"redirect_uris"`
+	GrantTypes                         []spec.GrantType                 `json:"grant_types"`
+	ResponseTypes                      []spec.ResponseType              `json:"response_types"`
+	TokenEndpointAuthMethod            TokenEndpointAuthMethod          `json:"token_endpoint_auth_method"`
+	Scope                              string                           `json:"scope"`
+	JWKS                               map[string]any                   `json:"jwks,omitempty"`
+	JwksURI                            *string                          `json:"jwks_uri,omitempty"`
+	TlsClientAuthSubjectDN             *string                          `json:"tls_client_auth_subject_dn,omitempty"`
+	IDTokenSignedResponseAlg           signingdomain.SignatureAlgorithm `json:"id_token_signed_response_alg"`
+	RequirePushedAuthorizationRequests bool                             `json:"require_pushed_authorization_requests"`
+	DpopBoundAccessTokens              bool                             `json:"dpop_bound_access_tokens"`
+	FapiProfile                        FapiProfile                      `json:"fapi_profile"`
 	// FirstParty は IdP 自身が所有する信頼済みクライアント (管理コンソール /
 	// アカウントポータル) を表す。resource owner が IdP 利用者自身であるため、
 	// authorization_code フローで consent 画面をスキップする (ADR-061)。
@@ -96,8 +98,8 @@ var oauth2ClientSchema = z.Struct(z.Shape{
 		func(value *TokenEndpointAuthMethod, _ z.Ctx) bool { return value.Valid() },
 		z.Message("token_endpoint_auth_method is not in enum"),
 	).Required(),
-	"IDTokenSignedResponseAlg": z.StringLike[spec.SignatureAlgorithm]().TestFunc(
-		func(value *spec.SignatureAlgorithm, _ z.Ctx) bool { return value.Valid() },
+	"IDTokenSignedResponseAlg": z.StringLike[signingdomain.SignatureAlgorithm]().TestFunc(
+		func(value *signingdomain.SignatureAlgorithm, _ z.Ctx) bool { return value.Valid() },
 		z.Message("id_token_signed_response_alg is not in enum"),
 	).Required(),
 	"FapiProfile": z.StringLike[FapiProfile]().TestFunc(

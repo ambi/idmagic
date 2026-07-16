@@ -6,8 +6,18 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 )
+
+type EntraFederationProfile struct {
+	Domain                string `json:"domain"`
+	IssuerURI             string `json:"issuer_uri"`
+	SourceAnchorAttribute string `json:"source_anchor_attribute"`
+	ImmutableIDAttribute  string `json:"immutable_id_attribute"`
+	PassiveLogOnURI       string `json:"passive_logon_uri,omitempty"`
+	ActiveLogOnURI        string `json:"active_logon_uri,omitempty"`
+	MetadataExchangeURI   string `json:"metadata_exchange_uri,omitempty"`
+}
 
 const (
 	EntraUPNClaim                = "http://schemas.xmlsoap.org/claims/UPN"
@@ -19,21 +29,21 @@ const (
 )
 
 // BuildEntraClaimPolicy は Microsoft Entra domain federation 用 claim preset を返す。
-func BuildEntraClaimPolicy() spec.ClaimMappingPolicy {
-	return spec.ClaimMappingPolicy{
-		NameID: spec.NameIdConfiguration{
+func BuildEntraClaimPolicy() claimdomain.ClaimMappingPolicy {
+	return claimdomain.ClaimMappingPolicy{
+		NameID: claimdomain.NameIdConfiguration{
 			Format:          EntraPersistentNameIDFormat,
 			SourceAttribute: EntraImmutableIDAttribute,
 		},
-		Rules: []spec.ClaimMappingRule{
-			{ClaimType: EntraUPNClaim, Source: spec.ClaimSourceUserAttribute, SourceKey: DefaultEntraUPNAttribute, Required: true},
-			{ClaimType: EntraNameIdentifierClaim, Source: spec.ClaimSourceNameID, Required: true},
+		Rules: []claimdomain.ClaimMappingRule{
+			{ClaimType: EntraUPNClaim, Source: claimdomain.ClaimSourceUserAttribute, SourceKey: DefaultEntraUPNAttribute, Required: true},
+			{ClaimType: EntraNameIdentifierClaim, Source: claimdomain.ClaimSourceNameID, Required: true},
 		},
 	}
 }
 
 // ApplyEntraProfile derives the ImmutableID synthetic attribute required by Entra.
-func ApplyEntraProfile(attrs Attributes, profile *spec.EntraFederationProfile) (Attributes, error) {
+func ApplyEntraProfile(attrs claimdomain.Attributes, profile *EntraFederationProfile) (claimdomain.Attributes, error) {
 	if profile == nil {
 		return attrs, nil
 	}
@@ -41,7 +51,7 @@ func ApplyEntraProfile(attrs Attributes, profile *spec.EntraFederationProfile) (
 	if sourceAttr == "" {
 		sourceAttr = DefaultEntraSourceAnchorAttr
 	}
-	raw, ok := firstNonEmpty(attrs[sourceAttr])
+	raw, ok := firstNonEmptyAttribute(attrs[sourceAttr])
 	if !ok {
 		return nil, fmt.Errorf("entra federation: sourceAnchor attribute %q has no value", sourceAttr)
 	}
@@ -53,12 +63,21 @@ func ApplyEntraProfile(attrs Attributes, profile *spec.EntraFederationProfile) (
 	if targetAttr == "" {
 		targetAttr = EntraImmutableIDAttribute
 	}
-	out := make(Attributes, len(attrs)+1)
+	out := make(claimdomain.Attributes, len(attrs)+1)
 	for key, values := range attrs {
 		out[key] = append([]string(nil), values...)
 	}
 	out[targetAttr] = []string{immutableID}
 	return out, nil
+}
+
+func firstNonEmptyAttribute(values []string) (string, bool) {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value, true
+		}
+	}
+	return "", false
 }
 
 // NormalizeImmutableID returns the Azure AD ImmutableID base64 value for a sourceAnchor.

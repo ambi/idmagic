@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
@@ -99,8 +101,8 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 		EntityID:      "https://sp.example.com",
 		ACSURLs:       []string{"https://sp.example.com/acs"},
 		SignAssertion: true,
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{
 				Format:          samldomain.SamlNameIDFormatPersistent,
 				SourceAttribute: "sub",
 			},
@@ -278,7 +280,7 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 		SignAssertion:                     true,
 		WantAuthnRequestsSigned:           true,
 		AuthnRequestSigningCertificatePEM: certPEM(t),
-		ClaimPolicy: spec.ClaimMappingPolicy{NameID: spec.NameIdConfiguration{
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub",
 		}},
 	})
@@ -308,8 +310,8 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 		EntityID: "https://sp.example.com",
 		ACSURLs:  []string{"https://sp.example.com/acs"},
 		SLOURL:   "https://sp.example.com/saml/slo",
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
 		},
 	})
 	e := echo.New()
@@ -347,8 +349,8 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 		EntityID: "https://sp.example.com",
 		ACSURLs:  []string{"https://sp.example.com/acs"},
 		SLOURL:   "https://sp.example.com/saml/slo",
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
 		},
 	})
 	e := echo.New()

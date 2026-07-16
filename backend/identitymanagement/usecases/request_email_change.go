@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -107,7 +109,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 		),
 	})
 	if deps.Emit != nil {
-		deps.Emit(&spec.EmailChangeRequested{
+		deps.Emit(&idmdomain.EmailChangeRequested{
 			At: now, TenantID: user.TenantID, UserID: user.ID, NewEmailHash: sha256Hex(newEmail),
 		})
 		deps.Emit(&spec.EmailSent{

@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const sampleAuthnRequest = `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +
@@ -23,8 +24,8 @@ func sampleServiceProvider() samldomain.SamlServiceProvider {
 		TenantID: "acme",
 		EntityID: "https://sp.example.com",
 		ACSURLs:  []string{"https://sp.example.com/acs", "https://sp.example.com/acs2"},
-		ClaimPolicy: spec.ClaimMappingPolicy{
-			NameID: spec.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent},
+		ClaimPolicy: claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent},
 		},
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -40,7 +42,7 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 	}
 	email := strings.ToLower(strings.TrimSpace(in.Email))
 	if deps.Emit != nil {
-		deps.Emit(&spec.PasswordResetRequested{At: now, TenantID: tenancy.TenantID(ctx), EmailHash: sha256Hex(email)})
+		deps.Emit(&authdomain.PasswordResetRequested{At: now, TenantID: tenancy.TenantID(ctx), EmailHash: sha256Hex(email)})
 	}
 	if email == "" {
 		return nil

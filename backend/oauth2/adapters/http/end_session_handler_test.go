@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -41,7 +43,7 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodNone,
 		Scope:                    "openid",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})

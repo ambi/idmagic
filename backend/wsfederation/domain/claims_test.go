@@ -3,7 +3,8 @@ package domain
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 )
 
 const (
@@ -15,23 +16,23 @@ const (
 	persistent = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
 )
 
-func nameIDOnly() spec.ClaimMappingPolicy {
-	return spec.ClaimMappingPolicy{
-		NameID: spec.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
+func nameIDOnly() claimdomain.ClaimMappingPolicy {
+	return claimdomain.ClaimMappingPolicy{
+		NameID: claimdomain.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
 	}
 }
 
 func TestIssueClaims_HappyPath(t *testing.T) {
-	policy := spec.ClaimMappingPolicy{
-		NameID: spec.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
-		Rules: []spec.ClaimMappingRule{
-			{ClaimType: upnClaim, Source: spec.ClaimSourceUserAttribute, SourceKey: "upn", Required: true},
-			{ClaimType: groupClaim, Source: spec.ClaimSourceUserAttribute, SourceKey: "groups"},
-			{ClaimType: tenantClm, Source: spec.ClaimSourceFixed, FixedValue: "contoso"},
-			{ClaimType: nameIDClm, Source: spec.ClaimSourceNameID},
+	policy := claimdomain.ClaimMappingPolicy{
+		NameID: claimdomain.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
+		Rules: []claimdomain.ClaimMappingRule{
+			{ClaimType: upnClaim, Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "upn", Required: true},
+			{ClaimType: groupClaim, Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "groups"},
+			{ClaimType: tenantClm, Source: claimdomain.ClaimSourceFixed, FixedValue: "contoso"},
+			{ClaimType: nameIDClm, Source: claimdomain.ClaimSourceNameID},
 		},
 	}
-	attrs := Attributes{
+	attrs := claimdomain.Attributes{
 		"object_guid": {"AAECAwQFBgc="},
 		"upn":         {"alice@contoso.com"},
 		"groups":      {"admins", "users"},
@@ -39,7 +40,7 @@ func TestIssueClaims_HappyPath(t *testing.T) {
 		"phone": {"+1-555-0100"},
 	}
 
-	got, err := IssueClaims(policy, attrs)
+	got, err := claimusecases.IssueClaims(policy, attrs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,12 +70,12 @@ func TestIssueClaims_HappyPath(t *testing.T) {
 
 func TestIssueClaims_OptionalMissingIsSkipped(t *testing.T) {
 	policy := nameIDOnly()
-	policy.Rules = []spec.ClaimMappingRule{
-		{ClaimType: emailClaim, Source: spec.ClaimSourceUserAttribute, SourceKey: "email"}, // optional, missing
+	policy.Rules = []claimdomain.ClaimMappingRule{
+		{ClaimType: emailClaim, Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "email"}, // optional, missing
 	}
-	attrs := Attributes{"object_guid": {"id-1"}}
+	attrs := claimdomain.Attributes{"object_guid": {"id-1"}}
 
-	got, err := IssueClaims(policy, attrs)
+	got, err := claimusecases.IssueClaims(policy, attrs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,33 +86,33 @@ func TestIssueClaims_OptionalMissingIsSkipped(t *testing.T) {
 
 func TestIssueClaims_RequiredMissingIsRejected(t *testing.T) {
 	policy := nameIDOnly()
-	policy.Rules = []spec.ClaimMappingRule{
-		{ClaimType: upnClaim, Source: spec.ClaimSourceUserAttribute, SourceKey: "upn", Required: true},
+	policy.Rules = []claimdomain.ClaimMappingRule{
+		{ClaimType: upnClaim, Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "upn", Required: true},
 	}
-	attrs := Attributes{"object_guid": {"id-1"}} // upn 欠落
+	attrs := claimdomain.Attributes{"object_guid": {"id-1"}} // upn 欠落
 
-	if _, err := IssueClaims(policy, attrs); err == nil {
+	if _, err := claimusecases.IssueClaims(policy, attrs); err == nil {
 		t.Fatal("expected error for missing required claim, got nil")
 	}
 }
 
 func TestIssueClaims_NameIDSourceMissingIsRejected(t *testing.T) {
-	attrs := Attributes{"upn": {"alice@contoso.com"}} // object_guid 欠落
-	if _, err := IssueClaims(nameIDOnly(), attrs); err == nil {
+	attrs := claimdomain.Attributes{"upn": {"alice@contoso.com"}} // object_guid 欠落
+	if _, err := claimusecases.IssueClaims(nameIDOnly(), attrs); err == nil {
 		t.Fatal("expected error for missing NameID source, got nil")
 	}
 }
 
 func TestIssueClaims_EmptyValuesTreatedAsMissing(t *testing.T) {
 	policy := nameIDOnly()
-	policy.Rules = []spec.ClaimMappingRule{
-		{ClaimType: upnClaim, Source: spec.ClaimSourceUserAttribute, SourceKey: "upn"},
+	policy.Rules = []claimdomain.ClaimMappingRule{
+		{ClaimType: upnClaim, Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "upn"},
 	}
-	attrs := Attributes{
+	attrs := claimdomain.Attributes{
 		"object_guid": {"id-1"},
 		"upn":         {"  ", ""}, // 空白のみ → 値なし扱い
 	}
-	got, err := IssueClaims(policy, attrs)
+	got, err := claimusecases.IssueClaims(policy, attrs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,30 +122,30 @@ func TestIssueClaims_EmptyValuesTreatedAsMissing(t *testing.T) {
 }
 
 func TestIssueClaims_PolicyValidation(t *testing.T) {
-	tests := map[string]spec.ClaimMappingPolicy{
+	tests := map[string]claimdomain.ClaimMappingPolicy{
 		"empty name_id format": {
-			NameID: spec.NameIdConfiguration{SourceAttribute: "object_guid"},
+			NameID: claimdomain.NameIdConfiguration{SourceAttribute: "object_guid"},
 		},
 		"empty name_id source": {
-			NameID: spec.NameIdConfiguration{Format: persistent},
+			NameID: claimdomain.NameIdConfiguration{Format: persistent},
 		},
 		"empty claim_type": {
-			NameID: spec.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
-			Rules:  []spec.ClaimMappingRule{{Source: spec.ClaimSourceFixed, FixedValue: "x"}},
+			NameID: claimdomain.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
+			Rules:  []claimdomain.ClaimMappingRule{{Source: claimdomain.ClaimSourceFixed, FixedValue: "x"}},
 		},
 		"unknown source": {
-			NameID: spec.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
-			Rules:  []spec.ClaimMappingRule{{ClaimType: upnClaim, Source: "ldap_lookup"}},
+			NameID: claimdomain.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
+			Rules:  []claimdomain.ClaimMappingRule{{ClaimType: upnClaim, Source: "ldap_lookup"}},
 		},
 		"user_attribute without source_key": {
-			NameID: spec.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
-			Rules:  []spec.ClaimMappingRule{{ClaimType: upnClaim, Source: spec.ClaimSourceUserAttribute}},
+			NameID: claimdomain.NameIdConfiguration{Format: persistent, SourceAttribute: "object_guid"},
+			Rules:  []claimdomain.ClaimMappingRule{{ClaimType: upnClaim, Source: claimdomain.ClaimSourceUserAttribute}},
 		},
 	}
-	attrs := Attributes{"object_guid": {"id-1"}}
+	attrs := claimdomain.Attributes{"object_guid": {"id-1"}}
 	for name, policy := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := IssueClaims(policy, attrs); err == nil {
+			if _, err := claimusecases.IssueClaims(policy, attrs); err == nil {
 				t.Fatalf("%s: expected error, got nil", name)
 			}
 		})

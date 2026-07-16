@@ -120,7 +120,7 @@ func emitSessionEnded(
 	if emit == nil {
 		return
 	}
-	emit(&spec.SessionEnded{
+	emit(&domain.SessionEnded{
 		At: normalizedNow(now), TenantID: sess.TenantID, UserID: sess.UserID,
 		SessionID: sess.ID, ActorUserID: actorUserID, Reason: reason,
 	})

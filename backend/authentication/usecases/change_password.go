@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -107,12 +109,12 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 		return nil, err
 	}
 	if deps.Emit != nil {
-		if err := deps.Emit(&spec.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID}); err != nil {
+		if err := deps.Emit(&authdomain.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID}); err != nil {
 			return nil, err
 		}
 		if clearedUpdatePassword {
 			// 自動解除なので ActorUserID は本人 (system 操作ではなく能動的解除)。
-			if err := deps.Emit(&spec.UserRequiredActionCleared{
+			if err := deps.Emit(&idmdomain.UserRequiredActionCleared{
 				At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID,
 				Action: string(idmdomain.RequiredActionUpdatePassword),
 			}); err != nil {

@@ -23,6 +23,9 @@ import (
 	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/signingkeys"
+	signinghttp "github.com/ambi/idmagic/backend/signingkeys/adapters/http"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/adapters/http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -71,15 +74,17 @@ type Deps struct {
 	TokenIssuer       oauthports.TokenIssuer
 	TokenIntrospector oauthports.TokenIntrospector
 	Authorizer        oauthports.Authorizer
-	KeyStore          oauthports.KeyStore
-	Audit             audit.Module
-	JWKResolver       *crypto.JWKResolver
-	WsFederation      wsfederation.Module
-	Saml              saml.Module
-	Scim              scim.Module
-	FederationSigner  *samltoken.Signer
-	Application       application.Module
-	Jobs              jobs.Module
+	SigningKeys       signingkeys.Module
+	// Deprecated: tests may still provide the legacy direct field.
+	KeyStore         signingports.KeyStore
+	Audit            audit.Module
+	JWKResolver      *crypto.JWKResolver
+	WsFederation     wsfederation.Module
+	Saml             saml.Module
+	Scim             scim.Module
+	FederationSigner *samltoken.Signer
+	Application      application.Module
+	Jobs             jobs.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -203,6 +208,9 @@ func mergeLegacyIdentityManagementDeps(module identitymanagement.Module, d Deps)
 }
 
 func registerTenantRoutes(g *echo.Group, d Deps) {
+	if d.SigningKeys.KeyStore == nil {
+		d.SigningKeys.KeyStore = d.KeyStore
+	}
 	authenticator := &support.Authenticator{
 		UserRepo:          d.IdentityManagement.UserRepo,
 		GroupRepo:         d.IdentityManagement.GroupRepo,
@@ -222,7 +230,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ClientRepo:                 d.OAuth2.ClientRepo,
 		ConsentRepo:                d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver:  clientDisplayNames,
-		KeyStore:                   d.KeyStore,
+		KeyStore:                   d.SigningKeys.KeyStore,
 		TenantSaltStore:            d.Audit.TenantSaltStore,
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.OAuth2.PARStore,
@@ -250,6 +258,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:     d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
+	})
+
+	signinghttp.RegisterRoutes(g, signinghttp.Deps{
+		Deps:          d.Deps,
+		Authenticator: authenticator,
+		KeyStore:      d.SigningKeys.KeyStore,
+		TenantRepo:    d.TenantRepo,
 	})
 
 	audithttp.RegisterRoutes(g, audithttp.Deps{

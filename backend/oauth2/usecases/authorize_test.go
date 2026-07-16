@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -23,7 +25,7 @@ func newAuthorizeDeps(requirePAR bool) AuthorizeDeps {
 		},
 		TokenEndpointAuthMethod:            domain.AuthMethodNone,
 		Scope:                              "openid profile",
-		IDTokenSignedResponseAlg:           spec.SigAlgPS256,
+		IDTokenSignedResponseAlg:           signingdomain.SigAlgPS256,
 		RequirePushedAuthorizationRequests: requirePAR,
 		FapiProfile:                        domain.FapiNone,
 		CreatedAt:                          time.Now(),

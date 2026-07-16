@@ -37,7 +37,7 @@ func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, n
 	if err := deps.RefreshStore.RevokeFamily(ctx, rec.FamilyID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.TokenRevoked{At: now, TenantID: rec.TenantID, TokenType: "refresh_token", TokenID: rec.ID, Reason: "client_initiated"})
+	emit(deps.Emit, &domain.TokenRevoked{At: now, TenantID: rec.TenantID, TokenType: "refresh_token", TokenID: rec.ID, Reason: "client_initiated"})
 	return nil
 }
 
@@ -57,7 +57,7 @@ func revokeAccessToken(
 	if err := deps.AccessTokenDenylist.Add(ctx, result.JTI, time.Unix(result.Exp, 0)); err != nil {
 		return err
 	}
-	emit(deps.Emit, &spec.TokenRevoked{
+	emit(deps.Emit, &domain.TokenRevoked{
 		At: now, TenantID: tenancy.TenantID(ctx), TokenType: "access_token", TokenID: result.JTI, Reason: "client_initiated",
 	})
 	return nil

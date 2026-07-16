@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -80,8 +82,8 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("events=%d, want 1", len(events))
 	}
-	if _, ok := events[0].(*spec.PasswordChanged); !ok {
-		t.Fatalf("event type=%T, want *spec.PasswordChanged", events[0])
+	if _, ok := events[0].(*authdomain.PasswordChanged); !ok {
+		t.Fatalf("event type=%T, want *authdomain.PasswordChanged", events[0])
 	}
 }
 

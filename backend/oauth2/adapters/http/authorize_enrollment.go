@@ -10,7 +10,6 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
@@ -68,7 +67,7 @@ func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.Authenticati
 			return false, expireErr
 		}
 		if expired != nil && d.Emit != nil {
-			d.Emit(&spec.MfaEnrollmentBypassExpired{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: expired.ID})
+			d.Emit(&authdomain.MfaEnrollmentBypassExpired{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: expired.ID})
 		}
 	}
 	decision, deadline := authdomain.EvaluateMfaEnrollment(now, policy.EnforcementStartAt, time.Duration(*policy.GracePeriodSeconds)*time.Second, policy.AllowAdminBypass, bypass)
@@ -92,8 +91,8 @@ func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.Authenticati
 	*authn = *pending
 	d.setSessionCookie(c, pending.SessionID)
 	if d.Emit != nil {
-		d.Emit(&spec.MfaEnrollmentBypassConsumed{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID})
-		d.Emit(&spec.MfaEnrollmentRequired{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID, Deadline: *deadline})
+		d.Emit(&authdomain.MfaEnrollmentBypassConsumed{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID})
+		d.Emit(&authdomain.MfaEnrollmentRequiredEvent{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID, Deadline: *deadline})
 	}
 	return true, nil
 }
@@ -157,7 +156,7 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 		return writeBrowserEnrollmentError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&spec.MfaEnrollmentCompleted{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, SessionID: authn.SessionID, FactorType: "Totp"})
+		d.Emit(&authdomain.MfaEnrollmentCompleted{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, SessionID: authn.SessionID, FactorType: "Totp"})
 	}
 	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo)
 }

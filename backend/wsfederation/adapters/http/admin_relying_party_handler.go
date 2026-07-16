@@ -7,19 +7,20 @@ import (
 	"strings"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )
 
 type relyingPartyRequest struct {
-	Wtrealm     string                  `json:"wtrealm"`
-	DisplayName string                  `json:"display_name"`
-	ReplyURLs   []string                `json:"reply_urls"`
-	Audience    string                  `json:"audience"`
-	ClaimPolicy spec.ClaimMappingPolicy `json:"claim_policy"`
+	Wtrealm     string                         `json:"wtrealm"`
+	DisplayName string                         `json:"display_name"`
+	ReplyURLs   []string                       `json:"reply_urls"`
+	Audience    string                         `json:"audience"`
+	ClaimPolicy claimdomain.ClaimMappingPolicy `json:"claim_policy"`
 }
 
 func (r relyingPartyRequest) validate() error {

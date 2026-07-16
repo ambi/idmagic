@@ -3,6 +3,8 @@ package usecases
 import (
 	"strings"
 
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -22,7 +24,7 @@ type TokenRequest struct {
 
 // TokenDecision はトークン発行判断の結果。RejectReason が非空なら発行拒否。
 type TokenDecision struct {
-	ClaimResult  feddomain.ClaimIssuanceResult
+	ClaimResult  claimusecases.ClaimIssuanceResult
 	TokenType    feddomain.WsFedTokenType
 	RejectReason string // 非空なら発行拒否 (WsTrustTokenRejected を発行し RejectStatus を返す)。
 	RejectStatus int
@@ -31,11 +33,11 @@ type TokenDecision struct {
 // IssueToken は claim を発行し、要求 token type を検証して有効 token type を確定する。
 // 挙動は旧 HTTP ハンドラ handleWsTrustUsernameMixed の claim / token type 決定部と一致する。
 func (WsTrustService) IssueToken(req TokenRequest) TokenDecision {
-	attrs, err := feddomain.ApplyEntraProfile(feddomain.ResolveUserAttributes(req.User), req.RP.EntraProfile)
+	attrs, err := feddomain.ApplyEntraProfile(claimusecases.ResolveUserAttributes(req.User), req.RP.EntraProfile)
 	if err != nil {
 		return TokenDecision{RejectReason: "entra profile failed", RejectStatus: 500}
 	}
-	result, err := feddomain.IssueClaims(req.RP.ClaimPolicy, attrs)
+	result, err := claimusecases.IssueClaims(req.RP.ClaimPolicy, attrs)
 	if err != nil {
 		return TokenDecision{RejectReason: "claim issuance failed", RejectStatus: 500}
 	}

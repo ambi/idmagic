@@ -4,6 +4,11 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -14,7 +19,7 @@ import (
 // (auditEventMatches) に効く。
 func TestNewAuditEventRecordExtractsTenantID(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
-	rec, err := NewAuditEventRecord(&spec.UserAuthenticated{
+	rec, err := NewAuditEventRecord(&authdomain.UserAuthenticated{
 		At: now, TenantID: "acme", UserID: "user_alice", AMR: []string{"pwd"},
 	})
 	if err != nil {
@@ -37,7 +42,7 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	for _, ev := range []spec.DomainEvent{
 		&oauthdomain.ClientRegistered{At: now, TenantID: "acme", ClientID: "demo-client"},
-		&spec.AccessTokenIssued{At: now, TenantID: "acme", JTI: "jti", ClientID: "demo-client", UserID: "user_alice"},
+		&oauthdomain.AccessTokenIssued{At: now, TenantID: "acme", JTI: "jti", ClientID: "demo-client", UserID: "user_alice"},
 		&oauthdomain.ConsentGrantedEvent{At: now, TenantID: "acme", UserID: "user_alice", ClientID: "demo-client"},
 	} {
 		rec, err := NewAuditEventRecord(ev)
@@ -55,7 +60,7 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 // sidecar 検索属性として抽出され、admin が filter で監査ログを検索できること。
 func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing.T) {
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	rec, err := NewAuditEventRecord(&spec.LifecycleWorkflowCreated{At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
+	rec, err := NewAuditEventRecord(&idmdomain.LifecycleWorkflowCreated{At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +68,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 		t.Fatalf("workflow.id = %q, want workflow-1", rec.SearchAttributes["workflow.id"])
 	}
 
-	rec, err = NewAuditEventRecord(&spec.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
+	rec, err = NewAuditEventRecord(&idmdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +76,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 		t.Fatalf("search attrs = %#v, want workflow.id=workflow-1 workflow_run.id=run-1", rec.SearchAttributes)
 	}
 
-	rec, err = NewAuditEventRecord(&spec.LifecycleWorkflowStepFailed{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
+	rec, err = NewAuditEventRecord(&idmdomain.LifecycleWorkflowStepFailed{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +91,7 @@ func TestNewAuditEventRecordWithoutTenantIDStaysEmpty(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	for _, ev := range []spec.DomainEvent{
 		&spec.EmailSent{At: now, ToHash: "deadbeef", Purpose: "password_reset", Delivered: true},
-		&spec.SigningKeyRotated{At: now, NewKID: "kid-2", PreviousKID: "kid-1"},
+		&signingdomain.SigningKeyRotated{At: now, NewKID: "kid-2", PreviousKID: "kid-1"},
 	} {
 		rec, err := NewAuditEventRecord(ev)
 		if err != nil {

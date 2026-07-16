@@ -89,7 +89,7 @@ func UpdateDynamicGroupRule(ctx context.Context, deps DynamicGroupDeps, actorUse
 	if err := deps.GroupRepo.SaveDynamicRule(ctx, rule); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &spec.DynamicGroupRuleUpdated{At: normalizedNow(now), TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, RuleVersion: rule.Version}); err != nil {
+	if err := adminEmit(deps.Emit, &idmdomain.DynamicGroupRuleUpdated{At: normalizedNow(now), TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, RuleVersion: rule.Version}); err != nil {
 		return nil, err
 	}
 	if rule.Enabled {
@@ -116,9 +116,9 @@ func SetDynamicGroupRuleEnabled(ctx context.Context, deps DynamicGroupDeps, acto
 	if err := deps.GroupRepo.SaveDynamicRule(ctx, rule); err != nil {
 		return nil, err
 	}
-	var event spec.DomainEvent = &spec.DynamicGroupRuleDisabled{At: normalizedNow(now), TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, RuleVersion: rule.Version}
+	var event spec.DomainEvent = &idmdomain.DynamicGroupRuleDisabled{At: normalizedNow(now), TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, RuleVersion: rule.Version}
 	if enabled {
-		event = &spec.DynamicGroupRuleEnabled{At: normalizedNow(now), TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, RuleVersion: rule.Version}
+		event = &idmdomain.DynamicGroupRuleEnabled{At: normalizedNow(now), TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, RuleVersion: rule.Version}
 	}
 	if err := adminEmit(deps.Emit, event); err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func scheduleDynamicGroupReconcile(ctx context.Context, deps DynamicGroupDeps, r
 		if err != nil {
 			return err
 		}
-		return adminEmit(deps.Emit, &spec.DynamicMembershipEvaluated{At: now, TenantID: rule.TenantID, GroupID: rule.GroupID, RuleVersion: rule.Version, AddedCount: result.Added, RemovedCount: result.Removed, UnchangedCount: result.Unchanged, ErrorCount: result.Errors})
+		return adminEmit(deps.Emit, &idmdomain.DynamicMembershipEvaluated{At: now, TenantID: rule.TenantID, GroupID: rule.GroupID, RuleVersion: rule.Version, AddedCount: result.Added, RemovedCount: result.Removed, UnchangedCount: result.Unchanged, ErrorCount: result.Errors})
 	}
 	params, err := json.Marshal(DynamicGroupReconcileParams{GroupID: rule.GroupID, RuleVersion: rule.Version})
 	if err != nil {
@@ -174,7 +174,7 @@ func DynamicGroupReconcileHandler(deps DynamicGroupDeps) func(context.Context, *
 		if err != nil {
 			return nil, err
 		}
-		if err := adminEmit(deps.Emit, &spec.DynamicMembershipEvaluated{At: time.Now().UTC(), TenantID: rule.TenantID, GroupID: rule.GroupID, RuleVersion: rule.Version, AddedCount: result.Added, RemovedCount: result.Removed, UnchangedCount: result.Unchanged, ErrorCount: result.Errors}); err != nil {
+		if err := adminEmit(deps.Emit, &idmdomain.DynamicMembershipEvaluated{At: time.Now().UTC(), TenantID: rule.TenantID, GroupID: rule.GroupID, RuleVersion: rule.Version, AddedCount: result.Added, RemovedCount: result.Removed, UnchangedCount: result.Unchanged, ErrorCount: result.Errors}); err != nil {
 			return nil, err
 		}
 		return json.Marshal(result)

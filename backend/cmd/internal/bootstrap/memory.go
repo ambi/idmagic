@@ -16,13 +16,14 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/scim"
 	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
+	"github.com/ambi/idmagic/backend/signingkeys"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -30,7 +31,7 @@ import (
 )
 
 func assembleMemory() (*Dependencies, error) {
-	keyStore, err := crypto.NewInMemoryKeyStore()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func assembleMemory() (*Dependencies, error) {
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
 			EventSink:                  eventsink.NewConsoleSink(),
 		},
-		KeyStore: selectKeyStore(oauthports.KeyStore(keyStore)),
+		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
 		Audit: audit.Module{
 			AuditEventRepo:  auditmemory.NewAuditEventStore(0),
 			TenantSaltStore: crypto.NewInMemoryTenantSaltStore(),

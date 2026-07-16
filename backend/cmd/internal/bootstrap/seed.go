@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -63,7 +65,7 @@ func SeedDemoData(
 		},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
-		Scope:                   "openid profile email offline_access", IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		Scope:                   "openid profile email offline_access", IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile: oauthdomain.FapiNone, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		return err
@@ -154,7 +156,7 @@ func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2C
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 			TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
-			Scope:                   p.scope, IDTokenSignedResponseAlg: spec.SigAlgPS256,
+			Scope:                   p.scope, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 			FapiProfile: oauthdomain.FapiNone, FirstParty: true, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			return err

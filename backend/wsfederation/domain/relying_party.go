@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/spec"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 )
 
 // WsFedTokenType は発行 assertion の SAML バージョン (wi-61)。RSTR の TokenType にもなる。
@@ -20,16 +20,16 @@ func (t WsFedTokenType) Valid() bool {
 
 // WsFedRelyingParty は WS-Federation passive の relying party 登録 (ADR-059)。
 type WsFedRelyingParty struct {
-	TenantID     string                       `json:"tenant_id"`
-	Wtrealm      string                       `json:"wtrealm"`
-	DisplayName  string                       `json:"display_name,omitempty"`
-	ReplyURLs    []string                     `json:"reply_urls"`
-	Audience     string                       `json:"audience,omitempty"`
-	TokenType    WsFedTokenType               `json:"token_type,omitempty"`
-	ClaimPolicy  spec.ClaimMappingPolicy      `json:"claim_policy"`
-	EntraProfile *spec.EntraFederationProfile `json:"entra_profile,omitempty"`
-	CreatedAt    time.Time                    `json:"created_at"`
-	UpdatedAt    time.Time                    `json:"updated_at"`
+	TenantID     string                         `json:"tenant_id"`
+	Wtrealm      string                         `json:"wtrealm"`
+	DisplayName  string                         `json:"display_name,omitempty"`
+	ReplyURLs    []string                       `json:"reply_urls"`
+	Audience     string                         `json:"audience,omitempty"`
+	TokenType    WsFedTokenType                 `json:"token_type,omitempty"`
+	ClaimPolicy  claimdomain.ClaimMappingPolicy `json:"claim_policy"`
+	EntraProfile *EntraFederationProfile        `json:"entra_profile,omitempty"`
+	CreatedAt    time.Time                      `json:"created_at"`
+	UpdatedAt    time.Time                      `json:"updated_at"`
 }
 
 func (rp WsFedRelyingParty) EffectiveAudience() string {

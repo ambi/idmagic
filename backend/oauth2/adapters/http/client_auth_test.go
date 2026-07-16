@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -53,7 +55,7 @@ func clientAuthServer(method domain.TokenEndpointAuthMethod) *echo.Echo {
 		TokenEndpointAuthMethod:  method,
 		TlsClientAuthSubjectDN:   subjectDN,
 		Scope:                    "api",
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now(),
 	})
@@ -213,7 +215,7 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,
 		Scope:                    "api",
 		JWKS:                     map[string]any{"keys": []any{jwk}},
-		IDTokenSignedResponseAlg: spec.SigAlgPS256,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now(),
 	})

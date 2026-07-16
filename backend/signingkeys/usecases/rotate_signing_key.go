@@ -5,8 +5,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
 type RotateSigningKeyDeps struct {
@@ -14,7 +16,7 @@ type RotateSigningKeyDeps struct {
 	Emit     func(spec.DomainEvent)
 }
 
-func RotateSigningKey(ctx context.Context, deps RotateSigningKeyDeps, now time.Time) (*ports.SigningKey, error) {
+func RotateSigningKey(ctx context.Context, deps RotateSigningKeyDeps, now time.Time) (*signingdomain.SigningKey, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -28,8 +30,10 @@ func RotateSigningKey(ctx context.Context, deps RotateSigningKeyDeps, now time.T
 		prevKID = prev.Kid
 	}
 	// 回転した鍵の帰属テナントを載せ、テナント所属 admin の監査ビューに出す。
-	emit(deps.Emit, &spec.SigningKeyRotated{
-		At: now, TenantID: next.TenantID, NewKID: next.Kid, PreviousKID: prevKID,
-	})
+	if deps.Emit != nil {
+		deps.Emit(&signingdomain.SigningKeyRotated{
+			At: now, TenantID: next.TenantID, NewKID: next.Kid, PreviousKID: prevKID,
+		})
+	}
 	return next, nil
 }
