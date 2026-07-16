@@ -84,8 +84,8 @@
 
     <div class="group">
       <h3 class="grp-title">value object <span class="count">2</span></h3>
-      <div class="cards"><article class="card" id="model-generaterequest">
-    <header><h3>GenerateRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+      <div class="cards"><article class="card" id="scl-scl-to-jsonschema/model/GenerateRequest">
+    <header><h3>GenerateRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">scl-to-jsonschema/model/GenerateRequest</code></header>
 
 
     <table class="fields">
@@ -106,8 +106,8 @@
   </table>
 
   </article>
-<article class="card" id="model-generatedschema">
-    <header><h3>GeneratedSchema</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-scl-to-jsonschema/model/GeneratedSchema">
+    <header><h3>GeneratedSchema</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">scl-to-jsonschema/model/GeneratedSchema</code></header>
 
 
     <table class="fields">
@@ -145,8 +145,8 @@
 <section id="interfaces">
     <h2>Interfaces <span class="count">1</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
-    <div class="cards"><article class="card" id="iface-generatemodelschemas">
-    <header><h3>GenerateModelSchemas</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+    <div class="cards"><article class="card" id="scl-scl-to-jsonschema/interface/GenerateModelSchemas">
+    <header><h3>GenerateModelSchemas</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span><code class="canonical-ref">scl-to-jsonschema/interface/GenerateModelSchemas</code></header>
     <p class="desc">SCL bundle の model を JSON Schema 2020-12 に変換する。field constraints と、
 単一 field と scalar literal の比較として表現できる model CEL は JSON Schema keyword に変換する。
 表現できない CEL は x-scl-untranslated-constraints annotation に原文のまま保持する。
@@ -197,11 +197,11 @@
 <section id="objectives">
     <h2>Objectives <span class="count">1</span></h2>
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
-    <div class="cards"><article class="card" id="obj-generatelatency">
-        <header><h3>GenerateLatency</h3><span class="badge badge-kind-slo">SLO</span></header>
+    <div class="cards"><article class="card" id="scl-scl-to-jsonschema/objective/GenerateLatency">
+        <header><h3>GenerateLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">scl-to-jsonschema/objective/GenerateLatency</code></header>
         <p class="desc">一般的な tool spec の model schema を対話的に生成できる。</p>
         <dl class="kv">
-          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#iface-generatemodelschemas">GenerateModelSchemas</a></dd>
+          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-scl-to-jsonschema/interface/GenerateModelSchemas">GenerateModelSchemas</a></dd>
           <dt>indicator</dt><dd><code class="expr">measurement.latency_ms &lt; 500</code></dd>
           <dt>target</dt><dd><code>0.95</code></dd>
           <dt>window</dt><dd><code>30d</code></dd>
@@ -213,35 +213,35 @@
 <section id="scenarios">
     <h2>Scenarios <span class="count">5</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scn-enum-string-enum">
-        <header><h3>enum モデルは string enum になる</h3><span class="chip chip-actor">Maintainer</span></header>
+    <div class="cards"><article class="card scenario" id="scl-scl-to-jsonschema/scenario/enum~20~E3~83~A2~E3~83~87~E3~83~AB~E3~81~AF~20string~20enum~20~E3~81~AB~E3~81~AA~E3~82~8B">
+        <header><h3>enum モデルは string enum になる</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-jsonschema/scenario/enum モデルは string enum になる</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">enum model を含む SCL を <a class="chip chip-ref" href="#iface-generatemodelschemas">GenerateModelSchemas</a> に渡す</li><li class="scn-step">対応する ModelDef が string enum を持つ</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">enum model を含む SCL を <a class="chip chip-ref" href="#scl-scl-to-jsonschema/interface/GenerateModelSchemas">GenerateModelSchemas</a> に渡す</li><li class="scn-step">対応する ModelDef が string enum を持つ</li></ol></div>
 
-      </article><article class="card scenario" id="scn-field-constraint-json-schema-keyword">
-        <header><h3>field constraint は JSON Schema keyword になる</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-scl-to-jsonschema/scenario/field~20constraint~20~E3~81~AF~20JSON~20Schema~20keyword~20~E3~81~AB~E3~81~AA~E3~82~8B">
+        <header><h3>field constraint は JSON Schema keyword になる</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-jsonschema/scenario/field constraint は JSON Schema keyword になる</code></header>
 
 
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">non_empty、minimum、maximum、pattern を持つ field を生成する</li><li class="scn-step">対応する minLength、minimum、maximum、pattern が ModelDef に含まれる</li></ol></div>
 
-      </article><article class="card scenario" id="scn-model-constraint">
-        <header><h3>表現可能な model constraint は強制される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-scl-to-jsonschema/scenario/~E8~A1~A8~E7~8F~BE~E5~8F~AF~E8~83~BD~E3~81~AA~20model~20constraint~20~E3~81~AF~E5~BC~B7~E5~88~B6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>表現可能な model constraint は強制される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-jsonschema/scenario/表現可能な model constraint は強制される</code></header>
 
 
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">age &gt;= 18 という model constraint を生成する</li><li class="scn-step">対応 field の minimum が 18 になる</li></ol></div>
 
-      </article><article class="card scenario" id="scn-model-constraint">
-        <header><h3>表現不能な model constraint は明示される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-scl-to-jsonschema/scenario/~E8~A1~A8~E7~8F~BE~E4~B8~8D~E8~83~BD~E3~81~AA~20model~20constraint~20~E3~81~AF~E6~98~8E~E7~A4~BA~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>表現不能な model constraint は明示される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-jsonschema/scenario/表現不能な model constraint は明示される</code></header>
 
 
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">start_at &lt; end_at という複数 field の CEL constraint を生成する</li><li class="scn-step">原文が x-scl-untranslated-constraints に保持される</li></ol></div>
 
-      </article><article class="card scenario" id="scn-tool-spec-dangling-ref-schema">
-        <header><h3>tool spec から dangling ref の無い schema が生成される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-scl-to-jsonschema/scenario/tool~20spec~20~E3~81~8B~E3~82~89~20dangling~20ref~20~E3~81~AE~E7~84~A1~E3~81~84~20schema~20~E3~81~8C~E7~94~9F~E6~88~90~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>tool spec から dangling ref の無い schema が生成される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-jsonschema/scenario/tool spec から dangling ref の無い schema が生成される</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">tool の SCL を <a class="chip chip-ref" href="#iface-generatemodelschemas">GenerateModelSchemas</a> に渡す</li><li class="scn-step">全参照が $defs の ModelDef に解決する</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">tool の SCL を <a class="chip chip-ref" href="#scl-scl-to-jsonschema/interface/GenerateModelSchemas">GenerateModelSchemas</a> に渡す</li><li class="scn-step">全参照が $defs の ModelDef に解決する</li></ol></div>
 
       </article></div>
   </section>

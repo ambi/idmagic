@@ -84,8 +84,8 @@
 
     <div class="group">
       <h3 class="grp-title">value object <span class="count">2</span></h3>
-      <div class="cards"><article class="card" id="model-workspaceapp">
-    <header><h3>WorkspaceApp</h3><span class="badge badge-kind-value_object">value object</span></header>
+      <div class="cards"><article class="card" id="scl-ra/model/WorkspaceApp">
+    <header><h3>WorkspaceApp</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">ra/model/WorkspaceApp</code></header>
     <p class="desc">標準レイアウトから発見されたアプリケーション仕様。</p>
 
     <table class="fields">
@@ -130,8 +130,8 @@
   </table>
 
   </article>
-<article class="card" id="model-workspaceconfig">
-    <header><h3>WorkspaceConfig</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-ra/model/WorkspaceConfig">
+    <header><h3>WorkspaceConfig</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">ra/model/WorkspaceConfig</code></header>
     <p class="desc">発見済み workspace の検証・生成対象。</p>
 
     <table class="fields">
@@ -161,8 +161,8 @@
     </div>
 <div class="group">
       <h3 class="grp-title">enum <span class="count">1</span></h3>
-      <div class="cards"><article class="card" id="model-workspacecommand">
-    <header><h3>WorkspaceCommand</h3><span class="badge badge-kind-enum">enum</span></header>
+      <div class="cards"><article class="card" id="scl-ra/model/WorkspaceCommand">
+    <header><h3>WorkspaceCommand</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">ra/model/WorkspaceCommand</code></header>
 
 
     <div class="enum-vals"><span class="chip chip-enum">init</span> <span class="chip chip-enum">verify</span> <span class="chip chip-enum">yaml-check</span> <span class="chip chip-enum">render</span></div>
@@ -171,8 +171,8 @@
     </div>
 <div class="group">
       <h3 class="grp-title">error <span class="count">1</span></h3>
-      <div class="cards"><article class="card" id="model-noworkspacetargets">
-    <header><h3>NoWorkspaceTargets</h3><span class="badge badge-kind-error">error</span></header>
+      <div class="cards"><article class="card" id="scl-ra/model/NoWorkspaceTargets">
+    <header><h3>NoWorkspaceTargets</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">ra/model/NoWorkspaceTargets</code></header>
 
 
     <table class="fields">
@@ -192,8 +192,8 @@
 <section id="interfaces">
     <h2>Interfaces <span class="count">3</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
-    <div class="cards"><article class="card" id="iface-discoverworkspace">
-    <header><h3>DiscoverWorkspace</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span></header>
+    <div class="cards"><article class="card" id="scl-ra/interface/DiscoverWorkspace">
+    <header><h3>DiscoverWorkspace</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">ra/interface/DiscoverWorkspace</code></header>
     <p class="desc">現在の作業ディレクトリから標準 RA workspace を発見する。</p>
 
     <div class="io">
@@ -220,11 +220,11 @@
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#model-noworkspacetargets">NoWorkspaceTargets</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-ra/model/NoWorkspaceTargets">NoWorkspaceTargets</a></div></div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.config.apps.size() &gt; 0 || output.config.tool_specs.size() &gt; 0 || output.config.repository_work_items != null</code></li><li><code class="expr">output.config.tool_specs.size() &gt;= 0</code></li><li><code class="expr">standard_layout_requires_no_registry(input.cwd, output.config)</code></li></ul></div>
   </article>
-<article class="card" id="iface-runworkspacecommand">
-    <header><h3>RunWorkspaceCommand</h3><span class="badge badge-access-internal">internal</span></header>
+<article class="card" id="scl-ra/interface/RunWorkspaceCommand">
+    <header><h3>RunWorkspaceCommand</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">ra/interface/RunWorkspaceCommand</code></header>
     <p class="desc">発見済み workspace に対して検証または派生物生成を実行する。</p>
 
     <div class="io">
@@ -258,8 +258,8 @@
   </div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.exit_code &gt;= 0</code></li><li><code class="expr">public_command_name_is_ra(input.command)</code></li></ul></div>
   </article>
-<article class="card" id="iface-initializeworkspace">
-    <header><h3>InitializeWorkspace</h3><span class="badge badge-access-internal">internal</span></header>
+<article class="card" id="scl-ra/interface/InitializeWorkspace">
+    <header><h3>InitializeWorkspace</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">ra/interface/InitializeWorkspace</code></header>
     <p class="desc">現在の作業ディレクトリに標準 RA レイアウトを作成する。</p>
 
     <div class="io">
@@ -292,32 +292,32 @@
 <section id="scenarios">
     <h2>Scenarios <span class="count">4</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scn-standardappwithoutregistry">
-        <header><h3>StandardAppWithoutRegistry</h3><span class="chip chip-actor">Maintainer</span></header>
+    <div class="cards"><article class="card scenario" id="scl-ra/scenario/StandardAppWithoutRegistry">
+        <header><h3>StandardAppWithoutRegistry</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/StandardAppWithoutRegistry</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">spec/scl.yaml を持ち registry を持たないアプリ repo がある</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#iface-discoverworkspace">DiscoverWorkspace</a> を実行する</li><li class="scn-step">spec と work item が検証対象として発見される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/DiscoverWorkspace">DiscoverWorkspace</a> を実行する</li><li class="scn-step">spec と work item が検証対象として発見される</li></ol></div>
 
-      </article><article class="card scenario" id="scn-initializestandardlayout">
-        <header><h3>InitializeStandardLayout</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-ra/scenario/InitializeStandardLayout">
+        <header><h3>InitializeStandardLayout</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/InitializeStandardLayout</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">空のアプリ repo がある</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#iface-initializeworkspace">InitializeWorkspace</a> を実行する</li><li class="scn-step">標準ディレクトリが作成される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/InitializeWorkspace">InitializeWorkspace</a> を実行する</li><li class="scn-step">標準ディレクトリが作成される</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">spec/scl.yaml が既に存在する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">既存の spec/scl.yaml は上書きされない</li></ol></div>
           </article></div>
-      </article><article class="card scenario" id="scn-corerepositorytoolspecs">
-        <header><h3>CoreRepositoryToolSpecs</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-ra/scenario/CoreRepositoryToolSpecs">
+        <header><h3>CoreRepositoryToolSpecs</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/CoreRepositoryToolSpecs</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">RA core repository に複数の ToolSpec がある</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が render を実行する</li><li class="scn-step">各 ToolSpec の HTML が同じ spec ディレクトリへ生成される</li></ol></div>
 
-      </article><article class="card scenario" id="scn-emptyrepositoryrejected">
-        <header><h3>EmptyRepositoryRejected</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-ra/scenario/EmptyRepositoryRejected">
+        <header><h3>EmptyRepositoryRejected</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/EmptyRepositoryRejected</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">標準レイアウトの対象が何も存在しない</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#iface-discoverworkspace">DiscoverWorkspace</a> を実行する</li><li class="scn-step"><a class="chip chip-ref" href="#model-noworkspacetargets">NoWorkspaceTargets</a> が返る</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/DiscoverWorkspace">DiscoverWorkspace</a> を実行する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-ra/model/NoWorkspaceTargets">NoWorkspaceTargets</a> が返る</li></ol></div>
 
       </article></div>
   </section>

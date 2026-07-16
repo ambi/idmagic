@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { existsSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
-import { basename, dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import {
   collectSclElements,
   parseArchitectureDoc,
@@ -12,6 +12,7 @@ import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
 } from '../../yaml-check/src/work-item-dependencies.ts'
+import { buildSclWorkspaceIndex } from '../../yaml-check/src/scl-element-reference.ts'
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
@@ -124,6 +125,37 @@ for (const app of config.apps) {
 for (const spec of config.toolSpecs ?? []) sclPatterns.push(rootPath(spec))
 if (runScl && sclPatterns.length > 0) {
   await runTool(['yaml-check/src/main.ts', '--schema=scl', ...sclPatterns])
+
+  let referenceIndexFailed = false
+  for (const app of config.apps) {
+    const rootFile = rootPath(app.scl)
+    const root = Bun.YAML.parse(await readFile(rootFile, 'utf8')) as Record<string, unknown>
+    if (!root.context_map || typeof root.context_map !== 'object') continue
+    const documents: Record<string, unknown> = {}
+    for (const [context, entryValue] of Object.entries(
+      root.context_map as Record<string, unknown>,
+    )) {
+      const path = (entryValue as { path?: unknown } | null)?.path
+      if (typeof path !== 'string') continue
+      try {
+        documents[context] = Bun.YAML.parse(
+          await readFile(resolve(dirname(rootFile), path), 'utf8'),
+        )
+      } catch {
+        // The index reports the unavailable context with its stable context name.
+      }
+    }
+    const built = buildSclWorkspaceIndex(root, documents)
+    if (built.ok) {
+      console.log(`ok  ${app.scl} (${built.index.contexts.size} SCL reference contexts)`)
+      continue
+    }
+    referenceIndexFailed = true
+    for (const finding of built.errors) {
+      console.error(`${app.scl}: scl-element-reference: ${finding.message}`)
+    }
+  }
+  if (referenceIndexFailed) process.exit(1)
 }
 
 const checkIdsArgs: string[] = ['yaml-check/src/check-ids.ts']

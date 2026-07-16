@@ -13,6 +13,18 @@ import type { ChangeEntry, DecisionDoc, SclBundle, SclDocument, SiteInput } from
 const sampleScl = (): SclDocument => ({
   system: 'demo',
   spec_version: '3.0',
+  standards: {
+    StandardA: {
+      title: 'A',
+      requirements: [
+        { id: 'REQ', adoption: 'required', statement: 'A requirement', refs: ['interfaces.DoIt'] },
+      ],
+    },
+    StandardB: {
+      title: 'B',
+      requirements: [{ id: 'REQ', adoption: 'required', statement: 'Another requirement' }],
+    },
+  },
   context_map: {
     Auth: { description: 'auth context', depends_on: { Directory: { via: 'published_language' } } },
     Directory: { description: 'directory context' },
@@ -118,8 +130,8 @@ describe('renderSclTab', () => {
   })
 
   it('linkifies known names inside scenario steps', () => {
-    expect(html).toContain('href="#iface-doit"')
-    expect(html).toContain('href="#model-barupdated"')
+    expect(html).toContain('href="#scl-demo/interface/DoIt"')
+    expect(html).toContain('href="#scl-demo/model/BarUpdated"')
   })
 
   it('renders the http binding method as a badge', () => {
@@ -141,10 +153,26 @@ describe('renderSclTab', () => {
 
   it('renders protected access, authorization policy, and SLO details', () => {
     expect(html).toContain('access-protected')
-    expect(html).toContain('id="auth-p"')
+    expect(html).toContain('id="scl-demo/authorization_policy/P"')
     expect(html).toContain('effect-permit')
     expect(html).toContain('measurement.latency_ms &lt; 200')
     expect(html).toContain('30d')
+  })
+
+  it('renders canonical references and derives collision-free requirement anchors', () => {
+    expect(html).toContain('demo/model/Foo')
+    expect(html).toContain('demo/interface/DoIt')
+    expect(html).toContain('demo/standard_requirement/StandardA/REQ')
+    expect(html).toContain('id="scl-demo/standard_requirement/StandardA/REQ"')
+    expect(html).toContain('id="scl-demo/standard_requirement/StandardB/REQ"')
+    expect(html).toContain('href="#scl-demo/interface/DoIt"')
+  })
+
+  it('uses a defined canonical target for every canonical internal href', () => {
+    const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]))
+    const hrefs = [...html.matchAll(/\bhref="#(scl-[^"]+)"/g)].map((match) => match[1])
+    expect(hrefs.length).toBeGreaterThan(0)
+    for (const href of hrefs) expect(ids.has(href ?? '')).toBe(true)
   })
 
   it('renders derived diagrams for context map, states, and flows', () => {
@@ -167,6 +195,27 @@ describe('renderSclTab', () => {
     const items = sclTocItems(sampleScl())
     expect(items.map((i) => i.id)).toContain('models')
     expect(items.map((i) => i.id)).toContain('scenarios')
+  })
+})
+
+describe('renderSclTab canonical authorization anchors', () => {
+  const html = renderSclTab({
+    system: 'demo',
+    spec_version: '3.0',
+    models: {
+      Subject: { kind: 'entity', identity: 'id', fields: { id: { type: 'UUID' } } },
+    },
+    authorization: {
+      resources: { Same: { description: 'resource' } },
+      principals: { Same: { type: 'Subject', matches: ['principal.id != ""'] } },
+      policies: { Same: { effect: 'permit', principal: 'Same' } },
+    },
+  })
+
+  it('keeps identically named authorization kinds distinct', () => {
+    expect(html).toContain('id="scl-demo/authorization_resource/Same"')
+    expect(html).toContain('id="scl-demo/authorization_principal/Same"')
+    expect(html).toContain('id="scl-demo/authorization_policy/Same"')
   })
 })
 
@@ -222,9 +271,9 @@ describe('renderSclTab with context documents', () => {
     expect(html).toContain('href="#tab=scl&amp;sec=context-application"')
   })
 
-  it('prefixes context-local anchors to avoid collisions with root sections', () => {
-    expect(html).toContain('id="context-application-model-application"')
-    expect(html).toContain('href="#context-application-model-application"')
+  it('uses context-qualified element anchors to avoid cross-context collisions', () => {
+    expect(html).toContain('id="scl-Application/model/Application"')
+    expect(html).toContain('href="#scl-Application/model/Application"')
   })
 
   it('lists context sections in TOC items', () => {

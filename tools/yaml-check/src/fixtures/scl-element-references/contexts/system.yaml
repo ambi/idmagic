@@ -1,0 +1,10 @@
+system: demo
+spec_version: "3.0"
+context: System
+standards:
+  ExampleStandard:
+    title: Example Standard
+    requirements:
+      - id: REQ-1
+        adoption: required
+        statement: A requirement.

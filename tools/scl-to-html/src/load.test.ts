@@ -68,7 +68,7 @@ describe('loadSclBundle', () => {
       [
         'system: demo',
         'spec_version: "3.0"',
-        'context: Application',
+        'context: App',
         'models:',
         '  App:',
         '    kind: entity',
@@ -83,7 +83,23 @@ describe('loadSclBundle', () => {
     expect(bundle.contexts).toHaveLength(1)
     expect(bundle.contexts[0]?.name).toBe('App')
     expect(bundle.contexts[0]?.path).toBe('contexts/application.yaml')
-    expect(bundle.contexts[0]?.document.context).toBe('Application')
+    expect(bundle.contexts[0]?.document.context).toBe('App')
+  })
+
+  it('rejects a context document whose context differs from its map key', async () => {
+    const dir = await tempDir()
+    await mkdir(join(dir, 'contexts'))
+    await writeFile(
+      join(dir, 'scl.yaml'),
+      'system: demo\nspec_version: "3.0"\ncontext_map:\n  App:\n    path: contexts/app.yaml\n',
+    )
+    await writeFile(
+      join(dir, 'contexts', 'app.yaml'),
+      'system: demo\nspec_version: "3.0"\ncontext: Wrong\n',
+    )
+    await expect(loadSclBundle(join(dir, 'scl.yaml'))).rejects.toThrow(
+      'context map key App does not match document context Wrong',
+    )
   })
 })
 

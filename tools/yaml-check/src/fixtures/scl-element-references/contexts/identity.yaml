@@ -1,0 +1,45 @@
+system: demo
+spec_version: "3.0"
+context: Identity
+models:
+  User:
+    kind: entity
+    identity: id
+    fields:
+      id: { type: UUID }
+interfaces:
+  ReadUser:
+    access: public
+states:
+  UserLifecycle:
+    target: User
+    initial: Active
+    transitions: []
+authorization:
+  resources:
+    User:
+      description: User resource
+  principals:
+    User:
+      type: User
+      matches: [principal.id != ""]
+  policies:
+    User:
+      effect: permit
+      principal: User
+objectives:
+  ReadLatency:
+    interface: ReadUser
+    indicator: measurement.latency_ms < 200
+    target: 0.99
+    window: 30d
+scenarios:
+  Read user:
+    actor: User
+    main_success: [ReadUser を呼ぶ]
+flows:
+  UserFlow:
+    entry: UserView
+    views:
+      UserView:
+        sees: User

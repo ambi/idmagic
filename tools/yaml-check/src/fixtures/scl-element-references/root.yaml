@@ -1,0 +1,7 @@
+system: demo
+spec_version: "3.0"
+context_map:
+  Identity:
+    path: contexts/identity.yaml
+  System:
+    path: contexts/system.yaml

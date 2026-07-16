@@ -42,6 +42,11 @@ export async function loadSclBundle(path: string): Promise<SclBundle> {
     if (!entry.path) continue
     const contextPath = resolve(baseDir, entry.path)
     const document = await loadScl(contextPath)
+    if (document.context !== name) {
+      throw new Error(
+        `SCL context map key ${name} does not match document context ${document.context ?? '(missing)'}`,
+      )
+    }
     contexts.push({ name, path: entry.path, document })
   }
   return { root, contexts }

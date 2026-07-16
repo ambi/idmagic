@@ -37,25 +37,53 @@ import {
   type Standard,
   type StateMachine,
 } from './types.ts'
+import {
+  canonicalSclElementReference,
+  sclDocumentContext,
+  sclElementAnchor,
+  type SclElementReference,
+  type SclNamedElementKind,
+} from '../../yaml-check/src/scl-element-reference.ts'
 
 // ─── cross-section references ──────────────────────────────────────
 
-const referenceAnchor = (section: string, name: string): string | undefined => {
-  const prefixes: Record<string, string> = {
-    glossary: 'glossary',
+const namedReference = (
+  context: string,
+  kind: SclNamedElementKind,
+  element: string,
+): SclElementReference => ({ context, kind, element })
+
+const referenceHref = (reference: SclElementReference): string =>
+  `#${sclElementAnchor(reference)}`
+
+const canonicalReference = (reference: SclElementReference): string =>
+  `<code class="canonical-ref">${esc(canonicalSclElementReference(reference))}</code>`
+
+const referenceAnchor = (
+  context: string,
+  scl: SclDocument,
+  section: string,
+  name: string,
+): string | undefined => {
+  const kinds: Record<string, SclNamedElementKind> = {
     models: 'model',
     events: 'model',
-    interfaces: 'iface',
+    interfaces: 'interface',
     states: 'state',
-    scenarios: 'scn',
-    authorization: 'auth',
-    objectives: 'obj',
+    scenarios: 'scenario',
+    objectives: 'objective',
     flows: 'flow',
-    standards: 'std',
-    context_map: 'ctx',
   }
-  const prefix = prefixes[section]
-  return prefix ? `#${prefix}-${slug(name)}` : undefined
+  const kind = kinds[section]
+  if (kind) return referenceHref(namedReference(context, kind, name))
+  if (section !== 'authorization') return undefined
+  if (name in (scl.authorization?.resources ?? {}))
+    return referenceHref(namedReference(context, 'authorization_resource', name))
+  if (name in (scl.authorization?.principals ?? {}))
+    return referenceHref(namedReference(context, 'authorization_principal', name))
+  if (name in (scl.authorization?.policies ?? {}))
+    return referenceHref(namedReference(context, 'authorization_policy', name))
+  return undefined
 }
 
 const prefixAnchors = (html: string, prefix: string): string => {
@@ -86,12 +114,12 @@ const prefixAnchors = (html: string, prefix: string): string => {
     )
 }
 
-const renderSemanticReferences = (refs?: string[]): string =>
+const renderSemanticReferences = (context: string, scl: SclDocument, refs?: string[]): string =>
   refs?.length
     ? `<div class="reference-row"><span class="reference-label">refs</span>${refs
         .map((ref) => {
           const [section, name] = ref.split('.', 2)
-          const href = section && name ? referenceAnchor(section, name) : undefined
+          const href = section && name ? referenceAnchor(context, scl, section, name) : undefined
           return href ? link(href, ref, 'ref') : chip(ref)
         })
         .join(' ')}</div>`
@@ -305,22 +333,30 @@ const renderExprOp = (op: string, operand: unknown): string => {
 
 // ─── section: standards ────────────────────────────────────────────
 
-const renderStandards = (standards: Record<string, Standard>): string => {
+const renderStandards = (context: string, scl: SclDocument): string => {
+  const standards = scl.standards ?? {}
   const cards = Object.entries(standards)
     .map(([name, standard]) => {
       const requirements = (standard.requirements ?? [])
         .map((req) => {
           const adoption = req.adoption ?? 'required'
-          return `<article class="requirement" id="req-${esc(slug(req.id ?? ''))}">
+          const reference: SclElementReference = {
+            context,
+            kind: 'standard_requirement',
+            standard: name,
+            requirement: req.id ?? '',
+          }
+          return `<article class="requirement" id="${esc(sclElementAnchor(reference))}">
             <header>
               <code class="name">${esc(req.id)}</code>
               ${badge(adoption, `adoption-${adoption}`)}
               ${req.strength ? badge(req.strength, 'strength') : ''}
               ${req.section ? chip(req.section, 'hint') : ''}
+              ${canonicalReference(reference)}
             </header>
             ${req.statement ? `<p>${esc(req.statement)}</p>` : ''}
             ${req.reason ? `<p class="exclusion-reason"><strong>reason:</strong> ${esc(req.reason)}</p>` : ''}
-            ${renderSemanticReferences(req.refs)}
+            ${renderSemanticReferences(context, scl, req.refs)}
           </article>`
         })
         .join('')
@@ -458,7 +494,8 @@ const renderGlossary = (entries: Record<string, GlossaryEntry>): string => {
 
 const MODEL_KIND_ORDER = ['entity', 'value_object', 'enum', 'event', 'error']
 
-const renderModel = (name: string, m: Model): string => {
+const renderModel = (context: string, name: string, m: Model): string => {
+  const reference = namedReference(context, 'model', name)
   const kind = m.kind ?? 'unknown'
   const desc = m.description ? `<p class="desc">${esc(m.description)}</p>` : ''
   const metaRows: string[] = []
@@ -481,8 +518,8 @@ const renderModel = (name: string, m: Model): string => {
   const constraints = m.constraints?.length
     ? `<div class="sub"><div class="label">Model constraints</div>${renderExpression(m.constraints)}</div>`
     : ''
-  return `<article class="card" id="model-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3>${badge(kind.replace(/_/g, ' '), `kind-${kind}`)}</header>
+  return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+    <header><h3>${esc(name)}</h3>${badge(kind.replace(/_/g, ' '), `kind-${kind}`)}${canonicalReference(reference)}</header>
     ${desc}
     ${metaRows.length ? `<dl class="kv">${metaRows.join('')}</dl>` : ''}
     ${body}
@@ -490,7 +527,7 @@ const renderModel = (name: string, m: Model): string => {
   </article>`
 }
 
-const renderModels = (models: Record<string, Model>): string => {
+const renderModels = (context: string, models: Record<string, Model>): string => {
   const grouped = new Map<string, Array<[string, Model]>>()
   for (const [n, m] of Object.entries(models)) {
     const k = m.kind ?? 'unknown'
@@ -505,7 +542,7 @@ const renderModels = (models: Record<string, Model>): string => {
   const groups = ordered
     .map((kind) => {
       const entries = grouped.get(kind) ?? []
-      const items = entries.map(([n, m]) => renderModel(n, m)).join('\n')
+      const items = entries.map(([n, m]) => renderModel(context, n, m)).join('\n')
       return `<div class="group">
       <h3 class="grp-title">${esc(kind.replace(/_/g, ' '))} <span class="count">${entries.length}</span></h3>
       <div class="cards">${items}</div>
@@ -664,7 +701,8 @@ const renderBinding = (b: Binding): string => {
   </div>`
 }
 
-const renderInterface = (name: string, i: Interface): string => {
+const renderInterface = (context: string, name: string, i: Interface): string => {
+  const reference = namedReference(context, 'interface', name)
   const readOnly = i.read_only ? badge('read-only', 'readonly') : ''
   const idempotent = i.idempotent ? badge('idempotent', 'idempotent') : ''
   const desc = i.description ? `<p class="desc">${esc(i.description)}</p>` : ''
@@ -682,19 +720,29 @@ const renderInterface = (name: string, i: Interface): string => {
       ? badge(i.access, `access-${i.access}`)
       : i.access
         ? `${badge('protected', 'access-protected')} ${i.access.policies
-            .map((policy) => link(`#auth-${slug(policy)}`, policy, 'policy-ref'))
+            .map((policy) =>
+              link(
+                referenceHref(namedReference(context, 'authorization_policy', policy)),
+                policy,
+                'policy-ref',
+              ),
+            )
             .join(' ')} <code>${esc(`${i.access.resource.type}:${i.access.resource.id}`)}</code>`
         : ''
   if (i.input) blocks.push(ioTable(i.input, 'Input'))
   if (i.output) blocks.push(ioTable(i.output, 'Output'))
   if (i.errors?.length) {
-    const chips = i.errors.map((e) => link(`#model-${slug(e)}`, e, 'error-ref')).join(' ')
+    const chips = i.errors
+      .map((e) => link(referenceHref(namedReference(context, 'model', e)), e, 'error-ref'))
+      .join(' ')
     blocks.push(
       `<div class="io"><div class="label">Errors</div><div class="chip-row">${chips}</div></div>`,
     )
   }
   if (i.emits?.length) {
-    const chips = i.emits.map((e) => link(`#model-${slug(e)}`, e, 'event-ref')).join(' ')
+    const chips = i.emits
+      .map((e) => link(referenceHref(namedReference(context, 'model', e)), e, 'event-ref'))
+      .join(' ')
     blocks.push(
       `<div class="io"><div class="label">Emits</div><div class="chip-row">${chips}</div></div>`,
     )
@@ -717,17 +765,17 @@ const renderInterface = (name: string, i: Interface): string => {
   }
   const ann = renderAnnotations(i.annotations)
   if (ann) blocks.unshift(`<dl class="kv">${kvRow('annotations', ann)}</dl>`)
-  return `<article class="card" id="iface-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3>${access}${readOnly}${idempotent}</header>
+  return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+    <header><h3>${esc(name)}</h3>${access}${readOnly}${idempotent}${canonicalReference(reference)}</header>
     ${desc}
     ${stepTpl}
     ${blocks.join('\n')}
   </article>`
 }
 
-const renderInterfaces = (ifaces: Record<string, Interface>): string => {
+const renderInterfaces = (context: string, ifaces: Record<string, Interface>): string => {
   const cards = Object.entries(ifaces)
-    .map(([n, i]) => renderInterface(n, i))
+    .map(([n, i]) => renderInterface(context, n, i))
     .join('\n')
   return wrapSection(
     'interfaces',
@@ -740,7 +788,8 @@ const renderInterfaces = (ifaces: Record<string, Interface>): string => {
 
 // ─── section: states ───────────────────────────────────────────────
 
-const renderStateMachine = (name: string, sm: StateMachine): string => {
+const renderStateMachine = (context: string, name: string, sm: StateMachine): string => {
+  const reference = namedReference(context, 'state', name)
   const desc = sm.description ? `<p class="desc">${esc(sm.description)}</p>` : ''
   const transitions = sm.transitions ?? []
   const states = new Set<string>()
@@ -780,8 +829,8 @@ const renderStateMachine = (name: string, sm: StateMachine): string => {
   </tr>`,
     )
     .join('')
-  return `<article class="card" id="state-${esc(slug(name))}">
-    <header><h3>${esc(name)}</h3></header>
+  return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+    <header><h3>${esc(name)}</h3>${canonicalReference(reference)}</header>
     ${desc}
     ${metaRows.length ? `<dl class="kv">${metaRows.join('')}</dl>` : ''}
     <div class="sm-row"><div class="label">states (${states.size})</div><div>${stateChips || '<span class="muted">—</span>'}</div></div>
@@ -793,9 +842,9 @@ const renderStateMachine = (name: string, sm: StateMachine): string => {
   </article>`
 }
 
-const renderStates = (sms: Record<string, StateMachine>): string => {
+const renderStates = (context: string, sms: Record<string, StateMachine>): string => {
   const cards = Object.entries(sms)
-    .map(([n, sm]) => renderStateMachine(n, sm))
+    .map(([n, sm]) => renderStateMachine(context, n, sm))
     .join('\n')
   const diagrams = Object.entries(sms)
     .map(([name, sm]) => {
@@ -810,7 +859,7 @@ const renderStates = (sms: Record<string, StateMachine>): string => {
       const nodes = [...states].map((state) => ({
         id: state,
         label: state,
-        href: `#state-${slug(name)}`,
+        href: referenceHref(namedReference(context, 'state', name)),
         kind: state === sm.initial ? 'initial' : terminal.has(state) ? 'terminal' : 'state',
       }))
       const edges = (sm.transitions ?? [])
@@ -819,7 +868,7 @@ const renderStates = (sms: Record<string, StateMachine>): string => {
           from: String(transition.from),
           to: String(transition.to),
           label: String(transition.event ?? transition.on ?? ''),
-          href: `#state-${slug(name)}`,
+          href: referenceHref(namedReference(context, 'state', name)),
         }))
       return renderDiagram(
         `state-${slug(name)}`,
@@ -841,16 +890,24 @@ const renderStates = (sms: Record<string, StateMachine>): string => {
 
 // ─── SCL 3.0 owned sections ───────────────────────────────────────
 
-const buildXrefV3 = (scl: SclDocument): Map<string, string> => {
+const buildXrefV3 = (context: string, scl: SclDocument): Map<string, string> => {
   const idx = new Map<string, string>()
-  for (const n of Object.keys(scl.interfaces ?? {})) idx.set(n, `#iface-${slug(n)}`)
-  for (const n of Object.keys(scl.models ?? {})) idx.set(n, `#model-${slug(n)}`)
-  for (const n of Object.keys(scl.states ?? {})) idx.set(n, `#state-${slug(n)}`)
-  for (const n of Object.keys(scl.authorization?.resources ?? {})) idx.set(n, `#auth-${slug(n)}`)
-  for (const n of Object.keys(scl.authorization?.principals ?? {})) idx.set(n, `#auth-${slug(n)}`)
-  for (const n of Object.keys(scl.authorization?.policies ?? {})) idx.set(n, `#auth-${slug(n)}`)
-  for (const n of Object.keys(scl.objectives ?? {})) idx.set(n, `#obj-${slug(n)}`)
-  for (const n of Object.keys(scl.flows ?? {})) idx.set(n, `#flow-${slug(n)}`)
+  for (const n of Object.keys(scl.interfaces ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'interface', n)))
+  for (const n of Object.keys(scl.models ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'model', n)))
+  for (const n of Object.keys(scl.states ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'state', n)))
+  for (const n of Object.keys(scl.authorization?.resources ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'authorization_resource', n)))
+  for (const n of Object.keys(scl.authorization?.principals ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'authorization_principal', n)))
+  for (const n of Object.keys(scl.authorization?.policies ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'authorization_policy', n)))
+  for (const n of Object.keys(scl.objectives ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'objective', n)))
+  for (const n of Object.keys(scl.flows ?? {}))
+    idx.set(n, referenceHref(namedReference(context, 'flow', n)))
   return idx
 }
 
@@ -871,11 +928,13 @@ const renderSemanticText = (raw: string, xref: Map<string, string>): string => {
 }
 
 const renderScenariosV3 = (
+  context: string,
   scenarios: Record<string, Scenario>,
   xref: Map<string, string>,
 ): string => {
   const cards = Object.entries(scenarios)
     .map(([name, scenario]) => {
+      const reference = namedReference(context, 'scenario', name)
       const list = (label: string, items?: string[]) =>
         items?.length
           ? `<div class="sub"><div class="label">${esc(label)}</div><ol class="scn-steps">${items
@@ -890,8 +949,8 @@ const renderScenariosV3 = (
           </article>`,
         )
         .join('')
-      return `<article class="card scenario" id="scn-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${chip(scenario.actor, 'actor')}</header>
+      return `<article class="card scenario" id="${esc(sclElementAnchor(reference))}">
+        <header><h3>${esc(name)}</h3>${chip(scenario.actor, 'actor')}${canonicalReference(reference)}</header>
         ${scenario.description ? `<p class="desc">${esc(scenario.description)}</p>` : ''}
         ${list('Given', scenario.given)}
         ${list('Main success', scenario.main_success)}
@@ -908,34 +967,37 @@ const renderScenariosV3 = (
   )
 }
 
-const renderAuthorization = (authorization: Authorization): string => {
+const renderAuthorization = (context: string, authorization: Authorization): string => {
   const resources = Object.entries(authorization.resources ?? {})
-    .map(
-      ([name, resource]) => `<article class="card" id="auth-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${badge('resource', 'kind-resource')}</header>
+    .map(([name, resource]) => {
+      const reference = namedReference(context, 'authorization_resource', name)
+      return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+        <header><h3>${esc(name)}</h3>${badge('resource', 'kind-resource')}${canonicalReference(reference)}</header>
         ${resource.description ? `<p class="desc">${esc(resource.description)}</p>` : ''}
-      </article>`,
-    )
+      </article>`
+    })
     .join('')
   const principals = Object.entries(authorization.principals ?? {})
-    .map(
-      ([name, principal]) => `<article class="card" id="auth-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${badge('principal', 'kind-principal')}</header>
+    .map(([name, principal]) => {
+      const reference = namedReference(context, 'authorization_principal', name)
+      return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+        <header><h3>${esc(name)}</h3>${badge('principal', 'kind-principal')}${canonicalReference(reference)}</header>
         ${principal.description ? `<p class="desc">${esc(principal.description)}</p>` : ''}
-        <dl class="kv">${kvRow('type', link(`#model-${slug(principal.type)}`, principal.type, 'model-ref'))}</dl>
+        <dl class="kv">${kvRow('type', link(referenceHref(namedReference(context, 'model', principal.type)), principal.type, 'model-ref'))}</dl>
         <div class="clause"><div class="clause-label muted">matches</div>${renderExpression(principal.matches)}</div>
-      </article>`,
-    )
+      </article>`
+    })
     .join('')
   const policies = Object.entries(authorization.policies ?? {})
-    .map(
-      ([name, policy]) => `<article class="card" id="auth-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${badge(policy.effect, `effect-${policy.effect}`)}</header>
+    .map(([name, policy]) => {
+      const reference = namedReference(context, 'authorization_policy', name)
+      return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+        <header><h3>${esc(name)}</h3>${badge(policy.effect, `effect-${policy.effect}`)}${canonicalReference(reference)}</header>
         ${policy.description ? `<p class="desc">${esc(policy.description)}</p>` : ''}
-        <dl class="kv">${kvRow('principal', link(`#auth-${slug(policy.principal)}`, policy.principal, 'principal-ref'))}</dl>
+        <dl class="kv">${kvRow('principal', link(referenceHref(namedReference(context, 'authorization_principal', policy.principal)), policy.principal, 'principal-ref'))}</dl>
         ${policy.when ? `<div class="clause"><div class="clause-label muted">when</div>${renderExpression(policy.when)}</div>` : ''}
-      </article>`,
-    )
+      </article>`
+    })
     .join('')
   const count =
     Object.keys(authorization.resources ?? {}).length +
@@ -952,22 +1014,23 @@ const renderAuthorization = (authorization: Authorization): string => {
   )
 }
 
-const renderObjectivesV3 = (objectives: Record<string, Objective>): string => {
+const renderObjectivesV3 = (context: string, objectives: Record<string, Objective>): string => {
   const cards = Object.entries(objectives)
-    .map(
-      ([name, objective]) => `<article class="card" id="obj-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${badge('SLO', 'kind-slo')}</header>
+    .map(([name, objective]) => {
+      const reference = namedReference(context, 'objective', name)
+      return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+        <header><h3>${esc(name)}</h3>${badge('SLO', 'kind-slo')}${canonicalReference(reference)}</header>
         ${objective.description ? `<p class="desc">${esc(objective.description)}</p>` : ''}
         <dl class="kv">
-          ${objective.interface ? kvRow('interface', link(`#iface-${slug(objective.interface)}`, objective.interface, 'iface-ref')) : ''}
+          ${objective.interface ? kvRow('interface', link(referenceHref(namedReference(context, 'interface', objective.interface)), objective.interface, 'iface-ref')) : ''}
           ${kvRow('indicator', `<code class="expr">${esc(objective.indicator)}</code>`)}
           ${kvRow('target', `<code>${esc(objective.target)}</code>`)}
           ${kvRow('window', `<code>${esc(objective.window)}</code>`)}
           ${kvRow('budgeting', badge(objective.budgeting ?? 'occurrences'))}
           ${objective.slice ? kvRow('slice', `<code>${esc(objective.slice)}</code>`) : ''}
         </dl>
-      </article>`,
-    )
+      </article>`
+    })
     .join('')
   return wrapSection(
     'objectives',
@@ -978,14 +1041,14 @@ const renderObjectivesV3 = (objectives: Record<string, Objective>): string => {
   )
 }
 
-const renderFlows = (flows: Record<string, Flow>): string => {
+const renderFlows = (context: string, flows: Record<string, Flow>): string => {
   const diagrams = Object.entries(flows)
     .map(([name, flow]) => {
       const viewEntries = Object.entries(flow.views)
       const nodes = viewEntries.map(([view]) => ({
         id: view,
         label: view,
-        href: `#flow-${slug(name)}`,
+        href: referenceHref(namedReference(context, 'flow', name)),
         kind: view === flow.entry ? 'initial' : 'view',
       }))
       const hasExternal = viewEntries.some(([, view]) =>
@@ -995,7 +1058,7 @@ const renderFlows = (flows: Record<string, Flow>): string => {
         nodes.push({
           id: '__external__',
           label: 'External',
-          href: `#flow-${slug(name)}`,
+          href: referenceHref(namedReference(context, 'flow', name)),
           kind: 'external',
         })
       }
@@ -1004,7 +1067,9 @@ const renderFlows = (flows: Record<string, Flow>): string => {
           from: viewName,
           to: action.external ? '__external__' : (action.to ?? viewName),
           label: action.action,
-          href: action.interface ? `#iface-${slug(action.interface)}` : `#flow-${slug(name)}`,
+          href: action.interface
+            ? referenceHref(namedReference(context, 'interface', action.interface))
+            : referenceHref(namedReference(context, 'flow', name)),
         })),
       )
       return renderDiagram(
@@ -1018,6 +1083,7 @@ const renderFlows = (flows: Record<string, Flow>): string => {
     .join('')
   const cards = Object.entries(flows)
     .map(([name, flow]) => {
+      const reference = namedReference(context, 'flow', name)
       const viewBlocks = Object.entries(flow.views)
         .map(
           ([viewName, view]) => `<div class="flow-view">
@@ -1029,7 +1095,7 @@ const renderFlows = (flows: Record<string, Flow>): string => {
                    <tbody>${view.does
                      .map(
                        (action) =>
-                         `<tr><td>${esc(action.does)} <code>${esc(action.action)}</code></td><td>${esc(action.external ? 'external' : (action.to ?? 'end'))}</td><td>${action.interface ? link(`#iface-${slug(action.interface)}`, action.interface, 'iface-ref') : ''}</td></tr>`,
+                         `<tr><td>${esc(action.does)} <code>${esc(action.action)}</code></td><td>${esc(action.external ? 'external' : (action.to ?? 'end'))}</td><td>${action.interface ? link(referenceHref(namedReference(context, 'interface', action.interface)), action.interface, 'iface-ref') : ''}</td></tr>`,
                      )
                      .join('')}</tbody></table>`
                 : ''
@@ -1037,8 +1103,8 @@ const renderFlows = (flows: Record<string, Flow>): string => {
           </div>`,
         )
         .join('')
-      return `<article class="card" id="flow-${esc(slug(name))}">
-        <header><h3>${esc(name)}</h3>${chip(`entry: ${flow.entry}`, 'initial')}</header>
+      return `<article class="card" id="${esc(sclElementAnchor(reference))}">
+        <header><h3>${esc(name)}</h3>${chip(`entry: ${flow.entry}`, 'initial')}${canonicalReference(reference)}</header>
         ${flow.description ? `<p class="desc">${esc(flow.description)}</p>` : ''}
         ${viewBlocks}
       </article>`
@@ -1082,27 +1148,28 @@ export const SECTION_TITLES: Record<SectionKind, string> = {
 }
 
 const renderOneSection = (k: SectionKind, scl: SclDocument): string => {
+  const context = sclDocumentContext(scl)
   switch (k) {
     case 'standards':
-      return scl.standards ? renderStandards(scl.standards) : ''
+      return scl.standards ? renderStandards(context, scl) : ''
     case 'context_map':
       return scl.context_map ? renderContextMap(scl.context_map) : ''
     case 'glossary':
       return scl.glossary ? renderGlossary(scl.glossary) : ''
     case 'models':
-      return scl.models ? renderModels(scl.models) : ''
+      return scl.models ? renderModels(context, scl.models) : ''
     case 'interfaces':
-      return scl.interfaces ? renderInterfaces(scl.interfaces) : ''
+      return scl.interfaces ? renderInterfaces(context, scl.interfaces) : ''
     case 'states':
-      return scl.states ? renderStates(scl.states) : ''
+      return scl.states ? renderStates(context, scl.states) : ''
     case 'authorization':
-      return scl.authorization ? renderAuthorization(scl.authorization) : ''
+      return scl.authorization ? renderAuthorization(context, scl.authorization) : ''
     case 'objectives':
-      return scl.objectives ? renderObjectivesV3(scl.objectives) : ''
+      return scl.objectives ? renderObjectivesV3(context, scl.objectives) : ''
     case 'scenarios':
-      return scl.scenarios ? renderScenariosV3(scl.scenarios, buildXrefV3(scl)) : ''
+      return scl.scenarios ? renderScenariosV3(context, scl.scenarios, buildXrefV3(context, scl)) : ''
     case 'flows':
-      return scl.flows ? renderFlows(scl.flows) : ''
+      return scl.flows ? renderFlows(context, scl.flows) : ''
   }
 }
 
@@ -1135,7 +1202,7 @@ const renderSingleSclTab = (scl: SclDocument): string => {
 }
 
 const renderContextDocument = (ctx: SclContextDocument): string => {
-  const contextName = ctx.document.context ?? ctx.name
+  const contextName = ctx.name
   const prefix = `context-${slug(contextName)}`
   const sections = sclSectionsPresent(ctx.document)
     .filter((k) => k !== 'context_map')
@@ -1167,7 +1234,7 @@ export const renderSclTab = (input: SclDocument | SclBundle): string => {
   </div>`
   const contextLinks = input.contexts
     .map((ctx) => {
-      const contextName = ctx.document.context ?? ctx.name
+      const contextName = ctx.name
       const prefix = `context-${slug(contextName)}`
       return `<a class="context-tab-link" data-scl-context-link="${esc(prefix)}" href="${esc(`#tab=scl&sec=${prefix}`)}">${esc(contextName)}</a>`
     })
@@ -1178,7 +1245,7 @@ export const renderSclTab = (input: SclDocument | SclBundle): string => {
   </nav>`
   const contexts = input.contexts
     .map((ctx) => {
-      const contextName = ctx.document.context ?? ctx.name
+      const contextName = ctx.name
       const prefix = `context-${slug(contextName)}`
       return `<div class="scl-context-pane" data-scl-context-pane="${esc(prefix)}">
         ${renderContextDocument(ctx)}
@@ -1200,7 +1267,7 @@ const singleSclTocItems = (scl: SclDocument, sclContext?: string): SclTocItem[] 
 ]
 
 const contextTocItems = (ctx: SclContextDocument): SclTocItem[] => {
-  const contextName = ctx.document.context ?? ctx.name
+  const contextName = ctx.name
   const prefix = `context-${slug(contextName)}`
   return [
     { id: prefix, label: 'Overview', sclContext: prefix },

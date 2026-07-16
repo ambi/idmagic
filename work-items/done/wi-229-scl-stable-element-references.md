@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-16
@@ -34,12 +34,12 @@ SCL 3.0 の「規則は実現・検証する所有要素へ局所化する」と
 - SCL YAML の shape と `spec_version: "3.0"` は変更しない。参照は SCL の内側に逆向きリンクとして埋め込まず、後続 manifest が外側から保持する。
 
 ## Tasks
-- [ ] T001 [Decision] assurance 台帳を追加せず既存の所有要素を直接参照する責務境界を ADR に記録する。
-- [ ] T002 [Reference] SCL element reference の対象、構造化正規形、context-local 解決規則を言語リファレンスへ追加する。
-- [ ] T003 [Resolver] context map と context spec を読み、参照を正規化・解決する共通 resolver を実装する。
-- [ ] T004 [Validator] 未知 context・種別・要素・requirement、別 context の暗黙参照、位置ベース参照を拒否する positive/negative fixture を追加する。
-- [ ] T005 [Renderer] HTML anchor と表示上の canonical reference を resolver の正規形へ揃える。
-- [ ] T006 [Verify] tool、SCL、workspace の検証を通し、既存 SCL YAML が無変更で有効なことを確認する。
+- [x] T001 [Decision] assurance 台帳を追加せず既存の所有要素を直接参照する責務境界を ADR に記録する。
+- [x] T002 [Reference] SCL element reference の対象、構造化正規形、context-local 解決規則を言語リファレンスへ追加する。
+- [x] T003 [Resolver] context map と context spec を読み、参照を正規化・解決する共通 resolver を実装する。
+- [x] T004 [Validator] 未知 context・種別・要素・requirement、別 context の暗黙参照、位置ベース参照を拒否する positive/negative fixture を追加する。
+- [x] T005 [Renderer] HTML anchor と表示上の canonical reference を resolver の正規形へ揃える。
+- [x] T006 [Verify] tool、SCL、workspace の検証を通し、既存 SCL YAML が無変更で有効なことを確認する。
 
 ## Verification
 - `just test-tools`
@@ -51,3 +51,33 @@ SCL 3.0 の「規則は実現・検証する所有要素へ局所化する」と
 
 ## Risk Notes
 参照粒度を匿名式や配列 index まで細分化すると、並べ替えだけで証跡が切れる。初期版は既存の安定 ID を持つ所有要素へ限定し、より細かな証明単位が実際に必要になった場合だけ、規範要素そのものへ名前を導入する別 WI で拡張する。
+
+## Completion
+
+- **Completed At**: 2026-07-16
+- **Summary**:
+  SCL 3.0 の規範要素を `context`、`kind`、所有要素名で指す閉じた構造化参照と、standard
+  requirement 用の `standard` + `requirement` 参照を言語仕様へ追加した。workspace context map と
+  context spec を検査・index 化する共通 resolver、未知 context/kind/element/requirement・context
+  不一致・重複 requirement ID・位置ベース field を拒否する fixture/test を実装した。HTML renderer
+  は同じ参照 tuple から canonical 表示と衝突しない anchor を生成し、authorization 3種の同名要素と
+  standard 間の同一 requirement ID を区別する。SCL YAML shape、`spec_version: "3.0"`、既存19件の
+  SCL YAML は変更していない。
+- **Affected Guarantees State**:
+  ADR-103 の局所所有を維持し、SCL に assurance 台帳・保証文・evidence kind・逆向き link を追加して
+  いない。参照対象は名前を持つ10 kindだけで、匿名 contract は所有要素を対象とする。workspace 検証は
+  IdMagic の13 contextについて context map keyと文書 `context` の完全一致を保証する。
+- **Verification Results**:
+  - `just yaml-check` - passed (19 SCL files, 235 work items, 344 record ids, Architecture cross-check)
+  - `just test-tools` - passed (219 tests)
+  - `just typecheck-tools` - passed
+  - `just scl-render` - passed
+  - `just test-go` - passed
+  - `just test-go-race` - passed
+  - `just verify-ui` - passed (61 test files / 356 tests and production build)
+  - `just verify` - tool/SCL/typecheck gates passed, then the unchanged `lint-go` recipe stopped with
+    `context loading failed: no go files to analyze`; the Go race test and all remaining UI gates were run
+    separately and passed.
+- **Evidence**:
+  Codex がローカル workspace のコミット前 working treeを対象に上記 `just` recipeを実行した。結果は
+  terminal outputで確認し、派生 HTML artifact は `just scl-render` により各 `spec/` 配下へ同期した。

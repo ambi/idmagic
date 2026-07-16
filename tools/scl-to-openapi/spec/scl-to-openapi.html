@@ -75,8 +75,8 @@
 
     <div class="group">
       <h3 class="grp-title">value object <span class="count">4</span></h3>
-      <div class="cards"><article class="card" id="model-generaterequest">
-    <header><h3>GenerateRequest</h3><span class="badge badge-kind-value_object">value object</span></header>
+      <div class="cards"><article class="card" id="scl-scl-to-openapi/model/GenerateRequest">
+    <header><h3>GenerateRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">scl-to-openapi/model/GenerateRequest</code></header>
 
 
     <table class="fields">
@@ -97,8 +97,8 @@
   </table>
 
   </article>
-<article class="card" id="model-openapidocument">
-    <header><h3>OpenApiDocument</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-scl-to-openapi/model/OpenApiDocument">
+    <header><h3>OpenApiDocument</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">scl-to-openapi/model/OpenApiDocument</code></header>
 
 
     <table class="fields">
@@ -125,8 +125,8 @@
   </table>
     <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">paths_count &gt;= 0</code></li></ul></div>
   </article>
-<article class="card" id="model-authorizationaction">
-    <header><h3>AuthorizationAction</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-scl-to-openapi/model/AuthorizationAction">
+    <header><h3>AuthorizationAction</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">scl-to-openapi/model/AuthorizationAction</code></header>
 
 
     <table class="fields">
@@ -153,8 +153,8 @@
   </table>
 
   </article>
-<article class="card" id="model-authorizationactiongroup">
-    <header><h3>AuthorizationActionGroup</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-scl-to-openapi/model/AuthorizationActionGroup">
+    <header><h3>AuthorizationActionGroup</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">scl-to-openapi/model/AuthorizationActionGroup</code></header>
 
 
     <table class="fields">
@@ -186,8 +186,8 @@
 <section id="interfaces">
     <h2>Interfaces <span class="count">2</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
-    <div class="cards"><article class="card" id="iface-buildauthorizationmetadata">
-    <header><h3>BuildAuthorizationMetadata</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+    <div class="cards"><article class="card" id="scl-scl-to-openapi/interface/BuildAuthorizationMetadata">
+    <header><h3>BuildAuthorizationMetadata</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span><code class="canonical-ref">scl-to-openapi/interface/BuildAuthorizationMetadata</code></header>
     <p class="desc">protected interface を policy 集合ごとに group 化し、interface 名を action 名、
 resource.type を appliesTo として安定 sort した中間表現を返す。
 </p>
@@ -218,8 +218,8 @@ resource.type を appliesTo として安定 sort した中間表現を返す。
   </div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.groups.size() &gt;= 0</code></li></ul></div>
   </article>
-<article class="card" id="iface-generateopenapi">
-    <header><h3>GenerateOpenApi</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+<article class="card" id="scl-scl-to-openapi/interface/GenerateOpenApi">
+    <header><h3>GenerateOpenApi</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span><code class="canonical-ref">scl-to-openapi/interface/GenerateOpenApi</code></header>
     <p class="desc">http binding を持つ interface を OpenAPI 3.1 Operation に変換する。public operation は
 security を空配列、protected operation は bearer security と x-scl-access を持つ。
 requires、ensures、resource、policy と AuthorizationMetadata を vendor extension に保持する。
@@ -270,11 +270,11 @@ requires、ensures、resource、policy と AuthorizationMetadata を vendor exte
 <section id="objectives">
     <h2>Objectives <span class="count">1</span></h2>
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
-    <div class="cards"><article class="card" id="obj-generatelatency">
-        <header><h3>GenerateLatency</h3><span class="badge badge-kind-slo">SLO</span></header>
+    <div class="cards"><article class="card" id="scl-scl-to-openapi/objective/GenerateLatency">
+        <header><h3>GenerateLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">scl-to-openapi/objective/GenerateLatency</code></header>
 
         <dl class="kv">
-          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#iface-generateopenapi">GenerateOpenApi</a></dd>
+          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-scl-to-openapi/interface/GenerateOpenApi">GenerateOpenApi</a></dd>
           <dt>indicator</dt><dd><code class="expr">measurement.latency_ms &lt; 500</code></dd>
           <dt>target</dt><dd><code>0.95</code></dd>
           <dt>window</dt><dd><code>30d</code></dd>
@@ -286,35 +286,35 @@ requires、ensures、resource、policy と AuthorizationMetadata を vendor exte
 <section id="scenarios">
     <h2>Scenarios <span class="count">5</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scn-public-interface-unauthenticated-operation">
-        <header><h3>public interface は unauthenticated operation になる</h3><span class="chip chip-actor">Maintainer</span></header>
+    <div class="cards"><article class="card scenario" id="scl-scl-to-openapi/scenario/public~20interface~20~E3~81~AF~20unauthenticated~20operation~20~E3~81~AB~E3~81~AA~E3~82~8B">
+        <header><h3>public interface は unauthenticated operation になる</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/public interface は unauthenticated operation になる</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">public access の HttpBinding を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation の security は空配列になる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">public access の HttpBinding を <a class="chip chip-ref" href="#scl-scl-to-openapi/interface/GenerateOpenApi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation の security は空配列になる</li></ol></div>
 
-      </article><article class="card scenario" id="scn-protected-interface-security-metadata">
-        <header><h3>protected interface は security metadata を保持する</h3><span class="chip chip-actor">Maintainer</span></header>
-
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">policy と resource を持つ protected HttpBinding を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation は bearer security と x-scl-access を持つ</li></ol></div>
-
-      </article><article class="card scenario" id="scn-interface-contract">
-        <header><h3>interface contract は記述として保持される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-scl-to-openapi/scenario/protected~20interface~20~E3~81~AF~20security~20metadata~20~E3~82~92~E4~BF~9D~E6~8C~81~E3~81~99~E3~82~8B">
+        <header><h3>protected interface は security metadata を保持する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/protected interface は security metadata を保持する</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">requires と ensures を持つ HttpBinding を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation の x-scl-requires と x-scl-ensures に原文が保持される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">policy と resource を持つ protected HttpBinding を <a class="chip chip-ref" href="#scl-scl-to-openapi/interface/GenerateOpenApi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation は bearer security と x-scl-access を持つ</li></ol></div>
 
-      </article><article class="card scenario" id="scn-policy-action-group">
-        <header><h3>policy 集合から action group が決定的に生成される</h3><span class="chip chip-actor">Maintainer</span></header>
-
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">複数の protected interface を <a class="chip chip-ref" href="#iface-buildauthorizationmetadata">BuildAuthorizationMetadata</a> に渡す</li><li class="scn-step">policy 集合が同じ action は同一 group に安定順で含まれる</li></ol></div>
-
-      </article><article class="card scenario" id="scn-tool-spec-openapi">
-        <header><h3>tool spec から解決可能な OpenAPI が生成される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-scl-to-openapi/scenario/interface~20contract~20~E3~81~AF~E8~A8~98~E8~BF~B0~E3~81~A8~E3~81~97~E3~81~A6~E4~BF~9D~E6~8C~81~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>interface contract は記述として保持される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/interface contract は記述として保持される</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">tool の SCL を <a class="chip chip-ref" href="#iface-generateopenapi">GenerateOpenApi</a> に渡す</li><li class="scn-step">全 $ref が components/schemas に解決する</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">requires と ensures を持つ HttpBinding を <a class="chip chip-ref" href="#scl-scl-to-openapi/interface/GenerateOpenApi">GenerateOpenApi</a> に渡す</li><li class="scn-step">Operation の x-scl-requires と x-scl-ensures に原文が保持される</li></ol></div>
+
+      </article><article class="card scenario" id="scl-scl-to-openapi/scenario/policy~20~E9~9B~86~E5~90~88~E3~81~8B~E3~82~89~20action~20group~20~E3~81~8C~E6~B1~BA~E5~AE~9A~E7~9A~84~E3~81~AB~E7~94~9F~E6~88~90~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>policy 集合から action group が決定的に生成される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/policy 集合から action group が決定的に生成される</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">複数の protected interface を <a class="chip chip-ref" href="#scl-scl-to-openapi/interface/BuildAuthorizationMetadata">BuildAuthorizationMetadata</a> に渡す</li><li class="scn-step">policy 集合が同じ action は同一 group に安定順で含まれる</li></ol></div>
+
+      </article><article class="card scenario" id="scl-scl-to-openapi/scenario/tool~20spec~20~E3~81~8B~E3~82~89~E8~A7~A3~E6~B1~BA~E5~8F~AF~E8~83~BD~E3~81~AA~20OpenAPI~20~E3~81~8C~E7~94~9F~E6~88~90~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>tool spec から解決可能な OpenAPI が生成される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/tool spec から解決可能な OpenAPI が生成される</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">tool の SCL を <a class="chip chip-ref" href="#scl-scl-to-openapi/interface/GenerateOpenApi">GenerateOpenApi</a> に渡す</li><li class="scn-step">全 $ref が components/schemas に解決する</li></ol></div>
 
       </article></div>
   </section>

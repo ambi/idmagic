@@ -84,8 +84,8 @@
 
     <div class="group">
       <h3 class="grp-title">value object <span class="count">3</span></h3>
-      <div class="cards"><article class="card" id="model-finding">
-    <header><h3>Finding</h3><span class="badge badge-kind-value_object">value object</span></header>
+      <div class="cards"><article class="card" id="scl-yaml-check/model/Finding">
+    <header><h3>Finding</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">yaml-check/model/Finding</code></header>
 
 
     <table class="fields">
@@ -130,8 +130,8 @@
   </table>
     <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">line &gt;= 1</code></li><li><code class="expr">column &gt;= 1</code></li></ul></div>
   </article>
-<article class="card" id="model-checkresult">
-    <header><h3>CheckResult</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-yaml-check/model/CheckResult">
+    <header><h3>CheckResult</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">yaml-check/model/CheckResult</code></header>
 
 
     <table class="fields">
@@ -158,8 +158,8 @@
   </table>
     <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">ok == (findings.size() == 0)</code></li></ul></div>
   </article>
-<article class="card" id="model-checkrunsummary">
-    <header><h3>CheckRunSummary</h3><span class="badge badge-kind-value_object">value object</span></header>
+<article class="card" id="scl-yaml-check/model/CheckRunSummary">
+    <header><h3>CheckRunSummary</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">yaml-check/model/CheckRunSummary</code></header>
 
 
     <table class="fields">
@@ -189,22 +189,22 @@
     </div>
 <div class="group">
       <h3 class="grp-title">enum <span class="count">3</span></h3>
-      <div class="cards"><article class="card" id="model-schemaname">
-    <header><h3>SchemaName</h3><span class="badge badge-kind-enum">enum</span></header>
+      <div class="cards"><article class="card" id="scl-yaml-check/model/SchemaName">
+    <header><h3>SchemaName</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">yaml-check/model/SchemaName</code></header>
 
 
     <div class="enum-vals"><span class="chip chip-enum">work-item</span> <span class="chip chip-enum">scl</span></div>
 
   </article>
-<article class="card" id="model-findingkind">
-    <header><h3>FindingKind</h3><span class="badge badge-kind-enum">enum</span></header>
+<article class="card" id="scl-yaml-check/model/FindingKind">
+    <header><h3>FindingKind</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">yaml-check/model/FindingKind</code></header>
 
 
     <div class="enum-vals"><span class="chip chip-enum">parse</span> <span class="chip chip-enum">lint</span> <span class="chip chip-enum">schema</span> <span class="chip chip-enum">semantic</span> <span class="chip chip-enum">context_map</span></div>
 
   </article>
-<article class="card" id="model-severity">
-    <header><h3>Severity</h3><span class="badge badge-kind-enum">enum</span></header>
+<article class="card" id="scl-yaml-check/model/Severity">
+    <header><h3>Severity</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">yaml-check/model/Severity</code></header>
 
 
     <div class="enum-vals"><span class="chip chip-enum">error</span> <span class="chip chip-enum">warning</span></div>
@@ -215,8 +215,8 @@
 <section id="interfaces">
     <h2>Interfaces <span class="count">2</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
-    <div class="cards"><article class="card" id="iface-checkyaml">
-    <header><h3>CheckYaml</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span></header>
+    <div class="cards"><article class="card" id="scl-yaml-check/interface/CheckYaml">
+    <header><h3>CheckYaml</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span><code class="canonical-ref">yaml-check/interface/CheckYaml</code></header>
     <p class="desc">YAML parse、text lint、SCL 3.0 schema と semantics、context map、
 work-item dependency を決定的な順序で検査する。
 </p>
@@ -272,8 +272,8 @@ work-item dependency を決定的な順序で検査する。
             </tr></tbody></table></div><dl class="kv"><dt>exit codes</dt><dd>success: <code>0</code> · findings_present: <code>1</code> · usage_error: <code>2</code></dd></dl></div>
   </div></div></div>
   </article>
-<article class="card" id="iface-listschemas">
-    <header><h3>ListSchemas</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span></header>
+<article class="card" id="scl-yaml-check/interface/ListSchemas">
+    <header><h3>ListSchemas</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">yaml-check/interface/ListSchemas</code></header>
     <p class="desc">同梱 SchemaName を安定順で返す。</p>
 
     <div class="io">
@@ -303,11 +303,11 @@ work-item dependency を決定的な順序で検査する。
 <section id="objectives">
     <h2>Objectives <span class="count">1</span></h2>
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
-    <div class="cards"><article class="card" id="obj-checklatency">
-        <header><h3>CheckLatency</h3><span class="badge badge-kind-slo">SLO</span></header>
+    <div class="cards"><article class="card" id="scl-yaml-check/objective/CheckLatency">
+        <header><h3>CheckLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">yaml-check/objective/CheckLatency</code></header>
         <p class="desc">数十 KiB のファイル 30 件程度を対話的に検査できる。</p>
         <dl class="kv">
-          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#iface-checkyaml">CheckYaml</a></dd>
+          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a></dd>
           <dt>indicator</dt><dd><code class="expr">measurement.latency_ms &lt; 500</code></dd>
           <dt>target</dt><dd><code>0.95</code></dd>
           <dt>window</dt><dd><code>30d</code></dd>
@@ -319,59 +319,59 @@ work-item dependency を決定的な順序で検査する。
 <section id="scenarios">
     <h2>Scenarios <span class="count">9</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scn-scl-3-0">
-        <header><h3>正しい SCL 3.0 文書を検査できる</h3><span class="chip chip-actor">Maintainer</span></header>
+    <div class="cards"><article class="card scenario" id="scl-yaml-check/scenario/~E6~AD~A3~E3~81~97~E3~81~84~20SCL~203.0~20~E6~96~87~E6~9B~B8~E3~82~92~E6~A4~9C~E6~9F~BB~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>正しい SCL 3.0 文書を検査できる</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/正しい SCL 3.0 文書を検査できる</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 3.0 の文書を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">schema と semantics の <a class="chip chip-ref" href="#model-finding">Finding</a> はなく exit code 0 になる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 3.0 の文書を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">schema と semantics の <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> はなく exit code 0 になる</li></ol></div>
 
-      </article><article class="card scenario" id="scn-scl-2-0">
-        <header><h3>SCL 2.0 文書は拒否される</h3><span class="chip chip-actor">Maintainer</span></header>
-
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 2.0 の文書を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">Schema<a class="chip chip-ref" href="#model-finding">Finding</a> と exit code 1 が返る</li></ol></div>
-
-      </article><article class="card scenario" id="scn-scl-3-0">
-        <header><h3>SCL 3.0 の未解決参照は拒否される</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-yaml-check/scenario/SCL~202.0~20~E6~96~87~E6~9B~B8~E3~81~AF~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>SCL 2.0 文書は拒否される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/SCL 2.0 文書は拒否される</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">未知 policy を参照する protected interface を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">Semantic<a class="chip chip-ref" href="#model-finding">Finding</a> と exit code 1 が返る</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が spec_version 2.0 の文書を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">Schema<a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> と exit code 1 が返る</li></ol></div>
 
-      </article><article class="card scenario" id="scn-schema">
-        <header><h3>未知 schema 名は検査前に拒否される</h3><span class="chip chip-actor">Maintainer</span></header>
-
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">未知 schema 名で <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> を起動する</li><li class="scn-step">ファイルを読まず usage error の exit code 2 になる</li></ol></div>
-
-      </article><article class="card scenario" id="scn-schema-parse-lint">
-        <header><h3>schema 指定なしでは parse と lint だけを行う</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-yaml-check/scenario/SCL~203.0~20~E3~81~AE~E6~9C~AA~E8~A7~A3~E6~B1~BA~E5~8F~82~E7~85~A7~E3~81~AF~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>SCL 3.0 の未解決参照は拒否される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/SCL 3.0 の未解決参照は拒否される</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">schema 違反だが valid YAML の文書を schema 指定なしで検査する</li><li class="scn-step">Schema<a class="chip chip-ref" href="#model-finding">Finding</a> は返らない</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">未知 policy を参照する protected interface を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">Semantic<a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> と exit code 1 が返る</li></ol></div>
 
-      </article><article class="card scenario" id="scn-parse-schema">
-        <header><h3>parse 失敗時は schema 検証を行わない</h3><span class="chip chip-actor">Maintainer</span></header>
-
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">壊れた YAML を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">parse <a class="chip chip-ref" href="#model-finding">Finding</a> だけがその文書の構造検査結果になる</li></ol></div>
-
-      </article><article class="card scenario" id="scn-work-item-dependency-graph">
-        <header><h3>work-item dependency graph を検査する</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-yaml-check/scenario/~E6~9C~AA~E7~9F~A5~20schema~20~E5~90~8D~E3~81~AF~E6~A4~9C~E6~9F~BB~E5~89~8D~E3~81~AB~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>未知 schema 名は検査前に拒否される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/未知 schema 名は検査前に拒否される</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">work-item workspace を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">未解決参照、自己参照、循環が error として報告される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">未知 schema 名で <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> を起動する</li><li class="scn-step">ファイルを読まず usage error の exit code 2 になる</li></ol></div>
 
-      </article><article class="card scenario" id="scn-context-map">
-        <header><h3>context map の循環を検査する</h3><span class="chip chip-actor">Maintainer</span></header>
-
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">循環した context_map を <a class="chip chip-ref" href="#iface-checkyaml">CheckYaml</a> で検査する</li><li class="scn-step">ContextMap <a class="chip chip-ref" href="#model-finding">Finding</a> と exit code 1 が返る</li></ol></div>
-
-      </article><article class="card scenario" id="scn-warning">
-        <header><h3>warning だけなら成功する</h3><span class="chip chip-actor">Maintainer</span></header>
+      </article><article class="card scenario" id="scl-yaml-check/scenario/schema~20~E6~8C~87~E5~AE~9A~E3~81~AA~E3~81~97~E3~81~A7~E3~81~AF~20parse~20~E3~81~A8~20lint~20~E3~81~A0~E3~81~91~E3~82~92~E8~A1~8C~E3~81~86">
+        <header><h3>schema 指定なしでは parse と lint だけを行う</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/schema 指定なしでは parse と lint だけを行う</code></header>
 
 
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">shared kernel 肥大 warning だけを持つ文書を検査する</li><li class="scn-step"><a class="chip chip-ref" href="#model-finding">Finding</a> は表示され exit code は 0 になる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">schema 違反だが valid YAML の文書を schema 指定なしで検査する</li><li class="scn-step">Schema<a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> は返らない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-yaml-check/scenario/parse~20~E5~A4~B1~E6~95~97~E6~99~82~E3~81~AF~20schema~20~E6~A4~9C~E8~A8~BC~E3~82~92~E8~A1~8C~E3~82~8F~E3~81~AA~E3~81~84">
+        <header><h3>parse 失敗時は schema 検証を行わない</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/parse 失敗時は schema 検証を行わない</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">壊れた YAML を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">parse <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> だけがその文書の構造検査結果になる</li></ol></div>
+
+      </article><article class="card scenario" id="scl-yaml-check/scenario/work-item~20dependency~20graph~20~E3~82~92~E6~A4~9C~E6~9F~BB~E3~81~99~E3~82~8B">
+        <header><h3>work-item dependency graph を検査する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/work-item dependency graph を検査する</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">work-item workspace を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">未解決参照、自己参照、循環が error として報告される</li></ol></div>
+
+      </article><article class="card scenario" id="scl-yaml-check/scenario/context~20map~20~E3~81~AE~E5~BE~AA~E7~92~B0~E3~82~92~E6~A4~9C~E6~9F~BB~E3~81~99~E3~82~8B">
+        <header><h3>context map の循環を検査する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/context map の循環を検査する</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">循環した context_map を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">ContextMap <a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> と exit code 1 が返る</li></ol></div>
+
+      </article><article class="card scenario" id="scl-yaml-check/scenario/warning~20~E3~81~A0~E3~81~91~E3~81~AA~E3~82~89~E6~88~90~E5~8A~9F~E3~81~99~E3~82~8B">
+        <header><h3>warning だけなら成功する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/warning だけなら成功する</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">shared kernel 肥大 warning だけを持つ文書を検査する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-yaml-check/model/Finding">Finding</a> は表示され exit code は 0 になる</li></ol></div>
 
       </article></div>
   </section>
