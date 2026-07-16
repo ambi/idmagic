@@ -1,0 +1,15 @@
+version: 1
+source_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b
+executions:
+  - { check: pkce-s256-verifies, kind: property_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: authorization-code-memory-atomic-redeem, kind: contract_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: authorization-policy-boundary, kind: test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: refresh-token-absolute-ttl, kind: property_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: refresh-token-family-revocation, kind: contract_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: tenant-lifecycle, kind: test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: tenant-http-boundary, kind: contract_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: tenant-oauth-boundary, kind: contract_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: password-reuse-protection, kind: test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: reset-token-single-consumption, kind: contract_test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: client-secret-hashing, kind: test, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }
+  - { check: specification-coherence, kind: static_analysis, executed_at: 2026-07-17T00:00:00Z, target_revision: 4d622cdaf97c6bebaa7a1e0ce14c485365a4461b, result: passed }

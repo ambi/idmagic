@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://regenerative-architecture/schemas/verification-manifest.json",
+  "title": "Workspace traceability manifest",
+  "type": "object",
+  "required": ["version", "policies", "realizations", "checks", "baselines"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "selector", "requires_realization", "minimum_checks", "evidence_kinds"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "selector": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "contexts": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "kinds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/sclKind" }
+              },
+              "elements": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "requires_realization": { "type": "boolean" },
+          "minimum_checks": { "type": "integer", "minimum": 0 },
+          "evidence_kinds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/evidenceKind" }
+          }
+        }
+      }
+    },
+    "realizations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "module", "targets"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "module": { "type": "string", "minLength": 1 },
+          "targets": { "$ref": "#/$defs/targets" }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "recipe", "kind", "implementation", "targets"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "recipe": { "type": "string", "minLength": 1 },
+          "kind": { "$ref": "#/$defs/evidenceKind" },
+          "implementation": {
+            "type": "object",
+            "required": ["path", "symbol"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "symbol": { "type": "string", "minLength": 1 }
+            }
+          },
+          "targets": { "$ref": "#/$defs/targets" }
+        }
+      }
+    },
+    "baselines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "finding", "owner", "reason", "expires_at"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "finding": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "expires_at": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]*$" },
+    "sclKind": {
+      "enum": [
+        "standard_requirement",
+        "model",
+        "interface",
+        "state",
+        "authorization_resource",
+        "authorization_principal",
+        "authorization_policy",
+        "objective",
+        "scenario",
+        "flow"
+      ]
+    },
+    "evidenceKind": {
+      "enum": [
+        "test",
+        "property_test",
+        "contract_test",
+        "static_analysis",
+        "build",
+        "lint",
+        "typecheck",
+        "manual_inspection"
+      ]
+    },
+    "reference": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["context", "kind", "element"],
+          "additionalProperties": false,
+          "properties": {
+            "context": { "type": "string", "minLength": 1 },
+            "kind": {
+              "enum": [
+                "model",
+                "interface",
+                "state",
+                "authorization_resource",
+                "authorization_principal",
+                "authorization_policy",
+                "objective",
+                "scenario",
+                "flow"
+              ]
+            },
+            "element": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["context", "kind", "standard", "requirement"],
+          "additionalProperties": false,
+          "properties": {
+            "context": { "type": "string", "minLength": 1 },
+            "kind": { "const": "standard_requirement" },
+            "standard": { "type": "string", "minLength": 1 },
+            "requirement": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "targets": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reference" } }
+  }
+}

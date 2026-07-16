@@ -16,7 +16,7 @@
 <div class="layout">
   <aside class="toc-wrap"><nav class="toc" data-toc-for="scl" aria-label="SCL contents">
     <div class="toc-title">SCL</div>
-    <ol><li data-scl-context-item="overview"><a data-sec="scl-overview" href="#tab=scl&amp;sec=scl-overview">Overview</a></li><li data-scl-context-item="overview"><a data-sec="glossary" href="#tab=scl&amp;sec=glossary">Glossary</a></li><li data-scl-context-item="overview"><a data-sec="models" href="#tab=scl&amp;sec=models">Models</a></li><li data-scl-context-item="overview"><a data-sec="interfaces" href="#tab=scl&amp;sec=interfaces">Interfaces</a></li><li data-scl-context-item="overview"><a data-sec="scenarios" href="#tab=scl&amp;sec=scenarios">Scenarios</a></li></ol>
+    <ol><li data-scl-context-item="overview"><a data-sec="scl-overview" href="#tab=scl&amp;sec=scl-overview">Overview</a></li><li data-scl-context-item="overview"><a data-sec="glossary" href="#tab=scl&amp;sec=glossary">Glossary</a></li><li data-scl-context-item="overview"><a data-sec="models" href="#tab=scl&amp;sec=models">Models</a></li><li data-scl-context-item="overview"><a data-sec="interfaces" href="#tab=scl&amp;sec=interfaces">Interfaces</a></li><li data-scl-context-item="overview"><a data-sec="objectives" href="#tab=scl&amp;sec=objectives">Objectives</a></li><li data-scl-context-item="overview"><a data-sec="scenarios" href="#tab=scl&amp;sec=scenarios">Scenarios</a></li></ol>
   </nav></aside>
   <main><div class="tab" data-tab="scl" id="tab-scl"><nav class="context-tab-bar" aria-label="SCL contexts">
     <a class="context-tab-link active" data-scl-context-link="overview" href="#tab=scl&amp;sec=scl-overview">Overview</a>
@@ -28,10 +28,10 @@
       <div class="eyebrow">Specification Core Language · spec 3.0</div>
       <h1>ra</h1>
     </header>
-    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">5</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">4</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">3</span><span class="stat-label">interfaces</span></a><a class="stat" href="#scenarios"><span class="stat-num">4</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">8</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">6</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">4</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="glossary">
-    <h2>Glossary <span class="count">5</span></h2>
+    <h2>Glossary <span class="count">8</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="glossary-raworkspace">
       <div class="vocab-name"><code class="name">RaWorkspace</code></div>
@@ -77,13 +77,40 @@
 
 
       </div>
+    </article>
+<article class="vocab-entry" id="glossary-traceabilitymanifest">
+      <div class="vocab-name"><code class="name">TraceabilityManifest</code></div>
+      <div class="vocab-body">
+        <p class="def">SCL 規範要素、Architecture module、宣言済み check、実行 evidence を外部から直接結ぶ workspace マニフェスト。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="glossary-coveragepolicy">
+      <div class="vocab-name"><code class="name">CoveragePolicy</code></div>
+      <div class="vocab-body">
+        <p class="def">selector に一致する SCL 規範要素に必要な realization、check 数、evidence kind を定める規則。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="glossary-executionevidence">
+      <div class="vocab-name"><code class="name">ExecutionEvidence</code></div>
+      <div class="vocab-body">
+        <p class="def">宣言済み check を特定 source revision に対して実行した結果。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
+
+
+      </div>
     </article></div>
   </section>
 <section id="models">
-    <h2>Models <span class="count">4</span></h2>
+    <h2>Models <span class="count">6</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">value object <span class="count">2</span></h3>
+      <h3 class="grp-title">value object <span class="count">3</span></h3>
       <div class="cards"><article class="card" id="scl-ra/model/WorkspaceApp">
     <header><h3>WorkspaceApp</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">ra/model/WorkspaceApp</code></header>
     <p class="desc">標準レイアウトから発見されたアプリケーション仕様。</p>
@@ -157,15 +184,50 @@
   </tr></tbody>
   </table>
 
+  </article>
+<article class="card" id="scl-ra/model/TraceabilityReport">
+    <header><h3>TraceabilityReport</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">ra/model/TraceabilityReport</code></header>
+    <p class="desc">workspace 追跡グラフの coverage と freshness の機械可読な検査結果。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">findings</code></td>
+    <td><code class="type">List&lt;TraceabilityFindingKind&gt;</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">strict</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">passed</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">1</span></h3>
+      <h3 class="grp-title">enum <span class="count">2</span></h3>
       <div class="cards"><article class="card" id="scl-ra/model/WorkspaceCommand">
     <header><h3>WorkspaceCommand</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">ra/model/WorkspaceCommand</code></header>
 
 
     <div class="enum-vals"><span class="chip chip-enum">init</span> <span class="chip chip-enum">verify</span> <span class="chip chip-enum">yaml-check</span> <span class="chip chip-enum">render</span></div>
+
+  </article>
+<article class="card" id="scl-ra/model/TraceabilityFindingKind">
+    <header><h3>TraceabilityFindingKind</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">ra/model/TraceabilityFindingKind</code></header>
+
+
+    <div class="enum-vals"><span class="chip chip-enum">realized_without_spec</span> <span class="chip chip-enum">specified_without_realization</span> <span class="chip chip-enum">specified_without_verification</span> <span class="chip chip-enum">verification_without_target</span> <span class="chip chip-enum">missing_evidence</span> <span class="chip chip-enum">stale_evidence</span></div>
 
   </article></div>
     </div>
@@ -190,7 +252,7 @@
     </div>
   </section>
 <section id="interfaces">
-    <h2>Interfaces <span class="count">3</span></h2>
+    <h2>Interfaces <span class="count">4</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-ra/interface/DiscoverWorkspace">
     <header><h3>DiscoverWorkspace</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">ra/interface/DiscoverWorkspace</code></header>
@@ -287,10 +349,66 @@
     </table>
   </div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.created_layout implies input.cwd != &quot;&quot;</code></li><li><code class="expr">existing_scl_is_not_overwritten(input.cwd)</code></li></ul></div>
+  </article>
+<article class="card" id="scl-ra/interface/CheckTraceability">
+    <header><h3>CheckTraceability</h3><span class="badge badge-access-internal">internal</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">ra/interface/CheckTraceability</code></header>
+    <p class="desc">workspace の四層追跡グラフを構築し、参照、coverage、evidence の新鮮さを検査する。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">workspace</code></td>
+    <td><code class="type">WorkspaceConfig</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">strict</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">source_revision</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">report</code></td>
+    <td><code class="type">TraceabilityReport</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.report.strict == input.strict</code></li><li><code class="expr">output.report.passed implies output.report.findings.size() == 0 || input.strict == false</code></li><li><code class="expr">successful_evidence_targets_revision(input.source_revision)</code></li></ul></div>
   </article></div>
   </section>
+<section id="objectives">
+    <h2>Objectives <span class="count">1</span></h2>
+    <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
+    <div class="cards"><article class="card" id="scl-ra/objective/TraceabilityDeterminism">
+        <header><h3>TraceabilityDeterminism</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">ra/objective/TraceabilityDeterminism</code></header>
+        <p class="desc">同一 workspace、manifest、source revision から安定した機械可読 report を生成する。</p>
+        <dl class="kv">
+          <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-ra/interface/CheckTraceability">CheckTraceability</a></dd>
+          <dt>indicator</dt><dd><code class="expr">measurement.report_order_instability == 0</code></dd>
+          <dt>target</dt><dd><code>1</code></dd>
+          <dt>window</dt><dd><code>30d</code></dd>
+          <dt>budgeting</dt><dd><span class="badge">occurrences</span></dd>
+
+        </dl>
+      </article></div>
+  </section>
 <section id="scenarios">
-    <h2>Scenarios <span class="count">4</span></h2>
+    <h2>Scenarios <span class="count">6</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-ra/scenario/StandardAppWithoutRegistry">
         <header><h3>StandardAppWithoutRegistry</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/StandardAppWithoutRegistry</code></header>
@@ -319,6 +437,21 @@
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">標準レイアウトの対象が何も存在しない</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が <a class="chip chip-ref" href="#scl-ra/interface/DiscoverWorkspace">DiscoverWorkspace</a> を実行する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-ra/model/NoWorkspaceTargets">NoWorkspaceTargets</a> が返る</li></ol></div>
 
+      </article><article class="card scenario" id="scl-ra/scenario/TraceabilityReportOnly">
+        <header><h3>TraceabilityReportOnly</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/TraceabilityReportOnly</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">coverage debt を含む TraceabilityManifest がある</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が strict=false で <a class="chip chip-ref" href="#scl-ra/interface/CheckTraceability">CheckTraceability</a> を実行する</li><li class="scn-step">finding が種別ごとに report される</li><li class="scn-step">finding があっても report-only check は成功する</li></ol></div>
+
+      </article><article class="card scenario" id="scl-ra/scenario/TraceabilityStrictRejectsDrift">
+        <header><h3>TraceabilityStrictRejectsDrift</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">ra/scenario/TraceabilityStrictRejectsDrift</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">baseline で許容されていない coverage drift がある</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Maintainer が strict=true で <a class="chip chip-ref" href="#scl-ra/interface/CheckTraceability">CheckTraceability</a> を実行する</li><li class="scn-step">finding は機械可読 report に分類される</li><li class="scn-step">check は失敗する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">evidence の target revision が現在の source revision と異なる</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">stale_evidence として分類される</li></ol></div>
+          </article></div>
       </article></div>
   </section>
   </div></div></main>

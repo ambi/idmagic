@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://regenerative-architecture/schemas/verification-evidence.json",
+  "title": "Traceability execution evidence",
+  "type": "object",
+  "required": ["version", "source_revision", "executions"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "source_revision": { "type": "string", "minLength": 1 },
+    "executions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check", "kind", "executed_at", "target_revision", "result"],
+        "additionalProperties": false,
+        "properties": {
+          "check": { "type": "string", "minLength": 1 },
+          "kind": { "$ref": "#/$defs/evidenceKind" },
+          "executed_at": { "type": "string", "format": "date-time" },
+          "target_revision": { "type": "string", "minLength": 1 },
+          "result": { "enum": ["passed", "failed"] },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "sha256"],
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "evidenceKind": {
+      "enum": [
+        "test",
+        "property_test",
+        "contract_test",
+        "static_analysis",
+        "build",
+        "lint",
+        "typecheck",
+        "manual_inspection"
+      ]
+    }
+  }
+}

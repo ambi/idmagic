@@ -32,7 +32,15 @@ install-ui:
     cd frontend && bun install --frozen-lockfile
 
 # Run the standard app verification suite.
-verify: yaml-check test-tools typecheck-tools verify-go verify-ui
+verify: yaml-check traceability-strict test-tools typecheck-tools verify-go verify-ui
+
+# Report workspace traceability findings without failing on unbaselined debt.
+traceability-report:
+    {{ra_cmd}} traceability --json --revision={{git_commit}}
+
+# Reject unbaselined traceability drift and expired debt baselines.
+traceability-strict:
+    {{ra_cmd}} traceability --strict --json --revision={{git_commit}}
 
 # Run embedded RA/SCL tooling tests.
 test-tools:
@@ -41,6 +49,14 @@ test-tools:
 # Type-check embedded RA/SCL tooling.
 typecheck-tools:
     cd tools && bun run typecheck
+
+# Format embedded RA/SCL tooling.
+format-tools:
+    cd tools && bun run format
+
+# Lint embedded RA/SCL tooling.
+lint-tools:
+    cd tools && bun run lint
 
 # Verify Go backend with lint and race-enabled tests.
 verify-go: lint-go test-go-race
@@ -118,7 +134,7 @@ test-ui-e2e:
     cd frontend && bun run test:e2e
 
 # Validate SCL and Work Item YAML.
-yaml-check: yaml-check-scl yaml-check-work-items check-ids yaml-check-architecture
+yaml-check: yaml-check-scl yaml-check-work-items check-ids yaml-check-architecture yaml-check-traceability
 
 # Validate SCL YAML files.
 yaml-check-scl:
@@ -135,6 +151,10 @@ check-ids:
 # Validate ARCHITECTURE.md against the workspace it describes.
 yaml-check-architecture:
     {{ra_cmd}} yaml-check --architecture
+
+# Validate traceability manifest and execution evidence YAML.
+yaml-check-traceability:
+    {{ra_cmd}} yaml-check --traceability
 
 # Regenerate SCL-derived artifacts.
 scl-render:

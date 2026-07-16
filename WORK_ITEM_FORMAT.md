@@ -16,6 +16,14 @@ authors: [name]
 risk: low        # low | medium | high | critical
 created_at: 2026-01-01  # YYYY-MM-DD
 depends_on: []   # この WI の完了前に完了が必要な WI ID
+change_kind: feature  # feature | bugfix | operations | refactor | docs | tooling | maintenance
+initial_context:
+  scl: { System: [interfaces.StartTask] }
+  source: [src/usecase]
+  tests: [src/usecase]
+  stop_before_reading: [frontend]
+affected_spec:
+  - { context: System, kind: interface, element: StartTask }
 ---
 
 # 一文で表す意味変更
@@ -56,6 +64,13 @@ depends_on: []   # この WI の完了前に完了が必要な WI ID
 work-items 名前空間（`done/` を含む）にある WI ID とし、自己参照・循環参照は許可しない。
 本文中の関連リンク、範囲外への委譲、後続候補は `depends_on` に入れず、従来どおり本文で記す。
 未着手・進行中の WI では `depends_on` を必ず明記し、依存がなければ `[]` とする。
+
+`feature` / `bugfix` / `operations` は `initial_context` と `affected_spec` を必須とし、
+`affected_spec` は `context`、`kind`、`element` （standard requirement だけは
+`standard` + `requirement`）の direct SCL element reference を使う。仕様非影響の
+`refactor` / `docs` / `tooling` / `maintenance` は、`affected_spec` の代わりに
+`spec_impact: { kind: none, reason: "..." }` と具体的理由を宣言できる。新規入力で
+`affected_guarantees` は使用しない（完了済み履歴は書き換えない）。
 
 次のいずれかに該当するワークアイテムは、中規模以上として `## Plan` と `## Tasks` を書く。
 

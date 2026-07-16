@@ -110,33 +110,9 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
     const yamlText = match[1]
     bodyText = match[2]
 
-    const fmLines = yamlText.split('\n')
-    for (const line of fmLines) {
-      const clean = line.trim()
-      if (!clean || clean.startsWith('#')) continue
-      const colonIdx = clean.indexOf(':')
-      if (colonIdx > 0) {
-        const key = clean.slice(0, colonIdx).trim()
-        let val = clean.slice(colonIdx + 1).trim()
-        if (
-          (val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'"))
-        ) {
-          val = val.slice(1, -1)
-        }
-        if (val.startsWith('[') && val.endsWith(']')) {
-          const items = val.slice(1, -1).trim()
-          data[key] = items
-            ? items.split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
-            : []
-        } else if (val === 'true') {
-          data[key] = true
-        } else if (val === 'false') {
-          data[key] = false
-        } else {
-          data[key] = val
-        }
-      }
+    const frontmatter = Bun.YAML.parse(yamlText)
+    if (frontmatter !== null && typeof frontmatter === 'object' && !Array.isArray(frontmatter)) {
+      Object.assign(data, frontmatter)
     }
   }
 

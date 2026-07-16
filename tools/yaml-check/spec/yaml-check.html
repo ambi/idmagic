@@ -28,10 +28,10 @@
       <div class="eyebrow">Specification Core Language · spec 3.0</div>
       <h1>yaml-check</h1>
     </header>
-    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">5</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">6</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">9</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">6</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">6</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">10</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="glossary">
-    <h2>Glossary <span class="count">5</span></h2>
+    <h2>Glossary <span class="count">6</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="glossary-yamlinput">
       <div class="vocab-name"><code class="name">YamlInput</code></div>
@@ -64,6 +64,15 @@
       <div class="vocab-name"><code class="name">SemanticFinding</code></div>
       <div class="vocab-body">
         <p class="def">SCL section 間の参照、CEL binding、graph の意味的不整合を表す Finding。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="glossary-directspecreference">
+      <div class="vocab-name"><code class="name">DirectSpecReference</code></div>
+      <div class="vocab-body">
+        <p class="def">Work Item や verification manifest から context-qualified に指す SCL 規範要素参照。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -193,7 +202,7 @@
     <header><h3>SchemaName</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">yaml-check/model/SchemaName</code></header>
 
 
-    <div class="enum-vals"><span class="chip chip-enum">work-item</span> <span class="chip chip-enum">scl</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">work-item</span> <span class="chip chip-enum">scl</span> <span class="chip chip-enum">verification-manifest</span> <span class="chip chip-enum">verification-evidence</span></div>
 
   </article>
 <article class="card" id="scl-yaml-check/model/FindingKind">
@@ -256,7 +265,7 @@ work-item dependency を決定的な順序で検査する。
     </table>
   </div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.files.size() &gt; 0</code></li></ul></div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.summary.total == input.files.size()</code></li><li><code class="expr">output.exit_code == 0 || output.exit_code == 1 || output.exit_code == 2</code></li><li><code class="expr">output.exit_code == 0 implies output.summary.failed == 0</code></li><li><code class="expr">output.summary.results.size() == output.summary.total</code></li><li><code class="expr">parse_precedes_schema(input.files, output.summary)</code></li><li><code class="expr">schema_validation_is_opt_in(input.schema, output.summary)</code></li><li><code class="expr">schema_name_is_validated_before_file_reads(input.schema, output.exit_code)</code></li><li><code class="expr">one_schema_is_applied_uniformly(input.schema, output.summary)</code></li><li><code class="expr">scl_schema_accepts_only_spec_version_3(input.schema, output.summary)</code></li><li><code class="expr">input_content_executes_no_code(input.files)</code></li><li><code class="expr">input_files_are_not_modified(input.files)</code></li><li><code class="expr">context_map_semantics_are_checked(input.files, output.summary)</code></li><li><code class="expr">work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)</code></li><li><code class="expr">warnings_do_not_fail(output.summary, output.exit_code)</code></li><li><code class="expr">finding_locations_are_within_source(output.summary)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.summary.total == input.files.size()</code></li><li><code class="expr">output.exit_code == 0 || output.exit_code == 1 || output.exit_code == 2</code></li><li><code class="expr">output.exit_code == 0 implies output.summary.failed == 0</code></li><li><code class="expr">output.summary.results.size() == output.summary.total</code></li><li><code class="expr">parse_precedes_schema(input.files, output.summary)</code></li><li><code class="expr">schema_validation_is_opt_in(input.schema, output.summary)</code></li><li><code class="expr">schema_name_is_validated_before_file_reads(input.schema, output.exit_code)</code></li><li><code class="expr">one_schema_is_applied_uniformly(input.schema, output.summary)</code></li><li><code class="expr">scl_schema_accepts_only_spec_version_3(input.schema, output.summary)</code></li><li><code class="expr">input_content_executes_no_code(input.files)</code></li><li><code class="expr">input_files_are_not_modified(input.files)</code></li><li><code class="expr">context_map_semantics_are_checked(input.files, output.summary)</code></li><li><code class="expr">work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)</code></li><li><code class="expr">work_item_spec_impact_fields_are_conditionally_required(input.files, output.summary)</code></li><li><code class="expr">direct_spec_references_resolve_in_workspace(input.files, output.summary)</code></li><li><code class="expr">warnings_do_not_fail(output.summary, output.exit_code)</code></li><li><code class="expr">finding_locations_are_within_source(output.summary)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
     <div class="binding-kind"><span class="badge badge-bkind-cli">cli</span></div>
     <div class="binding-body"><div class="binding-head"><code class="path">yaml-check</code></div><div class="io"><div class="label">Args (positional)</div><table class="fields"><thead><tr><th>Name</th><th>Position</th><th>Presence</th><th>Note</th></tr></thead><tbody><tr>
@@ -317,7 +326,7 @@ work-item dependency を決定的な順序で検査する。
       </article></div>
   </section>
 <section id="scenarios">
-    <h2>Scenarios <span class="count">9</span></h2>
+    <h2>Scenarios <span class="count">10</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-yaml-check/scenario/~E6~AD~A3~E3~81~97~E3~81~84~20SCL~203.0~20~E6~96~87~E6~9B~B8~E3~82~92~E6~A4~9C~E6~9F~BB~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>正しい SCL 3.0 文書を検査できる</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/正しい SCL 3.0 文書を検査できる</code></header>
@@ -361,6 +370,15 @@ work-item dependency を決定的な順序で検査する。
 
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">work-item workspace を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">未解決参照、自己参照、循環が error として報告される</li></ol></div>
 
+      </article><article class="card scenario" id="scl-yaml-check/scenario/~E4~BB~95~E6~A7~98~E5~BD~B1~E9~9F~BF~E3~82~92~E6~8C~81~E3~81~A4~20work-item~20~E3~81~AF~20direct~20reference~20~E3~82~92~E5~AE~A3~E8~A8~80~E3~81~99~E3~82~8B">
+        <header><h3>仕様影響を持つ work-item は direct reference を宣言する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/仕様影響を持つ work-item は direct reference を宣言する</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">feature work-item を <a class="chip chip-ref" href="#scl-yaml-check/interface/CheckYaml">CheckYaml</a> で検査する</li><li class="scn-step">affected_spec の各 DirectSpecReference が workspace で解決される</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">仕様影響のない change である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">spec_impact none と具体的な reason が必須になる</li></ol></div>
+          </article></div>
       </article><article class="card scenario" id="scl-yaml-check/scenario/context~20map~20~E3~81~AE~E5~BE~AA~E7~92~B0~E3~82~92~E6~A4~9C~E6~9F~BB~E3~81~99~E3~82~8B">
         <header><h3>context map の循環を検査する</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">yaml-check/scenario/context map の循環を検査する</code></header>
 

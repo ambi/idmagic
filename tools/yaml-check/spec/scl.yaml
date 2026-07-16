@@ -12,13 +12,15 @@ glossary:
     definition: 入力が選択された JSON Schema に適合しなかった Finding。
   SemanticFinding:
     definition: SCL section 間の参照、CEL binding、graph の意味的不整合を表す Finding。
+  DirectSpecReference:
+    definition: Work Item や verification manifest から context-qualified に指す SCL 規範要素参照。
   Maintainer:
     definition: YAML と SCL 文書を検証する利用者。
 
 models:
   SchemaName:
     kind: enum
-    values: [work-item, scl]
+    values: [work-item, scl, verification-manifest, verification-evidence]
   FindingKind:
     kind: enum
     values: [parse, lint, schema, semantic, context_map]
@@ -82,6 +84,8 @@ interfaces:
       - input_files_are_not_modified(input.files)
       - context_map_semantics_are_checked(input.files, output.summary)
       - work_item_dependencies_are_resolved_and_acyclic(input.files, output.summary)
+      - work_item_spec_impact_fields_are_conditionally_required(input.files, output.summary)
+      - direct_spec_references_resolve_in_workspace(input.files, output.summary)
       - warnings_do_not_fail(output.summary, output.exit_code)
       - finding_locations_are_within_source(output.summary)
     access: public
@@ -158,6 +162,16 @@ scenarios:
     main_success:
       - work-item workspace を CheckYaml で検査する
       - 未解決参照、自己参照、循環が error として報告される
+  仕様影響を持つ work-item は direct reference を宣言する:
+    actor: Maintainer
+    main_success:
+      - feature work-item を CheckYaml で検査する
+      - affected_spec の各 DirectSpecReference が workspace で解決される
+    extensions:
+      - at: 1
+        condition: 仕様影響のない change である
+        steps:
+          - spec_impact none と具体的な reason が必須になる
   context map の循環を検査する:
     actor: Maintainer
     main_success:

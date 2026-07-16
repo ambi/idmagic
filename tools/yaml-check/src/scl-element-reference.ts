@@ -37,9 +37,7 @@ export type SclStandardRequirementReference = {
   requirement: string
 }
 
-export type SclElementReference =
-  | SclNamedElementReference
-  | SclStandardRequirementReference
+export type SclElementReference = SclNamedElementReference | SclStandardRequirementReference
 
 export type SclReferenceErrorCode =
   | 'invalid_reference'
@@ -92,9 +90,7 @@ const NAMED_KIND_PATHS: Record<SclNamedElementKind, readonly string[]> = {
 }
 
 function dict(value: unknown): Dict {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Dict)
-    : {}
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Dict) : {}
 }
 
 function nonEmptyString(value: unknown): value is string {
@@ -105,9 +101,7 @@ function error(code: SclReferenceErrorCode, message: string): SclReferenceError 
   return { code, message }
 }
 
-export function normalizeSclElementReference(
-  value: unknown,
-): NormalizeSclElementReferenceResult {
+export function normalizeSclElementReference(value: unknown): NormalizeSclElementReferenceResult {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return {
       ok: false,
@@ -204,6 +198,10 @@ export function buildSclWorkspaceIndex(
   const contexts = new Map<string, Dict>()
   const errors: SclReferenceError[] = []
 
+  if (nonEmptyString(rootDoc.system)) {
+    contexts.set(sclDocumentContext(rootDoc as { system: string; context?: string }), rootDoc)
+  }
+
   for (const context of Object.keys(contextMap)) {
     if (!supplied.has(context)) {
       errors.push(
@@ -248,14 +246,45 @@ export function buildSclWorkspaceIndex(
   }
 
   for (const context of supplied.keys()) {
+    if (contexts.get(context) === supplied.get(context)) continue
     if (!(context in contextMap)) {
-      errors.push(error('unknown_context', `context document '${context}' is absent from context_map`))
+      errors.push(
+        error('unknown_context', `context document '${context}' is absent from context_map`),
+      )
     }
   }
 
   return errors.length > 0
     ? { ok: false, errors }
     : { ok: true, index: { root: rootDoc, contexts } }
+}
+
+export function listSclElementReferences(index: SclWorkspaceIndex): SclElementReference[] {
+  const references: SclElementReference[] = []
+  for (const [context, document] of index.contexts) {
+    for (const [kind, path] of Object.entries(NAMED_KIND_PATHS) as [
+      SclNamedElementKind,
+      readonly string[],
+    ][]) {
+      for (const element of Object.keys(dict(nestedValue(document, path)))) {
+        references.push({ context, kind, element })
+      }
+    }
+    for (const [standard, standardValue] of Object.entries(dict(document.standards))) {
+      const requirements = Array.isArray(dict(standardValue).requirements)
+        ? (dict(standardValue).requirements as unknown[])
+        : []
+      for (const requirementValue of requirements) {
+        const requirement = dict(requirementValue).id
+        if (nonEmptyString(requirement)) {
+          references.push({ context, kind: 'standard_requirement', standard, requirement })
+        }
+      }
+    }
+  }
+  return references.sort((a, b) =>
+    canonicalSclElementReference(a).localeCompare(canonicalSclElementReference(b)),
+  )
 }
 
 function nestedValue(document: Dict, path: readonly string[]): unknown {

@@ -16,6 +16,7 @@ function usage(): string {
     '  yaml-check [--work-items] [--scl] [--ids]  Validate discovered RA records',
     '  verify                                  Alias for yaml-check',
     '  render [--tools-only]                   Regenerate discovered SCL artifacts',
+    '  traceability [--strict] [--json] [--revision=REV]  Check workspace traceability',
     '',
   ].join('\n')
 }
@@ -65,6 +66,10 @@ if (command === 'verify') {
 
 if (command === 'render') {
   await runScript(['ra/src/render-workspace.ts', ...rest])
+}
+
+if (command === 'traceability') {
+  await runScript(['ra/src/traceability-workspace.ts', ...rest])
 }
 
 console.error(`ra: unknown command ${command}`)

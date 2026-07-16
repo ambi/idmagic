@@ -32,6 +32,8 @@ export type WorkspaceConfig = {
   repositoryWorkItems?: string
   toolSpecs?: string[]
   architectureDocs?: string[]
+  verificationManifest?: string
+  verificationEvidence?: string
 }
 
 function exists(path: string): boolean {
@@ -114,7 +116,20 @@ export async function discoverWorkspaceConfig(
     apps.length === 0 && exists(resolve(root, 'work-items')) ? 'work-items' : undefined
   const toolSpecs = await discoverToolSpecs(root)
   const architectureDocs = discoverArchitectureDocs(root, apps)
-  const config = { apps, repositoryWorkItems, toolSpecs, architectureDocs }
+  const verificationManifest = exists(resolve(root, 'verification/manifest.yaml'))
+    ? 'verification/manifest.yaml'
+    : undefined
+  const verificationEvidence = exists(resolve(root, 'verification/evidence.yaml'))
+    ? 'verification/evidence.yaml'
+    : undefined
+  const config = {
+    apps,
+    repositoryWorkItems,
+    toolSpecs,
+    architectureDocs,
+    verificationManifest,
+    verificationEvidence,
+  }
   if (apps.length === 0 && repositoryWorkItems === undefined && toolSpecs.length === 0) {
     throw new Error(`no RA workspace targets found under ${root}`)
   }

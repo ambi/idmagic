@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-15
+updated_at: 2026-07-17
 modules:
   backend:
     path: backend
@@ -11,6 +11,13 @@ modules:
   specification:
     path: spec
     responsibility: SCL の規範仕様と派生契約を提供する。
+  ra-tools:
+    path: tools
+    responsibility: RA workspace の発見、SCL 派生物生成、schema・追跡グラフ検査を提供する。
+    realizes: [interfaces.CheckTraceability, interfaces.CheckYaml]
+  verification:
+    path: verification
+    responsibility: SCL 規範要素と realization、check、revision 付き evidence の外部 binding を提供する。
 ---
 
 # Architecture: repo
@@ -29,6 +36,8 @@ modules:
 ├── frontend/      # React UI と gateway
 ├── spec/          # SCL と派生契約
 ├── infra/         # コンテナ・ローカル実行・database schema 資材
+├── tools/         # RA/SCL CLI、renderer、schema validator
+├── verification/  # traceability manifest と revision 付き evidence
 ├── decisions/     # Architecture Decision Records
 └── work-items/    # 作業単位と完了記録
 ```
@@ -47,6 +56,7 @@ modules:
 - technical shared context と context-owned adapter の分離、および context 固有の永続化 adapter の同居は [ADR-070](decisions/ADR-070-technical-shared-context-for-cross-context-adapters.md) と [ADR-090](decisions/ADR-090-context-local-persistence-and-sqlc.md) に従う。
 - durable job queue (PostgreSQL `FOR UPDATE SKIP LOCKED` リース) と `idmagic-worker` プロセス分離・耐障害性は [ADR-098](decisions/ADR-098-durable-job-queue-skip-locked-lease.md) と [ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md) に従う。
 - 動的 Group membership の CEL 環境、排他的 membership type、rule version による fail-closed は [ADR-111](decisions/ADR-111-cel-dynamic-group-membership-rules.md) に従う。
+- SCL 規範要素、Architecture module、宣言済み check、revision 付き evidence の直接追跡は [ADR-115](decisions/ADR-115-direct-workspace-traceability-graph.md) に従う。
 
 ## 読む順序
 

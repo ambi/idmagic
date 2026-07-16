@@ -121,7 +121,9 @@ describe('locatePointer', () => {
 
 describe('SCHEMAS', () => {
   it('exposes exactly the documented schemas', () => {
-    expect(Object.keys(SCHEMAS).sort()).toEqual(['architecture', 'scl', 'work-item'].sort())
+    expect(Object.keys(SCHEMAS).sort()).toEqual(
+      ['architecture', 'scl', 'work-item', 'verification-manifest', 'verification-evidence'].sort(),
+    )
   })
 })
 
@@ -167,6 +169,34 @@ describe('validateAgainstSchema — work-item', () => {
     expect(validateAgainstSchema('work-item', validWorkItem, '')).toEqual([])
   })
 
+  it('requires direct SCL targets and initial context for feature work', () => {
+    const feature = { ...validWorkItem, change_kind: 'feature' }
+    expect(validateAgainstSchema('work-item', feature, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...feature,
+          initial_context: { source: ['tools/ra/src'] },
+          affected_spec: [{ context: 'ra', kind: 'interface', element: 'CheckTraceability' }],
+        },
+        '',
+      ),
+    ).toEqual([])
+  })
+
+  it('requires a concrete no-impact reason for maintenance without SCL targets', () => {
+    const maintenance = { ...validWorkItem, change_kind: 'maintenance' }
+    expect(validateAgainstSchema('work-item', maintenance, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        { ...maintenance, spec_impact: { kind: 'none', reason: 'Only generated text changed.' } },
+        '',
+      ),
+    ).toEqual([])
+  })
+
   it('rejects a missing required field', () => {
     const { risk_notes: _omitted, ...broken } = validWorkItem
     const f = validateAgainstSchema('work-item', broken, '')
@@ -189,13 +219,21 @@ describe('validateAgainstSchema — work-item', () => {
 
   it('rejects malformed or duplicate dependency IDs', () => {
     for (const depends_on of [['WI_1'], ['wi-1-foundation', 'wi-1-foundation']]) {
-      expect(validateAgainstSchema('work-item', { ...validWorkItem, depends_on }, '')).not.toEqual([])
+      expect(validateAgainstSchema('work-item', { ...validWorkItem, depends_on }, '')).not.toEqual(
+        [],
+      )
     }
   })
 
   it('keeps completed records without depends_on compatible', () => {
     const { depends_on: _omitted, ...legacy } = validWorkItem
-    expect(validateAgainstSchema('work-item', { ...legacy, status: 'completed', completion: validCompletion }, '')).toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        { ...legacy, status: 'completed', completion: validCompletion },
+        '',
+      ),
+    ).toEqual([])
   })
 
   it('rejects an out-of-enum risk', () => {
@@ -343,7 +381,9 @@ describe('validateAgainstSchema — scl', () => {
   it('rejects pre-3.0 SCL documents', () => {
     const text = 'system: demo\nspec_version: "2.0"\n'
     const f = validateAgainstSchema('scl', { system: 'demo', spec_version: '2.0' }, text)
-    expect(f.some((x) => x.line === 2 && x.message.includes('must be equal to constant'))).toBe(true)
+    expect(f.some((x) => x.line === 2 && x.message.includes('must be equal to constant'))).toBe(
+      true,
+    )
   })
 })
 

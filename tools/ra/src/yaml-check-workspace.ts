@@ -13,12 +13,14 @@ import {
   verifyWorkItemDependencies,
 } from '../../yaml-check/src/work-item-dependencies.ts'
 import { buildSclWorkspaceIndex } from '../../yaml-check/src/scl-element-reference.ts'
+import { resolveSclElementReference } from '../../yaml-check/src/scl-element-reference.ts'
+import { loadWorkspaceSclIndex } from './workspace-scl-index.ts'
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
   process.stdout.write(
     [
-      'Usage: yaml-check-workspace [--work-items] [--scl] [--ids] [--architecture]',
+      'Usage: yaml-check-workspace [--work-items] [--scl] [--ids] [--architecture] [--traceability]',
       '',
       'Without flags, runs all discovered checks.',
       '',
@@ -26,7 +28,7 @@ if (args.has('--help') || args.has('-h')) {
   )
   process.exit(0)
 }
-const validArgs = new Set(['--work-items', '--scl', '--ids', '--architecture'])
+const validArgs = new Set(['--work-items', '--scl', '--ids', '--architecture', '--traceability'])
 for (const arg of args) {
   if (!validArgs.has(arg)) {
     console.error(`yaml-check-workspace: unknown option ${arg}`)
@@ -38,6 +40,7 @@ const runWorkItems = runAll || args.has('--work-items')
 const runScl = runAll || args.has('--scl')
 const runIds = runAll || args.has('--ids')
 const runArchitecture = runAll || args.has('--architecture')
+const runTraceability = runAll || args.has('--traceability')
 
 const config = await loadWorkspaceConfig()
 
@@ -85,6 +88,31 @@ if (runWorkItems && workItemPatterns.length > 0) {
     process.exit(1)
   }
   console.log(`ok  ${records.length} work-item dependency record(s)`)
+
+  const { index, errors } = await loadWorkspaceSclIndex(config)
+  if (errors.length > 0) {
+    for (const error of errors) console.error(`scl-element-reference: ${error.message}`)
+    process.exit(1)
+  }
+  let affectedSpecFailed = false
+  for (const root of workItemRoots) {
+    for (const dir of [root, join(root, 'done')]) {
+      for (const path of await listWorkItemFiles(dir)) {
+        const text = await readFile(path, 'utf8')
+        const yaml = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n/)?.[1]
+        if (!yaml) continue
+        const frontmatter = Bun.YAML.parse(yaml) as { affected_spec?: unknown }
+        if (!Array.isArray(frontmatter.affected_spec)) continue
+        for (const target of frontmatter.affected_spec) {
+          const resolved = resolveSclElementReference(index, target)
+          if (resolved.ok) continue
+          affectedSpecFailed = true
+          console.error(`${path}: affected_spec: ${resolved.error.message}`)
+        }
+      }
+    }
+  }
+  if (affectedSpecFailed) process.exit(1)
 }
 
 async function listWorkItemFiles(dir: string): Promise<string[]> {
@@ -156,6 +184,21 @@ if (runScl && sclPatterns.length > 0) {
     }
   }
   if (referenceIndexFailed) process.exit(1)
+}
+
+if (runTraceability && config.verificationManifest) {
+  await runTool([
+    'yaml-check/src/main.ts',
+    '--schema=verification-manifest',
+    rootPath(config.verificationManifest),
+  ])
+  if (config.verificationEvidence) {
+    await runTool([
+      'yaml-check/src/main.ts',
+      '--schema=verification-evidence',
+      rootPath(config.verificationEvidence),
+    ])
+  }
 }
 
 const checkIdsArgs: string[] = ['yaml-check/src/check-ids.ts']

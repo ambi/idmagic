@@ -4,10 +4,7 @@ package spec_test
 // 仕様核 (spec/scl.yaml) と Go 実装の双子定義が乖離していないことを検証する。
 
 import (
-	"os"
-	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
@@ -166,42 +163,5 @@ unknown_section: {}
 `))
 	if err == nil {
 		t.Fatal("expected unknown field to be rejected")
-	}
-}
-
-func TestAssuranceEvidenceHasExecutableBindings(t *testing.T) {
-	root := repositoryRoot(t)
-	for evidenceID, verifications := range spec.AssuranceManifest {
-		for _, verification := range verifications {
-			content, err := os.ReadFile(filepath.Join(root, verification.File))
-			if err != nil {
-				t.Errorf("%s: read %s: %v", evidenceID, verification.File, err)
-				continue
-			}
-			if !strings.Contains(string(content), verification.Check) {
-				t.Errorf("%s: %s does not contain check %q", evidenceID, verification.File, verification.Check)
-			}
-		}
-	}
-}
-
-func repositoryRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			return dir
-		}
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("repository root not found")
-		}
-		dir = parent
 	}
 }

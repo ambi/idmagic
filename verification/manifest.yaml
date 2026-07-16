@@ -1,0 +1,119 @@
+version: 1
+
+policies:
+  - id: critical-interface-coverage
+    selector:
+      contexts: [OAuth2, Authentication, Tenancy]
+      kinds: [interface]
+      elements: [Token, Authorize, RegisterClient, ChangePassword, CreateTenant]
+    requires_realization: true
+    minimum_checks: 1
+    evidence_kinds: [test, property_test, contract_test]
+  - id: critical-record-coverage
+    selector:
+      contexts: [OAuth2, Authentication]
+      kinds: [model]
+      elements: [AuthorizationCodeRecord, RefreshTokenRecord, PasswordResetTokenRecord]
+    requires_realization: true
+    minimum_checks: 1
+    evidence_kinds: [test, property_test, contract_test]
+
+realizations:
+  - id: backend-critical-security-flows
+    module: backend
+    targets:
+      - { context: OAuth2, kind: interface, element: Token }
+      - { context: OAuth2, kind: interface, element: Authorize }
+      - { context: OAuth2, kind: interface, element: RegisterClient }
+      - { context: Authentication, kind: interface, element: ChangePassword }
+      - { context: Tenancy, kind: interface, element: CreateTenant }
+      - { context: OAuth2, kind: model, element: AuthorizationCodeRecord }
+      - { context: OAuth2, kind: model, element: RefreshTokenRecord }
+      - { context: Authentication, kind: model, element: PasswordResetTokenRecord }
+
+checks:
+  - id: pkce-s256-verifies
+    recipe: test-go
+    kind: property_test
+    implementation: { path: backend/oauth2/domain/pkce_test.go, symbol: TestPKCES256Verifies }
+    targets:
+      - { context: OAuth2, kind: interface, element: Token }
+  - id: authorization-code-memory-atomic-redeem
+    recipe: test-go
+    kind: contract_test
+    implementation: { path: backend/oauth2/adapters/persistence/memory/memory_test.go, symbol: TestAuthorizationCodeRedeemIsAtomic }
+    targets:
+      - { context: OAuth2, kind: model, element: AuthorizationCodeRecord }
+  - id: authorization-policy-boundary
+    recipe: test-go
+    kind: test
+    implementation: { path: backend/oauth2/adapters/http/authorize_handler_test.go, symbol: TestAuthorize }
+    targets:
+      - { context: OAuth2, kind: interface, element: Authorize }
+  - id: refresh-token-absolute-ttl
+    recipe: test-go
+    kind: property_test
+    implementation: { path: backend/oauth2/usecases/refresh_tokens_test.go, symbol: TestRefreshTokensRejectsAbsoluteTTLExpired }
+    targets:
+      - { context: OAuth2, kind: model, element: RefreshTokenRecord }
+  - id: refresh-token-family-revocation
+    recipe: test-go
+    kind: contract_test
+    implementation: { path: backend/oauth2/usecases/exchange_code_test.go, symbol: TestExchangeCodeReplayRevokesRefreshFamily }
+    targets:
+      - { context: OAuth2, kind: interface, element: Token }
+      - { context: OAuth2, kind: model, element: RefreshTokenRecord }
+  - id: tenant-lifecycle
+    recipe: test-go
+    kind: test
+    implementation: { path: backend/tenancy/usecases/manage_tenants_test.go, symbol: TestTenantLifecycle }
+    targets:
+      - { context: Tenancy, kind: interface, element: CreateTenant }
+  - id: tenant-http-boundary
+    recipe: test-go
+    kind: contract_test
+    implementation: { path: backend/oauth2/adapters/http/admin_client_handler_test.go, symbol: TestAdminOAuth2ClientCannotCrossTenantBoundary }
+    targets:
+      - { context: OAuth2, kind: interface, element: RegisterClient }
+  - id: tenant-oauth-boundary
+    recipe: test-go
+    kind: contract_test
+    implementation: { path: backend/oauth2/usecases/tenant_isolation_test.go, symbol: TestAuthorizationCodeCannotCrossTenantBoundary }
+    targets:
+      - { context: OAuth2, kind: model, element: AuthorizationCodeRecord }
+  - id: password-reuse-protection
+    recipe: test-go
+    kind: test
+    implementation: { path: backend/authentication/usecases/change_password_test.go, symbol: TestChangePasswordRejectsPasswordReuse }
+    targets:
+      - { context: Authentication, kind: interface, element: ChangePassword }
+  - id: reset-token-single-consumption
+    recipe: test-go
+    kind: contract_test
+    implementation: { path: backend/authentication/adapters/persistence/memory/password_reset_token_store_test.go, symbol: TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently }
+    targets:
+      - { context: Authentication, kind: model, element: PasswordResetTokenRecord }
+  - id: client-secret-hashing
+    recipe: test-go
+    kind: test
+    implementation: { path: backend/oauth2/usecases/register_client_test.go, symbol: TestRegisterClientHashesSecret }
+    targets:
+      - { context: OAuth2, kind: interface, element: RegisterClient }
+  - id: specification-coherence
+    recipe: test-go
+    kind: static_analysis
+    implementation: { path: backend/shared/spec/coherence_test.go, symbol: TestCurrentSCLIsInternallyCoherent }
+    targets:
+      - { context: OAuth2, kind: interface, element: Token }
+
+baselines:
+  - id: evidence-revision-bootstrap
+    finding: stale_evidence
+    owner: maintainers
+    reason: Execution evidence remains pinned to the migration revision until CI publishes per-revision evidence.
+    expires_at: 2026-10-01
+  - id: legacy-pending-work-items
+    finding: legacy_pending_work_items
+    owner: maintainers
+    reason: Pending work items created before direct affected_spec fields are migrated report-only.
+    expires_at: 2026-10-01
