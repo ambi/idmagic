@@ -78,6 +78,7 @@ var builtinDefs = func() []UserAttributeDef {
 		org("cost_center", AttributeTypeString),
 		org("manager_sub", AttributeTypeString),
 		org("hire_date", AttributeTypeDate),
+		org("termination_date", AttributeTypeDate),
 		org("employment_type", AttributeTypeString),
 	}
 	// 利用者向けの日本語表示名を付与する。英語 key は技術的接続として UI で併記する。
@@ -114,6 +115,7 @@ var builtinAttributeLabels = map[string]string{
 	"cost_center":            "コストセンター",
 	"manager_sub":            "上長",
 	"hire_date":              "入社日",
+	"termination_date":       "退職日",
 	"employment_type":        "雇用形態",
 }
 
