@@ -82,11 +82,10 @@ func (e *AuthenticationStepCompleted) EventType() string     { return "Authentic
 func (e *AuthenticationStepCompleted) OccurredAt() time.Time { return e.At }
 
 type AuthenticationStepFailed struct {
-	At           time.Time `json:"-"`
-	TenantID     string    `json:"tenantId"`
-	UsernameHash string    `json:"usernameHash,omitempty"`
-	Step         string    `json:"step"`
-	Reason       string    `json:"reason,omitempty"`
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	Step     string    `json:"step"`
+	Reason   string    `json:"reason,omitempty"`
 }
 
 func (e *AuthenticationStepFailed) EventType() string     { return "AuthenticationStepFailed" }

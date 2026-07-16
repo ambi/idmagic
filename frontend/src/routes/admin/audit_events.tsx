@@ -83,9 +83,14 @@ export const Route = createFileRoute('/admin/audit_events')({
 function AdminAuditEventsRoute() {
   const data = Route.useLoaderData()
   const navigate = Route.useNavigate()
+  const search = Route.useSearch()
   return (
     <PageMarker kind="admin-audit-events">
-      <AdminAuditEventsPage {...data} onSearch={(next) => navigate({ search: next })} />
+      <AdminAuditEventsPage
+        key={JSON.stringify(search)}
+        {...data}
+        onSearch={(next) => navigate({ search: next })}
+      />
     </PageMarker>
   )
 }

@@ -762,33 +762,29 @@ models:
       acr:
         type: String
         optional: true
-      ipTruncated:
+      ip:
         type: String
         optional: true
-        description: IPv4 /24・IPv6 /48 に丸めた IP。
-      ipHash:
+        description: 接続元 IP。監査イベントの保持期間中は平文のまま保存する。
+      userAgent:
         type: String
         optional: true
-        description: tenant salt 付き IP の SHA-256 hex。
-      uaHash:
-        type: String
-        optional: true
-        description: User-Agent の SHA-256 hex。
+        description: 接続元 User-Agent。監査イベントの保持期間中は平文のまま保存する。
       countryCode:
         type: String
         optional: true
         description: GeoIP 由来の国コード (未連携時は空)。
-      deviceFingerprintHash:
+      deviceFingerprint:
         type: String
         optional: true
-        description: device fingerprint の SHA-256 hex (raw 非保存)。
+        description: device fingerprint。監査イベントの保持期間中は平文のまま保存する。
       riskScore:
         type: Integer
         optional: true
         description: リスクスコア (本 WI ではフィールド確保のみ、値は null)。
   AuthenticationFailed:
     kind: event
-    description: "ResourceOwner の認証が失敗した。レートリミット・不正検知の入力イベント。\n実在しないユーザー名での試行も記録対象のため sub を持たず、username を平文のまま監査検索の\nactor.username 相関キーとして保持する (ADR-104: username の hash 化はしない)。他の failure\nイベントと同じ保持期間 (既定 30 日) で扱う。\n"
+    description: "ResourceOwner の認証が失敗した。レートリミット・不正検知の入力イベント。\n実在しないユーザー名での試行も記録対象のため sub を持たず、username を平文のまま監査検索の\nactor.username 相関キーとして保持する。username を含む接続元属性は hash 化せず、他の failure\nイベントと同じ保持期間 (既定 30 日) で扱う。\n"
     payload:
       occurredAt:
         type: DateTime
@@ -807,24 +803,21 @@ models:
       clientId:
         type: String
         optional: true
-      ipTruncated:
+      ip:
         type: String
         optional: true
-        description: IPv4 /24・IPv6 /48 に丸めた IP。
-      ipHash:
+        description: 接続元 IP。監査イベントの保持期間中は平文のまま保存する。
+      userAgent:
         type: String
         optional: true
-        description: tenant salt 付き IP の SHA-256 hex。
-      uaHash:
-        type: String
-        optional: true
-        description: User-Agent の SHA-256 hex。
+        description: 接続元 User-Agent。監査イベントの保持期間中は平文のまま保存する。
       countryCode:
         type: String
         optional: true
-      deviceFingerprintHash:
+      deviceFingerprint:
         type: String
         optional: true
+        description: device fingerprint。監査イベントの保持期間中は平文のまま保存する。
       riskScore:
         type: Integer
         optional: true
@@ -1076,12 +1069,14 @@ models:
       acr:
         type: String
         optional: true
-      ipTruncated:
+      ip:
         type: String
         optional: true
-      uaHash:
+        description: セッション開始時の接続元 IP。監査イベントの保持期間中は平文のまま保存する。
+      userAgent:
         type: String
         optional: true
+        description: セッション開始時の User-Agent。監査イベントの保持期間中は平文のまま保存する。
   SessionRefreshed:
     kind: event
     description: LoginSession の有効期限を延伸した (アクティブ継続)。

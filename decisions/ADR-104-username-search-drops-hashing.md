@@ -2,17 +2,17 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-14
-supersedes: ADR-046 (username 条項のみ)
+supersedes: ADR-046 (username / IP / User-Agent / device fingerprint 条項)
 ---
 
-# ADR-104: 監査検索の username は平文で扱う (ADR-046 の username 条項を撤回)
+# ADR-104: 監査イベントの username と接続元属性は平文で扱う
 
 ## コンテキスト
 
-[[ADR-046]] は認証イベントの username を「tenant salt 付き SHA-256 hash が first-class、平文は
-失敗イベント限定で 7 日だけ」という方針にしていた。この方針は、監査検索を使う運用（wi-147 での
-`ConsentGranted` 等 OAuth2 フロー系イベントへの相関検索拡張）を通じて見直したところ、次の問題が
-判明した。
+[[ADR-046]] は認証イベントの username、IP、User-Agent、device fingerprint を hash 化または
+truncate し、username の平文は失敗イベント限定で 7 日だけ保持する方針にしていた。この方針は、
+監査検索を使う運用（wi-147 での `ConsentGranted` 等 OAuth2 フロー系イベントへの相関検索拡張）を
+通じて見直したところ、次の問題が判明した。
 
 - 相関先の事故確率に対して、tenant salt 用の新しい依存 (`TenantSaltProvider`) を各 usecase の
   Deps に配線し直す実装コストが不釣り合いに大きい。
@@ -22,6 +22,9 @@ supersedes: ADR-046 (username 条項のみ)
 - 7 日後に平文を null 化して hash だけ残す sweep は、hash 化のための複雑さを増やす一方で、
   実際の脅威モデル (この監査ログの想定読者は tenant 内の admin に限定される) に対して
   過剰な防御だった。
+- IP、User-Agent、device fingerprint も同じ監査イベントの保持期間とアクセス制御下にあり、
+  hash / truncate した値ではインシデント調査時の照合・説明が難しくなる一方、変換処理と salt 管理を
+  増やしていた。
 
 ## 決定
 
@@ -36,8 +39,9 @@ supersedes: ADR-046 (username 条項のみ)
 3. **実アカウントが確定しない可能性があるイベント (`AuthenticationFailed`) は、引き続き
    平文 username を payload に持つ。** ただし hash 化・7 日後の redaction sweep は廃止し、
    他の failure イベントと同じ保持期間 (`FailDays`, 既定 30 日) でそのまま保持する。
-4. **IP / 位置情報 / device fingerprint の取り扱い ([[ADR-046]] の該当項目) は変更しない。**
-   本 ADR は username の取り扱いのみを対象とする。
+4. **IP / User-Agent / device fingerprint の hash 化・truncate もやめる。** 監査イベントの保持期間中は
+   平文の `ip` / `userAgent` / `deviceFingerprint` として保存し、監査検索属性も平文一致で扱う。
+   位置情報は引き続き country code のみを保存し、詳細な位置情報は保持しない。
 
 ## 影響
 
@@ -47,10 +51,15 @@ supersedes: ADR-046 (username 条項のみ)
   `AuthorizationCodeRedeemed` / `AccessTokenIssued` / `RefreshTokenIssued` の
   `usernameHash` payload フィールドは削除する。
 - `AuthenticationFailed` の `usernameHash` payload フィールドは削除する (`username` 平文のみ残す)。
+- `UserAuthenticated` / `AuthenticationFailed` / `SessionStarted` の `ipHash` / `ipTruncated` /
+  `uaHash` / `deviceFingerprintHash` payload フィールドは削除し、平文の `ip` / `userAgent` /
+  `deviceFingerprint` に置き換える。
 - `LoginThrottled` / `AuthenticationEventAggregated` の `keyHash` (throttle bucket key、
   監査検索の registry には出ていない別用途) は本 ADR の対象外で変更しない。
 
 ## 却下した代替案
 
-- **ADR-046 を全面破棄し IP / 位置情報 / device fingerprint の hash 化もやめる**: username 以外の
-  取り扱いについて具体的な問題提起がなく、スコープが不必要に広がるため見送った。
+- **username だけを平文化し、IP / User-Agent / device fingerprint の hash / truncate を残す**:
+  同じ監査アクセス境界の接続元属性に別々の保存規則と変換依存を残し、調査時の照合性も損なうため却下した。
+- **位置情報の詳細化**: 国コードを超える位置情報は本決定の検索要件に不要で、プライバシー影響が増えるため
+  引き続き採用しない。

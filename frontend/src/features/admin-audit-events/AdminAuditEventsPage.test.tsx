@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminAuditEventsPage } from './AdminAuditEventsPage'
 import { adminAuditEventsDictionary } from './AdminAuditEventsPage.i18n'
+import type { AdminAuditEventsSearchParams } from '../../api'
 import type { AdminAuditEvent } from '../../types'
 
 const t = adminAuditEventsDictionary.en
@@ -19,6 +21,37 @@ const event: AdminAuditEvent = {
   type: 'UserAuthenticated',
   occurred_at: '2026-01-01T00:00:00Z',
   payload: { foo: 'bar' },
+}
+
+const previousEvent: AdminAuditEvent = {
+  ...event,
+  id: 'evt-previous',
+  type: 'AuthenticationFailed',
+}
+
+function BrowserHistoryHarness() {
+  const [routeData, setRouteData] = useState({
+    events: [event],
+    search: { sub: 'usr_current' } as AdminAuditEventsSearchParams,
+  })
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setRouteData({ events: [previousEvent], search: { sub: 'usr_previous' } })}
+      >
+        Simulate browser back
+      </button>
+      <AdminAuditEventsPage
+        key={JSON.stringify(routeData.search)}
+        actorUsername="admin"
+        actorRoles={[]}
+        actorRealm="tenant-1"
+        events={routeData.events}
+        search={routeData.search}
+      />
+    </>
+  )
 }
 
 describe('locale', () => {
@@ -115,6 +148,20 @@ describe('AdminAuditEventsPage', () => {
     expect(screen.getByDisplayValue('usr_from_url')).toBeInTheDocument()
     const categoryValueSelect = screen.getAllByRole('combobox')[1] as HTMLSelectElement
     expect(categoryValueSelect.value).toBe('authentication')
+  })
+
+  it('restores search conditions and loader results when browser history changes the URL', async () => {
+    await renderWithRouter(<BrowserHistoryHarness />)
+
+    expect(screen.getByDisplayValue('usr_current')).toBeInTheDocument()
+    expect(screen.getAllByText(event.type).length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate browser back' }))
+
+    expect(await screen.findByDisplayValue('usr_previous')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('usr_current')).not.toBeInTheDocument()
+    expect(screen.getAllByText(previousEvent.type).length).toBeGreaterThan(0)
+    expect(screen.queryByText(event.type)).not.toBeInTheDocument()
   })
 
   it('calls onSearch with the built query on submit (URL update on search execution, wi-147)', async () => {

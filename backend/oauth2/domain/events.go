@@ -43,7 +43,6 @@ type AuthorizationCodeIssued struct {
 	TenantID            string                   `json:"tenantId"`
 	ClientID            string                   `json:"clientId"`
 	UserID              string                   `json:"userId"`
-	UsernameHash        string                   `json:"usernameHash,omitempty"`
 	Scopes              []string                 `json:"scopes"`
 	CodeChallengeMethod spec.CodeChallengeMethod `json:"codeChallengeMethod"`
 }
@@ -52,11 +51,10 @@ func (e *AuthorizationCodeIssued) EventType() string     { return "Authorization
 func (e *AuthorizationCodeIssued) OccurredAt() time.Time { return e.At }
 
 type AuthorizationCodeRedeemed struct {
-	At           time.Time `json:"-"`
-	TenantID     string    `json:"tenantId"`
-	ClientID     string    `json:"clientId"`
-	UserID       string    `json:"userId"`
-	UsernameHash string    `json:"usernameHash,omitempty"`
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	ClientID string    `json:"clientId"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *AuthorizationCodeRedeemed) EventType() string     { return "AuthorizationCodeRedeemed" }
@@ -68,7 +66,6 @@ type AccessTokenIssued struct {
 	JTI              string    `json:"jti"`
 	ClientID         string    `json:"clientId"`
 	UserID           string    `json:"userId"`
-	UsernameHash     string    `json:"usernameHash,omitempty"`
 	Scopes           []string  `json:"scopes"`
 	SenderConstraint string    `json:"senderConstraint"` // "none" | "dpop" | "mtls"
 }
@@ -77,14 +74,13 @@ func (e *AccessTokenIssued) EventType() string     { return "AccessTokenIssued" 
 func (e *AccessTokenIssued) OccurredAt() time.Time { return e.At }
 
 type RefreshTokenIssued struct {
-	At           time.Time `json:"-"`
-	TenantID     string    `json:"tenantId"`
-	TokenID      string    `json:"tokenId"`
-	FamilyID     string    `json:"familyId"`
-	ParentID     string    `json:"parentId,omitempty"`
-	ClientID     string    `json:"clientId"`
-	UserID       string    `json:"userId"`
-	UsernameHash string    `json:"usernameHash,omitempty"`
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	TokenID  string    `json:"tokenId"`
+	FamilyID string    `json:"familyId"`
+	ParentID string    `json:"parentId,omitempty"`
+	ClientID string    `json:"clientId"`
+	UserID   string    `json:"userId"`
 }
 
 func (e *RefreshTokenIssued) EventType() string     { return "RefreshTokenIssued" }

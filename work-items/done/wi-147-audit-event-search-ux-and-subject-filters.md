@@ -129,52 +129,44 @@ username / IP / UA / device fingerprint 条項撤回は、既存の retention sw
 影響するため、変更範囲を漏れなく洗い出してから着手する。username 未解決時に「フィルタ無視で全件返す」
 という誤動作を作らないよう、0 件応答を明示的にテストする。
 
+## Reopen Note
+
+2026-07-17 の完了監査で、ADR-104 と SCL / Go の平文契約、OAuth2 イベント型からの
+`usernameHash` 排除、および browser back / forward 時の URL 同期が未達と判明したため再オープンした。
+2026-07-14 の完了記録は Git 履歴 (`3e7933b5`) に保存されている。上記の未達タスクを修正・再検証後、
+現行状態に基づく Completion を改めて記録する。
+
 ## Completion
 
-- **Completed At**: 2026-07-14
+- **Completed At**: 2026-07-17
 - **Summary**:
-  ADR-104 で ADR-046 の username / IP / User-Agent / device fingerprint 条項を撤回し、平文のまま
-  扱う方針に転換した (位置情報の country-code-only 方針は変更なし)。`UserAuthenticated` と OAuth2
-  フロー系イベント (`ConsentGranted` / `AuthorizationCodeIssued` / `AuthorizationCodeRedeemed` /
-  `AccessTokenIssued` / `RefreshTokenIssued`) は username を payload に持たず、管理 UI の
-  `AuditEventQuery.username` が検索時に `UserRepo.FindByUsername` で `user_id` へ解決してから
-  既存の `user_id` 経路で絞り込む (該当なしは 0 件)。`AuthenticationFailed` のみ、実在しない
-  アカウント名も追跡する必要があるため平文 username をそのまま `actor.username` 検索属性として使う。
-  `backend/authentication/usecases/retention.go` の 7 日 redaction sweep 機構と対応する Postgres
-  query (`RedactAuthenticationFailureUsernames`) を削除した。
-  UI (`AdminAuditEventsPage.tsx`) は「誰を検索するか」を含むすべての検索条件を1つの検索条件一覧へ
-  統合し、トップレベルには開始日時・終了日時・最大件数だけを残した。イベントカテゴリも検索条件一覧内の
-  1行 (`quick.category`) として扱う。`transaction.id` (どのイベントにも実装されておらず常に0件になる
-  死んだ選択肢) を削除した。検索条件は `validateSearch`/`loaderDeps` で URL query string と同期する。
-  実装中のレビューで、当初案 (トップレベル + 検索属性一覧の二層 UI、username の tenant-salt hash 相関)
-  は複雑さの原因と判断され上記の設計へ転換した。
+  既存の完了記録を監査し、ADR-104、SCL、Go domain event、UI の間に残っていた契約不整合を解消した。
+  ADR-104 は username だけでなく IP / User-Agent / device fingerprint の hash / truncate も撤回する
+  決定へ訂正し、位置情報は country code only を維持した。Authentication SCL は平文の `ip` /
+  `userAgent` / `deviceFingerprint` へ統一し、派生 HTML / JSON Schema / OpenAPI を再生成した。
+  OAuth2 の確定ユーザーイベントと `AuthenticationStepFailed` の Go 型から残存 `UsernameHash` を除去し、
+  JSON field 集合を固定する domain regression tests を追加した。監査検索 route は URL search を React
+  `key` としてページを再生成し、同一 route の履歴移動でも URL / loader の条件・結果を復元する。
 - **Affected Guarantees State**:
-  `actor.username` / `client.ip` を含む監査検索属性は平文で保存・検索される (hash 化・truncate はしない)。
-  実アカウントが常に確定するイベントは username を payload に持たず、検索時解決のみで相関する。
-  `AuditEventQuery.username` は該当ユーザーが存在しない場合に必ず 0 件を返し、フィルタ無視で全件返す
-  誤動作にはならない。監査検索 UI の「誰を検索するか」は1つの検索条件一覧に一本化されている。
+  監査イベントの username / IP / User-Agent / device fingerprint は hash / truncate せず、イベント保持期間と
+  管理者アクセス境界の中で平文保存・検索する。位置情報は国コードのみとする。実アカウントが確定する
+  `UserAuthenticated` および OAuth2 フローイベントは username / usernameHash payload field を持たず、
+  username 検索時に user_id へ解決する。認証失敗だけが実在しない名前を追跡する平文 username を持つ。
+  監査検索 URL は初期表示・共有 URL・reload・同一 route の navigation で検索フォームと結果の正となる。
 - **Verification Results**:
-  - `just yaml-check` — passed
-  - `just scl-render` — passed
-  - `just verify-go` — passed (golangci-lint 0 issues、全 backend パッケージのテスト green)
-  - `just verify-ui` — passed (format/lint/typecheck/build + vitest all green)
-  - e2e (`ui-scenario-actions.spec.ts` の audit log シナリオ) — passed
-  - 実運用環境相当の手動検証で、以下 3 件のバグを発見し修正・再検証済み:
-    1. `shared/adapters/http/server/routes.go` が監査 HTTP 層への配線で非推奨のテスト互換フィールド
-       `d.UserRepo` (実運用の bootstrap では常に nil) を参照しており、username 検索が常に 0 件になっていた。
-       `d.IdentityManagement.UserRepo` に修正。
-    2. 不正な `user_id` (Postgres の UUID 列にキャストできない値) を検索するとページ全体がクラッシュして
-       いた。原因は2つ: (a) pgx v5 の `Query()` は遅延実行のため型キャストエラーが `rows.Err()` 側で
-       顕在化しており、`Query()` の戻り値だけを見ていた修正では効かなかった。(b)
-       `backend/audit/adapters/persistence/postgres/` に他の全 context に存在する `harness_test.go`
-       (`TestMain` で embedded-postgres を起動する配線) が無く、監査コンテキストの Postgres 統合
-       テストが一度も実際の DB に対して実行されていなかった (wi-146 切り出し時の抜け)。両方を修正し、
-       `harness_test.go` を追加した上で実際の embedded-postgres に対して green を確認した。
-    3. ルートローダーが検索条件由来の取得失敗をそのまま投げており、ページ全体が汎用の認証エラー画面に
-       落ちていた。ページ内のエラー表示 (既存の `Alert` state) に留めるよう修正した。
+  - `just yaml-check` — passed (SCL / Work Item / IDs / Architecture / traceability)
+  - `just scl-render` — passed (HTML / JSON Schema / OpenAPI regenerated)
+  - `just verify` — passed (tools 243 tests、Go lint 0 issues + race tests、UI 357 tests + build)
+  - `just test-ui-e2e` — passed (19 browser scenarios。監査検索の URL 更新・共有 URL / reload を含む)
+  - history navigation regression — passed in `AdminAuditEventsPage.test.tsx` by changing the same
+    URL-derived route key and verifying both form values and loader results are restored。Bun.WebView は
+    native back / forward の router state を再現しないため、この境界は unit regression で検証した。
 - **Evidence**:
-  - 実行日: 2026-07-14
-  - 実行環境: ローカル開発環境 (macOS)、embedded-postgres (docker 不使用)
-  - 実行主体: Claude (Sonnet 5)
-  - 対象ソース版: main (コミット前作業ツリー)
-  - 保存先: 外部成果物なし。上記検証結果を本記録に要約。
+  - 実行日: 2026-07-17
+  - 実行環境: ローカル開発環境 (macOS)、embedded-postgres、Bun.WebView
+  - 実行主体: Codex
+  - 対象ソース版: `main` のコミット前作業ツリー
+  - 手順: 上記 4 コマンドと domain/UI regression tests を実行
+  - 結果: 全最終検証 green。中間の lint / Architecture / WebView 履歴検証失敗は修正または環境境界を
+    明確化した後、正規ゲートを再実行して green を確認
+  - 保存先: 外部成果物なし。要約値を本 Completion に記録
