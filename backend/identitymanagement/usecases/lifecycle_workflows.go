@@ -128,7 +128,7 @@ type UpdateLifecycleWorkflowInput struct {
 }
 
 func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, input UpdateLifecycleWorkflowInput) (*idmdomain.LifecycleWorkflow, error) {
-	workflow, err := tenantWorkflow(ctx, deps, input.WorkflowID)
+	workflow, err := tenantWorkflow(ctx, deps.Repo, input.WorkflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 }
 
 func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
-	workflow, err := tenantWorkflow(ctx, deps, workflowID)
+	workflow, err := tenantWorkflow(ctx, deps.Repo, workflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, wo
 }
 
 func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
-	workflow, err := tenantWorkflow(ctx, deps, workflowID)
+	workflow, err := tenantWorkflow(ctx, deps.Repo, workflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ type LifecycleWorkflowRunView struct {
 }
 
 func ListLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, limit int) ([]LifecycleWorkflowRunView, error) {
-	if _, err := tenantWorkflow(ctx, deps, workflowID); err != nil {
+	if _, err := tenantWorkflow(ctx, deps.Repo, workflowID); err != nil {
 		return nil, err
 	}
 	if deps.RunRepo == nil {
@@ -277,7 +277,7 @@ func RetryLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, 
 	if err != nil {
 		return nil, err
 	}
-	workflow, err := tenantWorkflow(ctx, deps, view.Run.WorkflowID)
+	workflow, err := tenantWorkflow(ctx, deps.Repo, view.Run.WorkflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func RetryLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, 
 }
 
 func DeleteLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) error {
-	workflow, err := tenantWorkflow(ctx, deps, workflowID)
+	workflow, err := tenantWorkflow(ctx, deps.Repo, workflowID)
 	if err != nil {
 		return err
 	}
@@ -334,11 +334,11 @@ func normalizedDescription(value *string) *string {
 	return &trimmed
 }
 
-func tenantWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string) (*idmdomain.LifecycleWorkflow, error) {
-	if deps.Repo == nil {
+func tenantWorkflow(ctx context.Context, repo idmports.LifecycleWorkflowRepository, workflowID string) (*idmdomain.LifecycleWorkflow, error) {
+	if repo == nil {
 		return nil, errors.New("lifecycle workflow repository is required")
 	}
-	workflow, err := deps.Repo.Find(ctx, tenancy.TenantID(ctx), workflowID)
+	workflow, err := repo.Find(ctx, tenancy.TenantID(ctx), workflowID)
 	if err != nil {
 		return nil, err
 	}

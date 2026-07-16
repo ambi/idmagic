@@ -20315,7 +20315,8 @@
             "description": "would_change / no_op / blocked のいずれか。"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "description": "blocked の理由コード (resource_not_found / dependency_unavailable /\nnotification_unavailable / trigger_not_matched 等)。would_change / no_op では省略する。\n"
           }
         },
         "additionalProperties": false,
@@ -20323,7 +20324,7 @@
           "action_kind",
           "would_change"
         ],
-        "description": "dry-run の action 1 件分の判定結果。属性値や email address は含まない。"
+        "description": "dry-run の action 1 件分の判定結果。対象 User の group membership、application\nassignment、required action、status、email 検証状態という現在の状態を実際に読み、本実行の\naction executor と同じ判定 (would_change / no_op / blocked) を副作用なしで返す。属性値や\nemail address は含まない。\n"
       },
       "LifecycleWorkflowEnabled": {
         "type": "object",

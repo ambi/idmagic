@@ -5,6 +5,7 @@
 package http
 
 import (
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -41,6 +42,11 @@ type Deps struct {
 	LifecycleWorkflowRepo    idmports.LifecycleWorkflowRepository
 	LifecycleWorkflowRunRepo idmports.LifecycleWorkflowRunRepository
 	UserWorkflowCapture      idmports.UserWorkflowCapture
+	// ApplicationRepo/AssignmentRepo are only used by dry-run
+	// (DryRunLifecycleWorkflow, wi-222) to evaluate assign_application /
+	// unassign_application actions' current state without mutating.
+	ApplicationRepo appports.ApplicationRepository
+	AssignmentRepo  appports.AssignmentRepository
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {

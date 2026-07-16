@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
 	"github.com/ambi/idmagic/backend/identitymanagement/usecases"
@@ -198,5 +200,81 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 	stored, err := runs.FindRun(ctx, run.TenantID, run.ID)
 	if err != nil || stored.Status != idmdomain.WorkflowRunPartiallyFailed {
 		t.Fatalf("run status = %#v, %v, want partially_failed", stored, err)
+	}
+}
+
+// wi-222: add_group_member against a User who is already a member must report
+// no_op, not changed, so dry-run and the real run agree.
+func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	users := idmmemory.NewUserRepository()
+	groups := idmmemory.NewGroupRepository()
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	group := &idmdomain.Group{ID: "group-1", TenantID: "tenant-a", Name: "Engineering", MembershipType: idmdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
+	if err := groups.Save(ctx, group); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := groups.AddMember(ctx, &idmdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: now}); err != nil || !ok {
+		t.Fatalf("seed AddMember = %v, %v", ok, err)
+	}
+	action := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: group.ID}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{action}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: idmdomain.WorkflowStepPending}}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, GroupRepo: groups})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params}); err != nil {
+		t.Fatal(err)
+	}
+	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
+	if err != nil || storedSteps[0].Outcome != idmdomain.WorkflowStepNoop {
+		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
+	}
+}
+
+// wi-222: unassign_application against a User who has no assignment must
+// report no_op rather than unconditionally claiming changed.
+func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	users := idmmemory.NewUserRepository()
+	apps := appmemory.NewApplicationRepository()
+	assignments := appmemory.NewApplicationAssignmentRepository()
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	app := &appdomain.Application{TenantID: "tenant-a", ApplicationID: "app-1", Name: "Payroll", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now}
+	if err := apps.Save(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	action := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionUnassignApplication, ApplicationID: app.ApplicationID}
+	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{action}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: idmdomain.WorkflowStepPending}}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, ApplicationRepo: apps, AssignmentRepo: assignments})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params}); err != nil {
+		t.Fatal(err)
+	}
+	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
+	if err != nil || storedSteps[0].Outcome != idmdomain.WorkflowStepNoop {
+		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
 	}
 }

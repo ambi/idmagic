@@ -35,6 +35,11 @@ type lifecycleWorkflowResponse struct {
 type lifecycleDryRunRequest struct {
 	TargetUserID string `json:"target_user_id"`
 }
+type lifecycleDryRunStepResponse struct {
+	ActionKind  idmdomain.WorkflowActionKind    `json:"action_kind"`
+	WouldChange idmdomain.WorkflowActionOutcome `json:"would_change"`
+	Reason      string                          `json:"reason,omitempty"`
+}
 
 func (d Deps) workflowDeps() idmusecases.LifecycleWorkflowDeps {
 	return idmusecases.LifecycleWorkflowDeps{Repo: d.LifecycleWorkflowRepo, RunRepo: d.LifecycleWorkflowRunRepo, Emit: func(event spec.DomainEvent) error {
@@ -264,25 +269,21 @@ func (d Deps) handleDryRunLifecycleWorkflow(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	workflow, err := d.findWorkflow(c, c.Param("workflow_id"))
-	if err != nil {
-		return d.writeLifecycleWorkflowError(c, err)
-	}
 	if request.TargetUserID == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "対象ユーザーは必須です")
 	}
-	revision, err := d.LifecycleWorkflowRepo.FindRevision(c.Request().Context(), workflow.TenantID, workflow.ID, workflow.CurrentRevision)
+	result, err := idmusecases.DryRunLifecycleWorkflow(c.Request().Context(), idmusecases.DryRunLifecycleWorkflowDeps{
+		Repo: d.LifecycleWorkflowRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
+		ApplicationRepo: d.ApplicationRepo, AssignmentRepo: d.AssignmentRepo, EmailSender: d.EmailSender,
+	}, c.Param("workflow_id"), request.TargetUserID, time.Now().UTC())
 	if err != nil {
-		return err
+		return d.writeLifecycleWorkflowError(c, err)
 	}
-	if revision == nil {
-		return d.writeLifecycleWorkflowError(c, idmusecases.ErrLifecycleWorkflowNotFound)
+	steps := make([]lifecycleDryRunStepResponse, 0, len(result.Steps))
+	for _, step := range result.Steps {
+		steps = append(steps, lifecycleDryRunStepResponse{ActionKind: step.ActionKind, WouldChange: step.Outcome, Reason: step.Reason})
 	}
-	steps := make([]map[string]string, 0, len(revision.Actions))
-	for _, action := range revision.Actions {
-		steps = append(steps, map[string]string{"action_kind": string(action.Kind), "would_change": "would_change"})
-	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"workflow_id": workflow.ID, "revision": revision.Revision, "target_user_id": request.TargetUserID, "evaluated_at": time.Now().UTC(), "steps": steps})
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"workflow_id": result.Workflow.ID, "revision": result.Revision, "target_user_id": result.TargetUserID, "evaluated_at": result.EvaluatedAt, "steps": steps})
 }
 
 func (d Deps) handleListLifecycleWorkflowRuns(c *echo.Context) error {
@@ -333,6 +334,8 @@ func (d Deps) writeLifecycleWorkflowError(c *echo.Context, err error) error {
 		return support.WriteBrowserError(c, http.StatusConflict, "workflow_revision_conflict", "ワークフローは他の変更で更新されています")
 	case errors.Is(err, idmusecases.ErrWorkflowNameConflict):
 		return support.WriteBrowserError(c, http.StatusConflict, "workflow_name_conflict", "ワークフロー名は既に使用されています")
+	case errors.Is(err, idmusecases.ErrLifecycleWorkflowTargetUserNotFound):
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "対象ユーザーが見つかりません")
 	default:
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_workflow", "ワークフローの入力が不正です")
 	}

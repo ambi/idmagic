@@ -299,6 +299,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		EmailChangeTokenStore:    d.Authentication.EmailChangeTokenStore,
 		EmailSender:              d.Authentication.EmailSender,
 		JobRepo:                  d.Jobs.Repo,
+		ApplicationRepo:          d.Application.Repo,
+		AssignmentRepo:           d.Application.AssignmentRepo,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{

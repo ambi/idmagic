@@ -152,10 +152,79 @@ func emitWorkflowEvent(emit func(spec.DomainEvent) error, event spec.DomainEvent
 	_ = emit(event)
 }
 
+// LifecycleActionEvalDeps is the read-only subset of LifecycleWorkflowExecutorDeps
+// EvaluateLifecycleAction needs to resolve current state. It excludes RunRepo
+// and UserRepo because callers already hold the target User.
+type LifecycleActionEvalDeps struct {
+	GroupRepo       idmports.GroupRepository
+	ApplicationRepo appports.ApplicationRepository
+	AssignmentRepo  appports.AssignmentRepository
+	EmailSender     authnports.EmailSender
+}
+
+// EvaluateLifecycleAction resolves one action's current-state dependencies
+// (group membership, application assignment, email deliverability) and
+// delegates the actual would_change/no_op/blocked judgement to
+// idmdomain.EvaluateWorkflowAction. It performs no writes, so both the run
+// executor (before it mutates anything) and dry-run (which never mutates)
+// call it to agree on the same answer (wi-222).
+func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, tenantID string, user *idmdomain.User, action idmdomain.WorkflowAction) (idmdomain.WorkflowActionOutcome, string, error) {
+	var state idmdomain.WorkflowActionState
+	switch action.Kind {
+	case idmdomain.WorkflowActionAddGroupMember, idmdomain.WorkflowActionRemoveGroupMember:
+		if deps.GroupRepo == nil {
+			return idmdomain.WorkflowActionBlocked, "dependency_unavailable", nil
+		}
+		group, err := deps.GroupRepo.FindByID(ctx, tenantID, action.GroupID)
+		if err != nil {
+			return "", "", err
+		}
+		state.GroupExists = group != nil
+		if state.GroupExists {
+			groups, err := deps.GroupRepo.ListGroupsByUser(ctx, tenantID, user.ID)
+			if err != nil {
+				return "", "", err
+			}
+			state.UserIsGroupMember = slices.ContainsFunc(groups, func(g *idmdomain.Group) bool { return g.ID == group.ID })
+		}
+	case idmdomain.WorkflowActionAssignApplication, idmdomain.WorkflowActionUnassignApplication:
+		if deps.ApplicationRepo == nil || deps.AssignmentRepo == nil {
+			return idmdomain.WorkflowActionBlocked, "dependency_unavailable", nil
+		}
+		app, err := deps.ApplicationRepo.FindByID(ctx, tenantID, action.ApplicationID)
+		if err != nil {
+			return "", "", err
+		}
+		state.ApplicationExists = app != nil
+		if state.ApplicationExists {
+			assignments, err := deps.AssignmentRepo.ListBySubjects(ctx, tenantID, []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: user.ID}})
+			if err != nil {
+				return "", "", err
+			}
+			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ApplicationID })
+		}
+	case idmdomain.WorkflowActionSendEmail:
+		state.EmailSendable = deps.EmailSender != nil && user.Email != nil && user.EmailVerified
+	}
+	outcome, reason := idmdomain.EvaluateWorkflowAction(action, user, state)
+	return outcome, reason, nil
+}
+
 func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *idmdomain.WorkflowRun, action idmdomain.WorkflowAction) (idmdomain.WorkflowStepOutcome, string) {
 	user, err := deps.UserRepo.FindBySub(ctx, run.TargetUserID)
 	if err != nil || user == nil || user.TenantID != run.TenantID {
 		return idmdomain.WorkflowStepFailed, "target_not_found"
+	}
+	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, EmailSender: deps.EmailSender}
+	outcome, reason, err := EvaluateLifecycleAction(ctx, evalDeps, run.TenantID, user, action)
+	if err != nil {
+		return idmdomain.WorkflowStepFailed, "action_failed"
+	}
+	switch outcome {
+	case idmdomain.WorkflowActionBlocked:
+		return idmdomain.WorkflowStepFailed, reason
+	case idmdomain.WorkflowActionNoOp:
+		return idmdomain.WorkflowStepNoop, ""
 	}
 	changed := func(ok bool, err error) (idmdomain.WorkflowStepOutcome, string) {
 		if err != nil {
@@ -167,50 +236,23 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		return idmdomain.WorkflowStepNoop, ""
 	}
 	switch action.Kind {
-	case idmdomain.WorkflowActionAddGroupMember, idmdomain.WorkflowActionRemoveGroupMember:
-		if deps.GroupRepo == nil {
-			return idmdomain.WorkflowStepFailed, "dependency_unavailable"
-		}
-		group, e := deps.GroupRepo.FindByID(ctx, run.TenantID, action.GroupID)
-		if e != nil || group == nil {
-			return idmdomain.WorkflowStepFailed, "resource_not_found"
-		}
-		if action.Kind == idmdomain.WorkflowActionAddGroupMember {
-			ok, e := deps.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: time.Now().UTC()})
-			return changed(ok, e)
-		}
-		ok, e := deps.GroupRepo.RemoveMember(ctx, run.TenantID, group.ID, user.ID)
+	case idmdomain.WorkflowActionAddGroupMember:
+		ok, e := deps.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: action.GroupID, UserID: user.ID, CreatedAt: time.Now().UTC()})
 		return changed(ok, e)
-	case idmdomain.WorkflowActionAssignApplication, idmdomain.WorkflowActionUnassignApplication:
-		if deps.ApplicationRepo == nil || deps.AssignmentRepo == nil {
-			return idmdomain.WorkflowStepFailed, "dependency_unavailable"
-		}
-		app, e := deps.ApplicationRepo.FindByID(ctx, run.TenantID, action.ApplicationID)
-		if e != nil || app == nil {
-			return idmdomain.WorkflowStepFailed, "resource_not_found"
-		}
-		if action.Kind == idmdomain.WorkflowActionUnassignApplication {
-			e = deps.AssignmentRepo.Delete(ctx, run.TenantID, app.ApplicationID, appdomain.AssignmentSubjectUser, user.ID)
-			return changed(true, e)
-		}
-		assignments, e := deps.AssignmentRepo.ListBySubjects(ctx, run.TenantID, []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: user.ID}})
-		if e != nil {
-			return idmdomain.WorkflowStepFailed, "action_failed"
-		}
-		if slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ApplicationID }) {
-			return idmdomain.WorkflowStepNoop, ""
-		}
+	case idmdomain.WorkflowActionRemoveGroupMember:
+		ok, e := deps.GroupRepo.RemoveMember(ctx, run.TenantID, action.GroupID, user.ID)
+		return changed(ok, e)
+	case idmdomain.WorkflowActionAssignApplication:
 		visibility := appdomain.AssignmentVisible
 		if action.Visibility == "hidden" {
 			visibility = appdomain.AssignmentHidden
 		}
-		e = deps.AssignmentRepo.Save(ctx, &appdomain.ApplicationAssignment{TenantID: run.TenantID, ApplicationID: app.ApplicationID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: visibility, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()})
+		e := deps.AssignmentRepo.Save(ctx, &appdomain.ApplicationAssignment{TenantID: run.TenantID, ApplicationID: action.ApplicationID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: visibility, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()})
+		return changed(true, e)
+	case idmdomain.WorkflowActionUnassignApplication:
+		e := deps.AssignmentRepo.Delete(ctx, run.TenantID, action.ApplicationID, appdomain.AssignmentSubjectUser, user.ID)
 		return changed(true, e)
 	case idmdomain.WorkflowActionSetRequiredAction, idmdomain.WorkflowActionClearRequiredAction:
-		has := slices.Contains(user.Lifecycle.RequiredActions, action.RequiredAction)
-		if (action.Kind == idmdomain.WorkflowActionSetRequiredAction && has) || (action.Kind == idmdomain.WorkflowActionClearRequiredAction && !has) {
-			return idmdomain.WorkflowStepNoop, ""
-		}
 		updated := *user
 		if action.Kind == idmdomain.WorkflowActionSetRequiredAction {
 			updated.Lifecycle.RequiredActions = append(updated.Lifecycle.RequiredActions, action.RequiredAction)
@@ -224,18 +266,12 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		if action.Kind == idmdomain.WorkflowActionDisableUser {
 			want = idmdomain.UserStatusDisabled
 		}
-		if user.Lifecycle.Status == want {
-			return idmdomain.WorkflowStepNoop, ""
-		}
 		updated := *user
 		updated.Lifecycle.Status = want
 		now := time.Now().UTC()
 		updated.Lifecycle.StatusChangedAt, updated.UpdatedAt = &now, now
 		return changed(true, deps.UserRepo.Save(ctx, &updated))
 	case idmdomain.WorkflowActionSendEmail:
-		if deps.EmailSender == nil || user.Email == nil || !user.EmailVerified {
-			return idmdomain.WorkflowStepFailed, "notification_unavailable"
-		}
 		if deps.EmailSender.SendEmail(ctx, authnports.EmailMessage{To: *user.Email, Subject: action.TemplateKey, Text: action.TemplateKey}) {
 			return idmdomain.WorkflowStepChanged, ""
 		}

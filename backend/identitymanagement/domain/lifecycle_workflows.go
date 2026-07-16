@@ -101,6 +101,18 @@ const (
 	WorkflowStepCanceled WorkflowStepOutcome = "canceled"
 )
 
+// WorkflowActionOutcome is the side-effect-free judgement EvaluateWorkflowAction
+// returns. It is shared by dry-run (reported verbatim) and the run executor
+// (which maps Blocked to a failed step and, for WouldChange, still has to
+// perform the mutation and may fail there too).
+type WorkflowActionOutcome string
+
+const (
+	WorkflowActionWouldChange WorkflowActionOutcome = "would_change"
+	WorkflowActionNoOp        WorkflowActionOutcome = "no_op"
+	WorkflowActionBlocked     WorkflowActionOutcome = "blocked"
+)
+
 func (o WorkflowStepOutcome) Complete() bool {
 	return o == WorkflowStepChanged || o == WorkflowStepNoop || o == WorkflowStepCanceled
 }
@@ -198,6 +210,87 @@ func (a WorkflowAction) Validate() error {
 		return requires(a.TemplateKey)
 	}
 	return nil
+}
+
+// WorkflowActionState is the current-state snapshot EvaluateWorkflowAction needs
+// to judge one action. Callers (the run executor and dry-run) fetch only the
+// fields relevant to the action's kind via repositories; irrelevant fields are
+// left zero-valued. required_action and enable/disable actions need no state
+// here because they read fields already present on User.
+type WorkflowActionState struct {
+	GroupExists       bool
+	UserIsGroupMember bool
+	ApplicationExists bool
+	UserIsAssigned    bool
+	EmailSendable     bool
+}
+
+// EvaluateWorkflowAction is the pure, side-effect-free judgement shared by the
+// run executor (before it mutates anything) and dry-run (which never mutates).
+// It never performs I/O; callers resolve WorkflowActionState from the target
+// User's actual current group membership, application assignment, and email
+// verification state so both callers agree on the same answer.
+func EvaluateWorkflowAction(action WorkflowAction, user *User, state WorkflowActionState) (WorkflowActionOutcome, string) {
+	switch action.Kind {
+	case WorkflowActionAddGroupMember:
+		if !state.GroupExists {
+			return WorkflowActionBlocked, "resource_not_found"
+		}
+		if state.UserIsGroupMember {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionRemoveGroupMember:
+		if !state.GroupExists {
+			return WorkflowActionBlocked, "resource_not_found"
+		}
+		if !state.UserIsGroupMember {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionAssignApplication:
+		if !state.ApplicationExists {
+			return WorkflowActionBlocked, "resource_not_found"
+		}
+		if state.UserIsAssigned {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionUnassignApplication:
+		if !state.ApplicationExists {
+			return WorkflowActionBlocked, "resource_not_found"
+		}
+		if !state.UserIsAssigned {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionSetRequiredAction:
+		if slices.Contains(user.Lifecycle.RequiredActions, action.RequiredAction) {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionClearRequiredAction:
+		if !slices.Contains(user.Lifecycle.RequiredActions, action.RequiredAction) {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionEnableUser:
+		if user.Lifecycle.Status == UserStatusActive {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionDisableUser:
+		if user.Lifecycle.Status == UserStatusDisabled {
+			return WorkflowActionNoOp, ""
+		}
+		return WorkflowActionWouldChange, ""
+	case WorkflowActionSendEmail:
+		if !state.EmailSendable {
+			return WorkflowActionBlocked, "notification_unavailable"
+		}
+		return WorkflowActionWouldChange, ""
+	}
+	return WorkflowActionBlocked, "invalid_action"
 }
 
 type LifecycleWorkflowRevision struct {
@@ -361,13 +454,19 @@ func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *User, chang
 		}
 		matched = before.Lifecycle.EffectiveStatus() == *trigger.FromStatus && after.Lifecycle.EffectiveStatus() == *trigger.ToStatus
 	}
-	if !matched || !workflowFiltersMatch(trigger.Filters, after) {
+	if !matched || !EvaluateWorkflowFilters(trigger.Filters, after) {
 		return TriggerMatch{}, false
 	}
 	return TriggerMatch{Kind: trigger.Kind, ChangedFields: slices.Clone(changedFields)}, true
 }
 
-func workflowFiltersMatch(filters []WorkflowFilter, user *User) bool {
+// EvaluateWorkflowFilters is the filter-only half of trigger evaluation: it
+// tests a trigger's filters against a User's current attributes without
+// needing a before/after mutation pair. The run executor reaches it only via
+// EvaluateWorkflowTrigger (kind + filters); dry-run calls it directly because
+// it has no mutation event to derive a trigger kind match from, only the
+// target User's present state.
+func EvaluateWorkflowFilters(filters []WorkflowFilter, user *User) bool {
 	for _, filter := range filters {
 		value, exists := workflowUserField(user, filter.Field)
 		switch filter.Operator {

@@ -44,6 +44,61 @@ func TestLifecycleWorkflowDeleteDraft(t *testing.T) {
 	}
 }
 
+func TestEvaluateWorkflowAction(t *testing.T) {
+	activeUser := &User{Lifecycle: UserLifecycle{Status: UserStatusActive, RequiredActions: []RequiredAction{RequiredActionVerifyEmail}}}
+	disabledUser := &User{Lifecycle: UserLifecycle{Status: UserStatusDisabled}}
+	tests := []struct {
+		name        string
+		action      WorkflowAction
+		user        *User
+		state       WorkflowActionState
+		wantOutcome WorkflowActionOutcome
+		wantReason  string
+	}{
+		{"add group member blocked when group missing", WorkflowAction{Kind: WorkflowActionAddGroupMember, GroupID: "g"}, activeUser, WorkflowActionState{}, WorkflowActionBlocked, "resource_not_found"},
+		{"add group member no-op when already a member", WorkflowAction{Kind: WorkflowActionAddGroupMember, GroupID: "g"}, activeUser, WorkflowActionState{GroupExists: true, UserIsGroupMember: true}, WorkflowActionNoOp, ""},
+		{"add group member would change when not a member", WorkflowAction{Kind: WorkflowActionAddGroupMember, GroupID: "g"}, activeUser, WorkflowActionState{GroupExists: true}, WorkflowActionWouldChange, ""},
+		{"remove group member no-op when not a member", WorkflowAction{Kind: WorkflowActionRemoveGroupMember, GroupID: "g"}, activeUser, WorkflowActionState{GroupExists: true}, WorkflowActionNoOp, ""},
+		{"remove group member would change when a member", WorkflowAction{Kind: WorkflowActionRemoveGroupMember, GroupID: "g"}, activeUser, WorkflowActionState{GroupExists: true, UserIsGroupMember: true}, WorkflowActionWouldChange, ""},
+		{"assign application blocked when application missing", WorkflowAction{Kind: WorkflowActionAssignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{}, WorkflowActionBlocked, "resource_not_found"},
+		{"assign application no-op when already assigned", WorkflowAction{Kind: WorkflowActionAssignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true, UserIsAssigned: true}, WorkflowActionNoOp, ""},
+		{"assign application would change when not assigned", WorkflowAction{Kind: WorkflowActionAssignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true}, WorkflowActionWouldChange, ""},
+		{"unassign application no-op when not assigned", WorkflowAction{Kind: WorkflowActionUnassignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true}, WorkflowActionNoOp, ""},
+		{"unassign application would change when assigned", WorkflowAction{Kind: WorkflowActionUnassignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true, UserIsAssigned: true}, WorkflowActionWouldChange, ""},
+		{"set required action no-op when already set", WorkflowAction{Kind: WorkflowActionSetRequiredAction, RequiredAction: RequiredActionVerifyEmail}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
+		{"set required action would change when unset", WorkflowAction{Kind: WorkflowActionSetRequiredAction, RequiredAction: RequiredActionUpdatePassword}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
+		{"clear required action no-op when already unset", WorkflowAction{Kind: WorkflowActionClearRequiredAction, RequiredAction: RequiredActionUpdatePassword}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
+		{"clear required action would change when set", WorkflowAction{Kind: WorkflowActionClearRequiredAction, RequiredAction: RequiredActionVerifyEmail}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
+		{"enable user no-op when already active", WorkflowAction{Kind: WorkflowActionEnableUser}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
+		{"enable user would change when disabled", WorkflowAction{Kind: WorkflowActionEnableUser}, disabledUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
+		{"disable user no-op when already disabled", WorkflowAction{Kind: WorkflowActionDisableUser}, disabledUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
+		{"disable user would change when active", WorkflowAction{Kind: WorkflowActionDisableUser}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
+		{"send email blocked when not sendable", WorkflowAction{Kind: WorkflowActionSendEmail, TemplateKey: "welcome"}, activeUser, WorkflowActionState{}, WorkflowActionBlocked, "notification_unavailable"},
+		{"send email would change when sendable", WorkflowAction{Kind: WorkflowActionSendEmail, TemplateKey: "welcome"}, activeUser, WorkflowActionState{EmailSendable: true}, WorkflowActionWouldChange, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			outcome, reason := EvaluateWorkflowAction(tc.action, tc.user, tc.state)
+			if outcome != tc.wantOutcome || reason != tc.wantReason {
+				t.Fatalf("EvaluateWorkflowAction() = (%q, %q), want (%q, %q)", outcome, reason, tc.wantOutcome, tc.wantReason)
+			}
+		})
+	}
+}
+
+func TestEvaluateWorkflowFilters(t *testing.T) {
+	department := "engineering"
+	user := &User{Attributes: map[string]AttributeValue{"department": {Type: AttributeTypeString, String: &department}}}
+	matching := []WorkflowFilter{{Field: "department", Operator: WorkflowFilterEqual, Value: "engineering"}}
+	if !EvaluateWorkflowFilters(matching, user) {
+		t.Fatal("filters on the User's current attributes must match")
+	}
+	mismatching := []WorkflowFilter{{Field: "department", Operator: WorkflowFilterEqual, Value: "security"}}
+	if EvaluateWorkflowFilters(mismatching, user) {
+		t.Fatal("filters that do not match the User's current attributes must not match")
+	}
+}
+
 func TestPlanWorkflowRunFreezesRevision(t *testing.T) {
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	revision := LifecycleWorkflowRevision{WorkflowID: "wf", TenantID: "tenant", Revision: 1, Trigger: WorkflowTrigger{Kind: WorkflowTriggerUserCreated}, Actions: []WorkflowAction{{Kind: WorkflowActionDisableUser}}, CreatedAt: now}

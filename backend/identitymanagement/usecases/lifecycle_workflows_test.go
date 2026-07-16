@@ -184,6 +184,123 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 	}
 }
 
+// wi-222: dry-run must evaluate enabled_revision, not a later unenabled draft
+// edit, so a draft change never appears to the admin as production behavior.
+func TestDryRunLifecycleWorkflowUsesEnabledRevisionNotDraft(t *testing.T) {
+	ctx := workflowContext()
+	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()
+	users := idmmemory.NewUserRepository()
+	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionEnableUser}}, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.EnableLifecycleWorkflow(ctx, deps, workflow.ID, 1, "admin", now); err != nil {
+		t.Fatal(err)
+	}
+	// Draft edit after enable: current_revision moves to 2 but enabled_revision stays 1.
+	if _, err := usecases.UpdateLifecycleWorkflow(ctx, deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Now: now}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
+	if err != nil {
+		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
+	}
+	if result.Revision != 1 {
+		t.Fatalf("revision = %d, want enabled_revision 1", result.Revision)
+	}
+	if len(result.Steps) != 1 || result.Steps[0].ActionKind != idmdomain.WorkflowActionEnableUser {
+		t.Fatalf("steps = %#v, want the enabled revision's enable_user action, not the draft's disable_user", result.Steps)
+	}
+	if result.Steps[0].Outcome != idmdomain.WorkflowActionWouldChange {
+		t.Fatalf("outcome = %s, want would_change for a disabled user", result.Steps[0].Outcome)
+	}
+}
+
+// wi-222: an action the target User already satisfies must report no_op, not
+// a hard-coded would_change.
+func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
+	ctx := workflowContext()
+	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()
+	users := idmmemory.NewUserRepository()
+	groups := idmmemory.NewGroupRepository()
+	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	group := &idmdomain.Group{ID: "group-1", TenantID: "tenant-a", Name: "Engineering", MembershipType: idmdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
+	if err := groups.Save(ctx, group); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := groups.AddMember(ctx, &idmdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: now}); err != nil || !ok {
+		t.Fatalf("seed AddMember = %v, %v", ok, err)
+	}
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated}, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: group.ID}}, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users, GroupRepo: groups}, workflow.ID, user.ID, now)
+	if err != nil {
+		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
+	}
+	if len(result.Steps) != 1 || result.Steps[0].Outcome != idmdomain.WorkflowActionNoOp {
+		t.Fatalf("steps = %#v, want a single no_op step", result.Steps)
+	}
+	stillMember, err := groups.ListGroupsByUser(ctx, "tenant-a", user.ID)
+	if err != nil || len(stillMember) != 1 {
+		t.Fatalf("dry-run must not mutate membership: %#v, %v", stillMember, err)
+	}
+}
+
+// wi-222: when the trigger's filters don't match the target User's current
+// attributes, dry-run must say so instead of pretending the actions would run.
+func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T) {
+	ctx := workflowContext()
+	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()
+	users := idmmemory.NewUserRepository()
+	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	department := "sales"
+	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	trigger := idmdomain.WorkflowTrigger{Kind: idmdomain.WorkflowTriggerUserCreated, Filters: []idmdomain.WorkflowFilter{{Field: "department", Operator: idmdomain.WorkflowFilterEqual, Value: "engineering"}}}
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: trigger, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionEnableUser}}, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
+	if err != nil {
+		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
+	}
+	if len(result.Steps) != 1 || result.Steps[0].Outcome != idmdomain.WorkflowActionBlocked || result.Steps[0].Reason != "trigger_not_matched" {
+		t.Fatalf("steps = %#v, want blocked/trigger_not_matched", result.Steps)
+	}
+}
+
+func TestDryRunLifecycleWorkflowTargetUserNotFound(t *testing.T) {
+	ctx := workflowContext()
+	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()
+	users := idmmemory.NewUserRepository()
+	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, workflowInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, "missing-user", now); !errors.Is(err, usecases.ErrLifecycleWorkflowTargetUserNotFound) {
+		t.Fatalf("error = %v, want ErrLifecycleWorkflowTargetUserNotFound", err)
+	}
+}
+
 func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()

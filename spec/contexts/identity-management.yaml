@@ -1812,7 +1812,7 @@ models:
         type: String
   LifecycleWorkflowDryRunStepResult:
     kind: value_object
-    description: dry-run の action 1 件分の判定結果。属性値や email address は含まない。
+    description: "dry-run の action 1 件分の判定結果。対象 User の group membership、application\nassignment、required action、status、email 検証状態という現在の状態を実際に読み、本実行の\naction executor と同じ判定 (would_change / no_op / blocked) を副作用なしで返す。属性値や\nemail address は含まない。\n"
     fields:
       action_kind:
         type: WorkflowActionKind
@@ -1822,6 +1822,7 @@ models:
       reason:
         type: String
         optional: true
+        description: "blocked の理由コード (resource_not_found / dependency_unavailable /\nnotification_unavailable / trigger_not_matched 等)。would_change / no_op では省略する。\n"
   LifecycleWorkflowDryRunResponse:
     kind: value_object
     description: "dry-run 結果。WorkflowRun / Job / membership / assignment / required action / status / email\nのいずれも作成・変更しない。evaluated_at と revision を含め、本実行の保証とは表示しない。\n"
@@ -3286,7 +3287,7 @@ interfaces:
         successful_status_codes:
           - "204"
   DryRunLifecycleWorkflow:
-    description: "管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ\nvalidator / trigger evaluator / action planner を使い、WorkflowRun / Job / membership /\nassignment / required action / status / email のいずれも作成・変更しない。\n"
+    description: "管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ\nvalidator / trigger evaluator / action planner を使い、対象 User の現在の group membership /\napplication assignment / required action / status / email 検証状態を実際に読んで action ごとの\nwould_change / no_op / blocked を判定する。trigger の filter が対象 User に一致しない場合は\n全 action を blocked (reason: trigger_not_matched) として返す。対象 user が存在しないか別\ntenant の場合は InvalidRequestError を返す。WorkflowRun / Job / membership / assignment /\nrequired action / status / email のいずれも作成・変更しない。\n"
     input:
       workflow_id:
         type: String
@@ -3725,11 +3726,21 @@ scenarios:
   dry-runはaction結果を試算するがWorkflowRunやJobを作成しない:
     actor: TenantAdministrator
     given:
-      - workflow が enabled で対象 User が action の一部について既に目的状態である
+      - "workflow が enabled で対象 User が action の一部について既に目的状態 (例: 既に group member) である"
     main_success:
       - 管理者が dry_run を呼び出す
-      - "応答は action ごとに would_change / no_op / blocked と理由を返す"
+      - 対象 User の現在の group membership / application assignment / required action / status / email 検証状態が実際に読まれる
+      - "既に目的状態の action は no_op、状態が変わる action は would_change、resource が存在しないなど実行不能な action は blocked と理由を返す"
       - "WorkflowRun、Job、membership、assignment、required action、status、email は一切作成・変更されない"
+    extensions:
+      - at: 1
+        condition: enable 済みの draft 編集が current_revision にあり enabled_revision は未編集の内容を指す
+        steps:
+          - dry-run は enabled_revision の action と trigger を評価し draft の変更を反映しない
+      - at: 2
+        condition: workflow の trigger の filter が対象 User の現在属性に一致しない
+        steps:
+          - "応答は全 action を blocked、reason \"trigger_not_matched\" として返す"
 flows:
   AdminUsers:
     entry: AdminUsers
