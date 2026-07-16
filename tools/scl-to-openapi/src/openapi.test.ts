@@ -184,6 +184,37 @@ describe('generateOpenApi — unit', () => {
     )
     expect((out.paths as Record<string, unknown>)['/internal']).toBeUndefined()
   })
+
+  it('merges different methods that share one path item', () => {
+    const out = generateOpenApi(
+      doc(undefined, {
+        ListResources: {
+          bindings: [{ kind: 'http', method: 'GET', path: '/resources' }],
+        },
+        CreateResource: {
+          bindings: [{ kind: 'http', method: 'POST', path: '/resources' }],
+        },
+      }),
+    )
+
+    expect(op(out, '/resources', 'get').operationId).toBe('ListResources')
+    expect(op(out, '/resources', 'post').operationId).toBe('CreateResource')
+  })
+
+  it('rejects duplicate method and path bindings', () => {
+    expect(() =>
+      generateOpenApi(
+        doc(undefined, {
+          First: {
+            bindings: [{ kind: 'http', method: 'GET', path: '/resources' }],
+          },
+          Second: {
+            bindings: [{ kind: 'http', method: 'GET', path: '/resources' }],
+          },
+        }),
+      ),
+    ).toThrow('duplicate HTTP binding GET /resources: First, Second')
+  })
 })
 
 describe('generateOpenApi — tool-spec conformance', () => {

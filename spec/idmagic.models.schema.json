@@ -218,6 +218,38 @@
       ],
       "description": "end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。\n自分の sub に固定されるため sub / tenant_id は出さない。client_id・表示名・付与 scope・\n付与/失効日時を表示用に返す。\n"
     },
+    "AccountContextResponse": {
+      "type": "object",
+      "properties": {
+        "csrf_token": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "preferred_username": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "realm": {
+          "type": "string"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "csrf_token",
+        "id"
+      ],
+      "description": "認証済み browser session の管理 shell bootstrap 情報。CSRF token と subject、現在 realm、effective role を返す。"
+    },
     "AccountDataExport": {
       "type": "object",
       "properties": {
@@ -2742,6 +2774,49 @@
       ],
       "description": "一括作成で選ぶアプリ種別。oidc / wsfed は federated Application と対応する OAuth2 client / WS-Fed RP を同時に作成し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。"
     },
+    "ApplicationSamlConfigUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "acs_urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "slo_url": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "name_id_format": {
+          "type": "string"
+        },
+        "name_id_source": {
+          "type": "string"
+        },
+        "sign_assertion": {
+          "type": "boolean"
+        },
+        "sign_response": {
+          "type": "boolean"
+        },
+        "want_authn_requests_signed": {
+          "type": "boolean"
+        },
+        "authn_request_signing_certificate_pem": {
+          "type": "string"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClaimMappingRule"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "SAML binding 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。"
+    },
     "ApplicationStatus": {
       "type": "string",
       "enum": [
@@ -4181,6 +4256,19 @@
         "action"
       ],
       "description": "SPA が POST /api/auth/consent に送る同意判断。"
+    },
+    "BrowserCsrfContext": {
+      "type": "object",
+      "properties": {
+        "csrf_token": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "csrf_token"
+      ],
+      "description": "未認証 browser form が SameSite cookie と対で使う CSRF token bootstrap 情報。"
     },
     "BrowserDeviceContextResponse": {
       "type": "object",

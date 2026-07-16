@@ -5,6 +5,103 @@
     "version": "3.0"
   },
   "paths": {
+    "/livez": {
+      "get": {
+        "operationId": "LivenessProbe",
+        "summary": "プロセスが要求を処理できることを示す liveness probe。依存サービスの一時障害では失敗させない。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "ReadinessProbe",
+        "summary": "起動完了、drain 状態、構成された永続化依存の到達性を確認する readiness probe。verbose 指定時だけ依存詳細を返す。",
+        "security": [],
+        "parameters": [
+          {
+            "name": "verbose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "dependencies": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/startupz": {
+      "get": {
+        "operationId": "StartupProbe",
+        "summary": "初期化完了までは 503 starting、完了後は 200 healthy を返す startup probe。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/tenants": {
       "get": {
         "operationId": "ListTenants",
@@ -1023,6 +1120,34 @@
                     {
                       "$ref": "#/components/schemas/InvalidRequestError"
                     }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/email/verify_context": {
+      "get": {
+        "operationId": "GetEmailVerificationContext",
+        "summary": "未認証で開かれる email verification 画面が確認 POST を保護する CSRF token を取得する。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "csrf_token": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "csrf_token"
                   ]
                 }
               }
@@ -4787,6 +4912,147 @@
         }
       }
     },
+    "/api/auth/account": {
+      "get": {
+        "operationId": "GetAccountContext",
+        "summary": "認証済み browser session の管理 shell bootstrap 情報と CSRF token を取得する。認証途中の session は拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "AuthenticatedSelf"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "subject.id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "$ref": "#/components/schemas/AccountContextResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "context"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password_reset_context": {
+      "get": {
+        "operationId": "GetPasswordResetContext",
+        "summary": "未認証のパスワードリセット画面が POST を保護する CSRF token を取得する。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "$ref": "#/components/schemas/BrowserCsrfContext"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "context"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/step_up/webauthn/challenge": {
+      "post": {
+        "operationId": "StartStepUpWebAuthnChallenge",
+        "summary": "認証済み session に束縛した step-up 用 WebAuthn assertion challenge を発行する。CSRF を検証し、WebAuthn 無効時は fail closed とする。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "AuthenticatedSelf"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "subject.id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "options": {
+                      "$ref": "#/components/schemas/WebAuthnAssertionOptions"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "options"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "operationId": "SubmitBrowserLogin",
@@ -8157,7 +8423,7 @@
         }
       }
     },
-    "/admin/consents": {
+    "/api/admin/consents": {
       "get": {
         "operationId": "ListAdminConsents",
         "summary": "管理者が所属テナントの Consent を監査目的で一覧する。",
@@ -8212,7 +8478,7 @@
         }
       }
     },
-    "/admin/consents/{user_id}/{client_id}": {
+    "/api/admin/consents/{user_id}/{client_id}": {
       "get": {
         "operationId": "GetAdminConsent",
         "summary": "管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。",
@@ -8335,6 +8601,61 @@
                     {
                       "$ref": "#/components/schemas/InvalidRequestError"
                     },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/policy/roles": {
+      "get": {
+        "operationId": "ListAdminRolePolicies",
+        "summary": "管理者が SCL authorization から導出された、自身に可視な role・permission・HTTP interface の対応を取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roles": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "roles"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
                     }
@@ -9556,6 +9877,81 @@
                   },
                   "request": {
                     "$ref": "#/components/schemas/ApplicationWsFedConfigUpdateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "application_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/applications/{application_id}/saml": {
+      "patch": {
+        "operationId": "UpdateApplicationSamlConfig",
+        "summary": "管理者が Application の SAML binding が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Application",
+            "id": "input.application_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "application_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/ApplicationSamlConfigUpdateRequest"
                   }
                 },
                 "additionalProperties": false,
@@ -11071,18 +11467,20 @@
     },
     "/wsfed": {
       "get": {
-        "operationId": "WsFederationSignOut",
-        "summary": "WS-Federation sign-out。ローカルセッションを破棄する。wsignout1.0 は許可済み wreply への リダイレクトまで行い、wsignoutcleanup1.0 は破棄のみで 200 を返す。",
+        "operationId": "WsFederationSignIn",
+        "summary": "WS-Federation passive requestor profile の単一 HTTP endpoint。wa で sign-in と sign-out を dispatch する。sign-in は wtrealm で relying party を解決し、wreply を許可集合に限定する (open redirect 防止)。未認証はログインへ誘導し、認証済みなら relying party の claim policy で発行した claim を署名済み SAML assertion (既定 SAML 1.1 / Entra 互換、RP 設定で SAML 2.0) に載せ、RSTR に包んで自動 POST する。wfresh が示す最大経過時間より認証が古ければ再認証へ誘導し、wauth が要求する認証方式を尊重する。sign-out の意味契約は WsFederationSignOut が所有する。",
         "x-scl-requires": [
-          "input.wa == \"wsignout1.0\" || input.wa == \"wsignoutcleanup1.0\"",
-          "input.wtrealm == null || wtrealm_registered(input.wtrealm, context.tenant_id)",
-          "input.wreply == null || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)"
+          "input.wa == \"wsignin1.0\" || input.wa == \"wsignout1.0\" || input.wa == \"wsignoutcleanup1.0\"",
+          "input.wa != \"wsignin1.0\" || wtrealm_registered(input.wtrealm, context.tenant_id)",
+          "input.wa != \"wsignin1.0\" || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)"
         ],
         "x-scl-ensures": [
-          "local_session_cleared",
-          "no_unregistered_redirect"
+          "authentication_fresh_enough(input.wfresh)",
+          "requested_authentication_method_satisfied(input.wauth)",
+          "subject_assigned_to_application(input.wtrealm, context.tenant_id)",
+          "wctx_round_tripped(input.wctx)"
         ],
-        "description": "Requires: input.wa == \"wsignout1.0\" || input.wa == \"wsignoutcleanup1.0\"; input.wtrealm == null || wtrealm_registered(input.wtrealm, context.tenant_id); input.wreply == null || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)\n\nEnsures: local_session_cleared; no_unregistered_redirect",
+        "description": "Requires: input.wa == \"wsignin1.0\" || input.wa == \"wsignout1.0\" || input.wa == \"wsignoutcleanup1.0\"; input.wa != \"wsignin1.0\" || wtrealm_registered(input.wtrealm, context.tenant_id); input.wa != \"wsignin1.0\" || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)\n\nEnsures: authentication_fresh_enough(input.wfresh); requested_authentication_method_satisfied(input.wauth); subject_assigned_to_application(input.wtrealm, context.tenant_id); wctx_round_tripped(input.wctx)",
         "security": [],
         "parameters": [
           {
@@ -11091,15 +11489,16 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "wsignout1.0 または wsignoutcleanup1.0。"
+              "description": "wsignin1.0、wsignout1.0、または wsignoutcleanup1.0。"
             }
           },
           {
             "name": "wtrealm",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "relying party 識別子。"
             }
           },
           {
@@ -11109,6 +11508,42 @@
             "schema": {
               "type": "string",
               "description": "返信先。許可集合との完全一致のみ。"
+            }
+          },
+          {
+            "name": "wctx",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "RP が往復させる不透明コンテキスト。"
+            }
+          },
+          {
+            "name": "wfresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "再認証の最大経過時間 (分)。古ければ再認証へ誘導する。"
+            }
+          },
+          {
+            "name": "wauth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "要求された認証方式 URI。満たせなければ拒否する。"
+            }
+          },
+          {
+            "name": "whr",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "home realm のヒント。"
             }
           }
         ],
@@ -12278,6 +12713,97 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "ListScimUsers",
+        "summary": "SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimProvision"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/scim/v2/Users/{id}": {
@@ -12649,6 +13175,97 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListScimGroups",
+        "summary": "SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimProvision"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -13446,6 +14063,38 @@
           "expires_at"
         ],
         "description": "end-user の account portal が返す「接続済みアプリ」1 件 (self-service)。\n自分の sub に固定されるため sub / tenant_id は出さない。client_id・表示名・付与 scope・\n付与/失効日時を表示用に返す。\n"
+      },
+      "AccountContextResponse": {
+        "type": "object",
+        "properties": {
+          "csrf_token": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "preferred_username": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "realm": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "csrf_token",
+          "id"
+        ],
+        "description": "認証済み browser session の管理 shell bootstrap 情報。CSRF token と subject、現在 realm、effective role を返す。"
       },
       "AccountDataExport": {
         "type": "object",
@@ -15971,6 +16620,49 @@
         ],
         "description": "一括作成で選ぶアプリ種別。oidc / wsfed は federated Application と対応する OAuth2 client / WS-Fed RP を同時に作成し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。"
       },
+      "ApplicationSamlConfigUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "acs_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slo_url": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string"
+          },
+          "name_id_format": {
+            "type": "string"
+          },
+          "name_id_source": {
+            "type": "string"
+          },
+          "sign_assertion": {
+            "type": "boolean"
+          },
+          "sign_response": {
+            "type": "boolean"
+          },
+          "want_authn_requests_signed": {
+            "type": "boolean"
+          },
+          "authn_request_signing_certificate_pem": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClaimMappingRule"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "SAML binding 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。"
+      },
       "ApplicationStatus": {
         "type": "string",
         "enum": [
@@ -17410,6 +18102,19 @@
           "action"
         ],
         "description": "SPA が POST /api/auth/consent に送る同意判断。"
+      },
+      "BrowserCsrfContext": {
+        "type": "object",
+        "properties": {
+          "csrf_token": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "csrf_token"
+        ],
+        "description": "未認証 browser form が SameSite cookie と対で使う CSRF token bootstrap 情報。"
       },
       "BrowserDeviceContextResponse": {
         "type": "object",
@@ -26095,6 +26800,22 @@
             }
           },
           {
+            "name": "GetAccountContext",
+            "memberOf": "policy:AuthenticatedSelf",
+            "policies": [
+              "AuthenticatedSelf"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
             "name": "GetAccountSecurity",
             "memberOf": "policy:AuthenticatedSelf",
             "policies": [
@@ -26352,6 +27073,22 @@
           },
           {
             "name": "StartStepUpAuthentication",
+            "memberOf": "policy:AuthenticatedSelf",
+            "policies": [
+              "AuthenticatedSelf"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "StartStepUpWebAuthnChallenge",
             "memberOf": "policy:AuthenticatedSelf",
             "policies": [
               "AuthenticatedSelf"
@@ -26632,6 +27369,38 @@
           },
           {
             "name": "GetScimUser",
+            "memberOf": "policy:ScimProvision",
+            "policies": [
+              "ScimProvision"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListScimGroups",
+            "memberOf": "policy:ScimProvision",
+            "policies": [
+              "ScimProvision"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListScimUsers",
             "memberOf": "policy:ScimProvision",
             "policies": [
               "ScimProvision"
@@ -27831,6 +28600,22 @@
             }
           },
           {
+            "name": "ListAdminRolePolicies",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
             "name": "ListAdminUsers",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -28360,6 +29145,22 @@
           },
           {
             "name": "UpdateApplicationOidcConfig",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateApplicationSamlConfig",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
               "TenantAdministrator"

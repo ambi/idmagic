@@ -498,6 +498,24 @@ models:
       rules:
         type: "ClaimMappingRule[]"
         optional: true
+  ApplicationSamlConfigUpdateRequest:
+    kind: value_object
+    description: SAML binding 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。
+    fields:
+      acs_urls: { type: "String[]", optional: true }
+      slo_url: { type: String, optional: true }
+      audience: { type: String, optional: true }
+      name_id_format: { type: String, optional: true }
+      name_id_source: { type: String, optional: true }
+      sign_assertion: { type: Boolean, optional: true }
+      sign_response: { type: Boolean, optional: true }
+      want_authn_requests_signed: { type: Boolean, optional: true }
+      authn_request_signing_certificate_pem:
+        type: String
+        optional: true
+        annotations:
+          sensitive: true
+      rules: { type: "ClaimMappingRule[]", optional: true }
   AdminApplicationUpdateRequest:
     kind: value_object
     description: Application 更新リクエスト。指定フィールドのみ変更する。
@@ -1252,6 +1270,28 @@ interfaces:
         request_form: body
         successful_status_codes:
           - "204"
+  UpdateApplicationSamlConfig:
+    description: 管理者が Application の SAML binding が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。
+    input:
+      application_id:
+        type: String
+      request:
+        type: ApplicationSamlConfigUpdateRequest
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: PATCH
+        path: "/api/admin/applications/{application_id}/saml"
+        request_form: body
+        successful_status_codes:
+          - "204"
   ListApplicationAssignments:
     description: 管理者が Application の割当を一覧する。
     input:
@@ -1613,6 +1653,18 @@ authorization:
       principal: AuthenticatedSelf
       when: principal.id == resource.id
 scenarios:
+  管理者はApplicationのSAML binding設定を更新できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が SAML binding を持つ Application の編集画面を開いている
+    main_success:
+      - 管理者が ACS URL、署名方針、claim 規則を更新する
+      - SAML service provider 設定だけが同一テナント内で更新される
+    extensions:
+      - at: 1
+        condition: AuthnRequest 署名必須だが検証可能な証明書がない
+        steps:
+          - 更新は InvalidRequestError で拒否される
   管理者は管理画面でアプリケーションを作成しprotocol_bindingを構成できる:
     actor: TenantAdministrator
     given:

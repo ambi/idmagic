@@ -39,6 +39,13 @@ models:
       name: { type: String, constraints: [non_empty] }
       policies: { type: List<String>, constraints: [non_empty] }
       actions: { type: List<AuthorizationAction>, constraints: [non_empty] }
+  DuplicateHttpBindingError:
+    kind: error
+    description: 複数の interface が同一 path と同一 HTTP method を所有しており、operationId を一意に決定できない。
+    payload:
+      path: { type: String }
+      method: { type: String }
+      interfaces: { type: "String[]" }
 
 interfaces:
   BuildAuthorizationMetadata:
@@ -63,6 +70,8 @@ interfaces:
       request: { type: GenerateRequest }
     output:
       document: { type: OpenApiDocument }
+    errors:
+      - DuplicateHttpBindingError
     requires:
       - input.request.scl != ""
     ensures:
@@ -70,6 +79,7 @@ interfaces:
       - output.document.paths_count >= 0
       - all_component_references_resolve(output.document)
       - every_http_binding_becomes_an_operation(input.request, output.document)
+      - bindings_with_the_same_path_and_different_methods_share_one_path_item(input.request, output.document)
       - internal_interfaces_are_not_exposed(input.request, output.document)
       - access_and_contract_metadata_are_preserved(input.request, output.document)
     access: public
@@ -94,6 +104,16 @@ objectives:
     budgeting: occurrences
 
 scenarios:
+  同一pathの異なるHTTP methodは一つのpath itemへ保持される:
+    actor: Maintainer
+    main_success:
+      - 同一 path に GET と POST を持つ2つの HttpBinding を GenerateOpenApi に渡す
+      - 生成された一つの path item は GET と POST の両 Operation を持つ
+    extensions:
+      - at: 1
+        condition: 2つの HttpBinding が同一 path と同一 method を持つ
+        steps:
+          - DuplicateHttpBindingError で生成を中止する
   public interface は unauthenticated operation になる:
     actor: Maintainer
     main_success:

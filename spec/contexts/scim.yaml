@@ -245,6 +245,27 @@ interfaces:
       - kind: http
         method: POST
         path: /scim/v2/Users
+  ListScimUsers:
+    description: SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。
+    input:
+      tenant_id: { type: String }
+      filter: { type: String, optional: true }
+      startIndex: { type: Integer, optional: true }
+      count: { type: Integer, optional: true }
+    output:
+      response: { type: "Map<String,JSON>" }
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
+    bindings:
+      - kind: http
+        method: GET
+        path: /scim/v2/Users
+        request_form: query
   GetScimUser:
     description: SCIM 2.0 /Users/{id} に対する GET 要求。
     input:
@@ -347,6 +368,27 @@ interfaces:
       - kind: http
         method: POST
         path: /scim/v2/Groups
+  ListScimGroups:
+    description: SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。
+    input:
+      tenant_id: { type: String }
+      filter: { type: String, optional: true }
+      startIndex: { type: Integer, optional: true }
+      count: { type: Integer, optional: true }
+    output:
+      response: { type: "Map<String,JSON>" }
+    errors: [ScimProtocolError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    read_only: true
+    access:
+      policies: [ScimProvision]
+      resource: {type: Tenant, id: context.tenant_id}
+    bindings:
+      - kind: http
+        method: GET
+        path: /scim/v2/Groups
+        request_form: query
   GetScimGroup:
     description: SCIM 2.0 /Groups/{id} に対する GET 要求。
     input:
@@ -509,6 +551,18 @@ authorization:
       principal: TenantAdministrator
       when: principal.tenant_id == resource.id
 scenarios:
+  SCIM clientはUsersとGroups collectionを検索できる:
+    actor: ScimClient
+    given:
+      - SCIM client が tenant に対する有効な provisioning token を持つ
+    main_success:
+      - SCIM client が /Users と /Groups を GET する
+      - 各応答は SCIM ListResponse と pagination 情報を返す
+    extensions:
+      - at: 1
+        condition: filter 構文が不正、または provisioning token の tenant が一致しない
+        steps:
+          - SCIM protocol error で拒否される
   外部IDPからのSCIMユーザー同期ライフサイクル:
     actor: ScimBearerClient
     given:

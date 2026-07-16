@@ -134,6 +134,36 @@ models:
       redirect_to:
         type: String
         optional: true
+  AccountContextResponse:
+    kind: value_object
+    description: 認証済み browser session の管理 shell bootstrap 情報。CSRF token と subject、現在 realm、effective role を返す。
+    fields:
+      csrf_token:
+        type: String
+        annotations:
+          sensitive: true
+      id:
+        type: String
+      preferred_username:
+        type: String
+        optional: true
+      tenant_id:
+        type: String
+        optional: true
+      realm:
+        type: String
+        optional: true
+      roles:
+        type: "String[]"
+        optional: true
+  BrowserCsrfContext:
+    kind: value_object
+    description: 未認証 browser form が SameSite cookie と対で使う CSRF token bootstrap 情報。
+    fields:
+      csrf_token:
+        type: String
+        annotations:
+          sensitive: true
   MfaFactorType:
     kind: enum
     description: 第二要素 (MFA) の種別 (RFC 8176 amr 値の本アプリ向けサブセット)。Totp は RFC 6238、Webauthn は WebAuthn Level 3、Hwk / Swk は将来拡張のための予約。
@@ -1257,6 +1287,51 @@ models:
         type: String
         description: password | totp
 interfaces:
+  GetAccountContext:
+    description: 認証済み browser session の管理 shell bootstrap 情報と CSRF token を取得する。認証途中の session は拒否する。
+    output:
+      context:
+        type: AccountContextResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/auth/account
+  GetPasswordResetContext:
+    description: 未認証のパスワードリセット画面が POST を保護する CSRF token を取得する。
+    output:
+      context:
+        type: BrowserCsrfContext
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/auth/password_reset_context
+  StartStepUpWebAuthnChallenge:
+    description: 認証済み session に束縛した step-up 用 WebAuthn assertion challenge を発行する。CSRF を検証し、WebAuthn 無効時は fail closed とする。
+    output:
+      options:
+        type: WebAuthnAssertionOptions
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [AuthenticatedSelf]
+      resource:
+        type: User
+        id: subject.id
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/account/step_up/webauthn/challenge
   SubmitBrowserLogin:
     description: SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。
     input:
@@ -1855,6 +1930,31 @@ authorization:
       principal: TenantAdministrator
       when: principal.tenant_id == resource.tenant_id
 scenarios:
+  browser bootstrap contextは認証状態とCSRF境界を保持する:
+    actor: AuthenticatedSelf
+    given:
+      - ユーザー "alice" が認証済み session を持つ
+    main_success:
+      - ユーザー "alice" が account context を取得する
+      - 応答は subject、realm、effective role、CSRF token を含む
+      - 未認証のパスワードリセット画面は password reset context から CSRF token を取得できる
+    extensions:
+      - at: 1
+        condition: session が未認証または認証途中である
+        steps:
+          - account context の取得は AccessDeniedError で拒否される
+  ユーザーはWebAuthnでstep-up challengeを開始できる:
+    actor: AuthenticatedSelf
+    given:
+      - ユーザー "alice" が WebAuthn credential を登録済みで認証済み session を持つ
+    main_success:
+      - ユーザー "alice" が正しい CSRF token で step-up WebAuthn challenge を要求する
+      - 応答の PublicKeyCredentialRequestOptions は現在 session に束縛される
+    extensions:
+      - at: 1
+        condition: CSRF token が一致しない、または WebAuthn が利用不能である
+        steps:
+          - challenge は発行されず要求は拒否される
   ResourceOwnerはブラウザでパスワード認証し認可を継続する:
     actor: ResourceOwner
     given:

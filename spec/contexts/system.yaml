@@ -102,6 +102,40 @@ standards:
         adoption: required
         statement: セキュリティ・認可イベントの監査記録を定義済み期間保持する。保持期間は Audit context が所有する。
 interfaces:
+  LivenessProbe:
+    description: プロセスが要求を処理できることを示す liveness probe。依存サービスの一時障害では失敗させない。
+    output:
+      status: { type: String }
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /livez
+  ReadinessProbe:
+    description: 起動完了、drain 状態、構成された永続化依存の到達性を確認する readiness probe。verbose 指定時だけ依存詳細を返す。
+    input:
+      verbose: { type: String, optional: true }
+    output:
+      status: { type: String }
+      dependencies: { type: JSON, optional: true }
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /readyz
+        request_form: query
+  StartupProbe:
+    description: 初期化完了までは 503 starting、完了後は 200 healthy を返す startup probe。
+    output:
+      status: { type: String }
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /startupz
   BackendErrorResponse:
     description: |
       バックエンドの HTTP API とプロトコル endpoint がエラー時に返す共通の外部契約。
@@ -119,6 +153,22 @@ interfaces:
       - text_is_english(output.detail)
     access: internal
 scenarios:
+  orchestration probeはprocess lifecycleと依存状態を区別する:
+    actor: Operator
+    main_success:
+      - Operator が初期化完了後の liveness、readiness、startup probe を呼ぶ
+      - すべて 200 と healthy を返す
+    extensions:
+      - at: 1
+        condition: 初期化中または graceful drain 中である
+        steps:
+          - liveness は 200 healthy を維持する
+          - readiness または startup は 503 を返す
+      - at: 1
+        condition: 構成された永続化依存へ到達できない
+        steps:
+          - readiness は 503 unavailable を返す
+          - liveness は 200 healthy を維持する
   明示的に選択した表示言語でホスト認証画面が描画される:
     actor: EndUser
     given:

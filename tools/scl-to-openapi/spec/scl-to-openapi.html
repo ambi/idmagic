@@ -28,7 +28,7 @@
       <div class="eyebrow">Specification Core Language · spec 3.0</div>
       <h1>scl-to-openapi</h1>
     </header>
-    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">4</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">4</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">5</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#glossary"><span class="stat-num">4</span><span class="stat-label">glossary</span></a><a class="stat" href="#models"><span class="stat-num">5</span><span class="stat-label">models</span></a><a class="stat" href="#interfaces"><span class="stat-num">2</span><span class="stat-label">interfaces</span></a><a class="stat" href="#objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="glossary">
     <h2>Glossary <span class="count">4</span></h2>
@@ -71,7 +71,7 @@
     </article></div>
   </section>
 <section id="models">
-    <h2>Models <span class="count">4</span></h2>
+    <h2>Models <span class="count">5</span></h2>
 
     <div class="group">
       <h3 class="grp-title">value object <span class="count">4</span></h3>
@@ -182,6 +182,37 @@
 
   </article></div>
     </div>
+<div class="group">
+      <h3 class="grp-title">error <span class="count">1</span></h3>
+      <div class="cards"><article class="card" id="scl-scl-to-openapi/model/DuplicateHttpBindingError">
+    <header><h3>DuplicateHttpBindingError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">scl-to-openapi/model/DuplicateHttpBindingError</code></header>
+    <p class="desc">複数の interface が同一 path と同一 HTTP method を所有しており、operationId を一意に決定できない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">path</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">method</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">interfaces</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article></div>
+    </div>
   </section>
 <section id="interfaces">
     <h2>Interfaces <span class="count">2</span></h2>
@@ -249,8 +280,9 @@ requires、ensures、resource、policy と AuthorizationMetadata を vendor exte
   </tr></tbody>
     </table>
   </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-scl-to-openapi/model/DuplicateHttpBindingError">DuplicateHttpBindingError</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.scl != &quot;&quot;</code></li></ul></div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.document.openapi == &quot;3.1.0&quot;</code></li><li><code class="expr">output.document.paths_count &gt;= 0</code></li><li><code class="expr">all_component_references_resolve(output.document)</code></li><li><code class="expr">every_http_binding_becomes_an_operation(input.request, output.document)</code></li><li><code class="expr">internal_interfaces_are_not_exposed(input.request, output.document)</code></li><li><code class="expr">access_and_contract_metadata_are_preserved(input.request, output.document)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.document.openapi == &quot;3.1.0&quot;</code></li><li><code class="expr">output.document.paths_count &gt;= 0</code></li><li><code class="expr">all_component_references_resolve(output.document)</code></li><li><code class="expr">every_http_binding_becomes_an_operation(input.request, output.document)</code></li><li><code class="expr">bindings_with_the_same_path_and_different_methods_share_one_path_item(input.request, output.document)</code></li><li><code class="expr">internal_interfaces_are_not_exposed(input.request, output.document)</code></li><li><code class="expr">access_and_contract_metadata_are_preserved(input.request, output.document)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-cli">
     <div class="binding-kind"><span class="badge badge-bkind-cli">cli</span></div>
     <div class="binding-body"><div class="binding-head"><code class="path">scl-to-openapi</code></div><div class="io"><div class="label">Flags</div><table class="fields"><thead><tr><th>Long</th><th>Short</th><th>Presence</th><th>Note</th></tr></thead><tbody><tr>
@@ -284,9 +316,18 @@ requires、ensures、resource、policy と AuthorizationMetadata を vendor exte
       </article></div>
   </section>
 <section id="scenarios">
-    <h2>Scenarios <span class="count">5</span></h2>
+    <h2>Scenarios <span class="count">6</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scl-scl-to-openapi/scenario/public~20interface~20~E3~81~AF~20unauthenticated~20operation~20~E3~81~AB~E3~81~AA~E3~82~8B">
+    <div class="cards"><article class="card scenario" id="scl-scl-to-openapi/scenario/~E5~90~8C~E4~B8~80path~E3~81~AE~E7~95~B0~E3~81~AA~E3~82~8BHTTP~20method~E3~81~AF~E4~B8~80~E3~81~A4~E3~81~AEpath~20item~E3~81~B8~E4~BF~9D~E6~8C~81~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>同一pathの異なるHTTP methodは一つのpath itemへ保持される</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/同一pathの異なるHTTP methodは一つのpath itemへ保持される</code></header>
+
+
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">同一 path に GET と POST を持つ2つの HttpBinding を <a class="chip chip-ref" href="#scl-scl-to-openapi/interface/GenerateOpenApi">GenerateOpenApi</a> に渡す</li><li class="scn-step">生成された一つの path item は GET と POST の両 Operation を持つ</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">2つの HttpBinding が同一 path と同一 method を持つ</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-scl-to-openapi/model/DuplicateHttpBindingError">DuplicateHttpBindingError</a> で生成を中止する</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-scl-to-openapi/scenario/public~20interface~20~E3~81~AF~20unauthenticated~20operation~20~E3~81~AB~E3~81~AA~E3~82~8B">
         <header><h3>public interface は unauthenticated operation になる</h3><span class="chip chip-actor">Maintainer</span><code class="canonical-ref">scl-to-openapi/scenario/public interface は unauthenticated operation になる</code></header>
 
 

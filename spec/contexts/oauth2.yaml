@@ -3574,7 +3574,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /admin/consents
+        path: /api/admin/consents
   GetAdminConsent:
     description: 管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。
     input:
@@ -3597,7 +3597,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/admin/consents/{user_id}/{client_id}"
+        path: "/api/admin/consents/{user_id}/{client_id}"
   RevokeAdminConsent:
     description: 管理者が所属テナントの Consent を論理撤回する。管理者による Consent の作成・scope 拡張は許可しない。
     input:
@@ -3618,9 +3618,26 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/admin/consents/{user_id}/{client_id}"
+        path: "/api/admin/consents/{user_id}/{client_id}"
         successful_status_codes:
           - "204"
+  ListAdminRolePolicies:
+    description: 管理者が SCL authorization から導出された、自身に可視な role・permission・HTTP interface の対応を取得する。
+    output:
+      roles:
+        type: JSON
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/policy/roles
   ListMyConsents:
     description: "認証済みユーザーが自身の接続済みアプリ (active な Consent) 一覧を取得する\n(self-service)。対象は actor.id に固定し、他人の Consent は返さない。\n"
     output:
@@ -3911,6 +3928,18 @@ objectives:
     window: 30d
     budgeting: occurrences
 scenarios:
+  管理者は自身に可視なrole policyを確認できる:
+    actor: TenantAdministrator
+    given:
+      - roles=["admin"] の管理者が認証済みである
+    main_success:
+      - 管理者が role policy 一覧を取得する
+      - 応答には可視な role、permission、対応 HTTP interface が含まれる
+    extensions:
+      - at: 1
+        condition: principal が admin または system_admin ではない
+        steps:
+          - role policy 一覧は AccessDeniedError で拒否される
   認可コードフローでアクセストークンと ID トークンを取得できる:
     actor: RegisteredClient
     given:

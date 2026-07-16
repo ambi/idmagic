@@ -174,6 +174,12 @@ export function generateOpenApi(bundle: SclBundle | SclDocument): JsonSchema {
         item = {}
         paths[path] = item
       }
+      if (item[method]) {
+        const previous = String(item[method].operationId ?? 'unknown')
+        throw new Error(
+          `duplicate HTTP binding ${method.toUpperCase()} ${path}: ${previous}, ${name}`,
+        )
+      }
       item[method] = operation
     }
   }

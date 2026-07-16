@@ -2241,6 +2241,19 @@ states:
         event: LifecycleWorkflowRunCanceled
         to: canceled
 interfaces:
+  GetEmailVerificationContext:
+    description: 未認証で開かれる email verification 画面が確認 POST を保護する CSRF token を取得する。
+    output:
+      csrf_token:
+        type: String
+        annotations:
+          sensitive: true
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/account/email/verify_context
   GetAccountSummary:
     description: "認証済みユーザーが自身のアカウント概要を取得する (self-service portal home)。\n対象は subject.id に固定。roles を含まず、最終ログイン・パスワード変更日時・\nMFA 状態・未対応 required actions を返す。admin shell の AccountContext とは\n別契約。\n"
     output:
@@ -3411,6 +3424,16 @@ objectives:
     window: 30d
     budgeting: occurrences
 scenarios:
+  email verification画面は未認証でもCSRF境界を確立できる:
+    actor: EndUser
+    main_success:
+      - EndUser が email verification context を取得する
+      - 応答の CSRF token と SameSite cookie を使って email verification を送信できる
+    extensions:
+      - at: 2
+        condition: CSRF token と cookie が一致しない
+        steps:
+          - email verification は InvalidRequestError で拒否される
   管理者は CSV を検証して有効な行だけをインポートできる:
     actor: TenantAdministrator
     given:

@@ -381,11 +381,11 @@ models:
         description: Entra に登録する IssuerUri。
 interfaces:
   WsFederationSignIn:
-    description: WS-Federation passive requestor profile の sign-in。wtrealm で relying party を解決し、 wreply を許可集合に限定する (open redirect 防止)。未認証はログインへ誘導し、認証済みなら relying party の claim policy で発行した claim を署名済み SAML assertion (既定 SAML 1.1 / Entra 互換、RP 設定で SAML 2.0) に 載せ、RSTR に包んで自動 POST する。wfresh が示す最大経過時間より認証が古ければ再認証へ誘導し、wauth が要求する 認証方式を尊重する (満たせない統合 Windows 認証等は fail-closed で拒否)。
+    description: WS-Federation passive requestor profile の単一 HTTP endpoint。wa で sign-in と sign-out を dispatch する。sign-in は wtrealm で relying party を解決し、wreply を許可集合に限定する (open redirect 防止)。未認証はログインへ誘導し、認証済みなら relying party の claim policy で発行した claim を署名済み SAML assertion (既定 SAML 1.1 / Entra 互換、RP 設定で SAML 2.0) に載せ、RSTR に包んで自動 POST する。wfresh が示す最大経過時間より認証が古ければ再認証へ誘導し、wauth が要求する認証方式を尊重する。sign-out の意味契約は WsFederationSignOut が所有する。
     input:
       wa:
         type: String
-        description: wsignin1.0。
+        description: wsignin1.0、wsignout1.0、または wsignoutcleanup1.0。
       wtrealm:
         type: String
         description: relying party 識別子。
@@ -410,9 +410,9 @@ interfaces:
         optional: true
         description: home realm のヒント。
     requires:
-      - input.wa == "wsignin1.0"
-      - wtrealm_registered(input.wtrealm, context.tenant_id)
-      - reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)
+      - input.wa == "wsignin1.0" || input.wa == "wsignout1.0" || input.wa == "wsignoutcleanup1.0"
+      - input.wa != "wsignin1.0" || wtrealm_registered(input.wtrealm, context.tenant_id)
+      - input.wa != "wsignin1.0" || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)
     ensures:
       - authentication_fresh_enough(input.wfresh)
       - requested_authentication_method_satisfied(input.wauth)
@@ -428,7 +428,7 @@ interfaces:
           - "200"
           - "303"
   WsFederationSignOut:
-    description: WS-Federation sign-out。ローカルセッションを破棄する。wsignout1.0 は許可済み wreply への リダイレクトまで行い、wsignoutcleanup1.0 は破棄のみで 200 を返す。
+    description: WsFederationSignIn が所有する単一 passive HTTP endpoint 内の sign-out 意味契約。ローカルセッションを破棄する。wsignout1.0 は許可済み wreply へのリダイレクトまで行い、wsignoutcleanup1.0 は破棄のみで 200 を返す。
     input:
       wa:
         type: String
@@ -447,15 +447,7 @@ interfaces:
     ensures:
       - local_session_cleared
       - no_unregistered_redirect
-    access: public
-    bindings:
-      - kind: http
-        method: GET
-        path: /wsfed
-        request_form: query
-        successful_status_codes:
-          - "200"
-          - "303"
+    access: internal
   WsTrustIssue:
     description: WS-Trust 1.3 active STS Issue endpoint。UsernameToken を検証し、 To を現在 realm の active STS endpoint、Action / RequestType を Issue、KeyType を Bearer に限定し、AppliesTo を登録済み WsFedRelyingParty に解決する。RP の claim policy で組み立てた claim を署名済み SAML assertion に載せ、RSTR として返す。未登録 AppliesTo、期限切れ Timestamp、不正な To / Action / RequestType / KeyType / TokenType は fail-closed で拒否する。
     input:
