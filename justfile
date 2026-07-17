@@ -4,12 +4,12 @@
 
 set shell := ["zsh", "-cu"]
 
-ra_cmd := env_var_or_default("RA_CMD", "bun run tools/ra/src/main.ts")
-go_cache := env_var_or_default("GOCACHE", "/tmp/idmagic-go-cache")
-golangci_cache := env_var_or_default("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
+ra_cmd := env("RA_CMD", "bun run tools/ra/src/main.ts")
+go_cache := env("GOCACHE", "/tmp/idmagic-go-cache")
+golangci_cache := env("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
 git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
 build_date := `date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown"`
-version := env_var_or_default("VERSION", "0.0.0-dev")
+version := env("VERSION", "0.0.0-dev")
 ldflags := "-X github.com/ambi/idmagic/backend/shared/version.Version=" + version + " -X github.com/ambi/idmagic/backend/shared/version.GitCommit=" + git_commit + " -X github.com/ambi/idmagic/backend/shared/version.BuildDate=" + build_date
 
 # Show this command map.
