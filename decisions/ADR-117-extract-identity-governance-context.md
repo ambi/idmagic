@@ -64,7 +64,20 @@ published 契約へ分解する:
   の cross-context published 依存へ引き上げる。冪等性（ADR-113 決定5 の desired-state action +
   step checkpoint）は record context 側の command surface でも維持する。
 
-### 3. context DAG 制約（ADR-113 決定8 の再解釈）
+#### 2a. Read 契約の実装方式（本 WI では境界 port、outbox 配送は後続 WI）
+
+現行コードベースには domain event の in-process 購読機構が無く、outbox は relay→kafka の一方向
+配送のみ。決定2 の literal な outbox 購読を今実装するには IdGovernance 用の kafka consumer を
+新設する必要があり、本 WI に対して過大である。本 WI では既存の transactional capture の**挙動と
+原子性をそのまま維持**し、IM→LifecycleWorkflow の型依存だけを断つ最小変更として、IM に User
+domain 型のみを引数に取る境界 port（published interface）を 1 つ追加する。IdGovernance がこの port
+を実装し、従来どおり run の planning と User+run の同一 Tx capture を所有する。配線は composition
+root（ADR-113 決定8 の先例）で行う。literal な outbox/kafka 配送は、実際に IGA consumer
+（wi-213/214 等）を建てる後続 WI で置換する。
+
+永続化は本 WI では最小変更とし、IdGovernance の postgres アダプタは IdManagement の生成
+sqlcgen パッケージを import する（context DAG 上合法）。context-local な sqlc パッケージ分割
+（ADR-090）は後続 WI へ後回しする。
 
 ADR-113 決定8 は `IdManagement.depends_on.Application` を追加すると
 `Application.depends_on.IdManagement`（UserRef/GroupRef）と cycle になるため、

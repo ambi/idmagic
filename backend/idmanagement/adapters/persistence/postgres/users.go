@@ -131,6 +131,14 @@ func (r *UserRepository) Save(ctx context.Context, u *idmdomain.User) error {
 	return saveUser(ctx, r.Pool, u)
 }
 
+// SaveUserTx writes a User row on the caller's DBTX (e.g. an in-flight
+// transaction). IdGovernance's UserWorkflowCapture uses it to keep the User
+// mutation and its derived lifecycle workflow runs in one transaction after the
+// context split (wi-237, ADR-117); the users table stays owned by IdManagement.
+func SaveUserTx(ctx context.Context, db sqlcgen.DBTX, u *idmdomain.User) error {
+	return saveUser(ctx, db, u)
+}
+
 func saveUser(ctx context.Context, db sqlcgen.DBTX, u *idmdomain.User) error {
 	// lifecycle / attributes は JSONB に格納する (ADR-039)。多値属性は本 PR では
 	// 単一カラムで持ち、検索が要るようになった段階で別テーブル化する。

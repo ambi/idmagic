@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -19,14 +20,14 @@ var (
 )
 
 type LifecycleWorkflowDeps struct {
-	Repo    idmports.LifecycleWorkflowRepository
-	RunRepo idmports.LifecycleWorkflowRunRepository
+	Repo    igports.LifecycleWorkflowRepository
+	RunRepo igports.LifecycleWorkflowRunRepository
 	Emit    func(spec.DomainEvent) error
 }
 
 // PlanLifecycleWorkflowRuns evaluates enabled definitions against one committed
 // mutation. It intentionally stores no before/after attribute values.
-func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkflowRepository, before, after *idmdomain.User, changed []string, occurrenceID, originRunID string, now time.Time) ([]*idmdomain.WorkflowRun, [][]idmdomain.WorkflowStep, error) {
+func PlanLifecycleWorkflowRuns(ctx context.Context, repo igports.LifecycleWorkflowRepository, before, after *idmdomain.User, changed []string, occurrenceID, originRunID string, now time.Time) ([]*igdomain.WorkflowRun, [][]igdomain.WorkflowStep, error) {
 	if repo == nil || after == nil || occurrenceID == "" {
 		return nil, nil, nil
 	}
@@ -34,10 +35,10 @@ func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkf
 	if err != nil {
 		return nil, nil, err
 	}
-	runs := []*idmdomain.WorkflowRun{}
-	plans := [][]idmdomain.WorkflowStep{}
+	runs := []*igdomain.WorkflowRun{}
+	plans := [][]igdomain.WorkflowStep{}
 	for _, workflow := range workflows {
-		if workflow.Status != idmdomain.LifecycleWorkflowEnabled || workflow.EnabledRevision == nil {
+		if workflow.Status != igdomain.LifecycleWorkflowEnabled || workflow.EnabledRevision == nil {
 			continue
 		}
 		revision, findErr := repo.FindRevision(ctx, after.TenantID, workflow.ID, *workflow.EnabledRevision)
@@ -47,7 +48,7 @@ func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkf
 		if revision == nil {
 			continue
 		}
-		match, ok := idmdomain.EvaluateWorkflowTrigger(revision.Trigger, before, after, changed, originRunID)
+		match, ok := igdomain.EvaluateWorkflowTrigger(revision.Trigger, before, after, changed, originRunID)
 		if !ok {
 			continue
 		}
@@ -55,7 +56,7 @@ func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkf
 		if idErr != nil {
 			return nil, nil, idErr
 		}
-		run, steps, planErr := idmdomain.PlanWorkflowRun(id, *revision, after.ID, occurrenceID, match, now)
+		run, steps, planErr := igdomain.PlanWorkflowRun(id, *revision, after.ID, occurrenceID, match, now)
 		if planErr != nil {
 			return nil, nil, planErr
 		}
@@ -67,13 +68,13 @@ func PlanLifecycleWorkflowRuns(ctx context.Context, repo idmports.LifecycleWorkf
 type CreateLifecycleWorkflowInput struct {
 	Name        string
 	Description *string
-	Trigger     idmdomain.WorkflowTrigger
-	Actions     []idmdomain.WorkflowAction
+	Trigger     igdomain.WorkflowTrigger
+	Actions     []igdomain.WorkflowAction
 	ActorUserID string
 	Now         time.Time
 }
 
-func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, input CreateLifecycleWorkflowInput) (*idmdomain.LifecycleWorkflow, error) {
+func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, input CreateLifecycleWorkflowInput) (*igdomain.LifecycleWorkflow, error) {
 	if deps.Repo == nil {
 		return nil, errors.New("lifecycle workflow repository is required")
 	}
@@ -87,7 +88,7 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 		return nil, err
 	}
 	for _, workflow := range all {
-		if workflow.Status != idmdomain.LifecycleWorkflowArchived && strings.EqualFold(workflow.Name, name) {
+		if workflow.Status != igdomain.LifecycleWorkflowArchived && strings.EqualFold(workflow.Name, name) {
 			return nil, ErrWorkflowNameConflict
 		}
 	}
@@ -96,11 +97,11 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 		return nil, err
 	}
 	now := normalizedNow(input.Now)
-	revision := &idmdomain.LifecycleWorkflowRevision{WorkflowID: id, TenantID: tenantID, Revision: 1, Trigger: input.Trigger, Actions: input.Actions, CreatedAt: now}
+	revision := &igdomain.LifecycleWorkflowRevision{WorkflowID: id, TenantID: tenantID, Revision: 1, Trigger: input.Trigger, Actions: input.Actions, CreatedAt: now}
 	if err := revision.Validate(); err != nil {
 		return nil, err
 	}
-	workflow := &idmdomain.LifecycleWorkflow{ID: id, TenantID: tenantID, Name: name, Description: normalizedDescription(input.Description), Status: idmdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
+	workflow := &igdomain.LifecycleWorkflow{ID: id, TenantID: tenantID, Name: name, Description: normalizedDescription(input.Description), Status: igdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
 	if err := workflow.Validate(); err != nil {
 		return nil, err
 	}
@@ -110,7 +111,7 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := deps.Repo.SaveRevision(ctx, revision); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowCreated{At: now, TenantID: workflow.TenantID, ActorUserID: input.ActorUserID, WorkflowID: workflow.ID}); err != nil {
+	if err := adminEmit(deps.Emit, &igdomain.LifecycleWorkflowCreated{At: now, TenantID: workflow.TenantID, ActorUserID: input.ActorUserID, WorkflowID: workflow.ID}); err != nil {
 		return nil, err
 	}
 	return workflow, nil
@@ -121,13 +122,13 @@ type UpdateLifecycleWorkflowInput struct {
 	ExpectedRevision int64
 	Name             string
 	Description      *string
-	Trigger          idmdomain.WorkflowTrigger
-	Actions          []idmdomain.WorkflowAction
+	Trigger          igdomain.WorkflowTrigger
+	Actions          []igdomain.WorkflowAction
 	ActorUserID      string
 	Now              time.Time
 }
 
-func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, input UpdateLifecycleWorkflowInput) (*idmdomain.LifecycleWorkflow, error) {
+func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, input UpdateLifecycleWorkflowInput) (*igdomain.LifecycleWorkflow, error) {
 	workflow, err := tenantWorkflow(ctx, deps.Repo, input.WorkflowID)
 	if err != nil {
 		return nil, err
@@ -144,13 +145,13 @@ func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 		return nil, err
 	}
 	for _, other := range all {
-		if other.Status != idmdomain.LifecycleWorkflowArchived && other.ID != workflow.ID && strings.EqualFold(other.Name, name) {
+		if other.Status != igdomain.LifecycleWorkflowArchived && other.ID != workflow.ID && strings.EqualFold(other.Name, name) {
 			return nil, ErrWorkflowNameConflict
 		}
 	}
 	now := normalizedNow(input.Now)
 	next := workflow.CurrentRevision + 1
-	revision := &idmdomain.LifecycleWorkflowRevision{WorkflowID: workflow.ID, TenantID: workflow.TenantID, Revision: next, Trigger: input.Trigger, Actions: input.Actions, CreatedAt: now}
+	revision := &igdomain.LifecycleWorkflowRevision{WorkflowID: workflow.ID, TenantID: workflow.TenantID, Revision: next, Trigger: input.Trigger, Actions: input.Actions, CreatedAt: now}
 	if err := revision.Validate(); err != nil {
 		return nil, err
 	}
@@ -161,13 +162,13 @@ func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := deps.Repo.Save(ctx, workflow); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowUpdated{At: now, TenantID: workflow.TenantID, ActorUserID: input.ActorUserID, WorkflowID: workflow.ID, NewRevision: &next}); err != nil {
+	if err := adminEmit(deps.Emit, &igdomain.LifecycleWorkflowUpdated{At: now, TenantID: workflow.TenantID, ActorUserID: input.ActorUserID, WorkflowID: workflow.ID, NewRevision: &next}); err != nil {
 		return nil, err
 	}
 	return workflow, nil
 }
 
-func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
+func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) (*igdomain.LifecycleWorkflow, error) {
 	workflow, err := tenantWorkflow(ctx, deps.Repo, workflowID)
 	if err != nil {
 		return nil, err
@@ -189,13 +190,13 @@ func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, wo
 	if err := deps.Repo.Save(ctx, workflow); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowEnabledEvent{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID, Revision: expectedRevision}); err != nil {
+	if err := adminEmit(deps.Emit, &igdomain.LifecycleWorkflowEnabledEvent{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID, Revision: expectedRevision}); err != nil {
 		return nil, err
 	}
 	return workflow, nil
 }
 
-func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) (*idmdomain.LifecycleWorkflow, error) {
+func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, expectedRevision int64, actorUserID string, now time.Time) (*igdomain.LifecycleWorkflow, error) {
 	workflow, err := tenantWorkflow(ctx, deps.Repo, workflowID)
 	if err != nil {
 		return nil, err
@@ -210,7 +211,7 @@ func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, w
 	if err := deps.Repo.Save(ctx, workflow); err != nil {
 		return nil, err
 	}
-	if err := adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowDisabledEvent{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID}); err != nil {
+	if err := adminEmit(deps.Emit, &igdomain.LifecycleWorkflowDisabledEvent{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID}); err != nil {
 		return nil, err
 	}
 	if deps.RunRepo != nil {
@@ -219,7 +220,7 @@ func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, w
 			return nil, err
 		}
 		for _, run := range canceled {
-			if err := adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowRunCanceled{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID}); err != nil {
+			if err := adminEmit(deps.Emit, &igdomain.LifecycleWorkflowRunCanceled{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID}); err != nil {
 				return nil, err
 			}
 		}
@@ -228,8 +229,8 @@ func DisableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, w
 }
 
 type LifecycleWorkflowRunView struct {
-	Run   *idmdomain.WorkflowRun
-	Steps []idmdomain.WorkflowStep
+	Run   *igdomain.WorkflowRun
+	Steps []igdomain.WorkflowStep
 }
 
 func ListLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWorkflowDeps, workflowID string, limit int) ([]LifecycleWorkflowRunView, error) {
@@ -281,7 +282,7 @@ func RetryLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, 
 	if err != nil {
 		return nil, err
 	}
-	if workflow.Status != idmdomain.LifecycleWorkflowEnabled {
+	if workflow.Status != igdomain.LifecycleWorkflowEnabled {
 		return nil, errors.New("workflow is disabled")
 	}
 	ok, err := deps.RunRepo.RetryRun(ctx, view.Run.TenantID, view.Run.ID)
@@ -315,12 +316,12 @@ func DeleteLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, wo
 			return err
 		}
 		for _, run := range canceled {
-			if err := adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowRunCanceled{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID}); err != nil {
+			if err := adminEmit(deps.Emit, &igdomain.LifecycleWorkflowRunCanceled{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID}); err != nil {
 				return err
 			}
 		}
 	}
-	return adminEmit(deps.Emit, &idmdomain.LifecycleWorkflowDeleted{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID})
+	return adminEmit(deps.Emit, &igdomain.LifecycleWorkflowDeleted{At: now, TenantID: workflow.TenantID, ActorUserID: actorUserID, WorkflowID: workflow.ID})
 }
 
 func normalizedDescription(value *string) *string {
@@ -334,7 +335,7 @@ func normalizedDescription(value *string) *string {
 	return &trimmed
 }
 
-func tenantWorkflow(ctx context.Context, repo idmports.LifecycleWorkflowRepository, workflowID string) (*idmdomain.LifecycleWorkflow, error) {
+func tenantWorkflow(ctx context.Context, repo igports.LifecycleWorkflowRepository, workflowID string) (*igdomain.LifecycleWorkflow, error) {
 	if repo == nil {
 		return nil, errors.New("lifecycle workflow repository is required")
 	}
@@ -342,7 +343,7 @@ func tenantWorkflow(ctx context.Context, repo idmports.LifecycleWorkflowReposito
 	if err != nil {
 		return nil, err
 	}
-	if workflow == nil || workflow.Status == idmdomain.LifecycleWorkflowArchived {
+	if workflow == nil || workflow.Status == igdomain.LifecycleWorkflowArchived {
 		return nil, ErrLifecycleWorkflowNotFound
 	}
 	return workflow, nil

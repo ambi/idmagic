@@ -5,7 +5,6 @@
 package http
 
 import (
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -24,29 +23,22 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 
-	UserRepo                 idmports.UserRepository
-	GroupRepo                idmports.GroupRepository
-	AgentRepo                idmports.AgentRepository
-	ClientRepo               oauthports.OAuth2ClientRepository
-	ScimRepo                 scimports.ScimRepository
-	AttrSchemaRepo           tenantports.TenantUserAttributeSchemaRepository
-	ConsentRepo              oauthports.ConsentRepository
-	RefreshStore             oauthports.RefreshTokenStore
-	DeviceCodeStore          oauthports.DeviceCodeStore
-	MfaFactorRepo            authnports.MfaFactorRepository
-	PasswordHasher           authnports.PasswordHasher
-	PasswordHistoryRepo      authnports.PasswordHistoryRepository
-	EmailChangeTokenStore    authnports.EmailChangeTokenStore
-	EmailSender              authnports.EmailSender
-	JobRepo                  jobsports.JobRepository
-	LifecycleWorkflowRepo    idmports.LifecycleWorkflowRepository
-	LifecycleWorkflowRunRepo idmports.LifecycleWorkflowRunRepository
-	UserWorkflowCapture      idmports.UserWorkflowCapture
-	// ApplicationRepo/AssignmentRepo are only used by dry-run
-	// (DryRunLifecycleWorkflow, wi-222) to evaluate assign_application /
-	// unassign_application actions' current state without mutating.
-	ApplicationRepo appports.ApplicationRepository
-	AssignmentRepo  appports.AssignmentRepository
+	UserRepo              idmports.UserRepository
+	GroupRepo             idmports.GroupRepository
+	AgentRepo             idmports.AgentRepository
+	UserMutationCommitter idmports.UserMutationCommitter
+	JobRepo               jobsports.JobRepository
+	ClientRepo            oauthports.OAuth2ClientRepository
+	ScimRepo              scimports.ScimRepository
+	AttrSchemaRepo        tenantports.TenantUserAttributeSchemaRepository
+	ConsentRepo           oauthports.ConsentRepository
+	RefreshStore          oauthports.RefreshTokenStore
+	DeviceCodeStore       oauthports.DeviceCodeStore
+	MfaFactorRepo         authnports.MfaFactorRepository
+	PasswordHasher        authnports.PasswordHasher
+	PasswordHistoryRepo   authnports.PasswordHistoryRepository
+	EmailChangeTokenStore authnports.EmailChangeTokenStore
+	EmailSender           authnports.EmailSender
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
@@ -91,17 +83,6 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/agents/:agent_id", d.handleDeleteAgent)
 	g.POST("/api/admin/agents/:agent_id/credentials", d.handleBindAgentCredential)
 	g.DELETE("/api/admin/agents/:agent_id/credentials/:client_id", d.handleUnbindAgentCredential)
-	g.GET("/api/admin/lifecycle_workflows", d.handleListLifecycleWorkflows)
-	g.GET("/api/admin/lifecycle_workflows/:workflow_id", d.handleGetLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows", d.handleCreateLifecycleWorkflow)
-	g.PUT("/api/admin/lifecycle_workflows/:workflow_id", d.handleUpdateLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows/:workflow_id/enable", d.handleEnableLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows/:workflow_id/disable", d.handleDisableLifecycleWorkflow)
-	g.DELETE("/api/admin/lifecycle_workflows/:workflow_id", d.handleDeleteLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows/:workflow_id/dry_run", d.handleDryRunLifecycleWorkflow)
-	g.GET("/api/admin/lifecycle_workflows/:workflow_id/runs", d.handleListLifecycleWorkflowRuns)
-	g.GET("/api/admin/lifecycle_workflow_runs/:run_id", d.handleGetLifecycleWorkflowRun)
-	g.POST("/api/admin/lifecycle_workflow_runs/:run_id/retry", d.handleRetryLifecycleWorkflowRun)
 }
 
 func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {

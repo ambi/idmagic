@@ -10,6 +10,8 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -20,7 +22,7 @@ import (
 
 type (
 	LifecycleWorkflowDispatcherDeps struct {
-		RunRepo idmports.LifecycleWorkflowRunRepository
+		RunRepo igports.LifecycleWorkflowRunRepository
 		JobRepo jobsports.JobRepository
 	}
 	lifecycleWorkflowJobParams struct {
@@ -28,8 +30,14 @@ type (
 	}
 )
 
+// LifecycleWorkflowRunJobKind is owned and registered by IdGovernance rather
+// than Jobs. Jobs remains a generic durable queue (ADR-117).
+const LifecycleWorkflowRunJobKind jobsdomain.JobKind = "lifecycle_workflow_run"
+
+func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind) }
+
 type LifecycleWorkflowExecutorDeps struct {
-	RunRepo         idmports.LifecycleWorkflowRunRepository
+	RunRepo         igports.LifecycleWorkflowRunRepository
 	UserRepo        idmports.UserRepository
 	GroupRepo       idmports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
@@ -52,7 +60,7 @@ func DispatchQueuedLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWork
 			return marshalErr
 		}
 		dedup := "lifecycle-workflow-run:" + run.ID
-		job, enqueueErr := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo}, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: jobsdomain.KindLifecycleWorkflowRun, Params: params, DedupKey: &dedup}, now)
+		job, enqueueErr := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo}, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: LifecycleWorkflowRunJobKind, Params: params, DedupKey: &dedup}, now)
 		if enqueueErr != nil {
 			return enqueueErr
 		}
@@ -81,7 +89,7 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 		if run == nil || run.TenantID != job.TenantID || run.Status.Terminal() {
 			return nil, fmt.Errorf("lifecycle workflow run not runnable")
 		}
-		if run.Status == idmdomain.WorkflowRunQueued {
+		if run.Status == igdomain.WorkflowRunQueued {
 			started, startErr := deps.RunRepo.StartRun(ctx, job.TenantID, run.ID, time.Now().UTC())
 			if startErr != nil {
 				return nil, startErr
@@ -89,7 +97,7 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 			if !started {
 				return nil, fmt.Errorf("lifecycle workflow run is waiting for an earlier user run")
 			}
-			emitWorkflowEvent(deps.Emit, &idmdomain.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+			emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 		}
 		steps, err := deps.RunRepo.ListSteps(ctx, job.TenantID, run.ID)
 		if err != nil {
@@ -97,11 +105,11 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 		}
 		succeeded, failed := 0, 0
 		for _, step := range steps {
-			if step.Outcome == idmdomain.WorkflowStepChanged || step.Outcome == idmdomain.WorkflowStepNoop {
+			if step.Outcome == igdomain.WorkflowStepChanged || step.Outcome == igdomain.WorkflowStepNoop {
 				succeeded++
 				continue
 			}
-			if step.Outcome == idmdomain.WorkflowStepCanceled {
+			if step.Outcome == igdomain.WorkflowStepCanceled {
 				continue
 			}
 			outcome, code := executeLifecycleAction(ctx, deps, run, step.Action)
@@ -111,19 +119,19 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 				return nil, err
 			}
 			switch outcome {
-			case idmdomain.WorkflowStepChanged, idmdomain.WorkflowStepNoop:
+			case igdomain.WorkflowStepChanged, igdomain.WorkflowStepNoop:
 				succeeded++
-			case idmdomain.WorkflowStepFailed:
+			case igdomain.WorkflowStepFailed:
 				failed++
-				emitWorkflowEvent(deps.Emit, &idmdomain.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
+				emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
 			}
 		}
-		status := idmdomain.WorkflowRunSucceeded
+		status := igdomain.WorkflowRunSucceeded
 		switch {
 		case failed > 0 && succeeded == 0:
-			status = idmdomain.WorkflowRunFailed
+			status = igdomain.WorkflowRunFailed
 		case failed > 0:
-			status = idmdomain.WorkflowRunPartiallyFailed
+			status = igdomain.WorkflowRunPartiallyFailed
 		}
 		if err := deps.RunRepo.CompleteRun(ctx, job.TenantID, run.ID, status, time.Now().UTC()); err != nil {
 			return nil, err
@@ -133,15 +141,15 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 	}
 }
 
-func emitWorkflowRunCompletion(emit func(spec.DomainEvent) error, status idmdomain.WorkflowRunStatus, run *idmdomain.WorkflowRun) {
+func emitWorkflowRunCompletion(emit func(spec.DomainEvent) error, status igdomain.WorkflowRunStatus, run *igdomain.WorkflowRun) {
 	now := time.Now().UTC()
 	switch status {
-	case idmdomain.WorkflowRunSucceeded:
-		emitWorkflowEvent(emit, &idmdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
-	case idmdomain.WorkflowRunPartiallyFailed:
-		emitWorkflowEvent(emit, &idmdomain.LifecycleWorkflowRunPartiallyFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
-	case idmdomain.WorkflowRunFailed:
-		emitWorkflowEvent(emit, &idmdomain.LifecycleWorkflowRunFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case igdomain.WorkflowRunSucceeded:
+		emitWorkflowEvent(emit, &igdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case igdomain.WorkflowRunPartiallyFailed:
+		emitWorkflowEvent(emit, &igdomain.LifecycleWorkflowRunPartiallyFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case igdomain.WorkflowRunFailed:
+		emitWorkflowEvent(emit, &igdomain.LifecycleWorkflowRunFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 	}
 }
 
@@ -165,15 +173,15 @@ type LifecycleActionEvalDeps struct {
 // EvaluateLifecycleAction resolves one action's current-state dependencies
 // (group membership, application assignment, email deliverability) and
 // delegates the actual would_change/no_op/blocked judgement to
-// idmdomain.EvaluateWorkflowAction. It performs no writes, so both the run
+// igdomain.EvaluateWorkflowAction. It performs no writes, so both the run
 // executor (before it mutates anything) and dry-run (which never mutates)
 // call it to agree on the same answer (wi-222).
-func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, tenantID string, user *idmdomain.User, action idmdomain.WorkflowAction) (idmdomain.WorkflowActionOutcome, string, error) {
-	var state idmdomain.WorkflowActionState
+func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, tenantID string, user *idmdomain.User, action igdomain.WorkflowAction) (igdomain.WorkflowActionOutcome, string, error) {
+	var state igdomain.WorkflowActionState
 	switch action.Kind {
-	case idmdomain.WorkflowActionAddGroupMember, idmdomain.WorkflowActionRemoveGroupMember:
+	case igdomain.WorkflowActionAddGroupMember, igdomain.WorkflowActionRemoveGroupMember:
 		if deps.GroupRepo == nil {
-			return idmdomain.WorkflowActionBlocked, "dependency_unavailable", nil
+			return igdomain.WorkflowActionBlocked, "dependency_unavailable", nil
 		}
 		group, err := deps.GroupRepo.FindByID(ctx, tenantID, action.GroupID)
 		if err != nil {
@@ -187,9 +195,9 @@ func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, 
 			}
 			state.UserIsGroupMember = slices.ContainsFunc(groups, func(g *idmdomain.Group) bool { return g.ID == group.ID })
 		}
-	case idmdomain.WorkflowActionAssignApplication, idmdomain.WorkflowActionUnassignApplication:
+	case igdomain.WorkflowActionAssignApplication, igdomain.WorkflowActionUnassignApplication:
 		if deps.ApplicationRepo == nil || deps.AssignmentRepo == nil {
-			return idmdomain.WorkflowActionBlocked, "dependency_unavailable", nil
+			return igdomain.WorkflowActionBlocked, "dependency_unavailable", nil
 		}
 		app, err := deps.ApplicationRepo.FindByID(ctx, tenantID, action.ApplicationID)
 		if err != nil {
@@ -203,67 +211,67 @@ func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, 
 			}
 			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ApplicationID })
 		}
-	case idmdomain.WorkflowActionSendEmail:
+	case igdomain.WorkflowActionSendEmail:
 		state.EmailSendable = deps.EmailSender != nil && user.Email != nil && user.EmailVerified
 	}
-	outcome, reason := idmdomain.EvaluateWorkflowAction(action, user, state)
+	outcome, reason := igdomain.EvaluateWorkflowAction(action, user, state)
 	return outcome, reason, nil
 }
 
-func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *idmdomain.WorkflowRun, action idmdomain.WorkflowAction) (idmdomain.WorkflowStepOutcome, string) {
+func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun, action igdomain.WorkflowAction) (igdomain.WorkflowStepOutcome, string) {
 	user, err := deps.UserRepo.FindBySub(ctx, run.TargetUserID)
 	if err != nil || user == nil || user.TenantID != run.TenantID {
-		return idmdomain.WorkflowStepFailed, "target_not_found"
+		return igdomain.WorkflowStepFailed, "target_not_found"
 	}
 	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, EmailSender: deps.EmailSender}
 	outcome, reason, err := EvaluateLifecycleAction(ctx, evalDeps, run.TenantID, user, action)
 	if err != nil {
-		return idmdomain.WorkflowStepFailed, "action_failed"
+		return igdomain.WorkflowStepFailed, "action_failed"
 	}
 	switch outcome {
-	case idmdomain.WorkflowActionBlocked:
-		return idmdomain.WorkflowStepFailed, reason
-	case idmdomain.WorkflowActionNoOp:
-		return idmdomain.WorkflowStepNoop, ""
+	case igdomain.WorkflowActionBlocked:
+		return igdomain.WorkflowStepFailed, reason
+	case igdomain.WorkflowActionNoOp:
+		return igdomain.WorkflowStepNoop, ""
 	}
-	changed := func(ok bool, err error) (idmdomain.WorkflowStepOutcome, string) {
+	changed := func(ok bool, err error) (igdomain.WorkflowStepOutcome, string) {
 		if err != nil {
-			return idmdomain.WorkflowStepFailed, "action_failed"
+			return igdomain.WorkflowStepFailed, "action_failed"
 		}
 		if ok {
-			return idmdomain.WorkflowStepChanged, ""
+			return igdomain.WorkflowStepChanged, ""
 		}
-		return idmdomain.WorkflowStepNoop, ""
+		return igdomain.WorkflowStepNoop, ""
 	}
 	switch action.Kind {
-	case idmdomain.WorkflowActionAddGroupMember:
+	case igdomain.WorkflowActionAddGroupMember:
 		ok, e := deps.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: action.GroupID, UserID: user.ID, CreatedAt: time.Now().UTC()})
 		return changed(ok, e)
-	case idmdomain.WorkflowActionRemoveGroupMember:
+	case igdomain.WorkflowActionRemoveGroupMember:
 		ok, e := deps.GroupRepo.RemoveMember(ctx, run.TenantID, action.GroupID, user.ID)
 		return changed(ok, e)
-	case idmdomain.WorkflowActionAssignApplication:
+	case igdomain.WorkflowActionAssignApplication:
 		visibility := appdomain.AssignmentVisible
 		if action.Visibility == "hidden" {
 			visibility = appdomain.AssignmentHidden
 		}
 		e := deps.AssignmentRepo.Save(ctx, &appdomain.ApplicationAssignment{TenantID: run.TenantID, ApplicationID: action.ApplicationID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: visibility, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()})
 		return changed(true, e)
-	case idmdomain.WorkflowActionUnassignApplication:
+	case igdomain.WorkflowActionUnassignApplication:
 		e := deps.AssignmentRepo.Delete(ctx, run.TenantID, action.ApplicationID, appdomain.AssignmentSubjectUser, user.ID)
 		return changed(true, e)
-	case idmdomain.WorkflowActionSetRequiredAction, idmdomain.WorkflowActionClearRequiredAction:
+	case igdomain.WorkflowActionSetRequiredAction, igdomain.WorkflowActionClearRequiredAction:
 		updated := *user
-		if action.Kind == idmdomain.WorkflowActionSetRequiredAction {
+		if action.Kind == igdomain.WorkflowActionSetRequiredAction {
 			updated.Lifecycle.RequiredActions = append(updated.Lifecycle.RequiredActions, action.RequiredAction)
 		} else {
 			updated.Lifecycle.RequiredActions = slices.DeleteFunc(updated.Lifecycle.RequiredActions, func(v idmdomain.RequiredAction) bool { return v == action.RequiredAction })
 		}
 		updated.UpdatedAt = time.Now().UTC()
 		return changed(true, deps.UserRepo.Save(ctx, &updated))
-	case idmdomain.WorkflowActionEnableUser, idmdomain.WorkflowActionDisableUser:
+	case igdomain.WorkflowActionEnableUser, igdomain.WorkflowActionDisableUser:
 		want := idmdomain.UserStatusActive
-		if action.Kind == idmdomain.WorkflowActionDisableUser {
+		if action.Kind == igdomain.WorkflowActionDisableUser {
 			want = idmdomain.UserStatusDisabled
 		}
 		updated := *user
@@ -271,11 +279,11 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		now := time.Now().UTC()
 		updated.Lifecycle.StatusChangedAt, updated.UpdatedAt = &now, now
 		return changed(true, deps.UserRepo.Save(ctx, &updated))
-	case idmdomain.WorkflowActionSendEmail:
+	case igdomain.WorkflowActionSendEmail:
 		if deps.EmailSender.SendEmail(ctx, authnports.EmailMessage{To: *user.Email, Subject: action.TemplateKey, Text: action.TemplateKey}) {
-			return idmdomain.WorkflowStepChanged, ""
+			return igdomain.WorkflowStepChanged, ""
 		}
-		return idmdomain.WorkflowStepFailed, "notification_failed"
+		return igdomain.WorkflowStepFailed, "notification_failed"
 	}
-	return idmdomain.WorkflowStepFailed, "invalid_action"
+	return igdomain.WorkflowStepFailed, "invalid_action"
 }

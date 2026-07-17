@@ -10,6 +10,9 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/idgovernance"
+	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -36,7 +39,15 @@ func assembleMemory() (*Dependencies, error) {
 		return nil, err
 	}
 	userRepo := idmmemory.NewUserRepository()
-	workflowRunRepo := idmmemory.NewLifecycleWorkflowRunRepository()
+	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
+	workflowRunRepo := igmemory.NewLifecycleWorkflowRunRepository()
+	workflowCapture := &igmemory.UserWorkflowCapture{Users: userRepo, Runs: workflowRunRepo}
+	userMutationCommitter := igusecases.UserMutationCommitter{
+		WorkflowRepo: workflowRepo,
+		Capture:      workflowCapture,
+		UserRepo:     userRepo,
+		RunRepo:      workflowRunRepo,
+	}
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenancymemory.NewTenantRepository(),
@@ -45,12 +56,16 @@ func assembleMemory() (*Dependencies, error) {
 			BrandingAssetStore: tenancymemory.NewTenantBrandingAssetStore(),
 		},
 		IdManagement: idmanagement.Module{
-			UserRepo:                 userRepo,
-			GroupRepo:                idmmemory.NewGroupRepository(),
-			AgentRepo:                idmmemory.NewAgentRepository(),
-			LifecycleWorkflowRepo:    idmmemory.NewLifecycleWorkflowRepository(),
+			UserRepo:              userRepo,
+			GroupRepo:             idmmemory.NewGroupRepository(),
+			AgentRepo:             idmmemory.NewAgentRepository(),
+			UserMutationCommitter: userMutationCommitter,
+		},
+		IdGovernance: idgovernance.Module{
+			LifecycleWorkflowRepo:    workflowRepo,
 			LifecycleWorkflowRunRepo: workflowRunRepo,
-			UserWorkflowCapture:      &idmmemory.UserWorkflowCapture{Users: userRepo, Runs: workflowRunRepo},
+			UserWorkflowCapture:      workflowCapture,
+			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),

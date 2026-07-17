@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -60,8 +61,8 @@ func RunWorker() error {
 			return nil
 		},
 	}))
-	handlers.Register(domain.KindLifecycleWorkflowRun, idmusecases.LifecycleWorkflowRunHandler(idmusecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: deps.IdManagement.LifecycleWorkflowRunRepo, UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
+	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
+		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, EmailSender: deps.Authentication.EmailSender,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
@@ -131,7 +132,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if err := idmusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, idmusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdManagement.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
+		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {
@@ -152,18 +153,16 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmusecases.AdminUserDeps {
 	emit := deps.NewEmitFunc(logger)
 	return idmusecases.AdminUserDeps{
-		UserRepo:            deps.IdManagement.UserRepo,
-		GroupRepo:           deps.IdManagement.GroupRepo,
-		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
-		ConsentRepo:         deps.OAuth2.ConsentRepo,
-		RefreshStore:        deps.OAuth2.RefreshStore,
-		DeviceCodeStore:     deps.OAuth2.DeviceCodeStore,
-		MfaFactorRepo:       deps.Authentication.MfaFactorRepo,
-		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
-		PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo,
-		WorkflowRepo:        deps.IdManagement.LifecycleWorkflowRepo,
-		WorkflowRunRepo:     deps.IdManagement.LifecycleWorkflowRunRepo,
-		WorkflowCapture:     deps.IdManagement.UserWorkflowCapture,
+		UserRepo:              deps.IdManagement.UserRepo,
+		GroupRepo:             deps.IdManagement.GroupRepo,
+		AttrSchemaRepo:        deps.Tenancy.AttrSchemaRepo,
+		ConsentRepo:           deps.OAuth2.ConsentRepo,
+		RefreshStore:          deps.OAuth2.RefreshStore,
+		DeviceCodeStore:       deps.OAuth2.DeviceCodeStore,
+		MfaFactorRepo:         deps.Authentication.MfaFactorRepo,
+		PasswordHasher:        crypto.NewArgon2idPasswordHasher(),
+		PasswordHistoryRepo:   deps.Authentication.PasswordHistoryRepo,
+		UserMutationCommitter: deps.IdManagement.UserMutationCommitter,
 		Emit: func(event spec.DomainEvent) error {
 			emit(event)
 			return nil

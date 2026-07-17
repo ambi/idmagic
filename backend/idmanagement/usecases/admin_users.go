@@ -55,9 +55,10 @@ type AdminUserDeps struct {
 	PasswordHasher      authnports.PasswordHasher
 	PasswordHistoryRepo authnports.PasswordHistoryRepository
 	Emit                func(spec.DomainEvent) error
-	WorkflowRepo        idmports.LifecycleWorkflowRepository
-	WorkflowRunRepo     idmports.LifecycleWorkflowRunRepository
-	WorkflowCapture     idmports.UserWorkflowCapture
+	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
+	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
+	// 確定する (wi-237, ADR-117)。nil のとき UserRepo.Save に fallback する。
+	UserMutationCommitter idmports.UserMutationCommitter
 	// SoftDeleteGraceSeconds は soft-delete の猶予期間 (秒)。0 のとき
 	// UserSoftDeleteGracePeriodSeconds を既定として使う。テストで短縮するために注入する。
 	SoftDeleteGraceSeconds int
@@ -138,37 +139,15 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	return user, nil
 }
 
-// captureUserMutation commits the user state and every run derived from the
-// same occurrence together when the configured adapter supports it. The
-// fallback keeps lightweight unit-test wiring usable; production adapters
-// always provide WorkflowCapture.
+// captureUserMutation persists the mutated user and any governance side effects
+// (lifecycle workflow runs) atomically. When a UserMutationCommitter is wired,
+// IdGovernance owns the transactional capture; the nil fallback keeps
+// lightweight unit-test wiring usable (wi-237, ADR-117).
 func captureUserMutation(ctx context.Context, deps AdminUserDeps, before, after *idmdomain.User, changed []string, now time.Time) error {
-	if deps.WorkflowRepo == nil {
+	if deps.UserMutationCommitter == nil {
 		return deps.UserRepo.Save(ctx, after)
 	}
-	occurrenceID, err := spec.NewUUIDv4()
-	if err != nil {
-		return err
-	}
-	runs, steps, err := PlanLifecycleWorkflowRuns(ctx, deps.WorkflowRepo, before, after, changed, occurrenceID, "", now)
-	if err != nil {
-		return err
-	}
-	if deps.WorkflowCapture != nil {
-		return deps.WorkflowCapture.SaveUserAndRuns(ctx, after, runs, steps)
-	}
-	if err := deps.UserRepo.Save(ctx, after); err != nil {
-		return err
-	}
-	if deps.WorkflowRunRepo == nil {
-		return nil
-	}
-	for i, run := range runs {
-		if _, err := deps.WorkflowRunRepo.SaveRun(ctx, run, steps[i]); err != nil {
-			return err
-		}
-	}
-	return nil
+	return deps.UserMutationCommitter.CommitUserMutation(ctx, idmports.UserMutation{Before: before, After: after, Changed: changed, Now: now})
 }
 
 type UpdateUserInput struct {

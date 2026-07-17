@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 type LifecycleWorkflowStatus string
@@ -139,11 +141,11 @@ func (f WorkflowFilter) Validate() error {
 }
 
 type WorkflowTrigger struct {
-	Kind              WorkflowTriggerKind `json:"kind"`
-	WatchedAttributes []string            `json:"watched_attributes,omitempty"`
-	FromStatus        *UserStatus         `json:"from_status,omitempty"`
-	ToStatus          *UserStatus         `json:"to_status,omitempty"`
-	Filters           []WorkflowFilter    `json:"filters,omitempty"`
+	Kind              WorkflowTriggerKind   `json:"kind"`
+	WatchedAttributes []string              `json:"watched_attributes,omitempty"`
+	FromStatus        *idmdomain.UserStatus `json:"from_status,omitempty"`
+	ToStatus          *idmdomain.UserStatus `json:"to_status,omitempty"`
+	Filters           []WorkflowFilter      `json:"filters,omitempty"`
 }
 
 func (t WorkflowTrigger) Validate() error {
@@ -178,13 +180,13 @@ func (t WorkflowTrigger) Validate() error {
 }
 
 type WorkflowAction struct {
-	Kind           WorkflowActionKind `json:"kind"`
-	GroupID        string             `json:"group_id,omitempty"`
-	ApplicationID  string             `json:"application_id,omitempty"`
-	Visibility     string             `json:"visibility,omitempty"`
-	RequiredAction RequiredAction     `json:"required_action,omitempty"`
-	Reason         string             `json:"reason,omitempty"`
-	TemplateKey    string             `json:"template_key,omitempty"`
+	Kind           WorkflowActionKind       `json:"kind"`
+	GroupID        string                   `json:"group_id,omitempty"`
+	ApplicationID  string                   `json:"application_id,omitempty"`
+	Visibility     string                   `json:"visibility,omitempty"`
+	RequiredAction idmdomain.RequiredAction `json:"required_action,omitempty"`
+	Reason         string                   `json:"reason,omitempty"`
+	TemplateKey    string                   `json:"template_key,omitempty"`
 }
 
 func (a WorkflowAction) Validate() error {
@@ -230,7 +232,7 @@ type WorkflowActionState struct {
 // It never performs I/O; callers resolve WorkflowActionState from the target
 // User's actual current group membership, application assignment, and email
 // verification state so both callers agree on the same answer.
-func EvaluateWorkflowAction(action WorkflowAction, user *User, state WorkflowActionState) (WorkflowActionOutcome, string) {
+func EvaluateWorkflowAction(action WorkflowAction, user *idmdomain.User, state WorkflowActionState) (WorkflowActionOutcome, string) {
 	switch action.Kind {
 	case WorkflowActionAddGroupMember:
 		if !state.GroupExists {
@@ -275,12 +277,12 @@ func EvaluateWorkflowAction(action WorkflowAction, user *User, state WorkflowAct
 		}
 		return WorkflowActionWouldChange, ""
 	case WorkflowActionEnableUser:
-		if user.Lifecycle.Status == UserStatusActive {
+		if user.Lifecycle.Status == idmdomain.UserStatusActive {
 			return WorkflowActionNoOp, ""
 		}
 		return WorkflowActionWouldChange, ""
 	case WorkflowActionDisableUser:
-		if user.Lifecycle.Status == UserStatusDisabled {
+		if user.Lifecycle.Status == idmdomain.UserStatusDisabled {
 			return WorkflowActionNoOp, ""
 		}
 		return WorkflowActionWouldChange, ""
@@ -430,7 +432,7 @@ type TriggerMatch struct {
 	ChangedFields []string
 }
 
-func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *User, changedFields []string, originRunID string) (TriggerMatch, bool) {
+func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *idmdomain.User, changedFields []string, originRunID string) (TriggerMatch, bool) {
 	if originRunID != "" || after == nil || trigger.Validate() != nil {
 		return TriggerMatch{}, false
 	}
@@ -466,7 +468,7 @@ func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *User, chang
 // EvaluateWorkflowTrigger (kind + filters); dry-run calls it directly because
 // it has no mutation event to derive a trigger kind match from, only the
 // target User's present state.
-func EvaluateWorkflowFilters(filters []WorkflowFilter, user *User) bool {
+func EvaluateWorkflowFilters(filters []WorkflowFilter, user *idmdomain.User) bool {
 	for _, filter := range filters {
 		value, exists := workflowUserField(user, filter.Field)
 		switch filter.Operator {
@@ -495,7 +497,7 @@ func EvaluateWorkflowFilters(filters []WorkflowFilter, user *User) bool {
 	return true
 }
 
-func workflowUserField(user *User, field string) (any, bool) {
+func workflowUserField(user *idmdomain.User, field string) (any, bool) {
 	switch field {
 	case "preferred_username":
 		return user.PreferredUsername, true

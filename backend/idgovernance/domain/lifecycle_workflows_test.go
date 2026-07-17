@@ -3,13 +3,15 @@ package domain
 import (
 	"testing"
 	"time"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 func TestEvaluateWorkflowTrigger(t *testing.T) {
 	department := "engineering"
-	before := &User{Lifecycle: UserLifecycle{Status: UserStatusActive}, Attributes: map[string]AttributeValue{"department": {Type: AttributeTypeString, String: &department}}}
+	before := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}}
 	afterDepartment := "security"
-	after := &User{Lifecycle: UserLifecycle{Status: UserStatusActive}, Attributes: map[string]AttributeValue{"department": {Type: AttributeTypeString, String: &afterDepartment}}}
+	after := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &afterDepartment}}}
 	trigger := WorkflowTrigger{Kind: WorkflowTriggerUserAttributesChanged, WatchedAttributes: []string{"department"}, Filters: []WorkflowFilter{{Field: "department", Operator: WorkflowFilterEqual, Value: "security"}}}
 	if _, ok := EvaluateWorkflowTrigger(trigger, before, after, []string{"department"}, ""); !ok {
 		t.Fatal("trigger did not match changed post-state")
@@ -45,12 +47,12 @@ func TestLifecycleWorkflowDeleteDraft(t *testing.T) {
 }
 
 func TestEvaluateWorkflowAction(t *testing.T) {
-	activeUser := &User{Lifecycle: UserLifecycle{Status: UserStatusActive, RequiredActions: []RequiredAction{RequiredActionVerifyEmail}}}
-	disabledUser := &User{Lifecycle: UserLifecycle{Status: UserStatusDisabled}}
+	activeUser := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive, RequiredActions: []idmdomain.RequiredAction{idmdomain.RequiredActionVerifyEmail}}}
+	disabledUser := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}}
 	tests := []struct {
 		name        string
 		action      WorkflowAction
-		user        *User
+		user        *idmdomain.User
 		state       WorkflowActionState
 		wantOutcome WorkflowActionOutcome
 		wantReason  string
@@ -65,10 +67,10 @@ func TestEvaluateWorkflowAction(t *testing.T) {
 		{"assign application would change when not assigned", WorkflowAction{Kind: WorkflowActionAssignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true}, WorkflowActionWouldChange, ""},
 		{"unassign application no-op when not assigned", WorkflowAction{Kind: WorkflowActionUnassignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true}, WorkflowActionNoOp, ""},
 		{"unassign application would change when assigned", WorkflowAction{Kind: WorkflowActionUnassignApplication, ApplicationID: "a"}, activeUser, WorkflowActionState{ApplicationExists: true, UserIsAssigned: true}, WorkflowActionWouldChange, ""},
-		{"set required action no-op when already set", WorkflowAction{Kind: WorkflowActionSetRequiredAction, RequiredAction: RequiredActionVerifyEmail}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
-		{"set required action would change when unset", WorkflowAction{Kind: WorkflowActionSetRequiredAction, RequiredAction: RequiredActionUpdatePassword}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
-		{"clear required action no-op when already unset", WorkflowAction{Kind: WorkflowActionClearRequiredAction, RequiredAction: RequiredActionUpdatePassword}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
-		{"clear required action would change when set", WorkflowAction{Kind: WorkflowActionClearRequiredAction, RequiredAction: RequiredActionVerifyEmail}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
+		{"set required action no-op when already set", WorkflowAction{Kind: WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionVerifyEmail}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
+		{"set required action would change when unset", WorkflowAction{Kind: WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
+		{"clear required action no-op when already unset", WorkflowAction{Kind: WorkflowActionClearRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
+		{"clear required action would change when set", WorkflowAction{Kind: WorkflowActionClearRequiredAction, RequiredAction: idmdomain.RequiredActionVerifyEmail}, activeUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
 		{"enable user no-op when already active", WorkflowAction{Kind: WorkflowActionEnableUser}, activeUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
 		{"enable user would change when disabled", WorkflowAction{Kind: WorkflowActionEnableUser}, disabledUser, WorkflowActionState{}, WorkflowActionWouldChange, ""},
 		{"disable user no-op when already disabled", WorkflowAction{Kind: WorkflowActionDisableUser}, disabledUser, WorkflowActionState{}, WorkflowActionNoOp, ""},
@@ -88,7 +90,7 @@ func TestEvaluateWorkflowAction(t *testing.T) {
 
 func TestEvaluateWorkflowFilters(t *testing.T) {
 	department := "engineering"
-	user := &User{Attributes: map[string]AttributeValue{"department": {Type: AttributeTypeString, String: &department}}}
+	user := &idmdomain.User{Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}}
 	matching := []WorkflowFilter{{Field: "department", Operator: WorkflowFilterEqual, Value: "engineering"}}
 	if !EvaluateWorkflowFilters(matching, user) {
 		t.Fatal("filters on the User's current attributes must match")

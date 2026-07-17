@@ -10,11 +10,14 @@ import (
 )
 
 // Module は identity-management context が所有する永続化 port の束。
+// LifecycleWorkflow の port は IdGovernance context (backend/idgovernance) が所有する
+// (wi-237, ADR-117)。User mutation から governance 側の run 生成へは
+// ports.UserMutationCommitter 境界 port 経由で渡す。
 type Module struct {
-	UserRepo                 ports.UserRepository
-	GroupRepo                ports.GroupRepository
-	AgentRepo                ports.AgentRepository
-	LifecycleWorkflowRepo    ports.LifecycleWorkflowRepository
-	LifecycleWorkflowRunRepo ports.LifecycleWorkflowRunRepository
-	UserWorkflowCapture      ports.UserWorkflowCapture
+	UserRepo  ports.UserRepository
+	GroupRepo ports.GroupRepository
+	AgentRepo ports.AgentRepository
+	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
+	// 実装を注入する。nil のとき admin usecase は UserRepo.Save に fallback する。
+	UserMutationCommitter ports.UserMutationCommitter
 }

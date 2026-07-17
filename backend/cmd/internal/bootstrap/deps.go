@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -24,20 +25,21 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
-	Tenancy            tenancy.Module
-	IdManagement idmanagement.Module
-	Authentication     authentication.Module
-	OAuth2             oauth2.Module
-	SigningKeys        signingkeys.Module
-	Audit              audit.Module
-	WsFederation       wsfederation.Module
-	Saml               saml.Module
-	Scim               scim.Module
-	Application        application.Module
-	Jobs               jobs.Module
-	Close              func()
-	DbPing             func(context.Context) error
-	ValkeyPing         func(context.Context) error
+	Tenancy        tenancy.Module
+	IdManagement   idmanagement.Module
+	IdGovernance   idgovernance.Module
+	Authentication authentication.Module
+	OAuth2         oauth2.Module
+	SigningKeys    signingkeys.Module
+	Audit          audit.Module
+	WsFederation   wsfederation.Module
+	Saml           saml.Module
+	Scim           scim.Module
+	Application    application.Module
+	Jobs           jobs.Module
+	Close          func()
+	DbPing         func(context.Context) error
+	ValkeyPing     func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

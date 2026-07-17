@@ -5,6 +5,7 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -39,13 +40,25 @@ const (
 	KindUserImportPreview     JobKind = "user_import_preview"
 	KindUserImportApply       JobKind = "user_import_apply"
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
-	// KindLifecycleWorkflowRun executes a captured lifecycle workflow run.
-	// The handler is registered by IdManagement's worker wiring.
-	KindLifecycleWorkflowRun JobKind = "lifecycle_workflow_run"
 )
 
+var extensionKinds sync.Map // map[JobKind]struct{}
+
+// RegisterKind declares a context-owned job kind. The Jobs context owns the
+// durable queue, while the caller owns the handler vocabulary; this prevents
+// feature-specific kinds from accumulating in Jobs.
+func RegisterKind(kind JobKind) {
+	if kind != "" {
+		extensionKinds.Store(kind, struct{}{})
+	}
+}
+
 func (k JobKind) Valid() bool {
-	return k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply || k == KindDynamicGroupReconcile || k == KindLifecycleWorkflowRun
+	if k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply || k == KindDynamicGroupReconcile {
+		return true
+	}
+	_, registered := extensionKinds.Load(k)
+	return registered
 }
 
 // JobLifecycleEvent is a JobLifecycle state machine event.

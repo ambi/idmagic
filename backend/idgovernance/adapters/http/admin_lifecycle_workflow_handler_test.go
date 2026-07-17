@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,8 @@ import (
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/idgovernance"
+	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -20,7 +23,7 @@ import (
 func newAdminLifecycleWorkflowHandler(t *testing.T) *echo.Echo {
 	t.Helper()
 	userRepo := idmmemory.NewUserRepository()
-	workflowRepo := idmmemory.NewLifecycleWorkflowRepository()
+	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	groupRepo := idmmemory.NewGroupRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&idmdomain.User{
@@ -36,10 +39,50 @@ func newAdminLifecycleWorkflowHandler(t *testing.T) *echo.Echo {
 		Deps:          support.Deps{Issuer: "http://idp.test"},
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 		IdManagement: idmanagement.Module{
-			UserRepo: userRepo, GroupRepo: groupRepo, LifecycleWorkflowRepo: workflowRepo,
+			UserRepo: userRepo, GroupRepo: groupRepo,
 		},
+		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflowRepo},
 	})
 	return e
+}
+
+func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, "/api/auth/account", http.NoBody)
+	request.Header.Set("X-Demo-Sub", "admin")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("account status=%d body=%s", response.Code, response.Body.String())
+	}
+	var body struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	cookies := response.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("csrf cookie missing")
+	}
+	return body.CSRFToken, cookies[0]
+}
+
+func adminJSONRequest(t *testing.T, e *echo.Echo, path, csrf string, cookie *http.Cookie, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	payload, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(payload))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Origin", "http://idp.test")
+	request.Header.Set("X-Csrf-Token", csrf)
+	request.Header.Set("X-Demo-Sub", "admin")
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	return response
 }
 
 // wi-222: the dry-run endpoint must report the target User's actual current
@@ -49,7 +92,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	e := newAdminLifecycleWorkflowHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	group := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups", csrf, cookie, map[string]any{"name": "engineering"})
+	group := adminJSONRequest(t, e, "/api/admin/groups", csrf, cookie, map[string]any{"name": "engineering"})
 	if group.Code != http.StatusCreated {
 		t.Fatalf("create group status=%d body=%s", group.Code, group.Body.String())
 	}
@@ -59,11 +102,11 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	if err := json.Unmarshal(group.Body.Bytes(), &createdGroup); err != nil {
 		t.Fatal(err)
 	}
-	if add := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+createdGroup.ID+"/members/alice", csrf, cookie, nil); add.Code != http.StatusNoContent {
+	if add := adminJSONRequest(t, e, "/api/admin/groups/"+createdGroup.ID+"/members/alice", csrf, cookie, nil); add.Code != http.StatusNoContent {
 		t.Fatalf("add member status=%d body=%s", add.Code, add.Body.String())
 	}
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/lifecycle_workflows", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, "/api/admin/lifecycle_workflows", csrf, cookie, map[string]any{
 		"name":    "Joiner",
 		"trigger": map[string]any{"kind": "user_created"},
 		"actions": []map[string]any{{"kind": "add_group_member", "group_id": createdGroup.ID}},
@@ -78,7 +121,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dryRun := adminJSONRequest(t, e, http.MethodPost, "/api/admin/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "alice"})
+	dryRun := adminJSONRequest(t, e, "/api/admin/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "alice"})
 	if dryRun.Code != http.StatusOK {
 		t.Fatalf("dry_run status=%d body=%s", dryRun.Code, dryRun.Body.String())
 	}
@@ -115,7 +158,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatalf("dry-run must not mutate membership: groups=%#v", view.Groups)
 	}
 
-	missingUser := adminJSONRequest(t, e, http.MethodPost, "/api/admin/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "no-such-user"})
+	missingUser := adminJSONRequest(t, e, "/api/admin/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "no-such-user"})
 	if missingUser.Code != http.StatusBadRequest {
 		t.Fatalf("dry_run for missing user status=%d body=%s", missingUser.Code, missingUser.Body.String())
 	}

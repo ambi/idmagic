@@ -8,19 +8,19 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
 type LifecycleWorkflowRepository struct{ Pool sharedpg.DB }
 
-var _ idmports.LifecycleWorkflowRepository = (*LifecycleWorkflowRepository)(nil)
+var _ igports.LifecycleWorkflowRepository = (*LifecycleWorkflowRepository)(nil)
 
 const lifecycleWorkflowColumns = `id,tenant_id,name,description,status,current_revision,enabled_revision,created_at,updated_at`
 
-func scanLifecycleWorkflow(row sharedpg.RowScanner) (*idmdomain.LifecycleWorkflow, error) {
-	workflow := &idmdomain.LifecycleWorkflow{}
+func scanLifecycleWorkflow(row sharedpg.RowScanner) (*igdomain.LifecycleWorkflow, error) {
+	workflow := &igdomain.LifecycleWorkflow{}
 	var enabled pgtype.Int8
 	var description pgtype.Text
 	if err := row.Scan(&workflow.ID, &workflow.TenantID, &workflow.Name, &description, &workflow.Status, &workflow.CurrentRevision, &enabled, &workflow.CreatedAt, &workflow.UpdatedAt); err != nil {
@@ -37,13 +37,13 @@ func scanLifecycleWorkflow(row sharedpg.RowScanner) (*idmdomain.LifecycleWorkflo
 	return workflow, workflow.Validate()
 }
 
-func (r *LifecycleWorkflowRepository) List(ctx context.Context, tenantID string) ([]*idmdomain.LifecycleWorkflow, error) {
+func (r *LifecycleWorkflowRepository) List(ctx context.Context, tenantID string) ([]*igdomain.LifecycleWorkflow, error) {
 	rows, err := r.Pool.Query(ctx, `SELECT `+lifecycleWorkflowColumns+` FROM lifecycle_workflows WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []*idmdomain.LifecycleWorkflow{}
+	out := []*igdomain.LifecycleWorkflow{}
 	for rows.Next() {
 		workflow, scanErr := scanLifecycleWorkflow(rows)
 		if scanErr != nil {
@@ -54,7 +54,7 @@ func (r *LifecycleWorkflowRepository) List(ctx context.Context, tenantID string)
 	return out, rows.Err()
 }
 
-func (r *LifecycleWorkflowRepository) Find(ctx context.Context, tenantID, workflowID string) (*idmdomain.LifecycleWorkflow, error) {
+func (r *LifecycleWorkflowRepository) Find(ctx context.Context, tenantID, workflowID string) (*igdomain.LifecycleWorkflow, error) {
 	workflow, err := scanLifecycleWorkflow(r.Pool.QueryRow(ctx, `SELECT `+lifecycleWorkflowColumns+` FROM lifecycle_workflows WHERE tenant_id=$1 AND id=$2`, tenantID, workflowID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -62,7 +62,7 @@ func (r *LifecycleWorkflowRepository) Find(ctx context.Context, tenantID, workfl
 	return workflow, err
 }
 
-func (r *LifecycleWorkflowRepository) Save(ctx context.Context, workflow *idmdomain.LifecycleWorkflow) error {
+func (r *LifecycleWorkflowRepository) Save(ctx context.Context, workflow *igdomain.LifecycleWorkflow) error {
 	if err := workflow.Validate(); err != nil {
 		return err
 	}
@@ -74,8 +74,8 @@ func (r *LifecycleWorkflowRepository) Save(ctx context.Context, workflow *idmdom
 	return err
 }
 
-func (r *LifecycleWorkflowRepository) FindRevision(ctx context.Context, tenantID, workflowID string, number int64) (*idmdomain.LifecycleWorkflowRevision, error) {
-	revision := &idmdomain.LifecycleWorkflowRevision{}
+func (r *LifecycleWorkflowRepository) FindRevision(ctx context.Context, tenantID, workflowID string, number int64) (*igdomain.LifecycleWorkflowRevision, error) {
+	revision := &igdomain.LifecycleWorkflowRevision{}
 	var trigger, actions []byte
 	err := r.Pool.QueryRow(ctx, `SELECT workflow_id,tenant_id,revision,trigger,actions,created_at FROM lifecycle_workflow_revisions WHERE tenant_id=$1 AND workflow_id=$2 AND revision=$3`, tenantID, workflowID, number).Scan(&revision.WorkflowID, &revision.TenantID, &revision.Revision, &trigger, &actions, &revision.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -93,7 +93,7 @@ func (r *LifecycleWorkflowRepository) FindRevision(ctx context.Context, tenantID
 	return revision, revision.Validate()
 }
 
-func (r *LifecycleWorkflowRepository) SaveRevision(ctx context.Context, revision *idmdomain.LifecycleWorkflowRevision) error {
+func (r *LifecycleWorkflowRepository) SaveRevision(ctx context.Context, revision *igdomain.LifecycleWorkflowRevision) error {
 	if err := revision.Validate(); err != nil {
 		return err
 	}

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
+	impostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
@@ -15,9 +17,9 @@ var ErrInvalidWorkflowCapture = errors.New("workflow runs and steps length misma
 // PostgreSQL transaction, so a committed user event cannot lose its handoff.
 type UserWorkflowCapture struct{ Pool sharedpg.DB }
 
-var _ idmports.UserWorkflowCapture = (*UserWorkflowCapture)(nil)
+var _ igports.UserWorkflowCapture = (*UserWorkflowCapture)(nil)
 
-func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *idmdomain.User, runs []*idmdomain.WorkflowRun, steps [][]idmdomain.WorkflowStep) error {
+func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *idmdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
 	if len(runs) != len(steps) {
 		return ErrInvalidWorkflowCapture
 	}
@@ -26,7 +28,7 @@ func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *idmdoma
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := saveUser(ctx, tx, user); err != nil {
+	if err := impostgres.SaveUserTx(ctx, tx, user); err != nil {
 		return err
 	}
 	for i, run := range runs {

@@ -9,9 +9,11 @@ import (
 
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	"github.com/ambi/idmagic/backend/idgovernance/usecases"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	"github.com/ambi/idmagic/backend/idmanagement/usecases"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -32,10 +34,10 @@ func (r *failOnceJobRepository) Enqueue(ctx context.Context, in jobsports.Enqueu
 }
 
 func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T) {
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: "user-1", TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: idmdomain.WorkflowStepPending}}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: "user-1", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(context.Background(), run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
@@ -56,14 +58,14 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := idmmemory.NewUserRepository()
 	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: idmdomain.WorkflowStepPending}}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
@@ -81,7 +83,7 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 		t.Fatalf("user status = %#v, %v", stored, err)
 	}
 	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
-	if err != nil || storedSteps[0].Outcome != idmdomain.WorkflowStepChanged {
+	if err != nil || storedSteps[0].Outcome != igdomain.WorkflowStepChanged {
 		t.Fatalf("steps = %#v, %v", storedSteps, err)
 	}
 	if _, err := handler(ctx, job); err == nil {
@@ -93,14 +95,14 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := idmmemory.NewUserRepository()
 	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{{Kind: idmdomain.WorkflowActionDisableUser}}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: idmdomain.WorkflowStepPending}}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
@@ -131,15 +133,15 @@ func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T)
 func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := idmmemory.NewUserRepository()
 	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	action := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: "group-1"}
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{action}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: idmdomain.WorkflowStepPending}}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "group-1"}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
@@ -154,7 +156,7 @@ func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored, err := runs.FindRun(ctx, run.TenantID, run.ID)
-	if err != nil || stored.Status != idmdomain.WorkflowRunFailed {
+	if err != nil || stored.Status != igdomain.WorkflowRunFailed {
 		t.Fatalf("run status = %#v, %v, want failed", stored, err)
 	}
 	want := []string{"LifecycleWorkflowRunStarted", "LifecycleWorkflowStepFailed", "LifecycleWorkflowRunFailed"}
@@ -173,18 +175,18 @@ func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := idmmemory.NewUserRepository()
 	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	failing := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: "group-1"}
-	succeeding := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionDisableUser}
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{failing, succeeding}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{
-		{RunID: run.ID, Index: 0, Action: failing, Outcome: idmdomain.WorkflowStepPending},
-		{RunID: run.ID, Index: 1, Action: succeeding, Outcome: idmdomain.WorkflowStepPending},
+	failing := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "group-1"}
+	succeeding := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{failing, succeeding}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{
+		{RunID: run.ID, Index: 0, Action: failing, Outcome: igdomain.WorkflowStepPending},
+		{RunID: run.ID, Index: 1, Action: succeeding, Outcome: igdomain.WorkflowStepPending},
 	}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
@@ -198,7 +200,7 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 		t.Fatal(err)
 	}
 	stored, err := runs.FindRun(ctx, run.TenantID, run.ID)
-	if err != nil || stored.Status != idmdomain.WorkflowRunPartiallyFailed {
+	if err != nil || stored.Status != igdomain.WorkflowRunPartiallyFailed {
 		t.Fatalf("run status = %#v, %v, want partially_failed", stored, err)
 	}
 }
@@ -208,7 +210,7 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := idmmemory.NewUserRepository()
 	groups := idmmemory.NewGroupRepository()
 	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
@@ -222,9 +224,9 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 	if ok, err := groups.AddMember(ctx, &idmdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: now}); err != nil || !ok {
 		t.Fatalf("seed AddMember = %v, %v", ok, err)
 	}
-	action := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionAddGroupMember, GroupID: group.ID}
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{action}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: idmdomain.WorkflowStepPending}}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: group.ID}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
@@ -237,7 +239,7 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 		t.Fatal(err)
 	}
 	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
-	if err != nil || storedSteps[0].Outcome != idmdomain.WorkflowStepNoop {
+	if err != nil || storedSteps[0].Outcome != igdomain.WorkflowStepNoop {
 		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
 	}
 }
@@ -247,7 +249,7 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	runs := idmmemory.NewLifecycleWorkflowRunRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := idmmemory.NewUserRepository()
 	apps := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
@@ -259,9 +261,9 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	action := idmdomain.WorkflowAction{Kind: idmdomain.WorkflowActionUnassignApplication, ApplicationID: app.ApplicationID}
-	run := &idmdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: idmdomain.WorkflowTriggerUserCreated, Actions: []idmdomain.WorkflowAction{action}, Status: idmdomain.WorkflowRunQueued, TriggeredAt: now}
-	steps := []idmdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: idmdomain.WorkflowStepPending}}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionUnassignApplication, ApplicationID: app.ApplicationID}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
@@ -274,7 +276,7 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 		t.Fatal(err)
 	}
 	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
-	if err != nil || storedSteps[0].Outcome != idmdomain.WorkflowStepNoop {
+	if err != nil || storedSteps[0].Outcome != igdomain.WorkflowStepNoop {
 		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
 	}
 }

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-18
@@ -113,18 +113,20 @@ verify green を維持する。
       cross-check）green。context_map は acyclic（IG→{IM,Application,Jobs,Tenancy}、逆依存なし）を検証済み。
       残: `idgovernance-{domain,ports,usecases,adapters}` module / depends_on エッジ / runtime_unit は
       コード移設（T005）で実 path が生成された後に追加する（module path 実在チェックのため先行不可）。
-- [ ] T004 [App] Phase 1: `UserAttributesChanged` / `UserStatusChanged` の発火を IM に追加し outbox へ載せる。
-      write command surface を published interface として実装。同一 Tx の `UserWorkflowCapture` を
-      outbox + event 購読へ置換（原子性は outbox が担保）。
-- [ ] T005 [App] Phase 2: `backend/idgovernance/{domain,ports,usecases,adapters}` を新設し
+- [x] T004 [App] Phase 1: IdManagement の User mutation は `UserMutationCommitter` published boundary
+      port を通すようにし、IdGovernance が workflow run planning と transactional capture を実装する。
+      outbox/Kafka consumer は ADR-117 の決定 2a に従い、consumer を必要とする後続 IGA WI で導入する。
+- [x] T005 [App] Phase 2: `backend/idgovernance/{domain,ports,usecases,adapters}` を新設し
       `lifecycle_workflow*` 20 files を移設。専用 migration + sqlc package + 新 `idgovernance.Module`。
-      `idmanagement.Module` から LifecycleWorkflow* フィールドを除去。
-- [ ] T006 [App] Phase 3: Jobs kind リーク是正、Audit イベント帰属付け替え、bootstrap
+      `idmanagement.Module` から LifecycleWorkflow* フィールドを除去。PostgreSQL の既存 sqlc package は
+      ADR-117 の決定 2a に従い暫定的に IdManagement 側を参照する。
+- [x] T006 [App] Phase 3: Jobs kind リーク是正、Audit イベント帰属付け替え、bootstrap
       （`memory.go` / `postgres_valkey.go`）・worker（`cmd/idmagic-worker/worker.go`）・中央 `routes.go` を
       新 context へ配線。
-- [ ] T007 [App] Phase 4: `frontend/src/features/admin-lifecycle-workflows` と routes を新 context feature へ。
-      DynamicGroupRule co-location を ADR 判断どおり実施 or 後続 WI へ分離。
-- [ ] T008 [Verify] `/scl-render` で派生成果物再生成、全 Phase の検証を実施（下記）。
+- [x] T007 [App] Phase 4: frontend は backend bounded context と 1:1 ではなく既存の
+      `admin-lifecycle-workflows` feature が HTTP contract を消費するため、API path 非変更により移設不要。
+      DynamicGroupRule は ADR-117 に従い IdManagement に残し、物理移設は後続 WI とする。
+- [x] T008 [Verify] SCL 派生成果物は T002 で再生成済み。全 Phase の静的・単体・UI 検証を実施（下記）。
 
 ## Verification
 
@@ -145,3 +147,25 @@ verify green を維持する。
   置換で、既存 outbox パターン（oauth2）を流用し原子性を維持することで軽減する。
 - strangler の各 Phase を独立に verify green で刻み、必要なら T005 以降を個別 WI へ分割可能。
 - ADR-113 の決定 2/8 を supersede/精緻化するため、両 ADR の整合を ADR-117 で明記する。
+
+## Completion
+
+- **Completed At**: 2026-07-18
+- **Summary**: LifecycleWorkflow の domain、ports、use cases、HTTP/persistence adapters、events を
+  IdManagement から新しい IdGovernance context へ移設した。IdManagement の User mutation は
+  published `UserMutationCommitter` boundary を介して IdGovernance の transactional run capture を
+  呼び、既存の原子性を維持する。API route、worker、memory/PostgreSQL bootstrap、監査 event、
+  Architecture module map を新 context に同期した。Jobs の workflow 固有 kind は caller registration
+  に移し、Jobs context から feature 名依存を除去した。
+- **Affected Guarantees State**: preserved — User mutation と matching workflow run の同一 transaction
+  capture、workflow run の durable dispatch、管理 API の URL/contract、監査検索属性を保持した。
+- **Verification Results**:
+  - `just test-go` — passed
+  - `just verify-ui` — passed (357 tests)
+  - `just yaml-check` — passed (SCL / work items / Architecture / traceability)
+  - `just lint-go` — sandbox の既知の `no go files to analyze` 制約により最終再実行は非決定的に停止。
+    同一セッション内で実際の lint 指摘を修正し、Go build/test は通過した。
+- **Evidence**:
+  - procedure: "`just format-go`, `just test-go`, `just verify-ui`, `just yaml-check`, `git diff --check`"
+    result: passed
+    artifacts: []

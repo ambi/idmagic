@@ -5,7 +5,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
@@ -60,7 +60,7 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 // sidecar 検索属性として抽出され、admin が filter で監査ログを検索できること。
 func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing.T) {
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	rec, err := NewAuditEventRecord(&idmdomain.LifecycleWorkflowCreated{At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
+	rec, err := NewAuditEventRecord(&igdomain.LifecycleWorkflowCreated{At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 		t.Fatalf("workflow.id = %q, want workflow-1", rec.SearchAttributes["workflow.id"])
 	}
 
-	rec, err = NewAuditEventRecord(&idmdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
+	rec, err = NewAuditEventRecord(&igdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 		t.Fatalf("search attrs = %#v, want workflow.id=workflow-1 workflow_run.id=run-1", rec.SearchAttributes)
 	}
 
-	rec, err = NewAuditEventRecord(&idmdomain.LifecycleWorkflowStepFailed{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
+	rec, err = NewAuditEventRecord(&igdomain.LifecycleWorkflowStepFailed{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
 	if err != nil {
 		t.Fatal(err)
 	}

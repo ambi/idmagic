@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-17
+updated_at: 2026-07-18
 contexts:
   System:
     spec: spec/contexts/system.yaml
@@ -353,6 +353,62 @@ modules:
       - { module: shared-kernel, via: binding }
       - { module: shared-spec, via: binding }
       - { module: tenancy-ports, via: binding }
+      - { module: tenancy-public, via: binding }
+  idgovernance-domain:
+    path: backend/idgovernance/domain
+    responsibility: "IdGovernance の LifecycleWorkflow モデル、状態、純粋な評価規則。"
+    context: IdGovernance
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: idmanagement-domain, via: published_interface }
+  idgovernance-ports:
+    path: backend/idgovernance/ports
+    responsibility: "IdGovernance の workflow 定義・run・transactional capture の公開 port。"
+    context: IdGovernance
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: idgovernance-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+  idgovernance-usecases:
+    path: backend/idgovernance/usecases
+    responsibility: "LifecycleWorkflow の管理、run planning、実行を担う application service。"
+    context: IdGovernance
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: application-domain, via: published_interface }
+      - { module: application-ports, via: published_interface }
+      - { module: authentication-ports, via: published_interface }
+      - { module: idgovernance-domain, via: published_interface }
+      - { module: idgovernance-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
+      - { module: jobs-domain, via: published_interface }
+      - { module: jobs-ports, via: published_interface }
+      - { module: jobs-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  idgovernance-adapters:
+    path: backend/idgovernance/adapters
+    responsibility: "IdGovernance の HTTP と memory/PostgreSQL persistence adapter。"
+    context: IdGovernance
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: application-ports, via: binding }
+      - { module: authentication-ports, via: binding }
+      - { module: http-support, via: binding }
+      - { module: idgovernance-domain, via: published_interface }
+      - { module: idgovernance-ports, via: published_interface }
+      - { module: idgovernance-usecases, via: published_interface }
+      - { module: idmanagement-adapters, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
+      - { module: jobs-ports, via: binding }
+      - { module: shared-adapters, via: binding }
+      - { module: shared-spec, via: binding }
       - { module: tenancy-public, via: binding }
   jobs-domain:
     path: backend/jobs/domain
@@ -746,6 +802,24 @@ modules:
       - { module: idmanagement-domain, via: published_interface }
       - { module: idmanagement-ports, via: published_interface }
       - { module: idmanagement-usecases, via: published_interface }
+  idgovernance-public:
+    path: backend/idgovernance/
+    responsibility: "IdGovernance root package の公開 facade。"
+    context: IdGovernance
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: idgovernance-ports, via: published_interface }
+  idgovernance-composition:
+    path: backend/idgovernance/module.go
+    responsibility: "IdGovernance の adapter と port を束ねる composition module。"
+    context: IdGovernance
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - { module: idgovernance-adapters, via: published_interface }
+      - { module: idgovernance-ports, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
   jobs-public:
     path: backend/jobs/
     responsibility: "Jobs root package の公開 facade。"
@@ -951,6 +1025,8 @@ modules:
       - { module: idmanagement-adapters, via: composition_root }
       - { module: idmanagement-ports, via: composition_root }
       - { module: idmanagement-public, via: composition_root }
+      - { module: idgovernance-adapters, via: composition_root }
+      - { module: idgovernance-public, via: composition_root }
       - { module: jobs-public, via: composition_root }
       - { module: oauth2-adapters, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
@@ -990,6 +1066,8 @@ modules:
       - { module: http-server, via: published_interface }
       - { module: http-support, via: technical_shared }
       - { module: idmanagement-usecases, via: composition_root }
+      - { module: idgovernance-public, via: composition_root }
+      - { module: idgovernance-usecases, via: composition_root }
       - { module: jobs-domain, via: composition_root }
       - { module: jobs-public, via: composition_root }
       - { module: jobs-usecases, via: composition_root }
@@ -1023,6 +1101,12 @@ modules:
       - { module: idmanagement-adapters, via: composition_root }
       - { module: idmanagement-domain, via: composition_root }
       - { module: idmanagement-ports, via: composition_root }
+      - { module: idgovernance-adapters, via: composition_root }
+      - { module: idgovernance-composition, via: composition_root }
+      - { module: idgovernance-domain, via: composition_root }
+      - { module: idgovernance-ports, via: composition_root }
+      - { module: idgovernance-public, via: composition_root }
+      - { module: idgovernance-usecases, via: composition_root }
       - { module: idmanagement-public, via: composition_root }
       - { module: jobs-adapters, via: composition_root }
       - { module: jobs-public, via: composition_root }
@@ -1526,6 +1610,7 @@ complexity:
 - 動的 Group membership の CEL 環境、排他的 membership type、rule version による fail-closed は [ADR-111](decisions/ADR-111-cel-dynamic-group-membership-rules.md) に従う。
 - SCL 規範要素、Architecture module、宣言済み check、revision 付き evidence の直接追跡は [ADR-115](decisions/ADR-115-direct-workspace-traceability-graph.md) に従う。
 - context、RA layer、module dependency、runtime、実 import、complexity ceiling を検査可能な地図として保つ方針は [ADR-116](decisions/ADR-116-executable-architecture-map.md) に従う。
+- LifecycleWorkflow を IdManagement の record-of-truth から IdGovernance の policy/orchestration へ分離する境界は [ADR-117](decisions/ADR-117-extract-identity-governance-context.md) に従う。
 
 ## 読む順序
 

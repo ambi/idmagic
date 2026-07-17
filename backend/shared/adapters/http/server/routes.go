@@ -12,6 +12,8 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/idgovernance"
+	ighttp "github.com/ambi/idmagic/backend/idgovernance/adapters/http"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmhttp "github.com/ambi/idmagic/backend/idmanagement/adapters/http"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
@@ -48,8 +50,9 @@ type Deps struct {
 
 	Tenancy tenancy.Module
 	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
-	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
-	IdManagement idmanagement.Module
+	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	IdManagement   idmanagement.Module
+	IdGovernance   idgovernance.Module
 	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdManagement.Module のみを設定する。
 	UserRepo       idmports.UserRepository
 	GroupRepo      idmports.GroupRepository
@@ -302,28 +305,34 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	})
 
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{
-		Deps:                     d.Deps,
-		Authenticator:            authenticator,
-		UserRepo:                 d.IdManagement.UserRepo,
-		GroupRepo:                d.IdManagement.GroupRepo,
-		AgentRepo:                d.IdManagement.AgentRepo,
-		LifecycleWorkflowRepo:    d.IdManagement.LifecycleWorkflowRepo,
-		LifecycleWorkflowRunRepo: d.IdManagement.LifecycleWorkflowRunRepo,
-		UserWorkflowCapture:      d.IdManagement.UserWorkflowCapture,
-		ClientRepo:               d.OAuth2.ClientRepo,
-		ScimRepo:                 d.Scim.Repo,
-		AttrSchemaRepo:           d.Tenancy.AttrSchemaRepo,
-		ConsentRepo:              d.OAuth2.ConsentRepo,
-		RefreshStore:             d.OAuth2.RefreshStore,
-		DeviceCodeStore:          d.OAuth2.DeviceCodeStore,
-		MfaFactorRepo:            d.Authentication.MfaFactorRepo,
-		PasswordHasher:           d.Authentication.PasswordHasher,
-		PasswordHistoryRepo:      d.Authentication.PasswordHistoryRepo,
-		EmailChangeTokenStore:    d.Authentication.EmailChangeTokenStore,
-		EmailSender:              d.Authentication.EmailSender,
+		Deps:                  d.Deps,
+		Authenticator:         authenticator,
+		UserRepo:              d.IdManagement.UserRepo,
+		GroupRepo:             d.IdManagement.GroupRepo,
+		AgentRepo:             d.IdManagement.AgentRepo,
+		UserMutationCommitter: d.IdManagement.UserMutationCommitter,
+		ClientRepo:            d.OAuth2.ClientRepo,
+		ScimRepo:              d.Scim.Repo,
+		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,
+		ConsentRepo:           d.OAuth2.ConsentRepo,
+		RefreshStore:          d.OAuth2.RefreshStore,
+		DeviceCodeStore:       d.OAuth2.DeviceCodeStore,
+		MfaFactorRepo:         d.Authentication.MfaFactorRepo,
+		PasswordHasher:        d.Authentication.PasswordHasher,
+		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
+		EmailChangeTokenStore: d.Authentication.EmailChangeTokenStore,
+		EmailSender:           d.Authentication.EmailSender,
+		JobRepo:               d.Jobs.Repo,
+	})
+
+	ighttp.RegisterRoutes(g, ighttp.Deps{
+		Deps: d.Deps, Authenticator: authenticator,
+		LifecycleWorkflowRepo:    d.IdGovernance.LifecycleWorkflowRepo,
+		LifecycleWorkflowRunRepo: d.IdGovernance.LifecycleWorkflowRunRepo,
 		JobRepo:                  d.Jobs.Repo,
-		ApplicationRepo:          d.Application.Repo,
-		AssignmentRepo:           d.Application.AssignmentRepo,
+		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
+		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
+		EmailSender: d.Authentication.EmailSender,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{

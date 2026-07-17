@@ -7,29 +7,29 @@ import (
 	"sync"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
 )
 
 type LifecycleWorkflowRunRepository struct {
 	mu          sync.RWMutex
-	runs        map[string]*idmdomain.WorkflowRun
-	steps       map[string][]idmdomain.WorkflowStep
+	runs        map[string]*igdomain.WorkflowRun
+	steps       map[string][]igdomain.WorkflowStep
 	occurrences map[string]string
 }
 
-var _ idmports.LifecycleWorkflowRunRepository = (*LifecycleWorkflowRunRepository)(nil)
+var _ igports.LifecycleWorkflowRunRepository = (*LifecycleWorkflowRunRepository)(nil)
 
 func NewLifecycleWorkflowRunRepository() *LifecycleWorkflowRunRepository {
-	return &LifecycleWorkflowRunRepository{runs: map[string]*idmdomain.WorkflowRun{}, steps: map[string][]idmdomain.WorkflowStep{}, occurrences: map[string]string{}}
+	return &LifecycleWorkflowRunRepository{runs: map[string]*igdomain.WorkflowRun{}, steps: map[string][]igdomain.WorkflowStep{}, occurrences: map[string]string{}}
 }
 func runKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
-func occurrenceKey(r *idmdomain.WorkflowRun) string {
+func occurrenceKey(r *igdomain.WorkflowRun) string {
 	return runKey(r.TenantID, r.WorkflowID) + ":" + r.SourceOccurrenceID + ":" + r.TargetUserID
 }
 
-func cloneRun(r *idmdomain.WorkflowRun) *idmdomain.WorkflowRun {
+func cloneRun(r *igdomain.WorkflowRun) *igdomain.WorkflowRun {
 	if r == nil {
 		return nil
 	}
@@ -43,7 +43,7 @@ func cloneRun(r *idmdomain.WorkflowRun) *idmdomain.WorkflowRun {
 	return &c
 }
 
-func (r *LifecycleWorkflowRunRepository) SaveRun(_ context.Context, run *idmdomain.WorkflowRun, steps []idmdomain.WorkflowStep) (bool, error) {
+func (r *LifecycleWorkflowRunRepository) SaveRun(_ context.Context, run *igdomain.WorkflowRun, steps []igdomain.WorkflowStep) (bool, error) {
 	if err := run.Validate(); err != nil {
 		return false, err
 	}
@@ -64,7 +64,7 @@ func (r *LifecycleWorkflowRunRepository) SaveRun(_ context.Context, run *idmdoma
 	return true, nil
 }
 
-func (r *LifecycleWorkflowRunRepository) ListSteps(_ context.Context, tenantID, runID string) ([]idmdomain.WorkflowStep, error) {
+func (r *LifecycleWorkflowRunRepository) ListSteps(_ context.Context, tenantID, runID string) ([]igdomain.WorkflowStep, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return slices.Clone(r.steps[runKey(tenantID, runID)]), nil
@@ -74,7 +74,7 @@ func (r *LifecycleWorkflowRunRepository) StartRun(_ context.Context, tenantID, r
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[runKey(tenantID, runID)]
-	if run == nil || run.Status != idmdomain.WorkflowRunQueued {
+	if run == nil || run.Status != igdomain.WorkflowRunQueued {
 		return false, nil
 	}
 	for _, other := range r.runs {
@@ -82,11 +82,11 @@ func (r *LifecycleWorkflowRunRepository) StartRun(_ context.Context, tenantID, r
 			return false, nil
 		}
 	}
-	run.Status = idmdomain.WorkflowRunRunning
+	run.Status = igdomain.WorkflowRunRunning
 	return true, nil
 }
 
-func (r *LifecycleWorkflowRunRepository) CheckpointStep(_ context.Context, tenantID, runID string, step idmdomain.WorkflowStep) error {
+func (r *LifecycleWorkflowRunRepository) CheckpointStep(_ context.Context, tenantID, runID string, step igdomain.WorkflowStep) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := runKey(tenantID, runID)
@@ -99,7 +99,7 @@ func (r *LifecycleWorkflowRunRepository) CheckpointStep(_ context.Context, tenan
 	return nil
 }
 
-func (r *LifecycleWorkflowRunRepository) CompleteRun(_ context.Context, tenantID, runID string, status idmdomain.WorkflowRunStatus, _ time.Time) error {
+func (r *LifecycleWorkflowRunRepository) CompleteRun(_ context.Context, tenantID, runID string, status igdomain.WorkflowRunStatus, _ time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[runKey(tenantID, runID)]
@@ -109,16 +109,16 @@ func (r *LifecycleWorkflowRunRepository) CompleteRun(_ context.Context, tenantID
 	return nil
 }
 
-func (r *LifecycleWorkflowRunRepository) FindRun(_ context.Context, tenantID, runID string) (*idmdomain.WorkflowRun, error) {
+func (r *LifecycleWorkflowRunRepository) FindRun(_ context.Context, tenantID, runID string) (*igdomain.WorkflowRun, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneRun(r.runs[runKey(tenantID, runID)]), nil
 }
 
-func (r *LifecycleWorkflowRunRepository) ListRuns(_ context.Context, tenantID, workflowID string, limit int) ([]*idmdomain.WorkflowRun, error) {
+func (r *LifecycleWorkflowRunRepository) ListRuns(_ context.Context, tenantID, workflowID string, limit int) ([]*igdomain.WorkflowRun, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*idmdomain.WorkflowRun{}
+	out := []*igdomain.WorkflowRun{}
 	for _, run := range r.runs {
 		if run.TenantID == tenantID && run.WorkflowID == workflowID {
 			out = append(out, cloneRun(run))
@@ -136,37 +136,37 @@ func (r *LifecycleWorkflowRunRepository) RetryRun(_ context.Context, tenantID, r
 	defer r.mu.Unlock()
 	key := runKey(tenantID, runID)
 	run := r.runs[key]
-	if run == nil || (run.Status != idmdomain.WorkflowRunFailed && run.Status != idmdomain.WorkflowRunPartiallyFailed) {
+	if run == nil || (run.Status != igdomain.WorkflowRunFailed && run.Status != igdomain.WorkflowRunPartiallyFailed) {
 		return false, nil
 	}
 	for i := range r.steps[key] {
-		if r.steps[key][i].Outcome == idmdomain.WorkflowStepFailed {
-			r.steps[key][i].Outcome, r.steps[key][i].ErrorCode, r.steps[key][i].CompletedAt = idmdomain.WorkflowStepPending, "", nil
+		if r.steps[key][i].Outcome == igdomain.WorkflowStepFailed {
+			r.steps[key][i].Outcome, r.steps[key][i].ErrorCode, r.steps[key][i].CompletedAt = igdomain.WorkflowStepPending, "", nil
 		}
 	}
-	run.Status, run.JobID = idmdomain.WorkflowRunQueued, nil
+	run.Status, run.JobID = igdomain.WorkflowRunQueued, nil
 	return true, nil
 }
 
-func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(_ context.Context, tenantID, workflowID string, _ time.Time) ([]*idmdomain.WorkflowRun, error) {
+func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(_ context.Context, tenantID, workflowID string, _ time.Time) ([]*igdomain.WorkflowRun, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	canceled := []*idmdomain.WorkflowRun{}
+	canceled := []*igdomain.WorkflowRun{}
 	for _, run := range r.runs {
-		if run.TenantID == tenantID && run.WorkflowID == workflowID && run.Status == idmdomain.WorkflowRunQueued {
-			run.Status = idmdomain.WorkflowRunCanceled
+		if run.TenantID == tenantID && run.WorkflowID == workflowID && run.Status == igdomain.WorkflowRunQueued {
+			run.Status = igdomain.WorkflowRunCanceled
 			canceled = append(canceled, cloneRun(run))
 		}
 	}
 	return canceled, nil
 }
 
-func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(_ context.Context, limit int) ([]*idmdomain.WorkflowRun, error) {
+func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(_ context.Context, limit int) ([]*igdomain.WorkflowRun, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*idmdomain.WorkflowRun{}
+	out := []*igdomain.WorkflowRun{}
 	for _, run := range r.runs {
-		if run.Status == idmdomain.WorkflowRunQueued && run.JobID == nil {
+		if run.Status == igdomain.WorkflowRunQueued && run.JobID == nil {
 			out = append(out, cloneRun(run))
 			if limit > 0 && len(out) >= limit {
 				break

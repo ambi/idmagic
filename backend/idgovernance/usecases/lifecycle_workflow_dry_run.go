@@ -7,14 +7,15 @@ import (
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 )
 
 var ErrLifecycleWorkflowTargetUserNotFound = errors.New("lifecycle workflow dry-run target user not found")
 
 type DryRunLifecycleWorkflowDeps struct {
-	Repo            idmports.LifecycleWorkflowRepository
+	Repo            igports.LifecycleWorkflowRepository
 	UserRepo        idmports.UserRepository
 	GroupRepo       idmports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
@@ -23,13 +24,13 @@ type DryRunLifecycleWorkflowDeps struct {
 }
 
 type LifecycleWorkflowDryRunStepResult struct {
-	ActionKind idmdomain.WorkflowActionKind
-	Outcome    idmdomain.WorkflowActionOutcome
+	ActionKind igdomain.WorkflowActionKind
+	Outcome    igdomain.WorkflowActionOutcome
 	Reason     string
 }
 
 type LifecycleWorkflowDryRunResult struct {
-	Workflow     *idmdomain.LifecycleWorkflow
+	Workflow     *igdomain.LifecycleWorkflow
 	Revision     int64
 	TargetUserID string
 	EvaluatedAt  time.Time
@@ -38,7 +39,7 @@ type LifecycleWorkflowDryRunResult struct {
 
 // DryRunLifecycleWorkflow evaluates enabled_revision (current_revision if the
 // workflow was never enabled) against the target User's actual current state,
-// using the same idmdomain.EvaluateWorkflowAction judgement the run executor
+// using the same igdomain.EvaluateWorkflowAction judgement the run executor
 // applies before mutating anything (wi-222). It performs no writes: no
 // WorkflowRun, Job, membership, assignment, required action, status, or email
 // is created or changed.
@@ -74,12 +75,12 @@ func DryRunLifecycleWorkflow(ctx context.Context, deps DryRunLifecycleWorkflowDe
 	if user == nil || user.TenantID != workflow.TenantID {
 		return nil, ErrLifecycleWorkflowTargetUserNotFound
 	}
-	triggerMatches := idmdomain.EvaluateWorkflowFilters(revision.Trigger.Filters, user)
+	triggerMatches := igdomain.EvaluateWorkflowFilters(revision.Trigger.Filters, user)
 	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, EmailSender: deps.EmailSender}
 	steps := make([]LifecycleWorkflowDryRunStepResult, 0, len(revision.Actions))
 	for _, action := range revision.Actions {
 		if !triggerMatches {
-			steps = append(steps, LifecycleWorkflowDryRunStepResult{ActionKind: action.Kind, Outcome: idmdomain.WorkflowActionBlocked, Reason: "trigger_not_matched"})
+			steps = append(steps, LifecycleWorkflowDryRunStepResult{ActionKind: action.Kind, Outcome: igdomain.WorkflowActionBlocked, Reason: "trigger_not_matched"})
 			continue
 		}
 		outcome, reason, evalErr := EvaluateLifecycleAction(ctx, evalDeps, workflow.TenantID, user, action)

@@ -14,6 +14,9 @@ import (
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
 	authnvalkey "github.com/ambi/idmagic/backend/authentication/adapters/persistence/valkey"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	"github.com/ambi/idmagic/backend/idgovernance"
+	igpostgres "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/postgres"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -117,6 +120,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		return nil, errors.New("EVENT_SINK must be console or outbox")
 	}
 
+	userRepo := &idmpostgres.UserRepository{Pool: resilientDB}
+	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
+	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
+	workflowCapture := &igpostgres.UserWorkflowCapture{Pool: resilientDB}
+	userMutationCommitter := igusecases.UserMutationCommitter{
+		WorkflowRepo: workflowRepo, Capture: workflowCapture, UserRepo: userRepo, RunRepo: workflowRunRepo,
+	}
+
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenantRepo,
@@ -125,12 +136,16 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
 		},
 		IdManagement: idmanagement.Module{
-			UserRepo:                 &idmpostgres.UserRepository{Pool: resilientDB},
-			GroupRepo:                &idmpostgres.GroupRepository{Pool: resilientDB},
-			AgentRepo:                &idmpostgres.AgentRepository{Pool: resilientDB},
-			LifecycleWorkflowRepo:    &idmpostgres.LifecycleWorkflowRepository{Pool: resilientDB},
-			LifecycleWorkflowRunRepo: &idmpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB},
-			UserWorkflowCapture:      &idmpostgres.UserWorkflowCapture{Pool: resilientDB},
+			UserRepo:              userRepo,
+			GroupRepo:             &idmpostgres.GroupRepository{Pool: resilientDB},
+			AgentRepo:             &idmpostgres.AgentRepository{Pool: resilientDB},
+			UserMutationCommitter: userMutationCommitter,
+		},
+		IdGovernance: idgovernance.Module{
+			LifecycleWorkflowRepo:    workflowRepo,
+			LifecycleWorkflowRunRepo: workflowRunRepo,
+			UserWorkflowCapture:      workflowCapture,
+			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
 			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
