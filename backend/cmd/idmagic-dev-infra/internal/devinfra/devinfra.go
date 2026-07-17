@@ -87,6 +87,7 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		Username("idmagic").
 		Password("idmagic").
 		RuntimePath(filepath.Join(cfg.RuntimeDir, "runtime")).
+		BinariesPath(postgresBinaryDir()).
 		StartParameters(map[string]string{
 			// The development cluster is recreated logically on every start, so
 			// durability settings only slow the local feedback loop.
@@ -164,6 +165,12 @@ func writeReadyFile(path string, ready Ready) error {
 		return fmt.Errorf("publish ready file: %w", err)
 	}
 	return nil
+}
+
+// https://github.com/fergusstrange/embedded-postgres/issues/154
+func postgresBinaryDir() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".embedded-postgres-go", "extracted")
 }
 
 func (r *Runtime) Close() error {
