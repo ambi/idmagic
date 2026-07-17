@@ -15,7 +15,7 @@ context_map:
     publishes:
       - TenantRef
       - ResolveTenant
-  IdentityManagement:
+  IdManagement:
     description: 人間 User、Group、非人間 Agent という identity principal と、そのプロフィール、ロール、ライフサイクル、管理 API、自己管理 API を所有する。資格情報検証、MFA、ログインセッションは Authentication に分離する。
     path: contexts/identity-management.yaml
     publishes:
@@ -35,7 +35,7 @@ context_map:
           - JobRef
         reason: dynamic group rule の全件再評価を durable job として実行する。
   Authentication:
-    description: エンドユーザ (Subject) の資格情報検証、MFA、ログインセッション、パスワード変更・リセット、step-up、認証イベントを所有する。User / Group / Agent の identity ライフサイクルは IdentityManagement が所有する。
+    description: エンドユーザ (Subject) の資格情報検証、MFA、ログインセッション、パスワード変更・リセット、step-up、認証イベントを所有する。User / Group / Agent の identity ライフサイクルは IdManagement が所有する。
     path: contexts/authentication.yaml
     publishes:
       - AuthenticationContext
@@ -46,7 +46,7 @@ context_map:
         uses:
           - TenantRef
         reason: LoginSession と認証イベントはテナント境界内に閉じる。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -72,7 +72,7 @@ context_map:
         uses:
           - AuthenticationContext
         reason: Authorize は AuthenticationContext を Authentication から解決する。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -113,7 +113,7 @@ context_map:
         uses:
           - TenantRef
         reason: Application・binding・割当は realm 境界内に閉じる。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -136,7 +136,7 @@ context_map:
         uses:
           - TenantRef
         reason: claim release policy は realm 境界内に閉じる。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -171,7 +171,7 @@ context_map:
         uses:
           - AuthenticationContext
         reason: WS-Fed passive は AuthenticationContext を参照し、WS-Trust usernamemixed は資格情報検証を再利用する。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -209,7 +209,7 @@ context_map:
         uses:
           - AuthenticationContext
         reason: SAML SSO は AuthenticationContext を参照する。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -242,7 +242,7 @@ context_map:
         uses:
           - TenantRef
         reason: SCIM クライアント、トークン、プロビジョニングデータはテナント境界内に閉じる。
-      IdentityManagement:
+      IdManagement:
         via: published_language
         uses:
           - UserRef
@@ -259,3 +259,31 @@ context_map:
         uses:
           - TenantRef
         reason: Job は tenant_id を必須とし、worker はテナント境界内でのみ副作用を起こす。
+  IdGovernance:
+    description: "identity ガバナンスの policy と orchestration を所有する。LifecycleWorkflow (JML 自動化) の\ndefinition・trigger 評価・WorkflowRun 実行・executor action を集約し、将来の IGA 機能\n(認証キャンペーン、アクセスリクエスト/承認、エンタイトルメント/SoD、JIT 特権昇格) の受け皿となる。\nidentity principal の record-of-truth は IdManagement が、Application 割当は Application が\n所有し、IdGovernance は User ライフサイクルイベントを購読し、冪等コマンド surface 経由で\nこれら record context の状態を書き換える。\n"
+    path: contexts/identity-governance.yaml
+    publishes:
+      []
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: LifecycleWorkflow・WorkflowRun はテナント境界内に閉じる。
+      IdManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - GroupRef
+        reason: trigger は User ライフサイクルイベントを購読し、executor は User/Group への冪等コマンド surface を published interface 経由で呼ぶ。
+      Application:
+        via: published_language
+        uses:
+          - ApplicationRef
+          - ApplicationAssignmentRef
+        reason: assign/unassign_application action は Application の published 冪等コマンド surface を経由して割当を書き換える。
+      Jobs:
+        via: published_language
+        uses:
+          - JobRef
+        reason: WorkflowRun は lifecycle_workflow_run kind の durable job として実行される。

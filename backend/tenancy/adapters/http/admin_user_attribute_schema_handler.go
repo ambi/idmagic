@@ -7,7 +7,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"

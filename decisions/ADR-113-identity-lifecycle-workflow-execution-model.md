@@ -6,6 +6,12 @@ created_at: 2026-07-16
 
 # ADR-113: Identity lifecycle workflow の所有・実行・整合性モデル
 
+> **注記 (ADR-117 による更新)**: 決定1（新 context を作らず IdentityManagement に置く）は
+> ADR-117 決定1 で supersede され、LifecycleWorkflow は新 bounded context `IdentityGovernance`
+> へ切り出された。決定2（同一 transaction による trigger capture）は ADR-117 決定2 で
+> transactional outbox を用いた cross-context 契約へ精緻化。決定8（Application 割当への internal
+> interface 経路）は ADR-117 決定3 で published interface へ再解釈。決定 3/4/5/6/7 は継承。
+
 ## コンテキスト
 
 wi-153 は、User の作成・属性変更・status 遷移を trigger として、テナント管理者が定義した

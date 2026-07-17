@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"

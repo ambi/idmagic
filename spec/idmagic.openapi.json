@@ -4089,858 +4089,6 @@
         }
       }
     },
-    "/api/admin/lifecycle_workflows": {
-      "get": {
-        "operationId": "ListLifecycleWorkflows",
-        "summary": "管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflowDirectory",
-            "id": "context.tenant_id"
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowListResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "operationId": "CreateLifecycleWorkflow",
-        "summary": "管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。",
-        "x-scl-ensures": [
-          "emitted.exists(e, e is LifecycleWorkflowCreated)"
-        ],
-        "description": "Ensures: emitted.exists(e, e is LifecycleWorkflowCreated)",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflowDirectory",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "request": {
-                    "$ref": "#/components/schemas/LifecycleWorkflowCreateRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "request"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "workflow": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "workflow"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflows/{workflow_id}": {
-      "get": {
-        "operationId": "GetLifecycleWorkflow",
-        "summary": "管理者が LifecycleWorkflow 1 件を取得する。別テナントの workflow は未存在として扱う。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "workflow": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "workflow"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "UpdateLifecycleWorkflow",
-        "summary": "管理者が LifecycleWorkflow の trigger/actions/表示情報を更新する。expected_revision が",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "workflow_id": {
-                    "type": "string"
-                  },
-                  "request": {
-                    "$ref": "#/components/schemas/LifecycleWorkflowUpdateRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "workflow_id",
-                  "request"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "workflow": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "workflow"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError, WorkflowRevisionConflictError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/WorkflowRevisionConflictError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "DeleteLifecycleWorkflow",
-        "summary": "管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。",
-        "x-scl-ensures": [
-          "emitted.exists(e, e is LifecycleWorkflowDeleted)"
-        ],
-        "description": "Ensures: emitted.exists(e, e is LifecycleWorkflowDeleted)",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "expected_revision",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Success"
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflows/{workflow_id}/enable": {
-      "post": {
-        "operationId": "EnableLifecycleWorkflow",
-        "summary": "管理者が current_revision を validation し、成功すれば enabled_revision に設定して",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "workflow_id": {
-                    "type": "string"
-                  },
-                  "expected_revision": {
-                    "type": "integer"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "workflow_id",
-                  "expected_revision"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "workflow": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "workflow"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflows/{workflow_id}/disable": {
-      "post": {
-        "operationId": "DisableLifecycleWorkflow",
-        "summary": "管理者が LifecycleWorkflow を disable する。新規 trigger を止め、未開始の queued run を",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "workflow_id": {
-                    "type": "string"
-                  },
-                  "expected_revision": {
-                    "type": "integer"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "workflow_id",
-                  "expected_revision"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "workflow": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "workflow"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflows/{workflow_id}/dry_run": {
-      "post": {
-        "operationId": "DryRunLifecycleWorkflow",
-        "summary": "管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "workflow_id": {
-                    "type": "string"
-                  },
-                  "request": {
-                    "$ref": "#/components/schemas/LifecycleWorkflowDryRunRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "workflow_id",
-                  "request"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "$ref": "#/components/schemas/LifecycleWorkflowDryRunResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflows/{workflow_id}/runs": {
-      "get": {
-        "operationId": "ListLifecycleWorkflowRuns",
-        "summary": "管理者が特定 LifecycleWorkflow の run 履歴を新しい順に一覧する。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "LifecycleWorkflow",
-            "id": "input.workflow_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflow_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "$ref": "#/components/schemas/WorkflowRunListResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflow_runs/{run_id}": {
-      "get": {
-        "operationId": "GetLifecycleWorkflowRun",
-        "summary": "管理者が WorkflowRun 1 件の詳細 (trigger、revision、target user、Job attempt、各 step) を取得する。別テナントの run は未存在として扱う。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "WorkflowRun",
-            "id": "input.run_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "run_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "$ref": "#/components/schemas/WorkflowRunResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lifecycle_workflow_runs/{run_id}/retry": {
-      "post": {
-        "operationId": "RetryLifecycleWorkflowRun",
-        "summary": "管理者が partially_failed または failed の WorkflowRun を再試行する。未完了 (failed) step",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "WorkflowRun",
-            "id": "input.run_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "run_id": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "run_id"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "run_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "$ref": "#/components/schemas/WorkflowRunResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/auth/account": {
       "get": {
         "operationId": "GetAccountContext",
@@ -13875,6 +13023,858 @@
           }
         }
       }
+    },
+    "/api/admin/lifecycle_workflows": {
+      "get": {
+        "operationId": "ListLifecycleWorkflows",
+        "summary": "管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflowDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowListResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CreateLifecycleWorkflow",
+        "summary": "管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。",
+        "x-scl-ensures": [
+          "emitted.exists(e, e is LifecycleWorkflowCreated)"
+        ],
+        "description": "Ensures: emitted.exists(e, e is LifecycleWorkflowCreated)",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflowDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/LifecycleWorkflowCreateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflow": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "workflow"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflows/{workflow_id}": {
+      "get": {
+        "operationId": "GetLifecycleWorkflow",
+        "summary": "管理者が LifecycleWorkflow 1 件を取得する。別テナントの workflow は未存在として扱う。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflow": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "workflow"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateLifecycleWorkflow",
+        "summary": "管理者が LifecycleWorkflow の trigger/actions/表示情報を更新する。expected_revision が",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workflow_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/LifecycleWorkflowUpdateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "workflow_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflow": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "workflow"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError, WorkflowRevisionConflictError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/WorkflowRevisionConflictError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteLifecycleWorkflow",
+        "summary": "管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。",
+        "x-scl-ensures": [
+          "emitted.exists(e, e is LifecycleWorkflowDeleted)"
+        ],
+        "description": "Ensures: emitted.exists(e, e is LifecycleWorkflowDeleted)",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expected_revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflows/{workflow_id}/enable": {
+      "post": {
+        "operationId": "EnableLifecycleWorkflow",
+        "summary": "管理者が current_revision を validation し、成功すれば enabled_revision に設定して",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workflow_id": {
+                    "type": "string"
+                  },
+                  "expected_revision": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "workflow_id",
+                  "expected_revision"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflow": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "workflow"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflows/{workflow_id}/disable": {
+      "post": {
+        "operationId": "DisableLifecycleWorkflow",
+        "summary": "管理者が LifecycleWorkflow を disable する。新規 trigger を止め、未開始の queued run を",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workflow_id": {
+                    "type": "string"
+                  },
+                  "expected_revision": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "workflow_id",
+                  "expected_revision"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflow": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "workflow"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflows/{workflow_id}/dry_run": {
+      "post": {
+        "operationId": "DryRunLifecycleWorkflow",
+        "summary": "管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workflow_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/LifecycleWorkflowDryRunRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "workflow_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/LifecycleWorkflowDryRunResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflows/{workflow_id}/runs": {
+      "get": {
+        "operationId": "ListLifecycleWorkflowRuns",
+        "summary": "管理者が特定 LifecycleWorkflow の run 履歴を新しい順に一覧する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "LifecycleWorkflow",
+            "id": "input.workflow_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkflowRunListResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflow_runs/{run_id}": {
+      "get": {
+        "operationId": "GetLifecycleWorkflowRun",
+        "summary": "管理者が WorkflowRun 1 件の詳細 (trigger、revision、target user、Job attempt、各 step) を取得する。別テナントの run は未存在として扱う。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkflowRun",
+            "id": "input.run_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkflowRunResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/lifecycle_workflow_runs/{run_id}/retry": {
+      "post": {
+        "operationId": "RetryLifecycleWorkflowRun",
+        "summary": "管理者が partially_failed または failed の WorkflowRun を再試行する。未完了 (failed) step",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkflowRun",
+            "id": "input.run_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "run_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "run_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkflowRunResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -13903,7 +13903,7 @@
         "type": "object",
         "properties": {},
         "additionalProperties": false,
-        "description": "SCIM Bearer token または管理者 principal が操作を許可されない。"
+        "description": "認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。"
       },
       "AccessTokenClaims": {
         "type": "object",
@@ -16869,7 +16869,7 @@
           "visible",
           "hidden"
         ],
-        "description": "割当の可視性。hidden はポータル一覧から除外するがプロトコル利用は許可する。"
+        "description": "割当の可視性。Application context が所有する定義の published language stub。assign_application action の visibility 指定にのみ用いる。"
       },
       "AttrVisibility": {
         "type": "string",
@@ -17016,7 +17016,7 @@
             "items": {
               "$ref": "#/components/schemas/AuditEventFilterExpression"
             },
-            "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で、hash 化はしない。\n実アカウントが確定するイベントの検索には username query param を使う (本フィールドとは別経路)。\nclient.ip も平文一致で照合する (truncate/hash はしない)。event.type は SCL events セクションの型名\n(owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の enum (success / failure) から選ぶ\n選択式の値であり、自由入力ではない (AuditActorVsTarget / AuditSearchRegistry 参照)。actor.id /\nactor.username は操作者、target.id は管理操作の対象ユーザーを指し、意味が異なる。workflow.id /\nworkflow_run.id / workflow_step.id は IdentityManagement.LifecycleWorkflow* / WorkflowRun* /\nWorkflowStepFailed イベントの workflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、\nattribute value や email 本文は payload に含まないため検索対象にもならない。"
+            "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で、hash 化はしない。\n実アカウントが確定するイベントの検索には username query param を使う (本フィールドとは別経路)。\nclient.ip も平文一致で照合する (truncate/hash はしない)。event.type は SCL events セクションの型名\n(owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の enum (success / failure) から選ぶ\n選択式の値であり、自由入力ではない (AuditActorVsTarget / AuditSearchRegistry 参照)。actor.id /\nactor.username は操作者、target.id は管理操作の対象ユーザーを指し、意味が異なる。workflow.id /\nworkflow_run.id / workflow_step.id は IdGovernance.LifecycleWorkflow* / WorkflowRun* /\nWorkflowStepFailed イベントの workflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、\nattribute value や email 本文は payload に含まないため検索対象にもならない。"
           }
         },
         "additionalProperties": false,
@@ -23065,7 +23065,7 @@
           "UpdateProfile",
           "TermsAndConditions"
         ],
-        "description": "次回ログイン時にユーザへ強制するアクション (Keycloak Required Actions / Okta transitioning 相当)。"
+        "description": "次回ログイン時にユーザへ強制するアクション。IdManagement.RequiredAction の published language stub。set_required_action/clear_required_action の action 定義参照にのみ用いる。"
       },
       "RequiredAuthnLevel": {
         "type": "object",
@@ -25065,7 +25065,7 @@
           "status",
           "roles"
         ],
-        "description": "IdentityManagement が publish する管理者 principal の最小 stub。"
+        "description": "IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。"
       },
       "UserAttributeDef": {
         "type": "object",
@@ -25602,7 +25602,7 @@
           "Staged",
           "Suspended"
         ],
-        "description": "User の運用状態の唯一の真実。状態機械 UserLifecycle (Active / Disabled / PendingDeletion / Deleted) と一致し、Okta lifecycle_state / Keycloak 相当の Locked / Staged / Suspended を追加する。Active 以外は認証不可、PendingDeletion は 猶予期間内に復元可能な削除予約、Deleted は終端 (tombstone)。「いつ遷移したか」は監査イベントと status_changed_at が持つ。"
+        "description": "User の運用状態。IdManagement.UserStatus の published language stub。trigger の from_status/to_status 評価にのみ用いる。値の唯一の真実は IdManagement が所有する。"
       },
       "UserUpdated": {
         "type": "object",

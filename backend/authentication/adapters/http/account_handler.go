@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"

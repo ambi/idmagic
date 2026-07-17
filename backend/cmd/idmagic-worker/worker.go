@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
-	idmusecases "github.com/ambi/idmagic/backend/identitymanagement/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
@@ -52,8 +52,8 @@ func RunWorker() error {
 	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
 	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
 	handlers.Register(domain.KindDynamicGroupReconcile, idmusecases.DynamicGroupReconcileHandler(idmusecases.DynamicGroupDeps{
-		GroupRepo:  deps.IdentityManagement.GroupRepo,
-		UserRepo:   deps.IdentityManagement.UserRepo,
+		GroupRepo:  deps.IdManagement.GroupRepo,
+		UserRepo:   deps.IdManagement.UserRepo,
 		SchemaRepo: deps.Tenancy.AttrSchemaRepo,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
@@ -61,7 +61,7 @@ func RunWorker() error {
 		},
 	}))
 	handlers.Register(domain.KindLifecycleWorkflowRun, idmusecases.LifecycleWorkflowRunHandler(idmusecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: deps.IdentityManagement.LifecycleWorkflowRunRepo, UserRepo: deps.IdentityManagement.UserRepo, GroupRepo: deps.IdentityManagement.GroupRepo,
+		RunRepo: deps.IdManagement.LifecycleWorkflowRunRepo, UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, EmailSender: deps.Authentication.EmailSender,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
@@ -131,7 +131,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if err := idmusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, idmusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdentityManagement.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
+		if err := idmusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, idmusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdManagement.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {
@@ -152,8 +152,8 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmusecases.AdminUserDeps {
 	emit := deps.NewEmitFunc(logger)
 	return idmusecases.AdminUserDeps{
-		UserRepo:            deps.IdentityManagement.UserRepo,
-		GroupRepo:           deps.IdentityManagement.GroupRepo,
+		UserRepo:            deps.IdManagement.UserRepo,
+		GroupRepo:           deps.IdManagement.GroupRepo,
 		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
 		ConsentRepo:         deps.OAuth2.ConsentRepo,
 		RefreshStore:        deps.OAuth2.RefreshStore,
@@ -161,9 +161,9 @@ func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmus
 		MfaFactorRepo:       deps.Authentication.MfaFactorRepo,
 		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: deps.Authentication.PasswordHistoryRepo,
-		WorkflowRepo:        deps.IdentityManagement.LifecycleWorkflowRepo,
-		WorkflowRunRepo:     deps.IdentityManagement.LifecycleWorkflowRunRepo,
-		WorkflowCapture:     deps.IdentityManagement.UserWorkflowCapture,
+		WorkflowRepo:        deps.IdManagement.LifecycleWorkflowRepo,
+		WorkflowRunRepo:     deps.IdManagement.LifecycleWorkflowRunRepo,
+		WorkflowCapture:     deps.IdManagement.UserWorkflowCapture,
 		Emit: func(event spec.DomainEvent) error {
 			emit(event)
 			return nil

@@ -8,9 +8,12 @@ contexts:
   Tenancy:
     spec: spec/contexts/tenancy.yaml
     summary: "テナント境界と設定。"
-  IdentityManagement:
+  IdManagement:
     spec: spec/contexts/identity-management.yaml
     summary: "User、Group、Agent のライフサイクル。"
+  IdGovernance:
+    spec: spec/contexts/identity-governance.yaml
+    summary: "LifecycleWorkflow (JML 自動化) と IGA policy/orchestration。"
   Authentication:
     spec: spec/contexts/authentication.yaml
     summary: "資格情報、MFA、ログインセッション。"
@@ -77,7 +80,7 @@ modules:
     role: published_interface
     depends_on:
       - { module: claimmapping-domain, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
   signingkeys-domain:
     path: backend/signingkeys/domain
     responsibility: "tenant-scoped signing key metadata、状態語彙、domain event。"
@@ -182,8 +185,8 @@ modules:
       - { module: application-ports, via: published_interface }
       - { module: application-usecases, via: published_interface }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-domain, via: binding }
-      - { module: identitymanagement-ports, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
       - { module: oauth2-domain, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
@@ -220,8 +223,8 @@ modules:
       - { module: audit-ports, via: published_interface }
       - { module: audit-usecases, via: published_interface }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-domain, via: binding }
-      - { module: identitymanagement-ports, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
       - { module: oauth2-domain, via: binding }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
@@ -257,8 +260,8 @@ modules:
       - { module: audit-ports, via: published_interface }
       - { module: authentication-domain, via: published_interface }
       - { module: authentication-ports, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   authentication-adapters:
@@ -274,8 +277,8 @@ modules:
       - { module: authentication-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-ports, via: binding }
-      - { module: identitymanagement-usecases, via: binding }
+      - { module: idmanagement-ports, via: binding }
+      - { module: idmanagement-usecases, via: binding }
       - { module: oauth2-domain, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
@@ -285,28 +288,28 @@ modules:
       - { module: tenancy-domain, via: binding }
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
-  identitymanagement-domain:
-    path: backend/identitymanagement/domain
+  idmanagement-domain:
+    path: backend/idmanagement/domain
 
-    responsibility: "IdentityManagement のドメインモデルと純粋な規則。"
-    context: IdentityManagement
+    responsibility: "IdManagement のドメインモデルと純粋な規則。"
+    context: IdManagement
     layer: domain
     role: published_interface
     depends_on:
       - { module: shared-spec, via: technical_shared }
-  identitymanagement-ports:
-    path: backend/identitymanagement/ports
-    responsibility: "IdentityManagement の公開 port と外界への抽象。"
-    context: IdentityManagement
+  idmanagement-ports:
+    path: backend/idmanagement/ports
+    responsibility: "IdManagement の公開 port と外界への抽象。"
+    context: IdManagement
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
-  identitymanagement-usecases:
-    path: backend/identitymanagement/usecases
+      - { module: idmanagement-domain, via: published_interface }
+  idmanagement-usecases:
+    path: backend/idmanagement/usecases
 
-    responsibility: "IdentityManagement のユースケース。"
-    context: IdentityManagement
+    responsibility: "IdManagement のユースケース。"
+    context: IdManagement
     layer: use_cases
     role: published_interface
     depends_on:
@@ -314,8 +317,8 @@ modules:
       - { module: application-ports, via: published_interface }
       - { module: authentication-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: jobs-domain, via: published_interface }
       - { module: jobs-ports, via: published_interface }
       - { module: jobs-usecases, via: published_interface }
@@ -324,11 +327,11 @@ modules:
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
-  identitymanagement-adapters:
-    path: backend/identitymanagement/adapters
+  idmanagement-adapters:
+    path: backend/idmanagement/adapters
 
-    responsibility: "IdentityManagement の HTTP・永続化 adapter。"
-    context: IdentityManagement
+    responsibility: "IdManagement の HTTP・永続化 adapter。"
+    context: IdManagement
     layer: adapters
     role: binding
     depends_on:
@@ -336,9 +339,9 @@ modules:
       - { module: authentication-ports, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
-      - { module: identitymanagement-usecases, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
+      - { module: idmanagement-usecases, via: published_interface }
       - { module: jobs-domain, via: binding }
       - { module: jobs-ports, via: binding }
       - { module: jobs-usecases, via: binding }
@@ -409,7 +412,7 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
       - { module: oauth2-domain, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   oauth2-usecases:
@@ -420,8 +423,8 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
       - { module: shared-kernel, via: technical_shared }
@@ -445,8 +448,8 @@ modules:
       - { module: authentication-ports, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-domain, via: binding }
-      - { module: identitymanagement-ports, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
       - { module: oauth2-usecases, via: published_interface }
@@ -486,7 +489,7 @@ modules:
       - { module: claimmapping-usecases, via: published_interface }
       - { module: application-domain, via: published_interface }
       - { module: authentication-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: saml-domain, via: published_interface }
       - { module: saml-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
@@ -505,7 +508,7 @@ modules:
       - { module: authentication-domain, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-ports, via: binding }
+      - { module: idmanagement-ports, via: binding }
       - { module: saml-domain, via: published_interface }
       - { module: saml-ports, via: published_interface }
       - { module: saml-usecases, via: published_interface }
@@ -536,8 +539,8 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: scim-domain, via: published_interface }
       - { module: scim-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
@@ -573,7 +576,7 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
       - { module: tenancy-domain, via: published_interface }
   tenancy-usecases:
     path: backend/tenancy/usecases
@@ -583,7 +586,7 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
@@ -598,8 +601,8 @@ modules:
     depends_on:
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-domain, via: binding }
-      - { module: identitymanagement-ports, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
       - { module: tenancy-domain, via: published_interface }
@@ -614,7 +617,7 @@ modules:
     role: published_interface
     depends_on:
       - { module: claimmapping-domain, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   wsfederation-ports:
     path: backend/wsfederation/ports
@@ -635,8 +638,8 @@ modules:
       - { module: claimmapping-usecases, via: published_interface }
       - { module: application-domain, via: published_interface }
       - { module: authentication-domain, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
       - { module: wsfederation-domain, via: published_interface }
       - { module: wsfederation-ports, via: published_interface }
@@ -655,8 +658,8 @@ modules:
       - { module: authentication-ports, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
-      - { module: identitymanagement-domain, via: binding }
-      - { module: identitymanagement-ports, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: shared-adapters, via: binding }
       - { module: shared-kernel, via: binding }
@@ -685,7 +688,7 @@ modules:
       - { module: application-ports, via: published_interface }
       - { module: application-usecases, via: published_interface }
       - { module: http-support, via: composition_root }
-      - { module: identitymanagement-ports, via: composition_root }
+      - { module: idmanagement-ports, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
       - { module: saml-ports, via: composition_root }
       - { module: wsfederation-ports, via: composition_root }
@@ -724,25 +727,25 @@ modules:
       - { module: authentication-domain, via: published_interface }
       - { module: authentication-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
-  identitymanagement-public:
-    path: backend/identitymanagement/
-    responsibility: "IdentityManagement root package の公開 facade。"
-    context: IdentityManagement
+  idmanagement-public:
+    path: backend/idmanagement/
+    responsibility: "IdManagement root package の公開 facade。"
+    context: IdManagement
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: identitymanagement-domain, via: published_interface }
-  identitymanagement-composition:
-    path: backend/identitymanagement/module.go
-    responsibility: "IdentityManagement の adapter と port を束ねる composition module。"
-    context: IdentityManagement
+      - { module: idmanagement-domain, via: published_interface }
+  idmanagement-composition:
+    path: backend/idmanagement/module.go
+    responsibility: "IdManagement の adapter と port を束ねる composition module。"
+    context: IdManagement
     layer: infrastructure
     role: composition_root
     depends_on:
-      - { module: identitymanagement-adapters, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
-      - { module: identitymanagement-usecases, via: published_interface }
+      - { module: idmanagement-adapters, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
+      - { module: idmanagement-usecases, via: published_interface }
   jobs-public:
     path: backend/jobs/
     responsibility: "Jobs root package の公開 facade。"
@@ -798,7 +801,7 @@ modules:
     role: composition_root
     depends_on:
       - { module: http-support, via: composition_root }
-      - { module: identitymanagement-ports, via: composition_root }
+      - { module: idmanagement-ports, via: composition_root }
       - { module: saml-adapters, via: published_interface }
       - { module: saml-domain, via: published_interface }
       - { module: saml-ports, via: published_interface }
@@ -821,7 +824,7 @@ modules:
     role: composition_root
     depends_on:
       - { module: http-support, via: composition_root }
-      - { module: identitymanagement-ports, via: composition_root }
+      - { module: idmanagement-ports, via: composition_root }
       - { module: scim-adapters, via: published_interface }
       - { module: scim-domain, via: published_interface }
       - { module: scim-ports, via: published_interface }
@@ -864,7 +867,7 @@ modules:
     depends_on:
       - { module: authentication-ports, via: composition_root }
       - { module: http-support, via: composition_root }
-      - { module: identitymanagement-ports, via: composition_root }
+      - { module: idmanagement-ports, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
       - { module: wsfederation-adapters, via: published_interface }
       - { module: wsfederation-domain, via: published_interface }
@@ -895,7 +898,7 @@ modules:
     depends_on:
       - { module: authentication-ports, via: published_interface }
       - { module: http-support, via: technical_shared }
-      - { module: identitymanagement-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
       - { module: shared-kernel, via: technical_shared }
@@ -918,8 +921,8 @@ modules:
       - { module: application-usecases, via: published_interface }
       - { module: authentication-domain, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
-      - { module: identitymanagement-domain, via: published_interface }
-      - { module: identitymanagement-ports, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
       - { module: oauth2-usecases, via: published_interface }
       - { module: shared-kernel, via: technical_shared }
@@ -945,9 +948,9 @@ modules:
       - { module: authentication-public, via: composition_root }
       - { module: authentication-usecases, via: composition_root }
       - { module: http-support, via: technical_shared }
-      - { module: identitymanagement-adapters, via: composition_root }
-      - { module: identitymanagement-ports, via: composition_root }
-      - { module: identitymanagement-public, via: composition_root }
+      - { module: idmanagement-adapters, via: composition_root }
+      - { module: idmanagement-ports, via: composition_root }
+      - { module: idmanagement-public, via: composition_root }
       - { module: jobs-public, via: composition_root }
       - { module: oauth2-adapters, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
@@ -986,7 +989,7 @@ modules:
       - { module: bootstrap, via: published_interface }
       - { module: http-server, via: published_interface }
       - { module: http-support, via: technical_shared }
-      - { module: identitymanagement-usecases, via: composition_root }
+      - { module: idmanagement-usecases, via: composition_root }
       - { module: jobs-domain, via: composition_root }
       - { module: jobs-public, via: composition_root }
       - { module: jobs-usecases, via: composition_root }
@@ -1017,10 +1020,10 @@ modules:
       - { module: authentication-public, via: composition_root }
       - { module: authentication-usecases, via: composition_root }
       - { module: http-support, via: technical_shared }
-      - { module: identitymanagement-adapters, via: composition_root }
-      - { module: identitymanagement-domain, via: composition_root }
-      - { module: identitymanagement-ports, via: composition_root }
-      - { module: identitymanagement-public, via: composition_root }
+      - { module: idmanagement-adapters, via: composition_root }
+      - { module: idmanagement-domain, via: composition_root }
+      - { module: idmanagement-ports, via: composition_root }
+      - { module: idmanagement-public, via: composition_root }
       - { module: jobs-adapters, via: composition_root }
       - { module: jobs-public, via: composition_root }
       - { module: oauth2-adapters, via: composition_root }
@@ -1559,7 +1562,7 @@ SCL context と Go package の主な対応は次の通り。
 | --- | --- | --- |
 | `System` | `backend/cmd/internal/bootstrap`, `backend/shared/adapters/http/server`, `frontend/` | 横断 UX、起動、ルーティング集約、health。 |
 | `Tenancy` | `backend/tenancy` | tenant / realm、tenant-scoped settings、user attribute schema、control-plane tenant 管理。 |
-| `IdentityManagement` | `backend/identitymanagement` | User、Group、Agent、自己プロフィール、identity lifecycle、CEL 動的 membership rule と再評価。 |
+| `IdManagement` | `backend/idmanagement` | User、Group、Agent、自己プロフィール、identity lifecycle、CEL 動的 membership rule と再評価。 |
 | `Authentication` | `backend/authentication` | 資格情報検証、MFA、ログインセッション、step-up、パスワード変更・リセット、認証イベント。 |
 | `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC protocol endpoint、client、consent、token、role policy。 |
 | `Application` | `backend/application` | Application catalog、protocol binding、assignment、portal ordering/category。 |
@@ -1587,7 +1590,7 @@ backend/<context>/
 
 `domain/` は Echo、PostgreSQL、Valkey、HTTP request/response を知らない。`usecases/` は `ports/` に依存し、具体 adapter には依存しない。`adapters/http` は入力の wire 変換、HTTP status、cookie/header、CSRF/Origin など境界処理を持つ。`usecases/` が adapter を import しない依存方向は全 context 共通で、外界の能力（署名・割当ゲート・認証解決など）は `ports/` の抽象か usecase パッケージ内の interface で受け、adapter が具体実装を注入する（例: `oauth2` の `ports.TokenIssuer`、`saml` / `wsfederation` の `ApplicationGate` interface）。
 
-`domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、4 層すべてを機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `identitymanagement`（User/Group/Agent 集約、属性スキーマ、field validation）や `saml` / `wsfederation`（プロトコル固有の解析・claim mapping）のように固有ロジックを持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`adapters/http` は wire と HTTP 境界に閉じる。
+`domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、4 層すべてを機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `idmanagement`（User/Group/Agent 集約、属性スキーマ、field validation）や `saml` / `wsfederation`（プロトコル固有の解析・claim mapping）のように固有ロジックを持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`adapters/http` は wire と HTTP 境界に閉じる。
 
 `backend/shared/` は「複数 context が本当に共有する technical capability」だけに使う。context 固有の概念を便利だからという理由で `shared` に置くと、次の変更で読む範囲が広がる。domain event の具象 struct は owning context の `domain/events.go` に置き、`backend/shared/spec/events.go` は event envelope interface と wire marshal だけを持つ。Audit の分類は具象型 registry ではなく安定した event type discriminator を読む。
 

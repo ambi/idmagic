@@ -7,7 +7,7 @@ package http
 
 import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"

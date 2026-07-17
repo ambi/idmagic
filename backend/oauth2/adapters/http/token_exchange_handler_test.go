@@ -12,7 +12,7 @@ import (
 
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 
-	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"

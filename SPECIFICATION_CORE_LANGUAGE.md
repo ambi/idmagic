@@ -661,7 +661,7 @@ context-qualified な構造化値で参照する。参照を SCL 文書内へ逆
 通常の規範要素は次の形を用いる。
 
 ```yaml
-context: IdentityManagement
+context: IdManagement
 kind: model
 element: User
 ```

@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	"github.com/ambi/idmagic/backend/identitymanagement"
+	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
@@ -25,7 +25,7 @@ import (
 // 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
 	Tenancy            tenancy.Module
-	IdentityManagement identitymanagement.Module
+	IdManagement idmanagement.Module
 	Authentication     authentication.Module
 	OAuth2             oauth2.Module
 	SigningKeys        signingkeys.Module

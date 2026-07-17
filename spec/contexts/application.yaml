@@ -876,7 +876,7 @@ models:
         type: String
   User:
     kind: entity
-    description: IdentityManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    description: IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
     identity: id
     fields:
       id:
@@ -959,7 +959,7 @@ models:
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
 interfaces:
   AssignApplicationDesiredState:
-    description: "呼び出し元 bounded context (IdentityManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの application_id / user_id だけを渡す。\n"
+    description: "呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの application_id / user_id だけを渡す。\n"
     input:
       tenant_id:
         type: String
@@ -1789,7 +1789,7 @@ scenarios:
   desired-state割当はgroup経由の割当を変更しない:
     actor: TenantAdministrator
     given:
-      - "IdentityManagement の LifecycleWorkflow が \"alice\" に対して AssignApplicationDesiredState を呼び出す"
+      - "IdManagement の LifecycleWorkflow が \"alice\" に対して AssignApplicationDesiredState を呼び出す"
       - "\"alice\" は dynamic group 経由で \"portal\" への group assignment (subject_type=group) を既に持つ"
     main_success:
       - "AssignApplicationDesiredState が \"alice\" 個人への direct user assignment (subject_type=user) を新規作成する"

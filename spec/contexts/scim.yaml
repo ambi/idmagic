@@ -81,7 +81,7 @@ glossary:
 models:
   User:
     kind: entity
-    description: IdentityManagement が publish する管理者 principal の最小 stub。
+    description: IdManagement が publish する管理者 principal の最小 stub。
     identity: id
     fields:
       id:

@@ -40,7 +40,7 @@ const (
 	KindUserImportApply       JobKind = "user_import_apply"
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
 	// KindLifecycleWorkflowRun executes a captured lifecycle workflow run.
-	// The handler is registered by IdentityManagement's worker wiring.
+	// The handler is registered by IdManagement's worker wiring.
 	KindLifecycleWorkflowRun JobKind = "lifecycle_workflow_run"
 )
 

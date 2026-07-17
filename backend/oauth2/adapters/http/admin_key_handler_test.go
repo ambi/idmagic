@@ -19,9 +19,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"

@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom attribute 定義集合

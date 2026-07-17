@@ -14,7 +14,7 @@ Frontend には 2,677 行・68 local state の Applications page、2,457 行・3
 ## Scope
 - Applications、Users、Groups、Agents、Settings の page module を route/resource operation 単位へ分割する。
 - container、presentation、form validation、API orchestration、i18n の責務を分離する。
-- SCIM usecase、OAuth2 authorize handler、IdentityManagement admin usecase など巨大 Go source を interface/aggregate operation 単位へ分割する。
+- SCIM usecase、OAuth2 authorize handler、IdManagement admin usecase など巨大 Go source を interface/aggregate operation 単位へ分割する。
 - Architecture check に UI page/container 400行以下、local state hook 10個以下、非生成 Go source 新規800行超禁止の budget を追加する。
 - 分割した presentation/helper/usecase の characterization/unit test を追加する。
 

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 

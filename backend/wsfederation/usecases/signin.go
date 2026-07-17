@@ -14,7 +14,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"

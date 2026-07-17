@@ -730,7 +730,7 @@ CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
     ON jobs (tenant_id, dedup_key)
     WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running');
 
--- IdentityManagement lifecycle workflow definitions. Revisions are append-only;
+-- IdGovernance lifecycle workflow definitions. Revisions are append-only;
 -- execution records will reference the revision they expand, never mutable JSON.
 CREATE TABLE lifecycle_workflows (
     id UUID PRIMARY KEY,

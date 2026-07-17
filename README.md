@@ -404,7 +404,7 @@ frontend/               React SPA for auth, account, admin, and system flows
 infra/            Docker, schema, and runtime infrastructure assets
 ```
 
-The main bounded contexts are `tenancy`, `identitymanagement`,
+The main bounded contexts are `tenancy`, `idmanagement`,
 `authentication`, `oauth2`, `application`, `wsfederation`, and `saml`.
 Shared adapter code lives under `backend/shared`; runtime composition lives in
 `backend/bootstrap`.

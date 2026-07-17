@@ -28,7 +28,7 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false,
-      "description": "SCIM Bearer token または管理者 principal が操作を許可されない。"
+      "description": "認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。"
     },
     "AccessTokenClaims": {
       "type": "object",
@@ -2994,7 +2994,7 @@
         "visible",
         "hidden"
       ],
-      "description": "割当の可視性。hidden はポータル一覧から除外するがプロトコル利用は許可する。"
+      "description": "割当の可視性。Application context が所有する定義の published language stub。assign_application action の visibility 指定にのみ用いる。"
     },
     "AttrVisibility": {
       "type": "string",
@@ -3141,7 +3141,7 @@
           "items": {
             "$ref": "#/$defs/AuditEventFilterExpression"
           },
-          "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で、hash 化はしない。\n実アカウントが確定するイベントの検索には username query param を使う (本フィールドとは別経路)。\nclient.ip も平文一致で照合する (truncate/hash はしない)。event.type は SCL events セクションの型名\n(owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の enum (success / failure) から選ぶ\n選択式の値であり、自由入力ではない (AuditActorVsTarget / AuditSearchRegistry 参照)。actor.id /\nactor.username は操作者、target.id は管理操作の対象ユーザーを指し、意味が異なる。workflow.id /\nworkflow_run.id / workflow_step.id は IdentityManagement.LifecycleWorkflow* / WorkflowRun* /\nWorkflowStepFailed イベントの workflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、\nattribute value や email 本文は payload に含まないため検索対象にもならない。"
+          "description": "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で、hash 化はしない。\n実アカウントが確定するイベントの検索には username query param を使う (本フィールドとは別経路)。\nclient.ip も平文一致で照合する (truncate/hash はしない)。event.type は SCL events セクションの型名\n(owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の enum (success / failure) から選ぶ\n選択式の値であり、自由入力ではない (AuditActorVsTarget / AuditSearchRegistry 参照)。actor.id /\nactor.username は操作者、target.id は管理操作の対象ユーザーを指し、意味が異なる。workflow.id /\nworkflow_run.id / workflow_step.id は IdGovernance.LifecycleWorkflow* / WorkflowRun* /\nWorkflowStepFailed イベントの workflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、\nattribute value や email 本文は payload に含まないため検索対象にもならない。"
         }
       },
       "additionalProperties": false,
@@ -9190,7 +9190,7 @@
         "UpdateProfile",
         "TermsAndConditions"
       ],
-      "description": "次回ログイン時にユーザへ強制するアクション (Keycloak Required Actions / Okta transitioning 相当)。"
+      "description": "次回ログイン時にユーザへ強制するアクション。IdManagement.RequiredAction の published language stub。set_required_action/clear_required_action の action 定義参照にのみ用いる。"
     },
     "RequiredAuthnLevel": {
       "type": "object",
@@ -11190,7 +11190,7 @@
         "status",
         "roles"
       ],
-      "description": "IdentityManagement が publish する管理者 principal の最小 stub。"
+      "description": "IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。"
     },
     "UserAttributeDef": {
       "type": "object",
@@ -11727,7 +11727,7 @@
         "Staged",
         "Suspended"
       ],
-      "description": "User の運用状態の唯一の真実。状態機械 UserLifecycle (Active / Disabled / PendingDeletion / Deleted) と一致し、Okta lifecycle_state / Keycloak 相当の Locked / Staged / Suspended を追加する。Active 以外は認証不可、PendingDeletion は 猶予期間内に復元可能な削除予約、Deleted は終端 (tombstone)。「いつ遷移したか」は監査イベントと status_changed_at が持つ。"
+      "description": "User の運用状態。IdManagement.UserStatus の published language stub。trigger の from_status/to_status 評価にのみ用いる。値の唯一の真実は IdManagement が所有する。"
     },
     "UserUpdated": {
       "type": "object",

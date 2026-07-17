@@ -7,7 +7,7 @@ package http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"

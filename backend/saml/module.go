@@ -2,7 +2,7 @@
 package saml
 
 import (
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	samlhttp "github.com/ambi/idmagic/backend/saml/adapters/http"
 	"github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"

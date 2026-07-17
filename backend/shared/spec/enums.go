@@ -193,5 +193,5 @@ const (
 )
 
 // AgentStatus / AgentKind / UserStatus / RequiredAction / AttributeType / AttrVisibility は
-// identitymanagement/domain へ移設した (wi-178, ADR-089/ADR-093)。
+// idmanagement/domain へ移設した (wi-178, ADR-089/ADR-093)。
 // TenantStatus は tenancy/domain へ移設した (wi-179, ADR-089/ADR-093)。

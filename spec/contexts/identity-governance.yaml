@@ -1,0 +1,1251 @@
+# idmagic IdGovernance — SCL
+# Extracted from IdManagement by wi-237 (ADR-117).
+
+system: idmagic
+spec_version: "3.0"
+context: IdGovernance
+glossary:
+  LifecycleWorkflow:
+    definition: "テナント管理者が事前定義する、User の作成・属性変更・status 遷移を trigger として\n構造化 action を実行する定義。draft / enabled / disabled / archived のライフサイクルを持ち、\nenable された revision だけが新規 WorkflowRun を生成する。DAG や条件分岐は持たず、action は\n定義順の線形 list。\n"
+    aliases:
+      - lifecycle workflow
+      - ライフサイクルワークフロー
+    not_to_confuse_with:
+      - term: DynamicGroupRule
+        reason: DynamicGroupRule は Group 所属だけを CEL 式で決める単一目的の rule。LifecycleWorkflow は複数種の trigger と action からなる汎用の構造化 workflow で、Group 割当はその action の一種にすぎない。
+  WorkflowTrigger:
+    definition: "LifecycleWorkflow の revision が固定する発火条件。user_created / user_attributes_changed /\nuser_status_changed のいずれかの kind と、0〜20 件の型付き filter (field/operator/value の\nAND) からなる。評価は User mutation の post-state に対して行い、属性変更の before/after 判定\nだけは mutation 差分を使う。\n"
+    aliases:
+      - workflow trigger
+      - トリガー
+  WorkflowAction:
+    definition: "WorkflowRun が展開する desired-state 操作 1 件。add_group_member / remove_group_member /\nassign_application / unassign_application / set_required_action / clear_required_action /\nenable_user / disable_user / send_email のいずれかで、既に目的状態なら no_op として扱う\n冪等な操作。\n"
+    aliases:
+      - workflow action
+      - アクション
+  WorkflowRun:
+    definition: "WorkflowTrigger の発火 1 回から生成される実行単位。作成時の workflow_id、revision、\ntrigger occurrence、対象 user、展開済み action list を固定し、後から definition が変わっても\n意味が変わらない。Jobs の lifecycle_workflow_run Job に紐付いて実行される。\n"
+    aliases:
+      - workflow run
+      - ワークフロー実行
+  WorkflowStep:
+    definition: "WorkflowRun 内の action 1 件分の実行記録。outcome (changed / no_op / failed / canceled) と\nsanitised error code、実行時刻を checkpoint する。retry は failed step だけを再実行し、\nchanged / no_op 済み step は飛ばす。\n"
+    aliases:
+      - workflow step
+      - ステップ
+models:
+  User:
+    kind: entity
+    description: IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
+  UserStatus:
+    kind: enum
+    description: User の運用状態。IdManagement.UserStatus の published language stub。trigger の from_status/to_status 評価にのみ用いる。値の唯一の真実は IdManagement が所有する。
+    values:
+      - Active
+      - Disabled
+      - PendingDeletion
+      - Deleted
+      - Locked
+      - Staged
+      - Suspended
+  RequiredAction:
+    kind: enum
+    description: 次回ログイン時にユーザへ強制するアクション。IdManagement.RequiredAction の published language stub。set_required_action/clear_required_action の action 定義参照にのみ用いる。
+    values:
+      - UpdatePassword
+      - VerifyEmail
+      - ConfigureTotp
+      - UpdateProfile
+      - TermsAndConditions
+  AssignmentVisibility:
+    kind: enum
+    description: 割当の可視性。Application context が所有する定義の published language stub。assign_application action の visibility 指定にのみ用いる。
+    values:
+      - visible
+      - hidden
+  LifecycleWorkflowStatus:
+    kind: enum
+    description: LifecycleWorkflow のライフサイクル。archived は削除済み定義を実行履歴の参照整合性のため内部だけで保持する実装状態で、管理画面と通常 API には公開しない。
+    values:
+      - draft
+      - enabled
+      - disabled
+      - archived
+  WorkflowTriggerKind:
+    kind: enum
+    description: WorkflowTrigger の発火条件種別。初期版は User mutation 起点の3種のみ (日付・cron・待機 step は対象外)。
+    values:
+      - user_created
+      - user_attributes_changed
+      - user_status_changed
+  WorkflowFilterOperator:
+    kind: enum
+    description: WorkflowFilter で使える比較演算子。eq/not_eq は完全一致・不一致、in は値集合のいずれか一致、exists は値の有無判定。
+    values:
+      - eq
+      - not_eq
+      - in
+      - exists
+  WorkflowActionKind:
+    kind: enum
+    description: WorkflowAction の種別。いずれも desired-state で、既に目的状態なら no_op になる冪等操作。
+    values:
+      - add_group_member
+      - remove_group_member
+      - assign_application
+      - unassign_application
+      - set_required_action
+      - clear_required_action
+      - enable_user
+      - disable_user
+      - send_email
+  WorkflowRunStatus:
+    kind: enum
+    description: WorkflowRunLifecycle の状態。no-op は成功として扱う。
+    values:
+      - queued
+      - running
+      - succeeded
+      - partially_failed
+      - failed
+      - canceled
+  WorkflowStepOutcome:
+    kind: enum
+    description: WorkflowStep 1 件の実行結果。pending はまだ試行されていない初期値。
+    values:
+      - pending
+      - changed
+      - no_op
+      - failed
+      - canceled
+  WorkflowRevisionConflictError:
+    kind: error
+    description: "UpdateLifecycleWorkflow が input.request.expected_revision と現在の\nLifecycleWorkflow.current_revision の不一致を検出した (lost update の拒否)。呼び出し側は\n最新 revision を再取得してから再試行する。\n"
+  WorkflowFilter:
+    kind: value_object
+    description: "WorkflowTrigger.filters の1項。TenantUserAttributeSchema に存在し型が一致する field\nだけを保存でき、PII の自由文字 regex や未知 field は保存時に拒否する。複数 filter は AND。\n"
+    fields:
+      field:
+        type: String
+        constraints:
+          - non_empty
+        description: TenantUserAttributeSchema.key または User の built-in attribute key。
+      operator:
+        type: WorkflowFilterOperator
+      value:
+        type: JSON
+        optional: true
+        description: operator=exists では未指定。field の AttributeType と一致する型付き値 (in は配列)。
+  WorkflowTriggerDef:
+    kind: value_object
+    description: "LifecycleWorkflowRevision が固定する trigger 定義。kind に応じて watched_attributes\nまたは from_status/to_status を用いる。filters は 0〜20 件で AND。\n"
+    fields:
+      kind:
+        type: WorkflowTriggerKind
+      watched_attributes:
+        type: "String[]"
+        optional: true
+        description: "kind=user_attributes_changed のとき必須。列挙した field のいずれかが実際に変化した\n場合だけ発火する (request に含まれただけで値が同じ場合は発火しない)。\n"
+      from_status:
+        type: UserStatus
+        optional: true
+        description: kind=user_status_changed のとき必須。許可された UserLifecycle 遷移の from。
+      to_status:
+        type: UserStatus
+        optional: true
+        description: kind=user_status_changed のとき必須。許可された UserLifecycle 遷移の to。
+      filters:
+        type: "WorkflowFilter[]"
+        constraints:
+          - max_items: 20
+  WorkflowActionDef:
+    kind: value_object
+    description: "LifecycleWorkflowRevision が固定する action 定義 1 件。kind ごとに使うフィールドが異なり、\ncreate/update と enable の双方で参照先の存在を検証する。\n"
+    fields:
+      kind:
+        type: WorkflowActionKind
+      group_id:
+        type: String
+        optional: true
+        description: "kind=add_group_member/remove_group_member のとき必須。dynamic group を指定した場合は\n保存時に validation error。\n"
+      application_id:
+        type: String
+        optional: true
+        description: kind=assign_application/unassign_application のとき必須。
+      visibility:
+        type: AssignmentVisibility
+        optional: true
+        description: kind=assign_application のとき任意 (省略時 visible)。Application context が所有する定義の published language stub。
+      required_action:
+        type: RequiredAction
+        optional: true
+        description: kind=set_required_action/clear_required_action のとき必須。
+      reason:
+        type: String
+        optional: true
+        description: kind=enable_user/disable_user のとき任意の記録用理由。
+      template_key:
+        type: String
+        optional: true
+        description: kind=send_email のとき必須。固定 template key (custom template editor は対象外)。
+  LifecycleWorkflowRevision:
+    kind: entity
+    description: "LifecycleWorkflow の不変な definition 断面。意味の変わる update ごとに revision を 1 増やし、\n過去 revision は immutable に残す。enable された revision だけが新規 WorkflowRun を生成する。\n"
+    identity:
+      - workflow_id
+      - revision
+    fields:
+      workflow_id:
+        type: String
+      tenant_id:
+        type: String
+      revision:
+        type: Integer
+      trigger:
+        type: WorkflowTriggerDef
+      actions:
+        type: "WorkflowActionDef[]"
+        constraints:
+          - min_items: 1
+          - max_items: 20
+      created_at:
+        type: DateTime
+  LifecycleWorkflow:
+    kind: entity
+    description: "テナント内で name が一意な workflow 定義集約。create は revision 1 の draft を作る。\nenable した revision だけが trigger 評価対象になり、意味の変わる update は current_revision を\n増やすだけで status/enabled_revision は変えない。管理者は状態に関係なく削除でき、削除済み定義は\n一覧・取得・名前重複判定から除外する。既存の run と監査イベントは定義とは独立して保持する。\n"
+    identity: id
+    fields:
+      id:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 64
+        description: 生成識別子。UUID v4。不変。
+      tenant_id:
+        type: String
+        default: default
+        description: 所属テナント ID。cross-tenant 参照は禁止。
+      name:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 100
+        description: テナント内で一意な表示名。
+        annotations:
+          pii: true
+      description:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 500
+      status:
+        type: LifecycleWorkflowStatus
+        default: draft
+      current_revision:
+        type: Integer
+        description: 直近に作成した revision 番号。
+      enabled_revision:
+        type: Integer
+        optional: true
+        description: 現在 trigger 評価対象になっている revision。draft/disabled/archived では未設定のことがある。
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+        optional: true
+  WorkflowRunTriggerSnapshot:
+    kind: value_object
+    description: "WorkflowRun 作成時に固定する trigger 発火の要約。履歴には changed field 名と predicate の\n成否だけを残し、属性値そのものは保持しない (PII 保護)。\n"
+    fields:
+      kind:
+        type: WorkflowTriggerKind
+      source_occurrence_id:
+        type: String
+        description: 発火元の User mutation domain event ID。同一 occurrence の再配送は同じ run に収束する (dedup)。
+      changed_fields:
+        type: "String[]"
+        description: kind=user_attributes_changed のとき、実際に変化した field 名一覧 (値は含まない)。
+      from_status:
+        type: UserStatus
+        optional: true
+      to_status:
+        type: UserStatus
+        optional: true
+  WorkflowRun:
+    kind: entity
+    description: "WorkflowTrigger の発火 1 回から生成される実行単位。作成時の workflow_id、revision、\ntrigger snapshot、target_user_id、展開済み action list を固定し、後から definition を変更しても\n既存 run の意味は変わらない。job_id は dispatcher が enqueue 後に関連付ける。action 実行直前に\ntenant 内の対象 user と resource を再検証し、同一 target_user_id の run は triggered_at 順に\n直列化する。\n(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id) が一意制約。\n"
+    identity: id
+    fields:
+      id:
+        type: String
+        description: 生成識別子。UUID v4。
+      tenant_id:
+        type: String
+      workflow_id:
+        type: String
+      revision:
+        type: Integer
+      trigger:
+        type: WorkflowRunTriggerSnapshot
+      target_user_id:
+        type: String
+      actions:
+        type: "WorkflowActionDef[]"
+        description: revision から展開・固定した action list。definition が後から変わっても本 run の意味は変わらない。
+      status:
+        type: WorkflowRunStatus
+      job_id:
+        type: String
+        optional: true
+        description: dispatcher が enqueue 後に関連付ける Jobs.JobRef.id。未 enqueue の間は未設定。
+      triggered_at:
+        type: DateTime
+      started_at:
+        type: DateTime
+        optional: true
+      completed_at:
+        type: DateTime
+        optional: true
+  WorkflowStep:
+    kind: entity
+    description: "WorkflowRun 内の action 1 件分の実行記録。定義順の index を持ち、outcome と sanitised\nerror code を checkpoint する。attribute value / email 本文 / secret は保持しない。\n"
+    identity:
+      - run_id
+      - step_index
+    fields:
+      run_id:
+        type: String
+      tenant_id:
+        type: String
+      step_index:
+        type: Integer
+        description: WorkflowRun.actions 内の 0 始まり順序。
+      action_kind:
+        type: WorkflowActionKind
+      outcome:
+        type: WorkflowStepOutcome
+        default: pending
+      error_code:
+        type: String
+        optional: true
+        description: sanitised error code。attribute 値や email 本文は含めない。
+      attempted_at:
+        type: DateTime
+        optional: true
+  LifecycleNotificationDelivery:
+    kind: entity
+    description: send_email action の delivery 冪等キー。(run_id, step_index) 単位で一回分だけ送信したことを記録する。
+    identity:
+      - run_id
+      - step_index
+    fields:
+      run_id:
+        type: String
+      step_index:
+        type: Integer
+      tenant_id:
+        type: String
+      template_key:
+        type: String
+      delivered_at:
+        type: DateTime
+  LifecycleWorkflowDryRunRequest:
+    kind: value_object
+    description: dry-run 対象 user_id の入力。対象 revision は enabled_revision (未指定なら current_revision)。
+    fields:
+      target_user_id:
+        type: String
+  LifecycleWorkflowDryRunStepResult:
+    kind: value_object
+    description: "dry-run の action 1 件分の判定結果。対象 User の group membership、application\nassignment、required action、status、email 検証状態という現在の状態を実際に読み、本実行の\naction executor と同じ判定 (would_change / no_op / blocked) を副作用なしで返す。属性値や\nemail address は含まない。\n"
+    fields:
+      action_kind:
+        type: WorkflowActionKind
+      would_change:
+        type: String
+        description: would_change / no_op / blocked のいずれか。
+      reason:
+        type: String
+        optional: true
+        description: "blocked の理由コード (resource_not_found / dependency_unavailable /\nnotification_unavailable / trigger_not_matched 等)。would_change / no_op では省略する。\n"
+  LifecycleWorkflowDryRunResponse:
+    kind: value_object
+    description: "dry-run 結果。WorkflowRun / Job / membership / assignment / required action / status / email\nのいずれも作成・変更しない。evaluated_at と revision を含め、本実行の保証とは表示しない。\n"
+    fields:
+      workflow_id:
+        type: String
+      revision:
+        type: Integer
+      target_user_id:
+        type: String
+      evaluated_at:
+        type: DateTime
+      steps:
+        type: "LifecycleWorkflowDryRunStepResult[]"
+  LifecycleWorkflowCreateRequest:
+    kind: value_object
+    description: workflow 作成リクエスト。作成すると revision 1 の draft になる。
+    fields:
+      name:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 100
+      description:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 500
+      trigger:
+        type: WorkflowTriggerDef
+      actions:
+        type: "WorkflowActionDef[]"
+        constraints:
+          - min_items: 1
+          - max_items: 20
+  LifecycleWorkflowUpdateRequest:
+    kind: value_object
+    description: "workflow 更新リクエスト。expected_revision と現在の current_revision が一致しない場合は\nWorkflowRevisionConflictError で拒否する (lost update 防止)。\n"
+    fields:
+      expected_revision:
+        type: Integer
+      name:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 100
+      description:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 500
+      trigger:
+        type: WorkflowTriggerDef
+        optional: true
+      actions:
+        type: "WorkflowActionDef[]"
+        optional: true
+        constraints:
+          - min_items: 1
+          - max_items: 20
+  LifecycleWorkflowResponse:
+    kind: value_object
+    description: workflow 定義の表現 (current_revision の内容を含む)。
+    fields:
+      id:
+        type: String
+      name:
+        type: String
+      description:
+        type: String
+        optional: true
+      status:
+        type: LifecycleWorkflowStatus
+      current_revision:
+        type: Integer
+      enabled_revision:
+        type: Integer
+        optional: true
+      trigger:
+        type: WorkflowTriggerDef
+      actions:
+        type: "WorkflowActionDef[]"
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+        optional: true
+  LifecycleWorkflowListResponse:
+    kind: value_object
+    description: workflow 一覧レスポンス。
+    fields:
+      workflows:
+        type: "LifecycleWorkflowResponse[]"
+  WorkflowStepResponse:
+    kind: value_object
+    description: run detail 内の step 表現。secret / email 本文 / attribute value は含めない。
+    fields:
+      step_index:
+        type: Integer
+      action_kind:
+        type: WorkflowActionKind
+      outcome:
+        type: WorkflowStepOutcome
+      error_code:
+        type: String
+        optional: true
+      attempted_at:
+        type: DateTime
+        optional: true
+  WorkflowRunResponse:
+    kind: value_object
+    description: "run detail レスポンス。trigger、固定 revision、target user、Job attempt、各 step の\noutcome/error_code/timestamp を表示し、secret / email 本文 / attribute value は含めない。\n"
+    fields:
+      id:
+        type: String
+      workflow_id:
+        type: String
+      revision:
+        type: Integer
+      trigger:
+        type: WorkflowRunTriggerSnapshot
+      target_user_id:
+        type: String
+      status:
+        type: WorkflowRunStatus
+      job_id:
+        type: String
+        optional: true
+      steps:
+        type: "WorkflowStepResponse[]"
+      triggered_at:
+        type: DateTime
+      started_at:
+        type: DateTime
+        optional: true
+      completed_at:
+        type: DateTime
+        optional: true
+  WorkflowRunListResponse:
+    kind: value_object
+    description: workflow の run 一覧レスポンス。
+    fields:
+      runs:
+        type: "WorkflowRunResponse[]"
+      next_after:
+        type: DateTime
+        optional: true
+        description: ページング継続用カーソル。
+  LifecycleWorkflowCreated:
+    kind: event
+    description: 管理者が LifecycleWorkflow を作成した (revision 1 の draft)。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      workflowId:
+        type: String
+  LifecycleWorkflowUpdated:
+    kind: event
+    description: 管理者が LifecycleWorkflow を更新した。trigger/actions が変わり revision が増えた場合は newRevision を含む。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      workflowId:
+        type: String
+      newRevision:
+        type: Integer
+        optional: true
+  LifecycleWorkflowEnabled:
+    kind: event
+    description: 管理者が current_revision を validation に成功させ enabled_revision として enable した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      workflowId:
+        type: String
+      revision:
+        type: Integer
+  LifecycleWorkflowDisabled:
+    kind: event
+    description: 管理者が LifecycleWorkflow を disable した。新規 trigger を止め、未開始の queued run を canceled にする。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      workflowId:
+        type: String
+  LifecycleWorkflowDeleted:
+    kind: event
+    description: 管理者が LifecycleWorkflow を削除した。削除前の状態にかかわらず発行し、監査証跡として保持する。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      workflowId:
+        type: String
+  LifecycleWorkflowRunStarted:
+    kind: event
+    description: dispatcher が WorkflowRun を worker に渡し、最初の step 実行を開始した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      workflowId:
+        type: String
+      runId:
+        type: String
+      targetUserId:
+        type: String
+  LifecycleWorkflowRunSucceeded:
+    kind: event
+    description: WorkflowRun の全 step が changed または no_op で終端した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      workflowId:
+        type: String
+      runId:
+        type: String
+      targetUserId:
+        type: String
+  LifecycleWorkflowRunPartiallyFailed:
+    kind: event
+    description: WorkflowRun が attempt 上限に達し、成功と失敗が混在したまま終端した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      workflowId:
+        type: String
+      runId:
+        type: String
+      targetUserId:
+        type: String
+  LifecycleWorkflowRunFailed:
+    kind: event
+    description: WorkflowRun が attempt 上限に達し、成功した step が一つもないまま終端した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      workflowId:
+        type: String
+      runId:
+        type: String
+      targetUserId:
+        type: String
+  LifecycleWorkflowRunCanceled:
+    kind: event
+    description: disable により未開始の queued run が、または実行中の run が現在 step の checkpoint 後に停止した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      workflowId:
+        type: String
+      runId:
+        type: String
+      targetUserId:
+        type: String
+  LifecycleWorkflowStepFailed:
+    kind: event
+    description: WorkflowStep 1 件が failed outcome で確定した。監査検索用に workflow_id/run_id/step_id/error_code を残す。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      workflowId:
+        type: String
+      runId:
+        type: String
+      stepIndex:
+        type: Integer
+      actionKind:
+        type: WorkflowActionKind
+      errorCode:
+        type: String
+states:
+  WorkflowDefinitionLifecycle:
+    description: "LifecycleWorkflow.status の状態機械。draft で作成し、完全 validation に成功した revision を\nenable すると新規 trigger 評価対象になる。disable は新規 trigger を止め、再度 enable できる。\n管理者の削除は draft/enabled/disabled のすべてから可能で、enabled の削除は新規 trigger を止めて\nqueued run を cancel する。archived は削除済み定義を参照整合性のため内部保持する終端状態であり、\n管理画面と通常 API には公開しない。run 履歴と LifecycleWorkflowDeleted 監査イベントは保持する。\n"
+    target: LifecycleWorkflow
+    initial: draft
+    terminal:
+      - archived
+    transitions:
+      - from: draft
+        event: LifecycleWorkflowEnabled
+        to: enabled
+      - from: enabled
+        event: LifecycleWorkflowDisabled
+        to: disabled
+      - from: disabled
+        event: LifecycleWorkflowEnabled
+        to: enabled
+      - from: draft
+        event: LifecycleWorkflowDeleted
+        to: archived
+      - from: enabled
+        event: LifecycleWorkflowDeleted
+        to: archived
+      - from: disabled
+        event: LifecycleWorkflowDeleted
+        to: archived
+  WorkflowRunLifecycle:
+    description: "WorkflowRun.status の状態機械。queued で作成され、dispatcher が job_id を関連付けて\nrunning に遷移する (最初の step 実行開始)。1 attempt では未完了 step を定義順にすべて試し、\nJob の attempt 上限到達時に全 step 成功なら succeeded、成功と失敗が混在すれば\npartially_failed、成功が一つもなければ failed に終端する (no-op は成功として扱う)。\nJobs レベルの retry 中は run.status を running のまま保持する。disable は未開始の queued run を\ncanceled にし、running run は現在 step の checkpoint 後、次 step の前で canceled にする。\n"
+    target: WorkflowRun
+    initial: queued
+    terminal:
+      - succeeded
+      - partially_failed
+      - failed
+      - canceled
+    transitions:
+      - from: queued
+        event: LifecycleWorkflowRunStarted
+        to: running
+      - from: running
+        event: LifecycleWorkflowRunSucceeded
+        to: succeeded
+      - from: running
+        event: LifecycleWorkflowRunPartiallyFailed
+        to: partially_failed
+      - from: running
+        event: LifecycleWorkflowRunFailed
+        to: failed
+      - from: queued
+        event: LifecycleWorkflowRunCanceled
+        to: canceled
+      - from: running
+        event: LifecycleWorkflowRunCanceled
+        to: canceled
+interfaces:
+  ListLifecycleWorkflows:
+    description: 管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。
+    output:
+      response:
+        type: LifecycleWorkflowListResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflowDirectory
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/lifecycle_workflows
+  CreateLifecycleWorkflow:
+    description: 管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。
+    input:
+      request:
+        type: LifecycleWorkflowCreateRequest
+    output:
+      workflow:
+        type: LifecycleWorkflowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - LifecycleWorkflowCreated
+    ensures:
+      - emitted.exists(e, e is LifecycleWorkflowCreated)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflowDirectory
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/lifecycle_workflows
+        request_form: body
+        successful_status_codes:
+          - "201"
+  GetLifecycleWorkflow:
+    description: 管理者が LifecycleWorkflow 1 件を取得する。別テナントの workflow は未存在として扱う。
+    input:
+      workflow_id:
+        type: String
+    output:
+      workflow:
+        type: LifecycleWorkflowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/lifecycle_workflows/{workflow_id}"
+  UpdateLifecycleWorkflow:
+    description: "管理者が LifecycleWorkflow の trigger/actions/表示情報を更新する。expected_revision が\ncurrent_revision と一致しない場合は WorkflowRevisionConflictError で拒否する (lost update 防止)。\ntrigger または actions が変わる場合は current_revision を 1 増やすが status/enabled_revision は\n変えない (再度 EnableLifecycleWorkflow を呼ぶまで旧 revision の trigger 評価が続く)。archived\nworkflow は拒否する。\n"
+    input:
+      workflow_id:
+        type: String
+      request:
+        type: LifecycleWorkflowUpdateRequest
+    output:
+      workflow:
+        type: LifecycleWorkflowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+      - WorkflowRevisionConflictError
+    emits:
+      - LifecycleWorkflowUpdated
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/lifecycle_workflows/{workflow_id}"
+        request_form: body
+  EnableLifecycleWorkflow:
+    description: "管理者が current_revision を validation し、成功すれば enabled_revision に設定して\nstatus=enabled にする。以後この revision が trigger 評価対象になる。validation 失敗または\narchived workflow は拒否する。\n"
+    input:
+      workflow_id:
+        type: String
+      expected_revision:
+        type: Integer
+    output:
+      workflow:
+        type: LifecycleWorkflowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - LifecycleWorkflowEnabled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/lifecycle_workflows/{workflow_id}/enable"
+  DisableLifecycleWorkflow:
+    description: "管理者が LifecycleWorkflow を disable する。新規 trigger を止め、未開始の queued run を\ncanceled にする。running run は現在 step の checkpoint 後、次 step の前で停止する。\n"
+    input:
+      workflow_id:
+        type: String
+      expected_revision:
+        type: Integer
+    output:
+      workflow:
+        type: LifecycleWorkflowResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - LifecycleWorkflowDisabled
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/lifecycle_workflows/{workflow_id}/disable"
+  DeleteLifecycleWorkflow:
+    description: 管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。
+    input:
+      workflow_id:
+        type: String
+      expected_revision:
+        type: Integer
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - LifecycleWorkflowDeleted
+    ensures:
+      - emitted.exists(e, e is LifecycleWorkflowDeleted)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/lifecycle_workflows/{workflow_id}"
+        successful_status_codes:
+          - "204"
+  DryRunLifecycleWorkflow:
+    description: "管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ\nvalidator / trigger evaluator / action planner を使い、対象 User の現在の group membership /\napplication assignment / required action / status / email 検証状態を実際に読んで action ごとの\nwould_change / no_op / blocked を判定する。trigger の filter が対象 User に一致しない場合は\n全 action を blocked (reason: trigger_not_matched) として返す。対象 user が存在しないか別\ntenant の場合は InvalidRequestError を返す。WorkflowRun / Job / membership / assignment /\nrequired action / status / email のいずれも作成・変更しない。\n"
+    input:
+      workflow_id:
+        type: String
+      request:
+        type: LifecycleWorkflowDryRunRequest
+    output:
+      response:
+        type: LifecycleWorkflowDryRunResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/lifecycle_workflows/{workflow_id}/dry_run"
+        request_form: body
+  ListLifecycleWorkflowRuns:
+    description: 管理者が特定 LifecycleWorkflow の run 履歴を新しい順に一覧する。
+    input:
+      workflow_id:
+        type: String
+    output:
+      response:
+        type: WorkflowRunListResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: LifecycleWorkflow
+        id: input.workflow_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/lifecycle_workflows/{workflow_id}/runs"
+  GetLifecycleWorkflowRun:
+    description: 管理者が WorkflowRun 1 件の詳細 (trigger、revision、target user、Job attempt、各 step) を取得する。別テナントの run は未存在として扱う。
+    input:
+      run_id:
+        type: String
+    output:
+      response:
+        type: WorkflowRunResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: WorkflowRun
+        id: input.run_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/lifecycle_workflow_runs/{run_id}"
+  RetryLifecycleWorkflowRun:
+    description: "管理者が partially_failed または failed の WorkflowRun を再試行する。未完了 (failed) step\nだけを対象に新しい Job を関連付ける。changed / no_op 済み step は変更しない。disable と競合する\n場合は新しい step を開始しない。\n"
+    input:
+      run_id:
+        type: String
+    output:
+      response:
+        type: WorkflowRunResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: WorkflowRun
+        id: input.run_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/lifecycle_workflow_runs/{run_id}/retry"
+authorization:
+  resources:
+    LifecycleWorkflowDirectory:
+      description: テナント内の LifecycleWorkflow 一覧・作成対象を表す singleton resource。
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles'
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.tenant_id
+objectives:
+  LifecycleWorkflowTriggerHandoffLatency:
+    description: "User mutation の commit から WorkflowRun 作成までの遅延の99%以上を5秒未満に収める。\nAPI process の即時 dispatch が失敗しても、periodic dispatcher が同じ目標内に未 enqueue run を\n回収することを含む。\n"
+    indicator: measurement.latency < duration("5s")
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
+scenarios:
+  管理者はライフサイクルワークフローを作成できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が認証済みである
+    main_success:
+      - 管理者が一覧画面の新規作成操作から専用の作成画面へ移動する
+      - 管理者が日本語の説明を確認しながら trigger 種別と action 種別を選択する
+      - 管理者が action ごとの必須設定を入力し、複数 action の実行順を並べ替える
+      - 管理者がワークフローを作成すると、選択した trigger と順序付き action が revision 1 の draft として返される
+      - UI は trigger、action、draft、revision、current_revision などの内部識別子を露出せず、日本語の表示名と意味を表示する
+    extensions:
+      - at: 3
+        condition: trigger または action の必須設定が不足している
+        steps:
+          - 作成操作は無効になり、不足している設定が日本語で表示される
+      - at: 2
+        condition: group または application を使う action に選択可能な参照先がない
+        steps:
+          - 作成は拒否され、先に参照先を作成する必要があることが日本語で表示される
+  管理者は既存ライフサイクルワークフローの定義を編集できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が既存ワークフローを選択している
+    main_success:
+      - 管理者が一覧画面の編集操作から専用の編集画面へ移動する
+      - 現在の trigger と順序付き action が日本語の表示名と説明付きでフォームに復元される
+      - 管理者が trigger または action を変更して保存する
+      - current_revision が増え、変更した定義が一覧と編集フォームに反映される
+  管理者が定義したworkflowが部署変更でグループとアプリ割当を更新する:
+    actor: TenantAdministrator
+    given:
+      - "roles=[\"admin\"] の管理者 \"operator\" が LifecycleWorkflow \"engineering-onboarding\" (trigger=user_attributes_changed department、action=add_group_member+assign_application) を enable 済みである"
+      - "ユーザー \"alice\" は department=\"Sales\" である"
+    main_success:
+      - "管理者 \"operator\" がユーザー \"alice\" の department を \"Engineering\" に更新する"
+      - "WorkflowRun が作成され trigger snapshot に changed_fields=[\"department\"] を保持する"
+      - "worker が run を実行し add_group_member と assign_application の step が changed になる"
+      - "run の status は succeeded である"
+      - "\"LifecycleWorkflowRunSucceeded\" が発行される"
+  User変更とWorkflowRunのcaptureは同じ整合性境界で確定しenqueue障害から回復する:
+    actor: TenantAdministrator
+    given:
+      - "user_created / user_attributes_changed / user_status_changed のいずれかに一致する enabled workflow がある"
+    main_success:
+      - User mutation と重複排除キー (tenant_id, workflow_id, revision, source_occurrence_id, target_user_id) を持つ queued WorkflowRun および pending WorkflowStep が同一 transaction で確定する
+      - 同じ source occurrence の再配送は既存 WorkflowRun に収束し、step を重複作成しない
+    extensions:
+      - at: 2
+        condition: Job enqueue が一時的に失敗する
+        steps:
+          - WorkflowRun は job_id 未設定の queued 状態で残る
+          - worker の周期的 dispatcher が未 enqueue run を再走査し、重複しない lifecycle_workflow_run Job を関連付ける
+  既に目的状態のactionはno_opとして扱われる:
+    actor: TenantAdministrator
+    given:
+      - "ユーザー \"alice\" は既に対象 Group のメンバーである"
+      - "enable 済みの workflow が \"alice\" の department 変更で add_group_member を実行する"
+    main_success:
+      - "add_group_member の step outcome は no_op である"
+      - "membership の重複行は作成されない"
+      - "run の status は succeeded である"
+  値が変わらない属性更新とdynamic groupへのaction指定は境界として扱われる:
+    actor: TenantAdministrator
+    given:
+      - "\"alice\" の department は既に \"Engineering\" である"
+    main_success:
+      - "管理者が \"alice\" の department に同じ値 \"Engineering\" を指定して更新する"
+      - "user_attributes_changed trigger は発火せず WorkflowRun は作成されない"
+    extensions:
+      - at: 1
+        condition: workflow の add_group_member action に dynamic group を指定して保存する
+        steps:
+          - 保存は拒否される
+          - "エラー \"InvalidRequestError\""
+  未知fieldや別テナントresourceを参照するworkflowはenableできない:
+    actor: TenantAdministrator
+    given:
+      - "tenant_id \"acme\" の管理者が workflow を編集している"
+    main_success:
+      - "TenantUserAttributeSchema に存在しない field を filter に指定して保存する"
+      - "エラー \"InvalidRequestError\""
+    extensions:
+      - at: 1
+        condition: "tenant_id \"default\" の group_id を action に指定して enable する"
+        steps:
+          - enable は拒否される
+          - "エラー \"InvalidRequestError\""
+  通知失敗があってもアクセス剥奪actionは前進する:
+    actor: TenantAdministrator
+    given:
+      - "enable 済みの leaver workflow が disable_user、remove_group_member、send_email を定義順に持つ"
+      - 対象 User に verified primary email がない
+    main_success:
+      - 退職相当の status 変更で run が作成される
+      - "disable_user と remove_group_member の step は changed になる"
+      - "send_email の step は blocked failure になる"
+      - "run の status は partially_failed である"
+      - "\"LifecycleWorkflowRunPartiallyFailed\" と \"LifecycleWorkflowStepFailed\" が発行される"
+  一時的な失敗はretryで成功済みstepを飛ばして収束する:
+    actor: TenantAdministrator
+    given:
+      - "enable 済みの workflow による run が 1 attempt 目で repository timeout により一部 step 未完了である"
+    main_success:
+      - handler が Jobs に retryable error を返す
+      - Jobs が backoff 後に同じ run の Job を再試行する
+      - retry では changed / no_op 済み step は再実行されず failed step だけが再実行される
+      - "管理者が run detail を確認すると status は succeeded である"
+  同一ユーザーのrunは発火順に直列化され副作用前に再検証される:
+    actor: TenantAdministrator
+    given:
+      - "同じ target user に対する queued WorkflowRun が triggered_at 順に2件ある"
+    main_success:
+      - worker は先行 run が terminal になるまで後続 run の action を開始しない
+      - 各 action の直前に対象 user と group/application resource を同一 tenant 内で再取得する
+      - 削除済みまたは別 tenant の resource を参照する step は sanitised error code で failed checkpoint される
+  disableは未開始のqueued runをcancelし実行中のrunはstep境界で止まる:
+    actor: TenantAdministrator
+    given:
+      - "workflow が enabled で running の WorkflowRun \"run-1\" と queued の WorkflowRun \"run-2\" が存在する"
+    main_success:
+      - 管理者が workflow を disable する
+      - "\"run-2\" は直ちに canceled になる"
+      - "\"run-1\" は現在の step の checkpoint 後、次の step の前で canceled になる"
+      - disable 後に新しい trigger は run を作らない
+    extensions:
+      - at: 1
+        condition: disable と retry が競合する
+        steps:
+          - disable 済み workflow の run に対する retry は新しい step を開始しない
+          - "エラー \"InvalidRequestError\""
+  別テナントのworkflowとresourceはテナント境界を越えない:
+    actor: TenantAdministrator
+    given:
+      - "tenant_id \"acme\" の管理者が tenant_id \"default\" の workflow_id を指定して取得する"
+    main_success:
+      - workflow は未存在として扱われる
+    extensions:
+      - at: 1
+        condition: "tenant_id \"acme\" の workflow の action が tenant_id \"default\" の group_id を参照する"
+        steps:
+          - 保存または run 実行時に拒否され、別テナントの同名 resource へ fallback しない
+          - "エラー \"InvalidRequestError\""
+  dry-runはaction結果を試算するがWorkflowRunやJobを作成しない:
+    actor: TenantAdministrator
+    given:
+      - "workflow が enabled で対象 User が action の一部について既に目的状態 (例: 既に group member) である"
+    main_success:
+      - 管理者が dry_run を呼び出す
+      - 対象 User の現在の group membership / application assignment / required action / status / email 検証状態が実際に読まれる
+      - "既に目的状態の action は no_op、状態が変わる action は would_change、resource が存在しないなど実行不能な action は blocked と理由を返す"
+      - "WorkflowRun、Job、membership、assignment、required action、status、email は一切作成・変更されない"
+    extensions:
+      - at: 1
+        condition: enable 済みの draft 編集が current_revision にあり enabled_revision は未編集の内容を指す
+        steps:
+          - dry-run は enabled_revision の action と trigger を評価し draft の変更を反映しない
+      - at: 2
+        condition: workflow の trigger の filter が対象 User の現在属性に一致しない
+        steps:
+          - "応答は全 action を blocked、reason \"trigger_not_matched\" として返す"
+flows:
+  AdminLifecycleWorkflows:
+    entry: AdminLifecycleWorkflows
+    views:
+      AdminLifecycleWorkflows:
+        sees: LifecycleWorkflow一覧画面(name、status、trigger種別)
+        does:
+          - action: list
+            does: 画面を開く
+            interface: ListLifecycleWorkflows
+            to: AdminLifecycleWorkflows
+          - action: create
+            does: 新規作成を選び専用の作成画面を開く
+            to: AdminLifecycleWorkflowEditor
+          - action: view
+            does: 一覧から workflow を1件クリックして編集画面を開く
+            interface: GetLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
+      AdminLifecycleWorkflowEditor:
+        sees: 一覧から分離された専用editor画面(trigger/filter/action の型付き form、validation summary、保存前の action 順序表示)
+        does:
+          - action: create
+            does: 新しい workflow 定義を作成する
+            interface: CreateLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
+          - action: update
+            does: trigger/actions/表示情報を編集して保存する (expected_revision による楽観ロック)
+            interface: UpdateLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
+          - action: dry_run
+            does: 対象 user を指定して dry-run を実行し would-change/no-op/blocked を確認する
+            interface: DryRunLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
+          - action: enable
+            does: validation に成功した revision を enable する
+            interface: EnableLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
+          - action: disable
+            does: 影響 (未開始 run の cancel、実行中 run の停止範囲) を確認して disable する
+            interface: DisableLifecycleWorkflow
+            to: AdminLifecycleWorkflowEditor
+          - action: delete
+            does: 確認後、状態に関係なく workflow を削除する
+            interface: DeleteLifecycleWorkflow
+            to: AdminLifecycleWorkflows
+          - action: view_runs
+            does: 実行履歴画面へ移動する
+            interface: ListLifecycleWorkflowRuns
+            to: AdminLifecycleWorkflowRuns
+      AdminLifecycleWorkflowRuns:
+        sees: 実行履歴画面(triggered_at、target user、status の一覧)
+        does:
+          - action: list
+            does: workflow の run 一覧を表示する
+            interface: ListLifecycleWorkflowRuns
+            to: AdminLifecycleWorkflowRuns
+          - action: view
+            does: run を1件クリックして詳細を表示する
+            interface: GetLifecycleWorkflowRun
+            to: AdminLifecycleWorkflowRunDetail
+      AdminLifecycleWorkflowRunDetail:
+        sees: run detail画面(trigger、固定 revision、target user、Job attempt、各 step の outcome/error_code/timestamp)
+        does:
+          - action: view
+            does: 画面を開く
+            interface: GetLifecycleWorkflowRun
+            to: AdminLifecycleWorkflowRunDetail
+          - action: retry
+            does: partially_failed / failed の run を再試行する
+            interface: RetryLifecycleWorkflowRun
+            to: AdminLifecycleWorkflowRunDetail

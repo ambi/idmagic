@@ -2,7 +2,7 @@
 package scim
 
 import (
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	scimusecases "github.com/ambi/idmagic/backend/scim/usecases"

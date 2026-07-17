@@ -12,9 +12,9 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	"github.com/ambi/idmagic/backend/identitymanagement"
-	idmhttp "github.com/ambi/idmagic/backend/identitymanagement/adapters/http"
-	idmports "github.com/ambi/idmagic/backend/identitymanagement/ports"
+	"github.com/ambi/idmagic/backend/idmanagement"
+	idmhttp "github.com/ambi/idmagic/backend/idmanagement/adapters/http"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
@@ -49,8 +49,8 @@ type Deps struct {
 	Tenancy tenancy.Module
 	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
 	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
-	IdentityManagement identitymanagement.Module
-	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdentityManagement.Module のみを設定する。
+	IdManagement idmanagement.Module
+	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdManagement.Module のみを設定する。
 	UserRepo       idmports.UserRepository
 	GroupRepo      idmports.GroupRepository
 	AgentRepo      idmports.AgentRepository
@@ -92,14 +92,14 @@ type Deps struct {
 func Register(e *echo.Echo, d Deps) {
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
-	d.IdentityManagement = mergeLegacyIdentityManagementDeps(d.IdentityManagement, d)
+	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
 	d.Tenancy = mergeLegacyTenancyDeps(d.Tenancy, d)
 	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
 
 	authenticator := &support.Authenticator{
-		UserRepo:          d.IdentityManagement.UserRepo,
-		GroupRepo:         d.IdentityManagement.GroupRepo,
+		UserRepo:          d.IdManagement.UserRepo,
+		GroupRepo:         d.IdManagement.GroupRepo,
 		SessionManager:    d.Authentication.SessionManager,
 		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		AuthnResolver:     d.Authentication.AuthnResolver,
@@ -111,14 +111,14 @@ func Register(e *echo.Echo, d Deps) {
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-		UserRepo:       d.IdentityManagement.UserRepo,
+		UserRepo:       d.IdManagement.UserRepo,
 	})
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-		UserRepo:       d.IdentityManagement.UserRepo,
+		UserRepo:       d.IdManagement.UserRepo,
 	})
 
 	e.GET("/health", d.handleHealth)
@@ -194,7 +194,7 @@ func mergeLegacyTenancyDeps(module tenancy.Module, d Deps) tenancy.Module {
 	return module
 }
 
-func mergeLegacyIdentityManagementDeps(module identitymanagement.Module, d Deps) identitymanagement.Module {
+func mergeLegacyIdManagementDeps(module idmanagement.Module, d Deps) idmanagement.Module {
 	if module.UserRepo == nil {
 		module.UserRepo = d.UserRepo
 	}
@@ -212,14 +212,14 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		d.SigningKeys.KeyStore = d.KeyStore
 	}
 	authenticator := &support.Authenticator{
-		UserRepo:          d.IdentityManagement.UserRepo,
-		GroupRepo:         d.IdentityManagement.GroupRepo,
+		UserRepo:          d.IdManagement.UserRepo,
+		GroupRepo:         d.IdManagement.GroupRepo,
 		SessionManager:    d.Authentication.SessionManager,
 		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		AuthnResolver:     d.Authentication.AuthnResolver,
 	}
 
-	appGate := d.Application.Gate(d.IdentityManagement.GroupRepo, d.TrustedForwardedHops)
+	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
@@ -235,7 +235,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.OAuth2.PARStore,
 		RequestStore:               d.OAuth2.RequestStore,
-		UserRepo:                   d.IdentityManagement.UserRepo,
+		UserRepo:                   d.IdManagement.UserRepo,
 		PasswordHasher:             d.Authentication.PasswordHasher,
 		LoginAttemptThrottle:       d.Authentication.LoginAttemptThrottle,
 		MfaFactorRepo:              d.Authentication.MfaFactorRepo,
@@ -247,7 +247,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		DpopReplayStore:            d.OAuth2.DpopReplayStore,
 		RefreshStore:               d.OAuth2.RefreshStore,
 		TokenIssuer:                d.OAuth2.TokenIssuer,
-		AgentRepo:                  d.IdentityManagement.AgentRepo,
+		AgentRepo:                  d.IdManagement.AgentRepo,
 		TokenIntrospector:          d.OAuth2.TokenIntrospector,
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
 		AttrSchemaRepo:             d.Tenancy.AttrSchemaRepo,
@@ -274,15 +274,15 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantSaltStore: d.Audit.TenantSaltStore,
 		// d.UserRepo (トップレベル) は wi-178 移行中の非推奨テスト互換フィールドで、実運用の
 		// bootstrap では設定されない。username -> user_id 解決 (wi-147) には
-		// d.IdentityManagement.UserRepo を使う。
-		UserRepo: d.IdentityManagement.UserRepo,
+		// d.IdManagement.UserRepo を使う。
+		UserRepo: d.IdManagement.UserRepo,
 	})
 
 	authhttp.RegisterRoutes(g, authhttp.Deps{
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
 		AuditEventRepo:            d.Audit.AuditEventRepo,
-		UserRepo:                  d.IdentityManagement.UserRepo,
+		UserRepo:                  d.IdManagement.UserRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
 		ConsentRepo:               d.OAuth2.ConsentRepo,
@@ -304,12 +304,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{
 		Deps:                     d.Deps,
 		Authenticator:            authenticator,
-		UserRepo:                 d.IdentityManagement.UserRepo,
-		GroupRepo:                d.IdentityManagement.GroupRepo,
-		AgentRepo:                d.IdentityManagement.AgentRepo,
-		LifecycleWorkflowRepo:    d.IdentityManagement.LifecycleWorkflowRepo,
-		LifecycleWorkflowRunRepo: d.IdentityManagement.LifecycleWorkflowRunRepo,
-		UserWorkflowCapture:      d.IdentityManagement.UserWorkflowCapture,
+		UserRepo:                 d.IdManagement.UserRepo,
+		GroupRepo:                d.IdManagement.GroupRepo,
+		AgentRepo:                d.IdManagement.AgentRepo,
+		LifecycleWorkflowRepo:    d.IdManagement.LifecycleWorkflowRepo,
+		LifecycleWorkflowRunRepo: d.IdManagement.LifecycleWorkflowRunRepo,
+		UserWorkflowCapture:      d.IdManagement.UserWorkflowCapture,
 		ClientRepo:               d.OAuth2.ClientRepo,
 		ScimRepo:                 d.Scim.Repo,
 		AttrSchemaRepo:           d.Tenancy.AttrSchemaRepo,
@@ -333,16 +333,16 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AttrSchemaRepo:     d.Tenancy.AttrSchemaRepo,
 		BrandingRepo:       d.Tenancy.BrandingRepo,
 		BrandingAssetStore: d.Tenancy.BrandingAssetStore,
-		UserRepo:           d.IdentityManagement.UserRepo,
-		GroupRepo:          d.IdentityManagement.GroupRepo,
+		UserRepo:           d.IdManagement.UserRepo,
+		GroupRepo:          d.IdManagement.GroupRepo,
 	})
 
-	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner,
+	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash)
 
-	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdentityManagement.UserRepo, d.FederationSigner)
+	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdentityManagement.GroupRepo, d.IdentityManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
-	d.Scim.Register(g, d.Deps, authenticator, d.IdentityManagement.UserRepo, d.IdentityManagement.GroupRepo, d.Emit)
+	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit)
 }

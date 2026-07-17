@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 type Attributes = claimdomain.Attributes

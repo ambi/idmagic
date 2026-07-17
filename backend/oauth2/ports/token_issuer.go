@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 

@@ -95,7 +95,7 @@ standards:
         section: Article 17
         strength: MUST
         adoption: required
-        statement: 削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdentityManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う。
+        statement: 削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う。
       - id: GDPR-PROCESSING-RECORDS
         section: Article 30
         strength: MUST

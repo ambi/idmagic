@@ -25,9 +25,9 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"

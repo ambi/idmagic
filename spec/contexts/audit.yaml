@@ -34,7 +34,7 @@ glossary:
 models:
   User:
     kind: entity
-    description: IdentityManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    description: IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
     identity: id
     fields:
       id:
@@ -94,7 +94,7 @@ models:
       filter:
         type: "AuditEventFilterExpression[]"
         optional: true
-        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で、hash 化はしない。\n実アカウントが確定するイベントの検索には username query param を使う (本フィールドとは別経路)。\nclient.ip も平文一致で照合する (truncate/hash はしない)。event.type は SCL events セクションの型名\n(owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の enum (success / failure) から選ぶ\n選択式の値であり、自由入力ではない (AuditActorVsTarget / AuditSearchRegistry 参照)。actor.id /\nactor.username は操作者、target.id は管理操作の対象ユーザーを指し、意味が異なる。workflow.id /\nworkflow_run.id / workflow_step.id は IdentityManagement.LifecycleWorkflow* / WorkflowRun* /\nWorkflowStepFailed イベントの workflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、\nattribute value や email 本文は payload に含まないため検索対象にもならない。"
+        description: "registry allowlist の field/operator による構造化検索式の連言 (AND)。actor.username は\n実在しないアカウント名も追跡する必要がある認証失敗イベント専用の平文一致検索で、hash 化はしない。\n実アカウントが確定するイベントの検索には username query param を使う (本フィールドとは別経路)。\nclient.ip も平文一致で照合する (truncate/hash はしない)。event.type は SCL events セクションの型名\n(owns_events) の allowlist、outcome は Go 側 eventOutcome 分類の enum (success / failure) から選ぶ\n選択式の値であり、自由入力ではない (AuditActorVsTarget / AuditSearchRegistry 参照)。actor.id /\nactor.username は操作者、target.id は管理操作の対象ユーザーを指し、意味が異なる。workflow.id /\nworkflow_run.id / workflow_step.id は IdGovernance.LifecycleWorkflow* / WorkflowRun* /\nWorkflowStepFailed イベントの workflowId/runId/stepIndex から eq 一致で検索できる registry 属性で、\nattribute value や email 本文は payload に含まないため検索対象にもならない。"
   AuditEventFilterOperator:
     kind: enum
     description: "監査イベント検索 filter 式で使える比較演算子。registry の属性ごとに許可 operator が宣言される。eq は完全一致、in は値集合のいずれか一致、contains は部分一致 (q 用)、time_range は occurred_at の期間指定。"

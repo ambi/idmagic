@@ -5,7 +5,7 @@ import (
 
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )

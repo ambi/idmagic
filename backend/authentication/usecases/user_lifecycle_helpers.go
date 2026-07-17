@@ -3,7 +3,7 @@ package usecases
 import (
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 // removeRequiredAction は action を除いた新しいスライスを返す (元を破壊しない)。

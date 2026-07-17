@@ -1,0 +1,458 @@
+package usecases_test
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"testing"
+	"time"
+
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+)
+
+func newAgentDeps(t *testing.T) (idmusecases.AdminAgentDeps, *[]spec.DomainEvent) {
+	t.Helper()
+	clientRepo := oauth2memory.NewClientRepository()
+	userRepo := idmmemory.NewUserRepository()
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
+		RedirectURIs:             []string{"https://app.example/cb"},
+		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
+	})
+	userRepo.Seed(&idmdomain.User{
+		ID: "operator", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "operator",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	})
+	userRepo.Seed(&idmdomain.User{
+		ID: "user_new", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user-new",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	})
+	events := &[]spec.DomainEvent{}
+	deps := idmusecases.AdminAgentDeps{
+		AgentRepo:  idmmemory.NewAgentRepository(),
+		ClientRepo: clientRepo,
+		UserRepo:   userRepo,
+		Emit:       func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
+	}
+	return deps, events
+}
+
+func agentEventTypes(events []spec.DomainEvent) []string {
+	out := make([]string, len(events))
+	for i, e := range events {
+		out[i] = e.EventType()
+	}
+	return out
+}
+
+// defaultTenantCtx は tenancy.TenantID が tenancydomain.DefaultTenantID を返す素の context。
+func defaultTenantCtx() context.Context {
+	return context.Background()
+}
+
+func tenantCtx(id string) context.Context {
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://idp.example", "")
+}
+
+func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Roles: []string{"deploy:run"}, Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if agent.OwnerUserID != "operator" {
+		t.Fatalf("owner_sub default = %q, want operator", agent.OwnerUserID)
+	}
+	if agent.Status != idmdomain.AgentStatusActive || agent.Kind != idmdomain.AgentKindSupervised {
+		t.Fatalf("unexpected defaults: status=%q kind=%q", agent.Status, agent.Kind)
+	}
+
+	// 名前一意性 (大文字小文字無視)
+	if _, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "Deploy-Bot", Now: now,
+	}); !errors.Is(err, idmusecases.ErrAgentNameConflict) {
+		t.Fatalf("expected name conflict, got %v", err)
+	}
+
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentRegistered"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestListAgentsAndUpdateDetails(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := idmusecases.BindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := idmusecases.ListAgents(ctx, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Agent.ID != agent.ID || !slices.Equal(list[0].ClientIDs, []string{"svc_client"}) {
+		t.Fatalf("list = %+v", list)
+	}
+
+	*events = (*events)[:0]
+	newName := "deploy-bot-renamed"
+	desc := "  deploy automation  "
+	kind := idmdomain.AgentKindAutonomous
+	roles := []string{"deploy:run", "deploy:read"}
+	normalizedRoles := []string{"deploy:read", "deploy:run"}
+	updated, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Name: &newName, Description: &desc, Kind: &kind, Roles: &roles, Now: now.Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Name != newName || updated.Description == nil || *updated.Description != "deploy automation" || updated.Kind != kind || !slices.Equal(updated.Roles, normalizedRoles) {
+		t.Fatalf("updated = %+v", updated)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentUpdated"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+
+	again, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Now: now.Add(2 * time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Name != newName {
+		t.Fatalf("no-op update changed agent: %+v", again)
+	}
+}
+
+func TestAgentInputValidationErrors(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+
+	if _, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: " ", Now: now,
+	}); !errors.Is(err, idmusecases.ErrAgentNameEmpty) {
+		t.Fatalf("expected ErrAgentNameEmpty, got %v", err)
+	}
+	if _, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		Name: "ownerless", Now: now,
+	}); !errors.Is(err, idmusecases.ErrAgentOwnerRequired) {
+		t.Fatalf("expected ErrAgentOwnerRequired, got %v", err)
+	}
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blankName := " "
+	if _, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Name: &blankName,
+	}); !errors.Is(err, idmusecases.ErrAgentNameEmpty) {
+		t.Fatalf("expected ErrAgentNameEmpty, got %v", err)
+	}
+	blankOwner := " "
+	if _, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, OwnerUserID: &blankOwner,
+	}); !errors.Is(err, idmusecases.ErrAgentOwnerRequired) {
+		t.Fatalf("expected ErrAgentOwnerRequired, got %v", err)
+	}
+	roles := []string{" "}
+	if _, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Roles: &roles,
+	}); err == nil {
+		t.Fatal("expected invalid role error")
+	}
+	if _, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: "ghost", Name: &blankName,
+	}); !errors.Is(err, idmusecases.ErrAgentNotFound) {
+		t.Fatalf("expected ErrAgentNotFound, got %v", err)
+	}
+}
+
+func TestGetAgentRejectsCrossTenant(t *testing.T) {
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(defaultTenantCtx(), deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherCtx := tenantCtx("acme")
+	if _, err := idmusecases.GetAgent(otherCtx, deps, agent.ID); !errors.Is(err, idmusecases.ErrAgentNotFound) {
+		t.Fatalf("expected ErrAgentNotFound cross-tenant, got %v", err)
+	}
+}
+
+func TestSetAgentDisabledThenEnable(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	disabled, err := idmusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, true, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disabled.Status != idmdomain.AgentStatusDisabled || disabled.DisabledAt == nil || disabled.IsActive() {
+		t.Fatalf("disabled agent unexpected: %+v", disabled)
+	}
+	enabled, err := idmusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, false, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enabled.Status != idmdomain.AgentStatusActive || enabled.DisabledAt != nil || !enabled.IsActive() {
+		t.Fatalf("enabled agent unexpected: %+v", enabled)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentDisabled", "AgentEnabled"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestKillAgentIsIrreversible(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	killed, err := idmusecases.KillAgent(ctx, deps, "operator", agent.ID, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if killed.Status != idmdomain.AgentStatusKilled || killed.KilledAt == nil || killed.IsActive() {
+		t.Fatalf("killed agent unexpected: %+v", killed)
+	}
+	// 再 kill / enable / update は reject
+	if _, err := idmusecases.KillAgent(ctx, deps, "operator", agent.ID, now); !errors.Is(err, idmusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled on re-kill, got %v", err)
+	}
+	if _, err := idmusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, false, now); !errors.Is(err, idmusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled on enable-after-kill, got %v", err)
+	}
+	if _, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Name: new("x"),
+	}); !errors.Is(err, idmusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled on update-after-kill, got %v", err)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentKilled"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestUpdateAgentOwnerChangeEmitsOwnerChanged(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	updated, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, OwnerUserID: new("user_new"), Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.OwnerUserID != "user_new" {
+		t.Fatalf("owner not changed: %q", updated.OwnerUserID)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentUpdated", "AgentOwnerChanged"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestRegisterAndUpdateAgentRejectUnknownOwner(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	if _, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", OwnerUserID: "ghost", Now: now,
+	}); !errors.Is(err, idmusecases.ErrAgentOwnerNotFound) {
+		t.Fatalf("expected ErrAgentOwnerNotFound on register, got %v", err)
+	}
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := idmusecases.UpdateAgent(ctx, deps, idmusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, OwnerUserID: new("ghost"), Now: now,
+	}); !errors.Is(err, idmusecases.ErrAgentOwnerNotFound) {
+		t.Fatalf("expected ErrAgentOwnerNotFound on update, got %v", err)
+	}
+}
+
+func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	if err := idmusecases.BindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	// 冪等再束縛は event を増やさない
+	if err := idmusecases.BindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	// 未知 client は reject
+	if err := idmusecases.BindCredential(ctx, deps, "operator", agent.ID, "ghost", now); !errors.Is(err, idmusecases.ErrAgentClientNotFound) {
+		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
+	}
+
+	found, err := deps.AgentRepo.FindByClientID(ctx, tenancydomain.DefaultTenantID, "svc_client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found == nil || found.ID != agent.ID {
+		t.Fatalf("FindByClientID returned %+v", found)
+	}
+
+	view, err := idmusecases.GetAgent(ctx, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(view.ClientIDs, []string{"svc_client"}) {
+		t.Fatalf("client_ids = %v", view.ClientIDs)
+	}
+
+	if err := idmusecases.UnbindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	found, err = deps.AgentRepo.FindByClientID(ctx, tenancydomain.DefaultTenantID, "svc_client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found != nil {
+		t.Fatalf("expected nil after unbind, got %+v", found)
+	}
+
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentCredentialBound", "AgentCredentialUnbound"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestBindCredentialRejectsClientAlreadyBoundToAnotherAgent(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	first, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "report-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := idmusecases.BindCredential(ctx, deps, "operator", first.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := idmusecases.BindCredential(ctx, deps, "operator", second.ID, "svc_client", now); !errors.Is(err, idmusecases.ErrAgentClientBound) {
+		t.Fatalf("expected ErrAgentClientBound, got %v", err)
+	}
+}
+
+func TestDeleteAgentEmitsAgentDeleted(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+	if err := idmusecases.DeleteAgent(ctx, deps, "operator", agent.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := idmusecases.GetAgent(ctx, deps, agent.ID); !errors.Is(err, idmusecases.ErrAgentNotFound) {
+		t.Fatalf("expected ErrAgentNotFound after delete, got %v", err)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentDeleted"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestDeleteKilledAgentIsRejected(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := idmusecases.RegisterAgent(ctx, deps, idmusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := idmusecases.KillAgent(ctx, deps, "operator", agent.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := idmusecases.DeleteAgent(ctx, deps, "operator", agent.ID, now); !errors.Is(err, idmusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled, got %v", err)
+	}
+	found, err := idmusecases.GetAgent(ctx, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found.Agent.Status != idmdomain.AgentStatusKilled {
+		t.Fatalf("agent was deleted or changed: %+v", found.Agent)
+	}
+}

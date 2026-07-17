@@ -89,7 +89,7 @@ glossary:
 models:
   User:
     kind: entity
-    description: IdentityManagement が publish する認可 principal の最小 stub。
+    description: IdManagement が publish する認可 principal の最小 stub。
     identity: id
     fields:
       id:

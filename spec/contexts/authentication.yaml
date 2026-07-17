@@ -103,7 +103,7 @@ glossary:
 models:
   User:
     kind: entity
-    description: IdentityManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    description: IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
     identity: id
     fields:
       id:

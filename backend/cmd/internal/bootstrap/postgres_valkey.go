@@ -14,8 +14,8 @@ import (
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
 	authnvalkey "github.com/ambi/idmagic/backend/authentication/adapters/persistence/valkey"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	"github.com/ambi/idmagic/backend/identitymanagement"
-	idmpostgres "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/postgres"
+	"github.com/ambi/idmagic/backend/idmanagement"
+	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobspostgres "github.com/ambi/idmagic/backend/jobs/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -124,7 +124,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			BrandingRepo:       &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
 			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
 		},
-		IdentityManagement: identitymanagement.Module{
+		IdManagement: idmanagement.Module{
 			UserRepo:                 &idmpostgres.UserRepository{Pool: resilientDB},
 			GroupRepo:                &idmpostgres.GroupRepository{Pool: resilientDB},
 			AgentRepo:                &idmpostgres.AgentRepository{Pool: resilientDB},

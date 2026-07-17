@@ -2706,7 +2706,7 @@ models:
         optional: true
   User:
     kind: entity
-    description: IdentityManagement が publish する principal の認可判断用 stub。
+    description: IdManagement が publish する principal の認可判断用 stub。
     identity: id
     fields:
       id:

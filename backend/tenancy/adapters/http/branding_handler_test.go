@@ -17,8 +17,8 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmmemory "github.com/ambi/idmagic/backend/identitymanagement/adapters/persistence/memory"
-	idmdomain "github.com/ambi/idmagic/backend/identitymanagement/domain"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"

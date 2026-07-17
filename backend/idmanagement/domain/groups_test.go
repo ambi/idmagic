@@ -1,0 +1,54 @@
+package domain_test
+
+import (
+	"slices"
+	"testing"
+	"time"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+)
+
+func TestEffectiveRolesUnionSortedDedup(t *testing.T) {
+	groups := []*idmdomain.Group{
+		{Roles: []string{"catalog:read", "invoice:read"}},
+		{Roles: []string{"catalog:read", "support:read"}},
+		nil,
+	}
+	got := idmdomain.EffectiveRoles([]string{"admin", "support:read"}, groups)
+	want := []string{"admin", "catalog:read", "invoice:read", "support:read"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("EffectiveRoles = %v, want %v", got, want)
+	}
+}
+
+func TestEffectiveRolesEmptyGroupsEqualsUserRoles(t *testing.T) {
+	got := idmdomain.EffectiveRoles([]string{"admin", "auditor"}, nil)
+	want := []string{"admin", "auditor"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("EffectiveRoles = %v, want %v", got, want)
+	}
+}
+
+func TestGroupValidate(t *testing.T) {
+	now := time.Now().UTC()
+	valid := idmdomain.Group{ID: "group_x", TenantID: tenancydomain.DefaultTenantID, Name: "engineering", Roles: []string{"catalog:read"}, CreatedAt: now, UpdatedAt: now}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid group rejected: %v", err)
+	}
+	missingName := idmdomain.Group{ID: "group_x", TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now}
+	if err := missingName.Validate(); err == nil {
+		t.Fatal("group without name was accepted")
+	}
+}
+
+func TestNewGroupIDIsUUID(t *testing.T) {
+	id, err := idmdomain.NewGroupID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(id) != 36 {
+		t.Fatalf("unexpected group id %q", id)
+	}
+}
