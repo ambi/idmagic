@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
+	"reflect"
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
@@ -67,7 +68,17 @@ func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 		},
 		CreatedAt: now,
 	}
-	return repo.Save(ctx, rp)
+	existing, err := repo.FindByWtrealm(ctx, rp.TenantID, rp.Wtrealm)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return repo.Save(ctx, rp)
+	}
+	if !sameWsFedRelyingParty(existing, rp) {
+		return fmt.Errorf("seed drift at wsfed-rp:%s", rp.Wtrealm)
+	}
+	return nil
 }
 
 // seedSamlServiceProvider は SAML 2.0 Web Browser SSO のデモ用 service provider を投入する。
@@ -91,5 +102,27 @@ func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProv
 		SignAssertion: true,
 		CreatedAt:     now,
 	}
-	return repo.Save(ctx, sp)
+	existing, err := repo.FindByEntityID(ctx, sp.TenantID, sp.EntityID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return repo.Save(ctx, sp)
+	}
+	if !sameSamlServiceProvider(existing, sp) {
+		return fmt.Errorf("seed drift at saml-sp:%s", sp.EntityID)
+	}
+	return nil
+}
+
+func sameWsFedRelyingParty(actual, desired *domain.WsFedRelyingParty) bool {
+	left, right := *actual, *desired
+	left.CreatedAt, right.CreatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
+}
+
+func sameSamlServiceProvider(actual, desired *samldomain.SamlServiceProvider) bool {
+	left, right := *actual, *desired
+	left.CreatedAt, right.CreatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
 }

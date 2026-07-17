@@ -725,6 +725,7 @@ CREATE TABLE jobs (
 CREATE INDEX jobs_claimable_idx ON jobs (run_at) WHERE status = 'queued';
 CREATE INDEX jobs_lease_expiry_idx ON jobs (lease_expires_at) WHERE status = 'running';
 
+
 -- JobHandlerIdempotency: at most one non-terminal Job per (tenant_id, dedup_key).
 CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
     ON jobs (tenant_id, dedup_key)

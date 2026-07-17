@@ -23579,6 +23579,127 @@
         ],
         "description": "WS-Trust / WS-Federation metadata に広告する STS endpoint。受理する認証方式と binding を表す。"
       },
+      "SeedConflictError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "seed 管理対象に manual drift があり、明示 reconcile なしに上書きできない。"
+      },
+      "SeedEnvironment": {
+        "type": "string",
+        "enum": [
+          "development",
+          "test",
+          "staging",
+          "production"
+        ]
+      },
+      "SeedMode": {
+        "type": "string",
+        "enum": [
+          "dry_run",
+          "apply"
+        ]
+      },
+      "SeedOperationKind": {
+        "type": "string",
+        "enum": [
+          "create",
+          "update",
+          "noop",
+          "conflict"
+        ]
+      },
+      "SeedPlan": {
+        "type": "object",
+        "properties": {
+          "creates": {
+            "type": "integer"
+          },
+          "updates": {
+            "type": "integer"
+          },
+          "noops": {
+            "type": "integer"
+          },
+          "conflicts": {
+            "type": "integer"
+          },
+          "operations": {
+            "type": "object",
+            "description": "logical key、operation kind、redacted summary の streamable な表現。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "creates",
+          "updates",
+          "noops",
+          "conflicts",
+          "operations"
+        ],
+        "description": "秘密値と PII 全量を含まない seed の計画結果。"
+      },
+      "SeedProfileKind": {
+        "type": "string",
+        "enum": [
+          "bootstrap",
+          "development",
+          "test",
+          "performance"
+        ]
+      },
+      "SeedRejectedError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "環境 policy、profile、件数上限、または unknown key が安全規則に違反した。"
+      },
+      "SeedRequest": {
+        "type": "object",
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/SeedEnvironment"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/SeedProfileKind"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SeedMode"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "generator_seed": {
+            "type": "string"
+          },
+          "first_party_redirect_uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "production bootstrap で first-party client に設定する明示 URI。production では bootstrap 実行時に 1 件以上を必須とし、localhost URI は許可しない。"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "allow_large": {
+            "type": "boolean",
+            "description": "performance profile の通常上限を超える件数を明示して許可する。絶対上限を越える値は許可しない。"
+          },
+          "batch_size": {
+            "type": "integer",
+            "description": "performance profile を bounded memory で適用する 1 batch の最大件数。未指定時は安全な既定値を使い、上限を超える値は拒否する。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "environment",
+          "profile",
+          "mode"
+        ],
+        "description": "profile を計画または適用する入力。profile と environment は必須で、件数を増やす場合も明示する。"
+      },
       "SenderConstraintCnf": {
         "type": "object",
         "properties": {

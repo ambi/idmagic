@@ -73,6 +73,14 @@ format-go:
 test-go:
     GOCACHE={{go_cache}} go test ./...
 
+# Plan or apply an explicit environment seed. Example: just seed development development dry_run
+seed environment profile mode="dry_run":
+    GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile {{profile}} --mode {{mode}}
+
+# Opt-in throughput measurement. The count must remain within the seed safety policy.
+seed-throughput environment="development" count="10000" batch_size="250":
+    GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile performance --mode apply --count {{count}} --batch-size {{batch_size}}
+
 # Synchronize Go module requirements and checksums.
 go-mod-tidy:
     GOCACHE={{go_cache}} go mod tidy

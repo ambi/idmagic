@@ -202,7 +202,32 @@ adapters are selected with environment variables:
 | `WEBAUTHN_RP_ID` | domain, e.g. `localhost` | WebAuthn relying-party ID; WebAuthn/passkeys are disabled when unset |
 | `WEBAUTHN_RP_ORIGINS` | comma-separated origins | Allowed browser origins for WebAuthn ceremonies, e.g. `http://localhost:5173` |
 | `WEBAUTHN_RP_DISPLAY_NAME` | display name | WebAuthn relying-party display name shown by authenticators |
-| `SKIP_DEMO_SEED` | `true` | disable demo seed data |
+| `SEED_PROFILE` | `bootstrap`, `development`, `test`, `performance` | explicit startup seed profile; unset by default |
+| `SEED_ENVIRONMENT` | `development`, `test`, `staging`, `production` | required when `SEED_PROFILE` is set |
+| `SEED_FIRST_PARTY_REDIRECT_URIS` | comma-separated HTTPS URIs | required for production bootstrap first-party clients; localhost is rejected |
+| `SEED_GENERATOR_SEED` | arbitrary string | deterministic namespace for performance seed identifiers |
+
+### Environment seed profiles
+
+Seed は server 起動時には既定で実行されない。plan/apply は `just seed <environment> <profile> <mode>`
+で明示する。`just dev` / `just dev-memory` だけは、ローカル利用のため development profile を明示して
+同一プロセスで適用する。
+
+| Profile | Allowed environments | Contents |
+| --- | --- | --- |
+| `bootstrap` | development / test / staging / production | first-party client の最小設定。production では `SEED_FIRST_PARTY_REDIRECT_URIS` が必須。 |
+| `development` | development / test / staging | local demo user、group、protocol sample、application。 |
+| `test` | test | development と同じ決定的 fixture。 |
+| `performance` | development / test / staging | 決定的 synthetic user。通常は 10,000 件まで、超過は `--allow-large` が必要。 |
+
+`just seed development development dry_run` で変更計画を確認してから、末尾を `apply` にして投入する。
+seed の出力は logical key と件数だけで、password・client secret・TOTP secret・hash・PII 全量を含まない。
+旧 `SKIP_DEMO_SEED` は廃止されたため、起動時にデモ投入を止める設定は不要である。既存環境で
+demo seed が既にある場合も、同じ development profile の apply は意味比較を行い、手動変更は conflict として保持する。
+
+性能 profile は通常の検証に含めない。小さな件数を `just seed development performance apply` として使い、
+計測時だけ `just seed-throughput development 10000 250` を実行する。10,000 件を超える場合は CLI の
+`--allow-large` を明示し、100,000 件を超える値は拒否される。
 
 ### Tenant Branding
 

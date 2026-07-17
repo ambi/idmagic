@@ -1,0 +1,162 @@
+# idmagic Seeding — SCL
+# 環境固有のデータ投入を、業務データの所有 context から分離する。
+
+system: idmagic
+spec_version: "3.0"
+context: Seeding
+glossary:
+  SeedProfile:
+    definition: seed の内容と生成規則を表す明示選択の profile。bootstrap は稼働に必要な最小データだけ、development/test は既知のサンプル、performance は非機密の合成データを表す。環境名から暗黙に選ばない。
+    aliases: [seed profile]
+  SeedPlan:
+    definition: 現在状態と profile manifest を比較して作る、redacted な変更計画。dry-run と apply は同じ計画規則を使う。
+    aliases: [seed plan]
+  SeedDrift:
+    definition: seed 管理対象の logical key に対する現在値が manifest の canonical value と異なる状態。既定では手動変更を上書きせず conflict として停止する。
+    aliases: [drift]
+  BootstrapSeed:
+    definition: first-party client など、サービス稼働に必要な最小データ。デモ資格情報やサンプル tenant data を含まない。
+  SeedOperator:
+    definition: 明示した profile を plan または apply するローカル運用者または自動化主体。
+models:
+  SeedEnvironment:
+    kind: enum
+    values: [development, test, staging, production]
+  SeedProfileKind:
+    kind: enum
+    values: [bootstrap, development, test, performance]
+  SeedMode:
+    kind: enum
+    values: [dry_run, apply]
+  SeedOperationKind:
+    kind: enum
+    values: [create, update, noop, conflict]
+  SeedRequest:
+    kind: value_object
+    description: profile を計画または適用する入力。profile と environment は必須で、件数を増やす場合も明示する。
+    fields:
+      environment:
+        type: SeedEnvironment
+      profile:
+        type: SeedProfileKind
+      mode:
+        type: SeedMode
+      tenant_id:
+        type: String
+        optional: true
+      generator_seed:
+        type: String
+        optional: true
+      first_party_redirect_uris:
+        type: "String[]"
+        optional: true
+        description: production bootstrap で first-party client に設定する明示 URI。production では bootstrap 実行時に 1 件以上を必須とし、localhost URI は許可しない。
+      count:
+        type: Integer
+        optional: true
+      allow_large:
+        type: Boolean
+        optional: true
+        description: performance profile の通常上限を超える件数を明示して許可する。絶対上限を越える値は許可しない。
+      batch_size:
+        type: Integer
+        optional: true
+        description: performance profile を bounded memory で適用する 1 batch の最大件数。未指定時は安全な既定値を使い、上限を超える値は拒否する。
+  SeedPlan:
+    kind: value_object
+    description: 秘密値と PII 全量を含まない seed の計画結果。
+    fields:
+      creates:
+        type: Integer
+      updates:
+        type: Integer
+      noops:
+        type: Integer
+      conflicts:
+        type: Integer
+      operations:
+        type: JSON
+        description: logical key、operation kind、redacted summary の streamable な表現。
+  SeedRejectedError:
+    kind: error
+    description: 環境 policy、profile、件数上限、または unknown key が安全規則に違反した。
+  SeedConflictError:
+    kind: error
+    description: seed 管理対象に manual drift があり、明示 reconcile なしに上書きできない。
+interfaces:
+  SeedData:
+    description: seed を同一の決定的 planner で計画し適用する内部運用 interface。apply は各 record context の published command surface だけを呼び、直接 SQL fixture で不変条件を迂回しない。
+    input:
+      request:
+        type: SeedRequest
+    output:
+      plan:
+        type: SeedPlan
+    errors: [SeedRejectedError, SeedConflictError]
+    ensures:
+      - "input.request.mode == 'dry_run' implies persistent_state_unchanged()"
+      - "reapply_same_request_is_noop(input.request)"
+      - "input.request.environment == 'production' && input.request.profile == 'bootstrap' implies production_safe_redirect_uris(input.request.first_party_redirect_uris)"
+    access: internal
+objectives:
+  SeedScalability:
+    description: performance profile は bounded batch と streamable plan を使い、全 operation をメモリに保持しない。通常 profile の件数上限は安全な既定値を越えず、override は明示される。
+    interface: SeedData
+    indicator: measurement.memory_bounded == true
+    target: 1.0
+    window: 30d
+    budgeting: occurrences
+scenarios:
+  環境別の明示profileが選択される:
+    actor: SeedOperator
+    given:
+      - SeedOperator が environment と profile を明示している
+    main_success:
+      - SeedOperator が SeedData を dry_run で呼ぶ
+      - planner は environment policy に許可された manifest だけを選ぶ
+      - 応答は redacted な SeedPlan を返し永続状態を変更しない
+  同一seedの再適用はno-opになる:
+    actor: SeedOperator
+    given:
+      - 同じ manifest、generator seed、secret version で seed が apply 済みである
+    main_success:
+      - SeedOperator が同じ SeedRequest を再度 apply する
+      - SeedPlan の全 operation は noop である
+      - password history と created_at / updated_at は変更されない
+  productionでdemoまたはperformance profileは拒否される:
+    actor: SeedOperator
+    given:
+      - environment が production である
+    main_success:
+      - SeedOperator が development または performance profile を指定する
+      - SeedData は書き込み前に SeedRejectedError で拒否する
+      - 既知のデモ資格情報は作成されない
+  production bootstrapには明示redirect URIが必要である:
+    actor: SeedOperator
+    given:
+      - environment が production である
+      - profile が bootstrap である
+    main_success:
+      - SeedOperator が first_party_redirect_uris を指定して SeedData を apply する
+      - first-party client は指定 URI だけを redirect URI として持つ
+    extensions:
+      - at: 1
+        condition: redirect URI が未指定、localhost、または http URI である
+        steps:
+          - SeedData は書き込み前に SeedRejectedError で拒否する
+  manual driftは上書きせずconflictになる:
+    actor: SeedOperator
+    given:
+      - seed 管理対象の logical key が手動変更されている
+    main_success:
+      - SeedOperator が対応する profile を apply する
+      - SeedData は SeedConflictError を返す
+      - 手動変更は維持される
+  部分失敗後に同じrequestを再実行すると収束する:
+    actor: SeedOperator
+    given:
+      - SeedData の apply が一部の operation を完了した後に失敗している
+    main_success:
+      - SeedOperator が同じ SeedRequest を再度 apply する
+      - 完了済み logical key は no-op と判定される
+      - 未完了の logical key だけが適用され、重複なく目的状態へ収束する

@@ -44,6 +44,9 @@ contexts:
   Jobs:
     spec: spec/contexts/jobs.yaml
     summary: "durable asynchronous jobs。"
+  Seeding:
+    spec: spec/contexts/seeding.yaml
+    summary: "環境別 seed profile、計画、安全な適用 orchestration。"
   ra:
     spec: tools/ra/spec/scl.yaml
     summary: "RA workspace orchestration。"
@@ -449,6 +452,25 @@ modules:
       - { module: jobs-usecases, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
+  seeding-domain:
+    path: backend/seeding/domain
+    responsibility: "Seeding の環境 policy、profile、plan と純粋な検証規則。"
+    context: Seeding
+    layer: domain
+    role: published_interface
+    realizes:
+      - { context: Seeding, kind: model, element: SeedRequest }
+      - { context: Seeding, kind: model, element: SeedPlan }
+  seeding-usecases:
+    path: backend/seeding/usecases
+    responsibility: "Seed request の安全な検証と、将来の context contributor orchestration を担う application service。"
+    context: Seeding
+    layer: use_cases
+    role: published_interface
+    realizes:
+      - { context: Seeding, kind: interface, element: SeedData }
+    depends_on:
+      - { module: seeding-domain, via: published_interface }
   oauth2-domain:
     path: backend/oauth2/domain
 
@@ -1074,6 +1096,7 @@ modules:
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: seeding-domain, via: composition_root }
       - { module: tenancy-usecases, via: composition_root }
   bootstrap:
     path: backend/cmd/internal/bootstrap
@@ -1123,6 +1146,8 @@ modules:
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: seeding-domain, via: composition_root }
+      - { module: seeding-usecases, via: composition_root }
       - { module: signingkeys-adapters, via: composition_root }
       - { module: signingkeys-domain, via: composition_root }
       - { module: signingkeys-ports, via: composition_root }
@@ -1611,6 +1636,7 @@ complexity:
 - SCL 規範要素、Architecture module、宣言済み check、revision 付き evidence の直接追跡は [ADR-115](decisions/ADR-115-direct-workspace-traceability-graph.md) に従う。
 - context、RA layer、module dependency、runtime、実 import、complexity ceiling を検査可能な地図として保つ方針は [ADR-116](decisions/ADR-116-executable-architecture-map.md) に従う。
 - LifecycleWorkflow を IdManagement の record-of-truth から IdGovernance の policy/orchestration へ分離する境界は [ADR-117](decisions/ADR-117-extract-identity-governance-context.md) に従う。
+- 環境別 seed の policy と execution orchestration は record context から分離し、各 context の公開 command surface を介して適用する ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md))。
 
 ## 読む順序
 
@@ -1655,6 +1681,7 @@ SCL context と Go package の主な対応は次の通り。
 | `ClaimMapping` | `backend/claimmapping` | protocol-neutral な claim release policy、identity 属性 projection、fail-closed validation。 |
 | `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用非同期ジョブ基盤。durable job queue (PostgreSQL SKIP LOCKED リース)、worker runtime、handler registry を所有する。業務ロジックは呼び出し元 context の usecase に残る。管理 UI/API は `wi-157`。 |
+| `Seeding` | `backend/seeding` | 環境別 profile、dry-run、redacted plan、適用 policy を所有する。業務データとその永続化は各 record context に残す。 |
 | `SigningKeys` | `backend/signingkeys` | tenant-scoped 鍵 metadata、rotation、repository port、管理/JWKS HTTP、memory/PostgreSQL/Vault adapter。JWT/XML wire signer は protocol/technical adapter に残す。 |
 | `WsFederation` | `backend/wsfederation` | WS-Fed passive、WS-Trust active STS、federation metadata、MEX、RP trust。 |
 | `Saml` | `backend/saml` | SAML 2.0 IdP、SP trust、metadata、SSO/SLO。 |

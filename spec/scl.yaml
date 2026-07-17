@@ -259,6 +259,17 @@ context_map:
         uses:
           - TenantRef
         reason: Job は tenant_id を必須とし、worker はテナント境界内でのみ副作用を起こす。
+  Seeding:
+    description: "環境別の seed profile、投入計画、dry-run、適用の安全方針を所有する運用 bounded context。\n各業務データの意味と永続化は各 record context に残し、Seeding は published command\nsurface を通じて依存順の実行を調整する。profile は明示選択であり、production では\nbootstrap 以外を fail-closed で拒否する。\n"
+    path: contexts/seeding.yaml
+    publishes:
+      - SeedData
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: seed request と実行対象はテナント境界を明示し、既存 tenant を越えて適用しない。
   IdGovernance:
     description: "identity ガバナンスの policy と orchestration を所有する。LifecycleWorkflow (JML 自動化) の\ndefinition・trigger 評価・WorkflowRun 実行・executor action を集約し、将来の IGA 機能\n(認証キャンペーン、アクセスリクエスト/承認、エンタイトルメント/SoD、JIT 特権昇格) の受け皿となる。\nidentity principal の record-of-truth は IdManagement が、Application 割当は Application が\n所有し、IdGovernance は User ライフサイクルイベントを購読し、冪等コマンド surface 経由で\nこれら record context の状態を書き換える。\n"
     path: contexts/identity-governance.yaml

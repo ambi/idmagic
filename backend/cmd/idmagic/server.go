@@ -59,18 +59,9 @@ func Run() error {
 	if err := tenantusecases.EnsureDefault(ctx, deps.Tenancy.TenantRepo, time.Now().UTC()); err != nil {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
-	if os.Getenv("SKIP_DEMO_SEED") == "" {
-		if err := bootstrap.SeedDemoData(ctx, deps.OAuth2.ClientRepo, deps.IdManagement.UserRepo, deps.Authentication.MfaFactorRepo, deps.Authentication.PasswordHistoryRepo, deps.IdManagement.GroupRepo, deps.OAuth2.AuthzDetailTypeRepo, hasher); err != nil {
-			return fmt.Errorf("seed demo data: %w", err)
-		}
-		if err := bootstrap.SeedWsFedRelyingParty(ctx, deps.WsFederation.RPRepo); err != nil {
-			return fmt.Errorf("seed federation relying party: %w", err)
-		}
-		if err := bootstrap.SeedSamlServiceProvider(ctx, deps.Saml.SPRepo); err != nil {
-			return fmt.Errorf("seed saml service provider: %w", err)
-		}
-		if err := bootstrap.SeedDemoApplications(ctx, deps.Application.Repo, deps.Application.AssignmentRepo, time.Now().UTC()); err != nil {
-			return fmt.Errorf("seed demo applications: %w", err)
+	if bootstrap.SeedProfileConfigured(os.Getenv) {
+		if _, err := bootstrap.Seed(ctx, deps, bootstrap.LoadSeedRequest(os.Getenv)); err != nil {
+			return fmt.Errorf("explicit startup seed: %w", err)
 		}
 	}
 	federationSigner, err := bootstrap.NewDevFederationSigner()

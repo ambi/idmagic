@@ -97,7 +97,7 @@ echo "Starting idmagic API at $DEV_API_ADDR"
   : "${WEBAUTHN_RP_ORIGINS:=http://localhost:5173}"
   : "${WEBAUTHN_RP_DISPLAY_NAME:=IdMagic Local}"
   export WEBAUTHN_RP_ID WEBAUTHN_RP_ORIGINS WEBAUTHN_RP_DISPLAY_NAME
-  export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" EVENT_SINK=console
+  export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" EVENT_SINK=console SEED_ENVIRONMENT=development SEED_PROFILE=development
   if [ "$MODE" = "durable" ]; then
     export PERSISTENCE=postgres_valkey DATABASE_URL VALKEY_URL
   else

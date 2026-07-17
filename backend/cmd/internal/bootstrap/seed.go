@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -51,7 +53,7 @@ func SeedDemoData(
 ) error {
 	secretHash := oauthdomain.HashClientSecret(EnvDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
 	now := time.Now().UTC()
-	if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
+	demoClient := &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: seedDemoClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{
@@ -67,8 +69,17 @@ func SeedDemoData(
 		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                   "openid profile email offline_access", IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile: oauthdomain.FapiNone, CreatedAt: now, UpdatedAt: now,
-	}); err != nil {
+	}
+	currentClient, err := clients.FindByID(ctx, demoClient.TenantID, demoClient.ClientID)
+	if err != nil {
 		return err
+	}
+	if currentClient == nil {
+		if err := clients.Save(ctx, demoClient); err != nil {
+			return err
+		}
+	} else if !sameDemoClient(currentClient, demoClient, EnvDefault("DEMO_CLIENT_SECRET", "demo-client-secret")) {
+		return fmt.Errorf("seed drift at oauth2-client:%s", seedDemoClientID)
 	}
 	if err := seedFirstPartyPortalClients(ctx, clients, now); err != nil {
 		return err
@@ -83,17 +94,15 @@ func SeedDemoData(
 	}
 	email := "alice@example.com"
 	totpSecret := EnvDefault("DEMO_TOTP_SECRET", "")
-	if err := users.Save(ctx, &idmdomain.User{
+	alice := &idmdomain.User{
 		ID: seedUserAliceID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		Roles:     []string{"admin"},
 		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
-	}); err != nil {
-		return err
 	}
-	if err := passwordHistory.Add(ctx, seedUserAliceID, hash, now); err != nil {
+	if err := ensureDemoUser(ctx, users, passwordHistory, hasher, alice, password, now); err != nil {
 		return err
 	}
 	// root は super-admin デモユーザー。system_admin はテナント横断の管理操作
@@ -102,17 +111,15 @@ func SeedDemoData(
 	// ロール) とあわせて両方を付与し、全画面を試せるようにする。alice とは別に
 	// 用意し、既定テナントに所属する。
 	rootEmail := "root@example.com"
-	if err := users.Save(ctx, &idmdomain.User{
+	root := &idmdomain.User{
 		ID: seedUserRootID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "root", PasswordHash: hash,
 		Email: &rootEmail, EmailVerified: true,
 		Roles:     []string{"admin", "system_admin"},
 		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
-	}); err != nil {
-		return err
 	}
-	if err := passwordHistory.Add(ctx, seedUserRootID, hash, now); err != nil {
+	if err := ensureDemoUser(ctx, users, passwordHistory, hasher, root, password, now); err != nil {
 		return err
 	}
 	if err := seedDemoGroups(ctx, groups, now); err != nil {
@@ -125,9 +132,78 @@ func SeedDemoData(
 		return nil
 	}
 	label := "Demo TOTP"
-	return mfaFactors.Save(ctx, &authdomain.MfaFactor{
+	desiredFactor := &authdomain.MfaFactor{
 		UserID: seedUserAliceID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
-	})
+	}
+	existingFactor, err := mfaFactors.Find(ctx, seedUserAliceID, spec.MfaFactorTOTP)
+	if err != nil {
+		return err
+	}
+	if existingFactor == nil {
+		return mfaFactors.Save(ctx, desiredFactor)
+	}
+	if !sameMfaFactor(existingFactor, desiredFactor) {
+		return fmt.Errorf("seed drift at mfa-factor:%s:totp", seedUserAliceID)
+	}
+	return nil
+}
+
+func sameDemoClient(actual, desired *oauthdomain.OAuth2Client, secret string) bool {
+	if actual.ClientSecretHash == nil || !oauthdomain.VerifyClientSecret(secret, *actual.ClientSecretHash) {
+		return false
+	}
+	left, right := *actual, *desired
+	left.ClientSecretHash, right.ClientSecretHash = nil, nil
+	return sameClient(&left, &right)
+}
+
+func ensureDemoUser(ctx context.Context, users idmports.UserRepository, history authnports.PasswordHistoryRepository, hasher authnports.PasswordHasher, desired *idmdomain.User, password string, now time.Time) error {
+	existing, err := users.FindBySub(ctx, desired.ID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		if err := users.Save(ctx, desired); err != nil {
+			return err
+		}
+		return history.Add(ctx, desired.ID, desired.PasswordHash, now)
+	}
+	if !sameDemoUser(existing, desired, password, hasher) {
+		return fmt.Errorf("seed drift at user:%s", desired.ID)
+	}
+	recent, err := history.Recent(ctx, desired.ID, 24)
+	if err != nil {
+		return err
+	}
+	for _, entry := range recent {
+		matches, verifyErr := hasher.Verify(password, entry.Encoded)
+		if verifyErr == nil && matches {
+			return nil
+		}
+	}
+	if len(recent) != 0 {
+		return fmt.Errorf("seed drift at password-history:%s", desired.ID)
+	}
+	return history.Add(ctx, desired.ID, desired.PasswordHash, now)
+}
+
+func sameDemoUser(actual, desired *idmdomain.User, password string, hasher authnports.PasswordHasher) bool {
+	matches, err := hasher.Verify(password, actual.PasswordHash)
+	if err != nil || !matches {
+		return false
+	}
+	left, right := *actual, *desired
+	left.PasswordHash, right.PasswordHash = "", ""
+	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
+	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
+}
+
+func sameMfaFactor(actual, desired *authdomain.MfaFactor) bool {
+	left, right := *actual, *desired
+	left.CreatedAt, left.LastUsedAt = time.Time{}, nil
+	right.CreatedAt, right.LastUsedAt = time.Time{}, nil
+	return reflect.DeepEqual(left, right)
 }
 
 // seedFirstPartyPortalClients は管理コンソールとアカウントポータルを自分自身の IdP の
@@ -191,23 +267,48 @@ func SeedDemoApplications(
 		{"00000000-0000-4000-8000-000000000104", "Demo WS-Federation RP", "https://rp.example/wsfed", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingWsFed, Wtrealm: "urn:idmagic:demo-rp"}},
 	}
 	for _, s := range seeds {
-		if err := apps.Save(ctx, &appdomain.Application{
+		desired := &appdomain.Application{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: s.id, Name: s.name,
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 			LaunchURL: s.launchURL, Bindings: []appdomain.ProtocolBinding{s.binding},
 			CreatedAt: now, UpdatedAt: now,
-		}); err != nil {
+		}
+		existing, err := apps.FindByID(ctx, desired.TenantID, desired.ApplicationID)
+		if err != nil {
 			return err
+		}
+		if existing == nil {
+			if err := apps.Save(ctx, desired); err != nil {
+				return err
+			}
+		} else if !sameApplication(existing, desired) {
+			return fmt.Errorf("seed drift at application:%s", desired.ApplicationID)
 		}
 		if assignments == nil {
 			continue
 		}
-		if err := assignments.Save(ctx, &appdomain.ApplicationAssignment{
+		desiredAssignment := &appdomain.ApplicationAssignment{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: s.id,
 			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: seedUserAliceID,
 			Visibility: appdomain.AssignmentVisible, CreatedAt: now,
-		}); err != nil {
+		}
+		currentAssignments, err := assignments.ListByApplication(ctx, desiredAssignment.TenantID, desiredAssignment.ApplicationID)
+		if err != nil {
 			return err
+		}
+		found := false
+		for _, assignment := range currentAssignments {
+			if assignment.SubjectType == desiredAssignment.SubjectType && assignment.SubjectID == desiredAssignment.SubjectID {
+				found = true
+				if assignment.Visibility != desiredAssignment.Visibility {
+					return fmt.Errorf("seed drift at application-assignment:%s", desired.ApplicationID)
+				}
+			}
+		}
+		if !found {
+			if err := assignments.Save(ctx, desiredAssignment); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -220,7 +321,7 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 	if types == nil {
 		return nil
 	}
-	return types.Save(ctx, &oauthdomain.AuthorizationDetailType{
+	desired := &oauthdomain.AuthorizationDetailType{
 		TenantID:    tenancydomain.DefaultTenantID,
 		Type:        "payment_initiation",
 		Description: "口座から指定上限までの送金開始 (RFC 9396 例)",
@@ -235,7 +336,18 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 		State:           oauthdomain.DetailTypeEnabled,
 		CreatedAt:       now,
 		UpdatedAt:       now,
-	})
+	}
+	existing, err := types.FindByType(ctx, desired.TenantID, desired.Type)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return types.Save(ctx, desired)
+	}
+	if !sameAuthorizationDetailType(existing, desired) {
+		return fmt.Errorf("seed drift at authorization-detail-type:%s", desired.Type)
+	}
+	return nil
 }
 
 // seedDemoGroups は固定 ID のデモ用グループ engineering / support を投入し、alice を
@@ -256,8 +368,28 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 		},
 	}
 	for _, group := range demoGroups {
-		if err := groups.Save(ctx, group); err != nil {
+		existing, err := groups.FindByID(ctx, group.TenantID, group.ID)
+		if err != nil {
 			return err
+		}
+		if existing == nil {
+			if err := groups.Save(ctx, group); err != nil {
+				return err
+			}
+		} else if !sameGroup(existing, group) {
+			return fmt.Errorf("seed drift at group:%s", group.ID)
+		}
+	}
+	members, err := groups.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, seedGroupEngineeringID)
+	if err != nil {
+		return err
+	}
+	for _, member := range members {
+		if member.UserID == seedUserAliceID {
+			if member.Source.Effective() != idmdomain.MembershipSourceManual {
+				return fmt.Errorf("seed drift at group-membership:%s:%s", seedGroupEngineeringID, seedUserAliceID)
+			}
+			return nil
 		}
 	}
 	if _, err := groups.AddMember(ctx, &idmdomain.GroupMember{
@@ -266,4 +398,25 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 		return err
 	}
 	return nil
+}
+
+func sameGroup(actual, desired *idmdomain.Group) bool {
+	left, right := *actual, *desired
+	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
+	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
+}
+
+func sameApplication(actual, desired *appdomain.Application) bool {
+	left, right := *actual, *desired
+	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
+	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
+}
+
+func sameAuthorizationDetailType(actual, desired *oauthdomain.AuthorizationDetailType) bool {
+	left, right := *actual, *desired
+	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
+	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
 }
