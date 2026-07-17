@@ -43,7 +43,7 @@ affected_spec:
 
 ## Tasks
 - [ ] T001 [SCL] 仕様を更新する。
-- [ ] T002 [App] 実装する。
+- [ ] T002 [App] 実装する。RED: 先に落ちるテストを確認（scenario `xxx.yyy`）→ GREEN。
 - [ ] T003 [Verify] 検証する。
 
 ## Verification
@@ -79,3 +79,6 @@ work-items 名前空間（`done/` を含む）にある WI ID とし、自己参
 - DB migration、認可、外部契約、破壊的変更、不可逆な移行を含む
 - 予定する作業が 1 セッションで終わる確信を持てない
 - 検証が複数サブシステムにまたがる
+
+振る舞いを持つ層（Domain / Use Cases / Adapters）に触れる Task は、test-first の証跡——先に落とした
+テストと参照する SCL 要素——を Task 行に self-attest として残す（ADR-119）。

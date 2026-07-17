@@ -24,13 +24,34 @@ RA の 7 層（`REGENERATIVE_ARCHITECTURE.md §3`）を内側から。**先に S
 
 1. **Spec Core (SCL)** — `scl-change` Skill に従い `scl.yaml` を先に更新。触れた節をワークアイテムの `scope` に列挙。`just yaml-check` で検証する。並列 worktree の work-item branch では派生物を commit せず、必要な場合だけ確認用に `just scl-render` を実行する。生成物の同期 commit は integration branch / merge queue / main 直前で行う。
 2. **Decision Record & Architecture** — 非自明な設計判断があれば `new-adr` Skill で ADR を残す。コア構造（コンテキスト・モジュール・スタック・ディレクトリ規約）に触れたら、`new-architecture` Skill に従い該当 `ARCHITECTURE.md` を現状へ同期する（書式は `ARCHITECTURE_FORMAT.md`）。同期は努力目標ではなく検証ゲートであり、`just yaml-check` の Architecture 整合検査（modules パス実在・realizes の SCL 要素解決・contexts 整合）を通すこと。
-3. **Domain** — ドメインモデルや状態定義。SCL から機械的に導出されて特定の言語に変換した層。
-4. **Use Cases** — ユースケース実装。単体テストを同時に書く。
-5. **Adapters** — HTTP / 永続化などの境界実装 + テスト。
-6. **Infrastructure** — プログラムのエントリポイント、依存の注入。
-7. **Deploy Pipeline** — Dockerfile、compose.yml、Ansible、Terraform、CI/CD、デプロイ関連。
+3. **Domain** — ドメインモデルや状態定義。SCL から機械的に導出されて特定の言語に変換した層。**test-first 必須層**。
+4. **Use Cases** — ユースケース実装。**test-first 必須層**。
+5. **Adapters** — HTTP / 永続化などの境界実装。**test-first 必須層**。
+6. **Infrastructure** — プログラムのエントリポイント、依存の注入。test-first は免除（下記）。
+7. **Deploy Pipeline** — Dockerfile、compose.yml、Ansible、Terraform、CI/CD、デプロイ関連。test-first は免除（下記）。
 
 各層を終えたらその層のテストを green にしてから次へ進む（層をまたいで未検証を溜めない）。`Tasks` がある場合は、層の完了ごとに対応チェックリストを更新する。
+
+### 1.1 test-first の規律（ADR-119）
+
+**振る舞いを持つ層——Domain / Use Cases / Adapters——では test-first を必須**とする。実装コードを先に書かない。
+
+1. **RED** — 先にテストを書き、実行して**意図した理由で落ちることを目視**する。落ちない／別の理由（import エラー・タイポ等）で落ちるテストは、まだ何も検証していない。テストは対応する SCL 要素（`scenario` / `constraint` / `state guard`）に紐づける。
+2. **GREEN** — その失敗テストを通す最小の実装を書く。
+3. **REFACTOR** — green を保ったまま整える。
+
+- **テストは SCL から導く。テスト側で新しい振る舞いを創作しない**（正本の二重化を避ける）。SCL に無い振る舞いが要るなら、テストを書く前に `scl-change` に戻って SCL を更新する。テストは SCL の受け入れ条件を実行可能にした従属物であり、SCL と競合する第二のオラクルではない。
+- **Infrastructure / Deploy Pipeline は単体 red-green を免除**し、contract / E2E テストで代替する。ここでは配線とデプロイ経路の検証が本質で、失敗する単体テストを先に書く意味が薄い。
+
+### 1.2 test-first 証跡（self-attest）
+
+強制は self-attest ＋ レビュー抜き取り（ADR-119）。**振る舞いを持つ層の Tasks チェックリストに、先に落としたテストと、それが参照する SCL 要素を証跡として残す**。例:
+
+```markdown
+- [x] UseCase: RevokeCredential — RED: `TestRevoke_alreadyRevoked` を先に fail 確認（scenario `credential.revoke.idempotent`）→ GREEN
+```
+
+`# Tasks` が無い規模でも、振る舞い層に触れる場合はこの証跡を Tasks に足してから進む。レビューはこの証跡を抜き取りで検証する。
 
 ## 2. 検証ゲート（全部グリーンで完了）
 
