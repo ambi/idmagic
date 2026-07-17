@@ -2,7 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-14
-supersedes: ADR-046 (username / IP / User-Agent / device fingerprint 条項)
+supersedes: [ADR-046]  # username / IP / User-Agent / device fingerprint 条項のみ
 ---
 
 # ADR-104: 監査イベントの username と接続元属性は平文で扱う

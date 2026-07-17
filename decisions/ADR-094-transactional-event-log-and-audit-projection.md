@@ -2,6 +2,7 @@
 status: superseded
 authors: [tn]
 created_at: 2026-07-11
+superseded_by: [ADR-095]
 ---
 
 > **注記 (2026-07-12)**: 本 ADR の `event_logs` / `event_deliveries` schema 保持条項は

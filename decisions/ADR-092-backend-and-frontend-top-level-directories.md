@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-11
+supersedes: [ADR-068, ADR-070]
 ---
 
 # ADR-092: アプリケーションの実装ルートを backend と frontend に分ける

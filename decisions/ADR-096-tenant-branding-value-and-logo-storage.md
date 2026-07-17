@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-12
+superseded_by: [ADR-097]  # 決定 3（コントラスト比の扱い）のみ
 ---
 
 # ADR-096: Tenant branding as an independent tenant-scoped entity with constrained tokens and reused validated blob storage

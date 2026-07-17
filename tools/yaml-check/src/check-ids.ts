@@ -14,8 +14,13 @@
  * Exits non-zero when any duplicate or malformed ADR filename is found.
  */
 
-import { readdir } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve } from 'node:path'
+import {
+  type AdrSupersessionRecord,
+  checkAdrSupersession,
+  extractAdrIds,
+} from './adr-supersession.ts'
 import {
   type IdFinding,
   type RecordRef,
@@ -62,16 +67,38 @@ async function collectWorkItems(
   return { refs, findings }
 }
 
+async function adrSupersessionRecord(path: string, id: string): Promise<AdrSupersessionRecord> {
+  const text = await readFile(path, 'utf8')
+  const yaml = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n/)?.[1]
+  const fm = (yaml ? Bun.YAML.parse(yaml) : {}) as {
+    status?: unknown
+    supersedes?: unknown
+    superseded_by?: unknown
+  }
+  return {
+    id,
+    path,
+    status: typeof fm.status === 'string' ? fm.status : undefined,
+    supersedes: extractAdrIds(fm.supersedes),
+    supersededBy: extractAdrIds(fm.superseded_by),
+  }
+}
+
 async function collectAdrs(dir: string): Promise<{ refs: RecordRef[]; findings: IdFinding[] }> {
   const namespace = resolveDir(dir)
   const files = (await listFiles(namespace, '.md')).filter((p) => ADR_CANDIDATE_RE.test(p))
   const refs: RecordRef[] = []
   const findings: IdFinding[] = []
+  const supersession: AdrSupersessionRecord[] = []
   for (const path of files) {
     const result = adrRef(path, namespace)
-    if (result.ref) refs.push(result.ref)
+    if (result.ref) {
+      refs.push(result.ref)
+      supersession.push(await adrSupersessionRecord(path, result.ref.id))
+    }
     findings.push(...result.findings)
   }
+  findings.push(...checkAdrSupersession(supersession))
   return { refs, findings }
 }
 

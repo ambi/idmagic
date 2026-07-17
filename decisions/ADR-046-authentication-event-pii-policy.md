@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: [ADR-104]  # username / IP / User-Agent / device fingerprint 条項のみ
 ---
 
 > **注記 (2026-07-14)**: 本 ADR の「2. username」条項 (tenant salt 付き hash を first-class とする

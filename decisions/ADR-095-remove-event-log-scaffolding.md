@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-12
+supersedes: [ADR-094]
 ---
 
 # ADR-095: event_logs/event_deliveries scaffolding を撤去し outbox + best-effort audit_events に戻す

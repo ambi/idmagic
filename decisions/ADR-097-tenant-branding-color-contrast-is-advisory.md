@@ -2,6 +2,7 @@
 status: accepted
 authors: ["tn"]
 created_at: 2026-07-12
+supersedes: [ADR-096]  # 決定 3（コントラスト比の扱い）のみ
 ---
 
 # ADR-097: テナントブランディングの色コントラストは保存制約にしない

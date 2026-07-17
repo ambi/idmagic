@@ -2,7 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
-superseded_by: ADR-092
+superseded_by: [ADR-092]
 ---
 
 # ADR-068: 横断アダプタ実装を internal/infrastructure に置く

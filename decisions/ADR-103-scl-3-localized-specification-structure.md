@@ -6,6 +6,8 @@ created_at: 2026-07-14
 
 # ADR-103: SCL 3.0 は規則を所有要素へ局所化し認可・SLO・UI 仕様を用途別に単純化する
 
+> **注記（役割の境界）**: SCL 3.0 の**規範仕様は `SPECIFICATION_CORE_LANGUAGE.md`（および `spec/contexts/*.yaml`）が所有する**（影響節の後続 work item で移管済み）。本 ADR は 3.0 採用の**決定と理由の記録**であり、以下の構造定義・YAML 例は決定時点のもの。現行の規範形が本 ADR と食い違う場合は `SPECIFICATION_CORE_LANGUAGE.md` を正とする。
+
 ## コンテキスト
 
 SCL 2.0 は `models`、`interfaces`、`states`、`scenarios` に加えて、横断分類として
