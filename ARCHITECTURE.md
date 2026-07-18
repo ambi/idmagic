@@ -1419,22 +1419,6 @@ complexity:
       metric: source_lines
       limit: 800
   debts:
-    - id: wi234-go-source-lines-authorize-handler
-      budget: go-source-lines
-      path: backend/oauth2/adapters/http/authorize_handler.go
-      ceiling: 1028
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
-    - id: wi234-go-source-lines-events
-      budget: go-source-lines
-      path: backend/shared/spec/events.go
-      ceiling: 1151
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
     - id: wi234-ui-page-lines-account-profile-page
       budget: ui-page-lines
       path: frontend/src/features/account/AccountProfilePage.tsx

@@ -29,6 +29,11 @@ type recoveryCodeAPIRequest struct {
 	ReturnTo string `json:"return_to,omitempty"`
 }
 
+type totpAPIRequest struct {
+	Code     string `json:"code"`
+	ReturnTo string `json:"return_to,omitempty"`
+}
+
 func (d Deps) webAuthnLoginDeps() authusecases.WebAuthnDeps {
 	return authusecases.WebAuthnDeps{
 		RP:             d.WebAuthnRP,
@@ -184,6 +189,52 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 		return err
 	}
 	return d.finishSecondFactor(c, authn.SessionID, req, "rc", directAdminLogin, input.ReturnTo)
+}
+
+// handleTOTPAPI は login の第二要素として TOTP ワンタイムコードを検証する。
+func (d Deps) handleTOTPAPI(c *echo.Context) error {
+	if d.MfaFactorRepo == nil {
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "mfa_unavailable", "MFA factor store is unavailable")
+	}
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	authn, _ := d.ResolveAuthentication(c)
+	if authn == nil || authn.SessionID == "" {
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "TOTP検証セッションがありません")
+	}
+	if containsString(authn.AMR, "otp") && !authn.AuthenticationPending {
+		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "TOTPは既に検証済みです")
+	}
+	var input totpAPIRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+	}
+	req, transactionErr := d.transactionRequest(c)
+	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
+	if directAdminLogin {
+		if !validReturnTo(c, input.ReturnTo) {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to が不正です")
+		}
+	} else if transactionErr != nil {
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	}
+	result, err := authusecases.VerifyTOTPFactor(
+		c.Request().Context(),
+		d.MfaFactorRepo,
+		authn.UserID,
+		input.Code,
+		time.Now().UTC(),
+	)
+	if err != nil {
+		return err
+	}
+	if !result.OK {
+		d.recordLoginOutcome("failure", result.Reason, "otp")
+		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "TOTPコードを確認してください。")
+	}
+	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo)
 }
 
 // finishSecondFactor は第二要素 (otp / webauthn / rc) 検証後の共通後処理。session を認証完了に
