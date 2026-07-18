@@ -102,7 +102,7 @@ func assembleMemory() (*Dependencies, error) {
 			TenantSaltStore: crypto.NewInMemoryTenantSaltStore(),
 		},
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository(), ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		Scim:         scim.Module{Repo: scimmemory.NewScimRepository()},
 		Jobs:         jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{

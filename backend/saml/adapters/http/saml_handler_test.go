@@ -119,7 +119,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, Saml: saml.Module{SPRepo: spRepo},
+		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: authn},
@@ -153,6 +153,7 @@ func authnRequestRedirectWith(t *testing.T, issuer, acsURL, destination string, 
 	t.Helper()
 	xml := `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +
 		`xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_req-1" Version="2.0" ` +
+		`IssueInstant="` + time.Now().UTC().Format(time.RFC3339) + `" ` +
 		`Destination="` + destination + `"`
 	if forceAuthn {
 		xml += ` ForceAuthn="true"`
@@ -291,7 +292,7 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 		Deps: support.Deps{
 			Issuer: "https://idp.example",
 			SCL:    spec.MustLoadSCL(),
-		}, Saml: saml.Module{SPRepo: spRepo},
+		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()}},
@@ -321,7 +322,7 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, Saml: saml.Module{SPRepo: spRepo},
+		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         idmmemory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
@@ -360,7 +361,7 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 			SCL:    spec.MustLoadSCL(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, Saml: saml.Module{SPRepo: spRepo},
+		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         idmmemory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},

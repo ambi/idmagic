@@ -15,7 +15,7 @@ standards:
         section: "§2.4.1.2, §3.4"
         strength: MUST
         adoption: required
-        statement: 発行 assertion は Audience / Recipient / InResponseTo を要求と整合させる
+        statement: AuthnRequest は Version 2.0 と許容された IssueInstant を持ち、発行 assertion は Audience / Recipient / InResponseTo を検証済み要求と整合させる。同一 tenant / SP / request ID に対する assertion は一度だけ発行する
         refs:
           - interfaces.SamlSingleSignOn
           - models.SamlResponse
@@ -36,7 +36,7 @@ standards:
         section: "§3.4, §3.5"
         strength: MUST
         adoption: required
-        statement: AuthnRequest は HTTP-Redirect または HTTP-POST binding で受理し、SAMLResponse は HTTP-POST で返す
+        statement: AuthnRequest は HTTP-Redirect または HTTP-POST binding で受理し、明示された response ProtocolBinding が HTTP-POST 以外なら拒否する。SAMLResponse と返信可能な protocol error は HTTP-POST で返す
         refs:
           - interfaces.SamlSingleSignOn
   SAML2WebBrowserSSO:
@@ -50,7 +50,7 @@ standards:
         section: "§4.1"
         strength: MUST
         adoption: required
-        statement: SP-initiated / IdP-initiated Web Browser SSO を提供する
+        statement: SP-initiated / IdP-initiated Web Browser SSO を提供する。未対応の ACS index、NameID format、response binding は fail-closed に拒否し、IsPassive=true でログインが必要な場合は NoPassive protocol response を返す
         refs:
           - interfaces.SamlSingleSignOn
       - id: SAML2Profile-ECP
@@ -160,7 +160,7 @@ models:
         type: "String[]"
         constraints:
           - non_empty
-        description: 許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、省略時は先頭を既定の返信先とする。
+        description: 許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、ACS URL と index がともに省略された場合だけ先頭を既定の返信先とする。初期実装では index 解決は提供しない。
       slo_url:
         type: String
         optional: true
@@ -194,7 +194,7 @@ models:
         type: DateTime
   SamlAuthnRequest:
     kind: value_object
-    description: SP-initiated SSO で受信した <samlp:AuthnRequest> から検証対象を抽出した中間表現。HTTP-Redirect は deflate+base64、HTTP-POST は base64 を復号して解析する。復号後 XML には上限を課し、deflate 爆弾を防ぐ。
+    description: SP-initiated SSO で受信した <samlp:AuthnRequest> から検証対象を抽出した中間表現。HTTP-Redirect は deflate+base64、HTTP-POST は base64 を復号して解析する。復号後 XML には上限を課し、deflate 爆弾を防ぐ。Version は 2.0、IssueInstant は必須で現在時刻の許容 skew と最大年齢内でなければならない。
     fields:
       id:
         type: String
@@ -206,10 +206,26 @@ models:
         constraints:
           - non_empty
         description: SP の entityID。登録済み SamlServiceProvider に解決する。
+      version:
+        type: String
+        constraints:
+          - non_empty
+        description: AuthnRequest/@Version。"2.0" だけを受理する。
+      issue_instant:
+        type: DateTime
+        description: AuthnRequest/@IssueInstant。未来の skew と最大年齢を超える要求は拒否する。
       acs_url:
         type: String
         optional: true
         description: 要求が指定する AssertionConsumerService URL。許可集合との完全一致のみ受理する。
+      acs_index:
+        type: Integer
+        optional: true
+        description: AssertionConsumerServiceIndex。ACS URL との併用は拒否し、初期実装では明示的な index 指定を解決しないため拒否する。
+      protocol_binding:
+        type: SamlBinding
+        optional: true
+        description: AuthnRequest/@ProtocolBinding。省略または HTTP-POST のみを受理する。
       destination:
         type: String
         optional: true
@@ -222,6 +238,10 @@ models:
         type: Boolean
         default: false
         description: 再認証の要求。true の場合、直近再認証済みでなければログインへ戻す。
+      is_passive:
+        type: Boolean
+        default: false
+        description: 対話を禁止する要求。true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。
   SamlResponse:
     kind: value_object
     description: SP へ返送する <samlp:Response>。Status Success、IdP entityID の Issuer、署名済み Assertion を含み、SP 設定により Response 全体も署名する。Destination は確定した ACS URL、InResponseTo は SP-initiated の AuthnRequest ID。HTTP-POST binding で base64 化し ACS へ自動 POST する。
@@ -324,7 +344,7 @@ models:
         description: logout を要求した SP の entityID (判明していれば)。
 interfaces:
   SamlSingleSignOn:
-    description: "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で service provider を解決して、署名必須 SP では Redirect binding 署名または XML 署名を検証する。Destination を現在 realm の SSO endpoint に限定し、ACS URL を許可集合に限定する (open redirect 防止)。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、SP 設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。"
+    description: "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、SP 設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。"
     input:
       saml_request:
         type: String
@@ -346,9 +366,11 @@ interfaces:
       - input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)
       - input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)
       - input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)
+      - input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)
     ensures:
       - relay_state_round_tripped(input.relay_state)
       - saml_response_matches_request(input.saml_request, context.tenant_id)
+      - assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)
     access: public
     bindings:
       - kind: http
@@ -502,7 +524,7 @@ scenarios:
       - SP の entityID、ACS URL、Destination は登録済みである
     main_success:
       - 登録済み SP の AuthnRequest を受信する
-      - Issuer / ACS / Destination / subject assignment を検証する
+      - Version / IssueInstant / Issuer / ACS / Destination / binding / NameIDPolicy / subject assignment を検証する
       - 署名済み SAMLResponse を ACS へ POST し RelayState を同値で返す
     extensions:
       - at: 2
@@ -514,6 +536,22 @@ scenarios:
         condition: AuthnRequest の解析または署名検証に失敗する
         steps:
           - SamlSignInRejected を発行して protocol error を返す
+      - at: 2
+        condition: AuthnRequest の Version、IssueInstant、ProtocolBinding、ACS index、NameIDPolicy format が未対応または矛盾する
+        steps:
+          - assertion を発行しない
+          - 検証済み ACS が確定済みの場合だけ HTTP-POST の SAML protocol error を返す
+          - それ以外は SamlSignInRejected を発行して fail-closed で拒否する
+      - at: 2
+        condition: IsPassive=true かつ利用可能な既存セッションがない
+        steps:
+          - ログイン画面へ遷移しない
+          - 検証済み ACS へ HTTP-POST の NoPassive SAML protocol response を返す
+      - at: 3
+        condition: 同じ tenant / SP / AuthnRequest ID に対する assertion がすでに発行済みである
+        steps:
+          - assertion を発行しない
+          - SamlSignInRejected を発行して fail-closed で拒否する
   SAML rejects unregistered or mismatched request:
     actor: EndUser
     given:

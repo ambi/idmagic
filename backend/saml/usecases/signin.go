@@ -43,10 +43,11 @@ type ApplicationGate interface {
 
 // SignInService は SAML SSO の発行判断を所有する。
 type SignInService struct {
-	SPRepo   samlports.SamlServiceProviderRepository
-	UserRepo idmports.UserRepository
-	Gate     ApplicationGate
-	Emit     func(spec.DomainEvent)
+	SPRepo      samlports.SamlServiceProviderRepository
+	ReplayStore samlports.AuthnRequestReplayStore
+	UserRepo    idmports.UserRepository
+	Gate        ApplicationGate
+	Emit        func(spec.DomainEvent)
 }
 
 // SignInOutcomeKind は SSO 判断の分岐種別。
@@ -59,6 +60,8 @@ const (
 	SignInRejected
 	// SignInForbidden は割当ゲートで拒否され 403 を返すべきことを表す。イベントは発行済み。
 	SignInForbidden
+	// SignInProtocolError returns a SAML error to a verified ACS.
+	SignInProtocolError
 	// SignInIssued は assertion 発行に進んでよいことを表す。
 	SignInIssued
 )
@@ -69,11 +72,12 @@ type SignInOutcome struct {
 	Message string // Rejected(400) / Forbidden(403) の応答本文。
 
 	// SignInIssued のときの発行データ。
-	SP          samldomain.SamlServiceProvider
-	Validated   samldomain.ValidatedSignIn
-	ClaimResult claimusecases.ClaimIssuanceResult
-	Authn       *authdomain.AuthenticationContext
-	Now         time.Time
+	SP             samldomain.SamlServiceProvider
+	Validated      samldomain.ValidatedSignIn
+	ClaimResult    claimusecases.ClaimIssuanceResult
+	Authn          *authdomain.AuthenticationContext
+	Now            time.Time
+	ProtocolStatus string
 }
 
 // SignInInput は adapter が wire から組み立てて渡す SSO 判断入力。
@@ -111,6 +115,9 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 
 	authn := in.Authn
 	if authn == nil || authn.UserID == "" || authn.AuthenticationPending {
+		if in.Request.IsPassive && in.Request.ID != "" {
+			return SignInOutcome{Kind: SignInProtocolError, SP: *sp, Validated: validated, Now: time.Now().UTC(), ProtocolStatus: "urn:oasis:names:tc:SAML:2.0:status:NoPassive"}, nil
+		}
 		return SignInOutcome{Kind: SignInNeedLogin}, nil
 	}
 	now := time.Now().UTC()
@@ -151,6 +158,18 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	}
 	if validated.NameIDFormat != "" {
 		result.NameIDFormat = validated.NameIDFormat
+	}
+	if in.Request.ID != "" {
+		if s.ReplayStore == nil {
+			return s.rejected(in.TenantID, sp.EntityID, "AuthnRequest replay protection is unavailable", nil), nil
+		}
+		reserved, err := s.ReplayStore.RecordIfNew(ctx, in.TenantID, sp.EntityID, in.Request.ID, 10*time.Minute, now)
+		if err != nil {
+			return s.rejected(in.TenantID, sp.EntityID, "AuthnRequest replay protection failed", err), nil
+		}
+		if !reserved {
+			return s.rejected(in.TenantID, sp.EntityID, "AuthnRequest was already consumed", nil), nil
+		}
 	}
 
 	return SignInOutcome{

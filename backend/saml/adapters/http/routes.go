@@ -21,6 +21,7 @@ type Deps struct {
 	*support.ApplicationGate
 
 	SamlSPRepo       samlports.SamlServiceProviderRepository
+	ReplayStore      samlports.AuthnRequestReplayStore
 	FederationSigner *samltoken.Signer
 	UserRepo         idmports.UserRepository
 }

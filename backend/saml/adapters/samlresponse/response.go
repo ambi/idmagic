@@ -25,6 +25,7 @@ const (
 	samlProtocolNS  = "urn:oasis:names:tc:SAML:2.0:protocol"
 	samlAssertionNS = "urn:oasis:names:tc:SAML:2.0:assertion"
 	statusSuccess   = "urn:oasis:names:tc:SAML:2.0:status:Success"
+	statusNoPassive = "urn:oasis:names:tc:SAML:2.0:status:NoPassive"
 	xmlDateTime     = "2006-01-02T15:04:05Z"
 )
 
@@ -36,6 +37,32 @@ type ResponseInput struct {
 	IssueInstant time.Time      // 発行時刻。
 	Assertion    *etree.Element // 埋め込む <saml:Assertion> (署名済み・未署名いずれも可)。
 	SignResponse bool           // <Response> 全体を enveloped 署名するか。
+}
+
+// BuildErrorResponse builds an assertion-less protocol response for a verified ACS.
+func BuildErrorResponse(issuer, destination, inResponseTo, status string, issueInstant time.Time) ([]byte, error) {
+	if strings.TrimSpace(issuer) == "" || strings.TrimSpace(destination) == "" || strings.TrimSpace(status) == "" {
+		return nil, fmt.Errorf("samlresponse: issuer, destination, and status are required")
+	}
+	id, err := newID()
+	if err != nil {
+		return nil, err
+	}
+	resp := etree.NewElement("samlp:Response")
+	resp.CreateAttr("xmlns:samlp", samlProtocolNS)
+	resp.CreateAttr("xmlns:saml", samlAssertionNS)
+	resp.CreateAttr("ID", id)
+	resp.CreateAttr("Version", "2.0")
+	resp.CreateAttr("IssueInstant", issueInstant.UTC().Format(xmlDateTime))
+	resp.CreateAttr("Destination", destination)
+	if inResponseTo != "" {
+		resp.CreateAttr("InResponseTo", inResponseTo)
+	}
+	resp.CreateElement("saml:Issuer").SetText(issuer)
+	resp.CreateElement("samlp:Status").CreateElement("samlp:StatusCode").CreateAttr("Value", status)
+	doc := etree.NewDocument()
+	doc.SetRoot(resp)
+	return doc.WriteToBytes()
 }
 
 // BuildResponse は <samlp:Response> を組み立て、必要なら Response 全体を署名し、直列化した

@@ -12,7 +12,8 @@ import (
 )
 
 type Module struct {
-	SPRepo ports.SamlServiceProviderRepository
+	SPRepo      ports.SamlServiceProviderRepository
+	ReplayStore ports.AuthnRequestReplayStore
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
@@ -20,6 +21,6 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 ) {
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate,
-		SamlSPRepo: m.SPRepo, FederationSigner: federationSigner, UserRepo: userRepo,
+		SamlSPRepo: m.SPRepo, ReplayStore: m.ReplayStore, FederationSigner: federationSigner, UserRepo: userRepo,
 	})
 }

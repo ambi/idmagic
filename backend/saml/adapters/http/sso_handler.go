@@ -116,9 +116,25 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 		return c.String(http.StatusBadRequest, kernel.EnglishErrorText(outcome.Message))
 	case samlusecases.SignInForbidden:
 		return c.String(http.StatusForbidden, kernel.EnglishErrorText(outcome.Message))
+	case samlusecases.SignInProtocolError:
+		return d.issueProtocolError(c, outcome, relayState)
 	default:
 		return d.issueResponse(c, outcome, relayState)
 	}
+}
+
+func (d Deps) issueProtocolError(c *echo.Context, o samlusecases.SignInOutcome, relayState string) error {
+	responseXML, err := samlresponse.BuildErrorResponse(support.RequestIssuer(c, d.Issuer), o.Validated.ACSURL, o.Validated.InResponseTo, o.ProtocolStatus, o.Now)
+	if err != nil {
+		return d.rejectSSO(c, o.SP.EntityID, "protocol error build failed", err)
+	}
+	support.SetAutoPostFormCSP(c, o.Validated.ACSURL)
+	formHTML, err := samlresponse.EncodePostForm(responseXML, o.Validated.ACSURL, relayState)
+	if err != nil {
+		return d.rejectSSO(c, o.SP.EntityID, "protocol error form failed", err)
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.HTML(http.StatusOK, string(formHTML))
 }
 
 // issueResponse は発行データから SAMLResponse を組み立て・署名し、自動 POST フォームで返す。

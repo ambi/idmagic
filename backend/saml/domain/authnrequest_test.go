@@ -13,8 +13,9 @@ import (
 
 const sampleAuthnRequest = `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +
 	`xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_req-1" Version="2.0" ` +
+	`IssueInstant="2026-07-18T12:00:00Z" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" ` +
 	`Destination="https://idp.example.com/saml/sso" ` +
-	`AssertionConsumerServiceURL="https://sp.example.com/acs" ForceAuthn="true">` +
+	`AssertionConsumerServiceURL="https://sp.example.com/acs" ForceAuthn="true" IsPassive="true">` +
 	`<saml:Issuer>https://sp.example.com</saml:Issuer>` +
 	`<samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"/>` +
 	`</samlp:AuthnRequest>`
@@ -61,6 +62,12 @@ func TestParseAuthnRequestExtractsFields(t *testing.T) {
 	if req.Issuer != "https://sp.example.com" {
 		t.Errorf("Issuer=%q", req.Issuer)
 	}
+	if req.Version != "2.0" {
+		t.Errorf("Version=%q", req.Version)
+	}
+	if got, want := req.IssueInstant, time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC); !got.Equal(want) {
+		t.Errorf("IssueInstant=%s, want %s", got, want)
+	}
 	if req.ACSURL != "https://sp.example.com/acs" {
 		t.Errorf("ACSURL=%q", req.ACSURL)
 	}
@@ -72,6 +79,67 @@ func TestParseAuthnRequestExtractsFields(t *testing.T) {
 	}
 	if !req.ForceAuthn {
 		t.Error("ForceAuthn=false, want true")
+	}
+	if !req.IsPassive {
+		t.Error("IsPassive=false, want true")
+	}
+	if req.ProtocolBinding != samldomain.SamlBindingHTTPPOST {
+		t.Errorf("ProtocolBinding=%q", req.ProtocolBinding)
+	}
+}
+
+func TestParseAuthnRequestRejectsMissingVersionOrIssueInstant(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		xml  string
+	}{
+		{
+			name: "version",
+			xml:  strings.Replace(sampleAuthnRequest, ` Version="2.0"`, "", 1),
+		},
+		{
+			name: "issue instant",
+			xml:  strings.Replace(sampleAuthnRequest, ` IssueInstant="2026-07-18T12:00:00Z"`, "", 1),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := samldomain.ParseAuthnRequest([]byte(tc.xml)); err == nil {
+				t.Fatal("expected request to be rejected")
+			}
+		})
+	}
+}
+
+func TestValidateSignInAtRejectsUnsupportedAuthnRequestSemantics(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name string
+		req  samldomain.AuthnRequest
+	}{
+		{name: "wrong version", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "1.1", IssueInstant: now}},
+		{name: "too old", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now.Add(-11 * time.Minute)}},
+		{name: "too far in future", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now.Add(31 * time.Second)}},
+		{name: "unsupported response binding", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now, ProtocolBinding: samldomain.SamlBindingHTTPRedirect}},
+		{name: "acs url and index", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now, ACSURL: "https://sp.example.com/acs", ACSIndex: 0, ACSIndexSpecified: true}},
+		{name: "acs index unsupported", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now, ACSIndex: 0, ACSIndexSpecified: true}},
+		{name: "unsupported name id", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now, NameIDFormat: "urn:example:unsupported"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := samldomain.ValidateSignInAt(tc.req, sampleServiceProvider(), "https://idp.example.com/saml/sso", now); err == nil {
+				t.Fatal("expected unsupported request semantics to be rejected")
+			}
+		})
+	}
+}
+
+func TestValidateSignInAtAcceptsSupportedSemantics(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	req := samldomain.AuthnRequest{
+		ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now.Add(-time.Minute),
+		ProtocolBinding: samldomain.SamlBindingHTTPPOST, NameIDFormat: samldomain.SamlNameIDFormatEmailAddress,
+	}
+	if _, err := samldomain.ValidateSignInAt(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", now); err != nil {
+		t.Fatalf("validate supported semantics: %v", err)
 	}
 }
 
@@ -103,7 +171,7 @@ func TestValidateSignInResolvesRequestedACS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso")
+	out, err := samldomain.ValidateSignInAt(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -157,7 +225,7 @@ func TestValidateRequestSignatureRequiresCertificate(t *testing.T) {
 }
 
 func TestValidateSignInFallsBackToDefaultACS(t *testing.T) {
-	req := samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com"}
+	req := samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: time.Now().UTC()}
 	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso")
 	if err != nil {
 		t.Fatalf("validate: %v", err)
@@ -175,6 +243,8 @@ func TestValidateSignInUnspecifiedFormatUsesSPDefault(t *testing.T) {
 	req := samldomain.AuthnRequest{
 		ID:           "_x",
 		Issuer:       "https://sp.example.com",
+		Version:      "2.0",
+		IssueInstant: time.Now().UTC(),
 		NameIDFormat: samldomain.SamlNameIDFormatUnspecified,
 	}
 	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso")

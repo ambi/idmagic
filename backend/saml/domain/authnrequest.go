@@ -35,16 +35,26 @@ const (
 	maxAuthnRequestBytes = 256 * 1024
 	// freshAuthGrace は ForceAuthn=true のログイン往復直後に再リダイレクトループを避ける猶予。
 	freshAuthGrace = 30 * time.Second
+	// maxAuthnRequestAge は受信してよい AuthnRequest の最大経過時間。
+	maxAuthnRequestAge = 10 * time.Minute
+	// maxAuthnRequestFutureSkew は送信者と IdP の時計差として許容する未来時刻。
+	maxAuthnRequestFutureSkew = 30 * time.Second
 )
 
 // AuthnRequest は SP-initiated SSO の要求から取り出した検証対象の値。
 type AuthnRequest struct {
-	ID           string // 要求 ID。SAMLResponse の InResponseTo に往復させる。
-	Issuer       string // SP の entityID。
-	ACSURL       string // 任意。AssertionConsumerServiceURL (許可集合に対して検証する)。
-	Destination  string // 任意。要求が宛てた IdP endpoint URL。
-	NameIDFormat string // 任意。NameIDPolicy/@Format。
-	ForceAuthn   bool   // 任意。再認証の要求。
+	ID                string    // 要求 ID。SAMLResponse の InResponseTo に往復させる。
+	Issuer            string    // SP の entityID。
+	Version           string    // 必須。SAML 2.0 だけを受理する。
+	IssueInstant      time.Time // 必須。許容時間窓内でなければならない。
+	ACSURL            string    // 任意。AssertionConsumerServiceURL (許可集合に対して検証する)。
+	ACSIndex          int       // 任意。AssertionConsumerServiceIndex (初期実装では非対応)。
+	ACSIndexSpecified bool      // ACSIndex=0 と属性省略を区別する。
+	ProtocolBinding   string    // 任意。省略または HTTP-POST のみを受理する。
+	Destination       string    // 任意。要求が宛てた IdP endpoint URL。
+	NameIDFormat      string    // 任意。NameIDPolicy/@Format。
+	ForceAuthn        bool      // 任意。再認証の要求。
+	IsPassive         bool      // 任意。対話を禁止する要求。
 }
 
 type LogoutRequest struct {
@@ -121,10 +131,29 @@ func ParseAuthnRequest(xml []byte) (AuthnRequest, error) {
 	}
 
 	req := AuthnRequest{
-		ID:          strings.TrimSpace(root.SelectAttrValue("ID", "")),
-		ACSURL:      strings.TrimSpace(root.SelectAttrValue("AssertionConsumerServiceURL", "")),
-		Destination: strings.TrimSpace(root.SelectAttrValue("Destination", "")),
-		ForceAuthn:  strings.EqualFold(root.SelectAttrValue("ForceAuthn", ""), "true"),
+		ID:              strings.TrimSpace(root.SelectAttrValue("ID", "")),
+		Version:         strings.TrimSpace(root.SelectAttrValue("Version", "")),
+		ACSURL:          strings.TrimSpace(root.SelectAttrValue("AssertionConsumerServiceURL", "")),
+		ProtocolBinding: strings.TrimSpace(root.SelectAttrValue("ProtocolBinding", "")),
+		Destination:     strings.TrimSpace(root.SelectAttrValue("Destination", "")),
+		ForceAuthn:      samlBool(root.SelectAttrValue("ForceAuthn", "")),
+		IsPassive:       samlBool(root.SelectAttrValue("IsPassive", "")),
+	}
+	issueInstant := strings.TrimSpace(root.SelectAttrValue("IssueInstant", ""))
+	if issueInstant != "" {
+		parsed, err := time.Parse(time.RFC3339, issueInstant)
+		if err != nil {
+			return AuthnRequest{}, fmt.Errorf("saml: invalid AuthnRequest IssueInstant: %w", err)
+		}
+		req.IssueInstant = parsed.UTC()
+	}
+	if indexAttr := root.SelectAttr("AssertionConsumerServiceIndex"); indexAttr != nil {
+		var index int
+		if _, err := fmt.Sscanf(strings.TrimSpace(indexAttr.Value), "%d", &index); err != nil || index < 0 {
+			return AuthnRequest{}, fmt.Errorf("saml: invalid AssertionConsumerServiceIndex")
+		}
+		req.ACSIndex = index
+		req.ACSIndexSpecified = true
 	}
 	if issuer := childByTag(root, "Issuer"); issuer != nil {
 		req.Issuer = strings.TrimSpace(issuer.Text())
@@ -138,7 +167,17 @@ func ParseAuthnRequest(xml []byte) (AuthnRequest, error) {
 	if req.Issuer == "" {
 		return AuthnRequest{}, fmt.Errorf("saml: AuthnRequest is missing Issuer")
 	}
+	if req.Version == "" {
+		return AuthnRequest{}, fmt.Errorf("saml: AuthnRequest is missing Version")
+	}
+	if req.IssueInstant.IsZero() {
+		return AuthnRequest{}, fmt.Errorf("saml: AuthnRequest is missing IssueInstant")
+	}
 	return req, nil
+}
+
+func samlBool(value string) bool {
+	return strings.EqualFold(value, "true") || strings.TrimSpace(value) == "1"
 }
 
 func ParseLogoutRequest(xml []byte) (LogoutRequest, error) {
@@ -195,6 +234,27 @@ type ValidatedSignIn struct {
 //   - 省略時は sp.ACSURLs の先頭を既定の ACS とする。
 //   - NameID format は要求の NameIDPolicy を尊重し、未指定なら SP の claim policy の format を用いる。
 func ValidateSignIn(req AuthnRequest, sp SamlServiceProvider, expectedDestination string) (ValidatedSignIn, error) {
+	return ValidateSignInAt(req, sp, expectedDestination, time.Now().UTC())
+}
+
+// ValidateSignInAt は ValidateSignIn の時刻を明示できる版。IssueInstant を決定的に検証する。
+func ValidateSignInAt(req AuthnRequest, sp SamlServiceProvider, expectedDestination string, now time.Time) (ValidatedSignIn, error) {
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	// IdP-initiated SSO は AuthnRequest を持たない。ID がある経路は parser が生成する
+	// SP-initiated request として全 semantic を必須にする。
+	if req.ID != "" {
+		if req.Version != "2.0" {
+			return ValidatedSignIn{}, fmt.Errorf("saml: unsupported AuthnRequest Version %q", req.Version)
+		}
+		if req.IssueInstant.IsZero() {
+			return ValidatedSignIn{}, fmt.Errorf("saml: AuthnRequest IssueInstant is required")
+		}
+		if req.IssueInstant.Before(now.Add(-maxAuthnRequestAge)) || req.IssueInstant.After(now.Add(maxAuthnRequestFutureSkew)) {
+			return ValidatedSignIn{}, fmt.Errorf("saml: AuthnRequest IssueInstant is outside the accepted window")
+		}
+	}
 	if req.Issuer != sp.EntityID {
 		return ValidatedSignIn{}, fmt.Errorf("saml: issuer %q does not match service provider", req.Issuer)
 	}
@@ -203,6 +263,15 @@ func ValidateSignIn(req AuthnRequest, sp SamlServiceProvider, expectedDestinatio
 	}
 	if len(sp.ACSURLs) == 0 {
 		return ValidatedSignIn{}, fmt.Errorf("saml: service provider %q has no assertion consumer service URL", sp.EntityID)
+	}
+	if req.ACSURL != "" && req.ACSIndexSpecified {
+		return ValidatedSignIn{}, fmt.Errorf("saml: AssertionConsumerServiceURL and AssertionConsumerServiceIndex are mutually exclusive")
+	}
+	if req.ACSIndexSpecified {
+		return ValidatedSignIn{}, fmt.Errorf("saml: AssertionConsumerServiceIndex is not supported")
+	}
+	if req.ProtocolBinding != "" && req.ProtocolBinding != SamlBindingHTTPPOST {
+		return ValidatedSignIn{}, fmt.Errorf("saml: response ProtocolBinding %q is not supported", req.ProtocolBinding)
 	}
 
 	acsURL := sp.DefaultACSURL()
@@ -215,7 +284,13 @@ func ValidateSignIn(req AuthnRequest, sp SamlServiceProvider, expectedDestinatio
 
 	nameIDFormat := sp.ClaimPolicy.NameID.Format
 	if req.NameIDFormat != "" && req.NameIDFormat != SamlNameIDFormatUnspecified {
+		if !ValidSamlNameIDFormat(req.NameIDFormat) {
+			return ValidatedSignIn{}, fmt.Errorf("saml: NameIDPolicy format %q is not supported", req.NameIDFormat)
+		}
 		nameIDFormat = req.NameIDFormat
+	}
+	if !ValidSamlNameIDFormat(nameIDFormat) {
+		return ValidatedSignIn{}, fmt.Errorf("saml: service provider NameID format %q is not supported", nameIDFormat)
 	}
 
 	return ValidatedSignIn{
