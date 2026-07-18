@@ -7,10 +7,13 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // =====================================================================
-// SessionStore (Authentication)
+// SessionStore (Authentication) — PostgreSQL 実装と同じ contract を持つ in-memory 版
+// (wi-253 / ADR-126)。有効性判定は domain.LoginSession.Active に委ね、失効は tombstone
+// (Revoke) で物理削除しない。
 // =====================================================================
 
 type SessionStore struct {
@@ -40,24 +43,43 @@ func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) er
 	return nil
 }
 
+// Find は有効な (未失効・未期限切れ) セッションだけを返す fail-closed な解決用 lookup。
 func (s *SessionStore) Find(_ context.Context, id string) (*authdomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[id]
-	if !ok {
-		return nil, nil
-	}
-	if s.now().After(sess.ExpiresAt) {
-		delete(s.sessions, id)
+	if !ok || !sess.Active(s.now()) {
 		return nil, nil
 	}
 	return sess, nil
 }
 
-func (s *SessionStore) Delete(_ context.Context, id string) error {
+// FindOwned は失効・期限切れを含めて対象の所有者確認に使う lookup。
+func (s *SessionStore) FindOwned(_ context.Context, id, userID string) (*authdomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.sessions, id)
+	sess, ok := s.sessions[id]
+	if !ok || sess.UserID != userID {
+		return nil, nil
+	}
+	return sess, nil
+}
+
+func (s *SessionStore) Revoke(_ context.Context, id string, reason spec.SessionEndReason, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.sessions[id]; ok {
+		sess.Revoke(reason, now)
+	}
+	return nil
+}
+
+func (s *SessionStore) Touch(_ context.Context, id string, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.sessions[id]; ok {
+		sess.Touch(now)
+	}
 	return nil
 }
 
@@ -66,12 +88,8 @@ func (s *SessionStore) ListBySub(_ context.Context, sub string) ([]*authdomain.L
 	defer s.mu.Unlock()
 	now := s.now()
 	out := []*authdomain.LoginSession{}
-	for id, sess := range s.sessions {
-		if now.After(sess.ExpiresAt) {
-			delete(s.sessions, id)
-			continue
-		}
-		if sess.UserID == sub && !sess.AuthenticationPending {
+	for _, sess := range s.sessions {
+		if sess.UserID == sub && !sess.AuthenticationPending && sess.Active(now) {
 			out = append(out, sess)
 		}
 	}
@@ -87,4 +105,22 @@ func (s *SessionStore) DeleteAllForSub(_ context.Context, sub string) error {
 		}
 	}
 	return nil
+}
+
+// DeleteExpiredBatch は expires_at が cutoff より前の行を最大 limit 件まで物理削除する
+// housekeeping cleanup 用の primitive (wi-253 Plan §7)。
+func (s *SessionStore) DeleteExpiredBatch(_ context.Context, cutoff time.Time, limit int) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	deleted := 0
+	for id, sess := range s.sessions {
+		if deleted >= limit {
+			break
+		}
+		if sess.ExpiresAt.Before(cutoff) {
+			delete(s.sessions, id)
+			deleted++
+		}
+	}
+	return deleted, nil
 }

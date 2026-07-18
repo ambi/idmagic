@@ -154,7 +154,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			PasswordHistoryRepo:     &authnpostgres.PasswordHistoryRepository{Pool: resilientDB},
 			PasswordResetTokenStore: &authnpostgres.PasswordResetTokenStore{Pool: resilientDB},
 			EmailChangeTokenStore:   &authnpostgres.EmailChangeTokenStore{Pool: resilientDB},
-			SessionStore:            &authnvalkey.SessionStore{Client: valkeyClient},
+			SessionStore:            &authnpostgres.SessionRepository{Pool: resilientDB},
 			WebAuthnCredentialRepo:  &authnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
 			WebAuthnSessionStore:    &authnvalkey.WebAuthnSessionStore{Client: valkeyClient},
 			RecoveryCodeRepo:        &authnpostgres.RecoveryCodeRepository{Pool: resilientDB},

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestSessionStore(t *testing.T) {
@@ -66,7 +67,8 @@ func TestSessionStore(t *testing.T) {
 		}
 		defer func() { store.Clock = nil }() // テスト後に戻す
 
-		// Find すると期限切れのため自動削除され nil が返るはず
+		// Find は期限切れセッションを fail-closed に nil として扱う (行は tombstone/housekeeping
+		// 対象であり、Find 自体は物理削除しない、wi-253)。
 		found, err := store.Find(ctx, "sess-expired")
 		if err != nil {
 			t.Fatal(err)
@@ -75,11 +77,68 @@ func TestSessionStore(t *testing.T) {
 			t.Error("expected nil for expired session")
 		}
 
-		// 実際に削除されているか確認
-		store.Clock = nil
-		foundAgain, _ := store.Find(ctx, "sess-expired")
-		if foundAgain != nil {
-			t.Error("expected session to be deleted from store")
+		// FindOwned は期限切れでも行を返す (self-service revoke の idempotency 判定に使う)。
+		owned, err := store.FindOwned(ctx, "sess-expired", "user-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if owned == nil {
+			t.Error("expected FindOwned to return the expired row (not physically deleted)")
+		}
+	})
+
+	t.Run("Revoke is idempotent tombstone", func(t *testing.T) {
+		sess := &authdomain.LoginSession{
+			ID: "sess-revoke", TenantID: "tenant-1", UserID: "user-1",
+			ExpiresAt: time.Now().Add(1 * time.Hour),
+		}
+		_ = store.Save(ctx, sess)
+
+		now := time.Now().UTC()
+		if err := store.Revoke(ctx, "sess-revoke", spec.SessionEndSelfRevoke, now); err != nil {
+			t.Fatal(err)
+		}
+		if found, _ := store.Find(ctx, "sess-revoke"); found != nil {
+			t.Error("expected revoked session to be excluded from Find")
+		}
+		owned, err := store.FindOwned(ctx, "sess-revoke", "user-1")
+		if err != nil || owned == nil {
+			t.Fatalf("expected FindOwned to return revoked row: %v %v", owned, err)
+		}
+		if owned.RevokedAt == nil || !owned.RevokedAt.Equal(now) {
+			t.Errorf("RevokedAt = %v, want %v", owned.RevokedAt, now)
+		}
+
+		// 再失効は idempotent (最初の revoked_at/reason を保持する)。
+		later := now.Add(time.Minute)
+		if err := store.Revoke(ctx, "sess-revoke", spec.SessionEndAdminRevoke, later); err != nil {
+			t.Fatal(err)
+		}
+		owned, _ = store.FindOwned(ctx, "sess-revoke", "user-1")
+		if !owned.RevokedAt.Equal(now) || *owned.RevokeReason != spec.SessionEndSelfRevoke {
+			t.Errorf("second revoke overwrote tombstone: %+v", owned)
+		}
+	})
+
+	t.Run("Touch is coarse-grained", func(t *testing.T) {
+		sess := &authdomain.LoginSession{
+			ID: "sess-touch", TenantID: "tenant-1", UserID: "user-1",
+			ExpiresAt: time.Now().Add(1 * time.Hour),
+		}
+		_ = store.Save(ctx, sess)
+
+		now := time.Now().UTC()
+		_ = store.Touch(ctx, "sess-touch", now)
+		found, _ := store.Find(ctx, "sess-touch")
+		if !found.LastSeenAt.Equal(now) {
+			t.Fatalf("LastSeenAt = %v, want %v", found.LastSeenAt, now)
+		}
+
+		soon := now.Add(time.Second)
+		_ = store.Touch(ctx, "sess-touch", soon)
+		found, _ = store.Find(ctx, "sess-touch")
+		if !found.LastSeenAt.Equal(now) {
+			t.Errorf("touch within interval must not update LastSeenAt: got %v, want %v", found.LastSeenAt, now)
 		}
 	})
 
@@ -108,14 +167,14 @@ func TestSessionStore(t *testing.T) {
 		_ = store.Save(ctx, sessOtherSub)
 		_ = store.Save(ctx, sessWillExpire)
 
-		// 正常に ListBySub を実行
+		// 正常に ListBySub を実行 (sess-1, sess-expired, sess-touch, sess-will-expire が有効。
+		// sess-expired は実時計上はまだ期限内、sess-revoke は revoked なので除外される)。
 		list, err := store.ListBySub(ctx, "user-1")
 		if err != nil {
 			t.Fatal(err)
 		}
-		// user-1 に対して、sess-1, sess-will-expire の 2 つが返るはず (sess-pending は Pending なので除外される)
-		if len(list) != 2 {
-			t.Fatalf("expected 2 active sessions, got %d", len(list))
+		if len(list) != 4 {
+			t.Fatalf("expected 4 active sessions, got %d: %v", len(list), sessionIDs(list))
 		}
 
 		// 時計を進めて sess-will-expire を失効させる
@@ -128,21 +187,8 @@ func TestSessionStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// sess-will-expire は期限切れで除外かつ削除されるため、sess-1 の 1 つだけが返る
-		if len(listExpired) != 1 || listExpired[0].ID != "sess-1" {
-			t.Errorf("expected only sess-1 in list, got %v", listExpired)
-		}
-	})
-
-	t.Run("Delete", func(t *testing.T) {
-		err := store.Delete(ctx, "sess-1")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		found, _ := store.Find(ctx, "sess-1")
-		if found != nil {
-			t.Error("expected sess-1 to be deleted")
+		if len(listExpired) != 2 {
+			t.Errorf("expected 2 sessions after sess-will-expire expires, got %d: %v", len(listExpired), sessionIDs(listExpired))
 		}
 	})
 
@@ -157,4 +203,40 @@ func TestSessionStore(t *testing.T) {
 			t.Error("expected sess-other to be deleted")
 		}
 	})
+
+	t.Run("DeleteExpiredBatch", func(t *testing.T) {
+		store := NewSessionStore()
+		now := time.Now()
+		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-1", UserID: "u", ExpiresAt: now.Add(-time.Hour)})
+		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-2", UserID: "u", ExpiresAt: now.Add(-time.Minute)})
+		_ = store.Save(ctx, &authdomain.LoginSession{ID: "fresh", UserID: "u", ExpiresAt: now.Add(time.Hour)})
+
+		deleted, err := store.DeleteExpiredBatch(ctx, now, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if deleted != 1 {
+			t.Fatalf("expected batch limit of 1, got %d", deleted)
+		}
+
+		deleted, err = store.DeleteExpiredBatch(ctx, now, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if deleted != 1 {
+			t.Fatalf("expected 1 remaining expired row, got %d", deleted)
+		}
+
+		if owned, _ := store.FindOwned(ctx, "fresh", "u"); owned == nil {
+			t.Error("expected fresh (non-expired) session to survive cleanup")
+		}
+	})
+}
+
+func sessionIDs(list []*authdomain.LoginSession) []string {
+	ids := make([]string, len(list))
+	for i, s := range list {
+		ids[i] = s.ID
+	}
+	return ids
 }

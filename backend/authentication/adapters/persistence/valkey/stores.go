@@ -7,9 +7,7 @@ import (
 	"errors"
 	"time"
 
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sharedvalkey "github.com/ambi/idmagic/backend/shared/adapters/persistence/valkey"
-	"github.com/ambi/idmagic/backend/tenancy"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	goredis "github.com/redis/go-redis/v9"
@@ -17,10 +15,6 @@ import (
 
 func setJSON(ctx context.Context, client goredis.Cmdable, key string, value any, ttl time.Duration) error {
 	return sharedvalkey.SetJSON(ctx, client, key, value, ttl)
-}
-
-func getJSON(ctx context.Context, client goredis.Cmdable, key string, out any) error {
-	return sharedvalkey.GetJSON(ctx, client, key, out)
 }
 
 func ttlUntil(expiresAt time.Time) time.Duration { return sharedvalkey.TTLUntil(expiresAt) }
@@ -56,62 +50,5 @@ func (s *WebAuthnSessionStore) Take(
 	return &data, nil
 }
 
-type SessionStore struct{ Client *goredis.Client }
-
-func (s *SessionStore) Save(ctx context.Context, session *authdomain.LoginSession) error {
-	session.TenantID = tenancy.TenantID(ctx)
-	return setJSON(ctx, s.Client, tenantKey(ctx, "session:"+session.ID), session, ttlUntil(session.ExpiresAt))
-}
-
-func (s *SessionStore) Find(ctx context.Context, id string) (*authdomain.LoginSession, error) {
-	var session authdomain.LoginSession
-	if err := getJSON(ctx, s.Client, tenantKey(ctx, "session:"+id), &session); err != nil {
-		return nil, err
-	}
-	if session.ID == "" {
-		return nil, nil
-	}
-	return &session, nil
-}
-
-func (s *SessionStore) Delete(ctx context.Context, id string) error {
-	return s.Client.Del(ctx, tenantKey(ctx, "session:"+id)).Err()
-}
-
-func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*authdomain.LoginSession, error) {
-	pattern := tenantKey(ctx, "session:*")
-	iter := s.Client.Scan(ctx, 0, pattern, 100).Iterator()
-	out := []*authdomain.LoginSession{}
-	for iter.Next(ctx) {
-		var session authdomain.LoginSession
-		if err := getJSON(ctx, s.Client, iter.Val(), &session); err != nil {
-			return nil, err
-		}
-		if session.ID == "" {
-			continue
-		}
-		if session.UserID == sub && !session.AuthenticationPending {
-			copied := session
-			out = append(out, &copied)
-		}
-	}
-	return out, iter.Err()
-}
-
-func (s *SessionStore) DeleteAllForSub(ctx context.Context, sub string) error {
-	pattern := tenantKey(ctx, "session:*")
-	iter := s.Client.Scan(ctx, 0, pattern, 100).Iterator()
-	for iter.Next(ctx) {
-		key := iter.Val()
-		var session authdomain.LoginSession
-		if err := getJSON(ctx, s.Client, key, &session); err != nil {
-			return err
-		}
-		if session.UserID == sub {
-			if err := s.Client.Del(ctx, key).Err(); err != nil {
-				return err
-			}
-		}
-	}
-	return iter.Err()
-}
+// LoginSession は PostgreSQL を単一正本として永続化する (wi-253 / ADR-126)。Valkey は
+// login 完了後の active session を保存しない。SessionStore はここでは提供しない。

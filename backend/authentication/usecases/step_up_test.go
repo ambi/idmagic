@@ -101,7 +101,7 @@ func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	deps, sm, events := newStepUpFixture(t, now)
-	authn, err := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-time.Hour), false)
+	authn, err := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestCompleteStepUpWrongPasswordFails(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	deps, sm, _ := newStepUpFixture(t, now)
-	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-time.Hour), false)
+	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
 
 	err := CompleteStepUp(ctx, deps, CompleteStepUpInput{
 		Sub: "user-1", SessionID: authn.SessionID, Method: StepUpMethodPassword,
@@ -154,7 +154,7 @@ func TestCompleteStepUpTOTPSucceeds(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	deps, sm, _ := newStepUpFixture(t, now)
-	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-time.Hour), false)
+	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
 
 	factor, err := deps.MfaFactorRepo.Find(ctx, "user-1", spec.MfaFactorTOTP)
 	if err != nil {

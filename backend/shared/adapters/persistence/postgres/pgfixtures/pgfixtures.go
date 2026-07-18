@@ -40,21 +40,21 @@ func UniqueID(prefix string) string {
 }
 
 // NewUUID は UUID 列向けの一意な UUID を生成する。
-func NewUUID(t *testing.T) string {
-	t.Helper()
+func NewUUID(tb testing.TB) string {
+	tb.Helper()
 	id, err := spec.NewUUIDv4()
 	if err != nil {
-		t.Fatalf("new uuid: %v", err)
+		tb.Fatalf("new uuid: %v", err)
 	}
 	return id
 }
 
 // SeedTenant はテナントを作成して返す。FK 親が必要なテストの前提として使う。
-func SeedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
-	t.Helper()
+func SeedTenant(tb testing.TB, db sharedpg.DB) *tenancydomain.Tenant {
+	tb.Helper()
 	now := TestClock()
 	tenant := &tenancydomain.Tenant{
-		ID:          NewUUID(t),
+		ID:          NewUUID(tb),
 		Realm:       UniqueID("tenant"),
 		DisplayName: "Test Tenant",
 		Status:      tenancydomain.TenantStatusActive,
@@ -62,17 +62,17 @@ func SeedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 		UpdatedAt:   now,
 	}
 	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
-		t.Fatalf("seed tenant: %v", err)
+		tb.Fatalf("seed tenant: %v", err)
 	}
 	return tenant
 }
 
 // SeedUser は指定テナントにユーザを作成して返す。
-func SeedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
-	t.Helper()
+func SeedUser(tb testing.TB, db sharedpg.DB, tenantID string) *idmdomain.User {
+	tb.Helper()
 	now := TestClock()
 	user := &idmdomain.User{
-		ID:                NewUUID(t),
+		ID:                NewUUID(tb),
 		TenantID:          tenantID,
 		PreferredUsername: UniqueID("username"),
 		PasswordHash:      "hash",
@@ -81,17 +81,17 @@ func SeedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
 		UpdatedAt:         now,
 	}
 	if err := (&idmpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
-		t.Fatalf("seed user: %v", err)
+		tb.Fatalf("seed user: %v", err)
 	}
 	return user
 }
 
 // SeedGroup は指定テナントにグループを作成して返す。
-func SeedGroup(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.Group {
-	t.Helper()
+func SeedGroup(tb testing.TB, db sharedpg.DB, tenantID string) *idmdomain.Group {
+	tb.Helper()
 	now := TestClock()
 	group := &idmdomain.Group{
-		ID:        NewUUID(t),
+		ID:        NewUUID(tb),
 		TenantID:  tenantID,
 		Name:      UniqueID("group-name"),
 		Roles:     []string{},
@@ -99,18 +99,18 @@ func SeedGroup(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.Group {
 		UpdatedAt: now,
 	}
 	if err := (&idmpg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
-		t.Fatalf("seed group: %v", err)
+		tb.Fatalf("seed group: %v", err)
 	}
 	return group
 }
 
 // SeedClient は指定テナントに OAuth2 クライアントを作成して返す。
-func SeedClient(t *testing.T, db sharedpg.DB, tenantID string) *oauthdomain.OAuth2Client {
-	t.Helper()
+func SeedClient(tb testing.TB, db sharedpg.DB, tenantID string) *oauthdomain.OAuth2Client {
+	tb.Helper()
 	now := TestClock()
 	client := &oauthdomain.OAuth2Client{
 		TenantID:                 tenantID,
-		ClientID:                 NewUUID(t),
+		ClientID:                 NewUUID(tb),
 		ClientType:               spec.ClientConfidential,
 		ClientSecretHash:         new("secret-hash"),
 		RedirectURIs:             []string{"https://client.example/cb"},
@@ -124,7 +124,7 @@ func SeedClient(t *testing.T, db sharedpg.DB, tenantID string) *oauthdomain.OAut
 		UpdatedAt:                now,
 	}
 	if err := (&oauthpg.OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
-		t.Fatalf("seed client: %v", err)
+		tb.Fatalf("seed client: %v", err)
 	}
 	return client
 }

@@ -22,8 +22,10 @@
 -- - child of a globally unique parent: rely on the global key (user_id / client_id)
 --   and omit tenant_id unless per-tenant search/retention needs it. Omitted:
 --   consents, application_orderings, mfa_factors, password_history,
---   password_reset_tokens, email_change_tokens, group_members. Kept for per-tenant
---   search: refresh_tokens (tenant token indexes).
+--   password_reset_tokens, email_change_tokens, group_members. Kept:
+--   authentication_sessions (session id is an opaque cookie value resolved on every
+--   request; tenant_id is a fail-closed defense-in-depth predicate on that lookup,
+--   plus the per-tenant active-session listing index, ADR-126).
 -- - append-only / audit / outbox / throttling: decide by emit-time tenant, query
 --   boundary, and retention (audit_events, authentication_event_buckets, outbox).
 
@@ -373,6 +375,49 @@ CREATE TABLE password_reset_tokens (
 
 CREATE INDEX password_reset_tokens_user_id_idx ON password_reset_tokens (user_id);
 CREATE INDEX password_reset_tokens_expires_at_idx ON password_reset_tokens (expires_at);
+
+-- LoginSession の単一正本 (wi-253 / ADR-126)。tenant_id は user_id からも辿れるが、session
+-- id は browser cookie 由来の不透明値で認証解決のたびに検証する fail-closed な境界の
+-- ため、per-tenant 検索と同様に例外として保持する (ADR-082 §4 / refresh_tokens と同じ理由)。
+-- 失効は revoked_at / revoke_reason を設定する tombstone で、物理削除は housekeeping
+-- cleanup に限定する。
+CREATE TABLE authentication_sessions (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    auth_time BIGINT NOT NULL,
+    amr TEXT[] NOT NULL,
+    acr TEXT NOT NULL,
+    authentication_pending BOOLEAN NOT NULL DEFAULT FALSE,
+    pending_purpose TEXT NOT NULL DEFAULT 'None'
+        CHECK (pending_purpose IN ('None', 'Challenge', 'Enrollment')),
+    enrollment_deadline TIMESTAMPTZ,
+    enrollment_bypass_id UUID,
+    step_up_at BIGINT NOT NULL DEFAULT 0,
+    expires_at TIMESTAMPTZ NOT NULL,
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revoked_at TIMESTAMPTZ,
+    revoke_reason TEXT
+        CHECK (revoke_reason IS NULL OR revoke_reason IN
+            ('logout', 'idle', 'absolute', 'self_revoke', 'admin_revoke',
+             'password_change', 'mfa_change', 'other')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT authentication_sessions_revoke_pair
+        CHECK ((revoked_at IS NULL) = (revoke_reason IS NULL)),
+    CONSTRAINT authentication_sessions_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT authentication_sessions_user_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ユーザー別一覧の keyset pagination 用 (未失効のみ、auth_time の降順)。
+CREATE INDEX authentication_sessions_active_user_idx
+    ON authentication_sessions (tenant_id, user_id, auth_time DESC, id DESC)
+    WHERE revoked_at IS NULL;
+
+-- housekeeping batch cleanup 用。
+CREATE INDEX authentication_sessions_expires_at_idx ON authentication_sessions (expires_at);
 
 CREATE TABLE groups (
     id UUID PRIMARY KEY,

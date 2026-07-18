@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -33,7 +35,7 @@ func (a *Authenticator) ResolveAuthentication(c *echo.Context) (*authdomain.Auth
 	}
 	if user == nil || !user.IsActive() {
 		if a.SessionManager != nil && authn.SessionID != "" {
-			_ = a.SessionManager.Store.Delete(c.Request().Context(), authn.SessionID)
+			_ = a.SessionManager.Store.Revoke(c.Request().Context(), authn.SessionID, spec.SessionEndOther, time.Now().UTC())
 		}
 		return nil, nil
 	}

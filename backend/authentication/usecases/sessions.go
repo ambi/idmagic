@@ -65,29 +65,34 @@ func ListSessions(
 }
 
 // RevokeOwnSession は本人のセッション 1 件を失効する。対象が存在しないか本人のもので
-// なければ ErrSessionNotFound。
+// なければ ErrSessionNotFound。失効は tombstone であり、既に失効済みの対象への再送は
+// idempotent に成功する (event は再送しない、ADR-126)。
 func RevokeOwnSession(
 	ctx context.Context,
 	deps SessionDeps,
 	sub, sessionID string,
 	now time.Time,
 ) error {
-	sess, err := deps.Store.Find(ctx, sessionID)
+	sess, err := deps.Store.FindOwned(ctx, sessionID, sub)
 	if err != nil {
 		return err
 	}
-	if sess == nil || sess.UserID != sub {
+	if sess == nil {
 		return ErrSessionNotFound
 	}
-	if err := deps.Store.Delete(ctx, sessionID); err != nil {
+	alreadyRevoked := sess.RevokedAt != nil
+	if err := deps.Store.Revoke(ctx, sessionID, spec.SessionEndSelfRevoke, now); err != nil {
 		return err
 	}
-	emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
+	if !alreadyRevoked {
+		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
+	}
 	return nil
 }
 
 // RevokeOtherSessions は keepSessionID を除く本人の全セッションを失効する
-// ("他のセッションを全て終了")。
+// ("他のセッションを全て終了")。対象は ListBySub が返す有効なセッションに限るため、
+// 既に失効済みの行は自然に対象外になる。
 func RevokeOtherSessions(
 	ctx context.Context,
 	deps SessionDeps,
@@ -102,7 +107,7 @@ func RevokeOtherSessions(
 		if sess.ID == keepSessionID {
 			continue
 		}
-		if err := deps.Store.Delete(ctx, sess.ID); err != nil {
+		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, now); err != nil {
 			return err
 		}
 		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)

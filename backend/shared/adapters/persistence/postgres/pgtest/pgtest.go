@@ -123,10 +123,10 @@ func freePort(ctx context.Context) (uint32, error) {
 
 // Require は DB を利用できない環境でテストをスキップし、利用できる場合は
 // 共有プールを返す (*pgxpool.Pool は呼び出し側の DB interface を構造的に満たす)。
-func Require(t *testing.T) *pgxpool.Pool {
-	t.Helper()
+func Require(tb testing.TB) *pgxpool.Pool {
+	tb.Helper()
 	if Pool == nil {
-		t.Skip("embedded-postgres unavailable; skipping DB-backed test")
+		tb.Skip("embedded-postgres unavailable; skipping DB-backed test")
 	}
 	return Pool
 }

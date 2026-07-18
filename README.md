@@ -353,10 +353,23 @@ short-lived state is then kept in a store shared across replicas rather than in
 per-replica process memory:
 
 - **Valkey** holds the authorization request / authorization code / PAR / device
-  code / login session / DPoP & client-assertion replay guards / access-token
-  denylist, and the **login brute-force throttle**.
-- **PostgreSQL** owns the durable shared state: refresh tokens, audit events, and
-  auth-event aggregation buckets.
+  code / DPoP & client-assertion replay guards / access-token denylist, WebAuthn
+  ceremony challenges, and the **login brute-force throttle** — all short-lived,
+  retry-safe state.
+- **PostgreSQL** owns the durable shared state: refresh tokens, audit events,
+  auth-event aggregation buckets, and (since wi-253 / ADR-126) **login sessions**.
+  A logged-in browser session is the single source of truth in `authentication_sessions`;
+  losing Valkey no longer signs everyone out, and restarting or rolling API replicas
+  does not invalidate active sessions. Revocation (self-service, logout, or an
+  account being disabled) tombstones the row (`revoked_at`/`revoke_reason`) instead
+  of deleting it, so a repeated revoke request is a safe no-op.
+
+Because login sessions moved from Valkey to PostgreSQL, a deploy that switches an
+existing `postgres_valkey` environment onto this schema **does not migrate
+previously-issued Valkey sessions** — those browsers will be prompted to sign in
+again once, but no existing PostgreSQL-durable state (refresh tokens, audit
+history) is affected. New sessions issued after the cutover survive Valkey
+restarts/evictions and API replica restarts.
 
 The login throttle in particular *must* be shared: with per-replica counters an
 attacker's failed attempts split across `N` replicas, so the per-account /

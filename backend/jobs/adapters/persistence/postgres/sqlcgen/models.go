@@ -118,6 +118,26 @@ type AuthenticationEventBucket struct {
 	LastSeen    time.Time
 }
 
+type AuthenticationSession struct {
+	ID                    string
+	TenantID              string
+	UserID                string
+	AuthTime              int64
+	Amr                   []string
+	Acr                   string
+	AuthenticationPending bool
+	PendingPurpose        string
+	EnrollmentDeadline    pgtype.Timestamptz
+	EnrollmentBypassID    pgtype.UUID
+	StepUpAt              int64
+	ExpiresAt             time.Time
+	LastSeenAt            time.Time
+	RevokedAt             pgtype.Timestamptz
+	RevokeReason          pgtype.Text
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
 type AuthorizationDetailType struct {
 	TenantID        string
 	Type            string

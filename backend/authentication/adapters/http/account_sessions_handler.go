@@ -1,6 +1,7 @@
 // /api/account/sessions — エンドユーザー自身の有効なセッションの一覧と失効 (self-service,
 // wi-20 スライス 2)。actor.sub に固定し、本人のセッションのみ参照・失効できる。失効は
-// LoginSession を物理削除して SSO セッションを終了する。
+// LoginSession に revoked_at / revoke_reason を設定する tombstone であり、物理削除しない
+// (wi-253 / ADR-126)。
 package http
 
 import (

@@ -85,3 +85,85 @@ func TestAuthenticationValidateHappyAndFailure(t *testing.T) {
 		})
 	}
 }
+
+// TestLoginSessionActive: scenario `ユーザーは自身の有効なセッションを管理する`
+// (wi-253) — 認証解決は revoked / 期限切れの LoginSession を fail-closed で除外する。
+func TestLoginSessionActive(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	revokedAt := now.Add(-time.Minute)
+
+	tests := []struct {
+		name string
+		sess domain.LoginSession
+		want bool
+	}{
+		{"active", domain.LoginSession{ExpiresAt: now.Add(time.Hour)}, true},
+		{"expired", domain.LoginSession{ExpiresAt: now.Add(-time.Second)}, false},
+		{"revoked", domain.LoginSession{ExpiresAt: now.Add(time.Hour), RevokedAt: &revokedAt}, false},
+		{"revoked and expired", domain.LoginSession{ExpiresAt: now.Add(-time.Second), RevokedAt: &revokedAt}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.sess.Active(now); got != tt.want {
+				t.Fatalf("Active() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestLoginSessionRevokeIdempotent: 2 回目以降の失効要求は最初の revoked_at /
+// revoke_reason を保持したまま成功として扱う (tombstone, ADR-126)。
+func TestLoginSessionRevokeIdempotent(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	sess := domain.LoginSession{ExpiresAt: now.Add(time.Hour)}
+
+	sess.Revoke(spec.SessionEndSelfRevoke, now)
+	if sess.RevokedAt == nil || !sess.RevokedAt.Equal(now) {
+		t.Fatalf("first revoke: RevokedAt = %v, want %v", sess.RevokedAt, now)
+	}
+	if sess.RevokeReason == nil || *sess.RevokeReason != spec.SessionEndSelfRevoke {
+		t.Fatalf("first revoke: RevokeReason = %v, want %v", sess.RevokeReason, spec.SessionEndSelfRevoke)
+	}
+	if sess.Active(now) {
+		t.Fatalf("revoked session must not be active")
+	}
+
+	later := now.Add(time.Minute)
+	sess.Revoke(spec.SessionEndAdminRevoke, later)
+	if !sess.RevokedAt.Equal(now) {
+		t.Fatalf("second revoke overwrote RevokedAt: got %v, want %v (first revocation wins)", sess.RevokedAt, now)
+	}
+	if *sess.RevokeReason != spec.SessionEndSelfRevoke {
+		t.Fatalf("second revoke overwrote RevokeReason: got %v, want %v", *sess.RevokeReason, spec.SessionEndSelfRevoke)
+	}
+}
+
+// TestLoginSessionTouch: last_seen_at は LoginSessionTouchInterval 未満の再 touch では
+// 更新しない粗粒度な値 (idle timeout 判定はこの粒度で近似する、wi-253)。
+func TestLoginSessionTouch(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	sess := domain.LoginSession{ExpiresAt: now.Add(time.Hour)}
+
+	if !sess.Touch(now) {
+		t.Fatalf("first touch must update last_seen_at")
+	}
+	if !sess.LastSeenAt.Equal(now) {
+		t.Fatalf("LastSeenAt = %v, want %v", sess.LastSeenAt, now)
+	}
+
+	soon := now.Add(domain.LoginSessionTouchInterval - time.Second)
+	if sess.Touch(soon) {
+		t.Fatalf("touch within interval must not update last_seen_at")
+	}
+	if !sess.LastSeenAt.Equal(now) {
+		t.Fatalf("LastSeenAt changed within interval: got %v, want %v", sess.LastSeenAt, now)
+	}
+
+	later := now.Add(domain.LoginSessionTouchInterval + time.Second)
+	if !sess.Touch(later) {
+		t.Fatalf("touch past interval must update last_seen_at")
+	}
+	if !sess.LastSeenAt.Equal(later) {
+		t.Fatalf("LastSeenAt = %v, want %v", sess.LastSeenAt, later)
+	}
+}

@@ -219,6 +219,11 @@ func (m *SessionManager) Resolve(ctx context.Context, headers domain.Headers) (*
 	if sess.TenantID != tenancy.TenantID(ctx) {
 		return nil, nil
 	}
+	// last_seen_at の書き込みはここで一括して行い、oauth2/account/admin 等の呼び出し側に
+	// touch 契機を分散配線しない。実際の書き込み量は adapter 側の粗粒度ガード
+	// (LoginSessionTouchInterval) が抑える (wi-253 / ADR-126)。best-effort であり
+	// 失敗しても認証解決自体は妨げない。
+	_ = m.Store.Touch(ctx, sess.ID, time.Now().UTC())
 	return authenticationContextFromSession(sess), nil
 }
 
@@ -227,7 +232,7 @@ func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error 
 	if sid == "" {
 		return nil
 	}
-	return m.Store.Delete(ctx, sid)
+	return m.Store.Revoke(ctx, sid, spec.SessionEndLogout, time.Now().UTC())
 }
 
 func parseCookies(header string) map[string]string {
