@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
-import { displayNameError, passwordPolicyOverride } from './AdminSettingsPage'
+import { displayNameError, passwordPolicyOverride } from './AdminSettingsShared'
 
 const t = adminSettingsDictionary.en
 

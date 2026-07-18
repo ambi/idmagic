@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getAdminUser } from '../../../api/admin'
 import { request } from '../../../api/core'
-import { AdminUserEditPage } from '../../../features/admin-users/AdminUsersPage'
+import { AdminUserEditPage } from '../../../features/admin-users/AdminUserEditPage'
 import type { TenantUserAttributeSchema } from '../../../types'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'

@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
-import { AdminGroupsPage, AdminGroupCreatePage, AdminGroupEditPage } from './AdminGroupsPage'
+import { AdminGroupsPage } from './AdminGroupsListPage'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 import type { AdminGroup } from '../../types'
 
@@ -106,67 +106,5 @@ describe('AdminGroupsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
 
     expect(await screen.findByText('Could not delete the group.')).toBeInTheDocument()
-  })
-})
-
-describe('AdminGroupCreatePage', () => {
-  const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
-
-  it('creates a group and redirects to its detail page', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(response(201, { ...group, id: 'group-2' }))),
-    )
-    await renderWithRouter(<AdminGroupCreatePage csrfToken="csrf" />)
-
-    fireEvent.change(screen.getByLabelText(new RegExp(t.groupNameLabel)), {
-      target: { value: 'Support' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: t.create }))
-
-    await waitFor(() =>
-      expect(window.location.assign).toHaveBeenCalledWith('/admin/groups/group-2'),
-    )
-  })
-
-  it('shows an error and keeps the form when creation fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve(response(409, { message: 'This group name is already in use.' })),
-      ),
-    )
-    await renderWithRouter(<AdminGroupCreatePage csrfToken="csrf" />)
-
-    fireEvent.change(screen.getByLabelText(new RegExp(t.groupNameLabel)), {
-      target: { value: 'Support' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: t.create }))
-
-    expect(await screen.findByText('This group name is already in use.')).toBeInTheDocument()
-    expect(window.location.assign).not.toHaveBeenCalled()
-  })
-})
-
-describe('AdminGroupEditPage', () => {
-  const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
-
-  it('shows an error and keeps the form when updating fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the group.' }))),
-    )
-    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} />)
-
-    fireEvent.change(screen.getByLabelText(t.groupNameLabel), { target: { value: 'Platform' } })
-    fireEvent.click(screen.getByRole('button', { name: t.save }))
-
-    expect(await screen.findByText('Could not update the group.')).toBeInTheDocument()
-    expect(window.location.assign).not.toHaveBeenCalled()
   })
 })

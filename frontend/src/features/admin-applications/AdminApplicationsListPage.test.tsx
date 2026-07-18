@@ -1,13 +1,9 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
-import {
-  AdminApplicationsPage,
-  AdminApplicationDetailPage,
-  AdminApplicationEditPage,
-} from './AdminApplicationsPage'
+import { AdminApplicationsPage } from './AdminApplicationsListPage'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
-import type { AdminApplication, AdminApplicationDetail } from '../../types'
+import type { AdminApplication } from '../../types'
 
 const t = adminApplicationsDictionary.en
 
@@ -31,8 +27,6 @@ const app: AdminApplication = {
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
-
-const detail: AdminApplicationDetail = { application: app }
 
 describe('locale', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -162,42 +156,5 @@ describe('AdminApplicationsPage', () => {
 
     expect(await screen.findByText('Could not create the application.')).toBeInTheDocument()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
-})
-
-describe('AdminApplicationDetailPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
-
-  it('shows an error and keeps the confirmation open when deletion fails', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(response(409, { message: 'Could not delete the application.' }))),
-    )
-    await renderWithRouter(<AdminApplicationDetailPage csrfToken="csrf" detail={detail} />)
-
-    fireEvent.click(screen.getByRole('button', { name: t.delete }))
-    fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
-
-    expect(await screen.findByText('Could not delete the application.')).toBeInTheDocument()
-  })
-})
-
-describe('AdminApplicationEditPage', () => {
-  const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
-
-  it('shows an error and keeps the form when saving fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
-    )
-    await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={detail} />)
-
-    fireEvent.change(screen.getByLabelText(t.nameFieldLabel), { target: { value: 'Renamed App' } })
-    fireEvent.click(screen.getByRole('button', { name: t.save }))
-
-    expect(await screen.findByText('Could not update the name.')).toBeInTheDocument()
-    expect(window.location.assign).not.toHaveBeenCalled()
   })
 })

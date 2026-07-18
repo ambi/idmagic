@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getAdminGroup } from '../../../api/admin'
-import { AdminGroupEditPage } from '../../../features/admin-groups/AdminGroupsPage'
+import { AdminGroupEditPage } from '../../../features/admin-groups/AdminGroupEditPage'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'
 

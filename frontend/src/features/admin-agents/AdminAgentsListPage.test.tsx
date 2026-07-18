@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
-import { AdminAgentsPage } from './AdminAgentsPage'
+import { AdminAgentsPage } from './AdminAgentsListPage'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import type { AdminAgent } from '../../types'
 

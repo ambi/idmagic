@@ -1451,20 +1451,12 @@ complexity:
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
-    - id: wi234-ui-page-lines-admin-agents-page
+    - id: wi234-ui-page-lines-admin-application-edit-page
       budget: ui-page-lines
-      path: frontend/src/features/admin-agents/AdminAgentsPage.tsx
-      ceiling: 918
+      path: frontend/src/features/admin-applications/AdminApplicationEditPage.tsx
+      ceiling: 860
       owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
-    - id: wi234-ui-page-lines-admin-applications-page
-      budget: ui-page-lines
-      path: frontend/src/features/admin-applications/AdminApplicationsPage.tsx
-      ceiling: 2677
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
+      reason: "wi-234 T002 で list/detail/edit へ分割済み。edit は OIDC/WS-Fed/SAML/サインインポリシーの4プロトコル分岐フォームが同居し、残存超過はプロトコル単位のフォームセクション分割で解消する。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-admin-audit-events-page
@@ -1479,22 +1471,6 @@ complexity:
       budget: ui-page-lines
       path: frontend/src/features/admin-dashboard/AdminDashboardPage.tsx
       ceiling: 483
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
-    - id: wi234-ui-page-lines-admin-groups-page
-      budget: ui-page-lines
-      path: frontend/src/features/admin-groups/AdminGroupsPage.tsx
-      ceiling: 984
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
-    - id: wi234-ui-page-lines-admin-settings-page
-      budget: ui-page-lines
-      path: frontend/src/features/admin-settings/AdminSettingsPage.tsx
-      ceiling: 749
       owner: maintainers
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
@@ -1515,12 +1491,36 @@ complexity:
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
-    - id: wi234-ui-page-lines-admin-users-page
+    - id: wi234-ui-page-lines-admin-users-list-page
       budget: ui-page-lines
-      path: frontend/src/features/admin-users/AdminUsersPage.tsx
-      ceiling: 2457
+      path: frontend/src/features/admin-users/AdminUsersListPage.tsx
+      ceiling: 560
       owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
+      reason: "wi-234 T002 で list/detail/edit/create/import へ分割済み。list は一覧テーブルと右ペイン詳細 (UserDetails) を同居しており残存超過。"
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-user-detail-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUserDetailPage.tsx
+      ceiling: 488
+      owner: maintainers
+      reason: "wi-234 T002 で分割済み。プロフィール/属性/ライフサイクル/ロールとグループの全網羅ビューで残存超過。"
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-user-edit-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUserEditPage.tsx
+      ceiling: 489
+      owner: maintainers
+      reason: "wi-234 T002 で分割済み。属性エディタとロール変更確認ステップが同居し残存超過。"
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-user-import-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUserImportPage.tsx
+      ceiling: 436
+      owner: maintainers
+      reason: "wi-234 T002 で分割済み。CSV import の dry-run/apply ウィザードとエラー表示 helper が同居し残存超過。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-system-tenants-page
@@ -1539,36 +1539,20 @@ complexity:
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
-    - id: wi234-ui-page-local-state-admin-agents-page
+    - id: wi234-ui-page-local-state-admin-application-edit-page
       budget: ui-page-local-state
-      path: frontend/src/features/admin-agents/AdminAgentsPage.tsx
-      ceiling: 26
+      path: frontend/src/features/admin-applications/AdminApplicationEditPage.tsx
+      ceiling: 34
       owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
+      reason: "wi-234 T002 で list/detail/edit へ分割済み。edit の残存超過はプロトコル単位のフォームセクション分割で解消する。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
-    - id: wi234-ui-page-local-state-admin-applications-page
+    - id: wi234-ui-page-local-state-admin-group-edit-page
       budget: ui-page-local-state
-      path: frontend/src/features/admin-applications/AdminApplicationsPage.tsx
-      ceiling: 81
+      path: frontend/src/features/admin-groups/AdminGroupEditPage.tsx
+      ceiling: 12
       owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
-    - id: wi234-ui-page-local-state-admin-groups-page
-      budget: ui-page-local-state
-      path: frontend/src/features/admin-groups/AdminGroupsPage.tsx
-      ceiling: 30
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
-    - id: wi234-ui-page-local-state-admin-settings-page
-      budget: ui-page-local-state
-      path: frontend/src/features/admin-settings/AdminSettingsPage.tsx
-      ceiling: 22
-      owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
+      reason: "wi-234 T003 で list/detail/create/edit へ分割済み。edit は基本情報フォームと動的ルール編集/プレビューの状態が同居し残存超過。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-local-state-admin-sign-in-policy-page
@@ -1579,12 +1563,12 @@ complexity:
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
-    - id: wi234-ui-page-local-state-admin-users-page
+    - id: wi234-ui-page-local-state-admin-user-edit-page
       budget: ui-page-local-state
-      path: frontend/src/features/admin-users/AdminUsersPage.tsx
-      ceiling: 45
+      path: frontend/src/features/admin-users/AdminUserEditPage.tsx
+      ceiling: 12
       owner: maintainers
-      reason: "wi-234 で責務境界に沿って分割する既存超過。"
+      reason: "wi-234 T002 で分割済み。残存超過はプロフィール/属性/ロール変更確認の状態が同一 component に残るため。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-local-state-system-tenants-page

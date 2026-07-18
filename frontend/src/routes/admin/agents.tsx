@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { request } from '../../api/core'
-import { AdminAgentsPage } from '../../features/admin-agents/AdminAgentsPage'
+import { AdminAgentsPage } from '../../features/admin-agents/AdminAgentsListPage'
 import type { AdminAgent } from '../../types'
 import { requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
