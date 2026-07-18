@@ -103,14 +103,21 @@ requirement の field:
 | --- | --- | --- |
 | `id` | MUST | 非空文字列。 |
 | `strength` | MUST | `MUST \| SHOULD \| MAY \| MUST NOT \| SHOULD NOT`。 |
-| `adoption` | MUST | `required \| optional \| excluded`。 |
+| `adoption` | MUST | `required \| optional \| excluded \| partial`。 |
 | `statement` | MUST | 非空文字列。 |
 | `section` | MAY | 文字列。 |
-| `reason` | `adoption: excluded` のとき MUST、それ以外 MAY | 文字列。 |
+| `reason` | `adoption: excluded \| partial` のとき MUST、それ以外 MAY | 文字列。 |
 | `refs` | MAY | `section.name` 形式の一意な文字列配列 (§3 冒頭表参照)。 |
 
 `refs` は唯一の汎用参照 field であり、各値を `section.name` として解決する。未解決参照、
 旧 `relates_to`、work item / ADR / commit 番号は拒否する。
+
+`adoption: partial` は、requirement の一部だけを実装し残りは対応しないことを表す
+(`excluded`(丸ごと不採用)とも `required`(丸ごと採用)とも異なる)。`excluded` と同様に
+`reason` を MUST とし、どの部分を実装し、どの部分を実装していないかを具体的に書く。
+自由記述の `interfaces.*.description` に埋もれさせず、`yaml-check` で検証可能な
+構造化事実として残す目的は
+[ADR-121](decisions/ADR-121-scope-narrowing-disclosure-obligation.md) に記録する。
 
 ### 2.2 context_map — bounded context の対応
 

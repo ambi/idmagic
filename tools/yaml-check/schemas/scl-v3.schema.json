@@ -90,7 +90,7 @@
               "id": { "$ref": "#/$defs/NonEmptyString" },
               "section": { "type": "string" },
               "strength": { "enum": ["MUST", "SHOULD", "MAY", "MUST NOT", "SHOULD NOT"] },
-              "adoption": { "enum": ["required", "optional", "excluded"] },
+              "adoption": { "enum": ["required", "optional", "excluded", "partial"] },
               "statement": { "$ref": "#/$defs/NonEmptyString" },
               "reason": { "type": "string" },
               "refs": {
@@ -100,7 +100,7 @@
               }
             },
             "if": {
-              "properties": { "adoption": { "const": "excluded" } },
+              "properties": { "adoption": { "enum": ["excluded", "partial"] } },
               "required": ["adoption"]
             },
             "then": { "required": ["reason"] }
