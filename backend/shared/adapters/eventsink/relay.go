@@ -5,18 +5,30 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/twmb/franz-go/pkg/kgo"
+	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
-type KafkaRelay struct {
-	Pool         *pgxpool.Pool
-	Kafka        *kgo.Client
-	PollInterval time.Duration
-	BatchSize    int
+// Publisher は outbox メッセージの配信先を抽象化する。Kafka / Pub/Sub / log などの
+// transport をこの背後に隔離し、Relay 本体 (drain ループ) を transport 中立に保つ
+// ([[ADR-120]])。
+type Publisher interface {
+	// Publish は 1 メッセージを配信先へ送る。at-least-once のため、失敗時は
+	// 呼び出し側 (Relay) が outbox 行を未 published のまま再試行する。
+	Publish(ctx context.Context, m OutboxMessage) error
+	// Name は published_to カラムへ記録する識別子 ("kafka" / "pubsub" / "log")。
+	Name() string
+	Close()
+}
+
+// OutboxMessage は outbox 1 行を transport 非依存に表現する。
+type OutboxMessage struct {
+	Topic     string
+	Key       string // per-aggregate ordering key (Kafka partition key / Pub/Sub ordering key)
+	Payload   []byte
+	EventType string
+	OutboxID  int64
 }
 
 type outboxRecord struct {
@@ -26,24 +38,24 @@ type outboxRecord struct {
 	Payload   []byte
 }
 
-func NewKafkaRelay(pool *pgxpool.Pool, brokers []string, clientID string) (*KafkaRelay, error) {
-	client, err := kgo.NewClient(
-		kgo.SeedBrokers(brokers...),
-		kgo.ClientID(clientID),
-		kgo.RequiredAcks(kgo.AllISRAcks()),
-		kgo.ProducerBatchCompression(kgo.SnappyCompression()),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &KafkaRelay{
-		Pool: pool, Kafka: client, PollInterval: 200 * time.Millisecond, BatchSize: 100,
-	}, nil
+// Relay は outbox テーブルを skip-locked で drain し、Publisher へ転送する
+// transport 中立のリレー。
+type Relay struct {
+	DB           sharedpg.DB
+	Pub          Publisher
+	PollInterval time.Duration
+	BatchSize    int
 }
 
-func (r *KafkaRelay) Close() { r.Kafka.Close() }
+// NewRelay は既定のポーリング間隔とバッチサイズで Relay を組み立てる。
+func NewRelay(db sharedpg.DB, pub Publisher) *Relay {
+	return &Relay{DB: db, Pub: pub, PollInterval: 200 * time.Millisecond, BatchSize: 100}
+}
 
-func (r *KafkaRelay) Run(ctx context.Context) error {
+func (r *Relay) Close() { r.Pub.Close() }
+
+// Run は ctx がキャンセルされるまで PollInterval 間隔で Tick を回す。
+func (r *Relay) Run(ctx context.Context) error {
 	ticker := time.NewTicker(r.PollInterval)
 	defer ticker.Stop()
 	for {
@@ -58,8 +70,10 @@ func (r *KafkaRelay) Run(ctx context.Context) error {
 	}
 }
 
-func (r *KafkaRelay) Tick(ctx context.Context) error {
-	tx, err := r.Pool.Begin(ctx)
+// Tick は未 published の outbox 行を 1 バッチ drain し、Publisher へ転送する。
+// FOR UPDATE SKIP LOCKED により複数 relay が競合せず分担できる。
+func (r *Relay) Tick(ctx context.Context) error {
+	tx, err := r.DB.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -88,16 +102,14 @@ WHERE published_at IS NULL ORDER BY id FOR UPDATE SKIP LOCKED LIMIT $1`, r.Batch
 
 	var published []int64
 	for _, rec := range batch {
-		record := &kgo.Record{
-			Topic: rec.Topic,
-			Key:   []byte(partitionKey(rec.EventType, rec.Payload)),
-			Value: rec.Payload,
-			Headers: []kgo.RecordHeader{
-				{Key: "event_type", Value: []byte(rec.EventType)},
-				{Key: "outbox_id", Value: []byte(strconv.FormatInt(rec.ID, 10))},
-			},
+		msg := OutboxMessage{
+			Topic:     rec.Topic,
+			Key:       partitionKey(rec.EventType, rec.Payload),
+			Payload:   rec.Payload,
+			EventType: rec.EventType,
+			OutboxID:  rec.ID,
 		}
-		if err := r.Kafka.ProduceSync(ctx, record).FirstErr(); err != nil {
+		if err := r.Pub.Publish(ctx, msg); err != nil {
 			if _, updateErr := tx.Exec(ctx, `UPDATE outbox SET attempts=attempts+1,last_error=$1,updated_at=now() WHERE id=$2`,
 				truncate(err.Error(), 500), rec.ID); updateErr != nil {
 				return updateErr
@@ -107,14 +119,16 @@ WHERE published_at IS NULL ORDER BY id FOR UPDATE SKIP LOCKED LIMIT $1`, r.Batch
 		published = append(published, rec.ID)
 	}
 	if len(published) > 0 {
-		if _, err := tx.Exec(ctx, `UPDATE outbox SET published_at=now(),published_to='kafka',
-attempts=attempts+1,last_error=NULL,updated_at=now() WHERE id=ANY($1)`, published); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE outbox SET published_at=now(),published_to=$2,
+attempts=attempts+1,last_error=NULL,updated_at=now() WHERE id=ANY($1)`, published, r.Pub.Name()); err != nil {
 			return err
 		}
 	}
 	return tx.Commit(ctx)
 }
 
+// partitionKey はイベント種別ごとに ordering/partition key となる集約識別子を
+// payload から取り出す。transport によらず同じキーを用いて per-aggregate ordering を保つ。
 func partitionKey(eventType string, payload []byte) string {
 	var value map[string]any
 	if json.Unmarshal(payload, &value) != nil {

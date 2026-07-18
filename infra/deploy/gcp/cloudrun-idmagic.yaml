@@ -1,0 +1,83 @@
+# Cloud Run Service (API: idmagic)
+#
+# HTTP を提供するのは idmagic(API) のみ。worker/relay は HTTP を持たないため
+# Cloud Run "worker pools" で別途デプロイする（provision.sh 参照）。
+#
+# 適用例:
+#   gcloud run services replace infra/deploy/gcp/cloudrun-idmagic.yaml --region "$REGION"
+#
+# PROJECT / REGION / ホスト名 / Cloud SQL 接続名は環境に合わせて置換すること。
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: idmagic
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing # 前段は Cloud Load Balancing 経由に限定
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+        autoscaling.knative.dev/minScale: "2" # HA: 最低2レプリカ
+        autoscaling.knative.dev/maxScale: "20"
+        # Cloud SQL(Postgres) に Unix ソケット接続する場合に付与（Private IP なら不要）
+        run.googleapis.com/cloudsql-instances: PROJECT:REGION:idmagic-pg
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT/idmagic/idmagic:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ADDR
+              value: ":8080"
+            - name: ISSUER
+              value: "https://id.example.com" # 本番ホスト名。discovery の issuer と一致必須
+            - name: PERSISTENCE
+              value: "postgres_valkey"
+            - name: EVENT_SINK
+              value: "outbox"
+            - name: KEY_PROVIDER
+              value: "db" # DB-backed 署名鍵(ADR-024)。全レプリカで JWKS 一致
+            - name: OBSERVABILITY
+              value: "otel"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://localhost:4318" # OTLP collector サイドカー/エンドポイント
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: SCL_PATH
+              value: "/app/spec/scl.yaml"
+            - name: WEBAUTHN_RP_ID
+              value: "id.example.com"
+            - name: WEBAUTHN_RP_ORIGINS
+              value: "https://id.example.com"
+            - name: WEBAUTHN_RP_DISPLAY_NAME
+              value: "IdMagic"
+            # 機微値は Secret Manager から注入（provision.sh で作成）
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: idmagic-database-url
+                  key: latest
+            - name: VALKEY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: idmagic-valkey-url
+                  key: latest
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 3
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10

@@ -57,7 +57,7 @@ func TestLoadConfigOverrides(t *testing.T) {
 	}
 }
 
-// DATABASE_URL / KAFKA_BROKERS が欠けるとエラーになる。
+// 既定 sink (kafka) では DATABASE_URL / KAFKA_BROKERS が欠けるとエラーになる。
 func TestLoadConfigMissingRequired(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -70,11 +70,63 @@ func TestLoadConfigMissingRequired(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("RELAY_SINK", "")
 			t.Setenv("DATABASE_URL", tc.dbURL)
 			t.Setenv("KAFKA_BROKERS", tc.brokers)
 			if _, err := loadConfig(); err == nil {
 				t.Fatal("loadConfig() expected error, got nil")
 			}
 		})
+	}
+}
+
+// RELAY_SINK=log は broker を要求せず、ローカル/オンプレ最小構成で成立する。
+func TestLoadConfigLogSink(t *testing.T) {
+	t.Setenv("RELAY_SINK", "log")
+	t.Setenv("DATABASE_URL", "postgres://db/x")
+	t.Setenv("KAFKA_BROKERS", "")
+	t.Setenv("PUBSUB_PROJECT", "")
+
+	cfg, err := loadConfig()
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if cfg.Sink != "log" {
+		t.Errorf("Sink = %q, want log", cfg.Sink)
+	}
+}
+
+// RELAY_SINK=pubsub は PUBSUB_PROJECT を要求し、KAFKA_BROKERS は不要。
+func TestLoadConfigPubSubSink(t *testing.T) {
+	t.Run("requires project", func(t *testing.T) {
+		t.Setenv("RELAY_SINK", "pubsub")
+		t.Setenv("DATABASE_URL", "postgres://db/x")
+		t.Setenv("KAFKA_BROKERS", "")
+		t.Setenv("PUBSUB_PROJECT", "")
+		if _, err := loadConfig(); err == nil {
+			t.Fatal("loadConfig() expected error for missing PUBSUB_PROJECT, got nil")
+		}
+	})
+	t.Run("ok with project and no brokers", func(t *testing.T) {
+		t.Setenv("RELAY_SINK", "pubsub")
+		t.Setenv("DATABASE_URL", "postgres://db/x")
+		t.Setenv("KAFKA_BROKERS", "")
+		t.Setenv("PUBSUB_PROJECT", "my-project")
+		cfg, err := loadConfig()
+		if err != nil {
+			t.Fatalf("loadConfig() error = %v", err)
+		}
+		if cfg.PubSubProject != "my-project" {
+			t.Errorf("PubSubProject = %q, want my-project", cfg.PubSubProject)
+		}
+	})
+}
+
+// 未知の RELAY_SINK はエラーになる。
+func TestLoadConfigUnknownSink(t *testing.T) {
+	t.Setenv("RELAY_SINK", "rabbitmq")
+	t.Setenv("DATABASE_URL", "postgres://db/x")
+	if _, err := loadConfig(); err == nil {
+		t.Fatal("loadConfig() expected error for unknown sink, got nil")
 	}
 }
