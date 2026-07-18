@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -23,6 +24,222 @@ import (
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+// newScimTestHarness wires the SCIM HTTP handler against in-memory
+// repositories, matching the setup TestScimInboundProvisioning /
+// TestScimGroupSync use, for tests that only need list/filter behavior.
+func newScimTestHarness() (*echo.Echo, *usecases.Usecases) {
+	userRepo := idmmemory.NewUserRepository()
+	groupRepo := idmmemory.NewGroupRepository()
+	scimRepo := scimmemory.NewScimRepository()
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+
+	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
+	authenticator := &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo}
+	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst}
+
+	e := echo.New()
+	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
+	return e, usecasesInst
+}
+
+func doScimGet(t *testing.T, e *echo.Echo, tokenStr, path string) (*httptest.ResponseRecorder, map[string]any) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	var body map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	return rec, body
+}
+
+// filter、startIndex、count の契約を固定する (interfaces.ListScimUsers、
+// scenario "SCIM clientはUsersとGroups collectionを検索できる")。
+func TestScimListUsersFilterAndPagination(t *testing.T) {
+	ctx := context.Background()
+	e, usecasesInst := newScimTestHarness()
+
+	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	usernames := []string{"alice", "bob", "carol", "dave", "erin"}
+	for _, name := range usernames {
+		if _, err := usecasesInst.CreateUser(ctx, tenancydomain.DefaultTenantID, map[string]any{
+			"userName": name + "@example.com",
+			"active":   true,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("no filter returns all with default pagination", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != len(usernames) {
+			t.Errorf("totalResults = %v, want %d", body["totalResults"], len(usernames))
+		}
+		if int(body["startIndex"].(float64)) != 1 {
+			t.Errorf("startIndex = %v, want 1", body["startIndex"])
+		}
+		if got := len(body["Resources"].([]any)); got != len(usernames) {
+			t.Errorf("len(Resources) = %d, want %d", got, len(usernames))
+		}
+	})
+
+	t.Run("filter userName eq matches exactly one, case-insensitively", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`userName eq "BOB@example.com"`))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != 1 {
+			t.Fatalf("totalResults = %v, want 1", body["totalResults"])
+		}
+		resources := body["Resources"].([]any)
+		if got := resources[0].(map[string]any)["userName"].(string); got != "bob@example.com" {
+			t.Errorf("userName = %q, want bob@example.com", got)
+		}
+	})
+
+	t.Run("filter with no matches returns an empty ListResponse", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`userName eq "nobody@example.com"`))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != 0 {
+			t.Errorf("totalResults = %v, want 0", body["totalResults"])
+		}
+		if got := len(body["Resources"].([]any)); got != 0 {
+			t.Errorf("len(Resources) = %d, want 0", got)
+		}
+	})
+
+	t.Run("filter with unsupported attribute is invalidFilter 400", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`nickName eq "bob"`))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if body["scimType"] != "invalidFilter" {
+			t.Errorf("scimType = %v, want invalidFilter", body["scimType"])
+		}
+	})
+
+	t.Run("malformed filter syntax is invalidFilter 400", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`userName eq`))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if body["scimType"] != "invalidFilter" {
+			t.Errorf("scimType = %v, want invalidFilter", body["scimType"])
+		}
+	})
+
+	t.Run("startIndex/count paginate deterministically", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?startIndex=2&count=2")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["startIndex"].(float64)) != 2 {
+			t.Errorf("startIndex = %v, want 2", body["startIndex"])
+		}
+		if int(body["itemsPerPage"].(float64)) != 2 {
+			t.Errorf("itemsPerPage = %v, want 2", body["itemsPerPage"])
+		}
+		if got := len(body["Resources"].([]any)); got != 2 {
+			t.Errorf("len(Resources) = %d, want 2", got)
+		}
+	})
+
+	t.Run("startIndex past the end returns an empty page with the real totalResults", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?startIndex=1000")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != len(usernames) {
+			t.Errorf("totalResults = %v, want %d", body["totalResults"], len(usernames))
+		}
+		if got := len(body["Resources"].([]any)); got != 0 {
+			t.Errorf("len(Resources) = %d, want 0", got)
+		}
+	})
+
+	t.Run("count=0 returns no resources but the real totalResults", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?count=0")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != len(usernames) {
+			t.Errorf("totalResults = %v, want %d", body["totalResults"], len(usernames))
+		}
+		if got := len(body["Resources"].([]any)); got != 0 {
+			t.Errorf("len(Resources) = %d, want 0", got)
+		}
+	})
+
+	t.Run("negative count is invalidValue 400", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?count=-1")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if body["scimType"] != "invalidValue" {
+			t.Errorf("scimType = %v, want invalidValue", body["scimType"])
+		}
+	})
+
+	t.Run("non-integer startIndex is invalidValue 400", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?startIndex=abc")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if body["scimType"] != "invalidValue" {
+			t.Errorf("scimType = %v, want invalidValue", body["scimType"])
+		}
+	})
+}
+
+// interfaces.ListScimGroups の filter 契約と空結果を固定する。
+func TestScimListGroupsFilter(t *testing.T) {
+	ctx := context.Background()
+	e, usecasesInst := newScimTestHarness()
+
+	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"Engineering", "Sales"} {
+		if _, err := usecasesInst.CreateGroup(ctx, tenancydomain.DefaultTenantID, map[string]any{"displayName": name}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Groups?filter="+url.QueryEscape(`displayName eq "engineering"`))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if int(body["totalResults"].(float64)) != 1 {
+		t.Fatalf("totalResults = %v, want 1 (case-insensitive eq)", body["totalResults"])
+	}
+	resources := body["Resources"].([]any)
+	if got := resources[0].(map[string]any)["displayName"].(string); got != "Engineering" {
+		t.Errorf("displayName = %q, want Engineering", got)
+	}
+
+	recEmpty, bodyEmpty := doScimGet(t, e, tokenStr, "/scim/v2/Groups?filter="+url.QueryEscape(`displayName eq "nonexistent"`))
+	if recEmpty.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recEmpty.Code, recEmpty.Body.String())
+	}
+	if int(bodyEmpty["totalResults"].(float64)) != 0 {
+		t.Errorf("totalResults = %v, want 0", bodyEmpty["totalResults"])
+	}
+	if got := len(bodyEmpty["Resources"].([]any)); got != 0 {
+		t.Errorf("len(Resources) = %d, want 0", got)
+	}
+}
 
 func TestScimInboundProvisioning(t *testing.T) {
 	ctx := context.Background()

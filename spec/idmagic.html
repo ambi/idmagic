@@ -28593,7 +28593,14 @@ oauthbearertoken 方式を 1 件含める。
   </article>
 <article class="card" id="scl-Scim/interface/ListScimUsers">
     <header><h3>ListScimUsers</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Scim/authorization_policy/ScimProvision">ScimProvision</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Scim/interface/ListScimUsers</code></header>
-    <p class="desc">SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。</p>
+    <p class="desc">SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。
+filter は RFC 7644 §3.4.2.2 grammar のうち、User の許可属性
+(userName, active, name.formatted, name.givenName, name.familyName,
+emails.value, id) への比較演算子 (eq, ne, co, sw, ew, pr) と論理演算子
+(and, or, not, 丸括弧によるグループ化) だけを受け付ける。許可外の属性・演算子・
+構文エラー・入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError
+とし、内部エラーには落とさない。
+</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -28608,17 +28615,24 @@ oauthbearertoken 方式を 1 件含める。
     <td><code class="name">filter</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td></td>
+    <td>RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。</td>
   </tr><tr>
     <td><code class="name">startIndex</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td></td>
+    <td>RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する
+(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。
+</td>
   </tr><tr>
     <td><code class="name">count</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td></td>
+    <td>ページの希望件数。省略時は ServiceProviderConfig が広告する上限
+(filter.maxResults = 100) を既定値とする。0 は「resource を返さず
+totalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として
+解釈できない値は invalidValue の ScimProtocolError。上限を超える値は
+上限に clamp する。
+</td>
   </tr></tbody>
     </table>
   </div>
@@ -28841,7 +28855,13 @@ oauthbearertoken 方式を 1 件含める。
   </article>
 <article class="card" id="scl-Scim/interface/ListScimGroups">
     <header><h3>ListScimGroups</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Scim/authorization_policy/ScimProvision">ScimProvision</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Scim/interface/ListScimGroups</code></header>
-    <p class="desc">SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。</p>
+    <p class="desc">SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。
+filter は RFC 7644 §3.4.2.2 grammar のうち、Group の許可属性
+(displayName, id) への比較演算子 (eq, ne, co, sw, ew, pr) と論理演算子
+(and, or, not, 丸括弧によるグループ化) だけを受け付ける。許可外の属性・演算子・
+構文エラー・入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError
+とし、内部エラーには落とさない。
+</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -28856,17 +28876,24 @@ oauthbearertoken 方式を 1 件含める。
     <td><code class="name">filter</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td></td>
+    <td>RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。</td>
   </tr><tr>
     <td><code class="name">startIndex</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td></td>
+    <td>RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する
+(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。
+</td>
   </tr><tr>
     <td><code class="name">count</code></td>
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td></td>
+    <td>ページの希望件数。省略時は ServiceProviderConfig が広告する上限
+(filter.maxResults = 100) を既定値とする。0 は「resource を返さず
+totalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として
+解釈できない値は invalidValue の ScimProtocolError。上限を超える値は
+上限に clamp する。
+</td>
   </tr></tbody>
     </table>
   </div>
@@ -29189,9 +29216,15 @@ oauthbearertoken 方式を 1 件含める。
         <header><h3>SCIM clientはUsersとGroups collectionを検索できる</h3><span class="chip chip-actor">ScimClient</span><code class="canonical-ref">Scim/scenario/SCIM clientはUsersとGroups collectionを検索できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">SCIM client が tenant に対する有効な provisioning token を持つ</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SCIM client が /<a class="chip chip-ref" href="#scl-Scim/model/User">User</a>s と /Groups を GET する</li><li class="scn-step">各応答は SCIM ListResponse と pagination 情報を返す</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SCIM client が filter、startIndex、count を指定して /<a class="chip chip-ref" href="#scl-Scim/model/User">User</a>s と /Groups を GET する</li><li class="scn-step">各応答は filter 適用後の totalResults、ページ分の Resources、itemsPerPage を持つ SCIM ListResponse を返す</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
-            <header><span class="chip chip-hint">at 1</span><code class="name">filter 構文が不正、または provisioning token の tenant が一致しない</code></header>
+            <header><span class="chip chip-hint">at 1</span><code class="name">filter が許可属性・演算子外、または構文エラー</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">invalidFilter の SCIM protocol error で拒否される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">startIndex または count が整数として解釈できない、あるいは count が負値</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">invalidValue の SCIM protocol error で拒否される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">provisioning token の tenant が要求 tenant と一致しない</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">SCIM protocol error で拒否される</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Scim/scenario/~E5~A4~96~E9~83~A8IDP~E3~81~8B~E3~82~89~E3~81~AESCIM~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E5~90~8C~E6~9C~9F~E3~83~A9~E3~82~A4~E3~83~95~E3~82~B5~E3~82~A4~E3~82~AF~E3~83~AB">

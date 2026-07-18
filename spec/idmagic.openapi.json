@@ -11926,7 +11926,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。"
             }
           },
           {
@@ -11934,7 +11935,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する\n(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。\n"
             }
           },
           {
@@ -11942,7 +11944,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "ページの希望件数。省略時は ServiceProviderConfig が広告する上限\n(filter.maxResults = 100) を既定値とする。0 は「resource を返さず\ntotalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として\n解釈できない値は invalidValue の ScimProtocolError。上限を超える値は\n上限に clamp する。\n"
             }
           }
         ],
@@ -12423,7 +12426,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。"
             }
           },
           {
@@ -12431,7 +12435,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する\n(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。\n"
             }
           },
           {
@@ -12439,7 +12444,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "ページの希望件数。省略時は ServiceProviderConfig が広告する上限\n(filter.maxResults = 100) を既定値とする。0 は「resource を返さず\ntotalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として\n解釈できない値は invalidValue の ScimProtocolError。上限を超える値は\n上限に clamp する。\n"
             }
           }
         ],

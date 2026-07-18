@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -62,7 +63,7 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 		Bulk: domain.BulkConfig{Supported: false},
 		Filter: domain.FilterConfig{
 			Supported:  true,
-			MaxResults: 100,
+			MaxResults: domain.MaxResults,
 		},
 		ChangePassword: struct {
 			Supported bool `json:"supported"`
@@ -243,22 +244,70 @@ func (h *Handler) handleListUsers(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
-	filter := c.QueryParam("filter")
-	users, err := h.deps.Usecases.ListUsers(c.Request().Context(), tenantID, filter)
+	query, err := h.parseListQuery(c)
 	if err != nil {
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidValue")
 	}
 
-	// SCIM ListResponse
+	result, err := h.deps.Usecases.ListUsers(c.Request().Context(), tenantID, query)
+	if err != nil {
+		return h.writeListError(c, err)
+	}
+
+	return h.writeListResponse(c, result)
+}
+
+// parseListQuery decodes the filter/startIndex/count query parameters shared
+// by ListScimUsers and ListScimGroups (SCL bindings request_form: query).
+// Values that fail to parse as integers are a binding-level invalidValue
+// error; startIndex/count business rules (RFC 7644 §3.4.2.4) are enforced by
+// domain.NormalizePage inside the usecase.
+func (h *Handler) parseListQuery(c *echo.Context) (usecases.ListQuery, error) {
+	query := usecases.ListQuery{Filter: c.QueryParam("filter")}
+
+	if raw := c.QueryParam("startIndex"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return usecases.ListQuery{}, fmt.Errorf("startIndex must be an integer")
+		}
+		query.StartIndex = &n
+	}
+
+	if c.QueryParams().Has("count") {
+		n, err := strconv.Atoi(c.QueryParam("count"))
+		if err != nil {
+			return usecases.ListQuery{}, fmt.Errorf("count must be an integer")
+		}
+		query.Count = &n
+		query.HasCount = true
+	}
+
+	return query, nil
+}
+
+// writeListError maps ListUsers/ListGroups errors to the SCIM protocol error
+// RFC 7644 §3.12 requires: invalid filters as invalidFilter, invalid
+// pagination as invalidValue, anything else as an internal error.
+func (h *Handler) writeListError(c *echo.Context, err error) error {
+	if _, ok := errors.AsType[*domain.FilterError](err); ok {
+		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidFilter")
+	}
+	if _, ok := errors.AsType[*domain.PaginationError](err); ok {
+		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidValue")
+	}
+	return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+}
+
+func (h *Handler) writeListResponse(c *echo.Context, result usecases.ListResult) error {
 	list := domain.ListResponse{
 		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
-		TotalResults: len(users),
-		StartIndex:   1,
-		ItemsPerPage: len(users),
-		Resources:    make([]any, len(users)),
+		TotalResults: result.Total,
+		StartIndex:   result.StartIndex,
+		ItemsPerPage: result.ItemsPerPage,
+		Resources:    make([]any, len(result.Items)),
 	}
-	for i, u := range users {
-		list.Resources[i] = u
+	for i, item := range result.Items {
+		list.Resources[i] = item
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -311,24 +360,17 @@ func (h *Handler) handleListGroups(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
-	groups, err := h.deps.Usecases.ListGroups(c.Request().Context(), tenantID)
+	query, err := h.parseListQuery(c)
 	if err != nil {
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidValue")
 	}
 
-	list := domain.ListResponse{
-		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
-		TotalResults: len(groups),
-		StartIndex:   1,
-		ItemsPerPage: len(groups),
-		Resources:    make([]any, len(groups)),
-	}
-	for i, g := range groups {
-		list.Resources[i] = g
+	result, err := h.deps.Usecases.ListGroups(c.Request().Context(), tenantID, query)
+	if err != nil {
+		return h.writeListError(c, err)
 	}
 
-	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(http.StatusOK, list)
+	return h.writeListResponse(c, result)
 }
 
 func (h *Handler) handleUpdateGroup(c *echo.Context) error {
