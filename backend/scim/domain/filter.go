@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -39,6 +40,10 @@ type AttributeKind int
 const (
 	AttrString AttributeKind = iota
 	AttrBoolean
+	// AttrDateTime attributes compare as RFC3339 real time instants (parsed
+	// via time.Parse), not string lexical order, so differing offset
+	// notations for the same instant compare equal (wi-244).
+	AttrDateTime
 )
 
 // AttributeSpec allowlists a single filter attribute and the comparison
@@ -70,23 +75,35 @@ func boolAttr(ops ...string) AttributeSpec {
 	return AttributeSpec{Kind: AttrBoolean, Ops: set}
 }
 
+func dateTimeAttr(ops ...string) AttributeSpec {
+	set := make(map[string]bool, len(ops))
+	for _, op := range ops {
+		set[op] = true
+	}
+	return AttributeSpec{Kind: AttrDateTime, Ops: set}
+}
+
 // UserFilterAttributes is the allowlist for ListScimUsers filters
 // (SCL interfaces.ListScimUsers).
 var UserFilterAttributes = AttributeAllowlist{
-	"username":        stringAttr("eq", "ne", "co", "sw", "ew"),
-	"active":          boolAttr("eq", "ne"),
-	"name.formatted":  stringAttr("eq", "ne", "co", "sw", "ew"),
-	"name.givenname":  stringAttr("eq", "ne", "co", "sw", "ew"),
-	"name.familyname": stringAttr("eq", "ne", "co", "sw", "ew"),
-	"emails.value":    stringAttr("eq", "ne", "co", "sw", "ew"),
-	"id":              stringAttr("eq", "ne"),
+	"username":          stringAttr("eq", "ne", "co", "sw", "ew"),
+	"active":            boolAttr("eq", "ne"),
+	"name.formatted":    stringAttr("eq", "ne", "co", "sw", "ew"),
+	"name.givenname":    stringAttr("eq", "ne", "co", "sw", "ew"),
+	"name.familyname":   stringAttr("eq", "ne", "co", "sw", "ew"),
+	"emails.value":      stringAttr("eq", "ne", "co", "sw", "ew"),
+	"id":                stringAttr("eq", "ne"),
+	"meta.created":      dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
+	"meta.lastmodified": dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
 }
 
 // GroupFilterAttributes is the allowlist for ListScimGroups filters
 // (SCL interfaces.ListScimGroups).
 var GroupFilterAttributes = AttributeAllowlist{
-	"displayname": stringAttr("eq", "ne", "co", "sw", "ew"),
-	"id":          stringAttr("eq", "ne"),
+	"displayname":       stringAttr("eq", "ne", "co", "sw", "ew"),
+	"id":                stringAttr("eq", "ne"),
+	"meta.created":      dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
+	"meta.lastmodified": dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
 }
 
 // FilterExpr is a parsed, semantically-validated SCIM filter expression. It
@@ -133,6 +150,7 @@ type compareExpr struct {
 	kind AttributeKind
 	str  string
 	b    bool
+	t    time.Time
 }
 
 func (e *compareExpr) Matches(attrs map[string]any) bool {
@@ -150,6 +168,31 @@ func (e *compareExpr) Matches(attrs map[string]any) bool {
 			return bv == e.b
 		case "ne":
 			return bv != e.b
+		}
+		return false
+	}
+	if e.kind == AttrDateTime {
+		sv, isStr := v.(string)
+		if !isStr {
+			return false
+		}
+		tv, err := time.Parse(time.RFC3339, sv)
+		if err != nil {
+			return false
+		}
+		switch e.op {
+		case "eq":
+			return tv.Equal(e.t)
+		case "ne":
+			return !tv.Equal(e.t)
+		case "gt":
+			return tv.After(e.t)
+		case "ge":
+			return !tv.Before(e.t)
+		case "lt":
+			return tv.Before(e.t)
+		case "le":
+			return !tv.After(e.t)
 		}
 		return false
 	}
@@ -338,7 +381,10 @@ func isIdentStart(c rune) bool {
 }
 
 func isIdentPart(c rune) bool {
-	return unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_' || c == '.'
+	// ':' is included so schema URN-prefixed attribute paths (RFC 7644
+	// §3.4.2.2, e.g. "urn:ietf:params:scim:schemas:core:2.0:User:userName")
+	// lex as a single identifier; parseAttrExpr strips the prefix (wi-244).
+	return unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_' || c == '.' || c == ':'
 }
 
 type parser struct {
@@ -456,7 +502,10 @@ func (p *parser) parseAttrExpr() (FilterExpr, error) {
 		return nil, newFilterError("expected attribute name in filter")
 	}
 	attrRaw := p.cur.text
-	attr := strings.ToLower(attrRaw)
+	attr, ok := stripSchemaURNPrefix(strings.ToLower(attrRaw))
+	if !ok {
+		return nil, newFilterError("unknown schema URN prefix in attribute path %q", attrRaw)
+	}
 	if !isValidAttrPath(attr) {
 		return nil, newFilterError("invalid attribute path %q", attrRaw)
 	}
@@ -499,6 +548,19 @@ func (p *parser) parseAttrExpr() (FilterExpr, error) {
 			return nil, err
 		}
 		return &compareExpr{attr: attr, op: op, kind: AttrBoolean, b: b}, nil
+	case AttrDateTime:
+		if p.cur.kind != tokString {
+			return nil, newFilterError("expected quoted dateTime value for attribute %q", attrRaw)
+		}
+		val := p.cur.text
+		t, err := time.Parse(time.RFC3339, val)
+		if err != nil {
+			return nil, newFilterError("invalid dateTime literal %q for attribute %q", val, attrRaw)
+		}
+		if err := p.advance(); err != nil {
+			return nil, err
+		}
+		return &compareExpr{attr: attr, op: op, kind: AttrDateTime, t: t}, nil
 	default:
 		if p.cur.kind != tokString {
 			return nil, newFilterError("expected quoted string value for attribute %q", attrRaw)
@@ -513,6 +575,32 @@ func (p *parser) parseAttrExpr() (FilterExpr, error) {
 
 func isComparisonOp(op string) bool {
 	return slices.Contains([]string{"eq", "ne", "co", "sw", "ew", "gt", "ge", "lt", "le"}, op)
+}
+
+// scimURNPrefixes are the RFC 7644 §3.4.2.2 schema URN prefixes accepted
+// before an attribute name. Recognized generically regardless of which
+// allowlist a given ParseFilter call closes over (wi-244): the stripped
+// attribute name is still resolved through that allowlist, so a User-schema
+// prefix on a Group-only attribute (or vice versa) is rejected downstream by
+// the normal "not filterable" check, not by prefix matching.
+var scimURNPrefixes = []string{
+	"urn:ietf:params:scim:schemas:core:2.0:user:",
+	"urn:ietf:params:scim:schemas:core:2.0:group:",
+}
+
+// stripSchemaURNPrefix removes a recognized schema URN prefix from a
+// lower-cased attribute path. ok is false if attr contains a ':' that
+// doesn't match any known prefix (invalidFilter).
+func stripSchemaURNPrefix(attr string) (string, bool) {
+	if !strings.Contains(attr, ":") {
+		return attr, true
+	}
+	for _, prefix := range scimURNPrefixes {
+		if stripped, found := strings.CutPrefix(attr, prefix); found {
+			return stripped, true
+		}
+	}
+	return "", false
 }
 
 func isValidAttrPath(attr string) bool {

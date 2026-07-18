@@ -141,8 +141,10 @@ func (u *Usecases) ListGroups(ctx context.Context, tenantID string, query ListQu
 // domain.GroupFilterAttributes expects.
 func groupFilterAttrs(group *idmdomain.Group, scimID string) map[string]any {
 	return map[string]any{
-		"displayname": group.Name,
-		"id":          scimID,
+		"displayname":       group.Name,
+		"id":                scimID,
+		"meta.created":      group.CreatedAt.Format(time.RFC3339),
+		"meta.lastmodified": group.UpdatedAt.Format(time.RFC3339),
 	}
 }
 

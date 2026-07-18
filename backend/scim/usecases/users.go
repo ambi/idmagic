@@ -344,9 +344,11 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID string, query ListQue
 // domain.UserFilterAttributes expects.
 func userFilterAttrs(user *idmdomain.User, scimID string) map[string]any {
 	attrs := map[string]any{
-		"username": user.PreferredUsername,
-		"active":   user.Lifecycle.Status == idmdomain.UserStatusActive,
-		"id":       scimID,
+		"username":          user.PreferredUsername,
+		"active":            user.Lifecycle.Status == idmdomain.UserStatusActive,
+		"id":                scimID,
+		"meta.created":      user.CreatedAt.Format(time.RFC3339),
+		"meta.lastmodified": user.UpdatedAt.Format(time.RFC3339),
 	}
 	if user.Name != nil {
 		attrs["name.formatted"] = *user.Name

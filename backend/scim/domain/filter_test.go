@@ -173,6 +173,105 @@ func TestParseFilterResourceLimits(t *testing.T) {
 	})
 }
 
+// dateTime 属性 (meta.created / meta.lastModified) は gt/ge/lt/le/eq/ne を
+// RFC3339 実時刻として比較する (interfaces.ListScimUsers、wi-244)。
+func TestParseFilterDateTimeComparison(t *testing.T) {
+	attrs := map[string]any{"meta.lastmodified": "2020-06-15T00:00:00Z"}
+
+	cases := []struct {
+		filter string
+		want   bool
+	}{
+		{`meta.lastModified gt "2020-01-01T00:00:00Z"`, true},
+		{`meta.lastModified gt "2020-12-01T00:00:00Z"`, false},
+		{`meta.lastModified ge "2020-06-15T00:00:00Z"`, true},
+		{`meta.lastModified lt "2020-12-01T00:00:00Z"`, true},
+		{`meta.lastModified le "2020-06-15T00:00:00Z"`, true},
+		// 異なる offset 表記でも同一時刻なら eq/ne が正しく判定される
+		// (文字列辞書順ではなく実時刻比較であることの固定)。
+		{`meta.lastModified eq "2020-06-15T09:00:00+09:00"`, true},
+		{`meta.lastModified ne "2020-06-15T09:00:00+09:00"`, false},
+	}
+	for _, tc := range cases {
+		expr, err := domain.ParseFilter(tc.filter, domain.UserFilterAttributes)
+		if err != nil {
+			t.Fatalf("filter %q: unexpected error: %v", tc.filter, err)
+		}
+		if got := expr.Matches(attrs); got != tc.want {
+			t.Errorf("filter %q: Matches = %v, want %v", tc.filter, got, tc.want)
+		}
+	}
+}
+
+// 不正な dateTime literal は invalidFilter (*domain.FilterError) にする。
+func TestParseFilterInvalidDateTimeLiteral(t *testing.T) {
+	_, err := domain.ParseFilter(`meta.lastModified gt "not-a-date"`, domain.UserFilterAttributes)
+	if err == nil {
+		t.Fatal("expected error for invalid dateTime literal")
+	}
+	var filterErr *domain.FilterError
+	if !isFilterError(err, &filterErr) {
+		t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
+	}
+}
+
+// schema URN プレフィックス付き属性名は、prefix なしと同じ allowlist 解決を
+// 経て同じ結果になる (wi-244)。
+func TestParseFilterSchemaURNPrefix(t *testing.T) {
+	prefixed := `urn:ietf:params:scim:schemas:core:2.0:User:userName eq "alice"`
+	bare := `userName eq "alice"`
+
+	exprPrefixed, err := domain.ParseFilter(prefixed, domain.UserFilterAttributes)
+	if err != nil {
+		t.Fatalf("unexpected error for prefixed attribute: %v", err)
+	}
+	exprBare, err := domain.ParseFilter(bare, domain.UserFilterAttributes)
+	if err != nil {
+		t.Fatalf("unexpected error for bare attribute: %v", err)
+	}
+
+	attrsMatch := map[string]any{"username": "alice"}
+	attrsNoMatch := map[string]any{"username": "bob"}
+	if exprPrefixed.Matches(attrsMatch) != exprBare.Matches(attrsMatch) {
+		t.Error("prefixed and bare attribute should resolve identically (match)")
+	}
+	if exprPrefixed.Matches(attrsNoMatch) != exprBare.Matches(attrsNoMatch) {
+		t.Error("prefixed and bare attribute should resolve identically (no match)")
+	}
+	if !exprPrefixed.Matches(attrsMatch) {
+		t.Error("expected prefixed attribute filter to match")
+	}
+}
+
+// Group にも同じ prefix 解決が適用される。
+func TestParseFilterSchemaURNPrefixGroup(t *testing.T) {
+	expr, err := domain.ParseFilter(
+		`urn:ietf:params:scim:schemas:core:2.0:Group:displayName eq "Engineering"`,
+		domain.GroupFilterAttributes,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !expr.Matches(map[string]any{"displayname": "engineering"}) {
+		t.Error("expected match via prefixed displayName")
+	}
+}
+
+// 未知の URN prefix は invalidFilter にする。
+func TestParseFilterUnknownURNPrefixRejected(t *testing.T) {
+	_, err := domain.ParseFilter(
+		`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber eq "1"`,
+		domain.UserFilterAttributes,
+	)
+	if err == nil {
+		t.Fatal("expected error for unknown schema URN prefix")
+	}
+	var filterErr *domain.FilterError
+	if !isFilterError(err, &filterErr) {
+		t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
+	}
+}
+
 func isFilterError(err error, target **domain.FilterError) bool {
 	ok := errors.As(err, target)
 	return ok

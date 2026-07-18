@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -239,6 +240,85 @@ func TestScimListGroupsFilter(t *testing.T) {
 	if got := len(bodyEmpty["Resources"].([]any)); got != 0 {
 		t.Errorf("len(Resources) = %d, want 0", got)
 	}
+}
+
+// meta.lastModified への gt/eq (dateTime 実時刻比較) と schema URN プレフィックス
+// 付き属性名の契約を固定する (interfaces.ListScimUsers、RFC7644-FILTERING、wi-244)。
+func TestScimListUsersDateTimeFilterAndURNPrefix(t *testing.T) {
+	ctx := context.Background()
+	e, usecasesInst := newScimTestHarness()
+
+	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	created, err := usecasesInst.CreateUser(ctx, tenancydomain.DefaultTenantID, map[string]any{
+		"userName": "alice@example.com",
+		"active":   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastModifiedStr, _ := created["meta"].(map[string]any)["lastModified"].(string)
+	lastModified, err := time.Parse(time.RFC3339, lastModifiedStr)
+	if err != nil {
+		t.Fatalf("failed to parse lastModified %q: %v", lastModifiedStr, err)
+	}
+
+	t.Run("meta.lastModified gt a past threshold matches", func(t *testing.T) {
+		threshold := lastModified.Add(-time.Hour).Format(time.RFC3339)
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`meta.lastModified gt "`+threshold+`"`))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != 1 {
+			t.Errorf("totalResults = %v, want 1", body["totalResults"])
+		}
+	})
+
+	t.Run("meta.lastModified gt a future threshold excludes", func(t *testing.T) {
+		threshold := lastModified.Add(time.Hour).Format(time.RFC3339)
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`meta.lastModified gt "`+threshold+`"`))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != 0 {
+			t.Errorf("totalResults = %v, want 0", body["totalResults"])
+		}
+	})
+
+	t.Run("meta.lastModified eq matches across a differing timezone notation", func(t *testing.T) {
+		sameInstant := lastModified.In(time.FixedZone("UTC+9", 9*3600)).Format(time.RFC3339)
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`meta.lastModified eq "`+sameInstant+`"`))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != 1 {
+			t.Errorf("totalResults = %v, want 1 (same instant, different offset)", body["totalResults"])
+		}
+	})
+
+	t.Run("invalid dateTime literal is invalidFilter 400", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`meta.lastModified gt "not-a-date"`))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if body["scimType"] != "invalidFilter" {
+			t.Errorf("scimType = %v, want invalidFilter", body["scimType"])
+		}
+	})
+
+	t.Run("schema URN-prefixed attribute name resolves like the bare attribute", func(t *testing.T) {
+		rec, body := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+
+			url.QueryEscape(`urn:ietf:params:scim:schemas:core:2.0:User:userName eq "alice@example.com"`))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if int(body["totalResults"].(float64)) != 1 {
+			t.Errorf("totalResults = %v, want 1", body["totalResults"])
+		}
+	})
 }
 
 func TestScimInboundProvisioning(t *testing.T) {

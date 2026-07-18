@@ -87,6 +87,26 @@ standards:
         statement: protocol failure は HTTP status と detail を持つ SCIM error response で返す。
         refs:
           - models.ScimProtocolError
+      - id: RFC7644-FILTERING
+        section: §3.4.2.2
+        strength: SHOULD
+        adoption: partial
+        statement: List collection endpoint は filter query parameter による絞り込みを提供する。
+        reason: >-
+          属性・演算子は allowlist に閉じる(injection・過剰計算量対策)。
+          比較演算子は eq、ne、co、sw、ew、pr に加え、dateTime 属性
+          (User/Group 共通の meta.created、meta.lastModified)への gt、ge、
+          lt、le を対応する(RFC3339 実時刻としての比較、文字列辞書順ではない)。
+          属性名は RFC 7644 §3.4.2.2 grammar が許容する schema URN プレフィックス
+          (urn:ietf:params:scim:schemas:core:2.0:User: /
+          ...:Group:)付き表記にも対応し、prefix を剥がした後に同じ allowlist
+          で解決する。複数値属性の複合フィルタ(bracket 構文、例
+          emails[type eq "work"])は User の email 表現が単一値に簡略化されて
+          いる現状に依存するため未対応。custom / extension schema 属性への
+          フィルタも未対応。
+        refs:
+          - interfaces.ListScimUsers
+          - interfaces.ListScimGroups
 
 glossary:
   ScimToken:
@@ -280,10 +300,14 @@ interfaces:
       SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。
       filter は RFC 7644 §3.4.2.2 grammar のうち、User の許可属性
       (userName, active, name.formatted, name.givenName, name.familyName,
-      emails.value, id) への比較演算子 (eq, ne, co, sw, ew, pr) と論理演算子
-      (and, or, not, 丸括弧によるグループ化) だけを受け付ける。許可外の属性・演算子・
-      構文エラー・入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError
-      とし、内部エラーには落とさない。
+      emails.value, id への eq, ne, co, sw, ew, pr。meta.created,
+      meta.lastModified への eq, ne, gt, ge, lt, le, pr。dateTime 比較は
+      RFC3339 実時刻で行う) への比較演算子と論理演算子 (and, or, not, 丸括弧に
+      よるグループ化) だけを受け付ける。属性名は schema URN プレフィックス
+      (urn:ietf:params:scim:schemas:core:2.0:User: など) を付けた表記でも
+      解決できる。許可外の属性・演算子・未知の URN プレフィックス・構文エラー・
+      入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError とし、
+      内部エラーには落とさない。
     input:
       tenant_id: { type: String }
       filter:
@@ -447,10 +471,14 @@ interfaces:
     description: |
       SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。
       filter は RFC 7644 §3.4.2.2 grammar のうち、Group の許可属性
-      (displayName, id) への比較演算子 (eq, ne, co, sw, ew, pr) と論理演算子
-      (and, or, not, 丸括弧によるグループ化) だけを受け付ける。許可外の属性・演算子・
-      構文エラー・入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError
-      とし、内部エラーには落とさない。
+      (displayName, id への eq, ne, co, sw, ew, pr。meta.created,
+      meta.lastModified への eq, ne, gt, ge, lt, le, pr。dateTime 比較は
+      RFC3339 実時刻で行う) への比較演算子と論理演算子 (and, or, not, 丸括弧に
+      よるグループ化) だけを受け付ける。属性名は schema URN プレフィックス
+      (urn:ietf:params:scim:schemas:core:2.0:Group: など) を付けた表記でも
+      解決できる。許可外の属性・演算子・未知の URN プレフィックス・構文エラー・
+      入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError とし、
+      内部エラーには落とさない。
     input:
       tenant_id: { type: String }
       filter:
