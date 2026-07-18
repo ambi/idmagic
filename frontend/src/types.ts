@@ -695,6 +695,19 @@ export type AccountSession = {
   expires_at: string
 }
 
+// AdminSessionRecord is the admin projection of a LoginSession (wi-28 T007).
+// Unlike AccountSession it has no `current` marker (the operator and the
+// target user are different people) and includes user_id/last_seen_at.
+export type AdminSessionRecord = {
+  id: string
+  user_id: string
+  amr: string[]
+  acr: string
+  started_at: string
+  last_seen_at: string
+  expires_at: string
+}
+
 export type BrowserFlowResponse = {
   next?: string
   redirect_to?: string

@@ -16,8 +16,11 @@ import {
   disableTenantKey,
   enableAdminAgent,
   killAdminAgent,
+  listAdminUserSessions,
   removeAdminGroupMember,
   restoreAdminUser,
+  revokeAdminUserSession,
+  revokeAllAdminUserSessions,
   revokeScimToken,
   rotateTenantSigningKey,
   setAdminUserDisabled,
@@ -79,6 +82,26 @@ describe('admin API client', () => {
     expect(
       calls.find(([url]) => String(url).includes('/users/user%2Fa%20b?purge=true'))?.[1],
     ).toEqual(expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('セッション管理 (wi-28 T007) が正しい URL に CSRF 保護付きで送る', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { sessions: [] })))
+    await listAdminUserSessions('user/a b')
+    await revokeAdminUserSession('csrf', 'user/a b', 'session/1')
+    await revokeAllAdminUserSessions('csrf', 'user/a b')
+
+    const calls = vi.mocked(fetch).mock.calls
+    expect(calls.map(([url]) => url)).toEqual([
+      expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions'),
+      expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions/session%2F1/revoke'),
+      expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions/revoke_all'),
+    ])
+    expect(new Headers(calls[0][1]?.headers).get('X-CSRF-Token')).toBeNull()
+    expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'POST' }))
+    expect(calls[2][1]).toEqual(expect.objectContaining({ method: 'POST' }))
+    expect(
+      calls.slice(1).every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
+    ).toBe(true)
   })
 
   it('エージェントとアプリケーションの高リスク操作を正しい URL と本文へ直列化する', async () => {

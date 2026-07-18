@@ -109,6 +109,96 @@ func (d Deps) handleRevokeAccountSession(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type adminSessionResponse struct {
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	AMR        []string  `json:"amr"`
+	ACR        string    `json:"acr"`
+	StartedAt  time.Time `json:"started_at"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+func toAdminSessionResponse(view authusecases.AdminSessionView) adminSessionResponse {
+	amr := view.AMR
+	if amr == nil {
+		amr = []string{}
+	}
+	return adminSessionResponse{
+		ID: view.ID, UserID: view.UserID, AMR: amr, ACR: view.ACR,
+		StartedAt: view.StartedAt, LastSeenAt: view.LastSeenAt, ExpiresAt: view.ExpiresAt,
+	}
+}
+
+// handleAdminListSessions は admin が対象ユーザーの有効なセッションを一覧する
+// (wi-28 T007, ADR-127 決定9)。
+func (d Deps) handleAdminListSessions(c *echo.Context) error {
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	views, err := authusecases.AdminListSessions(c.Request().Context(), d.sessionStore(), c.Param("sub"))
+	if err != nil {
+		return err
+	}
+	sessions := make([]adminSessionResponse, len(views))
+	for i, view := range views {
+		sessions[i] = toAdminSessionResponse(view)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"sessions": sessions})
+}
+
+// handleAdminRevokeSession は admin が対象ユーザーのセッション 1 件を失効する
+// (wi-28 T007)。session revoke に続けて、同じ sid を共有する RefreshTokenRecord も
+// family/client を横断して失効させる (ADR-127, T004 の RevokeTokensBySid を再利用)。
+func (d Deps) handleAdminRevokeSession(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	targetUserID := c.Param("sub")
+	targetSessionID := c.Param("id")
+	if err := authusecases.AdminRevokeSession(
+		c.Request().Context(), d.accountSessionDeps(), actor.ID, targetUserID, targetSessionID, time.Now().UTC(),
+	); err != nil {
+		return d.writeAccountError(c, err)
+	}
+	if err := d.revokeOAuthSessionTokens(c, targetSessionID); err != nil {
+		return err
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.NoContent(http.StatusNoContent)
+}
+
+// handleAdminRevokeAllSessions は admin が対象ユーザーの全セッションを失効する
+// (wi-28 T007、"全セッションを終了" 操作)。RevokeOtherSessions と異なり操作者自身の
+// セッションではないため除外対象は無い。
+func (d Deps) handleAdminRevokeAllSessions(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	targetUserID := c.Param("sub")
+	revokedIDs, err := authusecases.AdminRevokeUserSessions(
+		c.Request().Context(), d.accountSessionDeps(), actor.ID, targetUserID, time.Now().UTC(),
+	)
+	if err != nil {
+		return d.writeAccountError(c, err)
+	}
+	for _, revokedID := range revokedIDs {
+		if err := d.revokeOAuthSessionTokens(c, revokedID); err != nil {
+			return err
+		}
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (d Deps) handleRevokeOtherAccountSessions(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err

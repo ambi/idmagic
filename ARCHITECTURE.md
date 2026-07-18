@@ -1509,9 +1509,9 @@ complexity:
     - id: wi234-ui-page-lines-admin-user-detail-page
       budget: ui-page-lines
       path: frontend/src/features/admin-users/AdminUserDetailPage.tsx
-      ceiling: 488
+      ceiling: 490
       owner: maintainers
-      reason: "wi-234 T002 で分割済み。プロフィール/属性/ライフサイクル/ロールとグループの全網羅ビューで残存超過。"
+      reason: "wi-234 T002 で分割済み。プロフィール/属性/ライフサイクル/ロールとグループの全網羅ビューで残存超過。wi-28 T007 で admin セッション管理 (UserSessionsSection) を追加し2行分増加 (ロジック本体は AdminUsersShared.tsx 側に分割済み)。"
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-admin-user-edit-page

@@ -1,15 +1,18 @@
-import { IconShield, IconUserPlus, IconUsersGroup } from '@tabler/icons-react'
+import { IconDeviceLaptop, IconShield, IconUserPlus, IconUsersGroup } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
   addAdminGroupMember,
   AuthenticationAPIError,
   getAdminUserGroups,
   listAdminGroups,
+  listAdminUserSessions,
+  revokeAdminUserSession,
+  revokeAllAdminUserSessions,
   tenantURL,
 } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import {
   domainLabelsDictionary,
   type DomainLabelsDictionary,
@@ -18,13 +21,14 @@ import { attributeGroupKey, attributeGroupTitle, cn } from '../../lib/utils'
 import { REQUIRED_ACTIONS, requiredActionLabel } from '../../types'
 import type {
   AdminGroup,
+  AdminSessionRecord,
   AdminUser,
   AdminUserGroups,
   AttributeValue,
   UserAttributeDef,
 } from '../../types'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
-import { RoleList } from './AdminUsersPrimitives'
+import { formatDateTime, RoleList } from './AdminUsersPrimitives'
 
 export function attributeValueToText(value: AttributeValue): string {
   switch (value.type) {
@@ -239,6 +243,175 @@ export function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfTo
               {t.add}
             </Button>
           </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+// sessionAmrSummary は AMR コードを人間可読なラベル列に変換する
+// (frontend/src/features/account/AccountActivityPage.tsx の同名処理と対をなす
+// admin 版。管理者向け辞書 (adminUsersDictionary) の sessionAmr* キーを使う)。
+export function sessionAmrSummary(amr: string[], t: Record<string, string>): string {
+  if (amr.length === 0) return t.sessionAmrUnknown
+  const labels: Record<string, string> = {
+    pwd: t.sessionAmrPwd,
+    otp: t.sessionAmrOtp,
+    webauthn: t.sessionAmrWebauthn,
+    rc: t.sessionAmrRc,
+    mfa: t.sessionAmrMfa,
+    hwk: t.sessionAmrHwk,
+    swk: t.sessionAmrSwk,
+  }
+  return amr.map((code) => labels[code] ?? code).join(' + ')
+}
+
+// Go's zero time.Time marshals as this exact string. A session that was only
+// ever used to issue OAuth tokens (never resolved through the browser-cookie
+// path) never touches LastSeenAt, so admins would otherwise see a bogus
+// "started 0001-01-01" row instead of a plain "never" indicator.
+const ZERO_TIME_PREFIX = '0001-01-01'
+
+export function sessionLastSeenLabel(
+  lastSeenAt: string,
+  t: Record<string, string>,
+  locale: 'ja' | 'en',
+): string {
+  if (lastSeenAt.startsWith(ZERO_TIME_PREFIX)) return t.sessionNeverSeen
+  return t.sessionLastSeen.replace('{date}', formatDateTime(lastSeenAt, locale))
+}
+
+function AdminSessionRow({
+  session,
+  busy,
+  onRevoke,
+}: {
+  session: AdminSessionRecord
+  busy: boolean
+  onRevoke: () => void
+}) {
+  const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
+  return (
+    <li className="flex items-start justify-between gap-3 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm text-slate-700">{sessionAmrSummary(session.amr, t)}</p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {t.sessionStarted.replace('{date}', formatDateTime(session.started_at, locale))}
+        </p>
+        <p className="text-xs text-slate-400">
+          {sessionLastSeenLabel(session.last_seen_at, t, locale)}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-8 shrink-0 self-center px-3 text-xs"
+        disabled={busy}
+        onClick={onRevoke}
+      >
+        {busy ? t.endingSession : t.endSession}
+      </Button>
+    </li>
+  )
+}
+
+// UserSessionsSection は admin がユーザー詳細画面から対象ユーザーの有効な
+// セッションを確認・個別終了・全終了できるようにする (wi-28 T007, ADR-127 決定9)。
+// 終了 (revoke) はサーバー側で同じ sid を共有する RefreshTokenRecord も
+// family/client を横断して失効させる (T004 の RevokeTokensBySid)。
+export function UserSessionsSection({ user, csrfToken }: { user: AdminUser; csrfToken: string }) {
+  const [sessions, setSessions] = useState<AdminSessionRecord[] | null>(null)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyAll, setBusyAll] = useState(false)
+  const { id } = user
+  const t = useDictionary(adminUsersDictionary)
+
+  const load = useCallback(async () => {
+    try {
+      setSessions(await listAdminUserSessions(id))
+      setError('')
+    } catch (err) {
+      setError(err instanceof AuthenticationAPIError ? err.message : t.sessionsFetchError)
+    }
+  }, [id, t.sessionsFetchError])
+
+  useEffect(() => {
+    setSessions(null)
+    void load()
+  }, [load])
+
+  async function handleRevoke(sessionID: string) {
+    setBusyId(sessionID)
+    setError('')
+    try {
+      await revokeAdminUserSession(csrfToken, id, sessionID)
+      await load()
+    } catch (err) {
+      setError(err instanceof AuthenticationAPIError ? err.message : t.sessionRevokeError)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleRevokeAll() {
+    if (!window.confirm(t.sessionsRevokeAllConfirm)) return
+    setBusyAll(true)
+    setError('')
+    try {
+      await revokeAllAdminUserSessions(csrfToken, id)
+      await load()
+    } catch (err) {
+      setError(err instanceof AuthenticationAPIError ? err.message : t.sessionsRevokeAllError)
+    } finally {
+      setBusyAll(false)
+    }
+  }
+
+  return (
+    <section className="border-t border-slate-200 pt-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">{t.sessionsHeading}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{t.sessionsDescription}</p>
+        </div>
+        {sessions && sessions.length > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 px-3 text-xs"
+            disabled={busyAll}
+            onClick={() => void handleRevokeAll()}
+          >
+            {t.revokeAllSessions}
+          </Button>
+        ) : null}
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="mt-3">
+          {error}
+        </Alert>
+      )}
+
+      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+        {!sessions || sessions.length === 0 ? (
+          <div className="flex items-center gap-3 px-4 py-6 text-sm text-slate-500">
+            <IconDeviceLaptop size={18} className="text-slate-400" aria-hidden="true" />
+            {sessions ? t.noSessions : ''}
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {sessions.map((session) => (
+              <AdminSessionRow
+                key={session.id}
+                session={session}
+                busy={busyId === session.id}
+                onRevoke={() => void handleRevoke(session.id)}
+              />
+            ))}
+          </ul>
         )}
       </div>
     </section>

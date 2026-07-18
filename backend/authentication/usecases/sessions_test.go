@@ -145,6 +145,90 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 	}
 }
 
+// wi-28 T007 (ADR-127 決定9): admin 向け session 管理は self-service と対で、
+// 既存の ListUserSignInActivity と同じアクセス制御パターン (TenantAdministrator,
+// resource=User/input.user_id) を踏襲する。current マーカーは持たない。
+func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewSessionStore()
+	base := time.Now().UTC().Truncate(time.Second)
+	seedSession(t, store, "s1", "alice", base)
+	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
+	seedSession(t, store, "s3", "bob", base)
+
+	views, err := usecases.AdminListSessions(ctx, store, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(views) != 2 {
+		t.Fatalf("len(views)=%d, want 2", len(views))
+	}
+	// 新しい順: s2 が先頭。
+	if views[0].ID != "s2" || views[1].ID != "s1" {
+		t.Fatalf("unexpected order: %#v", views)
+	}
+	if views[0].UserID != "alice" {
+		t.Fatalf("UserID=%q, want alice", views[0].UserID)
+	}
+}
+
+func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewSessionStore()
+	base := time.Now().UTC().Truncate(time.Second)
+	seedSession(t, store, "s1", "alice", base)
+
+	// admin が bob 向けのURLで alice のセッションを失効しようとしても対象不一致で拒否。
+	if err := usecases.AdminRevokeSession(ctx, usecases.SessionDeps{Store: store},
+		"admin-1", "bob", "s1", base); !errors.Is(err, usecases.ErrSessionNotFound) {
+		t.Fatalf("error=%v, want ErrSessionNotFound", err)
+	}
+	if sess, _ := store.Find(ctx, "s1"); sess == nil {
+		t.Fatal("alice's session was revoked despite user_id mismatch")
+	}
+
+	var events []spec.DomainEvent
+	if err := usecases.AdminRevokeSession(ctx, usecases.SessionDeps{
+		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
+	}, "admin-1", "alice", "s1", base); err != nil {
+		t.Fatal(err)
+	}
+	if sess, _ := store.Find(ctx, "s1"); sess != nil {
+		t.Fatal("alice's session was not revoked")
+	}
+	if len(events) != 1 || events[0].EventType() != "SessionEnded" {
+		t.Fatalf("unexpected events: %#v", events)
+	}
+	ended, ok := events[0].(*domain.SessionEnded)
+	if !ok || ended.ActorUserID != "admin-1" {
+		t.Fatalf("ActorUserID should be the admin, got %#v", events[0])
+	}
+}
+
+func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewSessionStore()
+	base := time.Now().UTC().Truncate(time.Second)
+	seedSession(t, store, "s1", "alice", base)
+	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
+	seedSession(t, store, "s3", "bob", base)
+
+	revokedIDs, err := usecases.AdminRevokeUserSessions(ctx, usecases.SessionDeps{Store: store}, "admin-1", "alice", base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(revokedIDs) != 2 || !slices.Contains(revokedIDs, "s1") || !slices.Contains(revokedIDs, "s2") {
+		t.Fatalf("revokedIDs=%#v, want [s1 s2]", revokedIDs)
+	}
+	remaining, _ := usecases.AdminListSessions(ctx, store, "alice")
+	if len(remaining) != 0 {
+		t.Fatalf("remaining=%#v, want none", remaining)
+	}
+	if sess, _ := store.Find(ctx, "s3"); sess == nil {
+		t.Fatal("bob's session must not be revoked")
+	}
+}
+
 func TestEndSessionUnknownSidIsNoop(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()

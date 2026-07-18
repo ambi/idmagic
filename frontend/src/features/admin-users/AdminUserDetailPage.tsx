@@ -65,6 +65,7 @@ import {
   groupedAttributeDefs,
   UserGroupsSection,
   UserRequiredActionsSection,
+  UserSessionsSection,
 } from './AdminUsersShared'
 
 // AdminUserDetailPage はユーザーの全情報を扱う専用詳細画面 (wi-39)。右ペインの
@@ -418,6 +419,7 @@ export function AdminUserDetailPage({
 
             <Card className="p-5">
               <UserGroupsSection user={user} csrfToken={csrfToken} />
+              <UserSessionsSection user={user} csrfToken={csrfToken} />
             </Card>
           </div>
         </div>

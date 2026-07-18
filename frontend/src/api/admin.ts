@@ -8,6 +8,7 @@ import type {
   AdminGroup,
   AdminGroupMember,
   AdminKey,
+  AdminSessionRecord,
   AdminSettings,
   ScimToken,
   TenantKeyHealth,
@@ -996,6 +997,36 @@ export async function revokeMfaEnrollmentBypass(csrfToken: string, userID: strin
   await request(
     `/api/admin/users/${encodeURIComponent(userID)}/mfa-enrollment-bypass`,
     adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+// Admin session management (wi-28 T007, ADR-127 決定9): view and revoke a
+// target user's sessions. Unlike self-service /api/account/sessions, these
+// have no `current` marker and session revoke also cascades to that
+// session's refresh tokens server-side (RevokeTokensBySid).
+export async function listAdminUserSessions(userID: string): Promise<AdminSessionRecord[]> {
+  return (
+    await request<{ sessions: AdminSessionRecord[] }>(
+      `/api/admin/users/${encodeURIComponent(userID)}/sessions`,
+    )
+  ).sessions
+}
+
+export async function revokeAdminUserSession(
+  csrfToken: string,
+  userID: string,
+  sessionID: string,
+): Promise<void> {
+  await request(
+    `/api/admin/users/${encodeURIComponent(userID)}/sessions/${encodeURIComponent(sessionID)}/revoke`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function revokeAllAdminUserSessions(csrfToken: string, userID: string): Promise<void> {
+  await request(
+    `/api/admin/users/${encodeURIComponent(userID)}/sessions/revoke_all`,
+    adminRequest(csrfToken, 'POST'),
   )
 }
 

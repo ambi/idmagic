@@ -120,6 +120,94 @@ func RevokeOtherSessions(
 	return revokedIDs, nil
 }
 
+// AdminSessionView は admin 向け一覧表示用のセッション射影 (wi-28 T007)。self-service
+// の SessionView と異なり current マーカーの代わりに対象 UserID と LastSeenAt を持つ
+// (操作者と対象ユーザーが別人のため、ADR-127 決定9)。
+type AdminSessionView struct {
+	ID         string
+	UserID     string
+	AMR        []string
+	ACR        string
+	StartedAt  time.Time
+	LastSeenAt time.Time
+	ExpiresAt  time.Time
+}
+
+// AdminListSessions は admin が対象ユーザーの有効なセッションを開始時刻の降順で
+// 一覧する (wi-28, ADR-127 決定9)。ListUserSignInActivity と同じアクセス制御
+// パターン (TenantAdministrator, resource=User/input.user_id) を前提とし、
+// アクセス制御自体は HTTP 層が担う。
+func AdminListSessions(ctx context.Context, store authnports.SessionStore, targetUserID string) ([]AdminSessionView, error) {
+	if store == nil {
+		return []AdminSessionView{}, nil
+	}
+	sessions, err := store.ListBySub(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]AdminSessionView, 0, len(sessions))
+	for _, sess := range sessions {
+		views = append(views, AdminSessionView{
+			ID: sess.ID, UserID: sess.UserID, AMR: sess.AMR, ACR: sess.ACR,
+			StartedAt: time.Unix(sess.AuthTime, 0).UTC(), LastSeenAt: sess.LastSeenAt, ExpiresAt: sess.ExpiresAt,
+		})
+	}
+	sort.Slice(views, func(i, j int) bool { return views[i].StartedAt.After(views[j].StartedAt) })
+	return views, nil
+}
+
+// AdminRevokeSession は admin が対象ユーザーのセッション 1 件を失効する (wi-28)。
+// sessionID が targetUserID の所有でなければ ErrSessionNotFound (URL 上の user_id と
+// session の実所有者の不一致を fail-closed で拒否する)。RevokeMySession と同じ
+// tombstone 契約で、既に失効済みの対象への再失効は idempotent に成功する。
+func AdminRevokeSession(
+	ctx context.Context,
+	deps SessionDeps,
+	actorUserID, targetUserID, sessionID string,
+	now time.Time,
+) error {
+	sess, err := deps.Store.FindOwned(ctx, sessionID, targetUserID)
+	if err != nil {
+		return err
+	}
+	if sess == nil {
+		return ErrSessionNotFound
+	}
+	alreadyRevoked := sess.RevokedAt != nil
+	if err := deps.Store.Revoke(ctx, sessionID, spec.SessionEndAdminRevoke, now); err != nil {
+		return err
+	}
+	if !alreadyRevoked {
+		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, now)
+	}
+	return nil
+}
+
+// AdminRevokeUserSessions は admin が対象ユーザーの全セッションを失効する (wi-28)。
+// RevokeOtherSessions と異なり、操作者自身のセッションではないため除外対象
+// (keepSessionID) が無い。失効した sessionID の一覧を返し、呼び出し側が oauth2 の
+// RevokeTokensBySid へ渡す (ADR-127)。
+func AdminRevokeUserSessions(
+	ctx context.Context,
+	deps SessionDeps,
+	actorUserID, targetUserID string,
+	now time.Time,
+) ([]string, error) {
+	sessions, err := deps.Store.ListBySub(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	revokedIDs := make([]string, 0, len(sessions))
+	for _, sess := range sessions {
+		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndAdminRevoke, now); err != nil {
+			return nil, err
+		}
+		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, now)
+		revokedIDs = append(revokedIDs, sess.ID)
+	}
+	return revokedIDs, nil
+}
+
 // EndSession は RP-Initiated Logout (/end_session) など、所有者 (sub) を未検証の
 // sid (id_token_hint または browser cookie から解決) を失効する。self-service の
 // Revoke* と異なり FindOwned による所有者確認はしない — sid 自体が検証済みの

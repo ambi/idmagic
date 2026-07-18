@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import type { AttributeValue, UserAttributeDef } from '../../types'
-import { attributeValueToText, groupedAttributeDefs } from './AdminUsersShared'
+import { adminUsersDictionary } from './AdminUsersPage.i18n'
+import {
+  attributeValueToText,
+  groupedAttributeDefs,
+  sessionAmrSummary,
+  sessionLastSeenLabel,
+} from './AdminUsersShared'
 
 const tLabels = domainLabelsDictionary.en
 
@@ -67,5 +73,43 @@ describe('groupedAttributeDefs', () => {
 
   it('returns an empty list for no defs', () => {
     expect(groupedAttributeDefs([], tLabels)).toEqual([])
+  })
+})
+
+describe('sessionAmrSummary', () => {
+  it('falls back to the unknown-method label for an empty amr list', () => {
+    expect(sessionAmrSummary([], adminUsersDictionary.ja)).toBe(
+      adminUsersDictionary.ja.sessionAmrUnknown,
+    )
+    expect(sessionAmrSummary([], adminUsersDictionary.en)).toBe(
+      adminUsersDictionary.en.sessionAmrUnknown,
+    )
+  })
+
+  it('joins known amr codes with a plus sign', () => {
+    expect(sessionAmrSummary(['pwd', 'otp'], adminUsersDictionary.en)).toBe(
+      `${adminUsersDictionary.en.sessionAmrPwd} + ${adminUsersDictionary.en.sessionAmrOtp}`,
+    )
+  })
+
+  it('falls back to the raw code for unknown amr values', () => {
+    expect(sessionAmrSummary(['unknown-code'], adminUsersDictionary.en)).toBe('unknown-code')
+  })
+})
+
+describe('sessionLastSeenLabel', () => {
+  it("shows a 'never seen' label for Go's zero time.Time (a session only ever used for OAuth token issuance)", () => {
+    expect(sessionLastSeenLabel('0001-01-01T00:00:00Z', adminUsersDictionary.en, 'en')).toBe(
+      adminUsersDictionary.en.sessionNeverSeen,
+    )
+    expect(sessionLastSeenLabel('0001-01-01T00:00:00Z', adminUsersDictionary.ja, 'ja')).toBe(
+      adminUsersDictionary.ja.sessionNeverSeen,
+    )
+  })
+
+  it('formats a real timestamp using the sessionLastSeen template', () => {
+    const label = sessionLastSeenLabel('2026-01-15T10:30:00Z', adminUsersDictionary.en, 'en')
+    expect(label.startsWith('Last seen:')).toBe(true)
+    expect(label).not.toBe(adminUsersDictionary.en.sessionNeverSeen)
   })
 })
