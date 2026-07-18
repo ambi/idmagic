@@ -208,10 +208,10 @@ func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdom
 	var disabled *signingdomain.SigningKey
 	for _, k := range tk.keys {
 		if k.Kid == kid {
-			disabled = k
 			if tk.active == kid {
-				tk.active = ""
+				return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
 			}
+			disabled = k
 			continue
 		}
 		remaining = append(remaining, k)

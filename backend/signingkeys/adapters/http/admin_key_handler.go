@@ -7,6 +7,7 @@ package http
 // Rotate は tenantId 付きの SigningKeyRotated を emit する。
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -22,7 +23,6 @@ import (
 type AdminKeyResponse struct {
 	Kid       string         `json:"kid"`
 	Alg       string         `json:"alg"`
-	Provider  string         `json:"provider"`
 	Active    bool           `json:"active"`
 	CreatedAt time.Time      `json:"created_at"`
 	PublicJWK map[string]any `json:"public_jwk"`
@@ -120,6 +120,9 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 	defer cancel()
 	key, err := d.KeyStore.Disable(ctx, c.Param("kid"))
 	if err != nil {
+		if errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "active_key_cannot_be_disabled", "現在の署名鍵は無効化できません。先にローテートしてください")
+		}
 		return err
 	}
 	if key == nil {
@@ -203,7 +206,6 @@ func toAdminKeyResponse(k *signingdomain.SigningKey) AdminKeyResponse {
 	return AdminKeyResponse{
 		Kid:       k.Kid,
 		Alg:       string(k.Alg),
-		Provider:  string(k.Provider),
 		Active:    k.Active,
 		CreatedAt: k.CreatedAt,
 		PublicJWK: k.PublicJWK,

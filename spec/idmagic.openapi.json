@@ -10594,7 +10594,11 @@
     "/api/admin/keys/{kid}/disable": {
       "post": {
         "operationId": "DisableTenantKey",
-        "summary": "緊急時にテナント内 admin が自テナントの署名鍵 1 件を kid 指定で無効化 (Retire) する。",
+        "summary": "テナント内 admin が、回転後の移行期間にある非 active 署名鍵 1 件を kid 指定で",
+        "x-scl-requires": [
+          "signing_key_is_not_active(input.kid)"
+        ],
+        "description": "Requires: signing_key_is_not_active(input.kid)",
         "security": [
           {
             "SclBearer": []
@@ -14957,13 +14961,9 @@
             "$ref": "#/components/schemas/SignatureAlgorithm",
             "description": "署名アルゴリズム (現状 PS256 のみ)。"
           },
-          "provider": {
-            "$ref": "#/components/schemas/KeyProvider",
-            "description": "鍵マテリアルの保管場所と署名の実行主体。"
-          },
           "active": {
             "type": "boolean",
-            "description": "true のとき新規 ID Token / Access Token の署名鍵。false は verifying 用途で JWKS 残留。"
+            "description": "true は現在新規 ID Token / Access Token を署名する鍵。false は回転後の移行期間に既発行トークンを検証するためだけに JWKS へ残る鍵。"
           },
           "created_at": {
             "type": "string",
@@ -14979,12 +14979,11 @@
         "required": [
           "kid",
           "alg",
-          "provider",
           "active",
           "created_at",
           "public_jwk"
         ],
-        "description": "管理者向けに公開する署名鍵のメタデータ。秘密鍵は当然返さず、JWKS と\n同じ公開鍵 JWK のみを含める。鍵の状態 (active / verifying) と作成時刻で\nローテーション可否を判断できる粒度を提供する。\n"
+        "description": "テナント管理者向けに公開する署名鍵のメタデータ。秘密鍵と鍵保管実装は返さず、\nJWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転後の移行期間に\n既発行トークンを検証する鍵かを判断できる粒度を提供する。\n"
       },
       "AdminOAuth2ClientCreateRequest": {
         "type": "object",
@@ -21027,10 +21026,10 @@
         "type": "string",
         "enum": [
           "Local",
-          "Postgres",
+          "Database",
           "VaultTransit"
         ],
-        "description": "鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault へ委譲する本番用。"
+        "description": "鍵マテリアルの保管種別と署名の実行主体。Local / Database は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault へ委譲する本番用。Database は特定の製品名を表さない。"
       },
       "KeyUsage": {
         "type": "string",
@@ -24460,7 +24459,7 @@
           "Retired",
           "Archived"
         ],
-        "description": "SigningKeyLifecycle 状態機械の取りうる状態列挙。Active が現行署名鍵、Verifying は JWKS に残るが署名はしない、Retired は JWKS から除去済、Archived は監査保管。"
+        "description": "SigningKeyLifecycle の内部状態。Active は現在の署名鍵、Verifying は回転後の移行期間に既発行トークンだけを検証する鍵、Retired は JWKS から除去済、Archived は監査保管。"
       },
       "SlowDownError": {
         "type": "object",

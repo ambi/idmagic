@@ -115,6 +115,9 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.Sign
 	if err != nil || key == nil {
 		return nil, err
 	}
+	if key.Active {
+		return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
+	}
 	if _, err := s.Pool.Exec(ctx,
 		"UPDATE signing_keys SET active=FALSE,archived_at=now(),updated_at=now() WHERE kid=$1 AND tenant_id=$2",
 		kid, tenantID); err != nil {
@@ -149,7 +152,7 @@ RETURNING kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active,cre
 	return archived, nil
 }
 
-func (s *KeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderPostgres }
+func (s *KeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderDatabase }
 
 func (s *KeyStore) Healthy(ctx context.Context) bool { return s.Pool.Ping(ctx) == nil }
 
@@ -205,7 +208,7 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO signing_keys
 (kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active)
-VALUES ($1,$2,'PS256','Postgres','Signing',$3,$4,TRUE)`,
+VALUES ($1,$2,'PS256','Database','Signing',$3,$4,TRUE)`,
 		kid, tenantID, string(publicJSON), string(privateJSON)); err != nil {
 		return nil, err
 	}
@@ -214,7 +217,7 @@ VALUES ($1,$2,'PS256','Postgres','Signing',$3,$4,TRUE)`,
 	}
 	return &signingdomain.SigningKey{
 		TenantID: tenantID, Kid: kid, Alg: signingdomain.SigAlgPS256,
-		Provider: signingdomain.KeyProviderPostgres, Usage: signingdomain.KeyUsageSigning,
+		Provider: signingdomain.KeyProviderDatabase, Usage: signingdomain.KeyUsageSigning,
 		PrivateKey: priv, PublicKey: &priv.PublicKey,
 		PublicJWK: publicJWK, Active: true, CreatedAt: now,
 	}, nil

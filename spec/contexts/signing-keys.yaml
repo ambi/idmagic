@@ -33,7 +33,7 @@ glossary:
     aliases:
       - archived
   KeyProvider:
-    definition: 鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に持ちアプリが署名する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault API に委ねる本番用。
+    definition: 鍵マテリアルの保管種別と署名の実行主体。Local / Database は private key をプロセス内に持ちアプリが署名する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault API に委ねる本番用。Database は特定の製品名を表さない。
     aliases:
       - key provider
       - 鍵プロバイダ
@@ -75,7 +75,7 @@ models:
       - ES256
   SigningKeyState:
     kind: enum
-    description: SigningKeyLifecycle 状態機械の取りうる状態列挙。Active が現行署名鍵、Verifying は JWKS に残るが署名はしない、Retired は JWKS から除去済、Archived は監査保管。
+    description: SigningKeyLifecycle の内部状態。Active は現在の署名鍵、Verifying は回転後の移行期間に既発行トークンだけを検証する鍵、Retired は JWKS から除去済、Archived は監査保管。
     values:
       - Active
       - Verifying
@@ -83,10 +83,10 @@ models:
       - Archived
   KeyProvider:
     kind: enum
-    description: 鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault へ委譲する本番用。
+    description: 鍵マテリアルの保管種別と署名の実行主体。Local / Database は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault へ委譲する本番用。Database は特定の製品名を表さない。
     values:
       - Local
-      - Postgres
+      - Database
       - VaultTransit
   KeyUsage:
     kind: enum
@@ -162,7 +162,7 @@ models:
         type: "JWK[]"
   AdminKeyResponse:
     kind: value_object
-    description: "管理者向けに公開する署名鍵のメタデータ。秘密鍵は当然返さず、JWKS と\n同じ公開鍵 JWK のみを含める。鍵の状態 (active / verifying) と作成時刻で\nローテーション可否を判断できる粒度を提供する。\n"
+    description: "テナント管理者向けに公開する署名鍵のメタデータ。秘密鍵と鍵保管実装は返さず、\nJWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転後の移行期間に\n既発行トークンを検証する鍵かを判断できる粒度を提供する。\n"
     fields:
       kid:
         type: String
@@ -170,12 +170,9 @@ models:
       alg:
         type: SignatureAlgorithm
         description: 署名アルゴリズム (現状 PS256 のみ)。
-      provider:
-        type: KeyProvider
-        description: 鍵マテリアルの保管場所と署名の実行主体。
       active:
         type: Boolean
-        description: true のとき新規 ID Token / Access Token の署名鍵。false は verifying 用途で JWKS 残留。
+        description: true は現在新規 ID Token / Access Token を署名する鍵。false は回転後の移行期間に既発行トークンを検証するためだけに JWKS へ残る鍵。
       created_at:
         type: DateTime
         description: 鍵生成時刻 ([[ADR-108]] の SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。
@@ -382,7 +379,7 @@ interfaces:
         successful_status_codes:
           - "200"
   DisableTenantKey:
-    description: "緊急時にテナント内 admin が自テナントの署名鍵 1 件を kid 指定で無効化 (Retire) する。\n漏洩疑いの鍵を JWKS から即時に外すための操作。active 鍵を無効化した場合は\n直近の verifying 鍵へフォールバックできないため、続けて回転が要る。\nSigningKeyRotated は発行せず、鍵の状態のみ Retired にする。\n"
+    description: "テナント内 admin が、回転後の移行期間にある非 active 署名鍵 1 件を kid 指定で\n即時無効化 (Retire) する。対象は JWKS から除去され、その鍵で署名された既発行\nトークンは検証できなくなる。現在の署名鍵はこの操作で無効化できない。\n"
     input:
       kid:
         type: String
@@ -392,6 +389,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - signing_key_is_not_active(input.kid)
     access:
       policies: [TenantAdministrator]
       resource:
@@ -521,6 +520,19 @@ scenarios:
     main_success:
       - "\"operator\" が署名鍵ヘルス一覧を呼び出す"
       - AccessDeniedError で拒否される
+  管理者は回転後の検証用鍵だけを即時無効化できる:
+    actor: TenantAdministrator
+    given:
+      - "現在の署名鍵 K2 と、回転後に JWKS へ残る検証用鍵 K1 がある"
+    main_success:
+      - 管理者が K1 を無効化する
+      - K1 は JWKS から除去される
+      - K2 は現在の署名鍵のまま残る
+    extensions:
+      - at: 1
+        condition: 管理者が現在の署名鍵 K2 を無効化しようとする
+        steps:
+          - エラー "InvalidRequestError"
 flows:
   AdminKeyManagement:
     entry: AdminKeys
@@ -533,6 +545,6 @@ flows:
             interface: RotateTenantSigningKey
             to: AdminKeys
           - action: disable
-            does: kid を指定して、無効化するボタンをクリックする
+            does: 回転後の検証用鍵を指定して、即時無効化するボタンをクリックする
             interface: DisableTenantKey
             to: AdminKeys

@@ -25409,7 +25409,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       <div class="eyebrow">Bounded Context · contexts/signing-keys.yaml</div>
       <h1>SigningKeys</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-signingkeys-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-signingkeys-models"><span class="stat-num">18</span><span class="stat-label">models</span></a><a class="stat" href="#context-signingkeys-interfaces"><span class="stat-num">7</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-signingkeys-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-signingkeys-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-signingkeys-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-signingkeys-scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-signingkeys-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-signingkeys-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-signingkeys-models"><span class="stat-num">18</span><span class="stat-label">models</span></a><a class="stat" href="#context-signingkeys-interfaces"><span class="stat-num">7</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-signingkeys-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-signingkeys-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-signingkeys-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-signingkeys-scenarios"><span class="stat-num">7</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-signingkeys-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-signingkeys-glossary">
     <h2>Glossary <span class="count">9</span></h2>
@@ -25471,7 +25471,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
 <article class="vocab-entry" id="context-signingkeys-glossary-keyprovider">
       <div class="vocab-name"><code class="name">KeyProvider</code></div>
       <div class="vocab-body">
-        <p class="def">鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に持ちアプリが署名する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault API に委ねる本番用。</p>
+        <p class="def">鍵マテリアルの保管種別と署名の実行主体。Local / Database は private key をプロセス内に持ちアプリが署名する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault API に委ねる本番用。Database は特定の製品名を表さない。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">key provider</span> <span class="chip chip-alias">鍵プロバイダ</span></div>
 
 
@@ -25700,9 +25700,9 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
   </article>
 <article class="card" id="scl-SigningKeys/model/AdminKeyResponse">
     <header><h3>AdminKeyResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">SigningKeys/model/AdminKeyResponse</code></header>
-    <p class="desc">管理者向けに公開する署名鍵のメタデータ。秘密鍵は当然返さず、JWKS と
-同じ公開鍵 JWK のみを含める。鍵の状態 (active / verifying) と作成時刻で
-ローテーション可否を判断できる粒度を提供する。
+    <p class="desc">テナント管理者向けに公開する署名鍵のメタデータ。秘密鍵と鍵保管実装は返さず、
+JWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転後の移行期間に
+既発行トークンを検証する鍵かを判断できる粒度を提供する。
 </p>
 
     <table class="fields">
@@ -25720,17 +25720,11 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
     <td><span class="muted">—</span></td>
     <td>署名アルゴリズム (現状 PS256 のみ)。</td>
   </tr><tr>
-    <td><code class="name">provider</code></td>
-    <td><code class="type">KeyProvider</code></td>
-    <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
-    <td>鍵マテリアルの保管場所と署名の実行主体。</td>
-  </tr><tr>
     <td><code class="name">active</code></td>
     <td><code class="type">Boolean</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>true のとき新規 ID Token / Access Token の署名鍵。false は verifying 用途で JWKS 残留。</td>
+    <td>true は現在新規 ID Token / Access Token を署名する鍵。false は回転後の移行期間に既発行トークンを検証するためだけに JWKS へ残る鍵。</td>
   </tr><tr>
     <td><code class="name">created_at</code></td>
     <td><code class="type">DateTime</code></td>
@@ -25852,16 +25846,16 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
   </article>
 <article class="card" id="scl-SigningKeys/model/SigningKeyState">
     <header><h3>SigningKeyState</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">SigningKeys/model/SigningKeyState</code></header>
-    <p class="desc">SigningKeyLifecycle 状態機械の取りうる状態列挙。Active が現行署名鍵、Verifying は JWKS に残るが署名はしない、Retired は JWKS から除去済、Archived は監査保管。</p>
+    <p class="desc">SigningKeyLifecycle の内部状態。Active は現在の署名鍵、Verifying は回転後の移行期間に既発行トークンだけを検証する鍵、Retired は JWKS から除去済、Archived は監査保管。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">Active</span> <span class="chip chip-enum">Verifying</span> <span class="chip chip-enum">Retired</span> <span class="chip chip-enum">Archived</span></div>
 
   </article>
 <article class="card" id="scl-SigningKeys/model/KeyProvider">
     <header><h3>KeyProvider</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">SigningKeys/model/KeyProvider</code></header>
-    <p class="desc">鍵マテリアルの保管場所と署名の実行主体。Local / Postgres は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault へ委譲する本番用。</p>
+    <p class="desc">鍵マテリアルの保管種別と署名の実行主体。Local / Database は private key をプロセス内に保持する dev/test 用、VaultTransit は private key を Vault へ委譲する本番用。Database は特定の製品名を表さない。</p>
 
-    <div class="enum-vals"><span class="chip chip-enum">Local</span> <span class="chip chip-enum">Postgres</span> <span class="chip chip-enum">VaultTransit</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">Local</span> <span class="chip chip-enum">Database</span> <span class="chip chip-enum">VaultTransit</span></div>
 
   </article>
 <article class="card" id="scl-SigningKeys/model/KeyUsage">
@@ -26163,10 +26157,9 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-SigningKeys/interface/DisableTenantKey">
     <header><h3>DisableTenantKey</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-SigningKeys/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><code class="canonical-ref">SigningKeys/interface/DisableTenantKey</code></header>
-    <p class="desc">緊急時にテナント内 admin が自テナントの署名鍵 1 件を kid 指定で無効化 (Retire) する。
-漏洩疑いの鍵を JWKS から即時に外すための操作。active 鍵を無効化した場合は
-直近の verifying 鍵へフォールバックできないため、続けて回転が要る。
-SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
+    <p class="desc">テナント内 admin が、回転後の移行期間にある非 active 署名鍵 1 件を kid 指定で
+即時無効化 (Retire) する。対象は JWKS から除去され、その鍵で署名された既発行
+トークンは検証できなくなる。現在の署名鍵はこの操作で無効化できない。
 </p>
 
     <div class="io">
@@ -26194,6 +26187,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SigningKeys/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SigningKeys/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">signing_key_is_not_active(input.kid)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/keys/{kid}/disable</code> <span class="chip chip-hint">response: 200</span></div></div>
@@ -26372,7 +26366,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
       </article></div>
   </section>
 <section id="context-signingkeys-scenarios">
-    <h2>Scenarios <span class="count">6</span></h2>
+    <h2>Scenarios <span class="count">7</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-SigningKeys/scenario/~E7~BD~B2~E5~90~8D~E9~8D~B5~E3~82~92~E5~9B~9E~E8~BB~A2~E3~81~97~E3~81~A6~E3~82~82~E6~97~A7kid~E3~81~AFJWKS~E3~81~AB~E6~AE~8B~E3~82~8B">
         <header><h3>署名鍵を回転しても旧kidはJWKSに残る</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">SigningKeys/scenario/署名鍵を回転しても旧kidはJWKSに残る</code></header>
@@ -26410,6 +26404,15 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; は admin ロールのみを持ち system_admin ロールを持たない</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; が署名鍵ヘルス一覧を呼び出す</li><li class="scn-step"><a class="chip chip-ref" href="#scl-SigningKeys/model/AccessDeniedError">AccessDeniedError</a> で拒否される</li></ol></div>
 
+      </article><article class="card scenario" id="scl-SigningKeys/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E5~9B~9E~E8~BB~A2~E5~BE~8C~E3~81~AE~E6~A4~9C~E8~A8~BC~E7~94~A8~E9~8D~B5~E3~81~A0~E3~81~91~E3~82~92~E5~8D~B3~E6~99~82~E7~84~A1~E5~8A~B9~E5~8C~96~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者は回転後の検証用鍵だけを即時無効化できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">SigningKeys/scenario/管理者は回転後の検証用鍵だけを即時無効化できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">現在の署名鍵 K2 と、回転後に <a class="chip chip-ref" href="#scl-SigningKeys/model/JWKS">JWKS</a> へ残る検証用鍵 K1 がある</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が K1 を無効化する</li><li class="scn-step">K1 は <a class="chip chip-ref" href="#scl-SigningKeys/model/JWKS">JWKS</a> から除去される</li><li class="scn-step">K2 は現在の署名鍵のまま残る</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">管理者が現在の署名鍵 K2 を無効化しようとする</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-SigningKeys/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+          </article></div>
       </article></div>
   </section>
 <section id="context-signingkeys-flows">
@@ -26455,7 +26458,7 @@ SigningKeyRotated は発行せず、鍵の状態のみ Retired にする。
             <h4>AdminKeys<span class="chip chip-initial">entry</span></h4>
             <p class="desc">署名鍵管理画面(鍵一覧、状態、JWKS)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>鍵を回転するボタンをクリックする <code>rotate</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#scl-SigningKeys/interface/RotateTenantSigningKey">RotateTenantSigningKey</a></td></tr><tr><td>kid を指定して、無効化するボタンをクリックする <code>disable</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#scl-SigningKeys/interface/DisableTenantKey">DisableTenantKey</a></td></tr></tbody></table>
+                   <tbody><tr><td>鍵を回転するボタンをクリックする <code>rotate</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#scl-SigningKeys/interface/RotateTenantSigningKey">RotateTenantSigningKey</a></td></tr><tr><td>回転後の検証用鍵を指定して、即時無効化するボタンをクリックする <code>disable</code></td><td>AdminKeys</td><td><a class="chip chip-iface-ref" href="#scl-SigningKeys/interface/DisableTenantKey">DisableTenantKey</a></td></tr></tbody></table>
           </div>
       </article></div>
   </section>

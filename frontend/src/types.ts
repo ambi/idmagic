@@ -404,7 +404,6 @@ export type AdminAuditEvent = {
 export type AdminKey = {
   kid: string
   alg: string
-  provider: string
   active: boolean
   created_at: string
   public_jwk: Record<string, unknown>

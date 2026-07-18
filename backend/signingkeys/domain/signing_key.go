@@ -3,8 +3,11 @@ package domain
 
 import (
 	"crypto"
+	"errors"
 	"time"
 )
+
+var ErrActiveSigningKeyCannotBeDisabled = errors.New("active signing key cannot be disabled")
 
 type SignatureAlgorithm string
 
@@ -19,12 +22,12 @@ type KeyProvider string
 
 const (
 	KeyProviderLocal        KeyProvider = "Local"
-	KeyProviderPostgres     KeyProvider = "Postgres"
+	KeyProviderDatabase     KeyProvider = "Database"
 	KeyProviderVaultTransit KeyProvider = "VaultTransit"
 )
 
 func (p KeyProvider) Valid() bool {
-	return p == KeyProviderLocal || p == KeyProviderPostgres || p == KeyProviderVaultTransit
+	return p == KeyProviderLocal || p == KeyProviderDatabase || p == KeyProviderVaultTransit
 }
 
 type KeyUsage string

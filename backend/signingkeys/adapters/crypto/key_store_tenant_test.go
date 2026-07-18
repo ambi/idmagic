@@ -2,6 +2,7 @@ package crypto_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -121,5 +122,20 @@ func TestInMemoryKeyStoreRotateKeepsTenantScope(t *testing.T) {
 	}
 	if len(keys) != 1 || keys[0].Kid != second.Kid {
 		t.Fatalf("disable should leave only the active key, got %d", len(keys))
+	}
+}
+
+func TestInMemoryKeyStoreRejectsDisablingActiveKey(t *testing.T) {
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenantCtx("tenant-a")
+	active, err := ks.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ks.Disable(ctx, active.Kid); !errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
+		t.Fatalf("Disable(active) error = %v, want ErrActiveSigningKeyCannotBeDisabled", err)
 	}
 }

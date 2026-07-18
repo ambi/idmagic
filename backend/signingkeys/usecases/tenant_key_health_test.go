@@ -45,7 +45,7 @@ func (f *fakeKeyStore) ArchiveExpired(context.Context, time.Time) ([]*signingdom
 func (f *fakeKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
-func (f *fakeKeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderPostgres }
+func (f *fakeKeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderDatabase }
 func (f *fakeKeyStore) Healthy(ctx context.Context) bool    { return true }
 
 func TestListTenantKeyHealth(t *testing.T) {

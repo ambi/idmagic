@@ -40,7 +40,7 @@ func TestEnumValid(t *testing.T) {
 		{"sig bad", signingdomain.SignatureAlgorithm("RS256"), false},
 
 		{"keyprovider local", signingdomain.KeyProviderLocal, true},
-		{"keyprovider postgres", signingdomain.KeyProviderPostgres, true},
+		{"keyprovider database", signingdomain.KeyProviderDatabase, true},
 		{"keyprovider vault", signingdomain.KeyProviderVaultTransit, true},
 		{"keyprovider bad", signingdomain.KeyProvider("x"), false},
 

@@ -78,7 +78,9 @@ export function AdminKeysPage({
     await run(
       async () => {
         await disableTenantKey(csrfToken, target.kid)
-        await refresh()
+        const next = keys.filter((key) => key.kid !== target.kid)
+        setKeys(next)
+        setSelected(next.find((key) => key.active) ?? next[0] ?? null)
       },
       t.disabledNotice.replace('{kid}', target.kid),
     )
@@ -190,7 +192,6 @@ export function SigningKeyTable({
         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3">{t.tableHeaderKid}</th>
-            <th className="px-4 py-3">{t.tableHeaderProvider}</th>
             <th className="px-4 py-3">{t.tableHeaderAlg}</th>
             <th className="px-4 py-3">{t.tableHeaderStatus}</th>
             <th className="px-4 py-3">{t.tableHeaderCreatedAt}</th>
@@ -205,7 +206,6 @@ export function SigningKeyTable({
               className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selectedKid === key.kid ? 'bg-blue-50/60' : ''}`}
             >
               <td className="px-4 py-3 font-mono text-xs">{key.kid}</td>
-              <td className="px-4 py-3 text-xs">{key.provider}</td>
               <td className="px-4 py-3">{key.alg}</td>
               <td className="px-4 py-3">
                 <span
@@ -221,7 +221,7 @@ export function SigningKeyTable({
               <td className="px-4 py-3 text-xs text-slate-500">
                 {formatDate(key.created_at, locale)}
               </td>
-              {canManage ? (
+              {canManage && !key.active ? (
                 <td className="px-4 py-3 text-right">
                   <Button
                     variant="outline"
@@ -260,8 +260,6 @@ export function SigningKeyDetail({ keyItem }: { keyItem: AdminKey | null }) {
           <dl className="mt-4 grid grid-cols-[80px_minmax(0,1fr)] gap-y-2 text-xs">
             <dt className="text-slate-500">{t.tableHeaderKid}</dt>
             <dd className="break-all font-mono">{keyItem.kid}</dd>
-            <dt className="text-slate-500">{t.tableHeaderProvider}</dt>
-            <dd>{keyItem.provider}</dd>
             <dt className="text-slate-500">{t.tableHeaderAlg}</dt>
             <dd>{keyItem.alg}</dd>
             <dt className="text-slate-500">{t.activeFieldLabel}</dt>
