@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-relay }
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: relay
+          envFrom:
+            - secretRef: { name: idmagic-prod-relay-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }

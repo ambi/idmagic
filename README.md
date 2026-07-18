@@ -124,6 +124,63 @@ PrometheusRule/ServiceMonitor/dashboard provisioning.
 just dev-compose
 ```
 
+## Kubernetes, Monitoring, and Load Smoke
+
+The Kubernetes base separates the API, UI gateway, and outbox relay in
+`infra/k8s/base`; the relay has no HTTP surface and therefore deliberately has
+no Service. Apply a rendered environment only after your platform has created
+the referenced Secrets (`idmagic-<environment>-runtime-secrets` and
+`idmagic-<environment>-relay-secrets`). Secret values, image release digests,
+and cloud-specific database endpoints are never stored in this repository.
+
+```bash
+just check-k8s dev
+just deploy-k8s dev
+```
+
+Production starts at three API/UI replicas and two relay replicas. Replace the
+zero digest placeholders in the production overlay through the release
+pipeline, validate it, then apply it. Roll back by applying the preceding
+release's digest overlay; Kubernetes keeps the prior ReplicaSet available for
+an immediate `just rollback-k8s idmagic-api` when necessary.
+
+The API probes `/startupz`, `/livez`, and `/readyz` directly. Its NetworkPolicy
+allows only the UI gateway and Prometheus scrape traffic in, plus DNS,
+PostgreSQL, and Valkey egress; relay egress is additionally limited to Kafka.
+
+`infra/k8s/monitoring` packages the same HTTP RED/authentication recording and
+alert rules used by the Docker example. It maps `TokenLatency`,
+`TokenErrorRate`, `LoginLatency`, `LoginErrorRate`, and availability evidence
+to the request-rate, error-rate, latency, login, and token panels. Apply the
+`monitoring/operator` directory only when Prometheus Operator is installed;
+otherwise configure Prometheus to scrape the `idmagic-api` Service at
+`/metrics`.
+
+```bash
+just check-monitoring
+just deploy-monitoring
+just deploy-monitoring-operator # Prometheus Operator only
+```
+
+The k6 smoke covers authorization-code + S256 PKCE, refresh-token rotation,
+and client credentials using one tenant-local seed fixture. Its default client
+is the development seed's stable UUID; it does not create or reuse data across
+tenants. Start a deliberately seeded development target first, then provide
+only disposable fixture credentials through environment variables when defaults
+do not apply:
+
+```bash
+just k6-smoke # default: http://host.docker.internal:8080/realms/default
+# local `just dev-memory` API: just k6-smoke http://host.docker.internal:8081 http://localhost:5173
+just check-k6
+```
+
+The smoke threshold is p99 token latency below 300 ms and an error ratio below
+0.1%, derived from `OAuth2/objective/TokenLatency` and
+`OAuth2/objective/TokenErrorRate`. CI should run the same recipe against its
+isolated service URL after provisioning its fixture; it must not run against a
+production tenant.
+
 Re-apply only the declarative PostgreSQL schema:
 
 ```bash

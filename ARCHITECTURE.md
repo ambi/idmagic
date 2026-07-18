@@ -1384,6 +1384,14 @@ modules:
     context: System
     layer: deploy_pipeline
     role: implementation
+  load-testing:
+    path: load/k6
+    responsibility: "tenant-local OAuth flows の SLO smoke を実行する k6 運用資産。"
+    context: System
+    layer: deploy_pipeline
+    role: implementation
+    realizes:
+      - { context: System, kind: scenario, element: "Operatorは分離された運用資産でSLOを検証する" }
 runtime_units:
   idmagic-api:
     kind: api
@@ -1581,6 +1589,7 @@ complexity:
 ├── frontend/      # React UI と gateway
 ├── spec/          # SCL と派生契約
 ├── infra/         # コンテナ・ローカル実行・database schema 資材
+├── load/k6/       # tenant-local OAuth SLO smoke
 ├── tools/         # RA/SCL CLI、renderer、schema validator
 ├── verification/  # traceability manifest と revision 付き evidence
 ├── decisions/     # Architecture Decision Records
@@ -1591,7 +1600,7 @@ complexity:
 
 ## Stack
 
-- Go、React/TypeScript、Bun、PostgreSQL、Valkey、Docker Compose。
+- Go、React/TypeScript、Bun、PostgreSQL、Valkey、Docker Compose、Kubernetes、Prometheus、Grafana、k6。
 - User 属性による動的 Group membership の式評価には、制限付き CEL (`cel-go`) を使う。
 
 ## Structural Decisions

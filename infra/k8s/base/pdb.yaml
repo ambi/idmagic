@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: idmagic-api
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: idmagic
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: api

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: idmagic-runtime
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/part-of: idmagic
+data:
+  ADDR: :8080
+  PERSISTENCE: postgres_valkey
+  EVENT_SINK: outbox
+  OBSERVABILITY: otel
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  SCL_PATH: /app/spec/scl.yaml
+  BACKEND_ADDRESS: http://idmagic-api:8080

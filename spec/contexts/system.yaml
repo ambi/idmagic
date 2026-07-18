@@ -169,6 +169,25 @@ interfaces:
         method: GET
         path: /metrics
 scenarios:
+  Operatorは分離された運用資産でSLOを検証する:
+    actor: Operator
+    given:
+      - API、UI gateway、event relay は個別の実行単位として配備される
+      - MetricsExposition の公開範囲は management network に制限される
+    main_success:
+      - Operator が環境 overlay を選んで運用 manifest を適用する
+      - API の liveness、readiness、startup probe は各々 LivenessProbe、ReadinessProbe、StartupProbe を呼ぶ
+      - Prometheus が MetricsExposition をスクレイプし、OAuth2 の availability、latency、error-rate objectives を表示・評価する
+    extensions:
+      - at: 1
+        condition: PostgreSQL または Valkey へ到達できない
+        steps:
+          - ReadinessProbe は unavailable を返し、API は新規トラフィックを受けない
+          - LivenessProbe は healthy を維持し、依存障害だけで再起動しない
+      - at: 1
+        condition: Prometheus Operator が導入されていない
+        steps:
+          - ServiceMonitor は適用対象から外し、標準 Prometheus scrape 設定で MetricsExposition を収集する
   orchestration probeはprocess lifecycleと依存状態を区別する:
     actor: Operator
     main_success:

@@ -34,15 +34,13 @@ func TestAuthnRequestReplayStoreIsTenantScopedAndAtomic(t *testing.T) {
 	twins := 0
 	var mu sync.Mutex
 	for range 16 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if ok, _ := s.RecordIfNew(context.Background(), "a", "sp", "parallel", time.Minute, now); ok {
 				mu.Lock()
 				twins++
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if twins != 1 {

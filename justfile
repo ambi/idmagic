@@ -63,11 +63,16 @@ verify-go: lint-go test-go-race
 
 # Run Go lint.
 lint-go:
-    GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint run ./...
+    GOCACHE=/tmp/idmagic-go-cache GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint run ./...
+
+# Clear only the repository-local temporary linter cache when it retains paths
+# from a removed worktree and makes a fresh lint run unreliable.
+clean-lint-cache:
+    rm -rf {{golangci_cache}}
 
 # Format Go backend code.
 format-go:
-     GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint fmt ./...
+     GOCACHE=/tmp/idmagic-go-cache GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint fmt ./...
 
 # Run Go tests.
 test-go:
@@ -195,6 +200,45 @@ dev-compose:
 # Validate the Docker Compose development stack configuration.
 check-compose:
     docker compose -f infra/docker/docker-compose.dev.yaml config --quiet
+
+# Render and schema-validate one Kubernetes environment overlay. Image digests
+# in production are release placeholders until the release pipeline supplies them.
+check-k8s overlay="dev":
+    docker run --rm -v "{{justfile_directory()}}:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/overlays/{{overlay}} | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary
+
+# Apply a validated Kubernetes environment overlay. Secrets and a real release
+# digest must exist before using the production overlay.
+deploy-k8s overlay="dev":
+    kubectl apply -k infra/k8s/overlays/{{overlay}}
+
+# Recover the prior Kubernetes Deployment revision after checking its cause.
+rollback-k8s deployment="idmagic-api":
+    kubectl rollout undo deployment/{{deployment}}
+
+# Validate the Prometheus input rules and Grafana JSON before packaging their
+# Kubernetes consumers. Prometheus Operator CRDs are intentionally optional.
+check-monitoring:
+    docker run --rm --entrypoint promtool -v "{{justfile_directory()}}:/workspace:ro" prom/prometheus:v2.55.1 check rules /workspace/infra/docker/prometheus-rules.yml
+    jq empty infra/docker/grafana-dashboard.json
+    docker run --rm -v "{{justfile_directory()}}:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring > /dev/null
+    docker run --rm -v "{{justfile_directory()}}:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring/operator > /dev/null
+
+# Apply monitoring assets; ServiceMonitor remains opt-in for clusters with
+# Prometheus Operator installed.
+deploy-monitoring:
+    kubectl apply -k infra/k8s/monitoring
+
+deploy-monitoring-operator:
+    kubectl apply -k infra/k8s/monitoring/operator
+
+# Execute the tenant-local OAuth smoke against a deliberately seeded target.
+# Compose users should pass host.docker.internal; Linux CI should pass its service URL.
+k6-smoke base_url="http://host.docker.internal:8080/realms/default" browser_origin="http://localhost:8080":
+    docker run --rm -e IDMAGIC_BASE_URL={{base_url}} -e IDMAGIC_BROWSER_ORIGIN={{browser_origin}} -v "{{justfile_directory()}}/load/k6:/scripts:ro" grafana/k6:0.54.0 run /scripts/oauth-smoke.js
+
+# Parse and inspect the k6 module without sending traffic to a target.
+check-k6:
+    docker run --rm -v "{{justfile_directory()}}/load/k6:/scripts:ro" grafana/k6:0.54.0 inspect /scripts/oauth-smoke.js
 
 # Run the OAuth2 / OIDC demo against a running server (default http://localhost:8080).
 demo:

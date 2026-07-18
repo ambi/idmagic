@@ -1,0 +1,48 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: idmagic
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/part-of: idmagic
+spec:
+  groups:
+    - name: idmagic-http-red
+      rules:
+        - record: idmagic:http_request_error_ratio:ratio_rate5m
+          expr: sum by (route) (rate(http_requests_total{status_code=~"5.."}[5m])) / sum by (route) (rate(http_requests_total[5m]))
+        - record: idmagic:http_request_duration_seconds:p99_5m
+          expr: histogram_quantile(0.99, sum by (route, le) (rate(http_request_duration_seconds_bucket[5m])))
+    - name: idmagic-authentication-golden-signals
+      rules:
+        - record: idmagic:login_failure_ratio:ratio_rate5m
+          expr: sum(rate(authn_login_attempts_total{outcome="failure"}[5m])) / sum(rate(authn_login_attempts_total[5m]))
+        - record: idmagic:login_throttle_hit_ratio:ratio_rate5m
+          expr: sum(rate(authn_login_throttle_total{outcome="throttled"}[5m])) / sum(rate(authn_login_throttle_total[5m]))
+    - name: idmagic-slo-alerts
+      rules:
+        - alert: TokenErrorRateBudgetBurn
+          expr: idmagic:http_request_error_ratio:ratio_rate5m{route=~".*/token"} > 0.001
+          for: 5m
+          labels: { severity: page }
+          annotations: { summary: "/token non-5xx rate violates OAuth2 TokenErrorRate (99.9%)" }
+        - alert: TokenLatencyBudgetBurn
+          expr: idmagic:http_request_duration_seconds:p99_5m{route=~".*/token"} > 0.3
+          for: 5m
+          labels: { severity: page }
+          annotations: { summary: "/token p99 latency violates OAuth2 TokenLatency (300ms)" }
+        - alert: LoginErrorRateBudgetBurn
+          expr: idmagic:http_request_error_ratio:ratio_rate5m{route=~".*/api/auth/login"} > 0.001
+          for: 5m
+          labels: { severity: page }
+          annotations: { summary: "/api/auth/login non-5xx rate violates Authentication LoginErrorRate (99.9%)" }
+        - alert: LoginLatencyBudgetBurn
+          expr: idmagic:http_request_duration_seconds:p99_5m{route=~".*/api/auth/login"} > 0.3
+          for: 5m
+          labels: { severity: page }
+          annotations: { summary: "/api/auth/login p99 latency violates Authentication LoginLatency (300ms)" }
+        - alert: LoginThrottleHitRatioHigh
+          expr: idmagic:login_throttle_hit_ratio:ratio_rate5m > 0.2
+          for: 10m
+          labels: { severity: warn }
+          annotations: { summary: "sustained high login throttle rate; investigate credential stuffing" }

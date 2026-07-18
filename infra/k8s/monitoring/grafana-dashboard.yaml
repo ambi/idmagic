@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: idmagic-grafana-dashboard
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/part-of: idmagic
+    grafana_dashboard: "1"
+data:
+  idmagic-golden-signals.json: |
+    {
+      "title": "IdMagic — HTTP & Authentication Golden Signals",
+      "schemaVersion": 39,
+      "panels": [
+        {"title":"HTTP request rate by route","type":"timeseries","targets":[{"expr":"sum by (route) (rate(http_requests_total[5m]))"}]},
+        {"title":"HTTP non-2xx/3xx error ratio by route","type":"timeseries","targets":[{"expr":"idmagic:http_request_error_ratio:ratio_rate5m"}]},
+        {"title":"HTTP p99 latency by route","type":"timeseries","targets":[{"expr":"idmagic:http_request_duration_seconds:p99_5m"}]},
+        {"title":"HTTP requests in flight","type":"timeseries","targets":[{"expr":"sum by (route) (http_requests_in_flight)"}]},
+        {"title":"Login attempts by outcome","type":"timeseries","targets":[{"expr":"sum by (outcome) (rate(authn_login_attempts_total[5m]))"}]},
+        {"title":"Login throttle hit ratio","type":"timeseries","targets":[{"expr":"idmagic:login_throttle_hit_ratio:ratio_rate5m"}]},
+        {"title":"Token issuance rate by grant_type/outcome","type":"timeseries","targets":[{"expr":"sum by (grant_type, outcome) (rate(oauth2_token_issuance_total[5m]))"}]}
+      ]
+    }

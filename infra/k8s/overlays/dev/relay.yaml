@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-relay }
+spec:
+  template:
+    spec:
+      containers:
+        - name: relay
+          envFrom:
+            - secretRef: { name: idmagic-dev-relay-secrets }

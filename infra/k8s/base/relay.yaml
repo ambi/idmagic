@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idmagic-relay
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: relay
+    app.kubernetes.io/part-of: idmagic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: relay
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: relay
+        app.kubernetes.io/part-of: idmagic
+    spec:
+      serviceAccountName: idmagic
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: relay
+          image: ghcr.io/ambi/idmagic:latest
+          imagePullPolicy: IfNotPresent
+          command: [/app/idmagic-relay]
+          envFrom:
+            - secretRef: { name: idmagic-relay-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }

@@ -1,0 +1,62 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: idmagic-api
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: idmagic
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: idmagic, app.kubernetes.io/component: frontend }
+      ports: [{ protocol: TCP, port: 8080 }]
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: prometheus }
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: postgresql }
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: valkey }
+      ports: [{ protocol: TCP, port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: idmagic-relay
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: relay
+    app.kubernetes.io/part-of: idmagic
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: relay
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: postgresql }
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: kafka }
+      ports: [{ protocol: TCP, port: 9092 }]

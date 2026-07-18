@@ -76,6 +76,6 @@ The runner uses `bun test` and the built-in `Bun.WebView` (using WKWebView on ma
 The test suite (`tests/e2e/`) automatically manages the lifecycle of:
 1. **Go API**: Starts in `memory` mode on port `:8081` (`ADDR=:8081 ISSUER=http://localhost:5173`) to match the browser origin and pass CSRF checks.
 2. **Vite Dev Server**: Starts on port `:5173`, proxying `/authorize` and `/api` requests to `8081`.
-3. **Mock Callback Server**: Starts on port `:3000` to receive the auth code at `demo-client`'s `redirect_uri` (`http://localhost:3000/callback`).
+3. **Mock Callback Server**: Starts on port `:3000` to receive the auth code at the development seed's external demo client's `redirect_uri` (`http://localhost:3000/callback`; client ID `00000000-0000-4000-8000-000000000021`).
 
 This setup validates client routing (`meta[name="idmagic:page"]`) and ensures that `code` and `iss` parameters are preserved during cross-origin redirects (RFC 9207). Requires only `go` and `bun` in your `PATH`.

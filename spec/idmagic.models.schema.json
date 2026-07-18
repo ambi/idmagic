@@ -4182,7 +4182,13 @@
         "id_token_hint": {
           "type": "string"
         },
+        "acr_values": {
+          "type": "string"
+        },
         "request_uri": {
+          "type": "string"
+        },
+        "authorization_details": {
           "type": "string"
         }
       },
@@ -4194,7 +4200,7 @@
         "code_challenge",
         "code_challenge_method"
       ],
-      "description": "GET /authorize クエリパラメータ。"
+      "description": "GET /authorize または PAR の認可パラメータ。全 field は単一値であり、同名parameterの複数指定はinvalid_requestとして拒否する。promptは空白区切りの一意なlogin、consent、noneのtoken集合で、noneは他tokenと併用しない。"
     },
     "BackupCodeConsumed": {
       "type": "object",
@@ -9355,9 +9361,27 @@
           "minLength": 1,
           "description": "SP の entityID。登録済み SamlServiceProvider に解決する。"
         },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "AuthnRequest/@Version。\"2.0\" だけを受理する。"
+        },
+        "issue_instant": {
+          "type": "string",
+          "format": "date-time",
+          "description": "AuthnRequest/@IssueInstant。未来の skew と最大年齢を超える要求は拒否する。"
+        },
         "acs_url": {
           "type": "string",
           "description": "要求が指定する AssertionConsumerService URL。許可集合との完全一致のみ受理する。"
+        },
+        "acs_index": {
+          "type": "integer",
+          "description": "AssertionConsumerServiceIndex。ACS URL との併用は拒否し、初期実装では明示的な index 指定を解決しないため拒否する。"
+        },
+        "protocol_binding": {
+          "$ref": "#/$defs/SamlBinding",
+          "description": "AuthnRequest/@ProtocolBinding。省略または HTTP-POST のみを受理する。"
         },
         "destination": {
           "type": "string",
@@ -9371,15 +9395,23 @@
           "type": "boolean",
           "default": false,
           "description": "再認証の要求。true の場合、直近再認証済みでなければログインへ戻す。"
+        },
+        "is_passive": {
+          "type": "boolean",
+          "default": false,
+          "description": "対話を禁止する要求。true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。"
         }
       },
       "additionalProperties": false,
       "required": [
         "id",
         "issuer",
-        "force_authn"
+        "version",
+        "issue_instant",
+        "force_authn",
+        "is_passive"
       ],
-      "description": "SP-initiated SSO で受信した <samlp:AuthnRequest> から検証対象を抽出した中間表現。HTTP-Redirect は deflate+base64、HTTP-POST は base64 を復号して解析する。復号後 XML には上限を課し、deflate 爆弾を防ぐ。"
+      "description": "SP-initiated SSO で受信した <samlp:AuthnRequest> から検証対象を抽出した中間表現。HTTP-Redirect は deflate+base64、HTTP-POST は base64 を復号して解析する。復号後 XML には上限を課し、deflate 爆弾を防ぐ。Version は 2.0、IssueInstant は必須で現在時刻の許容 skew と最大年齢内でなければならない。"
     },
     "SamlBinding": {
       "type": "string",
@@ -9480,7 +9512,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、省略時は先頭を既定の返信先とする。"
+          "description": "許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、ACS URL と index がともに省略された場合だけ先頭を既定の返信先とする。初期実装では index 解決は提供しない。"
         },
         "slo_url": {
           "type": "string",
