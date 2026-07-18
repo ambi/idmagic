@@ -69,7 +69,7 @@ function attributeMapFromDraft(
   return map
 }
 
-function AdminAttributeField({
+export function AdminAttributeField({
   def,
   value,
   onChange,
