@@ -155,6 +155,23 @@ CREATE TABLE clients (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
+-- oauth2_client_secrets (wi-25): client_secret credential は client 本体から分離する。
+-- 旧 clients.client_secret_hash は rollout 中の dual-read/backfill 用に残す。
+CREATE TABLE oauth2_client_secrets (
+    credential_id UUID PRIMARY KEY,
+    client_id UUID NOT NULL,
+    secret_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    CONSTRAINT oauth2_client_secrets_client_id_fkey
+        FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_client_secrets_expiry_after_creation
+        CHECK (expires_at IS NULL OR expires_at > created_at)
+);
+
+CREATE INDEX oauth2_client_secrets_client_id_idx ON oauth2_client_secrets (client_id);
+
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,

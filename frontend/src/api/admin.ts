@@ -781,6 +781,17 @@ export async function updateApplicationOidcConfig(
   )
 }
 
+export async function rotateApplicationClientSecret(
+  csrfToken: string,
+  id: string,
+  graceDays: number,
+): Promise<{ client_secret: string; grace_until?: string }> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(id)}/oidc/rotate-secret`,
+    adminRequest(csrfToken, 'POST', { grace_days: graceDays }),
+  )
+}
+
 export async function updateApplicationWsFedConfig(
   csrfToken: string,
   id: string,

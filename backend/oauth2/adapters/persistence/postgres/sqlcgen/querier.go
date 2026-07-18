@@ -19,13 +19,16 @@ type Querier interface {
 	GetConsent(ctx context.Context, arg GetConsentParams) (*Consent, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)
+	InsertClientSecretCredential(ctx context.Context, arg InsertClientSecretCredentialParams) error
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
+	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
+	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error
 	UpsertClient(ctx context.Context, arg UpsertClientParams) error
 	UpsertConsent(ctx context.Context, arg UpsertConsentParams) error

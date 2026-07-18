@@ -47,6 +47,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/applications/:application_id/bindings", d.handleAttachBinding)
 	g.DELETE("/api/admin/applications/:application_id/bindings/:binding_type", d.handleDetachBinding)
 	g.PATCH("/api/admin/applications/:application_id/oidc", d.handleUpdateOIDCConfig)
+	g.POST("/api/admin/applications/:application_id/oidc/rotate-secret", d.handleRotateOIDCClientSecret)
 	g.PATCH("/api/admin/applications/:application_id/wsfed", d.handleUpdateWsFedConfig)
 	g.PATCH("/api/admin/applications/:application_id/saml", d.handleUpdateSamlConfig)
 	g.GET("/api/admin/applications/:application_id/assignments", d.handleListAssignments)

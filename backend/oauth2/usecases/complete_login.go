@@ -73,7 +73,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		return nil, err
 	}
 
-	codeValue, err := generateOpaqueToken(32)
+	codeValue, err := generateOpaqueToken()
 	if err != nil {
 		return nil, err
 	}

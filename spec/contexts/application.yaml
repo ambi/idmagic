@@ -424,6 +424,26 @@ models:
         type: Boolean
       fapi_profile:
         type: FapiProfile
+      client_secret_rotatable:
+        type: Boolean
+        description: client_secret_basic / client_secret_post の confidential client のみ true。private_key_jwt、mTLS、public client は false。
+      secret_credentials:
+        type: "ApplicationClientSecretCredentialMetadata[]"
+        description: hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。
+  ApplicationClientSecretCredentialMetadata:
+    kind: value_object
+    description: Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出しない。
+    fields:
+      credential_id:
+        type: UUID
+      created_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+        optional: true
+      revoked_at:
+        type: DateTime
+        optional: true
   ApplicationWsFedConfig:
     kind: value_object
     description: Application の WS-Fed binding が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。
@@ -476,6 +496,26 @@ models:
       dpop_bound_access_tokens:
         type: Boolean
         optional: true
+  RotateApplicationClientSecretRequest:
+    kind: value_object
+    description: Application の OIDC binding に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。
+    fields:
+      grace_days:
+        type: Integer
+        optional: true
+  RotateApplicationClientSecretResponse:
+    kind: value_object
+    description: 新 secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。
+    fields:
+      client_secret:
+        type: String
+        annotations:
+          sensitive: true
+      grace_until:
+        type: DateTime
+        optional: true
+      credentials:
+        type: "ApplicationClientSecretCredentialMetadata[]"
   ApplicationWsFedConfigUpdateRequest:
     kind: value_object
     description: WS-Federation binding 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。
@@ -1248,6 +1288,31 @@ interfaces:
         request_form: body
         successful_status_codes:
           - "204"
+  RotateApplicationClientSecret:
+    description: 管理者が Application の OIDC binding の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。
+    input:
+      application_id:
+        type: String
+      request:
+        type: RotateApplicationClientSecretRequest
+    output:
+      response:
+        type: RotateApplicationClientSecretResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/oidc/rotate-secret"
+        request_form: body
+        successful_status_codes:
+          - "200"
   UpdateApplicationWsFedConfig:
     description: 管理者が Application の WS-Fed binding が指す relying party の設定を更新する。
     input:

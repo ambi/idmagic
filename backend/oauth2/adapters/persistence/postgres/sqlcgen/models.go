@@ -289,6 +289,15 @@ type MfaFactor struct {
 	LastUsedAt pgtype.Timestamptz
 }
 
+type Oauth2ClientSecret struct {
+	CredentialID string
+	ClientID     string
+	SecretHash   string
+	CreatedAt    time.Time
+	ExpiresAt    pgtype.Timestamptz
+	RevokedAt    pgtype.Timestamptz
+}
+
 type Outbox struct {
 	ID          int64
 	EventType   string
@@ -394,7 +403,8 @@ type SigningKey struct {
 	Active     bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
-	RotatedAt  pgtype.Timestamptz
+	RetiredAt  pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
 	ArchivedAt pgtype.Timestamptz
 }
 

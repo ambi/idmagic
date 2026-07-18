@@ -6,10 +6,10 @@ import (
 	"fmt"
 )
 
-// generateOpaqueToken は base64url(no-padding) で n バイトのランダム値を返す。
+// generateOpaqueToken は base64url(no-padding) で32バイトのランダム値を返す。
 // authorization_code 等の opaque token に使用する。
-func generateOpaqueToken(n int) (string, error) {
-	b := make([]byte, n)
+func generateOpaqueToken() (string, error) {
+	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("random: %w", err)
 	}

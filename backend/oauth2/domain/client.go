@@ -201,3 +201,15 @@ type AdminOAuth2ClientDeleted struct {
 
 func (e *AdminOAuth2ClientDeleted) EventType() string     { return "AdminOAuth2ClientDeleted" }
 func (e *AdminOAuth2ClientDeleted) OccurredAt() time.Time { return e.At }
+
+type ClientSecretRotated struct {
+	At                 time.Time  `json:"-"`
+	TenantID           string     `json:"tenantId"`
+	ActorUserID        string     `json:"actorUserId"`
+	ClientID           string     `json:"clientId"`
+	GraceUntil         *time.Time `json:"graceUntil,omitempty"`
+	RevokedImmediately bool       `json:"revokedImmediately"`
+}
+
+func (e *ClientSecretRotated) EventType() string     { return "ClientSecretRotated" }
+func (e *ClientSecretRotated) OccurredAt() time.Time { return e.At }

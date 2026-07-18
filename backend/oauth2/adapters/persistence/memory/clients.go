@@ -10,12 +10,13 @@ import (
 
 // OAuth2ClientRepository (OAuth2)
 type OAuth2ClientRepository struct {
-	mu      sync.RWMutex
-	clients map[string]*domain.OAuth2Client
+	mu          sync.RWMutex
+	clients     map[string]*domain.OAuth2Client
+	credentials map[string][]domain.ClientSecretCredential
 }
 
 func NewClientRepository() *OAuth2ClientRepository {
-	return &OAuth2ClientRepository{clients: map[string]*domain.OAuth2Client{}}
+	return &OAuth2ClientRepository{clients: map[string]*domain.OAuth2Client{}, credentials: map[string][]domain.ClientSecretCredential{}}
 }
 
 func (r *OAuth2ClientRepository) Seed(c *domain.OAuth2Client) {
@@ -53,4 +54,29 @@ func (r *OAuth2ClientRepository) FindAll(_ context.Context, tenantID string) ([]
 		}
 	}
 	return out, nil
+}
+
+func (r *OAuth2ClientRepository) ListClientSecretCredentials(_ context.Context, clientID string) ([]domain.ClientSecretCredential, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return append([]domain.ClientSecretCredential(nil), r.credentials[clientID]...), nil
+}
+
+func (r *OAuth2ClientRepository) SaveClientSecretCredential(_ context.Context, credential domain.ClientSecretCredential) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.credentials[credential.ClientID] = append(r.credentials[credential.ClientID], credential)
+	return nil
+}
+
+func (r *OAuth2ClientRepository) UpdateClientSecretCredential(_ context.Context, credential domain.ClientSecretCredential) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := range r.credentials[credential.ClientID] {
+		if r.credentials[credential.ClientID][i].CredentialID == credential.CredentialID {
+			r.credentials[credential.ClientID][i] = credential
+			return nil
+		}
+	}
+	return nil
 }

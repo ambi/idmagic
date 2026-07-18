@@ -72,6 +72,15 @@ type oidcConfig struct {
 	RequirePAR              bool                                `json:"require_pushed_authorization_requests"`
 	DpopBoundAccessTokens   bool                                `json:"dpop_bound_access_tokens"`
 	FapiProfile             oauthdomain.FapiProfile             `json:"fapi_profile"`
+	ClientSecretRotatable   bool                                `json:"client_secret_rotatable"`
+	SecretCredentials       []clientSecretCredentialMetadata    `json:"secret_credentials"`
+}
+
+type clientSecretCredentialMetadata struct {
+	CredentialID string     `json:"credential_id"`
+	CreatedAt    time.Time  `json:"created_at"`
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
 }
 
 type wsfedConfig struct {
@@ -280,12 +289,19 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 				continue
 			}
 			if client, err := d.ClientRepo.FindByID(ctx, tenantID, binding.ClientID); err == nil && client != nil {
+				credentials, _ := d.ClientRepo.ListClientSecretCredentials(ctx, client.ClientID)
+				metadata := make([]clientSecretCredentialMetadata, 0, len(credentials))
+				for _, credential := range credentials {
+					metadata = append(metadata, clientSecretCredentialMetadata{CredentialID: credential.CredentialID, CreatedAt: credential.CreatedAt, ExpiresAt: credential.ExpiresAt, RevokedAt: credential.RevokedAt})
+				}
 				oidc = &oidcConfig{
 					ClientID: client.ClientID, ClientType: client.ClientType, RedirectURIs: client.RedirectURIs,
 					GrantTypes: client.GrantTypes, ResponseTypes: client.ResponseTypes,
 					TokenEndpointAuthMethod: client.TokenEndpointAuthMethod, Scope: client.Scope,
 					RequirePAR:            client.RequirePushedAuthorizationRequests,
 					DpopBoundAccessTokens: client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
+					ClientSecretRotatable: client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretBasic || client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretPost,
+					SecretCredentials:     metadata,
 				}
 			}
 		case domain.ProtocolBindingWsFed:
@@ -318,6 +334,45 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 		}
 	}
 	return oidc, wsfed, saml
+}
+
+type rotateOIDCClientSecretRequest struct {
+	GraceDays *int `json:"grace_days"`
+}
+
+func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	app, err := d.requireApp(c)
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	clientID := bindingKeyOf(app, domain.ProtocolBindingOIDC)
+	if clientID == "" {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "OIDC バインディングがありません")
+	}
+	var req rotateOIDCClientSecretRequest
+	if err := support.DecodeJSON(c.Request(), &req); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+	}
+	graceDays := 7
+	if req.GraceDays != nil {
+		graceDays = *req.GraceDays
+	}
+	result, err := oauthusecases.RotateClientSecret(c.Request().Context(), oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	metadata := make([]clientSecretCredentialMetadata, 0, len(result.Credentials))
+	for _, credential := range result.Credentials {
+		metadata = append(metadata, clientSecretCredentialMetadata{CredentialID: credential.CredentialID, CreatedAt: credential.CreatedAt, ExpiresAt: credential.ExpiresAt, RevokedAt: credential.RevokedAt})
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"client_secret": result.ClientSecret, "grace_until": result.GraceUntil, "credentials": metadata})
 }
 
 type updateOIDCRequest struct {

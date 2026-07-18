@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
@@ -144,4 +145,52 @@ func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Clien
 
 func (r *OAuth2ClientRepository) Delete(ctx context.Context, tenantID, clientID string) error {
 	return sqlcgen.New(r.Pool).DeleteClient(ctx, sqlcgen.DeleteClientParams{TenantID: tenantID, ClientID: clientID})
+}
+
+func credentialFromRow(row *sqlcgen.Oauth2ClientSecret) domain.ClientSecretCredential {
+	credential := domain.ClientSecretCredential{
+		CredentialID: row.CredentialID, ClientID: row.ClientID, SecretHash: row.SecretHash, CreatedAt: row.CreatedAt,
+	}
+	if row.ExpiresAt.Valid {
+		value := row.ExpiresAt.Time
+		credential.ExpiresAt = &value
+	}
+	if row.RevokedAt.Valid {
+		value := row.RevokedAt.Time
+		credential.RevokedAt = &value
+	}
+	return credential
+}
+
+func timestamptzOrNil(value *time.Time) pgtype.Timestamptz {
+	if value == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *value, Valid: true}
+}
+
+func (r *OAuth2ClientRepository) ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error) {
+	rows, err := sqlcgen.New(r.Pool).ListClientSecretCredentials(ctx, clientID)
+	if err != nil {
+		return nil, err
+	}
+	credentials := make([]domain.ClientSecretCredential, 0, len(rows))
+	for _, row := range rows {
+		credentials = append(credentials, credentialFromRow(row))
+	}
+	return credentials, nil
+}
+
+func (r *OAuth2ClientRepository) SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
+	return sqlcgen.New(r.Pool).InsertClientSecretCredential(ctx, sqlcgen.InsertClientSecretCredentialParams{
+		CredentialID: credential.CredentialID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
+		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
+	})
+}
+
+func (r *OAuth2ClientRepository) UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
+	return sqlcgen.New(r.Pool).UpdateClientSecretCredential(ctx, sqlcgen.UpdateClientSecretCredentialParams{
+		CredentialID: credential.CredentialID, ClientID: credential.ClientID,
+		ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
+	})
 }

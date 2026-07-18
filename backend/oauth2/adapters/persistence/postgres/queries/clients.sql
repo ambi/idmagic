@@ -46,3 +46,18 @@ ON CONFLICT (client_id) DO UPDATE SET
 
 -- name: DeleteClient :exec
 DELETE FROM clients WHERE tenant_id = $1 AND client_id = $2;
+
+-- name: ListClientSecretCredentials :many
+SELECT credential_id, client_id, secret_hash, created_at, expires_at, revoked_at
+FROM oauth2_client_secrets
+WHERE client_id = $1
+ORDER BY created_at;
+
+-- name: InsertClientSecretCredential :exec
+INSERT INTO oauth2_client_secrets (credential_id, client_id, secret_hash, created_at, expires_at, revoked_at)
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: UpdateClientSecretCredential :exec
+UPDATE oauth2_client_secrets
+SET expires_at = $2, revoked_at = $3
+WHERE credential_id = $1 AND client_id = $4;

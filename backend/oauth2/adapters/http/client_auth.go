@@ -151,7 +151,22 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 	if method == oauthdomain.AuthMethodNone {
 		return authedClient{ID: clientID}, nil
 	}
-	if client.ClientSecretHash == nil || !oauthdomain.VerifyClientSecret(secret, *client.ClientSecretHash) {
+	credentials, err := d.ClientRepo.ListClientSecretCredentials(c.Request().Context(), client.ClientID)
+	if err != nil {
+		return authedClient{}, invalidClientError()
+	}
+	// credential table 未移行の既存 client は legacy hash を読み続ける。全 credential を
+	// 照合してから結果を判定し、active credential の数による早期 return を避ける。
+	matched := false
+	now := time.Now().UTC()
+	for _, credential := range credentials {
+		verified := oauthdomain.VerifyClientSecret(secret, credential.SecretHash)
+		matched = matched || (credential.IsActiveAt(now) && verified)
+	}
+	if len(credentials) == 0 && client.ClientSecretHash != nil {
+		matched = oauthdomain.VerifyClientSecret(secret, *client.ClientSecretHash)
+	}
+	if !matched {
 		return authedClient{}, invalidClientError()
 	}
 	return authedClient{ID: clientID}, nil

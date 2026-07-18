@@ -2537,6 +2537,33 @@
       ],
       "description": "ApplicationCategory を更新した。"
     },
+    "ApplicationClientSecretCredentialMetadata": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id",
+        "created_at"
+      ],
+      "description": "Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出しない。"
+    },
     "ApplicationCreated": {
       "type": "object",
       "properties": {
@@ -2682,6 +2709,17 @@
         },
         "fapi_profile": {
           "$ref": "#/$defs/FapiProfile"
+        },
+        "client_secret_rotatable": {
+          "type": "boolean",
+          "description": "client_secret_basic / client_secret_post の confidential client のみ true。private_key_jwt、mTLS、public client は false。"
+        },
+        "secret_credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
+          },
+          "description": "hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。"
         }
       },
       "additionalProperties": false,
@@ -2695,7 +2733,9 @@
         "scope",
         "require_pushed_authorization_requests",
         "dpop_bound_access_tokens",
-        "fapi_profile"
+        "fapi_profile",
+        "client_secret_rotatable",
+        "secret_credentials"
       ],
       "description": "Application の OIDC binding が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。"
     },
@@ -4598,6 +4638,108 @@
         "grant_types"
       ],
       "description": "/register への動的クライアント登録リクエスト本体 (RFC 7591)。登録後の OAuth2Client は本リクエストの内容から派生する。"
+    },
+    "ClientSecretCredential": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "client_id": {
+          "type": "string"
+        },
+        "secret_hash": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "overlap の終了時刻。null は current credential を表す。"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "即時 revoke 時刻。revoked_at がある credential は expires_at に関わらず認証に使わない。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id",
+        "client_id",
+        "secret_hash",
+        "created_at"
+      ],
+      "description": "secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。旧 credential は overlap expiry または revoke までのみ照合対象となる。",
+      "x-scl-untranslated-constraints": [
+        "client_secret_credential_references_existing_client(client_id)",
+        "at_most_two_non_revoked_client_secret_credentials(client_id)"
+      ]
+    },
+    "ClientSecretCredentialMetadata": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id",
+        "created_at"
+      ],
+      "description": "Application editor が表示する secret credential の非機密メタデータ。"
+    },
+    "ClientSecretRotated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "graceUntil": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revokedImmediately": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "clientId",
+        "revokedImmediately"
+      ],
+      "description": "管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。"
     },
     "ClientType": {
       "type": "string",
@@ -9292,6 +9434,74 @@
         "occurredAt"
       ],
       "description": "refresh token を child token へ rotate する event。"
+    },
+    "RotateApplicationClientSecretRequest": {
+      "type": "object",
+      "properties": {
+        "grace_days": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Application の OIDC binding に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。"
+    },
+    "RotateApplicationClientSecretResponse": {
+      "type": "object",
+      "properties": {
+        "client_secret": {
+          "type": "string"
+        },
+        "grace_until": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "client_secret",
+        "credentials"
+      ],
+      "description": "新 secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。"
+    },
+    "RotateClientSecretRequest": {
+      "type": "object",
+      "properties": {
+        "grace_days": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "既存 secret の overlap 日数を指定する rotation 要求。0 は即時 revoke rotation、1..30 は猶予付き rotation、未指定は7日。"
+    },
+    "RotateClientSecretResponse": {
+      "type": "object",
+      "properties": {
+        "client_secret": {
+          "type": "string"
+        },
+        "grace_until": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClientSecretCredentialMetadata"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "client_secret",
+        "credentials"
+      ],
+      "description": "新 secret を一度だけ返す rotation 応答。以後の取得 API は存在しない。"
     },
     "SamlAssertion": {
       "type": "object",

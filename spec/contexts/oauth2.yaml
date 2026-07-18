@@ -1091,6 +1091,33 @@ models:
       updated_at:
         type: DateTime
         description: 作成時は created_at と同じ値を持ち、以後 client metadata の管理操作ごとに更新する。
+  ClientSecretCredential:
+    kind: entity
+    description: secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。旧 credential は overlap expiry または revoke までのみ照合対象となる。
+    identity:
+      - credential_id
+    constraints:
+      - client_secret_credential_references_existing_client(client_id)
+      - at_most_two_non_revoked_client_secret_credentials(client_id)
+    fields:
+      credential_id:
+        type: UUID
+      client_id:
+        type: String
+      secret_hash:
+        type: String
+        annotations:
+          sensitive: true
+      created_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+        optional: true
+        description: overlap の終了時刻。null は current credential を表す。
+      revoked_at:
+        type: DateTime
+        optional: true
+        description: 即時 revoke 時刻。revoked_at がある credential は expires_at に関わらず認証に使わない。
   Consent:
     kind: entity
     constraints:
@@ -1955,6 +1982,40 @@ models:
     fields:
       clients:
         type: "AdminOAuth2ClientResponse[]"
+  ClientSecretCredentialMetadata:
+    kind: value_object
+    description: Application editor が表示する secret credential の非機密メタデータ。
+    fields:
+      credential_id:
+        type: UUID
+      created_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+        optional: true
+      revoked_at:
+        type: DateTime
+        optional: true
+  RotateClientSecretRequest:
+    kind: value_object
+    description: 既存 secret の overlap 日数を指定する rotation 要求。0 は即時 revoke rotation、1..30 は猶予付き rotation、未指定は7日。
+    fields:
+      grace_days:
+        type: Integer
+        optional: true
+  RotateClientSecretResponse:
+    kind: value_object
+    description: 新 secret を一度だけ返す rotation 応答。以後の取得 API は存在しない。
+    fields:
+      client_secret:
+        type: String
+        annotations:
+          sensitive: true
+      grace_until:
+        type: DateTime
+        optional: true
+      credentials:
+        type: "ClientSecretCredentialMetadata[]"
   AdminConsentResponse:
     kind: value_object
     description: 管理 API が返す所属テナント内の Consent 表現。client_id / user_id は UUID
@@ -2411,6 +2472,23 @@ models:
         type: String
       clientId:
         type: String
+  ClientSecretRotated:
+    kind: event
+    description: 管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      clientId:
+        type: String
+      graceUntil:
+        type: DateTime
+        optional: true
+      revokedImmediately:
+        type: Boolean
   ConsentGranted:
     kind: event
     description: ResourceOwner がクライアントに対する scope の同意を与えた (GDPR Art.6 法的根拠の取得記録)。
@@ -4338,6 +4416,26 @@ scenarios:
         steps:
           - 別テナントの管理者が client_id を指定して取得する
           - 'エラー "InvalidRequestError"'
+  管理者はApplicationからclient secretを無停止でrotationできる:
+    actor: TenantAdministrator
+    given:
+      - 'tenant_id "acme" の Application "billing" は client_secret_basic の confidential OIDC client を binding として持つ'
+      - '旧 secret "S1" が有効である'
+    main_success:
+      - 管理者が grace_days 7 で secret を rotation する
+      - 応答で新 secret を一度だけ受け取る
+      - 新 secret と旧 secret は grace_until より前に token endpoint 認証へ成功する
+      - grace_until より後は旧 secret が InvalidClientError で拒否される
+      - ClientSecretRotated が actor、client、grace_until だけを含んで発行される
+    extensions:
+      - at: 1
+        condition: grace_days が 0 以外で 1..30 の範囲外である
+        steps:
+          - エラー "InvalidRequestError"
+      - at: 1
+        condition: client が private_key_jwt、mTLS、または public client である
+        steps:
+          - エラー "InvalidRequestError"
   管理consent APIは別テナントの同意を公開しない:
     actor: TenantAdministrator
     given:

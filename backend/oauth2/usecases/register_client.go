@@ -93,7 +93,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	usesSecret := in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretBasic ||
 		in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretPost
 	if in.ClientType == spec.ClientConfidential && usesSecret {
-		s, err := generateOpaqueToken(32)
+		s, err := generateOpaqueToken()
 		if err != nil {
 			return nil, err
 		}
@@ -138,6 +138,17 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	if err := deps.ClientRepo.Save(ctx, c); err != nil {
 		return nil, err
+	}
+	if secretHash != nil {
+		credentialID, err := spec.NewUUIDv4()
+		if err != nil {
+			return nil, err
+		}
+		if err := deps.ClientRepo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
+			CredentialID: credentialID, ClientID: clientID, SecretHash: *secretHash, CreatedAt: now,
+		}); err != nil {
+			return nil, err
+		}
 	}
 	emit(deps.Emit, &domain.ClientRegistered{At: now, TenantID: tenancy.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
 	return &RegisterClientResult{Client: c, ClientSecret: secret}, nil

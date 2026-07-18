@@ -69,6 +69,66 @@ func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (*
 	return &i, err
 }
 
+const insertClientSecretCredential = `-- name: InsertClientSecretCredential :exec
+INSERT INTO oauth2_client_secrets (credential_id, client_id, secret_hash, created_at, expires_at, revoked_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertClientSecretCredentialParams struct {
+	CredentialID string
+	ClientID     string
+	SecretHash   string
+	CreatedAt    time.Time
+	ExpiresAt    pgtype.Timestamptz
+	RevokedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) InsertClientSecretCredential(ctx context.Context, arg InsertClientSecretCredentialParams) error {
+	_, err := q.db.Exec(ctx, insertClientSecretCredential,
+		arg.CredentialID,
+		arg.ClientID,
+		arg.SecretHash,
+		arg.CreatedAt,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+	)
+	return err
+}
+
+const listClientSecretCredentials = `-- name: ListClientSecretCredentials :many
+SELECT credential_id, client_id, secret_hash, created_at, expires_at, revoked_at
+FROM oauth2_client_secrets
+WHERE client_id = $1
+ORDER BY created_at
+`
+
+func (q *Queries) ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error) {
+	rows, err := q.db.Query(ctx, listClientSecretCredentials, clientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Oauth2ClientSecret
+	for rows.Next() {
+		var i Oauth2ClientSecret
+		if err := rows.Scan(
+			&i.CredentialID,
+			&i.ClientID,
+			&i.SecretHash,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listClientsByTenant = `-- name: ListClientsByTenant :many
 SELECT tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
@@ -119,6 +179,29 @@ func (q *Queries) ListClientsByTenant(ctx context.Context, tenantID string) ([]*
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateClientSecretCredential = `-- name: UpdateClientSecretCredential :exec
+UPDATE oauth2_client_secrets
+SET expires_at = $2, revoked_at = $3
+WHERE credential_id = $1 AND client_id = $4
+`
+
+type UpdateClientSecretCredentialParams struct {
+	CredentialID string
+	ExpiresAt    pgtype.Timestamptz
+	RevokedAt    pgtype.Timestamptz
+	ClientID     string
+}
+
+func (q *Queries) UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error {
+	_, err := q.db.Exec(ctx, updateClientSecretCredential,
+		arg.CredentialID,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+		arg.ClientID,
+	)
+	return err
 }
 
 const upsertClient = `-- name: UpsertClient :exec

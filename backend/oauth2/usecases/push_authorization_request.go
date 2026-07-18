@@ -50,7 +50,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 			return nil, err
 		}
 	}
-	id, err := generateOpaqueToken(32)
+	id, err := generateOpaqueToken()
 	if err != nil {
 		return nil, err
 	}

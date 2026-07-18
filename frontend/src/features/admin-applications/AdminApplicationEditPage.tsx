@@ -25,6 +25,7 @@ import { useDictionary } from '../../lib/i18n'
 import { AssignmentManager } from './AdminApplicationAssignments'
 import { CategoryManager } from './AdminApplicationCategories'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
+import { ClientSecretRotationPanel } from './ClientSecretRotationPanel'
 import {
   appRuleFromInputs,
   CopyableField,
@@ -127,9 +128,7 @@ export function AdminApplicationEditPage({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminApplicationsDictionary)
-
   const nameInvalid = name.trim() === ''
-
   async function selectIconFile(file: File | null) {
     const token = ++iconSelectionToken.current
     if (!file) {
@@ -150,7 +149,6 @@ export function AdminApplicationEditPage({
     setIconFile(file)
     setRemoveIcon(false)
   }
-
   useEffect(() => {
     if (!iconFile) {
       setIconPreviewURL('')
@@ -336,7 +334,6 @@ export function AdminApplicationEditPage({
       setSaving(false)
     }
   }
-
   return (
     <AdminShell
       active="applications"
@@ -354,7 +351,6 @@ export function AdminApplicationEditPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-
       <div className="grid max-w-3xl gap-6">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-6">
@@ -438,7 +434,6 @@ export function AdminApplicationEditPage({
                 />
               </div>
             </section>
-
             {detail.oidc ? (
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">
@@ -448,6 +443,13 @@ export function AdminApplicationEditPage({
                   </SectionTitle>
                 </div>
                 <CopyableField label={t.clientIdFieldLabel} value={detail.oidc.client_id} />
+                {detail.oidc.client_secret_rotatable ? (
+                  <ClientSecretRotationPanel
+                    applicationID={app.application_id}
+                    csrfToken={csrfToken}
+                    onError={setError}
+                  />
+                ) : null}
                 {app.kind !== 'service' ? (
                   <div className="grid gap-1.5">
                     <Label htmlFor="edit-redirects">{t.redirectUriFieldLabel}</Label>
@@ -528,7 +530,6 @@ export function AdminApplicationEditPage({
                 </div>
               </section>
             ) : null}
-
             {detail.wsfed ? (
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">
@@ -601,7 +602,6 @@ export function AdminApplicationEditPage({
                 </div>
               </section>
             ) : null}
-
             {detail.saml ? (
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">

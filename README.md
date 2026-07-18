@@ -15,7 +15,7 @@ and a foundation for identity platform experiments.
 
 - OAuth 2.0 / OpenID Connect authorization server with PKCE, PAR, device flow,
   token introspection, revocation, dynamic client registration, DPoP,
-  `private_key_jwt`, refresh-token rotation, and userinfo.
+  `private_key_jwt`, refresh-token rotation, client-secret rotation, and userinfo.
 - Enterprise federation surface: SAML 2.0 IdP, WS-Federation passive profile,
   WS-Trust username/mixed STS, federation metadata, and Microsoft Entra domain
   federation presets.

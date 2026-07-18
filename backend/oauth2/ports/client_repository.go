@@ -12,6 +12,9 @@ type OAuth2ClientRepository interface {
 	Save(ctx context.Context, c *domain.OAuth2Client) error
 	Delete(ctx context.Context, tenantID, clientID string) error
 	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)
+	ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error)
+	SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
+	UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
 }
 
 type ConsentRepository interface {

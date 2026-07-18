@@ -275,6 +275,15 @@ export type ApplicationOidcConfig = {
   require_pushed_authorization_requests: boolean
   dpop_bound_access_tokens: boolean
   fapi_profile: string
+  client_secret_rotatable: boolean
+  secret_credentials: ClientSecretCredentialMetadata[]
+}
+
+export type ClientSecretCredentialMetadata = {
+  credential_id: string
+  created_at: string
+  expires_at?: string
+  revoked_at?: string
 }
 
 export type ApplicationWsFedConfig = {
