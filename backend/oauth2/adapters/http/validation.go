@@ -38,7 +38,25 @@ var authorizeRequestSchema = z.Struct(z.Shape{
 	"AcrValues":           z.String(),
 })
 
+var singleValueAuthorizationParameters = map[string]struct{}{
+	"client_id": {}, "redirect_uri": {}, "response_type": {}, "scope": {}, "state": {}, "nonce": {},
+	"code_challenge": {}, "code_challenge_method": {}, "prompt": {}, "max_age": {}, "acr_values": {},
+	"request_uri": {}, "authorization_details": {},
+}
+
+func validateAuthorizationParameterCardinality(values url.Values) error {
+	for key, values := range values {
+		if _, securitySensitive := singleValueAuthorizationParameters[key]; securitySensitive && len(values) != 1 {
+			return fmt.Errorf("authorization parameter %s must occur exactly once", key)
+		}
+	}
+	return nil
+}
+
 func parseAuthorizeRequest(values url.Values) (authorizeRequest, error) {
+	if err := validateAuthorizationParameterCardinality(values); err != nil {
+		return authorizeRequest{}, err
+	}
 	data := make(map[string]string, len(values))
 	for key := range values {
 		data[key] = values.Get(key)

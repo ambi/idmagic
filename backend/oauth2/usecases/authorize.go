@@ -93,8 +93,12 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	if client.RequirePushedAuthorizationRequests && !in.ParUsed {
 		return nil, NewOAuthError("invalid_request", "このクライアントは PAR が必須です")
 	}
-	if in.Prompt != "" && in.Prompt != "none" && in.Prompt != "login" && in.Prompt != "consent" {
-		return nil, NewOAuthError("invalid_request", "未対応の prompt です")
+	if in.Prompt != "" {
+		prompt, err := domain.ParsePromptTokens(in.Prompt)
+		if err != nil {
+			return nil, NewOAuthError("invalid_request", err.Error())
+		}
+		in.Prompt = prompt.Canonical()
 	}
 
 	// RFC 9396 authorization_details: 登録済み type に対し fail-closed 検証 (ADR-050)。

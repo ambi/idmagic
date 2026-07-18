@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-18
@@ -91,11 +91,11 @@ code を発行し得る。SCL が採用する Authorization Code + OIDC Code Flo
 
 ## Tasks
 
-- [ ] T001 [SCL] authorization parameter の cardinality、prompt grammar / outcome、PAR 混在規則、error redirect scenario を定義し派生 artifact を再生成する。
-- [ ] T002 [Domain] RED: prompt token parse（複合 login+consent、none 排他、重複、未知値）と evaluation の table-driven test を先に失敗させ、value object と判定を実装して GREEN にする。
-- [ ] T003 [HTTP/Usecase] RED: query / PAR の duplicate parameter と request URI 混在を拒否する test、登録済み redirect URI への error redirect が state / `iss` を保つ test を先に失敗させ、raw input validation と error routing を実装して GREEN にする。
-- [ ] T004 [Flow] RED: prompt=login+consent、prompt=none の login_required / consent_required、stale session、既存 consent の HTTP contract test を先に失敗させ、authorize / completion の分岐を実装して GREEN にする。
-- [ ] T005 [Verify] OAuth2 domain/usecase/HTTP、PAR、SCL と全 Go verification を実行する。
+- [x] T001 [SCL] authorization parameter の cardinality、prompt grammar / outcome、PAR 混在規則、error redirect scenario を定義し `just yaml-check-scl` と `just scl-render` を GREEN にした。
+- [x] T002 [Domain] RED: `TestParsePromptTokens` を `ParsePromptTokens` 未定義で fail 確認（OIDC-CORE-CODE-FLOW）→ login+consent、none 排他、重複、未知値を fail-closed にする value object を実装して GREEN。
+- [x] T003 [HTTP/Usecase] RED: `TestParseAuthorizeRequestRejectsDuplicateSecurityParameter` を旧 `values.Get` 実装で fail 確認（AuthorizeParameters）→ query/PAR raw cardinality 検査、request_uri 混在拒否、prompt canonicalization と安全に確定済み request の error redirect を GREEN。
+- [x] T004 [Flow] 既存 handler contract test の prompt=none を state/`iss` 付き `login_required` redirect へ更新し、login/consent、max_age、既存 consent の回帰 test とともに GREEN。none の同意不足は UI を出さず `consent_required` を返すよう completion を分岐した。
+- [x] T005 [Verify] `just test-go`、`just verify-go`、`just yaml-check`、`just scl-render` を実行した。
 
 ## Verification
 
@@ -114,3 +114,25 @@ code を発行し得る。SCL が採用する Authorization Code + OIDC Code Flo
 しかし authorization request の曖昧解釈は redirect / PKCE / consent の境界を曖昧にするため許容しない。
 raw input・PAR・error redirect を同じ contract test で固定し、登録済み redirect URI 以外へは一切
 遷移しないことを回帰防止する。
+
+## Completion
+
+- **Completed At**: 2026-07-18
+- **Summary**:
+  OIDC prompt を一意な空白区切り token 集合として解析し、重複・未知 token・`none` との併用を
+  `invalid_request` とした。`/authorize` と `/par` は security-sensitive parameter の重複を raw
+  input のまま拒否し、PAR の `request_uri` と他の authorization parameter の混在を拒否する。
+  `prompt=none` のログイン／同意不能時は UI を開始せず、登録済み redirect URI へ state と RFC 9207
+  `iss` を保った error を返す。
+- **Affected Guarantees State**:
+  認可要求は同じ名前の security-sensitive parameter を曖昧に解釈せず、OIDC prompt の未対応値を
+  成功扱いしない。PAR request URI は唯一の要求正本であり、認証・同意を対話なしで満たせない
+  `prompt=none` は authorization code を発行しない。
+- **Verification Results**:
+  - `just yaml-check-scl` / `just yaml-check-work-items` / `just scl-render` — passed
+  - `just test-go` — passed
+  - `just verify-go` — passed (golangci-lint 0 issues + race test)
+  - `just yaml-check` — passed
+- **対応していないこと (ADR-121 の開示義務)**:
+  - `id_token_hint` による logout client 解決、session inventory、front/back-channel logout、JAR、
+    CIBA、implicit/hybrid flow、authorization_details の schema/consent UI は対象外のままである。

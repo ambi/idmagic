@@ -5,7 +5,6 @@ package http_test
 // AuthnResolver の差し替えだけで再認証フローを観測する単純構成。
 
 import (
-	"bytes"
 	"context"
 	"maps"
 	"net/http"
@@ -136,9 +135,9 @@ func runAuthorize(t *testing.T, e *echo.Echo, q url.Values) *httptest.ResponseRe
 func TestAuthorizePromptNoneWithoutSessionReturnsLoginRequired(t *testing.T) {
 	e, _ := newAuthorizeTestServer(t, nil, nil)
 	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"none"}}))
-	if rec.Code == http.StatusSeeOther ||
-		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"login_required"`)) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "error=login_required") ||
+		!strings.Contains(rec.Header().Get("Location"), "iss=") {
+		t.Fatalf("status=%d location=%q", rec.Code, rec.Header().Get("Location"))
 	}
 }
 

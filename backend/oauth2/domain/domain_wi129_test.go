@@ -150,6 +150,32 @@ func TestParsePrompt(t *testing.T) {
 	}
 }
 
+// SCL: OIDC-CORE-CODE-FLOW の prompt token grammar。
+func TestParsePromptTokens(t *testing.T) {
+	for _, tt := range []struct {
+		input   string
+		valid   bool
+		login   bool
+		consent bool
+		none    bool
+	}{
+		{"login consent", true, true, true, false},
+		{"none", true, false, false, true},
+		{"none login", false, false, false, false},
+		{"login login", false, false, false, false},
+		{"select_account", false, false, false, false},
+	} {
+		got, err := ParsePromptTokens(tt.input)
+		if (err == nil) != tt.valid {
+			t.Errorf("ParsePromptTokens(%q) error=%v, valid=%v", tt.input, err, tt.valid)
+			continue
+		}
+		if err == nil && (got.Login != tt.login || got.Consent != tt.consent || got.None != tt.none) {
+			t.Errorf("ParsePromptTokens(%q)=%+v", tt.input, got)
+		}
+	}
+}
+
 func TestScopeIntersection(t *testing.T) {
 	got := ScopeIntersection("openid profile email admin", "openid email offline_access")
 	if len(got) != 2 || got[0] != "openid" || got[1] != "email" {

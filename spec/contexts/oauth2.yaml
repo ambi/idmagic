@@ -17,7 +17,7 @@ standards:
         section: §4.1
         strength: MUST
         adoption: required
-        statement: Authorization Code Grantを認可エンドポイントとトークンエンドポイントで提供する。
+        statement: Authorization Code Grantを認可エンドポイントとトークンエンドポイントで提供し、認可要求の単一値 security parameter の重複をinvalid_requestとして拒否する。
       - id: RFC6749-CLIENT-CREDENTIALS
         section: §4.4
         strength: MAY
@@ -155,7 +155,7 @@ standards:
         section: §4.6
         strength: MUST
         adoption: required
-        statement: Token requestのcode_verifierを認可時のcode_challengeと照合する。
+        statement: Token requestのcode_verifierを認可時のcode_challengeと照合し、認可要求でPKCE parameterの重複を許容しない。
       - id: RFC7636-S256
         section: §4.2
         strength: SHOULD
@@ -322,7 +322,7 @@ standards:
         section: §2
         strength: MUST
         adoption: required
-        statement: Authorization responseへissuer識別子を含める。
+        statement: Authorization responseおよび安全に確定済みのredirect_uriへ返すauthorization errorへissuer識別子を含める。
   RFC9449:
     title: OAuth 2.0 Demonstrating Proof of Possession
     version: RFC 9449
@@ -382,7 +382,7 @@ standards:
         section: §3.1
         strength: MUST
         adoption: required
-        statement: code response typeによるOpenID Connect Authenticationを提供する。
+        statement: code response typeによるOpenID Connect Authenticationを提供し、promptを空白区切りの一意なtoken集合として検証する。loginとconsentをそれぞれ適用し、noneは他tokenと併用せずUIを発生させない。
       - id: OIDC-CORE-ID-TOKEN
         section: §2
         strength: MUST
@@ -2176,7 +2176,7 @@ models:
         optional: true
   AuthorizeParameters:
     kind: value_object
-    description: GET /authorize クエリパラメータ。
+    description: GET /authorize または PAR の認可パラメータ。全 field は単一値であり、同名parameterの複数指定はinvalid_requestとして拒否する。promptは空白区切りの一意なlogin、consent、noneのtoken集合で、noneは他tokenと併用しない。
     fields:
       response_type:
         type: ResponseType
@@ -2206,7 +2206,13 @@ models:
       id_token_hint:
         type: String
         optional: true
+      acr_values:
+        type: String
+        optional: true
       request_uri:
+        type: String
+        optional: true
+      authorization_details:
         type: String
         optional: true
   BrowserConsentRequest:
@@ -2991,11 +2997,14 @@ interfaces:
       - InvalidClientError
       - AccessDeniedError
     requires:
+      - every_authorization_parameter_has_single_value(input.params)
+      - prompt_tokens_supported_and_unambiguous(input.params.prompt)
       - registered_client(input.params.client_id)
       - redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)
       - requested_scopes_allowed(input.params.client_id, input.params.scope)
       - pkce_s256_present(input.params)
       - par_requirement_satisfied(input.params.client_id, input.params.request_uri)
+      - request_uri_is_the_only_authorization_request_source_when_present(input.params)
       - application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)
       - application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)
     emits:
@@ -3960,6 +3969,23 @@ scenarios:
         steps:
           - リダイレクトは行われず IdP がエラーページを表示する
           - "エラー \"InvalidRequestError\""
+      - at: 1
+        condition: 単一値認可parameterが重複する、promptに重複または未対応tokenがある、またはnoneが他のprompt tokenと併用される
+        steps:
+          - 認可コードは発行されない
+          - 安全に確定済みの登録redirect_uriがあればstateとissuer識別子を含むinvalid_requestを返す
+          - それ以外はリダイレクトせず IdP がエラーページを表示する
+      - at: 1
+        condition: request_uriと許容されないfront-channel authorization parameterが混在する
+        steps:
+          - 認可コードは発行されない
+          - "エラー \"InvalidRequestError\""
+      - at: 1
+        condition: promptがnoneで既存セッションまたは必要な同意がない
+        steps:
+          - UIおよびログインリダイレクトは発生しない
+          - 既存セッションがなければstateとissuer識別子を含むlogin_requiredを登録redirect_uriへ返す
+          - 同意がなければstateとissuer識別子を含むconsent_requiredを登録redirect_uriへ返す
       - at: 2
         condition: PKCE verifier が一致しない
         steps:

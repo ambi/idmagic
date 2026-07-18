@@ -26,6 +26,10 @@ func (d Deps) completeAfterAuthn(
 	client *oauthdomain.OAuth2Client,
 	authn *authdomain.AuthenticationContext,
 ) (authorizationNext, error) {
+	prompt := oauthdomain.PromptTokens{}
+	if req.Prompt != nil {
+		prompt, _ = oauthdomain.ParsePromptTokens(*req.Prompt)
+	}
 	if authn.AuthenticationPending {
 		return authorizationNext{Path: d.pendingAuthPath(c, authn)}, nil
 	}
@@ -47,7 +51,7 @@ func (d Deps) completeAfterAuthn(
 				}
 			}
 		}
-		if req.Prompt != nil && *req.Prompt == "consent" {
+		if prompt.Consent {
 			covered = false
 		}
 		// RFC 9396 — 構造化された authorization_details は粗い scope 同意では代替できない。
@@ -56,6 +60,9 @@ func (d Deps) completeAfterAuthn(
 			covered = false
 		}
 		if !covered {
+			if prompt.None {
+				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenancy.Issuer(c.Request().Context(), d.Issuer), "consent_required", "既存同意が必要です")}, nil
+			}
 			ctx, cancel := d.OperationContext(c.Request().Context())
 			defer cancel()
 			if err := d.RequestStore.AttachAuthentication(

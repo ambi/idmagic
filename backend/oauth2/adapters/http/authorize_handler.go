@@ -13,14 +13,23 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
 
 func (d Deps) handleAuthorize(c *echo.Context) error {
 	q := c.QueryParams()
+	if err := validateAuthorizationParameterCardinality(q); err != nil {
+		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", err.Error()))
+	}
 	parUsed := false
 	if requestURI := q.Get("request_uri"); requestURI != "" {
+		for key := range q {
+			if key != "request_uri" && key != "client_id" {
+				return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "request_uri と authorization parameter を混在できません"))
+			}
+		}
 		consumed, err := d.PARStore.Consume(c.Request().Context(), requestURI)
 		if err != nil {
 			return writeOAuthError(c, err)
@@ -80,8 +89,9 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if d.AuthnResolver != nil {
 		authn, _ := d.AuthnResolver.Resolve(c.Request().Context(), authdomain.HTTPHeadersAdapter{H: c.Request().Header})
 		if authn != nil {
+			prompt, _ := oauthdomain.ParsePromptTokens(in.Prompt)
 			if authn.AuthenticationPending {
-				if in.Prompt == "none" {
+				if prompt.None {
 					return writeOAuthError(c, usecases.NewOAuthError("login_required", "追加factor検証が必要です"))
 				}
 				return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
@@ -91,8 +101,8 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				!authusecases.ACRSatisfies(authn.ACR, *out.Request.ACRValues)
 			if oauthdomain.NeedsReauthentication(policy, time.Unix(authn.AuthTime, 0), time.Now(), false) ||
 				needsStepUp {
-				if in.Prompt == "none" {
-					return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
+				if prompt.None {
+					return d.redirectAuthorizationError(c, out.Request, "login_required", "既存セッションが認証要件を満たしません")
 				}
 				if needsStepUp && d.canUseTOTP(c, authn.UserID) {
 					pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
@@ -108,12 +118,12 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))
 			}
 			if out.Client.FirstParty {
-				redirected, err := d.enforceDefaultSignInPolicy(c, authn, in.Prompt != "none")
+				redirected, err := d.enforceDefaultSignInPolicy(c, authn, !prompt.None)
 				if err != nil {
 					return err
 				}
 				if redirected {
-					if in.Prompt == "none" {
+					if prompt.None {
 						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 					}
 					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
@@ -129,8 +139,15 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			return redirectAuthorizationNext(c, next)
 		}
 	}
-	if out.Request.Prompt != nil && *out.Request.Prompt == "none" {
-		return writeOAuthError(c, usecases.NewOAuthError("login_required", "prompt=none では再認証不可"))
+	if out.Request.Prompt != nil {
+		prompt, _ := oauthdomain.ParsePromptTokens(*out.Request.Prompt)
+		if prompt.None {
+			return d.redirectAuthorizationError(c, out.Request, "login_required", "prompt=none では再認証不可")
+		}
 	}
 	return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))
+}
+
+func (d Deps) redirectAuthorizationError(c *echo.Context, req *oauthdomain.AuthorizationRequest, code, description string) error {
+	return c.Redirect(http.StatusSeeOther, authorizationErrorURL(req, tenancy.Issuer(c.Request().Context(), d.Issuer), code, description))
 }

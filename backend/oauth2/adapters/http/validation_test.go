@@ -36,6 +36,17 @@ func TestParseAuthorizeRequestRejectsNegativeMaxAge(t *testing.T) {
 	}
 }
 
+// SCL: AuthorizeParameters は security-sensitive な単一値parameterを重複させない。
+func TestParseAuthorizeRequestRejectsDuplicateSecurityParameter(t *testing.T) {
+	_, err := parseAuthorizeRequest(url.Values{
+		"client_id": {"client", "other"}, "redirect_uri": {"https://example.com/callback"},
+		"response_type": {"code"}, "code_challenge": {"challenge"}, "code_challenge_method": {"S256"},
+	})
+	if err == nil {
+		t.Fatal("expected duplicate client_id to be rejected")
+	}
+}
+
 func TestValidateRegisterClientRequestRejectsUnknownGrant(t *testing.T) {
 	request := &registerClientRequest{
 		RedirectURIs: []string{"https://example.com/callback"},

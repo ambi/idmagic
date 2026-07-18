@@ -15,6 +15,9 @@ func (d Deps) handlePAR(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
 		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
 	}
+	if err := validateAuthorizationParameterCardinality(c.Request().PostForm); err != nil {
+		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", err.Error()))
+	}
 	clientStub, err := d.authenticateTokenClient(c)
 	if err != nil {
 		return writeOAuthError(c, err)
