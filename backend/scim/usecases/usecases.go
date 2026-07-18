@@ -15,6 +15,11 @@ import (
 
 var ErrNotFound = errors.New("SCIM resource not found")
 
+// ErrDuplicate signals a uniqueness conflict (userName/displayName already
+// used within the tenant). Wrapped with errors.Is-compatible context by
+// callers; handlers map it to HTTP 409 with scimType "uniqueness".
+var ErrDuplicate = errors.New("SCIM resource already exists")
+
 type Usecases struct {
 	ScimRepo  ports.ScimRepository
 	UserRepo  idmports.UserRepository

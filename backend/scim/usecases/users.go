@@ -14,59 +14,47 @@ import (
 )
 
 func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
-	userName, _ := body["userName"].(string)
-	if userName == "" {
-		return nil, errors.New("userName is required")
+	w, err := domain.ParseUserWrite(body)
+	if err != nil {
+		return nil, err
 	}
 
-	var emailVal string
-	if emails, ok := body["emails"].([]any); ok && len(emails) > 0 {
-		if firstEmail, ok := emails[0].(map[string]any); ok {
-			emailVal, _ = firstEmail["value"].(string)
-		}
+	existing, err := u.UserRepo.FindByUsername(ctx, tenantID, w.UserName)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("%w: userName %q already exists", ErrDuplicate, w.UserName)
 	}
 
-	var givenName, familyName, displayName string
-	if nameMap, ok := body["name"].(map[string]any); ok {
-		givenName, _ = nameMap["givenName"].(string)
-		familyName, _ = nameMap["familyName"].(string)
-		displayName, _ = nameMap["formatted"].(string)
-	}
-	if displayName == "" {
-		displayName = userName
-	}
-
-	activeVal := true
-	if act, exists := body["active"].(bool); exists {
-		activeVal = act
-	}
-
-	// ユーザー作成
+	// server-assigned identifiers (RFC7643-CORE-RESOURCES: id is readOnly,
+	// client-supplied values are ignored)
 	subBytes := make([]byte, 16)
 	if _, err := rand.Read(subBytes); err != nil {
 		return nil, err
 	}
 	sub := fmt.Sprintf("user_%s", hex.EncodeToString(subBytes))
 
-	now := time.Now()
-	status := idmdomain.UserStatusActive
-	if !activeVal {
-		status = idmdomain.UserStatusDisabled
+	scimIDBytes := make([]byte, 16)
+	if _, err := rand.Read(scimIDBytes); err != nil {
+		return nil, err
 	}
+	scimID := hex.EncodeToString(scimIDBytes)
 
+	now := time.Now()
 	user := &idmdomain.User{
 		ID:                sub,
 		TenantID:          tenantID,
-		PreferredUsername: userName,
+		PreferredUsername: w.UserName,
 		PasswordHash:      "", // SCIM users usually don't have local password initially
-		Name:              &displayName,
-		GivenName:         &givenName,
-		FamilyName:        &familyName,
-		Email:             &emailVal,
+		Name:              &w.Formatted,
+		GivenName:         &w.GivenName,
+		FamilyName:        &w.FamilyName,
+		Email:             &w.Email,
 		EmailVerified:     true,
 		Roles:             []string{},
 		Lifecycle: idmdomain.UserLifecycle{
-			Status:          status,
+			Status:          userStatusFromActive(w.Active),
 			StatusChangedAt: &now,
 		},
 		Attributes: make(map[string]idmdomain.AttributeValue),
@@ -78,26 +66,19 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		return nil, err
 	}
 
-	scimID, _ := body["id"].(string)
-	if scimID == "" {
-		// generate unique ID
-		idBytes := make([]byte, 16)
-		if _, err := rand.Read(idBytes); err != nil {
-			return nil, err
-		}
-		scimID = hex.EncodeToString(idBytes)
-	}
-
-	ref := &ports.ScimUserRef{
-		TenantID: tenantID,
-		ScimID:   scimID,
-		UserID:   sub,
-	}
+	ref := &ports.ScimUserRef{TenantID: tenantID, ScimID: scimID, UserID: sub}
 	if err := u.ScimRepo.SaveUserRef(ctx, ref); err != nil {
 		return nil, err
 	}
 
 	return u.toScimUser(user, scimID), nil
+}
+
+func userStatusFromActive(active bool) idmdomain.UserStatus {
+	if active {
+		return idmdomain.UserStatusActive
+	}
+	return idmdomain.UserStatusDisabled
 }
 
 func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[string]any, error) {
@@ -120,6 +101,11 @@ func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[st
 	return u.toScimUser(user, scimID), nil
 }
 
+// UpdateUser implements PUT full-replace semantics (ADR-122): every
+// RFC7643-CORE-RESOURCES mutable attribute is set from body, with omitted
+// attributes reset to their default via domain.ParseUserWrite. The User
+// aggregate is validated (userName required) before the single Save call,
+// so a validation failure never leaves a partial write.
 func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
 	if err != nil {
@@ -137,41 +123,26 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 		return nil, ErrNotFound
 	}
 
-	userName, _ := body["userName"].(string)
-	if userName != "" {
-		user.PreferredUsername = userName
+	w, err := domain.ParseUserWrite(body)
+	if err != nil {
+		return nil, err
 	}
-
-	var emailVal string
-	if emails, ok := body["emails"].([]any); ok && len(emails) > 0 {
-		if firstEmail, ok := emails[0].(map[string]any); ok {
-			emailVal, _ = firstEmail["value"].(string)
-		}
-	}
-	if emailVal != "" {
-		user.Email = &emailVal
-	}
-
-	if nameMap, ok := body["name"].(map[string]any); ok {
-		givenName, _ := nameMap["givenName"].(string)
-		familyName, _ := nameMap["familyName"].(string)
-		displayName, _ := nameMap["formatted"].(string)
-		if givenName != "" {
-			user.GivenName = &givenName
-		}
-		if familyName != "" {
-			user.FamilyName = &familyName
-		}
-		if displayName != "" {
-			user.Name = &displayName
+	if w.UserName != user.PreferredUsername {
+		if existing, err := u.UserRepo.FindByUsername(ctx, tenantID, w.UserName); err != nil {
+			return nil, err
+		} else if existing != nil && existing.ID != user.ID {
+			return nil, fmt.Errorf("%w: userName %q already exists", ErrDuplicate, w.UserName)
 		}
 	}
 
-	if act, exists := body["active"].(bool); exists {
-		u.setUserActive(user, act)
-	}
-
+	user.PreferredUsername = w.UserName
+	user.GivenName = &w.GivenName
+	user.FamilyName = &w.FamilyName
+	user.Name = &w.Formatted
+	user.Email = &w.Email
+	u.setUserActive(user, w.Active)
 	user.UpdatedAt = time.Now()
+
 	if err := u.UserRepo.Save(ctx, user); err != nil {
 		return nil, err
 	}
@@ -179,6 +150,10 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	return u.toScimUser(user, scimID), nil
 }
 
+// PatchUser applies RFC 7644 §3.5.2 operations validated by
+// domain.ParseUserPatchOps against the User attribute allowlist. All
+// operations are validated up front (ADR-122 validate-first) before any
+// field is mutated; the aggregate is persisted with a single Save call.
 func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
 	if err != nil {
@@ -196,26 +171,14 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 		return nil, ErrNotFound
 	}
 
-	ops, _ := body["Operations"].([]any)
-	for _, opVal := range ops {
-		opMap, ok := opVal.(map[string]any)
-		if !ok {
-			continue
-		}
-		op, _ := opMap["op"].(string)
-		path, _ := opMap["path"].(string)
-		value := opMap["value"]
+	ops, err := domain.ParseUserPatchOps(body)
+	if err != nil {
+		return nil, err
+	}
 
-		// active field patch
-		if path == "active" || op == "replace" && path == "active" || path == "" && op == "replace" {
-			switch val := value.(type) {
-			case map[string]any:
-				if act, exists := val["active"].(bool); exists {
-					u.setUserActive(user, act)
-				}
-			case bool:
-				u.setUserActive(user, val)
-			}
+	for _, op := range ops {
+		if err := u.applyUserPatchOp(ctx, tenantID, user, op); err != nil {
+			return nil, err
 		}
 	}
 
@@ -225,6 +188,84 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	}
 
 	return u.toScimUser(user, scimID), nil
+}
+
+func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *idmdomain.User, op domain.UserPatchOp) error {
+	isRemoveOp := op.Op == "remove"
+
+	switch op.Attr {
+	case domain.UserAttrUserName:
+		if isRemoveOp {
+			return domain.NewMutationError("invalidValue", "userName cannot be removed")
+		}
+		userName, _ := op.Value.(string)
+		if userName == "" {
+			return domain.NewMutationError("invalidValue", "userName value must be a non-empty string")
+		}
+		if userName != user.PreferredUsername {
+			existing, err := u.UserRepo.FindByUsername(ctx, tenantID, userName)
+			if err != nil {
+				return err
+			}
+			if existing != nil && existing.ID != user.ID {
+				return fmt.Errorf("%w: userName %q already exists", ErrDuplicate, userName)
+			}
+		}
+		user.PreferredUsername = userName
+	case domain.UserAttrName:
+		if isRemoveOp {
+			empty := ""
+			user.GivenName, user.FamilyName, user.Name = &empty, &empty, &empty
+			return nil
+		}
+		nameMap, ok := op.Value.(map[string]any)
+		if !ok {
+			return domain.NewMutationError("invalidValue", "name value must be an object")
+		}
+		givenName, _ := nameMap["givenName"].(string)
+		familyName, _ := nameMap["familyName"].(string)
+		formatted, _ := nameMap["formatted"].(string)
+		user.GivenName, user.FamilyName, user.Name = &givenName, &familyName, &formatted
+	case domain.UserAttrGivenName:
+		user.GivenName = patchStringField(op)
+	case domain.UserAttrFamilyName:
+		user.FamilyName = patchStringField(op)
+	case domain.UserAttrFormatted:
+		user.Name = patchStringField(op)
+	case domain.UserAttrEmails:
+		if isRemoveOp {
+			empty := ""
+			user.Email = &empty
+			return nil
+		}
+		emails, ok := op.Value.([]any)
+		if !ok || len(emails) == 0 {
+			return domain.NewMutationError("invalidValue", "emails value must be a non-empty array")
+		}
+		firstEmail, ok := emails[0].(map[string]any)
+		if !ok {
+			return domain.NewMutationError("invalidValue", "emails[0] must be an object")
+		}
+		email, _ := firstEmail["value"].(string)
+		user.Email = &email
+	case domain.UserAttrActive:
+		if isRemoveOp {
+			u.setUserActive(user, true)
+			return nil
+		}
+		active, _ := op.Value.(bool)
+		u.setUserActive(user, active)
+	}
+	return nil
+}
+
+func patchStringField(op domain.UserPatchOp) *string {
+	if op.Op == "remove" {
+		empty := ""
+		return &empty
+	}
+	s, _ := op.Value.(string)
+	return &s
 }
 
 func (u *Usecases) setUserActive(user *idmdomain.User, active bool) {
@@ -361,6 +402,7 @@ func (u *Usecases) toScimUser(user *idmdomain.User, scimID string) map[string]an
 			"resourceType": "User",
 			"created":      user.CreatedAt.Format(time.RFC3339),
 			"lastModified": user.UpdatedAt.Format(time.RFC3339),
+			"location":     "/scim/v2/Users/" + scimID,
 		},
 	}
 }

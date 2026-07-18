@@ -13,10 +13,28 @@ import (
 	"github.com/ambi/idmagic/backend/scim/ports"
 )
 
+// CreateGroup validates the full request (displayName uniqueness, member
+// resolvability) before any write. If a persistence step still fails after
+// validation (rare operational failure, ADR-122), already-completed steps
+// are compensated best-effort so a duplicate-key retry doesn't see a
+// half-created group.
 func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
-	displayName, _ := body["displayName"].(string)
-	if displayName == "" {
-		return nil, errors.New("displayName is required")
+	w, err := domain.ParseGroupWrite(body)
+	if err != nil {
+		return nil, err
+	}
+
+	existing, err := u.findGroupByDisplayName(ctx, tenantID, w.DisplayName)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("%w: displayName %q already exists", ErrDuplicate, w.DisplayName)
+	}
+
+	memberUserIDs, err := u.resolveMemberUserIDs(ctx, tenantID, w.MemberScimIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	idBytes := make([]byte, 16)
@@ -25,54 +43,36 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 	}
 	id := fmt.Sprintf("group_%s", hex.EncodeToString(idBytes))
 
+	scimIDBytes := make([]byte, 16)
+	if _, err := rand.Read(scimIDBytes); err != nil {
+		return nil, err
+	}
+	scimID := hex.EncodeToString(scimIDBytes)
+
 	now := time.Now()
 	group := &idmdomain.Group{
-		ID:          id,
-		TenantID:    tenantID,
-		Name:        displayName,
-		Description: nil,
-		Roles:       []string{},
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:        id,
+		TenantID:  tenantID,
+		Name:      w.DisplayName,
+		Roles:     []string{},
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	if err := u.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
 
-	scimID, _ := body["id"].(string)
-	if scimID == "" {
-		scimID = id
-	}
-
-	ref := &ports.ScimGroupRef{
-		TenantID: tenantID,
-		ScimID:   scimID,
-		GroupID:  id,
-	}
+	ref := &ports.ScimGroupRef{TenantID: tenantID, ScimID: scimID, GroupID: id}
 	if err := u.ScimRepo.SaveGroupRef(ctx, ref); err != nil {
+		_ = u.GroupRepo.Delete(ctx, tenantID, id)
 		return nil, err
 	}
 
-	// メンバーがいる場合、追加
-	if members, ok := body["members"].([]any); ok {
-		for _, mVal := range members {
-			if mMap, ok := mVal.(map[string]any); ok {
-				userScimID, _ := mMap["value"].(string)
-				if userScimID != "" {
-					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
-					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
-							GroupID:   id,
-							UserID:    userRef.UserID,
-							CreatedAt: time.Now(),
-						}); err != nil {
-							return nil, err
-						}
-					}
-				}
-			}
-		}
+	if err := u.addMembers(ctx, tenantID, id, memberUserIDs); err != nil {
+		_ = u.ScimRepo.DeleteGroupRef(ctx, tenantID, scimID)
+		_ = u.GroupRepo.Delete(ctx, tenantID, id)
+		return nil, err
 	}
 
 	return u.toScimGroup(ctx, group, scimID)
@@ -146,6 +146,134 @@ func groupFilterAttrs(group *idmdomain.Group, scimID string) map[string]any {
 	}
 }
 
+// findGroupByDisplayName scans the tenant's groups for a displayName
+// collision. GroupRepository has no indexed lookup by name, so this is
+// O(n) in tenant group count; acceptable at the usecase layer (ListGroups
+// already does a full tenant scan for every request).
+func (u *Usecases) findGroupByDisplayName(ctx context.Context, tenantID, displayName string) (*idmdomain.Group, error) {
+	groups, err := u.GroupRepo.ListByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range groups {
+		if g.Name == displayName {
+			return g, nil
+		}
+	}
+	return nil, nil //nolint:nilnil // 契約: 見つからない場合は (nil, nil) (GroupRepo の Find* と同一)。
+}
+
+// resolveMemberUserIDs resolves every SCIM member id to an internal User id
+// before any write happens (ADR-122 validate-first). An unresolvable
+// member is a *domain.MutationError (invalidValue); the caller has not yet
+// touched persistence at that point.
+func (u *Usecases) resolveMemberUserIDs(ctx context.Context, tenantID string, scimIDs []string) ([]string, error) {
+	userIDs := make([]string, 0, len(scimIDs))
+	for _, scimID := range scimIDs {
+		userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+		if err != nil {
+			return nil, err
+		}
+		if userRef == nil {
+			return nil, domain.NewMutationError("invalidValue", "member %q does not resolve to a User in this tenant", scimID)
+		}
+		userIDs = append(userIDs, userRef.UserID)
+	}
+	return userIDs, nil
+}
+
+// addMembers adds each userID, compensating (best-effort) by removing
+// already-added members if a later AddMember call fails (ADR-122).
+func (u *Usecases) addMembers(ctx context.Context, tenantID, groupID string, userIDs []string) error {
+	added := make([]string, 0, len(userIDs))
+	for _, userID := range userIDs {
+		if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: groupID, UserID: userID, CreatedAt: time.Now()}); err != nil {
+			for _, a := range added {
+				_, _ = u.GroupRepo.RemoveMember(ctx, tenantID, groupID, a)
+			}
+			return err
+		}
+		added = append(added, userID)
+	}
+	return nil
+}
+
+// replaceMembers removes all existing members and adds newUserIDs,
+// attempting best-effort compensation to restore the prior membership if a
+// step fails partway (ADR-122: no cross-context DB transaction).
+func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string, newUserIDs []string) error {
+	existing, err := u.GroupRepo.ListMembersByGroup(ctx, tenantID, groupID)
+	if err != nil {
+		return err
+	}
+
+	removed := make([]string, 0, len(existing))
+	for _, m := range existing {
+		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, m.UserID); err != nil {
+			for _, r := range removed {
+				_, _ = u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
+			}
+			return err
+		}
+		removed = append(removed, m.UserID)
+	}
+
+	if err := u.addMembers(ctx, tenantID, groupID, newUserIDs); err != nil {
+		for _, r := range removed {
+			_, _ = u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
+		}
+		return err
+	}
+	return nil
+}
+
+// removeMembersLenient removes members that resolve to a User; a member
+// value that no longer resolves is a no-op (removing something that isn't
+// there is already the desired end state), matching pre-wi-239 behavior.
+func (u *Usecases) removeMembersLenient(ctx context.Context, tenantID, groupID string, value any) error {
+	scimIDs, err := groupMemberScimIDs(value)
+	if err != nil {
+		return err
+	}
+	for _, scimID := range scimIDs {
+		userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+		if err != nil {
+			return err
+		}
+		if userRef == nil {
+			continue
+		}
+		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, userRef.UserID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func groupMemberScimIDs(value any) ([]string, error) {
+	valList, ok := value.([]any)
+	if !ok {
+		return nil, domain.NewMutationError("invalidValue", "members value must be an array")
+	}
+	scimIDs := make([]string, 0, len(valList))
+	for _, v := range valList {
+		vMap, ok := v.(map[string]any)
+		if !ok {
+			return nil, domain.NewMutationError("invalidValue", "each member must be an object with a value")
+		}
+		scimID, _ := vMap["value"].(string)
+		if scimID == "" {
+			return nil, domain.NewMutationError("invalidValue", "member value must be a non-empty string")
+		}
+		scimIDs = append(scimIDs, scimID)
+	}
+	return scimIDs, nil
+}
+
+// UpdateGroup implements PUT full-replace semantics (ADR-122): displayName
+// is required, and members omitted from the body clears the group's
+// membership. Uniqueness and member resolvability are validated before any
+// write.
 func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	ref, err := u.ScimRepo.FindGroupRefByScimID(ctx, tenantID, scimID)
 	if err != nil {
@@ -163,51 +291,39 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 		return nil, ErrNotFound
 	}
 
-	displayName, _ := body["displayName"].(string)
-	if displayName != "" {
-		group.Name = displayName
+	w, err := domain.ParseGroupWrite(body)
+	if err != nil {
+		return nil, err
 	}
-
-	// メンバー置換
-	if members, ok := body["members"].([]any); ok {
-		existingMembers, err := u.GroupRepo.ListMembersByGroup(ctx, tenantID, group.ID)
-		if err != nil {
+	if w.DisplayName != group.Name {
+		if existing, err := u.findGroupByDisplayName(ctx, tenantID, w.DisplayName); err != nil {
 			return nil, err
-		}
-		for _, m := range existingMembers {
-			if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, group.ID, m.UserID); err != nil {
-				return nil, err
-			}
-		}
-
-		for _, mVal := range members {
-			if mMap, ok := mVal.(map[string]any); ok {
-				userScimID, _ := mMap["value"].(string)
-				if userScimID != "" {
-					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
-					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
-							GroupID:   group.ID,
-							UserID:    userRef.UserID,
-							CreatedAt: time.Now(),
-						}); err != nil {
-							return nil, err
-						}
-					}
-				}
-			}
+		} else if existing != nil && existing.ID != group.ID {
+			return nil, fmt.Errorf("%w: displayName %q already exists", ErrDuplicate, w.DisplayName)
 		}
 	}
 
-	now := time.Now()
-	group.UpdatedAt = now
+	targetUserIDs, err := u.resolveMemberUserIDs(ctx, tenantID, w.MemberScimIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	group.Name = w.DisplayName
+	group.UpdatedAt = time.Now()
 	if err := u.GroupRepo.Save(ctx, group); err != nil {
+		return nil, err
+	}
+
+	if err := u.replaceMembers(ctx, tenantID, group.ID, targetUserIDs); err != nil {
 		return nil, err
 	}
 
 	return u.toScimGroup(ctx, group, scimID)
 }
 
+// PatchGroup applies RFC 7644 §3.5.2 operations validated by
+// domain.ParseGroupPatchOps. Every add/replace member reference is
+// resolved before any operation is applied (ADR-122 validate-first).
 func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	ref, err := u.ScimRepo.FindGroupRefByScimID(ctx, tenantID, scimID)
 	if err != nil {
@@ -225,36 +341,34 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 		return nil, ErrNotFound
 	}
 
-	ops, _ := body["Operations"].([]any)
-	for _, opVal := range ops {
-		opMap, ok := opVal.(map[string]any)
-		if !ok {
+	ops, err := domain.ParseGroupPatchOps(body)
+	if err != nil {
+		return nil, err
+	}
+
+	resolvedMembers := make([][]string, len(ops))
+	for i, op := range ops {
+		if op.Attr != domain.GroupAttrMembers || (op.Op != "add" && op.Op != "replace") {
 			continue
 		}
-		op, _ := opMap["op"].(string)
-		path, _ := opMap["path"].(string)
-		value := opMap["value"]
+		scimIDs, err := groupMemberScimIDs(op.Value)
+		if err != nil {
+			return nil, err
+		}
+		userIDs, err := u.resolveMemberUserIDs(ctx, tenantID, scimIDs)
+		if err != nil {
+			return nil, err
+		}
+		resolvedMembers[i] = userIDs
+	}
 
-		if path == "members" || path == "" {
-			switch op {
-			case "add":
-				if err := u.patchAddMembers(ctx, tenantID, group.ID, value); err != nil {
-					return nil, err
-				}
-			case "remove":
-				if err := u.patchRemoveMembers(ctx, tenantID, group.ID, value); err != nil {
-					return nil, err
-				}
-			case "replace":
-				if err := u.patchReplaceMembers(ctx, tenantID, group.ID, value); err != nil {
-					return nil, err
-				}
-			}
+	for i, op := range ops {
+		if err := u.applyGroupPatchOp(ctx, tenantID, group, op, resolvedMembers[i]); err != nil {
+			return nil, err
 		}
 	}
 
-	now := time.Now()
-	group.UpdatedAt = now
+	group.UpdatedAt = time.Now()
 	if err := u.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
@@ -262,59 +376,37 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 	return u.toScimGroup(ctx, group, scimID)
 }
 
-func (u *Usecases) patchAddMembers(ctx context.Context, tenantID, groupID string, value any) error {
-	if valList, ok := value.([]any); ok {
-		for _, v := range valList {
-			if vMap, ok := v.(map[string]any); ok {
-				userScimID, _ := vMap["value"].(string)
-				if userScimID != "" {
-					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
-					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{
-							GroupID:   groupID,
-							UserID:    userRef.UserID,
-							CreatedAt: time.Now(),
-						}); err != nil {
-							return err
-						}
-					}
-				}
+func (u *Usecases) applyGroupPatchOp(ctx context.Context, tenantID string, group *idmdomain.Group, op domain.GroupPatchOp, resolvedUserIDs []string) error {
+	switch op.Attr {
+	case domain.GroupAttrDisplayName:
+		if op.Op == "remove" {
+			return domain.NewMutationError("invalidValue", "displayName cannot be removed")
+		}
+		displayName, _ := op.Value.(string)
+		if displayName == "" {
+			return domain.NewMutationError("invalidValue", "displayName value must be a non-empty string")
+		}
+		if displayName != group.Name {
+			existing, err := u.findGroupByDisplayName(ctx, tenantID, displayName)
+			if err != nil {
+				return err
 			}
+			if existing != nil && existing.ID != group.ID {
+				return fmt.Errorf("%w: displayName %q already exists", ErrDuplicate, displayName)
+			}
+		}
+		group.Name = displayName
+	case domain.GroupAttrMembers:
+		switch op.Op {
+		case "add":
+			return u.addMembers(ctx, tenantID, group.ID, resolvedUserIDs)
+		case "remove":
+			return u.removeMembersLenient(ctx, tenantID, group.ID, op.Value)
+		case "replace":
+			return u.replaceMembers(ctx, tenantID, group.ID, resolvedUserIDs)
 		}
 	}
 	return nil
-}
-
-func (u *Usecases) patchRemoveMembers(ctx context.Context, tenantID, groupID string, value any) error {
-	if valList, ok := value.([]any); ok {
-		for _, v := range valList {
-			if vMap, ok := v.(map[string]any); ok {
-				userScimID, _ := vMap["value"].(string)
-				if userScimID != "" {
-					userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, userScimID)
-					if err == nil && userRef != nil {
-						if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, userRef.UserID); err != nil {
-							return err
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (u *Usecases) patchReplaceMembers(ctx context.Context, tenantID, groupID string, value any) error {
-	existingMembers, err := u.GroupRepo.ListMembersByGroup(ctx, tenantID, groupID)
-	if err != nil {
-		return err
-	}
-	for _, m := range existingMembers {
-		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, m.UserID); err != nil {
-			return err
-		}
-	}
-	return u.patchAddMembers(ctx, tenantID, groupID, value)
 }
 
 func (u *Usecases) DeleteGroup(ctx context.Context, tenantID, scimID string) error {
@@ -365,6 +457,7 @@ func (u *Usecases) toScimGroup(ctx context.Context, group *idmdomain.Group, scim
 			"resourceType": "Group",
 			"created":      group.CreatedAt.Format(time.RFC3339),
 			"lastModified": updatedStr,
+			"location":     "/scim/v2/Groups/" + scimID,
 		},
 	}, nil
 }

@@ -20,11 +20,23 @@ standards:
       - id: RFC7643-CORE-RESOURCES
         section: "§4.1, §4.2"
         strength: MUST
-        adoption: required
+        adoption: partial
         statement: User と Group resource を SCIM core schema に従って表現する。
+        reason: >-
+          User は id、userName(必須)、name.formatted/givenName/familyName、emails
+          (書込みは配列を受け付けるが最初の要素の value だけを永続化する、単一の
+          primary/work email 相当)、active、meta のみ対応する。phoneNumbers、
+          addresses、photos、entitlements、roles、x509Certificates、ims、
+          preferredLanguage、locale、timezone、profileUrl、title、userType、
+          nickName、他の複数 emails 要素、enterprise extension や custom schema
+          extension は未対応。Group は id、displayName(必須)、members(User
+          member のみ、type=Group の nested group member は未対応)、meta のみ
+          対応する。GetScimSchemas/GetScimResourceTypes はこの対応範囲だけを
+          広告する。
         refs:
           - interfaces.CreateScimUser
           - interfaces.CreateScimGroup
+          - interfaces.GetScimSchemas
   RFC7644:
     title: System for Cross-domain Identity Management Protocol
     version: RFC 7644
@@ -49,8 +61,15 @@ standards:
       - id: RFC7644-PATCH
         section: §3.5.2
         strength: SHOULD
-        adoption: required
+        adoption: partial
         statement: User と Group resource の部分更新を PATCH operation で提供する。
+        reason: >-
+          add/replace/remove の各 operation は RFC7643-CORE-RESOURCES が対応する
+          属性 path(User: userName、name、name.formatted、name.givenName、
+          name.familyName、emails、active。Group: displayName、members)にのみ
+          適用できる。members に対する複合 value フィルタ path
+          (例 members[value eq "..."]) は未対応で、常に配列全体を対象にする。
+          readOnly 属性(id、meta、schemas)への書込みは mutability エラーにする。
         refs:
           - interfaces.PatchScimUser
           - interfaces.PatchScimGroup
@@ -192,7 +211,9 @@ interfaces:
         method: GET
         path: /scim/v2/ServiceProviderConfig
   GetScimResourceTypes:
-    description: SCIM 2.0 /ResourceTypes を取得する。
+    description: |
+      SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type
+      だけを返す(schema URN、endpoint、schema extension は空)。
     input:
       tenant_id:
         type: String
@@ -209,7 +230,10 @@ interfaces:
         method: GET
         path: /scim/v2/ResourceTypes
   GetScimSchemas:
-    description: SCIM 2.0 /Schemas を取得する。
+    description: |
+      SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の
+      属性だけを、各属性の type、multiValued、required、mutability(readOnly/readWrite)、
+      returned、uniqueness とともに広告する。空の attribute 配列を返さない。
     input:
       tenant_id:
         type: String
@@ -226,7 +250,13 @@ interfaces:
         method: GET
         path: /scim/v2/Schemas
   CreateScimUser:
-    description: SCIM 2.0 /Users に対する POST 要求。内部 User の作成（または mapping 適用）を処理する。
+    description: |
+      SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、
+      欠落は invalidValue の ScimProtocolError にする。`id` は常に server が生成し、
+      body に含まれていても無視する(readOnly)。`active` 省略時は true。作成した
+      resource は `id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、
+      `meta.location` を含めて返す。同一 tenant 内で `userName` が既存 User と重複する
+      場合は 409 `uniqueness` にする。
     input:
       tenant_id:
         type: String
@@ -290,7 +320,9 @@ interfaces:
         path: /scim/v2/Users
         request_form: query
   GetScimUser:
-    description: SCIM 2.0 /Users/{id} に対する GET 要求。
+    description: |
+      SCIM 2.0 /Users/{id} に対する GET 要求。`id`、`meta.resourceType`、
+      `meta.created`、`meta.lastModified`、`meta.location` を含む resource を返す。
     input:
       tenant_id:
         type: String
@@ -311,7 +343,14 @@ interfaces:
         method: GET
         path: "/scim/v2/Users/{id}"
   PatchScimUser:
-    description: SCIM 2.0 /Users/{id} に対する PATCH 要求。active の変更や属性の更新を処理する。
+    description: |
+      SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の
+      各要素は `op`(add/replace/remove のいずれか)と `path` を持つ。`path` は
+      RFC7644-PATCH が対応する User 属性(userName、name、name.formatted、
+      name.givenName、name.familyName、emails、active)のいずれかでなければならず、
+      それ以外は invalidPath の ScimProtocolError にする。`op` が add/replace/remove
+      以外、または value の型が対象属性と不整合な場合は invalidValue にする。`id`、
+      `meta`、`schemas` への書込みは mutability エラーにする。
     input:
       tenant_id:
         type: String
@@ -333,7 +372,12 @@ interfaces:
         method: PATCH
         path: "/scim/v2/Users/{id}"
   UpdateScimUser:
-    description: SCIM 2.0 /Users/{id} に対する PUT 要求。
+    description: |
+      SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する
+      mutable 属性を**完全に置換**する(部分更新ではない)。`userName` は必須で、
+      欠落は invalidValue の ScimProtocolError にする。省略された他の mutable
+      属性(name.*、emails、active)は既定値にリセットする(name/emails は空、
+      active は true)。`id`、`meta` への書込みは無視する(readOnly)。
     input:
       tenant_id:
         type: String
@@ -372,7 +416,15 @@ interfaces:
         method: DELETE
         path: "/scim/v2/Users/{id}"
   CreateScimGroup:
-    description: SCIM 2.0 /Groups に対する POST 要求。
+    description: |
+      SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は
+      invalidValue の ScimProtocolError にする。`id` は常に server が生成し、
+      body に含まれていても無視する(readOnly)。`members` の各要素は同一 tenant
+      内で解決可能な User の SCIM id でなければならず、解決できない member は
+      invalidValue にして group を作成しない。作成した resource は `id`、
+      `meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location`
+      を含めて返す。同一 tenant 内で `displayName` が既存 Group と重複する場合は
+      409 `uniqueness` にする。
     input:
       tenant_id:
         type: String
@@ -435,7 +487,9 @@ interfaces:
         path: /scim/v2/Groups
         request_form: query
   GetScimGroup:
-    description: SCIM 2.0 /Groups/{id} に対する GET 要求。
+    description: |
+      SCIM 2.0 /Groups/{id} に対する GET 要求。`id`、`meta.resourceType`、
+      `meta.created`、`meta.lastModified`、`meta.location` を含む resource を返す。
     input:
       tenant_id:
         type: String
@@ -456,7 +510,14 @@ interfaces:
         method: GET
         path: "/scim/v2/Groups/{id}"
   PatchScimGroup:
-    description: SCIM 2.0 /Groups/{id} に対する PATCH 要求。メンバーの追加・削除などを処理する。
+    description: |
+      SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は
+      RFC7644-PATCH が対応する Group 属性(displayName、members)のいずれかで
+      なければならず、それ以外は invalidPath の ScimProtocolError にする。`op` が
+      add/replace/remove 以外、または value の型が対象属性と不整合な場合は
+      invalidValue にする。`members` の add で解決できない member を指定した場合も
+      invalidValue にし、group を変更しない。`id`、`meta`、`schemas` への書込みは
+      mutability エラーにする。
     input:
       tenant_id:
         type: String
@@ -478,7 +539,13 @@ interfaces:
         method: PATCH
         path: "/scim/v2/Groups/{id}"
   UpdateScimGroup:
-    description: SCIM 2.0 /Groups/{id} に対する PUT 要求。
+    description: |
+      SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する
+      mutable 属性を**完全に置換**する(部分更新ではない)。`displayName` は必須で、
+      欠落は invalidValue の ScimProtocolError にする。`members` を省略した場合は
+      既存メンバーを全て削除する(空集合への置換)。解決できない member を指定した
+      場合は invalidValue にし、group を変更しない。`id`、`meta` への書込みは
+      無視する(readOnly)。
     input:
       tenant_id:
         type: String
@@ -641,6 +708,49 @@ scenarios:
         condition: 指定 ID が存在しない
         steps:
           - 404 の ScimProtocolError を返す
+  外部IDPはSCIM resourceをPUTで完全に置換できる:
+    actor: ScimBearerClient
+    given:
+      - "有効な SCIM アクセストークンが発行されている"
+      - "対象 User が存在し、name.givenName と active=false を持つ"
+    main_success:
+      - "SCIMクライアントが UpdateScimUser を、userName のみを含む body で呼び出す"
+      - "name.givenName は空文字にリセットされ、active は true にリセットされる"
+      - "応答は id、meta.resourceType、meta.created、meta.lastModified、
+        meta.location を含む"
+    extensions:
+      - at: 1
+        condition: PUT body に必須属性 (User の userName、Group の displayName)
+          が欠落している
+        steps:
+          - invalidValue の ScimProtocolError を返し resource を変更しない
+      - at: 1
+        condition: PUT body の id が既存の id と異なる値を含む
+        steps:
+          - id は無視され既存の server-assigned id が維持される
+  外部IDPは対応外のPATCH pathやreadOnly属性への書込みを拒否される:
+    actor: ScimBearerClient
+    given:
+      - "有効な SCIM アクセストークンが発行されている"
+      - "対象 User または Group が存在する"
+    main_success:
+      - "SCIMクライアントが RFC7644-PATCH の対応 path (User: userName / name /
+        active / emails、Group: displayName / members) に replace operation を
+        PatchScimUser または PatchScimGroup で送る"
+      - "対象属性だけが更新され、他の属性は変化しない"
+    extensions:
+      - at: 1
+        condition: path が対応 attribute allowlist の外、または存在しない属性
+        steps:
+          - invalidPath の ScimProtocolError を返し resource を変更しない
+      - at: 1
+        condition: path が id、meta、schemas のいずれか (readOnly)
+        steps:
+          - mutability の ScimProtocolError を返し resource を変更しない
+      - at: 1
+        condition: op が add / replace / remove のいずれでもない
+        steps:
+          - invalidValue の ScimProtocolError を返し resource を変更しない
   外部IDPからのSCIMグループおよびメンバーシップ同期:
     actor: ScimBearerClient
     given:

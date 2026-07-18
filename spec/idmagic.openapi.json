@@ -11677,7 +11677,7 @@
     "/scim/v2/ResourceTypes": {
       "get": {
         "operationId": "GetScimResourceTypes",
-        "summary": "SCIM 2.0 /ResourceTypes を取得する。",
+        "summary": "SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type",
         "security": [
           {
             "SclBearer": []
@@ -11745,7 +11745,7 @@
     "/scim/v2/Schemas": {
       "get": {
         "operationId": "GetScimSchemas",
-        "summary": "SCIM 2.0 /Schemas を取得する。",
+        "summary": "SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の",
         "security": [
           {
             "SclBearer": []
@@ -11813,7 +11813,7 @@
     "/scim/v2/Users": {
       "post": {
         "operationId": "CreateScimUser",
-        "summary": "SCIM 2.0 /Users に対する POST 要求。内部 User の作成（または mapping 適用）を処理する。",
+        "summary": "SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -11989,7 +11989,7 @@
     "/scim/v2/Users/{id}": {
       "get": {
         "operationId": "GetScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する GET 要求。",
+        "summary": "SCIM 2.0 /Users/{id} に対する GET 要求。`id`、`meta.resourceType`、",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -12064,7 +12064,7 @@
       },
       "patch": {
         "operationId": "PatchScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する PATCH 要求。active の変更や属性の更新を処理する。",
+        "summary": "SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -12158,7 +12158,7 @@
       },
       "put": {
         "operationId": "UpdateScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する PUT 要求。",
+        "summary": "SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -12313,7 +12313,7 @@
     "/scim/v2/Groups": {
       "post": {
         "operationId": "CreateScimGroup",
-        "summary": "SCIM 2.0 /Groups に対する POST 要求。",
+        "summary": "SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -12489,7 +12489,7 @@
     "/scim/v2/Groups/{id}": {
       "get": {
         "operationId": "GetScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する GET 要求。",
+        "summary": "SCIM 2.0 /Groups/{id} に対する GET 要求。`id`、`meta.resourceType`、",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -12564,7 +12564,7 @@
       },
       "patch": {
         "operationId": "PatchScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する PATCH 要求。メンバーの追加・削除などを処理する。",
+        "summary": "SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -12658,7 +12658,7 @@
       },
       "put": {
         "operationId": "UpdateScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する PUT 要求。",
+        "summary": "SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],

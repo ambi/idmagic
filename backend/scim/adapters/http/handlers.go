@@ -50,6 +50,24 @@ func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType s
 	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), kernel.EnglishErrorText(detail), scimType))
 }
 
+// writeMutationError maps CreateUser/UpdateUser/PatchUser/CreateGroup/
+// UpdateGroup/PatchGroup errors to the SCIM protocol error RFC 7644 §3.12
+// requires: not found as 404, a uniqueness conflict as 409, a
+// *domain.MutationError as 400 with its carried scimType (invalidValue /
+// invalidPath / mutability), anything else as an internal error.
+func (h *Handler) writeMutationError(c *echo.Context, notFoundDetail string, err error) error {
+	if errors.Is(err, usecases.ErrNotFound) {
+		return h.writeScimError(c, http.StatusNotFound, notFoundDetail, "")
+	}
+	if errors.Is(err, usecases.ErrDuplicate) {
+		return h.writeScimError(c, http.StatusConflict, err.Error(), "uniqueness")
+	}
+	if mutErr, ok := errors.AsType[*domain.MutationError](err); ok {
+		return h.writeScimError(c, http.StatusBadRequest, err.Error(), mutErr.ScimType)
+	}
+	return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+}
+
 func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 	if _, err := h.authenticate(c); err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
@@ -121,16 +139,7 @@ func (h *Handler) handleGetSchemas(c *echo.Context) error {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
-	// 最小限の schemas
-	schemas := []domain.Schema{
-		{
-			Schemas:     []string{"urn:ietf:params:scim:schemas:core:2.0:Schema"},
-			ID:          "urn:ietf:params:scim:schemas:core:2.0:User",
-			Name:        "User",
-			Description: "User core schema",
-			Attributes:  []domain.SchemaAttribute{},
-		},
-	}
+	schemas := []domain.Schema{domain.UserCoreSchema(), domain.GroupCoreSchema()}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
 	return c.JSON(http.StatusOK, schemas)
@@ -145,12 +154,12 @@ func (h *Handler) handleCreateUser(c *echo.Context) error {
 
 	var body map[string]any
 	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
+		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "invalidSyntax")
 	}
 
 	res, err := h.deps.Usecases.CreateUser(c.Request().Context(), tenantID, body)
 	if err != nil {
-		return h.writeScimError(c, http.StatusConflict, err.Error(), "uniqueness")
+		return h.writeMutationError(c, "", err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -185,15 +194,12 @@ func (h *Handler) handleUpdateUser(c *echo.Context) error {
 	id := c.Param("id")
 	var body map[string]any
 	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
+		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "invalidSyntax")
 	}
 
 	res, err := h.deps.Usecases.UpdateUser(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, usecases.ErrNotFound) {
-			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
-		}
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeMutationError(c, "user not found", err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -209,15 +215,12 @@ func (h *Handler) handlePatchUser(c *echo.Context) error {
 	id := c.Param("id")
 	var body map[string]any
 	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
+		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "invalidSyntax")
 	}
 
 	res, err := h.deps.Usecases.PatchUser(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, usecases.ErrNotFound) {
-			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
-		}
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeMutationError(c, "user not found", err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -323,12 +326,12 @@ func (h *Handler) handleCreateGroup(c *echo.Context) error {
 
 	var body map[string]any
 	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
+		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "invalidSyntax")
 	}
 
 	res, err := h.deps.Usecases.CreateGroup(c.Request().Context(), tenantID, body)
 	if err != nil {
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeMutationError(c, "", err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -382,15 +385,12 @@ func (h *Handler) handleUpdateGroup(c *echo.Context) error {
 	id := c.Param("id")
 	var body map[string]any
 	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
+		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "invalidSyntax")
 	}
 
 	res, err := h.deps.Usecases.UpdateGroup(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, usecases.ErrNotFound) {
-			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
-		}
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeMutationError(c, "group not found", err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -406,15 +406,12 @@ func (h *Handler) handlePatchGroup(c *echo.Context) error {
 	id := c.Param("id")
 	var body map[string]any
 	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "")
+		return h.writeScimError(c, http.StatusBadRequest, "invalid body", "invalidSyntax")
 	}
 
 	res, err := h.deps.Usecases.PatchGroup(c.Request().Context(), tenantID, id, body)
 	if err != nil {
-		if errors.Is(err, usecases.ErrNotFound) {
-			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
-		}
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeMutationError(c, "group not found", err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
