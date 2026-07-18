@@ -5528,7 +5528,7 @@
     "/api/account/sessions/revoke_others": {
       "post": {
         "operationId": "RevokeMyOtherSessions",
-        "summary": "認証済みユーザーが現在のセッションを除く自身の全セッションを失効する (self-service)。\"他のセッションを全て終了\" 操作。",
+        "summary": "認証済みユーザーが現在のセッションを除く自身の全セッションを失効する (self-service)。",
         "security": [
           {
             "SclBearer": []
@@ -5543,6 +5543,218 @@
             "id": "subject.id"
           }
         },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/sessions": {
+      "get": {
+        "operationId": "ListSessions",
+        "summary": "admin が対象ユーザーの有効なセッションを一覧する (wi-28)。tenant 境界内に",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "input.user_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "$ref": "#/components/schemas/SessionRecordListResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "sessions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/sessions/{id}/revoke": {
+      "post": {
+        "operationId": "RevokeSession",
+        "summary": "admin が対象ユーザーのセッション1件を失効する (wi-28)。RevokeMySession と同じ",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "input.user_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "user_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/sessions/revoke_all": {
+      "post": {
+        "operationId": "RevokeUserSessions",
+        "summary": "admin が対象ユーザーの全セッションを失効する (wi-28)。\"全セッションを終了\"",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "input.user_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "user_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": "Success"
@@ -6249,11 +6461,13 @@
     "/end_session": {
       "get": {
         "operationId": "EndSession",
-        "summary": "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は OAuth2/OIDC bounded context が行い、session revocation は Authentication bounded context の SessionManager に委譲する。",
+        "summary": "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は",
         "x-scl-requires": [
+          "id_token_hint_signature_valid_or_absent(input.params.id_token_hint)",
+          "id_token_hint_client_matches(input.params.id_token_hint, input.params.client_id)",
           "registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)"
         ],
-        "description": "Requires: registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)",
+        "description": "Requires: id_token_hint_signature_valid_or_absent(input.params.id_token_hint); id_token_hint_client_matches(input.params.id_token_hint, input.params.client_id); registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)",
         "security": [],
         "parameters": [
           {
@@ -6290,11 +6504,13 @@
       },
       "post": {
         "operationId": "EndSession",
-        "summary": "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は OAuth2/OIDC bounded context が行い、session revocation は Authentication bounded context の SessionManager に委譲する。",
+        "summary": "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は",
         "x-scl-requires": [
+          "id_token_hint_signature_valid_or_absent(input.params.id_token_hint)",
+          "id_token_hint_client_matches(input.params.id_token_hint, input.params.client_id)",
           "registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)"
         ],
-        "description": "Requires: registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)",
+        "description": "Requires: id_token_hint_signature_valid_or_absent(input.params.id_token_hint); id_token_hint_client_matches(input.params.id_token_hint, input.params.client_id); registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)",
         "security": [],
         "requestBody": {
           "required": true,
@@ -6335,6 +6551,18 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/session/check": {
+      "get": {
+        "operationId": "CheckSessionIframe",
+        "summary": "OP session の変化をポーリングする RP 用 hidden iframe (OIDC Session Management",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
           }
         }
       }
@@ -17593,6 +17821,10 @@
             "type": "string",
             "description": "認可リクエストから引き継いだ ACR URN。id_token / access_token に emit する。"
           },
+          "sid": {
+            "type": "string",
+            "description": "認可リクエストから引き継いだ OIDC session id。id_token の sid claim と発行 RefreshTokenRecord.sid に伝播する (wi-28)。"
+          },
           "authorization_details": {
             "type": "array",
             "items": {
@@ -18128,6 +18360,10 @@
           "acr_values": {
             "type": "string",
             "description": "クライアントが /authorize に与えた acr_values パラメータ (RFC 8176)。step-up 判定に使う。"
+          },
+          "sid": {
+            "type": "string",
+            "description": "advance(authenticate_user) で AuthenticationContext.session_id から伝搬する\nOIDC session id (Authentication context の LoginSession.id と同値)。AuthorizationCodeRecord /\nRefreshTokenRecord / IdTokenClaims へ引き継ぎ、session revoke 起点の family 失効と\nfront/back-channel logout の相関に使う (wi-28)。\n"
           },
           "authorization_details": {
             "type": "array",
@@ -18719,6 +18955,44 @@
         ],
         "description": "管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。"
       },
+      "ClientSession": {
+        "type": "object",
+        "properties": {
+          "sid": {
+            "type": "string",
+            "description": "LoginSession.id と同値の OIDC session id。"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string",
+            "default": "default",
+            "description": "所属テナント ID。"
+          },
+          "first_issued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "同一 RP への再発行 (再認可) ごとに更新する。通知先解決には影響しない。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "sid",
+          "client_id",
+          "tenant_id",
+          "first_issued_at",
+          "last_issued_at"
+        ],
+        "description": "ある browser session (sid) が特定の OAuth2Client (RP) に対して認証結果を\n発行した記録 (RP participation)。sid は Authentication の LoginSession.id と同値で\nRP 間で共通。session 状態そのものはここに複製せず、session revoke 時にどの RP へ\nfront/back-channel logout を通知するかを解決する索引としてのみ使う (wi-28)。\n",
+        "x-scl-untranslated-constraints": [
+          "client_session_references_existing_client(client_id)"
+        ]
+      },
       "ClientType": {
         "type": "string",
         "enum": [
@@ -18873,6 +19147,20 @@
           "Expired"
         ],
         "description": "ConsentLifecycle 状態機械の取りうる状態列挙。GDPR Art.7(3) 撤回権により Granted → Revoked が可能。"
+      },
+      "Deliver": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt"
+        ],
+        "description": "LogoutNotification の配送が成功した lifecycle event。"
       },
       "Deny": {
         "type": "object",
@@ -19157,6 +19445,26 @@
             "type": "string",
             "format": "uri"
           },
+          "frontchannel_logout_supported": {
+            "type": "boolean",
+            "default": true
+          },
+          "frontchannel_logout_session_supported": {
+            "type": "boolean",
+            "default": true
+          },
+          "backchannel_logout_supported": {
+            "type": "boolean",
+            "default": true
+          },
+          "backchannel_logout_session_supported": {
+            "type": "boolean",
+            "default": true
+          },
+          "check_session_iframe": {
+            "type": "string",
+            "format": "uri"
+          },
           "scopes_supported": {
             "type": "array",
             "items": {
@@ -19324,6 +19632,10 @@
           "pushed_authorization_request_endpoint",
           "device_authorization_endpoint",
           "registration_endpoint",
+          "frontchannel_logout_supported",
+          "frontchannel_logout_session_supported",
+          "backchannel_logout_supported",
+          "backchannel_logout_session_supported",
           "scopes_supported",
           "response_types_supported",
           "grant_types_supported",
@@ -19798,7 +20110,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で post_logout_redirect_uri を検証する。"
+        "description": "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で\npost_logout_redirect_uri を検証する。id_token_hint は本 OP が発行した ID Token の\nみ受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する\n(ADR-127)。exp は検証しない (ログアウト時点で期限切れになっている ID Token を\nhint として送るのが通常の RP 実装であるため)。\n"
       },
       "EnterUserCode": {
         "type": "object",
@@ -19904,6 +20216,20 @@
           "occurredAt"
         ],
         "description": "device code が token に交換された event。"
+      },
+      "Exhaust": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt"
+        ],
+        "description": "LogoutNotification の配送が max_attempts に到達し dead-letter へ確定した lifecycle event。"
       },
       "Expire": {
         "type": "object",
@@ -20014,6 +20340,25 @@
           "provider"
         ],
         "description": "ローカル user から外部 IdP の identity を解除した。"
+      },
+      "FrontChannelLogoutTarget": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "iframe_uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "登録済み frontchannel_logout_uri に (frontchannel_logout_session_required なら) iss / sid を付与した URI。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "client_id",
+          "iframe_uri"
+        ],
+        "description": "FrontChannelLogout の返り値1件。EndSession 応答が埋め込む iframe 1つ分に対応する。"
       },
       "GrantConsent": {
         "type": "object",
@@ -20470,6 +20815,10 @@
           "auth_time": {
             "type": "integer"
           },
+          "sid": {
+            "type": "string",
+            "description": "OIDC session id (OpenID Connect Front/Back-Channel Logout 1.0)。browser session に\n束縛された発行のときだけ含める。RP は本 claim を id_token_hint として /end_session に\n送り返し、front/back-channel logout の相関に使う。\n"
+          },
           "nonce": {
             "type": "string"
           },
@@ -20871,7 +21220,8 @@
           "user_import_preview",
           "user_import_apply",
           "dynamic_group_reconcile",
-          "lifecycle_workflow_run"
+          "lifecycle_workflow_run",
+          "backchannel_logout_delivery"
         ],
         "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
       },
@@ -21731,11 +22081,15 @@
             "type": "string",
             "format": "uuid"
           },
+          "tenant_id": {
+            "type": "string"
+          },
           "user_id": {
             "type": "string"
           },
           "auth_time": {
-            "type": "integer"
+            "type": "integer",
+            "description": "認証が成立した Unix 秒。session の開始時刻として不変であり、一覧の並び替え (開始時刻の降順) にも使う。"
           },
           "amr": {
             "type": "array",
@@ -21774,23 +22128,48 @@
             "format": "uuid",
             "description": "Enrollment へ進むために消費した管理者発行 bypass。監査相関用。"
           },
+          "step_up_at": {
+            "type": "integer",
+            "default": 0,
+            "description": "直近で password / MFA による step-up 再認証が成立した Unix 秒 (未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う (ADR-043)。"
+          },
           "expires_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "セッションが認証結果として意味上利用された直近時刻。認証解決のたびに touch するが、直近の touch から LoginSessionTouchInterval 未満の再 touch は永続化しない粗粒度な値であり、idle timeout 判定はこの粒度で近似する。"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "失効時刻。未失効は null。失効は tombstone であり物理削除しない。"
+          },
+          "revoke_reason": {
+            "$ref": "#/components/schemas/SessionEndReason",
+            "description": "revoked_at と対で設定される失効理由。revoked_at が null なら null。"
           }
         },
         "additionalProperties": false,
         "required": [
           "id",
+          "tenant_id",
           "user_id",
           "auth_time",
           "amr",
           "acr",
           "authentication_pending",
           "pending_purpose",
-          "expires_at"
+          "step_up_at",
+          "expires_at",
+          "last_seen_at"
         ],
-        "description": "ブラウザログインセッション。Cookie には不透明な session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr もここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true はサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加 factor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize 完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。Cookie は http_only かつ same_site=Lax で発行する。"
+        "description": "ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、\nプロセス再起動や Valkey 全損を跨いで有効な session を維持する。Cookie には不透明な\nsession id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も\nここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は\nサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を\n遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加\nfactor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize\n完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。\nCookie は http_only かつ same_site=Lax で発行する。tenant_id は認証解決クエリに\n必ず含め、session id が tenant をまたいで推測・再利用されても別 tenant の行を返さない\nfail-closed な分離を DB 層で担保する。失効は revoked_at / revoke_reason を設定する\ntombstone であり、行を物理削除しない (再失効は idempotent に成功する)。認証解決は\nrevoked_at IS NULL AND expires_at > now の行だけを有効とみなす。\n",
+        "x-scl-untranslated-constraints": [
+          "(revoked_at == null) == (revoke_reason == null)"
+        ]
       },
       "LoginThrottled": {
         "type": "object",
@@ -21824,6 +22203,84 @@
           "retryAfterSeconds"
         ],
         "description": "ログイン試行が per-account (10 回 / 900 秒窓 / 900 秒ロックアウト) または per-IP\n(30 回 / 900 秒窓 / 900 秒ロックアウト) のスロットリング閾値に到達してロックされた。\nSIEM の credential stuffing / brute-force 検知の入力イベント。keyHash は username\n(lowercase) または IP の SHA-256 で、平文を audit log に流さない。\n"
+      },
+      "LogoutNotification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenant_id": {
+            "type": "string",
+            "default": "default",
+            "description": "所属テナント ID。"
+          },
+          "sid": {
+            "type": "string",
+            "description": "通知対象の OIDC session id。"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "通知先 RP。"
+          },
+          "logout_token_jti": {
+            "type": "string",
+            "description": "発行した logout token の jti。RP 側の replay 検出と idmagic 側の監査相関に使う。"
+          },
+          "target_uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "配送先 (client の backchannel_logout_uri を配送開始時点でスナップショットした値)。"
+          },
+          "state": {
+            "$ref": "#/components/schemas/LogoutNotificationState"
+          },
+          "attempts": {
+            "type": "integer",
+            "default": 0
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string",
+            "description": "Jobs context の JobRef.id (配送実行の相関)。"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "sid",
+          "client_id",
+          "logout_token_jti",
+          "target_uri",
+          "state",
+          "attempts",
+          "created_at"
+        ],
+        "description": "back-channel logout の1配送試行を表す outbox 行。ローカル session/refresh token\nの失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない\n(wi-28 Plan)。配送実行は Jobs bounded context の durable job\n(kind=backchannel_logout_delivery) に委譲する。\n",
+        "x-scl-untranslated-constraints": [
+          "logout_notification_references_existing_client(client_id)"
+        ]
+      },
+      "LogoutNotificationState": {
+        "type": "string",
+        "enum": [
+          "Pending",
+          "Delivered",
+          "Failed"
+        ],
+        "description": "LogoutNotification の配送状態。Jobs の JobStatus と1:1ではなく、配送固有の成否のみを表す (job 自体の retry/lease は Jobs 側が保持する)。"
       },
       "MfaChallengeFailed": {
         "type": "object",
@@ -22502,6 +22959,26 @@
             "type": "boolean",
             "default": false
           },
+          "backchannel_logout_uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "OpenID Connect Back-Channel Logout 1.0 の通知先。設定時、session revoke ごとに\n署名済み logout token をこの URI へ POST する (wi-28)。\n"
+          },
+          "backchannel_logout_session_required": {
+            "type": "boolean",
+            "default": false,
+            "description": "RP が logout token に sid claim を要求するか。true の場合 sid 欠落の対象セッションへは配送しない (browser session を持たない発行のため送るべき対象が無い)。"
+          },
+          "frontchannel_logout_uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "OpenID Connect Front-Channel Logout 1.0 の通知先。/end_session 応答にこの URI への\niframe を含める (wi-28)。\n"
+          },
+          "frontchannel_logout_session_required": {
+            "type": "boolean",
+            "default": false,
+            "description": "iframe URI に iss / sid クエリパラメータを付与するか。"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -22526,6 +23003,8 @@
           "dpop_bound_access_tokens",
           "fapi_profile",
           "first_party",
+          "backchannel_logout_session_required",
+          "frontchannel_logout_session_required",
           "created_at",
           "updated_at"
         ],
@@ -23148,6 +23627,10 @@
           },
           "sender_constraint": {
             "$ref": "#/components/schemas/RefreshTokenSenderConstraint"
+          },
+          "sid": {
+            "type": "string",
+            "description": "発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を\nそのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。\nAuthentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)\nを本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる (wi-28)。\n"
           }
         },
         "additionalProperties": false,
@@ -24122,7 +24605,7 @@
           "actorUserId",
           "reason"
         ],
-        "description": "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
+        "description": "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。sessionId は OIDC sid と同値であり、\nOAuth2 bounded context はこの sessionId をキーに RefreshTokenRecord.sid が一致する\nfamily を失効し、登録済み RP へ front/back-channel logout を通知する (wi-28)。\nAccess Token 自体は本イベントで即時失効しない (短命 TTL に委ねる、ADR-127)。\n"
       },
       "SessionImpersonationEnded": {
         "type": "object",
@@ -24185,6 +24668,65 @@
           "sessionId"
         ],
         "description": "admin が user として操作するセッションを開始した (impersonation)。本人通知を前提とする\n監査事象で、retention 短縮の対象外。\n"
+      },
+      "SessionRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amr": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acr": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "user_id",
+          "amr",
+          "acr",
+          "started_at",
+          "last_seen_at",
+          "expires_at"
+        ],
+        "description": "admin 向けセッション一覧の1件の射影。secret は持たず、対象ユーザーの\n有効なセッションを識別・監査するための属性のみ。self-service の AccountSession と\n異なり current マーカーを持たない (操作者と対象ユーザーが別人のため)。\n"
+      },
+      "SessionRecordListResponse": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionRecord"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "sessions"
+        ],
+        "description": "ListSessions (admin) の返り値。開始時刻の降順 (新しい順) で対象ユーザーの\n有効なセッションを返す。\n"
       },
       "SessionRefreshed": {
         "type": "object",
@@ -29286,6 +29828,22 @@
             }
           },
           {
+            "name": "ListSessions",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.user_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
             "name": "ListUserGroups",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -29463,6 +30021,38 @@
           },
           {
             "name": "RevokeMfaEnrollmentBypass",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.user_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RevokeSession",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.user_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RevokeUserSessions",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
               "TenantAdministrator"

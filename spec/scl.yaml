@@ -85,6 +85,11 @@ context_map:
           - JWKS
           - SignatureAlgorithm
         reason: ID Token / access token / JWK Set の署名鍵ライフサイクルと公開は SigningKeys が所有する。
+      Jobs:
+        via: published_language
+        uses:
+          - JobRef
+        reason: back-channel logout の配送 (LogoutNotification) を再試行可能な durable job (kind=backchannel_logout_delivery) として実行する (wi-28)。
       Application:
         via: published_language
         uses:

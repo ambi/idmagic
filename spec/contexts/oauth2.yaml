@@ -430,6 +430,66 @@ standards:
         strength: MUST
         adoption: required
         statement: post_logout_redirect_uriはClientに登録済みの値だけを許可する。
+      - id: OIDC-LOGOUT-ID-TOKEN-HINT
+        section: §2.1
+        strength: SHOULD
+        adoption: required
+        statement: id_token_hintが与えられた場合、署名・issuer・audience・subject・sidを検証してlogout対象のsessionとclientを解決し、client_idパラメータと矛盾するhintを拒否する。
+  OpenIDConnectFrontChannelLogout:
+    title: OpenID Connect Front-Channel Logout 1.0
+    version: Final
+    url: https://openid.net/specs/openid-connect-frontchannel-1_0.html
+    roles:
+      - OpenIDProvider
+    scope: 各RPのfrontchannel_logout_uriへiframe経由でsession終了を通知する。
+    requirements:
+      - id: OIDC-FRONTCHANNEL-IFRAME
+        section: §3
+        strength: MUST
+        adoption: required
+        statement: end_session応答にfrontchannel_logout_uriを登録した各clientへのiframeを含め、frontchannel_logout_session_required=trueのclientにはiss/sidクエリパラメータを付与する。
+      - id: OIDC-FRONTCHANNEL-BEST-EFFORT
+        section: §4
+        strength: MUST
+        adoption: required
+        statement: iframeの到達失敗を許容し、ローカルsession revokeの成否に影響させない。
+  OpenIDConnectBackChannelLogout:
+    title: OpenID Connect Back-Channel Logout 1.0
+    version: Final
+    url: https://openid.net/specs/openid-connect-backchannel-1_0.html
+    roles:
+      - OpenIDProvider
+    scope: 各RPのbackchannel_logout_uriへ署名済みlogout tokenをサーバー間で配送する。
+    requirements:
+      - id: OIDC-BACKCHANNEL-LOGOUT-TOKEN
+        section: §2.4
+        strength: MUST
+        adoption: required
+        statement: logout tokenにiss、sub、aud、iat、jti、events (http://schemas.openid.net/event/backchannel-logout)、対象がbrowser session由来ならsidを含めて署名する。
+      - id: OIDC-BACKCHANNEL-DELIVERY-RETRY
+        section: §2.5
+        strength: MUST
+        adoption: required
+        statement: backchannel_logout_uriへの配送失敗を再試行可能なjobとして扱い、ローカルsession/refresh tokenの失効を配送成否に依存させない。
+      - id: OIDC-BACKCHANNEL-REPLAY
+        section: §2.6
+        strength: MUST
+        adoption: required
+        statement: logout tokenのjtiによりRP側のreplay検出を可能にする一意な値を発行する。
+  OpenIDConnectSessionManagement:
+    title: OpenID Connect Session Management 1.0
+    version: Draft 28
+    url: https://openid.net/specs/openid-connect-session-1_0.html
+    roles:
+      - OpenIDProvider
+    scope: check_session_iframeによるRP側でのOP session変化のポーリング。
+    requirements:
+      - id: OIDC-SESSION-MGMT-CHECK-IFRAME
+        section: §2
+        strength: MAY
+        adoption: optional
+        statement: check_session_iframeを公開し、RPからのpostMessageに対しOP session状態を応答する。
+        reason: 本仕様はDraft 28のままFinalに到達しておらず、主要IdPの実装状況もまちまちである。discovery広告とbrowser cookie解決の最小実装に留め、session_stateのsalted hash相関アルゴリズムは仕様の詳細規定まで実装しない (ADR-127)。
   FAPI2SecurityProfile:
     title: FAPI 2.0 Security Profile
     version: Final
@@ -833,6 +893,14 @@ glossary:
     definition: トークンを失効させる（/revoke または家族失効）。
     aliases:
       - revoke_token
+  Deliver:
+    definition: LogoutNotification の配送 (backchannel_logout_uri への logout token POST) が成功する。
+    aliases:
+      - deliver
+  Exhaust:
+    definition: LogoutNotification の配送が max_attempts に到達し dead-letter として確定する。
+    aliases:
+      - exhaust
   Redeemed:
     definition: 認可コードが /token で正規に交換された終端状態（AuthorizationCodeRecord）。AuthorizationCodeFlow の Exchanged と並行。
     aliases:
@@ -1086,6 +1154,22 @@ models:
       first_party:
         type: Boolean
         default: false
+      backchannel_logout_uri:
+        type: URI
+        optional: true
+        description: "OpenID Connect Back-Channel Logout 1.0 の通知先。設定時、session revoke ごとに\n署名済み logout token をこの URI へ POST する (wi-28)。\n"
+      backchannel_logout_session_required:
+        type: Boolean
+        default: false
+        description: RP が logout token に sid claim を要求するか。true の場合 sid 欠落の対象セッションへは配送しない (browser session を持たない発行のため送るべき対象が無い)。
+      frontchannel_logout_uri:
+        type: URI
+        optional: true
+        description: "OpenID Connect Front-Channel Logout 1.0 の通知先。/end_session 応答にこの URI への\niframe を含める (wi-28)。\n"
+      frontchannel_logout_session_required:
+        type: Boolean
+        default: false
+        description: iframe URI に iss / sid クエリパラメータを付与するか。
       created_at:
         type: DateTime
       updated_at:
@@ -1293,6 +1377,82 @@ models:
       sender_constraint:
         type: RefreshTokenSenderConstraint
         optional: true
+      sid:
+        type: String
+        optional: true
+        description: "発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を\nそのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。\nAuthentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)\nを本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる (wi-28)。\n"
+  ClientSession:
+    kind: entity
+    description: "ある browser session (sid) が特定の OAuth2Client (RP) に対して認証結果を\n発行した記録 (RP participation)。sid は Authentication の LoginSession.id と同値で\nRP 間で共通。session 状態そのものはここに複製せず、session revoke 時にどの RP へ\nfront/back-channel logout を通知するかを解決する索引としてのみ使う (wi-28)。\n"
+    identity:
+      - sid
+      - client_id
+    constraints:
+      - client_session_references_existing_client(client_id)
+    fields:
+      sid:
+        type: String
+        description: LoginSession.id と同値の OIDC session id。
+      client_id:
+        type: String
+      tenant_id:
+        type: String
+        default: default
+        description: 所属テナント ID。
+      first_issued_at:
+        type: DateTime
+      last_issued_at:
+        type: DateTime
+        description: 同一 RP への再発行 (再認可) ごとに更新する。通知先解決には影響しない。
+  LogoutNotification:
+    kind: entity
+    description: "back-channel logout の1配送試行を表す outbox 行。ローカル session/refresh token\nの失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない\n(wi-28 Plan)。配送実行は Jobs bounded context の durable job\n(kind=backchannel_logout_delivery) に委譲する。\n"
+    identity: id
+    constraints:
+      - logout_notification_references_existing_client(client_id)
+    fields:
+      id:
+        type: UUID
+      tenant_id:
+        type: String
+        default: default
+        description: 所属テナント ID。
+      sid:
+        type: String
+        description: 通知対象の OIDC session id。
+      client_id:
+        type: String
+        description: 通知先 RP。
+      logout_token_jti:
+        type: String
+        description: 発行した logout token の jti。RP 側の replay 検出と idmagic 側の監査相関に使う。
+      target_uri:
+        type: URI
+        description: 配送先 (client の backchannel_logout_uri を配送開始時点でスナップショットした値)。
+      state:
+        type: LogoutNotificationState
+      attempts:
+        type: Integer
+        default: 0
+      last_error:
+        type: String
+        optional: true
+      job_id:
+        type: String
+        optional: true
+        description: Jobs context の JobRef.id (配送実行の相関)。
+      created_at:
+        type: DateTime
+      delivered_at:
+        type: DateTime
+        optional: true
+  LogoutNotificationState:
+    kind: enum
+    description: LogoutNotification の配送状態。Jobs の JobStatus と1:1ではなく、配送固有の成否のみを表す (job 自体の retry/lease は Jobs 側が保持する)。
+    values:
+      - Pending
+      - Delivered
+      - Failed
   AuthorizationRequest:
     kind: entity
     constraints:
@@ -1356,6 +1516,10 @@ models:
         type: String
         optional: true
         description: クライアントが /authorize に与えた acr_values パラメータ (RFC 8176)。step-up 判定に使う。
+      sid:
+        type: String
+        optional: true
+        description: "advance(authenticate_user) で AuthenticationContext.session_id から伝搬する\nOIDC session id (Authentication context の LoginSession.id と同値)。AuthorizationCodeRecord /\nRefreshTokenRecord / IdTokenClaims へ引き継ぎ、session revoke 起点の family 失効と\nfront/back-channel logout の相関に使う (wi-28)。\n"
       authorization_details:
         type: "AuthorizationDetail[]"
         optional: true
@@ -1406,6 +1570,10 @@ models:
         type: String
         optional: true
         description: 認可リクエストから引き継いだ ACR URN。id_token / access_token に emit する。
+      sid:
+        type: String
+        optional: true
+        description: 認可リクエストから引き継いだ OIDC session id。id_token の sid claim と発行 RefreshTokenRecord.sid に伝播する (wi-28)。
       authorization_details:
         type: "AuthorizationDetail[]"
         optional: true
@@ -1579,6 +1747,10 @@ models:
         type: Integer
       auth_time:
         type: Integer
+      sid:
+        type: String
+        optional: true
+        description: "OIDC session id (OpenID Connect Front/Back-Channel Logout 1.0)。browser session に\n束縛された発行のときだけ含める。RP は本 claim を id_token_hint として /end_session に\n送り返し、front/back-channel logout の相関に使う。\n"
       nonce:
         type: String
         optional: true
@@ -1649,6 +1821,21 @@ models:
       registration_endpoint:
         type: URI
       end_session_endpoint:
+        type: URI
+        optional: true
+      frontchannel_logout_supported:
+        type: Boolean
+        default: true
+      frontchannel_logout_session_supported:
+        type: Boolean
+        default: true
+      backchannel_logout_supported:
+        type: Boolean
+        default: true
+      backchannel_logout_session_supported:
+        type: Boolean
+        default: true
+      check_session_iframe:
         type: URI
         optional: true
       scopes_supported:
@@ -2332,7 +2519,7 @@ models:
         optional: true
   EndSessionParameters:
     kind: value_object
-    description: RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で post_logout_redirect_uri を検証する。
+    description: "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で\npost_logout_redirect_uri を検証する。id_token_hint は本 OP が発行した ID Token の\nみ受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する\n(ADR-127)。exp は検証しない (ログアウト時点で期限切れになっている ID Token を\nhint として送るのが通常の RP 実装であるため)。\n"
     fields:
       client_id:
         type: String
@@ -2346,6 +2533,15 @@ models:
       state:
         type: String
         optional: true
+  FrontChannelLogoutTarget:
+    kind: value_object
+    description: FrontChannelLogout の返り値1件。EndSession 応答が埋め込む iframe 1つ分に対応する。
+    fields:
+      client_id:
+        type: String
+      iframe_uri:
+        type: URI
+        description: 登録済み frontchannel_logout_uri に (frontchannel_logout_session_required なら) iss / sid を付与した URI。
   UserInfoResponse:
     kind: value_object
     description: OIDC Core §5.3。可変な OIDC クレームを含む。
@@ -2887,6 +3083,14 @@ models:
     kind: event
     description: PAR request_uri を単発消費する lifecycle event。
     payload: { occurredAt: { type: DateTime } }
+  Deliver:
+    kind: event
+    description: LogoutNotification の配送が成功した lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
+  Exhaust:
+    kind: event
+    description: LogoutNotification の配送が max_attempts に到達し dead-letter へ確定した lifecycle event。
+    payload: { occurredAt: { type: DateTime } }
 states:
   AuthorizationCodeFlow:
     description: /authorize から /token に至る authorization request のライフサイクル。
@@ -2996,6 +3200,20 @@ states:
       - from: Rotated
         event: Expire
         to: Expired
+  LogoutNotificationLifecycle:
+    description: "LogoutNotification のライフサイクル。Deliver で成功確定、Exhaust で\nmax_attempts 到達による最終失敗確定 (dead-letter)。Jobs 側の Retry は Pending のまま\nattempts のみ増やす (状態遷移ではない)。\n"
+    target: LogoutNotification
+    initial: Pending
+    terminal:
+      - Delivered
+      - Failed
+    transitions:
+      - from: Pending
+        event: Deliver
+        to: Delivered
+      - from: Pending
+        event: Exhaust
+        to: Failed
   AuthorizationCodeRecordLifecycle:
     description: 発行された AuthorizationCode 本体のライフサイクル。AuthorizationCodeFlow（AuthorizationRequest 側）の Exchanged に対応するのが Redeemed。
     target: AuthorizationCodeRecord
@@ -3171,7 +3389,7 @@ interfaces:
         method: GET
         path: /api/auth/device
   EndSession:
-    description: RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は OAuth2/OIDC bounded context が行い、session revocation は Authentication bounded context の SessionManager に委譲する。
+    description: "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は\nOAuth2/OIDC bounded context が行い、session revocation は Authentication bounded\ncontext の SessionManager に委譲する。id_token_hint が与えられれば署名・iss・aud・sub・\nsid を検証して対象 session と client を hint から解決し (ADR-127)、client_id と\n矛盾する hint は拒否する。id_token_hint が無ければ client_id + browser cookie による\n既存の解決方法を fallback として維持する。ローカル revoke 確定後、対象 sid に紐づく\nClientSession から前段の FrontChannelLogout target 一覧を応答へ含め、\nBackChannelLogout 配送を非同期に起動する。\n"
     steps:
       - "{client_id} として post_logout_redirect_uri {post_logout_redirect_uri} でログアウトする"
     input:
@@ -3180,6 +3398,8 @@ interfaces:
     errors:
       - InvalidRequestError
     requires:
+      - id_token_hint_signature_valid_or_absent(input.params.id_token_hint)
+      - id_token_hint_client_matches(input.params.id_token_hint, input.params.client_id)
       - registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)
     access: public
     bindings:
@@ -3197,6 +3417,33 @@ interfaces:
         successful_status_codes:
           - "200"
           - "302"
+  FrontChannelLogout:
+    description: "対象 sid に ClientSession を持つ RP のうち frontchannel_logout_uri を登録した\nものについて、EndSession 応答へ埋め込む iframe target 一覧を算出する\n(OpenID Connect Front-Channel Logout 1.0)。frontchannel_logout_session_required=true\nの client には iss / sid クエリパラメータを付与する。到達失敗 (RP 側 iframe load\nエラー等) は許容し、ローカル revoke の成否に影響しない。\n"
+    input:
+      sid:
+        type: String
+    output:
+      targets:
+        type: "FrontChannelLogoutTarget[]"
+    access: internal
+  BackChannelLogout:
+    description: "1 件の LogoutNotification を配送する job handler (OpenID Connect Back-Channel\nLogout 1.0)。署名済み logout token (iss, sub, aud, iat, jti, events, sid) を\ntarget_uri へ POST し、2xx を成功、それ以外・timeout・接続失敗を再試行対象とする。\nJobs context の kind=backchannel_logout_delivery job から呼ばれ、max_attempts 到達で\nLogoutNotification は Failed (dead-letter) に確定する。ローカル revoke は本 interface の\n成否に関わらず既に確定済みである (wi-28 Plan)。\n"
+    input:
+      notification_id:
+        type: String
+    output:
+      state:
+        type: LogoutNotificationState
+    access: internal
+  CheckSessionIframe:
+    description: "OP session の変化をポーリングする RP 用 hidden iframe (OIDC Session Management\n1.0、Draft のまま Final に達していない仕様のため adoption は optional。ADR-127)。\n静的な HTML/JS を返し、RP からの postMessage に対し現在の browser cookie が有効な\nLoginSession に解決できるかどうかだけを応答する。session_state の salted hash 比較\nなど仕様の詳細な相関アルゴリズムは実装しない。\n"
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /session/check
+        successful_status_codes:
+          - "200"
   PushAuthorizationRequest:
     description: Pushed Authorization Request (RFC 9126)
     steps:
@@ -4278,6 +4525,50 @@ scenarios:
         steps:
           - "\"web-app\" として post_logout_redirect_uri \"https://evil.example.com/cb\" でログアウトする"
           - "エラー \"InvalidRequestError\""
+  RP-Initiated Logout はid_token_hintからsessionとclientを解決する:
+    actor: ResourceOwner
+    given:
+      - "ユーザー \"alice\" が \"web-app\" として認可コードを交換し sid 付きの ID Token を持つ"
+    main_success:
+      - "\"alice\" が発行済み ID Token を id_token_hint として /end_session を呼ぶ"
+      - id_token_hint の sid が示す LoginSession が失効する
+      - 同じ sid を持つ全 client の RefreshTokenRecord が Revoked へ遷移する
+    extensions:
+      - at: 1
+        condition: id_token_hint の aud が指定 client_id と一致しない
+        steps:
+          - "client_id \"other-app\" と \"web-app\" 発行の ID Token を id_token_hint に付けて /end_session を呼ぶ"
+          - "エラー \"InvalidRequestError\""
+      - at: 1
+        condition: id_token_hint の署名がidmagicの署名鍵で検証できない
+        steps:
+          - "他 issuer が署名した JWT を id_token_hint に付けて /end_session を呼ぶ"
+          - "エラー \"InvalidRequestError\""
+      - at: 1
+        condition: id_token_hint が期限切れ (exp 経過) である
+        steps:
+          - "期限切れの発行済み ID Token を id_token_hint として /end_session を呼ぶ"
+          - exp 切れのみを理由にした拒否はされず sid による session 解決が成功する
+  session revokeはbackchannel_logout_uri登録済みRPへlogout tokenを配送する:
+    actor: ResourceOwner
+    given:
+      - "\"web-app\" が backchannel_logout_uri \"https://app.example.com/backchannel_logout\" を登録済みである"
+      - "ユーザー \"alice\" が \"web-app\" とのブラウザ session を持つ"
+    main_success:
+      - "\"alice\" が /end_session でログアウトする"
+      - "対象 sid と \"web-app\" の LogoutNotification が作成される"
+      - "署名済み logout token が backchannel_logout_uri へ配送され Delivered になる"
+    extensions:
+      - at: 2
+        condition: 配送が一時的に失敗する (5xx / timeout)
+        steps:
+          - LogoutNotification は Pending のまま attempts が増え再試行される
+          - ローカルの session/refresh token 失効は取り消されない
+      - at: 2
+        condition: max_attempts まで再試行しても配送が成功しない
+        steps:
+          - LogoutNotification は Failed (dead-letter) に確定する
+          - ローカルの session/refresh token 失効は取り消されない
   client_credentials グラントで M2M トークンが発行される:
     actor: RegisteredClient
     given:

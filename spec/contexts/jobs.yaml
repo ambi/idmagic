@@ -147,6 +147,7 @@ models:
       - user_import_apply
       - dynamic_group_reconcile
       - lifecycle_workflow_run
+      - backchannel_logout_delivery
   JobProgress:
     kind: value_object
     description: ハンドラが Running 中に任意で報告する進捗スナップショット。

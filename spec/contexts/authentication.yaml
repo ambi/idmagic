@@ -629,6 +629,30 @@ models:
     fields:
       sessions:
         type: "AccountSession[]"
+  SessionRecord:
+    kind: value_object
+    description: "admin 向けセッション一覧の1件の射影。secret は持たず、対象ユーザーの\n有効なセッションを識別・監査するための属性のみ。self-service の AccountSession と\n異なり current マーカーを持たない (操作者と対象ユーザーが別人のため)。\n"
+    fields:
+      id:
+        type: String
+      user_id:
+        type: String
+      amr:
+        type: "String[]"
+      acr:
+        type: String
+      started_at:
+        type: DateTime
+      last_seen_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+  SessionRecordListResponse:
+    kind: value_object
+    description: "ListSessions (admin) の返り値。開始時刻の降順 (新しい順) で対象ユーザーの\n有効なセッションを返す。\n"
+    fields:
+      sessions:
+        type: "SessionRecord[]"
   AuthenticationEventBucket:
     kind: value_object
     description: "認証イベント集約 (bucket) 1 件の admin 表示用射影。攻撃時に個別の\nログイン失敗を 5 分窓へ集約した結果で、window_start は窓の開始時刻、count はその窓の\n累計件数、first_seen / last_seen は窓内の初出・最終時刻。key_hash は SHA-256 hex で\n平文を含まない。tenant 境界内に閉じる。\n"
@@ -1256,7 +1280,7 @@ models:
         type: String
   SessionEnded:
     kind: event
-    description: "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。OAuth クライアントへ発行済みの refresh\ntoken はセッションに 1:1 で紐づかないため本スライスでは失効しない。\n"
+    description: "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。sessionId は OIDC sid と同値であり、\nOAuth2 bounded context はこの sessionId をキーに RefreshTokenRecord.sid が一致する\nfamily を失効し、登録済み RP へ front/back-channel logout を通知する (wi-28)。\nAccess Token 自体は本イベントで即時失効しない (短命 TTL に委ねる、ADR-127)。\n"
     payload:
       occurredAt:
         type: DateTime
@@ -1799,6 +1823,67 @@ interfaces:
         path: /api/account/sessions/revoke_others
         successful_status_codes:
           - "204"
+  ListSessions:
+    description: "admin が対象ユーザーの有効なセッションを一覧する (wi-28)。tenant 境界内に\n限定し、開始時刻の降順で返す。ListMySessions と異なり対象は任意の user_id で、\ncurrent マーカーは持たない。\n"
+    input:
+      user_id:
+        type: String
+    output:
+      sessions:
+        type: SessionRecordListResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/users/{user_id}/sessions"
+  RevokeSession:
+    description: "admin が対象ユーザーのセッション1件を失効する (wi-28)。RevokeMySession と同じ\ntombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。\n既に失効済みの対象への再失効は idempotent に成功する。\n"
+    input:
+      user_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - SessionEnded
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/users/{user_id}/sessions/{id}/revoke"
+        successful_status_codes:
+          - "204"
+  RevokeUserSessions:
+    description: "admin が対象ユーザーの全セッションを失効する (wi-28)。\"全セッションを終了\"\n操作。RevokeMyOtherSessions と異なり操作者自身のセッションではないため除外対象は\n無く、対象ユーザーの有効な全セッションを tombstone にする。各対象は idempotent に\n失効する。\n"
+    input:
+      user_id:
+        type: String
+    errors:
+      - AccessDeniedError
+    emits:
+      - SessionEnded
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/users/{user_id}/sessions/revoke_all"
+        successful_status_codes:
+          - "204"
   StartStepUpAuthentication:
     description: "高 sensitivity 操作の前段として step-up 再認証を開始する (self-service)。subject 本人のセッションに固定し、利用可能な factor (password 常時 / totp は\nenrolled 時) を返す。本 interface 自体には step-up を要求しない (再認証の入口のため)。\n"
     output:
@@ -2203,6 +2288,26 @@ scenarios:
       - user が account、admin、Application の resource を要求する
       - システムは未認証として拒否する
       - 登録専用 start / confirm API と元の auth transaction だけを許可する
+  管理者は対象ユーザーのセッションを一覧・個別失効・全失効できる:
+    actor: TenantAdministrator
+    given:
+      - "ユーザー \"alice\" が複数の有効な LoginSession を持つ"
+    main_success:
+      - "管理者がユーザー \"alice\" の ListSessions を呼ぶ"
+      - 開始時刻の降順で有効なセッション一覧が返る
+      - "管理者がそのうち1件の RevokeSession を呼ぶ"
+      - "対象セッションは revoke_reason=admin_revoke で失効し \"SessionEnded\" が発行される"
+      - "管理者がユーザー \"alice\" の RevokeUserSessions を呼ぶ"
+      - 残り全セッションが失効する
+    extensions:
+      - at: 1
+        condition: 他テナントの管理者が呼び出す
+        steps:
+          - "エラー \"AccessDeniedError\""
+      - at: 3
+        condition: 既に失効済みのセッションへ再度 RevokeSession を呼ぶ
+        steps:
+          - 204 が返り revoked_at は初回の値を保持する
 flows:
   Login:
     entry: Login
