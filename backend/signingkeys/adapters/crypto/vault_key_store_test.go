@@ -10,6 +10,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
@@ -126,7 +127,7 @@ func TestVaultKeyStoreRotateAdvancesVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := ks.Rotate(ctx)
+	second, err := ks.Rotate(ctx, time.Now().UTC(), 7*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}

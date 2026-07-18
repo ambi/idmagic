@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: idmagic-retention-sweep
+spec:
+  schedule: "15 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 1800
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          serviceAccountName: idmagic
+          restartPolicy: Never
+          containers:
+            - name: batch
+              image: ghcr.io/ambi/idmagic:latest
+              command: ["/app/idmagic-batch", "retention-sweep"]
+              envFrom:
+                - configMapRef: { name: idmagic-runtime }
+                - secretRef: { name: idmagic-runtime-secrets }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: idmagic-signing-key-lifecycle
+spec:
+  schedule: "0 0 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          serviceAccountName: idmagic
+          restartPolicy: Never
+          containers:
+            - name: batch
+              image: ghcr.io/ambi/idmagic:latest
+              command:
+                - /app/idmagic-batch
+                - signing-key-lifecycle
+                - --cadence-days=90
+                - --grace-days=7
+              envFrom:
+                - configMapRef: { name: idmagic-runtime }
+                - secretRef: { name: idmagic-runtime-secrets }

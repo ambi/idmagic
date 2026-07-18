@@ -44,6 +44,9 @@ type SigningKey struct {
 	PublicJWK  map[string]any
 	Active     bool
 	CreatedAt  time.Time
+	RetiredAt  *time.Time
+	ExpiresAt  *time.Time
+	ArchivedAt *time.Time
 }
 
 type TenantKeyHealth struct {

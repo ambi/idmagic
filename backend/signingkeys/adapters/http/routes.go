@@ -4,6 +4,7 @@ package http
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -31,7 +32,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 
 func (d Deps) handleJWKS(c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
-	keys, err := d.KeyStore.GetAllKeys(c.Request().Context())
+	keys, err := d.KeyStore.ListPublicKeys(c.Request().Context(), time.Now().UTC())
 	if err != nil {
 		if cachedKeys, ok := jwksCache.Load(tenantID); ok {
 			if keysList, ok := cachedKeys.([]map[string]any); ok {

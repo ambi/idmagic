@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
@@ -25,11 +26,19 @@ func (f *fakeKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.Signing
 	return f.keys, f.getKeysErr
 }
 
+func (f *fakeKeyStore) ListPublicKeys(context.Context, time.Time) ([]*signingdomain.SigningKey, error) {
+	return nil, errors.New("unimplemented")
+}
+
 func (f *fakeKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (f *fakeKeyStore) Rotate(ctx context.Context) (*signingdomain.SigningKey, error) {
+func (f *fakeKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
+	return nil, errors.New("unimplemented")
+}
+
+func (f *fakeKeyStore) ArchiveExpired(context.Context, time.Time) ([]*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
 

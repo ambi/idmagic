@@ -131,10 +131,10 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 	// acme テナントの鍵を 2 本作り JWKS 上に active+verifying を作る。
 	// KeyStore は tenant-aware なので acme の ctx で回転する。
 	acmeCtx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
-	if _, err := keyStore.Rotate(acmeCtx); err != nil {
+	if _, err := keyStore.Rotate(acmeCtx, time.Now().UTC(), 7*24*time.Hour); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := keyStore.Rotate(acmeCtx); err != nil {
+	if _, err := keyStore.Rotate(acmeCtx, time.Now().UTC(), 7*24*time.Hour); err != nil {
 		t.Fatal(err)
 	}
 	rec := getAdminKeys(e, "/realms/acme/api/admin/keys")

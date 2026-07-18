@@ -197,7 +197,7 @@
       "required": ["kind", "entrypoint", "modules"],
       "additionalProperties": false,
       "properties": {
-        "kind": { "enum": ["api", "worker", "relay", "ui"] },
+        "kind": { "enum": ["api", "worker", "relay", "batch", "ui"] },
         "entrypoint": { "type": "string", "minLength": 1 },
         "modules": {
           "type": "array",

@@ -60,3 +60,22 @@ func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
 		t.Fatalf("unexpected event: %+v", emitted[0])
 	}
 }
+
+// SCL objective SigningKeyLifecycle: cadence 未到来の batch 評価は鍵を増やさない。
+func TestRotateSigningKeyIfDueSkipsFreshActiveKey(t *testing.T) {
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	rotated, err := RotateSigningKeyIfDue(context.Background(), RotateSigningKeyDeps{
+		KeyStore: keyStore,
+		Grace:    7 * 24 * time.Hour,
+	}, now, 90*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rotated != nil {
+		t.Fatalf("fresh active key must not rotate: %+v", rotated)
+	}
+}

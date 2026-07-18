@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-12
+superseded_by: [ADR-124]
 ---
 
 # ADR-099: `idmagic-worker` プロセス分離と at-least-once + リース失効再取得によるジョブ実行の耐障害性
@@ -66,6 +67,8 @@ goroutine として API プロセス内で起動されている。
    も行う。`Jobs` の queue を実際に通す最初の consumer は疎通確認用の
    no-op/echo `JobKind` とし、Queued → Running → Succeeded の遷移と
    worker kill 後のリース失効再取得を検証する。
+   この配置判断は [[ADR-124-scheduled-batch-execution-boundary]] により
+   置き換えられた。durable job worker の実行モデルに関する他の決定は維持する。
 8. **Docker なしの標準開発環境**: 標準の `just dev` でも API と worker の
    プロセス境界を維持する。開発用 supervisor は embedded PostgreSQL と
    miniredis を localhost の TCP endpoint として起動し、API と worker は

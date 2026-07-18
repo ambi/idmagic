@@ -307,7 +307,8 @@ CREATE TABLE signing_keys (
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    rotated_at TIMESTAMPTZ,
+    retired_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
     archived_at TIMESTAMPTZ,
     CONSTRAINT signing_keys_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT

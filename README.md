@@ -19,7 +19,8 @@ and a foundation for identity platform experiments.
 - Enterprise federation surface: SAML 2.0 IdP, WS-Federation passive profile,
   WS-Trust username/mixed STS, federation metadata, and Microsoft Entra domain
   federation presets.
-- Multi-tenant identity model with realm-scoped routes, per-tenant signing keys,
+- Multi-tenant identity model with realm-scoped routes, per-tenant signing keys
+  rotated every 90 days with a 7-day JWKS overlap,
   admin console, account portal, groups, roles, application catalog, consent
   management, audit views, and per-tenant hosted login/account branding.
 - Adapter-oriented runtime: in-memory local mode, PostgreSQL, Valkey, Kafka
@@ -263,6 +264,15 @@ adapters are selected with environment variables:
 | `SEED_ENVIRONMENT` | `development`, `test`, `staging`, `production` | required when `SEED_PROFILE` is set |
 | `SEED_FIRST_PARTY_REDIRECT_URIS` | comma-separated HTTPS URIs | required for production bootstrap first-party clients; localhost is rejected |
 | `SEED_GENERATOR_SEED` | arbitrary string | deterministic namespace for performance seed identifiers |
+
+### Scheduled batches
+
+`idmagic-batch` executes one operational batch and exits. External schedulers
+run `retention-sweep` hourly and `signing-key-lifecycle` daily; neither task is
+coupled to the horizontally scaled durable-job worker. Signing keys rotate
+after 90 days by default, remain in JWKS for a seven-day overlap, and are then
+archived. The lifecycle subcommand accepts `--cadence-days` and `--grace-days`
+and rejects invalid combinations before opening runtime dependencies.
 
 ### Environment seed profiles
 

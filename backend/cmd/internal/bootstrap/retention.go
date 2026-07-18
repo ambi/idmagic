@@ -1,8 +1,7 @@
 package bootstrap
 
-// 認証 / 監査イベントの保持期間 sweep を周期 job として動かす (ADR-045)。store が削除境界
-// (DeleteOlderThan) を実装していない構成ではスキップする。job は ctx のキャンセル
-// (SIGINT/SIGTERM) で停止する。起動直後に 1 回走らせ、以後は interval ごとに回す。
+// 認証 / 監査イベントの保持期間 sweep を one-shot batch として動かす
+// (ADR-045, ADR-124)。周期と再試行は外部 scheduler が所有する。
 
 import (
 	"context"
@@ -12,39 +11,22 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 )
 
-// startRetentionSweep は保持期間 sweep の goroutine を起動する。
-func StartRetentionSweep(ctx context.Context, deps *Dependencies, interval time.Duration) {
+// RunRetentionSweepOnce は保持期間境界を現在時刻で一度だけ適用する。
+func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Time) error {
 	audit, _ := deps.Audit.AuditEventRepo.(authusecases.AuditEventPurger)
 	buckets, _ := deps.Authentication.AuthEventBucketStore.(authusecases.AuthEventBucketPurger)
 	if audit == nil && buckets == nil {
-		return
+		return nil
 	}
-	if interval <= 0 {
-		interval = time.Hour
+	if now.IsZero() {
+		now = time.Now().UTC()
 	}
 	policy := authusecases.DefaultRetentionPolicy()
-	sweep := func() {
-		res, err := authusecases.RunRetentionSweep(ctx, audit, buckets, policy, time.Now().UTC())
-		if err != nil {
-			logging.Error(ctx, "retention sweep failed", "error", err)
-			return
-		}
-		if res.AuditEvents > 0 || res.Buckets > 0 {
-			logging.Info(ctx, "retention sweep completed",
-				"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets)
-		}
+	res, err := authusecases.RunRetentionSweep(ctx, audit, buckets, policy, now)
+	if err != nil {
+		return err
 	}
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		sweep()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				sweep()
-			}
-		}
-	}()
+	logging.Info(ctx, "retention sweep completed",
+		"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets)
+	return nil
 }

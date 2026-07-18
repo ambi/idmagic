@@ -45,8 +45,6 @@ func RunWorker() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	bootstrap.StartRetentionSweep(ctx, deps, bootstrap.EnvDuration("RETENTION_SWEEP_INTERVAL", time.Hour))
-
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
 	adminDeps := newAdminUserDeps(deps, logger)

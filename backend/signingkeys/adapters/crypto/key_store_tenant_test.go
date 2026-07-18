@@ -3,6 +3,7 @@ package crypto_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -14,6 +15,35 @@ import (
 
 func tenantCtx(id string) context.Context {
 	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "", "")
+}
+
+// SCL scenario "grace期間終了後の署名鍵はJWKSから除去されarchiveされる" の RED。
+func TestInMemoryKeyStoreArchivesExpiredVerifyingKey(t *testing.T) {
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenantCtx("tenant-a")
+	first, err := ks.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ks.Rotate(ctx, time.Now().UTC(), 7*24*time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	public, err := ks.ListPublicKeys(ctx, now)
+	if err != nil || len(public) != 2 {
+		t.Fatalf("grace JWKS: err=%v len=%d", err, len(public))
+	}
+	archived, err := ks.ArchiveExpired(ctx, now.Add(8*24*time.Hour))
+	if err != nil || len(archived) != 1 || archived[0].Kid != first.Kid {
+		t.Fatalf("archive expired: err=%v keys=%+v", err, archived)
+	}
+	public, err = ks.ListPublicKeys(ctx, now.Add(8*24*time.Hour))
+	if err != nil || len(public) != 1 {
+		t.Fatalf("expired key must be absent from JWKS: err=%v len=%d", err, len(public))
+	}
 }
 
 // TenantJwksIsolation 不変条件: テナント指定 JWKS に載る鍵はすべて当該テナントに属する。
@@ -67,7 +97,7 @@ func TestInMemoryKeyStoreRotateKeepsTenantScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := ks.Rotate(ctxA)
+	second, err := ks.Rotate(ctxA, time.Now().UTC(), 7*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}

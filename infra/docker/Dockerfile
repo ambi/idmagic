@@ -12,13 +12,15 @@ COPY . .
 RUN mkdir -p /out && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic ./backend/cmd/idmagic && \
     CGO_ENABLED=0 go build -trimpath -tags "${RELAY_TAGS}" -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic-relay ./backend/cmd/idmagic-relay && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic-worker ./backend/cmd/idmagic-worker
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic-worker ./backend/cmd/idmagic-worker && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic-batch ./backend/cmd/idmagic-batch
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
 COPY --from=build /out/idmagic /app/idmagic
 COPY --from=build /out/idmagic-relay /app/idmagic-relay
 COPY --from=build /out/idmagic-worker /app/idmagic-worker
+COPY --from=build /out/idmagic-batch /app/idmagic-batch
 COPY spec /app/spec
 COPY infra/schema /app/infra/schema
 EXPOSE 8080

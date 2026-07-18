@@ -24042,6 +24042,11 @@
             "format": "date-time",
             "description": "Retired 状態に遷移した時刻。"
           },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Rotate 後に Verifying 鍵を JWKS へ公開し続ける grace の終了時刻。この時刻以降は JWKS から除外され archive 対象になる。"
+          },
           "archived_at": {
             "type": "string",
             "format": "date-time"
@@ -24073,15 +24078,30 @@
           },
           "kid": {
             "type": "string"
+          },
+          "retiredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disposedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false,
         "required": [
           "occurredAt",
           "tenantId",
-          "kid"
+          "kid",
+          "retiredAt",
+          "expiresAt",
+          "disposedAt"
         ],
-        "description": "署名鍵が Retired から Archived (終端、監査保管) に移った。"
+        "description": "署名鍵が grace 終了後に Retired から Archived (終端、監査保管) に移った。"
       },
       "SigningKeyRetired": {
         "type": "object",

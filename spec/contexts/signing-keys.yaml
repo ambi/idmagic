@@ -130,6 +130,10 @@ models:
         type: DateTime
         optional: true
         description: Retired 状態に遷移した時刻。
+      expires_at:
+        type: DateTime
+        optional: true
+        description: Rotate 後に Verifying 鍵を JWKS へ公開し続ける grace の終了時刻。この時刻以降は JWKS から除外され archive 対象になる。
       archived_at:
         type: DateTime
         optional: true
@@ -248,7 +252,7 @@ models:
         type: String
   SigningKeyArchived:
     kind: event
-    description: 署名鍵が Retired から Archived (終端、監査保管) に移った。
+    description: 署名鍵が grace 終了後に Retired から Archived (終端、監査保管) に移った。
     payload:
       occurredAt:
         type: DateTime
@@ -256,6 +260,12 @@ models:
         type: String
       kid:
         type: String
+      retiredAt:
+        type: DateTime
+      expiresAt:
+        type: DateTime
+      disposedAt:
+        type: DateTime
   InvalidRequestError:
     kind: error
     description: リクエストに必須パラメータの欠落・不正値・重複・存在しない kid 等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
@@ -451,6 +461,16 @@ objectives:
     target: 0.9999
     window: 30d
     budgeting: occurrences
+  SigningKeyLifecycle:
+    description: 署名鍵は既定90日ごとに回転し、旧鍵を既定7日間 JWKS に重複公開してから archive する。compliance archive の保持期間 2555 日は grace 期間とは別に扱う。
+    indicator: measurement.rotation_cadence_days == 90 && measurement.signing_key_grace_days == 7
+    target: 1.0
+    window: 30d
+    budgeting: occurrences
+    annotations:
+      rotation_cadence_days: 90
+      signing_key_grace_days: 7
+      signing_key_archive_days: 2555
 scenarios:
   署名鍵を回転しても旧kidはJWKSに残る:
     actor: TenantAdministrator
@@ -462,6 +482,22 @@ scenarios:
       - "回転により kid \"kid-new\" が新しい active 鍵になる"
       - JWKS を取得する
       - "応答に kid \"kid-old\" と \"kid-new\" の両方が含まれる"
+  grace期間終了後の署名鍵はJWKSから除去されarchiveされる:
+    actor: SystemAdministrator
+    given:
+      - "kid \"kid-old\" の Verifying 鍵の expires_at が経過している"
+    main_success:
+      - scheduler が archive 処理を実行する
+      - JWKS を取得する
+      - "応答に kid \"kid-old\" は含まれない"
+      - SigningKeyArchived イベントに kid、retiredAt、expiresAt、disposedAt が記録される
+  lifecycle設定が不正なbatchは起動しない:
+    actor: SystemAdministrator
+    given:
+      - grace_days が cadence_days 以上である
+    main_success:
+      - system_admin が idmagic-batch signing-key-lifecycle を起動する
+      - "設定エラーで終了し、鍵を回転しない"
   テナントごとのJWKSは互いに分離される:
     actor: TenantAdministrator
     given:

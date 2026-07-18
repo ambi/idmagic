@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 )
@@ -14,8 +15,10 @@ import (
 type KeyStore interface {
 	GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error)
 	GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error)
+	ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error)
 	FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error)
-	Rotate(ctx context.Context) (*signingdomain.SigningKey, error)
+	Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error)
+	ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error)
 	// Disable は ctx テナントの鍵 1 件を無効化 (JWKS から除去) する。
 	Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error)
 	// Provider はこの KeyStore の KeyProvider を返す (ヘルス表示用)。
@@ -23,4 +26,11 @@ type KeyStore interface {
 	// Healthy は ctx テナントの provider が到達可能かを返す。false のとき
 	// fail-closed で新規署名を止める。
 	Healthy(ctx context.Context) bool
+}
+
+// DueKeyRotator is an optional atomic compare-and-rotate capability used by
+// externally scheduled batches. Implementations re-evaluate cadence inside
+// their tenant-scoped serialization boundary.
+type DueKeyRotator interface {
+	RotateIfDue(ctx context.Context, now time.Time, cadence, grace time.Duration) (*signingdomain.SigningKey, error)
 }

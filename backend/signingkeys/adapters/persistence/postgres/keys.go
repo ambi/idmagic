@@ -31,7 +31,7 @@ func NewKeyStore(ctx context.Context, pool sharedpostgres.DB) (*KeyStore, error)
 		return nil, err
 	}
 	if !exists {
-		if _, err := store.rotateForTenant(ctx, tenancydomain.DefaultTenantID); err != nil {
+		if _, err := store.rotateForTenant(ctx, tenancydomain.DefaultTenantID, time.Now().UTC(), 7*24*time.Hour, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -47,7 +47,7 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey,
 	}
 	if key == nil {
 		// まだ鍵の無いテナントは初回に遅延生成する。
-		return s.rotateForTenant(ctx, tenantID)
+		return s.rotateForTenant(ctx, tenantID, time.Now().UTC(), 7*24*time.Hour, nil)
 	}
 	return key, nil
 }
@@ -71,14 +71,40 @@ func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey,
 	return out, rows.Err()
 }
 
+func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error) {
+	tenantID := tenancy.TenantID(ctx)
+	rows, err := s.Pool.Query(ctx, keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND (active=TRUE OR expires_at>$2) ORDER BY created_at DESC", tenantID, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*signingdomain.SigningKey{}
+	for rows.Next() {
+		key, err := scanSigningKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, key)
+	}
+	return out, rows.Err()
+}
+
 func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	return scanSigningKey(s.Pool.QueryRow(ctx,
 		keySelect+" WHERE kid=$1 AND tenant_id=$2", kid, tenantID))
 }
 
-func (s *KeyStore) Rotate(ctx context.Context) (*signingdomain.SigningKey, error) {
-	return s.rotateForTenant(ctx, tenancy.TenantID(ctx))
+func (s *KeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
+	return s.rotateForTenant(ctx, tenancy.TenantID(ctx), now, grace, nil)
+}
+
+func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grace time.Duration) (*signingdomain.SigningKey, error) {
+	if cadence <= 0 {
+		return nil, errors.New("signing key rotation cadence must be positive")
+	}
+	dueBefore := now.Add(-cadence)
+	return s.rotateForTenant(ctx, tenancy.TenantID(ctx), now, grace, &dueBefore)
 }
 
 // Disable は ctx テナントの鍵 1 件を archive し JWKS から即時に外す。
@@ -98,11 +124,43 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.Sign
 	return key, nil
 }
 
+func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
+	tenantID := tenancy.TenantID(ctx)
+	rows, err := s.Pool.Query(ctx, `UPDATE signing_keys
+SET archived_at=$2,updated_at=$2
+WHERE archived_at IS NULL AND tenant_id=$1 AND expires_at IS NOT NULL AND expires_at<=$2
+RETURNING kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active,created_at,retired_at,expires_at,archived_at`,
+		tenantID, before.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	archived := []*signingdomain.SigningKey{}
+	for rows.Next() {
+		key, err := scanSigningKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		archived = append(archived, key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return archived, nil
+}
+
 func (s *KeyStore) Provider() signingdomain.KeyProvider { return signingdomain.KeyProviderPostgres }
 
 func (s *KeyStore) Healthy(ctx context.Context) bool { return s.Pool.Ping(ctx) == nil }
 
-func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string) (*signingdomain.SigningKey, error) {
+func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now time.Time, grace time.Duration, dueBefore *time.Time) (*signingdomain.SigningKey, error) {
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	if grace < 0 {
+		return nil, errors.New("signing key grace period must not be negative")
+	}
+	expires := now.Add(grace)
 	priv, publicJWK, privateJWK, kid, err := signingcrypto.GenerateRSAJWKPair()
 	if err != nil {
 		return nil, err
@@ -125,9 +183,24 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string) (*signi
 		"SELECT pg_advisory_xact_lock(hashtext('idmagic-signing-key:'||$1))", tenantID); err != nil {
 		return nil, err
 	}
+	if dueBefore != nil {
+		var createdAt time.Time
+		err := tx.QueryRow(ctx,
+			"SELECT created_at FROM signing_keys WHERE active AND tenant_id=$1 LIMIT 1 FOR UPDATE",
+			tenantID).Scan(&createdAt)
+		if err == nil && createdAt.After(*dueBefore) {
+			if err := tx.Commit(ctx); err != nil {
+				return nil, err
+			}
+			return nil, nil
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+	}
 	if _, err := tx.Exec(ctx,
-		"UPDATE signing_keys SET active=FALSE,rotated_at=now(),updated_at=now() WHERE active AND tenant_id=$1",
-		tenantID); err != nil {
+		"UPDATE signing_keys SET active=FALSE,retired_at=$2,expires_at=$3,updated_at=$2 WHERE active AND tenant_id=$1",
+		tenantID, now, expires); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO signing_keys
@@ -143,17 +216,17 @@ VALUES ($1,$2,'PS256','Postgres','Signing',$3,$4,TRUE)`,
 		TenantID: tenantID, Kid: kid, Alg: signingdomain.SigAlgPS256,
 		Provider: signingdomain.KeyProviderPostgres, Usage: signingdomain.KeyUsageSigning,
 		PrivateKey: priv, PublicKey: &priv.PublicKey,
-		PublicJWK: publicJWK, Active: true, CreatedAt: time.Now().UTC(),
+		PublicJWK: publicJWK, Active: true, CreatedAt: now,
 	}, nil
 }
 
-const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active,created_at FROM signing_keys`
+const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,active,created_at,retired_at,expires_at,archived_at FROM signing_keys`
 
 func scanSigningKey(row sharedpostgres.RowScanner) (*signingdomain.SigningKey, error) {
 	var key signingdomain.SigningKey
 	var publicJSON, privateJSON []byte
 	err := row.Scan(&key.Kid, &key.TenantID, &key.Alg, &key.Provider, &key.Usage,
-		&publicJSON, &privateJSON, &key.Active, &key.CreatedAt)
+		&publicJSON, &privateJSON, &key.Active, &key.CreatedAt, &key.RetiredAt, &key.ExpiresAt, &key.ArchivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

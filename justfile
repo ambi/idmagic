@@ -86,6 +86,10 @@ seed environment profile mode="dry_run":
 seed-throughput environment="development" count="10000" batch_size="250":
     GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile performance --mode apply --count {{count}} --batch-size {{batch_size}}
 
+# Run one externally scheduled, one-shot operational batch locally.
+batch task *args:
+    GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-batch {{task}} {{args}}
+
 # Synchronize Go module requirements and checksums.
 go-mod-tidy:
     GOCACHE={{go_cache}} go mod tidy

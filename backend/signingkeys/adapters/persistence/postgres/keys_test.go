@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -40,7 +42,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 		t.Fatalf("find by kid: %v %+v", err, found)
 	}
 
-	rotated, err := store.Rotate(ctx)
+	rotated, err := store.Rotate(ctx, time.Now().UTC(), 7*24*time.Hour)
 	if err != nil || rotated == nil || rotated.Kid == active.Kid {
 		t.Fatalf("rotate: %v %+v (prev %s)", err, rotated, active.Kid)
 	}
@@ -53,5 +55,40 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	all, err := store.GetAllKeys(ctx)
 	if err != nil || len(all) < 2 {
 		t.Fatalf("get all keys: %v len=%d", err, len(all))
+	}
+
+	// PostgreSQL advisory lock 内の cadence 再判定により、同時 batch でも
+	// due rotation は tenant ごとに一度だけ実行される。
+	old := time.Now().UTC().Add(-100 * 24 * time.Hour)
+	if _, err := db.Exec(ctx, "UPDATE signing_keys SET created_at=$2 WHERE tenant_id=$1 AND active", defaultTenant.ID, old); err != nil {
+		t.Fatalf("age active key: %v", err)
+	}
+	now = time.Now().UTC()
+	results := make(chan *signingdomain.SigningKey, 2)
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Go(func() {
+			key, err := store.RotateIfDue(ctx, now, 90*24*time.Hour, 7*24*time.Hour)
+			results <- key
+			errs <- err
+		})
+	}
+	wg.Wait()
+	close(results)
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent RotateIfDue: %v", err)
+		}
+	}
+	rotations := 0
+	for key := range results {
+		if key != nil {
+			rotations++
+		}
+	}
+	if rotations != 1 {
+		t.Fatalf("concurrent due rotations = %d, want 1", rotations)
 	}
 }
