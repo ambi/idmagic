@@ -60,7 +60,7 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	// impersonation: cap 未設定なら無期限保持 (400 日前でも残る)。
 	seedAudit(t, store, "imp-400", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400))
 
-	res, err := usecases.RunRetentionSweep(ctx, store, nil, usecases.DefaultRetentionPolicy(), now)
+	res, err := usecases.RunRetentionSweep(ctx, store, nil, nil, usecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := usecases.RunRetentionSweep(ctx, store, nil, usecases.DefaultRetentionPolicy(), now); err != nil {
+	if _, err := usecases.RunRetentionSweep(ctx, store, nil, nil, usecases.DefaultRetentionPolicy(), now); err != nil {
 		t.Fatal(err)
 	}
 	oldGot, _ := store.FindByID(ctx, "fail-8")
@@ -120,7 +120,7 @@ func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 
 	policy := usecases.DefaultRetentionPolicy()
 	policy.MaxDays = 30
-	if _, err := usecases.RunRetentionSweep(ctx, store, nil, policy, now); err != nil {
+	if _, err := usecases.RunRetentionSweep(ctx, store, nil, nil, policy, now); err != nil {
 		t.Fatal(err)
 	}
 	got := remainingAuditIDs(t, store)
@@ -146,7 +146,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "fresh-key", now); err != nil {
 		t.Fatal(err)
 	}
-	res, err := usecases.RunRetentionSweep(ctx, nil, store, usecases.DefaultRetentionPolicy(), now)
+	res, err := usecases.RunRetentionSweep(ctx, nil, store, nil, usecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,5 +159,45 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	}
 	if len(buckets) != 1 || buckets[0].KeyHash != "fresh-key" {
 		t.Fatalf("remaining buckets=%#v, want only fresh-key", buckets)
+	}
+}
+
+// TestRetentionSweepDeletesExpiredSessions: wi-253 Plan §7 の housekeeping cleanup を
+// retention sweep (ADR-045) に統合する。SessionDays (既定 90 日) を LoginSession の
+// tombstone/期限切れ行の物理削除 cutoff に転用する。
+func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := authnmemory.NewSessionStore()
+
+	mustSave := func(id string, expiresAt time.Time) {
+		t.Helper()
+		if err := store.Save(ctx, &authdomain.LoginSession{
+			ID: id, UserID: "user-1", AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
+			ExpiresAt: expiresAt,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// 90 日 cutoff: 89 日前に失効した行は残り、91 日前に失効した行は消える。
+	mustSave("expired-89", daysAgo(now, 89))
+	mustSave("expired-91", daysAgo(now, 91))
+	mustSave("active", now.Add(time.Hour))
+
+	res, err := usecases.RunRetentionSweep(ctx, nil, nil, store, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Sessions != 1 {
+		t.Fatalf("deleted sessions=%d, want 1", res.Sessions)
+	}
+	if owned, _ := store.FindOwned(ctx, "expired-91", "user-1"); owned != nil {
+		t.Error("expired-91 should be purged past the 90-day cutoff")
+	}
+	if owned, _ := store.FindOwned(ctx, "expired-89", "user-1"); owned == nil {
+		t.Error("expired-89 should survive within the 90-day cutoff")
+	}
+	if owned, _ := store.FindOwned(ctx, "active", "user-1"); owned == nil {
+		t.Error("active session should survive")
 	}
 }

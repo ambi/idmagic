@@ -125,6 +125,16 @@ func (p RetentionPolicy) BucketCutoff(now time.Time) time.Time {
 	return now.Add(-time.Duration(days) * 24 * time.Hour)
 }
 
+// SessionCutoff は LoginSession (authentication_sessions) housekeeping の削除境界。
+// expires_at がこれより前の行を物理削除できる (SessionDays を転用、wi-253 Plan §7)。
+func (p RetentionPolicy) SessionCutoff(now time.Time) time.Time {
+	days := p.capDays(p.SessionDays)
+	if days <= 0 {
+		return time.Time{}
+	}
+	return now.Add(-time.Duration(days) * 24 * time.Hour)
+}
+
 // AuditEventPurger / AuthEventBucketPurger は sweep が要求する削除境界。store の read 契約
 // (AuditEventRepository / AuthEventBucketStore) とは分離し、sweep を持たない構成でも動く。
 type AuditEventPurger interface {
@@ -135,18 +145,32 @@ type AuthEventBucketPurger interface {
 	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
 }
 
+// SessionPurger は LoginSession housekeeping cleanup が要求する削除境界。SessionStore の
+// 認証解決契約とは分離し、sweep を持たない構成でも動く (wi-253 Plan §7)。
+type SessionPurger interface {
+	DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error)
+}
+
+// sessionSweepBatchLimit は 1 回の sweep 呼び出しで物理削除する LoginSession の上限。
+// 大きな DELETE 1 発による write amplification / lock 競合を避け、残りは次回の
+// (外部 scheduler が起動する) sweep 呼び出しで収束させる。
+const sessionSweepBatchLimit = 1000
+
 // RetentionSweepResult は 1 回の sweep で削除した件数。
 type RetentionSweepResult struct {
 	AuditEvents int64
 	Buckets     int64
+	Sessions    int
 }
 
-// RunRetentionSweep は監査イベントと bucket を保持期間に従って一括削除する。store が nil の
-// 系統はスキップする。idempotent で、1 回で消し切れなくても次回で収束する。
+// RunRetentionSweep は監査イベント・bucket・期限切れ LoginSession を保持期間に従って
+// 一括削除する。store が nil の系統はスキップする。idempotent で、1 回で消し切れなくても
+// 次回で収束する。
 func RunRetentionSweep(
 	ctx context.Context,
 	audit AuditEventPurger,
 	buckets AuthEventBucketPurger,
+	sessions SessionPurger,
 	policy RetentionPolicy,
 	now time.Time,
 ) (RetentionSweepResult, error) {
@@ -166,6 +190,15 @@ func RunRetentionSweep(
 				return result, err
 			}
 			result.Buckets = deleted
+		}
+	}
+	if sessions != nil {
+		if before := policy.SessionCutoff(now); !before.IsZero() {
+			deleted, err := sessions.DeleteExpiredBatch(ctx, before, sessionSweepBatchLimit)
+			if err != nil {
+				return result, err
+			}
+			result.Sessions = deleted
 		}
 	}
 	return result, nil

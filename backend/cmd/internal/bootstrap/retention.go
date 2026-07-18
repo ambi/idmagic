@@ -15,18 +15,20 @@ import (
 func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Time) error {
 	audit, _ := deps.Audit.AuditEventRepo.(authusecases.AuditEventPurger)
 	buckets, _ := deps.Authentication.AuthEventBucketStore.(authusecases.AuthEventBucketPurger)
-	if audit == nil && buckets == nil {
+	sessions, _ := deps.Authentication.SessionStore.(authusecases.SessionPurger)
+	if audit == nil && buckets == nil && sessions == nil {
 		return nil
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
 	policy := authusecases.DefaultRetentionPolicy()
-	res, err := authusecases.RunRetentionSweep(ctx, audit, buckets, policy, now)
+	res, err := authusecases.RunRetentionSweep(ctx, audit, buckets, sessions, policy, now)
 	if err != nil {
 		return err
 	}
 	logging.Info(ctx, "retention sweep completed",
-		"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets)
+		"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets,
+		"deleted_sessions", res.Sessions)
 	return nil
 }

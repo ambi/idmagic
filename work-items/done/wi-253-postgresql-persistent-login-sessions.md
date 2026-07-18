@@ -337,7 +337,17 @@ tenant isolation、期限境界、同時revoke/touchはproperty/競合testを採
     個別配線はしていない。代わりに `SessionManager.Resolve` から一律に touch し、
     adapter 側の粗粒度ガードで書き込み量を抑える設計に変更した (ADR-126 に理由を記録)。
     将来的に他 context から明示的に touch を呼びたい場合も同じ port で追加できる。
-  - housekeeping batch cleanup (`DeleteExpiredBatch`) は repository メソッドとテストまでで、
-    定期実行する scheduler への配線はしていない。プロジェクト全体に既存の類似 scheduler
-    基盤が無く (password_reset_tokens 等の他の expires_at 付きテーブルも同様に未配線)、
-    本 WI 単独で新設するのは scope 外と判断した。
+  - ~~housekeeping batch cleanup (`DeleteExpiredBatch`) は repository メソッドとテストまでで、
+    定期実行する scheduler への配線はしていない。~~ **追記 (同日フォローアップ)**:
+    既存の `idmagic-batch retention-sweep` (ADR-045/ADR-124、周期は外部 scheduler が所有する
+    one-shot batch CLI) に統合済み。`authusecases.SessionPurger` interface を
+    `AuditEventPurger` / `AuthEventBucketPurger` と同じパターンで追加し、
+    `RetentionPolicy.SessionCutoff` (既存の `SessionDays` 既定 90 日を転用) と
+    `RunRetentionSweep` を拡張、`bootstrap/retention.go` の `RunRetentionSweepOnce` から
+    `SessionStore` を type assertion で配線した。memory/postgres 両 adapter は既に
+    `DeleteExpiredBatch(ctx, cutoff, limit) (int, error)` を実装済みのため無改修で
+    `SessionPurger` を満たす。RED: `TestRetentionSweepDeletesExpiredSessions`
+    を先に fail 確認 (未実装の `Sessions` field / 引数不足でビルド失敗) →
+    `SessionCutoff`/`SessionPurger`/`RunRetentionSweep` 拡張 → GREEN。
+    `just verify-go` (lint 0 issues, race test 全パッケージ) / `just yaml-check` — passed。
+    password_reset_tokens 等の他テーブルの sweep 統合は本 WI の範囲外のまま。
