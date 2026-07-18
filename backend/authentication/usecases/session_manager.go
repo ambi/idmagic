@@ -235,6 +235,13 @@ func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error 
 	return m.Store.Revoke(ctx, sid, spec.SessionEndLogout, time.Now().UTC())
 }
 
+// SessionIDFromCookie extracts the session id from a Cookie header without
+// revoking it. RP-Initiated Logout (/end_session) uses this as the fallback
+// session resolution when no id_token_hint was given (ADR-127 decision 4).
+func (m *SessionManager) SessionIDFromCookie(cookieHeader string) string {
+	return parseCookies(cookieHeader)[SessionCookie]
+}
+
 func parseCookies(header string) map[string]string {
 	out := map[string]string{}
 	if header == "" {

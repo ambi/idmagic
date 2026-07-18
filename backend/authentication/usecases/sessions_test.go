@@ -109,3 +109,52 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 		t.Fatalf("revokedIDs=%#v, want [s1 s3]", revokedIDs)
 	}
 }
+
+// ADR-127: RP-Initiated Logout (/end_session) は所有者 (sub) を検証済みでない sid
+// (id_token_hint または browser cookie 由来) から直接失効する。既に失効済み/未知の
+// sid は Find が有効セッションのみ返すため自然に no-op (idempotent) になる。
+func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewSessionStore()
+	base := time.Now().UTC().Truncate(time.Second)
+	seedSession(t, store, "s1", "alice", base)
+
+	var events []spec.DomainEvent
+	if err := usecases.EndSession(ctx, usecases.SessionDeps{
+		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
+	}, "s1", base); err != nil {
+		t.Fatal(err)
+	}
+	if sess, _ := store.Find(ctx, "s1"); sess != nil {
+		t.Fatal("s1 was not revoked")
+	}
+	if len(events) != 1 || events[0].EventType() != "SessionEnded" {
+		t.Fatalf("unexpected events: %#v", events)
+	}
+
+	// idempotent: 2 回目 (Find は有効セッションのみ返すため) の呼び出しはイベントを
+	// 再発行しない。
+	events = nil
+	if err := usecases.EndSession(ctx, usecases.SessionDeps{
+		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
+	}, "s1", base); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("expected no re-emission, got %#v", events)
+	}
+}
+
+func TestEndSessionUnknownSidIsNoop(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewSessionStore()
+	var events []spec.DomainEvent
+	if err := usecases.EndSession(ctx, usecases.SessionDeps{
+		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
+	}, "unknown-sid", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("unexpected events: %#v", events)
+	}
+}

@@ -105,6 +105,7 @@ func Run() error {
 	jwkResolver := crypto.NewJWKResolver()
 	deps.OAuth2.TokenIssuer = tokenSigner
 	deps.OAuth2.TokenIntrospector = tokenSigner
+	deps.OAuth2.IDTokenHintVerifier = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
 	deps.Authentication.PasswordHasher = hasher
 	deps.Authentication.EmailSender = emailSender

@@ -50,6 +50,7 @@ type Deps struct {
 	TokenIssuer                oauthports.TokenIssuer
 	AgentRepo                  idmports.AgentRepository
 	TokenIntrospector          oauthports.TokenIntrospector
+	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
 	AccessTokenDenylist        oauthports.AccessTokenDenylist
 	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
 	AuthEventBucketStore       authnports.AuthEventBucketStore

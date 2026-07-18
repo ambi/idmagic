@@ -27,6 +27,7 @@ type Module struct {
 	AccessTokenDenylist        oauthports.AccessTokenDenylist
 	TokenIssuer                oauthports.TokenIssuer
 	TokenIntrospector          oauthports.TokenIntrospector
+	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
 	Authorizer                 oauthports.Authorizer
 	EventSink                  oauthports.EventSink
 }

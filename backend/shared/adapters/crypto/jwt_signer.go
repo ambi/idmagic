@@ -167,13 +167,50 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 	return signPS256(key, nil, claims)
 }
 
+// VerifyIDTokenHint は /end_session の id_token_hint を検証する (OIDC RP-Initiated
+// Logout 1.0, ADR-127)。署名 (登録済み鍵) と iss は fail-closed で検証するが、exp は
+// 検証しない — ログアウト時点で ID Token が期限切れになっているのが通常の RP 実装
+// であるため (ADR-127 決定4)。aud/sub/sid のクライアント一致判定は呼び出し側 (usecase)
+// の責務とする。
+func (s *JWTSigner) VerifyIDTokenHint(ctx context.Context, token string) (*oauthports.IDTokenHintClaims, error) {
+	keys, err := s.KeyStore.GetAllKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := verifyPS256AnyKey(token, keys)
+	if err != nil {
+		return nil, err
+	}
+	if iss, _ := payload["iss"].(string); iss != tenancy.Issuer(ctx, s.Issuer) {
+		return nil, errors.New("id_token_hint: issuer mismatch")
+	}
+	claims := &oauthports.IDTokenHintClaims{}
+	if v, ok := payload["sub"].(string); ok {
+		claims.Subject = v
+	}
+	if v, ok := payload["sid"].(string); ok {
+		claims.Sid = v
+	}
+	switch aud := payload["aud"].(type) {
+	case string:
+		claims.Audience = aud
+	case []any:
+		if len(aud) > 0 {
+			if v, ok := aud[0].(string); ok {
+				claims.Audience = v
+			}
+		}
+	}
+	return claims, nil
+}
+
 // IntrospectAccessToken は JWT を全鍵で検証する。
 func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*oauthports.IntrospectionResult, error) {
 	keys, err := s.KeyStore.GetAllKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
-	header, payload, err := verifyPS256AnyKey(token, keys)
+	payload, err := verifyPS256AnyKey(token, keys)
 	if err != nil {
 		// RFC 7662 §2.2: invalid/expired/unparsable token → active:false で 200 OK。
 		// 検証エラーは leak しない（呼び出し側 RS のクライアントに署名失敗を知らせない）。
@@ -185,7 +222,6 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 	if expF, _ := payload["exp"].(float64); int64(expF) < nowUnix() {
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
-	_ = header
 	res := &oauthports.IntrospectionResult{Active: true, TokenType: "access_token"}
 	if v, ok := payload["jti"].(string); ok {
 		res.JTI = v
@@ -290,27 +326,27 @@ func signPS256(key *signingdomain.SigningKey, extraHeader map[string]string, cla
 	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig), nil
 }
 
-func verifyPS256AnyKey(token string, keys []*signingdomain.SigningKey) (map[string]any, map[string]any, error) {
+func verifyPS256AnyKey(token string, keys []*signingdomain.SigningKey) (map[string]any, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
-		return nil, nil, errors.New("malformed JWT")
+		return nil, errors.New("malformed JWT")
 	}
 	hb, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var header map[string]any
 	if err := json.Unmarshal(hb, &header); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	alg, _ := header["alg"].(string)
 	if alg != "PS256" {
-		return nil, nil, fmt.Errorf("alg %q not allowed", alg)
+		return nil, fmt.Errorf("alg %q not allowed", alg)
 	}
 	kid, _ := header["kid"].(string)
 	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
 	for _, k := range keys {
@@ -324,16 +360,16 @@ func verifyPS256AnyKey(token string, keys []*signingdomain.SigningKey) (map[stri
 		if err := rsa.VerifyPSS(pub, crypto.SHA256, digest[:], sig, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash}); err == nil {
 			pb, err := base64.RawURLEncoding.DecodeString(parts[1])
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			var payload map[string]any
 			if err := json.Unmarshal(pb, &payload); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
-			return header, payload, nil
+			return payload, nil
 		}
 	}
-	return nil, nil, errors.New("signature verification failed")
+	return nil, errors.New("signature verification failed")
 }
 
 // =====================================================================

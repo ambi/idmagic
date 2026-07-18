@@ -252,6 +252,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TokenIssuer:                d.OAuth2.TokenIssuer,
 		AgentRepo:                  d.IdManagement.AgentRepo,
 		TokenIntrospector:          d.OAuth2.TokenIntrospector,
+		IDTokenHintVerifier:        d.OAuth2.IDTokenHintVerifier,
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
 		AttrSchemaRepo:             d.Tenancy.AttrSchemaRepo,
 		AuthEventBucketStore:       d.Authentication.AuthEventBucketStore,

@@ -14,6 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 // ErrSessionNotFound は対象セッションが存在しないか、本人のものでない場合。
@@ -117,6 +118,35 @@ func RevokeOtherSessions(
 		revokedIDs = append(revokedIDs, sess.ID)
 	}
 	return revokedIDs, nil
+}
+
+// EndSession は RP-Initiated Logout (/end_session) など、所有者 (sub) を未検証の
+// sid (id_token_hint または browser cookie から解決) を失効する。self-service の
+// Revoke* と異なり FindOwned による所有者確認はしない — sid 自体が検証済みの
+// id_token_hint か、本人だけが送れる browser cookie から来ているため十分な認可根拠
+// となる (ADR-127)。Find は有効な (未失効・未期限切れ) セッションのみ返すため、
+// 既に失効済み・期限切れ・未知の sid は自然に no-op になる (idempotent)。
+func EndSession(
+	ctx context.Context,
+	deps SessionDeps,
+	sid string,
+	now time.Time,
+) error {
+	if sid == "" {
+		return nil
+	}
+	sess, err := deps.Store.Find(ctx, sid)
+	if err != nil {
+		return err
+	}
+	if sess == nil || sess.TenantID != tenancy.TenantID(ctx) {
+		return nil
+	}
+	if err := deps.Store.Revoke(ctx, sid, spec.SessionEndLogout, now); err != nil {
+		return err
+	}
+	emitSessionEnded(deps.Emit, sess, sess.UserID, spec.SessionEndLogout, now)
+	return nil
 }
 
 func emitSessionEnded(
