@@ -71,6 +71,17 @@ func (s *RefreshTokenStore) RevokeFamily(_ context.Context, familyID string) err
 	return nil
 }
 
+func (s *RefreshTokenStore) RevokeBySid(_ context.Context, sid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, rec := range s.byID {
+		if rec.Sid != nil && *rec.Sid == sid {
+			rec.Revoked = true
+		}
+	}
+	return nil
+}
+
 func (s *RefreshTokenStore) DeleteAllForSub(_ context.Context, sub string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

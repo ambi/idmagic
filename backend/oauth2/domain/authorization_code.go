@@ -24,6 +24,7 @@ type AuthorizationCodeInput struct {
 	CodeChallengeMethod    spec.CodeChallengeMethod
 	Nonce                  *string
 	AuthTime               int64
+	Sid                    *string
 	TTLSeconds             int
 	Now                    time.Time
 }
@@ -54,6 +55,7 @@ func GenerateAuthorizationCode(in AuthorizationCodeInput) (*AuthorizationCodeRec
 		CodeChallengeMethod:    in.CodeChallengeMethod,
 		Nonce:                  in.Nonce,
 		AuthTime:               in.AuthTime,
+		Sid:                    in.Sid,
 		State:                  spec.AuthCodeRecordIssued,
 		IssuedAt:               in.Now,
 		ExpiresAt:              in.Now.Add(time.Duration(in.TTLSeconds) * time.Second),

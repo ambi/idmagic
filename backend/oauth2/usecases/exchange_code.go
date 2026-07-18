@@ -153,6 +153,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 			AuthTime:  rec.AuthTime,
 			AMR:       rec.AMR,
 			ACR:       optionalValue(rec.ACR),
+			Sid:       optionalValue(rec.Sid),
 			AtHashFor: access,
 
 			ResolveAttributeDefs: deps.ResolveAttributeDefs,
@@ -164,7 +165,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 
 	var refreshToken string
 	if deps.RefreshStore != nil && slices.Contains(rec.Scopes, "offline_access") {
-		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, now)
+		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, rec.Sid, now)
 		if err != nil {
 			return nil, err
 		}

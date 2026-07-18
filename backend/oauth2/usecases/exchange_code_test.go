@@ -204,6 +204,35 @@ func TestExchangeCodePropagatesNonceToIDToken(t *testing.T) {
 	}
 }
 
+func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
+	// ADR-127: AuthorizationCodeRecord.sid は発行 RefreshTokenRecord.sid と
+	// id_token の sid claim にそのまま引き継がれる。
+	f := newExchangeFixture(t, []string{"openid", "offline_access"})
+	sid := "session-1"
+	f.code.Sid = &sid
+	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+		t.Fatal(err)
+	}
+	out, err := ExchangeCodeForToken(
+		context.Background(),
+		f.deps,
+		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.issuer.lastIDTokenInput.Sid != sid {
+		t.Fatalf("sid not propagated to id_token: got %q", f.issuer.lastIDTokenInput.Sid)
+	}
+	rec, err := f.refreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec == nil || rec.Sid == nil || *rec.Sid != sid {
+		t.Fatalf("sid not propagated to refresh token record: got %v", rec)
+	}
+}
+
 func TestExchangeCodeIssuesTokensByScope(t *testing.T) {
 	f := newExchangeFixture(t, []string{"profile"})
 	out, err := ExchangeCodeForToken(

@@ -1,16 +1,22 @@
 -- name: GetRefreshTokenByHash :one
 SELECT id::text, hash, family_id::text, COALESCE(parent_id::text, '') AS parent_id, client_id, user_id,
-  scopes, issued_at, expires_at, absolute_expires_at, revoked, rotated, sender_constraint
+  scopes, issued_at, expires_at, absolute_expires_at, revoked, rotated, sender_constraint,
+  COALESCE(sid::text, '') AS sid
 FROM refresh_tokens
 WHERE hash = $1;
 
 -- name: InsertRefreshToken :exec
 INSERT INTO refresh_tokens (
   id, hash, family_id, parent_id, client_id, user_id, scopes, issued_at,
-  expires_at, absolute_expires_at, revoked, rotated, sender_constraint
+  expires_at, absolute_expires_at, revoked, rotated, sender_constraint, sid
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb, $14
 );
+
+-- name: RevokeRefreshTokensBySid :exec
+UPDATE refresh_tokens
+SET revoked = TRUE, updated_at = now()
+WHERE sid = $1;
 
 -- name: GetRefreshTokenRotationState :one
 SELECT rotated, revoked

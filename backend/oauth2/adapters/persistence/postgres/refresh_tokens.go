@@ -71,6 +71,14 @@ func (s *RefreshTokenStore) RevokeFamily(ctx context.Context, familyID string) e
 	return s.queries().RevokeRefreshTokenFamily(ctx, familyID)
 }
 
+func (s *RefreshTokenStore) RevokeBySid(ctx context.Context, sid string) error {
+	id := pgtype.UUID{}
+	if err := id.Scan(sid); err != nil {
+		return err
+	}
+	return s.queries().RevokeRefreshTokensBySid(ctx, id)
+}
+
 func (s *RefreshTokenStore) DeleteAllForSub(ctx context.Context, sub string) error {
 	return s.queries().DeleteRefreshTokensForSub(ctx, sub)
 }
@@ -83,6 +91,9 @@ func refreshFromRow(row *sqlcgen.GetRefreshTokenByHashRow) (*domain.RefreshToken
 	}
 	if parentID, ok := row.ParentID.(string); ok && parentID != "" {
 		rec.ParentID = &parentID
+	}
+	if sid, ok := row.Sid.(string); ok && sid != "" {
+		rec.Sid = &sid
 	}
 	if err := json.Unmarshal(row.Scopes, &rec.Scopes); err != nil {
 		return nil, err
@@ -108,10 +119,14 @@ func refreshInsertParams(rec *domain.RefreshTokenRecord) (sqlcgen.InsertRefreshT
 	if rec.ParentID != nil {
 		_ = parentID.Scan(*rec.ParentID)
 	}
+	sid := pgtype.UUID{}
+	if rec.Sid != nil {
+		_ = sid.Scan(*rec.Sid)
+	}
 	return sqlcgen.InsertRefreshTokenParams{
 		ID: rec.ID, Hash: rec.Hash, FamilyID: rec.FamilyID,
 		ParentID: parentID, ClientID: rec.ClientID, UserID: rec.UserID, Scopes: scopes, IssuedAt: rec.IssuedAt,
 		ExpiresAt: rec.ExpiresAt, AbsoluteExpiresAt: rec.AbsoluteExpiresAt, Revoked: rec.Revoked, Rotated: rec.Rotated,
-		Column13: string(constraint),
+		Column13: string(constraint), Sid: sid,
 	}, nil
 }

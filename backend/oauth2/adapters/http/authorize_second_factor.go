@@ -280,11 +280,12 @@ func (d Deps) finishSecondFactor(
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: returnTo})
 	}
 	if err := d.RequestStore.AttachAuthentication(
-		c.Request().Context(), req.ID, completed.UserID, completed.AuthTime, completed.AMR, completed.ACR,
+		c.Request().Context(), req.ID, completed.UserID, completed.AuthTime, completed.AMR, completed.ACR, completed.SessionID,
 	); err != nil {
 		return writeOAuthError(c, err)
 	}
 	req.UserID, req.AuthTime, req.AMR, req.ACR = &completed.UserID, &completed.AuthTime, completed.AMR, &completed.ACR
+	req.Sid = &completed.SessionID
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil || client == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")

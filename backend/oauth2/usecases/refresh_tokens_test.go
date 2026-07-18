@@ -53,7 +53,7 @@ func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time,
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, sc, now)
+	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, sc, nil, now)
 	if err != nil {
 		t.Fatal(err)
 	}

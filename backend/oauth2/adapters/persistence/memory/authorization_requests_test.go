@@ -56,7 +56,7 @@ func TestAuthorizationRequestStore(t *testing.T) {
 			t.Error("expected error for non-existing ID in UpdateState")
 		}
 
-		err = store.AttachAuthentication(ctx, "auth-req-none", "user-1", 12345678, []string{"pwd"}, "acr-1")
+		err = store.AttachAuthentication(ctx, "auth-req-none", "user-1", 12345678, []string{"pwd"}, "acr-1", "sid-1")
 		if err == nil {
 			t.Error("expected error for non-existing ID in AttachAuthentication")
 		}
@@ -73,7 +73,7 @@ func TestAuthorizationRequestStore(t *testing.T) {
 		}
 
 		// 認証情報の紐付け
-		err = store.AttachAuthentication(ctx, "auth-req-123", "user-1", 12345678, []string{"pwd"}, "acr-1")
+		err = store.AttachAuthentication(ctx, "auth-req-123", "user-1", 12345678, []string{"pwd"}, "acr-1", "sid-1")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,6 +90,9 @@ func TestAuthorizationRequestStore(t *testing.T) {
 		}
 		if found.ACR == nil || *found.ACR != "acr-1" {
 			t.Errorf("expected ACR to be 'acr-1', got %v", found.ACR)
+		}
+		if found.Sid == nil || *found.Sid != "sid-1" {
+			t.Errorf("expected Sid to be 'sid-1', got %v", found.Sid)
 		}
 
 		// 無効な状態遷移によるエラー (authentication_pending -> exchanged は無効)

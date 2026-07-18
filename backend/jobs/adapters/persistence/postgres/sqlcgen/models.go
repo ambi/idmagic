@@ -368,6 +368,7 @@ type RefreshToken struct {
 	Revoked           bool
 	Rotated           bool
 	SenderConstraint  []byte
+	Sid               pgtype.UUID
 }
 
 type SamlServiceProvider struct {

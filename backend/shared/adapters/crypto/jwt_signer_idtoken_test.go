@@ -78,6 +78,46 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 	}
 }
 
+func TestSignIDTokenIncludesSidWhenPresent(t *testing.T) {
+	// ADR-127: browser session に束縛された発行では sid claim を含める。
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := NewJWTSigner("https://idp.test", ks)
+	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
+		Scopes: []string{"openid"}, Sid: "session-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := idTokenClaims(t, token)
+	if claims["sid"] != "session-1" {
+		t.Fatalf("sid claim missing: %#v", claims)
+	}
+}
+
+func TestSignIDTokenOmitsSidWhenAbsent(t *testing.T) {
+	// client_credentials 等 browser session を持たない発行では sid claim を含めない。
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := NewJWTSigner("https://idp.test", ks)
+	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
+		Scopes: []string{"openid"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := idTokenClaims(t, token)
+	if _, ok := claims["sid"]; ok {
+		t.Fatalf("sid claim must be absent: %#v", claims)
+	}
+}
+
 func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
 	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {

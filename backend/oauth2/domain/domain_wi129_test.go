@@ -284,7 +284,8 @@ func TestHashRefreshToken_Stable(t *testing.T) {
 func TestGenerateInitialRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	sc := &SenderConstraint{Type: SenderConstraintDPoP, JKT: "jkt-1"}
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, now)
+	sid := "session-1"
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, &sid, now)
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -310,10 +311,25 @@ func TestGenerateInitialRefreshToken(t *testing.T) {
 	if rec.SenderConstraint == nil || rec.SenderConstraint.JKT != "jkt-1" {
 		t.Error("SenderConstraint が保持されていない")
 	}
+	// ADR-127: sid は AuthorizationCodeRecord.sid からそのまま引き継ぐ。
+	if rec.Sid == nil || *rec.Sid != sid {
+		t.Errorf("Sid が伝播していない: %v", rec.Sid)
+	}
+}
+
+func TestGenerateInitialRefreshToken_NilSid(t *testing.T) {
+	// client_credentials 等 browser session を持たない発行では sid は nil のまま (ADR-127)。
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("生成に失敗: %v", err)
+	}
+	if gen.Record.Sid != nil {
+		t.Errorf("Sid は nil のはず: %v", gen.Record.Sid)
+	}
 }
 
 func TestGenerateInitialRefreshToken_ZeroNow(t *testing.T) {
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, time.Time{})
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, time.Time{})
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -324,7 +340,8 @@ func TestGenerateInitialRefreshToken_ZeroNow(t *testing.T) {
 
 func TestRotateRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, now)
+	sid := "session-1"
+	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, &sid, now)
 	if err != nil {
 		t.Fatalf("親生成に失敗: %v", err)
 	}
@@ -341,6 +358,10 @@ func TestRotateRefreshToken(t *testing.T) {
 	}
 	if rec.ID == parent.Record.ID {
 		t.Error("回転後の ID が親と同一")
+	}
+	// ADR-127: rotate 後も親の sid をそのまま引き継ぐ。
+	if rec.Sid == nil || *rec.Sid != sid {
+		t.Errorf("Sid が rotate で引き継がれていない: %v", rec.Sid)
 	}
 }
 

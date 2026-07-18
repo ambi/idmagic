@@ -92,27 +92,31 @@ func RevokeOwnSession(
 
 // RevokeOtherSessions は keepSessionID を除く本人の全セッションを失効する
 // ("他のセッションを全て終了")。対象は ListBySub が返す有効なセッションに限るため、
-// 既に失効済みの行は自然に対象外になる。
+// 既に失効済みの行は自然に対象外になる。失効した sessionID の一覧を返す。呼び出し側
+// (account_sessions_handler) はこれを sid として oauth2 の RevokeTokensBySid へ渡し、
+// refresh token family を横断して失効させる (ADR-127)。
 func RevokeOtherSessions(
 	ctx context.Context,
 	deps SessionDeps,
 	sub, keepSessionID string,
 	now time.Time,
-) error {
+) ([]string, error) {
 	sessions, err := deps.Store.ListBySub(ctx, sub)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	revokedIDs := make([]string, 0, len(sessions))
 	for _, sess := range sessions {
 		if sess.ID == keepSessionID {
 			continue
 		}
 		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, now); err != nil {
-			return err
+			return nil, err
 		}
 		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
+		revokedIDs = append(revokedIDs, sess.ID)
 	}
-	return nil
+	return revokedIDs, nil
 }
 
 func emitSessionEnded(

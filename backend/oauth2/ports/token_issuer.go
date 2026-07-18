@@ -35,13 +35,15 @@ type AccessTokenInput struct {
 }
 
 type IDTokenInput struct {
-	Client    *domain.OAuth2Client
-	User      *idmdomain.User
-	Scopes    []string
-	Nonce     *string
-	AuthTime  int64
-	AMR       []string
-	ACR       string
+	Client   *domain.OAuth2Client
+	User     *idmdomain.User
+	Scopes   []string
+	Nonce    *string
+	AuthTime int64
+	AMR      []string
+	ACR      string
+	// Sid は OIDC session id (ADR-127)。空文字列は browser session を持たない発行を表す。
+	Sid       string
 	AtHashFor string // access token whose hash goes into at_hash
 	// ResolveAttributeDefs はユーザのテナントに有効な属性定義 (builtin + custom) を
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする (wi-19)。

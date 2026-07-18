@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
@@ -40,6 +41,68 @@ func TestRevokeAccessTokenAddsOwnedJTIToDenylist(t *testing.T) {
 	}
 	if !revoked {
 		t.Fatal("access token jti was not denylisted")
+	}
+}
+
+// ADR-127 §3: session revoke は sid を共有する全 family/client の RefreshTokenRecord を
+// 一括で失効させる。
+func TestRevokeTokensBySidRevokesAllFamiliesAndClients(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewRefreshTokenStore()
+	sid := "session-1"
+	otherSid := "session-2"
+
+	genA, err := domain.GenerateInitialRefreshToken("client-a", "user-1", []string{"openid"}, nil, &sid, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(ctx, genA.Record); err != nil {
+		t.Fatal(err)
+	}
+	genB, err := domain.GenerateInitialRefreshToken("client-b", "user-1", []string{"openid"}, nil, &sid, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(ctx, genB.Record); err != nil {
+		t.Fatal(err)
+	}
+	genOther, err := domain.GenerateInitialRefreshToken("client-a", "user-2", []string{"openid"}, nil, &otherSid, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(ctx, genOther.Record); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RevokeTokensBySid(ctx, RevokeDeps{RefreshStore: store}, sid, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	recA, err := store.FindByHash(ctx, domain.HashRefreshToken(genA.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recA == nil || !recA.Revoked {
+		t.Fatal("client-a token was not revoked")
+	}
+	recB, err := store.FindByHash(ctx, domain.HashRefreshToken(genB.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recB == nil || !recB.Revoked {
+		t.Fatal("client-b token was not revoked")
+	}
+	recOther, err := store.FindByHash(ctx, domain.HashRefreshToken(genOther.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recOther == nil || recOther.Revoked {
+		t.Fatal("token belonging to a different sid must not be revoked")
+	}
+
+	// idempotent: 2 回目の呼び出しもエラーなく成功する。
+	if err := RevokeTokensBySid(ctx, RevokeDeps{RefreshStore: store}, sid, time.Now()); err != nil {
+		t.Fatal(err)
 	}
 }
 

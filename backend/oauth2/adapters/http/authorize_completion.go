@@ -66,7 +66,7 @@ func (d Deps) completeAfterAuthn(
 			ctx, cancel := d.OperationContext(c.Request().Context())
 			defer cancel()
 			if err := d.RequestStore.AttachAuthentication(
-				ctx, req.ID, authn.UserID, authn.AuthTime, authn.AMR, authn.ACR,
+				ctx, req.ID, authn.UserID, authn.AuthTime, authn.AMR, authn.ACR, authn.SessionID,
 			); err != nil {
 				return authorizationNext{}, err
 			}
@@ -161,6 +161,7 @@ func (d Deps) issueCodeURL(
 		AuthTime:  authTime,
 		AMR:       authn.AMR,
 		ACR:       authn.ACR,
+		Sid:       authn.SessionID,
 	})
 	if err != nil {
 		var oauthErr *usecases.OAuthError

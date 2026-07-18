@@ -317,7 +317,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 
-	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, now)
+	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, now)
 	if err != nil {
 		return nil, err
 	}

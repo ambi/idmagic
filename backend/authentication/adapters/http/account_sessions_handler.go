@@ -10,6 +10,7 @@ import (
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -44,6 +45,18 @@ func (d Deps) sessionStore() authnports.SessionStore {
 
 func (d Deps) accountSessionDeps() authusecases.SessionDeps {
 	return authusecases.SessionDeps{Store: d.sessionStore(), Emit: d.Emit}
+}
+
+// revokeOAuthSessionTokens は sid (LoginSession.id) に紐づく RefreshTokenRecord を
+// family/client を横断して失効させる (ADR-127 §3)。RefreshStore が配線されていない
+// 環境 (offline_access 未使用など) では no-op とする。
+func (d Deps) revokeOAuthSessionTokens(c *echo.Context, sid string) error {
+	if d.RefreshStore == nil {
+		return nil
+	}
+	return oauthusecases.RevokeTokensBySid(
+		c.Request().Context(), oauthusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, time.Now().UTC(),
+	)
 }
 
 // requireAuthenticatedSession は認証済み (pending でない) セッションの sub と sessionID を
@@ -83,10 +96,14 @@ func (d Deps) handleRevokeAccountSession(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
+	targetSessionID := c.Param("id")
 	if err := authusecases.RevokeOwnSession(
-		c.Request().Context(), d.accountSessionDeps(), sub, c.Param("id"), time.Now().UTC(),
+		c.Request().Context(), d.accountSessionDeps(), sub, targetSessionID, time.Now().UTC(),
 	); err != nil {
 		return d.writeAccountError(c, err)
+	}
+	if err := d.revokeOAuthSessionTokens(c, targetSessionID); err != nil {
+		return err
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
@@ -101,10 +118,16 @@ func (d Deps) handleRevokeOtherAccountSessions(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	if err := authusecases.RevokeOtherSessions(
+	revokedIDs, err := authusecases.RevokeOtherSessions(
 		c.Request().Context(), d.accountSessionDeps(), sub, sessionID, time.Now().UTC(),
-	); err != nil {
+	)
+	if err != nil {
 		return d.writeAccountError(c, err)
+	}
+	for _, revokedID := range revokedIDs {
+		if err := d.revokeOAuthSessionTokens(c, revokedID); err != nil {
+			return err
+		}
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)

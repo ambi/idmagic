@@ -139,6 +139,9 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 	if in.ACR != "" {
 		claims["acr"] = in.ACR
 	}
+	if in.Sid != "" {
+		claims["sid"] = in.Sid
+	}
 	if containsString(in.Scopes, "profile") {
 		if in.User.Name != nil {
 			claims["name"] = *in.User.Name

@@ -24,11 +24,14 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 
-	AuditEventRepo            auditports.AuditEventRepository
-	UserRepo                  idmports.UserRepository
-	PasswordHasher            authnports.PasswordHasher
-	PasswordHistoryRepo       authnports.PasswordHistoryRepository
-	ConsentRepo               oauthports.ConsentRepository
+	AuditEventRepo      auditports.AuditEventRepository
+	UserRepo            idmports.UserRepository
+	PasswordHasher      authnports.PasswordHasher
+	PasswordHistoryRepo authnports.PasswordHistoryRepository
+	ConsentRepo         oauthports.ConsentRepository
+	// RefreshStore は self-service session revoke から oauth2 の RefreshTokenRecord を
+	// sid 単位で失効させるために使う (ADR-127, wi-28 T004)。nil なら token revoke をスキップする。
+	RefreshStore              oauthports.RefreshTokenStore
 	ClientDisplayNameResolver *support.ClientDisplayNameResolver
 	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
 	MfaFactorRepo             authnports.MfaFactorRepository

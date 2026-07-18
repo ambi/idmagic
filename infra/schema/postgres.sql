@@ -300,6 +300,12 @@ CREATE TABLE refresh_tokens (
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
     rotated BOOLEAN NOT NULL DEFAULT FALSE,
     sender_constraint JSONB,
+    -- OIDC session id (Authentication の authentication_sessions.id と同値, ADR-127).
+    -- browser session を持たない発行 (client_credentials 等) では NULL。cookie 由来の
+    -- 不透明値を横断する correlation id であり、authentication_sessions への FK は張らない
+    -- (housekeeping retention による物理削除が refresh_tokens 側の revoke 状態と独立して
+    -- 進めるようにするため、ADR-082 の opaque cross-context reference と同じ扱い)。
+    sid UUID,
     CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
     CONSTRAINT refresh_tokens_parent_id_fkey
         FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,
@@ -314,6 +320,7 @@ CREATE TABLE refresh_tokens (
 CREATE INDEX refresh_tokens_family_id_idx ON refresh_tokens (family_id);
 CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens (user_id);
 CREATE INDEX refresh_tokens_client_id_idx ON refresh_tokens (client_id);
+CREATE INDEX refresh_tokens_sid_idx ON refresh_tokens (sid) WHERE sid IS NOT NULL;
 
 CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,

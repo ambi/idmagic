@@ -58,7 +58,7 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 	id, sub string,
 	authTime int64,
 	amr []string,
-	acr string,
+	acr, sid string,
 ) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -70,6 +70,9 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 	req.AuthTime = &authTime
 	req.AMR = slices.Clone(amr)
 	req.ACR = &acr
+	if sid != "" {
+		req.Sid = &sid
+	}
 	return nil
 }
 

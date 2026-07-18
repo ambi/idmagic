@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -89,9 +90,10 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 	seedSession(t, store, "s3", "alice", base.Add(2*time.Minute))
 
 	var events []spec.DomainEvent
-	if err := usecases.RevokeOtherSessions(ctx, usecases.SessionDeps{
+	revokedIDs, err := usecases.RevokeOtherSessions(ctx, usecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
-	}, "alice", "s2", base); err != nil {
+	}, "alice", "s2", base)
+	if err != nil {
 		t.Fatal(err)
 	}
 	remaining, _ := usecases.ListSessions(ctx, store, "alice", "s2")
@@ -100,5 +102,10 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 	}
 	if len(events) != 2 {
 		t.Fatalf("len(events)=%d, want 2", len(events))
+	}
+	// oauth2 側の RevokeTokensBySid 呼び出し元 (account_sessions_handler) が失効対象の
+	// sid 一覧をここから受け取る (ADR-127)。
+	if len(revokedIDs) != 2 || !slices.Contains(revokedIDs, "s1") || !slices.Contains(revokedIDs, "s3") {
+		t.Fatalf("revokedIDs=%#v, want [s1 s3]", revokedIDs)
 	}
 }

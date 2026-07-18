@@ -41,6 +41,16 @@ func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, n
 	return nil
 }
 
+// RevokeTokensBySid は sid (OIDC session id) を共有する全 family/client の
+// RefreshTokenRecord を一括で失効させる (ADR-127 §3)。LoginSession revoke から呼ばれ、
+// RevokeBySid の UPDATE ... WHERE sid = $1 相当により再実行しても idempotent。
+func RevokeTokensBySid(ctx context.Context, deps RevokeDeps, sid string, now time.Time) error {
+	if sid == "" {
+		return nil
+	}
+	return deps.RefreshStore.RevokeBySid(ctx, sid)
+}
+
 func revokeAccessToken(
 	ctx context.Context,
 	deps RevokeDeps,

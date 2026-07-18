@@ -6,6 +6,8 @@ package sqlcgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -28,6 +30,7 @@ type Querier interface {
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
+	RevokeRefreshTokensBySid(ctx context.Context, sid pgtype.UUID) error
 	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error
 	UpsertClient(ctx context.Context, arg UpsertClientParams) error

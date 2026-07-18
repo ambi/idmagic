@@ -24,7 +24,8 @@ func (q *Queries) DeleteRefreshTokensForSub(ctx context.Context, userID string) 
 
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
 SELECT id::text, hash, family_id::text, COALESCE(parent_id::text, '') AS parent_id, client_id, user_id,
-  scopes, issued_at, expires_at, absolute_expires_at, revoked, rotated, sender_constraint
+  scopes, issued_at, expires_at, absolute_expires_at, revoked, rotated, sender_constraint,
+  COALESCE(sid::text, '') AS sid
 FROM refresh_tokens
 WHERE hash = $1
 `
@@ -43,6 +44,7 @@ type GetRefreshTokenByHashRow struct {
 	Revoked           bool
 	Rotated           bool
 	SenderConstraint  []byte
+	Sid               interface{}
 }
 
 func (q *Queries) GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error) {
@@ -62,6 +64,7 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, hash string) (*GetR
 		&i.Revoked,
 		&i.Rotated,
 		&i.SenderConstraint,
+		&i.Sid,
 	)
 	return &i, err
 }
@@ -88,9 +91,9 @@ func (q *Queries) GetRefreshTokenRotationState(ctx context.Context, id string) (
 const insertRefreshToken = `-- name: InsertRefreshToken :exec
 INSERT INTO refresh_tokens (
   id, hash, family_id, parent_id, client_id, user_id, scopes, issued_at,
-  expires_at, absolute_expires_at, revoked, rotated, sender_constraint
+  expires_at, absolute_expires_at, revoked, rotated, sender_constraint, sid
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb, $14
 )
 `
 
@@ -108,6 +111,7 @@ type InsertRefreshTokenParams struct {
 	Revoked           bool
 	Rotated           bool
 	Column13          interface{}
+	Sid               pgtype.UUID
 }
 
 func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error {
@@ -125,6 +129,7 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 		arg.Revoked,
 		arg.Rotated,
 		arg.Column13,
+		arg.Sid,
 	)
 	return err
 }
@@ -148,5 +153,16 @@ WHERE family_id = $1
 
 func (q *Queries) RevokeRefreshTokenFamily(ctx context.Context, familyID string) error {
 	_, err := q.db.Exec(ctx, revokeRefreshTokenFamily, familyID)
+	return err
+}
+
+const revokeRefreshTokensBySid = `-- name: RevokeRefreshTokensBySid :exec
+UPDATE refresh_tokens
+SET revoked = TRUE, updated_at = now()
+WHERE sid = $1
+`
+
+func (q *Queries) RevokeRefreshTokensBySid(ctx context.Context, sid pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, revokeRefreshTokensBySid, sid)
 	return err
 }

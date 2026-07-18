@@ -63,11 +63,14 @@ func (s *AuthorizationRequestStore) AttachAuthentication(
 	id, sub string,
 	authTime int64,
 	amr []string,
-	acr string,
+	acr, sid string,
 ) error {
 	return s.update(ctx, id, func(req *domain.AuthorizationRequest) error {
 		req.UserID, req.AuthTime = &sub, &authTime
 		req.AMR, req.ACR = amr, &acr
+		if sid != "" {
+			req.Sid = &sid
+		}
 		return nil
 	})
 }

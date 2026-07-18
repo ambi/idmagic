@@ -27,6 +27,9 @@ type CompleteLoginInput struct {
 	AuthTime  time.Time
 	AMR       []string
 	ACR       string
+	// Sid は AuthenticationContext.session_id から一度だけ伝搬する OIDC session id
+	// (ADR-127)。空文字列は browser session を持たない発行を表す。
+	Sid string
 }
 
 type CompleteLoginOutput struct {
@@ -66,7 +69,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		return nil, err
 	}
 	authTime := in.AuthTime.UTC().Unix()
-	if err := deps.RequestStore.AttachAuthentication(ctx, req.ID, in.Sub, authTime, in.AMR, in.ACR); err != nil {
+	if err := deps.RequestStore.AttachAuthentication(ctx, req.ID, in.Sub, authTime, in.AMR, in.ACR, in.Sid); err != nil {
 		return nil, err
 	}
 	if err := deps.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowCodeIssued); err != nil {
@@ -92,6 +95,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		AuthTime:               authTime,
 		AMR:                    slices.Clone(in.AMR),
 		ACR:                    optional(in.ACR),
+		Sid:                    optional(in.Sid),
 		AuthorizationDetails:   req.AuthorizationDetails,
 		State:                  spec.AuthCodeRecordIssued,
 		IssuedAt:               now,
