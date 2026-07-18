@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -108,6 +109,35 @@ func TestParseFilterBooleanAttribute(t *testing.T) {
 	}
 }
 
+// ne 演算子を not 経由の間接テストではなく直接検証する
+// (interfaces.ListScimUsers、wi-242)。
+func TestParseFilterNotEqual(t *testing.T) {
+	t.Run("string attribute", func(t *testing.T) {
+		expr, err := domain.ParseFilter(`userName ne "bjensen@example.com"`, domain.UserFilterAttributes)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if expr.Matches(map[string]any{"username": "bjensen@example.com"}) {
+			t.Error("expected no match for equal userName")
+		}
+		if !expr.Matches(map[string]any{"username": "other@example.com"}) {
+			t.Error("expected match for different userName")
+		}
+	})
+	t.Run("boolean attribute", func(t *testing.T) {
+		expr, err := domain.ParseFilter(`active ne true`, domain.UserFilterAttributes)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if expr.Matches(map[string]any{"active": true}) {
+			t.Error("expected no match for active=true")
+		}
+		if !expr.Matches(map[string]any{"active": false}) {
+			t.Error("expected match for active=false")
+		}
+	})
+}
+
 // 文字列 escape (\" と \\) を正しく decode する。
 func TestParseFilterStringEscaping(t *testing.T) {
 	expr, err := domain.ParseFilter(`displayName eq "say \"hi\" \\ done"`, domain.GroupFilterAttributes)
@@ -199,6 +229,37 @@ func TestParseFilterDateTimeComparison(t *testing.T) {
 		}
 		if got := expr.Matches(attrs); got != tc.want {
 			t.Errorf("filter %q: Matches = %v, want %v", tc.filter, got, tc.want)
+		}
+	}
+}
+
+// gt/ge/lt/le は dateTime 属性 (meta.created/meta.lastModified) 以外の allowlist 属性では
+// 常に invalidFilter になる (wi-242)。dateTime 属性への対応自体は
+// TestParseFilterDateTimeComparison で固定済み。
+func TestParseFilterOrderingOperatorsRejectedForNonDateTimeAttributes(t *testing.T) {
+	orderingOps := []string{"gt", "ge", "lt", "le"}
+	allowlists := map[string]domain.AttributeAllowlist{
+		"user":  domain.UserFilterAttributes,
+		"group": domain.GroupFilterAttributes,
+	}
+	for allowName, allow := range allowlists {
+		for attr, spec := range allow {
+			if spec.Kind == domain.AttrDateTime {
+				continue
+			}
+			for _, op := range orderingOps {
+				filter := fmt.Sprintf(`%s %s "x"`, attr, op)
+				t.Run(fmt.Sprintf("%s/%s/%s", allowName, attr, op), func(t *testing.T) {
+					_, err := domain.ParseFilter(filter, allow)
+					if err == nil {
+						t.Fatalf("expected error for filter %q", filter)
+					}
+					var filterErr *domain.FilterError
+					if !isFilterError(err, &filterErr) {
+						t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
+					}
+				})
+			}
 		}
 	}
 }
