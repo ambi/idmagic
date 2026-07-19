@@ -572,6 +572,7 @@ func (d Deps) assignmentDeps() appusecases.AssignmentDeps {
 	return appusecases.AssignmentDeps{
 		Repo: d.ApplicationRepo, AssignmentRepo: d.ApplicationAssignmentRepo,
 		OrderingRepo: d.ApplicationOrderingRepo, Emit: d.Emit,
+		ProvisioningNotifier: d.ProvisioningNotifier,
 	}
 }
 

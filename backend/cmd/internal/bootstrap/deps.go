@@ -13,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
+	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/signingkeys"
@@ -37,6 +38,7 @@ type Dependencies struct {
 	Scim           scim.Module
 	Application    application.Module
 	Jobs           jobs.Module
+	Provisioning   provisioning.Module
 	Close          func()
 	DbPing         func(context.Context) error
 	ValkeyPing     func(context.Context) error

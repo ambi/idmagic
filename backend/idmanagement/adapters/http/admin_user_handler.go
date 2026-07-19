@@ -264,6 +264,7 @@ func (d Deps) adminUserDeps() idmusecases.AdminUserDeps {
 	deps := idmusecases.AdminUserDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AttrSchemaRepo: d.AttrSchemaRepo,
 		UserMutationCommitter: d.UserMutationCommitter,
+		ProvisioningNotifier:  d.ProvisioningNotifier,
 		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, MfaFactorRepo: d.MfaFactorRepo,
 		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,

@@ -318,6 +318,124 @@ export type AdminApplicationDetail = {
   sign_in_policy?: AppSignInPolicyView | null
 }
 
+// Provisioning (outbound SCIM, wi-45): 下流 SaaS への自動プロビジョニング接続。
+export type ProvisioningAuthMethod = 'bearer_token' | 'oauth2_client_credentials'
+export type ProvisioningScope = 'assigned_only' | 'all_users'
+export type ProvisioningConnectionStatus = 'active' | 'disabled'
+export type ProvisioningHealth = 'ok' | 'degraded' | 'quarantined'
+export type ProvisioningGroupSelection = 'assigned_groups' | 'explicit'
+export type ProvisioningDeprovisionAction = 'deactivate' | 'delete' | 'none'
+export type ProvisioningSourceType = 'user' | 'group'
+export type ProvisioningOperation =
+  | 'create'
+  | 'update'
+  | 'deactivate'
+  | 'delete'
+  | 'membership_add'
+  | 'membership_remove'
+export type ProvisioningDeliveryStatus = 'pending' | 'in_flight' | 'succeeded' | 'dead_letter'
+
+export type ProvisioningFeatureFlags = {
+  create_users: boolean
+  update_users: boolean
+  deactivate_users: boolean
+  delete_users: boolean
+  push_groups: boolean
+}
+
+export type ProvisioningCapabilities = {
+  supports_patch: boolean
+  supports_bulk: boolean
+  supports_filter: boolean
+  supports_etag: boolean
+  supports_sort: boolean
+  discovered_at: string
+}
+
+export type ProvisioningConnectionCredentialMetadata = {
+  credential_id: string
+  auth_method: ProvisioningAuthMethod
+  created_at: string
+  rotated_at?: string | null
+}
+
+export type GroupPushConfig = {
+  selection: ProvisioningGroupSelection
+  explicit_group_ids?: string[]
+  display_name_source?: string
+}
+
+export type AttributeMappingRule = {
+  target_path: string
+  source_kind: 'attribute' | 'constant'
+  source_key?: string
+  constant_value?: unknown
+  apply_on: 'create_and_update' | 'create_only'
+  required: boolean
+  default_value?: unknown
+}
+
+export type MatchingRule = {
+  conflict_match_attribute: string
+}
+
+export type DeprovisionPolicy = {
+  on_unassign: ProvisioningDeprovisionAction
+  on_delete: ProvisioningDeprovisionAction
+  on_group_deleted_or_unassigned?: ProvisioningDeprovisionAction | ''
+  grace_period_days: number
+  accidental_deletion_count_threshold?: number | null
+  accidental_deletion_percent_threshold?: number | null
+}
+
+export type ProvisioningConnection = {
+  application_id: string
+  tenant_id: string
+  status: ProvisioningConnectionStatus
+  base_url: string
+  credential: ProvisioningConnectionCredentialMetadata
+  capabilities?: ProvisioningCapabilities | null
+  feature_flags: ProvisioningFeatureFlags
+  scope: ProvisioningScope
+  group_push?: GroupPushConfig | null
+  attribute_mappings: AttributeMappingRule[]
+  matching: MatchingRule
+  deprovision_policy: DeprovisionPolicy
+  rate_limit_per_minute: number
+  max_attempts: number
+  notification_email?: string | null
+  quarantine_after_consecutive_failures: number
+  health: ProvisioningHealth
+  consecutive_failure_count: number
+  last_full_sync_at?: string | null
+  quarantined_at?: string | null
+  quarantine_reason?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ProvisioningDelivery = {
+  id: string
+  tenant_id: string
+  connection_id: string
+  source_type: ProvisioningSourceType
+  source_id: string
+  source_version: number
+  operation: ProvisioningOperation
+  status: ProvisioningDeliveryStatus
+  job_id?: string | null
+  last_error?: string | null
+  created_at: string
+  updated_at: string
+  completed_at?: string | null
+}
+
+export type ProvisioningTestConnectionResult = {
+  reachable: boolean
+  capabilities?: ProvisioningCapabilities | null
+  error?: string
+}
+
 export type AuthorizationDetailFieldRule = {
   name: string
   semantics: 'set' | 'at_most' | 'enum' | 'exact'

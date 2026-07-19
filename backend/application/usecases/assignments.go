@@ -11,6 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -20,6 +21,21 @@ type AssignmentDeps struct {
 	AssignmentRepo ports.AssignmentRepository
 	OrderingRepo   ports.ApplicationOrderingRepository
 	Emit           func(spec.DomainEvent)
+	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
+	// ADR-128). nil means outbound provisioning is not wired.
+	ProvisioningNotifier ports.ProvisioningNotifier
+}
+
+// notifyProvisioning is a best-effort call: a nil notifier or an error must not
+// fail the assignment operation that already committed (mirrors
+// idmanagement/usecases.notifyProvisioning's log-don't-fail treatment).
+func notifyProvisioning(ctx context.Context, deps AssignmentDeps, tenantID, applicationID, userID string, trigger ports.ProvisioningTrigger, now time.Time) {
+	if deps.ProvisioningNotifier == nil {
+		return
+	}
+	if err := deps.ProvisioningNotifier.NotifyAssignmentMutation(ctx, tenantID, applicationID, userID, trigger, now); err != nil {
+		logging.Error(ctx, "provisioning: capture notification failed", "error", err, "application_id", applicationID, "user_id", userID)
+	}
 }
 
 type AssignApplicationInput struct {
@@ -70,6 +86,9 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 		At: assignment.CreatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
 		SubjectType: string(in.SubjectType), SubjectID: subjectID,
 	})
+	if in.SubjectType == domain.AssignmentSubjectUser {
+		notifyProvisioning(ctx, deps, tenantID, in.ApplicationID, subjectID, ports.ProvisioningAssignmentAdded, assignment.CreatedAt)
+	}
 	return assignment, nil
 }
 
@@ -78,10 +97,14 @@ func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, 
 	if err := deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, subjectType, subjectID); err != nil {
 		return err
 	}
+	emitAt := adminNow(now)
 	emit(deps.Emit, &domain.ApplicationUnassigned{
-		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID,
+		At: emitAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID,
 		SubjectType: string(subjectType), SubjectID: subjectID,
 	})
+	if subjectType == domain.AssignmentSubjectUser {
+		notifyProvisioning(ctx, deps, tenantID, applicationID, subjectID, ports.ProvisioningAssignmentRemoved, emitAt)
+	}
 	return nil
 }
 

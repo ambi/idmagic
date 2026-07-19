@@ -18,6 +18,7 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -62,6 +63,25 @@ type AdminUserDeps struct {
 	// SoftDeleteGraceSeconds は soft-delete の猶予期間 (秒)。0 のとき
 	// UserSoftDeleteGracePeriodSeconds を既定として使う。テストで短縮するために注入する。
 	SoftDeleteGraceSeconds int
+	// ProvisioningNotifier は User mutation を outbound Provisioning (wi-45,
+	// ADR-128) へ通知する境界 port。nil のとき outbound provisioning は未配線として
+	// 何もしない。
+	ProvisioningNotifier idmports.ProvisioningNotifier
+}
+
+// notifyProvisioning is a best-effort call to deps.ProvisioningNotifier: a nil
+// notifier or a notification error must not fail the admin operation that
+// already committed (mirrors bootstrap.Dependencies.NewEmitFunc's own
+// log-don't-fail treatment of outbox/audit side channels). This is ADR-128
+// decision 4's scoped simplification; see backend/provisioning/ports.
+// ProvisioningCapture doc for the residual reliability gap it accepts.
+func notifyProvisioning(ctx context.Context, deps AdminUserDeps, tenantID, userID string, trigger idmports.ProvisioningTrigger, now time.Time) {
+	if deps.ProvisioningNotifier == nil {
+		return
+	}
+	if err := deps.ProvisioningNotifier.NotifyUserMutation(ctx, tenantID, userID, trigger, now); err != nil {
+		logging.Error(ctx, "provisioning: capture notification failed", "error", err, "user_id", userID)
+	}
 }
 
 // graceSeconds は soft-delete の実効猶予期間 (秒) を返す。未指定 (0) なら既定値。
@@ -136,6 +156,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*i
 	if err := adminEmit(deps.Emit, &idmdomain.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID}); err != nil {
 		return nil, err
 	}
+	notifyProvisioning(ctx, deps, user.TenantID, user.ID, idmports.ProvisioningUserCreated, now)
 	return user, nil
 }
 
@@ -257,6 +278,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*i
 	}); err != nil {
 		return nil, err
 	}
+	notifyProvisioning(ctx, deps, user.TenantID, user.ID, idmports.ProvisioningUserAttributesChanged, now)
 	return &updated, nil
 }
 
@@ -305,7 +327,9 @@ func SetUserDisabled(
 		}
 	}
 	var emitErr error
+	trigger := idmports.ProvisioningUserEnabled
 	if disabled {
+		trigger = idmports.ProvisioningUserDisabled
 		emitErr = adminEmit(deps.Emit, &idmdomain.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
 		emitErr = adminEmit(deps.Emit, &idmdomain.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
@@ -313,6 +337,7 @@ func SetUserDisabled(
 	if emitErr != nil {
 		return nil, emitErr
 	}
+	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, trigger, now)
 	return &updated, nil
 }
 
@@ -515,9 +540,13 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := cascadeDeleteForSub(ctx, deps, user.ID); err != nil {
 		return err
 	}
-	return adminEmit(deps.Emit, &idmdomain.UserDeleted{
+	if err := adminEmit(deps.Emit, &idmdomain.UserDeleted{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, Reason: in.Reason,
-	})
+	}); err != nil {
+		return err
+	}
+	notifyProvisioning(ctx, deps, user.TenantID, user.ID, idmports.ProvisioningUserDeleted, now)
+	return nil
 }
 
 func hasPrivilegedRole(roles []string) bool {
@@ -581,9 +610,13 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 			return err
 		}
 	}
-	return adminEmit(deps.Emit, &idmdomain.UserSoftDeleted{
+	if err := adminEmit(deps.Emit, &idmdomain.UserSoftDeleted{
 		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
-	})
+	}); err != nil {
+		return err
+	}
+	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, idmports.ProvisioningUserDeleted, now)
+	return nil
 }
 
 // RestoreUser は PendingDeletion の user を Active に戻し UserRestored を emit する。

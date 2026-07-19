@@ -15,6 +15,9 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/provisioning"
+	"github.com/ambi/idmagic/backend/provisioning/adapters/identitysource"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -68,6 +71,10 @@ func RunWorker() error {
 		},
 	}))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
+
+	attrSource := &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo}
+	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, provisioning.NewTargetClient)))
+	go provisioningDispatchLoop(ctx, deps)
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
 	runner := usecases.NewRunner(
@@ -132,6 +139,25 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	for {
 		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+// provisioningDispatchLoop periodically associates pending ProvisioningDelivery
+// rows with a Jobs.Job (LifecycleWorkflowRunLifecycle's dispatcher precedent):
+// it recovers deliveries whose same-Tx-adjacent capture succeeded but whose
+// immediate enqueue call failed (wi-45 T006, ADR-128 decision 4).
+func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		if _, err := provisioningusecases.DispatchPendingDeliveries(ctx, deps.Provisioning.DispatcherDeps(deps.Jobs.Repo), 100); err != nil {
+			logging.Warn(ctx, "provisioning delivery dispatch failed", "error", err)
 		}
 		select {
 		case <-ctx.Done():

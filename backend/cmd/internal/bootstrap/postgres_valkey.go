@@ -25,6 +25,8 @@ import (
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/valkey"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/provisioning"
+	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/saml"
 	samlpostgres "github.com/ambi/idmagic/backend/saml/adapters/persistence/postgres"
 	samlvalkey "github.com/ambi/idmagic/backend/saml/adapters/persistence/valkey"
@@ -128,6 +130,12 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	userMutationCommitter := igusecases.UserMutationCommitter{
 		WorkflowRepo: workflowRepo, Capture: workflowCapture, UserRepo: userRepo, RunRepo: workflowRunRepo,
 	}
+	assignmentRepo := &apppostgres.ApplicationAssignmentRepository{Pool: resilientDB}
+	provisioningModule := provisioning.Module{
+		ConnectionRepo: &provisioningpostgres.ProvisioningConnectionRepository{Pool: resilientDB},
+		RemoteLinkRepo: &provisioningpostgres.RemoteResourceLinkRepository{Pool: resilientDB},
+		DeliveryRepo:   &provisioningpostgres.ProvisioningDeliveryRepository{Pool: resilientDB},
+	}
 
 	return &Dependencies{
 		Tenancy: tenancy.Module{
@@ -141,6 +149,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			GroupRepo:             &idmpostgres.GroupRepository{Pool: resilientDB},
 			AgentRepo:             &idmpostgres.AgentRepository{Pool: resilientDB},
 			UserMutationCommitter: userMutationCommitter,
+			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},
 		IdGovernance: idgovernance.Module{
 			LifecycleWorkflowRepo:    workflowRepo,
@@ -189,12 +198,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},
-			AssignmentRepo:          &apppostgres.ApplicationAssignmentRepository{Pool: resilientDB},
+			AssignmentRepo:          assignmentRepo,
 			OrderingRepo:            &apppostgres.ApplicationOrderingRepository{Pool: resilientDB},
 			CategoryRepo:            &apppostgres.ApplicationCategoryRepository{Pool: resilientDB},
 			SignInPolicyRepo:        &apppostgres.SignInPolicyRepository{Pool: resilientDB},
 			DefaultSignInPolicyRepo: &apppostgres.DefaultSignInPolicyRepository{Pool: resilientDB},
+			ProvisioningNotifier:    provisioningModule.AssignmentNotifier(assignmentRepo),
 		},
+		Provisioning: provisioningModule,
 		Close: func() {
 			_ = valkeyClient.Close()
 			pool.Close()

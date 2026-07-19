@@ -2,6 +2,7 @@ import {
   IconActivity,
   IconApps,
   IconCheckupList,
+  IconCloudUpload,
   IconForms,
   IconLayoutDashboard,
   IconRobot,
@@ -24,6 +25,7 @@ export type AdminNavKey =
   | 'workflows'
   | 'roles'
   | 'applications'
+  | 'provisioning'
   | 'sign-in-policy'
   | 'entra-federation'
   | 'authz-detail-types'
@@ -92,6 +94,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconApps,
       href: tenantURL('/admin/applications'),
       active: active === 'applications',
+    },
+    {
+      key: 'provisioning',
+      label: t.provisioning,
+      icon: IconCloudUpload,
+      href: tenantURL('/admin/provisioning'),
+      active: active === 'provisioning',
     },
     {
       key: 'sign-in-policy',

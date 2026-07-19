@@ -185,6 +185,9 @@ export function detailURL(id: string): string {
 export function editURL(id: string): string {
   return tenantURL(`/admin/applications/${encodeURIComponent(id)}/edit`)
 }
+export function provisioningURL(id: string): string {
+  return tenantURL(`/admin/applications/${encodeURIComponent(id)}/provisioning`)
+}
 
 export function messageOf(cause: unknown, fallback: string): string {
   return cause instanceof AuthenticationAPIError ? cause.message : fallback

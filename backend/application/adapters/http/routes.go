@@ -33,6 +33,9 @@ type Deps struct {
 	ClientRepo                  oauthports.OAuth2ClientRepository
 	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo                  samlports.SamlServiceProviderRepository
+	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
+	// ADR-128). nil means outbound provisioning is not wired.
+	ProvisioningNotifier appports.ProvisioningNotifier
 }
 
 // RegisterRoutes は Application カタログの admin / account エンドポイントを登録する。

@@ -31,6 +31,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
+import { Route as AdminProvisioningRouteImport } from './routes/admin/provisioning'
 import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
 import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
@@ -68,6 +69,7 @@ import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.
 import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './routes/admin/lifecycle-workflows_/$workflowId.edit'
 import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
+import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
 
 const TotpRoute = TotpRouteImport.update({
@@ -178,6 +180,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminRolesRoute = AdminRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
+  id: '/provisioning',
+  path: '/provisioning',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminLifecycleWorkflowsRoute = AdminLifecycleWorkflowsRouteImport.update({
@@ -370,6 +377,12 @@ const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
   path: '/federation/entra/new',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminApplicationsApplicationIdProvisioningRoute =
+  AdminApplicationsApplicationIdProvisioningRouteImport.update({
+    id: '/provisioning',
+    path: '/provisioning',
+    getParentRoute: () => AdminApplicationsApplicationIdRoute,
+  } as any)
 const AdminApplicationsApplicationIdEditRoute =
   AdminApplicationsApplicationIdEditRouteImport.update({
     id: '/edit',
@@ -407,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
+  '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
@@ -431,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/admin/users/new': typeof AdminUsersNewRoute
   '/account/profile/': typeof AccountProfileIndexRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
+  '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
@@ -466,6 +481,7 @@ export interface FileRoutesByTo {
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
+  '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
@@ -486,6 +502,7 @@ export interface FileRoutesByTo {
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
+  '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
@@ -525,6 +542,7 @@ export interface FileRoutesById {
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
+  '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
@@ -549,6 +567,7 @@ export interface FileRoutesById {
   '/admin/users_/new': typeof AdminUsersNewRoute
   '/account/profile_/': typeof AccountProfileIndexRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
+  '/admin/applications_/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/lifecycle-workflows_/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
@@ -589,6 +608,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
+    | '/admin/provisioning'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
@@ -613,6 +633,7 @@ export interface FileRouteTypes {
     | '/admin/users/new'
     | '/account/profile/'
     | '/admin/applications/$applicationId/edit'
+    | '/admin/applications/$applicationId/provisioning'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/lifecycle-workflows/$workflowId/edit'
@@ -648,6 +669,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
+    | '/admin/provisioning'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
@@ -668,6 +690,7 @@ export interface FileRouteTypes {
     | '/admin/users/import'
     | '/admin/users/new'
     | '/admin/applications/$applicationId/edit'
+    | '/admin/applications/$applicationId/provisioning'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/lifecycle-workflows/$workflowId/edit'
@@ -706,6 +729,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
+    | '/admin/provisioning'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
@@ -730,6 +754,7 @@ export interface FileRouteTypes {
     | '/admin/users_/new'
     | '/account/profile_/'
     | '/admin/applications_/$applicationId/edit'
+    | '/admin/applications_/$applicationId/provisioning'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
     | '/admin/lifecycle-workflows_/$workflowId/edit'
@@ -909,6 +934,13 @@ declare module '@tanstack/react-router' {
       path: '/roles'
       fullPath: '/admin/roles'
       preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/provisioning': {
+      id: '/admin/provisioning'
+      path: '/provisioning'
+      fullPath: '/admin/provisioning'
+      preLoaderRoute: typeof AdminProvisioningRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/lifecycle-workflows': {
@@ -1170,6 +1202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFederationEntraNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/applications_/$applicationId/provisioning': {
+      id: '/admin/applications_/$applicationId/provisioning'
+      path: '/provisioning'
+      fullPath: '/admin/applications/$applicationId/provisioning'
+      preLoaderRoute: typeof AdminApplicationsApplicationIdProvisioningRouteImport
+      parentRoute: typeof AdminApplicationsApplicationIdRoute
+    }
     '/admin/applications_/$applicationId/edit': {
       id: '/admin/applications_/$applicationId/edit'
       path: '/edit'
@@ -1216,6 +1255,7 @@ const AccountRouteRouteWithChildren = AccountRouteRoute._addFileChildren(
 
 interface AdminApplicationsApplicationIdRouteChildren {
   AdminApplicationsApplicationIdEditRoute: typeof AdminApplicationsApplicationIdEditRoute
+  AdminApplicationsApplicationIdProvisioningRoute: typeof AdminApplicationsApplicationIdProvisioningRoute
   AdminApplicationsApplicationIdIndexRoute: typeof AdminApplicationsApplicationIdIndexRoute
 }
 
@@ -1223,6 +1263,8 @@ const AdminApplicationsApplicationIdRouteChildren: AdminApplicationsApplicationI
   {
     AdminApplicationsApplicationIdEditRoute:
       AdminApplicationsApplicationIdEditRoute,
+    AdminApplicationsApplicationIdProvisioningRoute:
+      AdminApplicationsApplicationIdProvisioningRoute,
     AdminApplicationsApplicationIdIndexRoute:
       AdminApplicationsApplicationIdIndexRoute,
   }
@@ -1268,6 +1310,7 @@ interface AdminRouteRouteChildren {
   AdminGroupsRoute: typeof AdminGroupsRoute
   AdminKeysRoute: typeof AdminKeysRoute
   AdminLifecycleWorkflowsRoute: typeof AdminLifecycleWorkflowsRoute
+  AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSignInPolicyRoute: typeof AdminSignInPolicyRoute
@@ -1297,6 +1340,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGroupsRoute: AdminGroupsRoute,
   AdminKeysRoute: AdminKeysRoute,
   AdminLifecycleWorkflowsRoute: AdminLifecycleWorkflowsRoute,
+  AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSignInPolicyRoute: AdminSignInPolicyRoute,

@@ -25,6 +25,9 @@ type Module struct {
 	CategoryRepo            appports.ApplicationCategoryRepository
 	SignInPolicyRepo        appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
+	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
+	// ADR-128). nil means outbound provisioning is not wired.
+	ProvisioningNotifier appports.ProvisioningNotifier
 }
 
 // Gate は Application 割当を fail-closed で判定する published capability を組み立てる
@@ -68,5 +71,6 @@ func (m Module) Register(
 		ClientRepo:                  clientRepo,
 		WsFedRPRepo:                 wsFedRPRepo,
 		SamlSPRepo:                  samlSPRepo,
+		ProvisioningNotifier:        m.ProvisioningNotifier,
 	})
 }

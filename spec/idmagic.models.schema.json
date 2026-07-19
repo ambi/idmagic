@@ -2189,78 +2189,19 @@
     "Application": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string"
+        },
         "tenant_id": {
-          "type": "string",
-          "default": "default",
-          "description": "所属テナント ID。"
-        },
-        "application_id": {
-          "type": "string",
-          "format": "uuid",
-          "description": "PostgreSQL の global UUID primary key。tenant_id は所属境界であり、識別子の一部ではない。"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "管理 UI / ポータル表示名。"
-        },
-        "kind": {
-          "$ref": "#/$defs/ApplicationKind",
-          "description": "federated か weblink か。"
-        },
-        "status": {
-          "$ref": "#/$defs/ApplicationStatus",
-          "description": "有効状態。"
-        },
-        "icon_url": {
-          "type": "string",
-          "description": "IdP が保存済みアイコンから生成する内部配信 URL。管理者は直接入力しない。"
-        },
-        "icon_object_key": {
-          "type": "string",
-          "description": "テナント境界内に保存されたアイコン画像 object の opaque key。"
-        },
-        "launch_url": {
-          "type": "string",
-          "description": "weblink kind の起動先 URL。"
-        },
-        "bindings": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ProtocolBinding"
-          },
-          "description": "接続済み protocol binding。weblink は空。"
-        },
-        "category_ids": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "description": "付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う (ADR-069)。"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updated_at": {
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "tenant_id",
-        "application_id",
-        "name",
-        "kind",
-        "status",
-        "bindings",
-        "category_ids",
-        "created_at",
-        "updated_at"
+        "id",
+        "tenant_id"
       ],
-      "description": "運用者が「接続する業務アプリケーション」として扱う上位 aggregate。OIDC client / SAML SP / WS-Fed RP を protocol binding として束ね、表示名・アイコン・状態・割当を所有する。weblink kind は binding を持たない外部リンク。tenant_id は既存 Tenant を指し、category_ids と protocol binding の opaque key は use case が同一テナント内の既存参照として検証する。"
+      "description": "Application context が所有する published stub。ProvisioningConnection は Application 1 件に対し最大 1 件。"
     },
     "ApplicationAssigned": {
       "type": "object",
@@ -2300,37 +2241,22 @@
       "type": "object",
       "properties": {
         "application_id": {
-          "type": "string",
-          "format": "uuid",
-          "description": "親 Application の global UUID foreign key。tenant 境界は親 Application の tenant_id と actor tenant の照合で fail-closed に検証する。"
+          "type": "string"
         },
         "subject_type": {
-          "$ref": "#/$defs/AssignmentSubjectType",
-          "description": "user か group か。"
+          "$ref": "#/$defs/AssignmentSubjectType"
         },
         "subject_id": {
-          "type": "string",
-          "minLength": 1,
-          "description": "user の sub または group id。"
-        },
-        "visibility": {
-          "$ref": "#/$defs/AssignmentVisibility",
-          "description": "visible か hidden か。"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
         "application_id",
         "subject_type",
-        "subject_id",
-        "visibility",
-        "created_at"
+        "subject_id"
       ],
-      "description": "Application へのユーザー / グループ割当。割当はポータル可視性とフェデレーション利用可否を fail-closed で制御する。hidden は一覧に出さないがプロトコル利用は許可する。subject_id は subject_type に応じて同一テナントの User.id または Group.id を指す。"
+      "description": "Application context が所有する published stub。scope=assigned_only の対象範囲解決に用いる。"
     },
     "ApplicationAssignmentListResponse": {
       "type": "object",
@@ -3021,7 +2947,7 @@
         "user",
         "group"
       ],
-      "description": "Application 割当の対象種別。"
+      "description": "Application context が所有する定義の published language stub。"
     },
     "AssignmentVisibility": {
       "type": "string",
@@ -3040,6 +2966,63 @@
         "ClaimExposed"
       ],
       "description": "属性の開示範囲。ClaimExposed のみ UserInfo / ID Token に出せる。"
+    },
+    "AttributeApplyOn": {
+      "type": "string",
+      "enum": [
+        "create_and_update",
+        "create_only"
+      ],
+      "description": "AttributeMappingRule をいつ適用するか。create_only は下流での手動変更を尊重したい項目に使う。"
+    },
+    "AttributeMappingRule": {
+      "type": "object",
+      "properties": {
+        "target_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_kind": {
+          "$ref": "#/$defs/AttributeSourceKind"
+        },
+        "source_key": {
+          "type": "string",
+          "description": "source_kind=attribute のとき必須。idmagic 側の属性キー。"
+        },
+        "constant_value": {
+          "type": "object",
+          "description": "source_kind=constant のとき必須。"
+        },
+        "apply_on": {
+          "$ref": "#/$defs/AttributeApplyOn",
+          "default": "create_and_update"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "true のとき値が解決不能なら配送を fail-closed で失敗させる。"
+        },
+        "default_value": {
+          "type": "object",
+          "description": "source が空のとき使う既定値。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target_path",
+        "source_kind",
+        "apply_on",
+        "required"
+      ],
+      "description": "1 出力属性の宣言的写像。target_path は SCIM 属性パス (単純・複合・多値フィルタ・enterprise 拡張を許す)。"
+    },
+    "AttributeSourceKind": {
+      "type": "string",
+      "enum": [
+        "attribute",
+        "constant"
+      ],
+      "description": "AttributeMappingRule の値の供給元。expression (関数評価) は初期版の対象外とし、直参照と固定値のみ許す。"
     },
     "AttributeType": {
       "type": "string",
@@ -4797,6 +4780,36 @@
       ],
       "description": "PKCE (RFC 7636) の code_challenge ハッシュ方式。本アプリでは S256 のみ許容（plain は脆弱なため拒否）。"
     },
+    "ConnectionQuarantined": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "consecutiveFailures": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId",
+        "reason",
+        "consecutiveFailures"
+      ],
+      "description": "連続失敗または誤削除ガード超過により ProvisioningConnection.health が quarantined になった。以後の配送を生成しない。"
+    },
     "Consent": {
       "type": "object",
       "properties": {
@@ -4964,6 +4977,51 @@
         "occurredAt"
       ],
       "description": "device authorization が拒否された event。"
+    },
+    "DeprovisionPolicy": {
+      "type": "object",
+      "properties": {
+        "on_unassign": {
+          "$ref": "#/$defs/ProvisioningDeprovisionAction",
+          "default": "deactivate",
+          "description": "Application からの unassign trigger。"
+        },
+        "on_delete": {
+          "$ref": "#/$defs/ProvisioningDeprovisionAction",
+          "default": "deactivate",
+          "description": "user soft-delete/delete trigger。delete を選ぶと grace_period_days 後に purge する。"
+        },
+        "on_group_deleted_or_unassigned": {
+          "$ref": "#/$defs/ProvisioningDeprovisionAction",
+          "x-scl-untranslated-constraints": [
+            "!(on_group_deleted_or_unassigned == 'deactivate')"
+          ],
+          "default": "none",
+          "description": "group 削除/unassign trigger。group に deactivate 相当は無いため delete/none のみ許す。"
+        },
+        "grace_period_days": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "accidental_deletion_count_threshold": {
+          "type": "integer",
+          "description": "1 回の sync でこの件数を超える deactivate/delete が生じたら実行せず quarantine する。"
+        },
+        "accidental_deletion_percentage_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "on_unassign",
+        "on_delete",
+        "on_group_deleted_or_unassigned",
+        "grace_period_days"
+      ],
+      "description": "deprovision trigger を下流アクションへ翻訳する規則。user disable → deactivate は固定 (設定不可)。\ngroup membership 削除 → PATCH members remove も固定。既定は破壊性が低い側に倒す。\n"
     },
     "DeviceAuthorization": {
       "type": "object",
@@ -6149,6 +6207,40 @@
       ],
       "description": "FrontChannelLogout の返り値1件。EndSession 応答が埋め込む iframe 1つ分に対応する。"
     },
+    "FullResyncCompleted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        },
+        "totalSubjects": {
+          "type": "integer"
+        },
+        "succeededCount": {
+          "type": "integer"
+        },
+        "failedCount": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId",
+        "totalSubjects",
+        "succeededCount",
+        "failedCount"
+      ],
+      "description": "StartFullResync が対象にした scope 内 subject 全件の収束が完了した。"
+    },
     "GrantConsent": {
       "type": "object",
       "properties": {
@@ -6178,57 +6270,22 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64,
-          "description": "生成識別子。UUID v4。不変。"
+          "type": "string"
         },
         "tenant_id": {
-          "type": "string",
-          "default": "default",
-          "description": "所属テナント ID。cross-tenant 参照は禁止。"
+          "type": "string"
         },
         "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100,
-          "description": "テナント内で一意な表示名。"
-        },
-        "description": {
-          "type": "string",
-          "maxLength": 500
-        },
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "このグループが付与するロール束。"
-        },
-        "membership_type": {
-          "$ref": "#/$defs/GroupMembershipType",
-          "default": "manual",
-          "description": "作成時に固定し、manual と dynamic を混在させない。"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updated_at": {
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
         "id",
         "tenant_id",
-        "name",
-        "roles",
-        "membership_type",
-        "created_at"
+        "name"
       ],
-      "description": "tenant-scoped ロール束集約。所属 User に roles を一斉付与する。id は不変の生成識別子、name はテナント内で一意な編集可能ラベル。"
+      "description": "IdManagement が publish する Group の published language stub。既定属性マッピングの解決にのみ用いる。"
     },
     "GroupAddMemberRequest": {
       "type": "object",
@@ -6459,6 +6516,36 @@
       ],
       "description": "グループ所属メンバー表現。"
     },
+    "GroupMembershipPushed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "deliveryId": {
+          "type": "string"
+        },
+        "groupId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "connectionId",
+        "deliveryId",
+        "groupId"
+      ],
+      "description": "group membership の変更が下流へ PATCH members として反映され配送が succeeded に確定した。"
+    },
     "GroupMembershipSource": {
       "type": "string",
       "enum": [
@@ -6474,6 +6561,67 @@
         "dynamic"
       ],
       "description": "Group の所属管理方式。作成後は変更できない。"
+    },
+    "GroupPushConfig": {
+      "type": "object",
+      "properties": {
+        "selection": {
+          "$ref": "#/$defs/ProvisioningGroupSelection",
+          "default": "assigned_groups"
+        },
+        "explicit_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "selection=explicit のとき使う明示的な Group.id 一覧。"
+        },
+        "display_name_source": {
+          "type": "string",
+          "default": "name",
+          "description": "下流 displayName に写す idmagic Group 属性キー。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "selection",
+        "display_name_source"
+      ],
+      "description": "push_groups 有効時の対象グループ選択と表示名の供給元。"
+    },
+    "GroupPushed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "deliveryId": {
+          "type": "string"
+        },
+        "groupId": {
+          "type": "string"
+        },
+        "remoteId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "connectionId",
+        "deliveryId",
+        "groupId",
+        "remoteId"
+      ],
+      "description": "group の create/update/deactivate/delete が下流へ反映され配送が succeeded に確定した。"
     },
     "GroupSummaryResponse": {
       "type": "object",
@@ -8071,6 +8219,20 @@
       ],
       "description": "LogoutNotification の配送状態。Jobs の JobStatus と1:1ではなく、配送固有の成否のみを表す (job 自体の retry/lease は Jobs 側が保持する)。"
     },
+    "MatchingRule": {
+      "type": "object",
+      "properties": {
+        "conflict_match_attribute": {
+          "type": "string",
+          "default": "userName"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conflict_match_attribute"
+      ],
+      "description": "409 (既存衝突) 時に下流の既存 resource を養子縁組するための比較属性。externalId 相関 (idmagic の id) が主で、このルールは externalId 未設定の既存 resource との衝突解決に使う二次手段。"
+    },
     "MfaChallengeFailed": {
       "type": "object",
       "properties": {
@@ -9183,6 +9345,599 @@
       ],
       "description": "Application に接続する protocol binding の種別。"
     },
+    "ProvisioningAuthMethod": {
+      "type": "string",
+      "enum": [
+        "bearer_token",
+        "oauth2_client_credentials"
+      ],
+      "description": "下流 SCIM service provider への認証方式。"
+    },
+    "ProvisioningCapabilities": {
+      "type": "object",
+      "properties": {
+        "supports_patch": {
+          "type": "boolean"
+        },
+        "supports_bulk": {
+          "type": "boolean"
+        },
+        "supports_filter": {
+          "type": "boolean"
+        },
+        "supports_etag": {
+          "type": "boolean"
+        },
+        "supports_sort": {
+          "type": "boolean"
+        },
+        "discovered_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "supports_patch",
+        "supports_bulk",
+        "supports_filter",
+        "supports_etag",
+        "supports_sort",
+        "discovered_at"
+      ],
+      "description": "TestProvisioningConnection の discovery (下流 /ServiceProviderConfig) がキャッシュする read-only capability。PATCH 非対応先は PUT にフォールバックする判断に使う。"
+    },
+    "ProvisioningConnection": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ProvisioningConnectionStatus",
+          "default": "active"
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "下流 SCIM v2 base URL。https 必須、内部/リンクローカル IP・任意 redirect を拒否する。"
+        },
+        "credential": {
+          "$ref": "#/$defs/ProvisioningConnectionCredentialMetadata"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/ProvisioningCapabilities",
+          "description": "TestProvisioningConnection の discovery でキャッシュする。未実行の間は未設定。"
+        },
+        "feature_flags": {
+          "$ref": "#/$defs/ProvisioningFeatureFlags"
+        },
+        "scope": {
+          "$ref": "#/$defs/ProvisioningScope",
+          "default": "assigned_only"
+        },
+        "group_push": {
+          "$ref": "#/$defs/GroupPushConfig",
+          "description": "feature_flags.push_groups が有効なときのみ意味を持つ。"
+        },
+        "attribute_mappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttributeMappingRule"
+          },
+          "description": "登録時に SCIM core User の既定マッピングを seed する。"
+        },
+        "matching": {
+          "$ref": "#/$defs/MatchingRule"
+        },
+        "deprovision_policy": {
+          "$ref": "#/$defs/DeprovisionPolicy"
+        },
+        "rate_limit_per_minute": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 60
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        },
+        "notification_email": {
+          "type": "string",
+          "description": "失敗・quarantine の通知先。"
+        },
+        "quarantine_after_consecutive_failures": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "health": {
+          "$ref": "#/$defs/ProvisioningHealth",
+          "default": "ok"
+        },
+        "consecutive_failure_count": {
+          "type": "integer",
+          "default": 0,
+          "description": "quarantine 判定用の内部カウンタ。配送成功でゼロへ戻る。"
+        },
+        "last_full_sync_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "quarantined_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "quarantine_reason": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "application_id",
+        "tenant_id",
+        "status",
+        "base_url",
+        "credential",
+        "feature_flags",
+        "scope",
+        "attribute_mappings",
+        "matching",
+        "deprovision_policy",
+        "rate_limit_per_minute",
+        "max_attempts",
+        "quarantine_after_consecutive_failures",
+        "health",
+        "consecutive_failure_count",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Application 1 件に対し最大 1 件だけ存在する outbound provisioning 設定。真実源は\nidmagic 側の User/Group aggregate、下流は mirror。scope は既存 ApplicationAssignment を再利用し、\n専用の割当 model は持たない。identity を application_id とすることで 1 Application 1 connection の\n一意制約を構造的に表す。\n",
+      "x-scl-untranslated-constraints": [
+        "health == 'quarantined' ? quarantined_at != null : quarantined_at == null"
+      ]
+    },
+    "ProvisioningConnectionAlreadyExistsError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定 Application に既に ProvisioningConnection が存在する (1 Application 1 connection の一意制約)。"
+    },
+    "ProvisioningConnectionCredentialMetadata": {
+      "type": "object",
+      "properties": {
+        "credential_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "auth_method": {
+          "$ref": "#/$defs/ProvisioningAuthMethod"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rotated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credential_id",
+        "auth_method",
+        "created_at"
+      ],
+      "description": "Application editor 向けに credential を写像した非機密メタデータ。平文・hash を露出しない (ApplicationClientSecretCredentialMetadata と同型)。"
+    },
+    "ProvisioningConnectionDeleted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId"
+      ],
+      "description": "管理者が ProvisioningConnection を削除した (ApplicationStatus と同じく行そのものを除去する hard delete)。"
+    },
+    "ProvisioningConnectionDisabled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId"
+      ],
+      "description": "管理者が ProvisioningConnection.status を disabled にした。配送を新規に生成しなくなる。"
+    },
+    "ProvisioningConnectionNotFoundError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定 application_id に有効な ProvisioningConnection が存在しない、または別テナントに属する (別テナントは未存在として扱う)。"
+    },
+    "ProvisioningConnectionQuarantineCleared": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId"
+      ],
+      "description": "管理者が ResumeProvisioningConnection で quarantine を解除した。SCL 化にあたり wi-45 のイベント一覧へ追加した (quarantine を解除する経路が無いと復旧不能になるため)。"
+    },
+    "ProvisioningConnectionRegistered": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId"
+      ],
+      "description": "管理者が Application へ ProvisioningConnection を新規登録した。"
+    },
+    "ProvisioningConnectionStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disabled"
+      ],
+      "description": "管理者が切り替える有効状態。ApplicationStatus と同様、削除は状態を持たず行を除去する (履歴は ProvisioningConnectionDeleted イベントに残る)。"
+    },
+    "ProvisioningConnectionUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId"
+      ],
+      "description": "管理者が ProvisioningConnection の設定 (credential 以外) を更新した。"
+    },
+    "ProvisioningCredentialInput": {
+      "type": "object",
+      "properties": {
+        "auth_method": {
+          "$ref": "#/$defs/ProvisioningAuthMethod"
+        },
+        "bearer_token": {
+          "type": "string",
+          "description": "auth_method=bearer_token のとき必須。"
+        },
+        "oauth2_token_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "auth_method=oauth2_client_credentials のとき必須。"
+        },
+        "oauth2_client_id": {
+          "type": "string"
+        },
+        "oauth2_client_secret": {
+          "type": "string"
+        },
+        "oauth2_scope": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "auth_method"
+      ],
+      "description": "RegisterProvisioningConnection / UpdateProvisioningConnection が受け取る書き込み専用 credential 入力。応答・監査ログ・エラーに値をそのまま含めない。"
+    },
+    "ProvisioningCredentialRotated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        },
+        "credentialId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "applicationId",
+        "credentialId"
+      ],
+      "description": "管理者が connection の credential を更新した。"
+    },
+    "ProvisioningDelivery": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "connection_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_type": {
+          "$ref": "#/$defs/ProvisioningSourceType"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "source_version": {
+          "type": "integer",
+          "description": "same-Tx capture が発行する単調増加カウンタ。out-of-order 配送の解決に使う。"
+        },
+        "operation": {
+          "$ref": "#/$defs/ProvisioningOperation"
+        },
+        "status": {
+          "$ref": "#/$defs/ProvisioningDeliveryStatus",
+          "default": "pending"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "dispatcher が enqueue 後に関連付ける Jobs.JobRef.id。"
+        },
+        "last_error": {
+          "type": "string",
+          "description": "直近の失敗の sanitised error。secret や属性値は含めない。"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "connection_id",
+        "source_type",
+        "source_id",
+        "source_version",
+        "operation",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "内部 lifecycle event 1 件分の配送単位。idempotency key\n(tenant_id, connection_id, source_type, source_id, source_version) は一意制約であり、\n同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs (wi-126)\nへ enqueue した後に関連付ける (未 enqueue の間は未設定)。\n"
+    },
+    "ProvisioningDeliveryNotFoundError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定 delivery_id の ProvisioningDelivery が存在しない、または指定 connection に属さない。"
+    },
+    "ProvisioningDeliveryNotRetryableError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "dead_letter 以外の状態の ProvisioningDelivery に対して RetryProvisioningDelivery が呼ばれた。"
+    },
+    "ProvisioningDeliveryStarted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "deliveryId": {
+          "type": "string"
+        },
+        "jobId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "connectionId",
+        "deliveryId",
+        "jobId"
+      ],
+      "description": "dispatcher が ProvisioningDelivery に Jobs.Job を関連付け配送を開始した (LifecycleWorkflowRunStarted と同型)。"
+    },
+    "ProvisioningDeliveryStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_flight",
+        "succeeded",
+        "dead_letter"
+      ],
+      "description": "ProvisioningDelivery.status の値集合。in_flight は dispatcher が Jobs.Job を関連付けてから\n終端に至るまでを表し、Jobs レベルの attempt retry 中も in_flight のまま保持する\n(WorkflowRunLifecycle と同じく、下位の retry loop をこの層の状態には反映しない)。\nfailed という非終端の中間状態は持たない — dead_letter は Job が max_attempts を\n使い切った時点で一度だけ到達する終端状態。\n"
+    },
+    "ProvisioningDeprovisionAction": {
+      "type": "string",
+      "enum": [
+        "deactivate",
+        "delete",
+        "none"
+      ],
+      "description": "deprovision trigger を下流へどう翻訳するか。"
+    },
+    "ProvisioningFeatureFlags": {
+      "type": "object",
+      "properties": {
+        "create_users": {
+          "type": "boolean",
+          "default": true
+        },
+        "update_users": {
+          "type": "boolean",
+          "default": true
+        },
+        "deactivate_users": {
+          "type": "boolean",
+          "default": true
+        },
+        "delete_users": {
+          "type": "boolean",
+          "default": false
+        },
+        "push_groups": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "create_users",
+        "update_users",
+        "deactivate_users",
+        "delete_users",
+        "push_groups"
+      ],
+      "description": "connection が下流へ行ってよい操作のトグル (Okta 準拠)。sync_password は out of scope。"
+    },
+    "ProvisioningGroupSelection": {
+      "type": "string",
+      "enum": [
+        "assigned_groups",
+        "explicit"
+      ],
+      "description": "push_groups 有効時に対象グループをどう選ぶか。"
+    },
+    "ProvisioningHealth": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "degraded",
+        "quarantined"
+      ],
+      "description": "配送エンジンから見た connection の健全性。quarantined は ResumeProvisioningConnection まで配送を停止する。"
+    },
+    "ProvisioningOperation": {
+      "type": "string",
+      "enum": [
+        "create",
+        "update",
+        "deactivate",
+        "delete",
+        "membership_add",
+        "membership_remove"
+      ],
+      "description": "ProvisioningDelivery が下流へ適用する操作。"
+    },
+    "ProvisioningScope": {
+      "type": "string",
+      "enum": [
+        "assigned_only",
+        "all_users"
+      ],
+      "description": "配送対象 subject の決め方。assigned_only は ApplicationAssignment を参照し、all_users はテナント全 User を対象にする上級オプション。"
+    },
+    "ProvisioningSourceType": {
+      "type": "string",
+      "enum": [
+        "user",
+        "group"
+      ],
+      "description": "ProvisioningDelivery / RemoteResourceLink が指す内部集約の種別。"
+    },
+    "ProvisioningSubjectNotInScopeError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "ProvisionOnDemand が指定した subject が connection の scope (assigned_only の場合は割当) に含まれない。"
+    },
     "RecoveryCode": {
       "type": "object",
       "properties": {
@@ -9547,6 +10302,57 @@
         "occurredAt"
       ],
       "description": "lifecycle を拒否終端へ進める event。"
+    },
+    "RemoteResourceLink": {
+      "type": "object",
+      "properties": {
+        "connection_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "source_type": {
+          "$ref": "#/$defs/ProvisioningSourceType"
+        },
+        "source_id": {
+          "type": "string",
+          "description": "idmagic 側の User.id または Group.id。"
+        },
+        "remote_id": {
+          "type": "string",
+          "description": "下流 SCIM resource の id。"
+        },
+        "external_id": {
+          "type": "string",
+          "description": "下流へ送出した externalId (既定は idmagic の source_id)。"
+        },
+        "etag": {
+          "type": "string",
+          "description": "capabilities.supports_etag が true のときだけ意味を持つ。"
+        },
+        "last_synced_version": {
+          "type": "integer",
+          "description": "最後に反映した source_version。out-of-order な配送をここで解決する。"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "connection_id",
+        "tenant_id",
+        "source_type",
+        "source_id",
+        "remote_id",
+        "external_id",
+        "last_synced_version",
+        "updated_at"
+      ],
+      "description": "idmagic の User/Group と下流 resource の相関の durable な記録。409/404 を冪等に解決するために保持する。"
     },
     "ReorderMyApplicationsRequest": {
       "type": "object",
@@ -12055,6 +12861,40 @@
       ],
       "description": "管理者または 猶予期間経過後の自動 purge がユーザーを Purge した。PII は anonymize 済みで、関連 aggregate は cascade 削除されている。reason は admin が任意に残せる自由記述 (自動 purge では auto_purge)。"
     },
+    "UserDeprovisioned": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "deliveryId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ProvisioningDeprovisionAction"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "connectionId",
+        "deliveryId",
+        "userId",
+        "action"
+      ],
+      "description": "user の deactivate/delete が下流へ反映され配送が succeeded に確定した。"
+    },
     "UserDisabled": {
       "type": "object",
       "properties": {
@@ -12257,6 +13097,78 @@
         "status"
       ],
       "description": "User の運用ライフサイクル属性。status は状態機械 UserLifecycle\n(states セクション) と一致する唯一の真実で、旧 disabled_at / deleted_at は\nstatus + status_changed_at に統合した。tombstone は status == Deleted。\n"
+    },
+    "UserProvisioned": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "deliveryId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "remoteId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "connectionId",
+        "deliveryId",
+        "userId",
+        "remoteId"
+      ],
+      "description": "user の create/update が下流へ反映され配送が succeeded に確定した。"
+    },
+    "UserProvisioningFailed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "deliveryId": {
+          "type": "string"
+        },
+        "sourceType": {
+          "$ref": "#/$defs/ProvisioningSourceType"
+        },
+        "sourceId": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "connectionId",
+        "deliveryId",
+        "sourceType",
+        "sourceId",
+        "error"
+      ],
+      "description": "user 向け配送が max_attempts を使い切り dead_letter に確定した (attempt ごとには発行しない)。group 向け配送の dead-letter でも同一イベントを用いる。"
     },
     "UserRequiredActionCleared": {
       "type": "object",

@@ -35,6 +35,8 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-applications': `アプリケーション | ${ADMIN}`,
   'admin-application-detail': `アプリケーション詳細 | ${ADMIN}`,
   'admin-application-edit': `アプリケーション編集 | ${ADMIN}`,
+  'admin-application-provisioning': `プロビジョニング | ${ADMIN}`,
+  'admin-provisioning': `プロビジョニング | ${ADMIN}`,
   'admin-groups': `グループ | ${ADMIN}`,
   'admin-group-detail': `グループ詳細 | ${ADMIN}`,
   'admin-group-create': `グループを追加 | ${ADMIN}`,

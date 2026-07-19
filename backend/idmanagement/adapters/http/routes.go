@@ -27,6 +27,7 @@ type Deps struct {
 	GroupRepo             idmports.GroupRepository
 	AgentRepo             idmports.AgentRepository
 	UserMutationCommitter idmports.UserMutationCommitter
+	ProvisioningNotifier  idmports.ProvisioningNotifier
 	JobRepo               jobsports.JobRepository
 	ClientRepo            oauthports.OAuth2ClientRepository
 	ScimRepo              scimports.ScimRepository

@@ -21,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -88,6 +89,7 @@ type Deps struct {
 	FederationSigner *samltoken.Signer
 	Application      application.Module
 	Jobs             jobs.Module
+	Provisioning     provisioning.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -313,6 +315,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		GroupRepo:             d.IdManagement.GroupRepo,
 		AgentRepo:             d.IdManagement.AgentRepo,
 		UserMutationCommitter: d.IdManagement.UserMutationCommitter,
+		ProvisioningNotifier:  d.IdManagement.ProvisioningNotifier,
 		ClientRepo:            d.OAuth2.ClientRepo,
 		ScimRepo:              d.Scim.Repo,
 		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,
@@ -356,4 +359,6 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
 	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit)
+
+	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo)
 }

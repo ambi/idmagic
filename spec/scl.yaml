@@ -275,6 +275,34 @@ context_map:
         uses:
           - TenantRef
         reason: seed request と実行対象はテナント境界を明示し、既存 tenant を越えて適用しない。
+  Provisioning:
+    description: "idmagic を SCIM 2.0 client にした outbound provisioning (下流 SaaS への\nuser/group push lifecycle management) を所有する。真実源は idmagic 側の User/Group、\n下流は mirror。connection は Application 1 件に対し最大 1 件、scope は既存\nApplicationAssignment を再利用する。Scim は inbound server 専用のままで、本 context とは\nprotocol を話す点以外ほぼ重ならない別 context。\n"
+    path: contexts/provisioning.yaml
+    publishes:
+      []
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: ProvisioningConnection・RemoteResourceLink・ProvisioningDelivery はテナント境界内に閉じる。
+      Application:
+        via: published_language
+        uses:
+          - ApplicationRef
+          - ApplicationAssignmentRef
+        reason: connection は Application に帰属し、scope=assigned_only は ApplicationAssignment を参照する。
+      IdManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - GroupRef
+        reason: 配送対象の User/Group を参照し、既定属性マッピングは User/Group の属性を写す。
+      Jobs:
+        via: published_language
+        uses:
+          - JobRef
+        reason: ProvisioningDelivery の配送は冪等・順序保証・retry 付きの durable job として実行する。
   IdGovernance:
     description: "identity ガバナンスの policy と orchestration を所有する。LifecycleWorkflow (JML 自動化) の\ndefinition・trigger 評価・WorkflowRun 実行・executor action を集約し、将来の IGA 機能\n(認証キャンペーン、アクセスリクエスト/承認、エンタイトルメント/SoD、JIT 特権昇格) の受け皿となる。\nidentity principal の record-of-truth は IdManagement が、Application 割当は Application が\n所有し、IdGovernance は User ライフサイクルイベントを購読し、冪等コマンド surface 経由で\nこれら record context の状態を書き換える。\n"
     path: contexts/identity-governance.yaml

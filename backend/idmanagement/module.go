@@ -20,4 +20,7 @@ type Module struct {
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装を注入する。nil のとき admin usecase は UserRepo.Save に fallback する。
 	UserMutationCommitter ports.UserMutationCommitter
+	// ProvisioningNotifier は outbound Provisioning (wi-45, ADR-128) の境界 port。
+	// nil のとき outbound provisioning は未配線として何もしない。
+	ProvisioningNotifier ports.ProvisioningNotifier
 }

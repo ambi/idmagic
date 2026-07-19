@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-18
+updated_at: 2026-07-19
 contexts:
   System:
     spec: spec/contexts/system.yaml
@@ -41,6 +41,9 @@ contexts:
   Scim:
     spec: spec/contexts/scim.yaml
     summary: "SCIM 2.0 inbound provisioning。"
+  Provisioning:
+    spec: spec/contexts/provisioning.yaml
+    summary: "SCIM 2.0 outbound provisioning (下流 SaaS への user/group push lifecycle management)。"
   Jobs:
     spec: spec/contexts/jobs.yaml
     summary: "durable asynchronous jobs。"
@@ -326,6 +329,7 @@ modules:
       - { module: jobs-ports, via: published_interface }
       - { module: jobs-usecases, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
@@ -636,6 +640,76 @@ modules:
       - { module: scim-usecases, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-kernel, via: binding }
+  provisioning-domain:
+    path: backend/provisioning/domain
+    responsibility: "Provisioning のドメインモデルと純粋な規則。"
+    context: Provisioning
+    layer: domain
+    role: published_interface
+  provisioning-ports:
+    path: backend/provisioning/ports
+    responsibility: "Provisioning の公開 port と外界への抽象。"
+    context: Provisioning
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: provisioning-domain, via: published_interface }
+  provisioning-scim:
+    path: backend/provisioning/scim
+    responsibility: "SCIM プロトコル別 outbound feature slice (ADR-128 決定2)。"
+    context: Provisioning
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+  provisioning-usecases:
+    path: backend/provisioning/usecases
+    responsibility: "Provisioning のユースケース (capture/dispatch/deliver/quarantine と admin 操作)。"
+    context: Provisioning
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: application-domain, via: published_interface }
+      - { module: application-ports, via: published_interface }
+      - { module: idmanagement-ports, via: published_interface }
+      - { module: jobs-domain, via: published_interface }
+      - { module: jobs-usecases, via: published_interface }
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  provisioning-adapters:
+    path: backend/provisioning/adapters
+    responsibility: "Provisioning の HTTP・永続化・IdManagement 属性取得 adapter。"
+    context: Provisioning
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: application-ports, via: binding }
+      - { module: http-support, via: binding }
+      - { module: idmanagement-domain, via: binding }
+      - { module: idmanagement-ports, via: binding }
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+      - { module: provisioning-usecases, via: published_interface }
+      - { module: shared-adapters, via: binding }
+  provisioning-composition:
+    path: backend/provisioning/
+    responsibility: "Provisioning の adapter と port を束ねる composition module (Module 型、cross-context notifier/job handler の配線)。"
+    context: Provisioning
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - { module: application-ports, via: published_interface }
+      - { module: http-support, via: composition_root }
+      - { module: idmanagement-ports, via: published_interface }
+      - { module: jobs-ports, via: published_interface }
+      - { module: jobs-usecases, via: published_interface }
+      - { module: provisioning-adapters, via: composition_root }
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+      - { module: provisioning-scim, via: published_interface }
+      - { module: provisioning-usecases, via: published_interface }
   tenancy-domain:
     path: backend/tenancy/domain
 
@@ -1053,6 +1127,7 @@ modules:
       - { module: oauth2-adapters, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
       - { module: oauth2-public, via: composition_root }
+      - { module: provisioning-composition, via: composition_root }
       - { module: saml-public, via: composition_root }
       - { module: scim-public, via: composition_root }
       - { module: shared-adapters, via: technical_shared }
@@ -1109,6 +1184,25 @@ modules:
       - { module: shared-services, via: technical_shared }
       - { module: signingkeys-usecases, via: composition_root }
       - { module: tenancy-public, via: composition_root }
+  worker:
+    path: backend/cmd/idmagic-worker
+    responsibility: "durable job queue の claim・handler 実行を担う API 分離 worker composition root (ADR-099)。"
+    context: System
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - { module: bootstrap, via: composition_root }
+      - { module: idgovernance-usecases, via: composition_root }
+      - { module: idmanagement-usecases, via: composition_root }
+      - { module: jobs-domain, via: composition_root }
+      - { module: jobs-public, via: composition_root }
+      - { module: jobs-usecases, via: composition_root }
+      - { module: provisioning-adapters, via: composition_root }
+      - { module: provisioning-composition, via: composition_root }
+      - { module: provisioning-usecases, via: composition_root }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-services, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
   bootstrap:
     path: backend/cmd/internal/bootstrap
 
@@ -1148,6 +1242,9 @@ modules:
       - { module: oauth2-domain, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
       - { module: oauth2-public, via: composition_root }
+      - { module: provisioning-adapters, via: composition_root }
+      - { module: provisioning-composition, via: composition_root }
+      - { module: provisioning-usecases, via: composition_root }
       - { module: saml-adapters, via: composition_root }
       - { module: saml-domain, via: composition_root }
       - { module: saml-ports, via: composition_root }
@@ -1411,7 +1508,7 @@ runtime_units:
   idmagic-worker:
     kind: worker
     entrypoint: backend/cmd/idmagic-worker/main.go
-    modules: [backend, jobs-usecases, jobs-adapters]
+    modules: [worker, bootstrap, jobs-usecases, jobs-adapters, provisioning-usecases, provisioning-adapters]
   idmagic-batch:
     kind: batch
     entrypoint: backend/cmd/idmagic-batch/main.go
@@ -1442,6 +1539,14 @@ complexity:
       metric: source_lines
       limit: 800
   debts:
+    - id: wi45-ui-page-lines-admin-application-detail-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-applications/AdminApplicationDetailPage.tsx
+      ceiling: 410
+      owner: maintainers
+      reason: "wi-45 T007b でプロビジョニング導線ボタンを追加し、既に上限ちょうどだった 400 行を 2 行超過。ProvisioningNavButton は既に AdminApplicationProvisioningShared.tsx へ抽出済みで追加分はこれ以上圧縮できない。wi-234 の list/detail 分割と合わせて解消する。"
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
     - id: wi234-ui-page-lines-account-profile-page
       budget: ui-page-lines
       path: frontend/src/features/account/AccountProfilePage.tsx
@@ -1629,6 +1734,7 @@ complexity:
 - context、RA layer、module dependency、runtime、実 import、complexity ceiling を検査可能な地図として保つ方針は [ADR-116](decisions/ADR-116-executable-architecture-map.md) に従う。
 - LifecycleWorkflow を IdManagement の record-of-truth から IdGovernance の policy/orchestration へ分離する境界は [ADR-117](decisions/ADR-117-extract-identity-governance-context.md) に従う。
 - 環境別 seed の policy と execution orchestration は record context から分離し、各 context の公開 command surface を介して適用する ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md))。
+- Outbound provisioning (SCIM client) は inbound の `Scim` (server) とは独立の `Provisioning` context とし、protocol 非依存コア + protocol 別 feature slice で構成する。配送は既存 outbox を観測せず、呼び出し元の Postgres トランザクション内で `ProvisioningDelivery` を書く same-Tx capture で確定する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。
 
 ## 読む順序
 
@@ -1672,6 +1778,7 @@ SCL context と Go package の主な対応は次の通り。
 | `Audit` | `backend/audit` | authentication / identity-management / oauth2 / tenancy / signing-keys / application / saml / wsfederation を横断する監査イベントの read model。検索属性 registry、PII 変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | `backend/claimmapping` | protocol-neutral な claim release policy、identity 属性 projection、fail-closed validation。 |
 | `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。 |
+| `Provisioning` | `backend/provisioning`（未実装、後続タスクで新設） | SCIM 2.0 outbound provisioning。下流 SaaS への user/group push lifecycle management。真実源は idmagic の User/Group、下流は mirror。protocol 非依存コア + protocol 別 feature slice (`provisioning/scim` など) で構成する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用非同期ジョブ基盤。durable job queue (PostgreSQL SKIP LOCKED リース)、worker runtime、handler registry を所有する。業務ロジックは呼び出し元 context の usecase に残る。管理 UI/API は `wi-157`。 |
 | `Seeding` | `backend/seeding` | 環境別 profile、dry-run、redacted plan、適用 policy を所有する。業務データとその永続化は各 record context に残す。 |
 | `SigningKeys` | `backend/signingkeys` | tenant-scoped 鍵 metadata、rotation、repository port、管理/JWKS HTTP、memory/PostgreSQL/Vault adapter。JWT/XML wire signer は protocol/technical adapter に残す。 |

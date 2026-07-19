@@ -19,6 +19,8 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/provisioning"
+	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/scim"
@@ -48,6 +50,12 @@ func assembleMemory() (*Dependencies, error) {
 		UserRepo:     userRepo,
 		RunRepo:      workflowRunRepo,
 	}
+	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
+	provisioningModule := provisioning.Module{
+		ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
+		RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
+		DeliveryRepo:   provisioningmemory.NewProvisioningDeliveryRepository(),
+	}
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenancymemory.NewTenantRepository(),
@@ -60,6 +68,7 @@ func assembleMemory() (*Dependencies, error) {
 			GroupRepo:             idmmemory.NewGroupRepository(),
 			AgentRepo:             idmmemory.NewAgentRepository(),
 			UserMutationCommitter: userMutationCommitter,
+			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},
 		IdGovernance: idgovernance.Module{
 			LifecycleWorkflowRepo:    workflowRepo,
@@ -108,14 +117,16 @@ func assembleMemory() (*Dependencies, error) {
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
+			AssignmentRepo:          assignmentRepo,
 			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
 			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
 			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
+			ProvisioningNotifier:    provisioningModule.AssignmentNotifier(assignmentRepo),
 		},
-		Close:      func() {},
-		DbPing:     func(c context.Context) error { return nil },
-		ValkeyPing: func(c context.Context) error { return nil },
+		Provisioning: provisioningModule,
+		Close:        func() {},
+		DbPing:       func(c context.Context) error { return nil },
+		ValkeyPing:   func(c context.Context) error { return nil },
 	}, nil
 }

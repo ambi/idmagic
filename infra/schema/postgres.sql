@@ -872,3 +872,83 @@ CREATE TABLE lifecycle_workflow_steps (
 );
 
 CREATE INDEX lifecycle_workflow_runs_unenqueued_idx ON lifecycle_workflow_runs (triggered_at) WHERE status = 'queued' AND job_id IS NULL;
+
+-- Provisioning: outbound SCIM provisioning (ADR-128). Protocol-agnostic core;
+-- protocol-specific wire clients (backend/provisioning/scim/ etc.) do not add
+-- extra tables, they call these repositories. credential_secret is a dev/test
+-- grade plaintext column (no envelope encryption yet, see wi-97); production
+-- deployments must not rely on it as-is, matching the signingkeys Postgres
+-- KeyStore's own dev/test disclaimer.
+CREATE TABLE provisioning_connections (
+    application_id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
+    base_url TEXT NOT NULL,
+    credential_id UUID NOT NULL,
+    auth_method TEXT NOT NULL CHECK (auth_method IN ('bearer_token', 'oauth2_client_credentials')),
+    credential_secret TEXT NOT NULL,
+    credential_created_at TIMESTAMPTZ NOT NULL,
+    credential_rotated_at TIMESTAMPTZ,
+    capabilities JSONB,
+    feature_flags JSONB NOT NULL,
+    scope TEXT NOT NULL CHECK (scope IN ('assigned_only', 'all_users')),
+    group_push JSONB,
+    attribute_mappings JSONB NOT NULL DEFAULT '[]'::jsonb,
+    matching JSONB NOT NULL,
+    deprovision_policy JSONB NOT NULL,
+    rate_limit_per_minute INT NOT NULL DEFAULT 60,
+    max_attempts INT NOT NULL DEFAULT 8,
+    notification_email TEXT,
+    quarantine_after_consecutive_failures INT NOT NULL DEFAULT 10,
+    health TEXT NOT NULL CHECK (health IN ('ok', 'degraded', 'quarantined')),
+    consecutive_failure_count INT NOT NULL DEFAULT 0,
+    last_full_sync_at TIMESTAMPTZ,
+    quarantined_at TIMESTAMPTZ,
+    quarantine_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT provisioning_connections_application_fkey
+        FOREIGN KEY (application_id) REFERENCES applications(application_id) ON DELETE CASCADE,
+    CONSTRAINT provisioning_connections_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT provisioning_connections_quarantine_check
+        CHECK ((health = 'quarantined') = (quarantined_at IS NOT NULL))
+);
+
+CREATE TABLE provisioning_remote_links (
+    connection_id UUID NOT NULL,
+    tenant_id UUID NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('user', 'group')),
+    source_id UUID NOT NULL,
+    remote_id TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    etag TEXT,
+    last_synced_version BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (connection_id, source_type, source_id),
+    CONSTRAINT provisioning_remote_links_connection_fkey
+        FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE
+);
+
+CREATE TABLE provisioning_deliveries (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    connection_id UUID NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('user', 'group')),
+    source_id UUID NOT NULL,
+    source_version BIGINT NOT NULL CHECK (source_version >= 1),
+    operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'deactivate', 'delete', 'membership_add', 'membership_remove')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'in_flight', 'succeeded', 'dead_letter')),
+    job_id UUID,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT provisioning_deliveries_connection_fkey
+        FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
+    CONSTRAINT provisioning_deliveries_idempotency_unique
+        UNIQUE (tenant_id, connection_id, source_type, source_id, source_version)
+);
+
+CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
+CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC);

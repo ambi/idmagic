@@ -191,6 +191,7 @@ func Run() error {
 		FederationSigner: federationSigner,
 		Application:      deps.Application,
 		Jobs:             deps.Jobs,
+		Provisioning:     deps.Provisioning,
 	})
 
 	// 起動準備がすべて完了したので、startupComplete を true に設定する

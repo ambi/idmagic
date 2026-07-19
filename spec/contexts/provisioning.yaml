@@ -1,0 +1,1382 @@
+# idmagic Provisioning — SCL
+# wi-45: idmagic を SCIM 2.0 client にし、下流 SaaS へ user/group を push する outbound
+# lifecycle management を実装する。ADR-128 の決定:
+#   - outbound を独立 context として切り出す (Scim は inbound server 専用のまま)。
+#   - context 内部は protocol 非依存コア (本ファイル) + protocol 別 feature slice
+#     (backend/provisioning/scim/ など) で構成する。SCL は protocol 非依存の契約だけを持ち、
+#     SCIM wire 変換は Go adapter 層の実装詳細として本ファイルには現れない。
+#   - 配送は既存 outbox を観測せず、呼び出し元 (IdManagement/Application) の
+#     Postgres トランザクション内で ProvisioningDelivery 行を書く same-Tx capture で確定する
+#     (IdGovernance の UserWorkflowCapture と同型)。この capture は Go adapter port であり、
+#     SCL interfaces には現れない (IdGovernance の前例と同じ)。
+
+system: idmagic
+spec_version: "3.0"
+context: Provisioning
+glossary:
+  ProvisioningConnection:
+    definition: Application 1 件に対して最大 1 件だけ存在する outbound provisioning の設定。接続先 base_url・認証・機能トグル・scope・属性マッピング・deprovision policy・信頼性設定を束ねる。
+    aliases:
+      - connection
+      - 接続
+  RemoteResourceLink:
+    definition: idmagic の User/Group と、下流 SCIM service provider 上の resource (remote id・externalId・etag) の相関を保持する entity。409 (既存衝突) は match 属性で養子縁組し、404 (消失) は再作成して更新する。
+    aliases:
+      - remote link
+      - 相関
+  ProvisioningDelivery:
+    definition: 内部の lifecycle event 1 件を下流へ反映するための配送単位。idempotency key (tenant_id, connection_id, source_type, source_id, source_version) で重複 enqueue を no-op にする。実行は Jobs (wi-126) 上の Job に委譲する。
+    aliases:
+      - delivery
+      - 配送
+  Deprovision:
+    definition: unassign・disable・delete という内部の lifecycle event を、下流での deactivate・delete・none のいずれかへ翻訳すること。翻訳規則は DeprovisionPolicy が持つ。
+  Grace Period:
+    definition: delete アクションを即時実行せず、DeprovisionPolicy.grace_period_days の経過後に purge する猶予期間。期間内に対象が scope へ再度入れば取り消す。
+    aliases:
+      - grace period
+      - 猶予期間
+  Accidental Deletion Guard:
+    definition: 1 回の sync で deactivate/delete 対象が accidental_deletion_count_threshold を超えたら実行せず connection を quarantine する誤削除防止策。
+    aliases:
+      - 誤削除ガード
+  Quarantine:
+    definition: 連続失敗または誤削除ガード超過により配送を停止した ProvisioningConnection.health の状態。管理者が ResumeProvisioningConnection で解除するまで再開しない。
+    aliases:
+      - quarantine
+      - 隔離
+  On-Demand Provision:
+    definition: 管理者が単一 subject を指定し、即時に試験配送する手動運用。
+  Full Resync:
+    definition: 管理者が connection の scope 内 subject 全件を再走査し、下流の状態を idmagic の状態へ収束させる手動運用。
+  Mirror:
+    definition: 下流 SaaS 上の resource が idmagic を真実源とする射影であり、下流での手動変更は次回配送で上書きされること。
+  Push Groups:
+    definition: ProvisioningFeatureFlags.push_groups が有効なとき、Group と membership を下流へ配送する機能。
+  System:
+    definition: Provisioning の配送エンジンそのもの。人間の操作者を伴わない技術的主体を指す。
+models:
+  # --- published language stubs (他 context が所有する真実の最小写像) ---
+  Application:
+    kind: entity
+    description: Application context が所有する published stub。ProvisioningConnection は Application 1 件に対し最大 1 件。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+  AssignmentSubjectType:
+    kind: enum
+    description: Application context が所有する定義の published language stub。
+    values:
+      - user
+      - group
+  ApplicationAssignment:
+    kind: entity
+    description: Application context が所有する published stub。scope=assigned_only の対象範囲解決に用いる。
+    identity:
+      - application_id
+      - subject_type
+      - subject_id
+    fields:
+      application_id:
+        type: String
+      subject_type:
+        type: AssignmentSubjectType
+      subject_id:
+        type: String
+  UserStatus:
+    kind: enum
+    description: IdManagement.UserStatus の published language stub。active 判定と disable trigger の評価にのみ用いる。
+    values:
+      - Active
+      - Disabled
+      - PendingDeletion
+      - Deleted
+      - Locked
+      - Staged
+      - Suspended
+  User:
+    kind: entity
+    description: IdManagement が publish する identity principal を、既定属性マッピングの解決に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      preferred_username:
+        type: String
+      name:
+        type: String
+        optional: true
+      given_name:
+        type: String
+        optional: true
+      family_name:
+        type: String
+        optional: true
+      email:
+        type: String
+        optional: true
+      status:
+        type: UserStatus
+  Group:
+    kind: entity
+    description: IdManagement が publish する Group の published language stub。既定属性マッピングの解決にのみ用いる。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      name:
+        type: String
+  # --- errors ---
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値・重複等がある。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: 認証済みだが認可条件を満たさない。OAuth2 context が定義する共通 error の published language stub。
+  ProvisioningConnectionNotFoundError:
+    kind: error
+    description: 指定 application_id に有効な ProvisioningConnection が存在しない、または別テナントに属する (別テナントは未存在として扱う)。
+  ProvisioningConnectionAlreadyExistsError:
+    kind: error
+    description: 指定 Application に既に ProvisioningConnection が存在する (1 Application 1 connection の一意制約)。
+  ProvisioningDeliveryNotFoundError:
+    kind: error
+    description: 指定 delivery_id の ProvisioningDelivery が存在しない、または指定 connection に属さない。
+  ProvisioningDeliveryNotRetryableError:
+    kind: error
+    description: dead_letter 以外の状態の ProvisioningDelivery に対して RetryProvisioningDelivery が呼ばれた。
+  ProvisioningSubjectNotInScopeError:
+    kind: error
+    description: ProvisionOnDemand が指定した subject が connection の scope (assigned_only の場合は割当) に含まれない。
+  # --- enums ---
+  ProvisioningAuthMethod:
+    kind: enum
+    description: 下流 SCIM service provider への認証方式。
+    values:
+      - bearer_token
+      - oauth2_client_credentials
+  ProvisioningScope:
+    kind: enum
+    description: 配送対象 subject の決め方。assigned_only は ApplicationAssignment を参照し、all_users はテナント全 User を対象にする上級オプション。
+    values:
+      - assigned_only
+      - all_users
+  ProvisioningConnectionStatus:
+    kind: enum
+    description: 管理者が切り替える有効状態。ApplicationStatus と同様、削除は状態を持たず行を除去する (履歴は ProvisioningConnectionDeleted イベントに残る)。
+    values:
+      - active
+      - disabled
+  ProvisioningHealth:
+    kind: enum
+    description: 配送エンジンから見た connection の健全性。quarantined は ResumeProvisioningConnection まで配送を停止する。
+    values:
+      - ok
+      - degraded
+      - quarantined
+  ProvisioningGroupSelection:
+    kind: enum
+    description: push_groups 有効時に対象グループをどう選ぶか。
+    values:
+      - assigned_groups
+      - explicit
+  AttributeSourceKind:
+    kind: enum
+    description: AttributeMappingRule の値の供給元。expression (関数評価) は初期版の対象外とし、直参照と固定値のみ許す。
+    values:
+      - attribute
+      - constant
+  AttributeApplyOn:
+    kind: enum
+    description: AttributeMappingRule をいつ適用するか。create_only は下流での手動変更を尊重したい項目に使う。
+    values:
+      - create_and_update
+      - create_only
+  ProvisioningDeprovisionAction:
+    kind: enum
+    description: deprovision trigger を下流へどう翻訳するか。
+    values:
+      - deactivate
+      - delete
+      - none
+  ProvisioningSourceType:
+    kind: enum
+    description: ProvisioningDelivery / RemoteResourceLink が指す内部集約の種別。
+    values:
+      - user
+      - group
+  ProvisioningOperation:
+    kind: enum
+    description: ProvisioningDelivery が下流へ適用する操作。
+    values:
+      - create
+      - update
+      - deactivate
+      - delete
+      - membership_add
+      - membership_remove
+  ProvisioningDeliveryStatus:
+    kind: enum
+    description: "ProvisioningDelivery.status の値集合。in_flight は dispatcher が Jobs.Job を関連付けてから\n終端に至るまでを表し、Jobs レベルの attempt retry 中も in_flight のまま保持する\n(WorkflowRunLifecycle と同じく、下位の retry loop をこの層の状態には反映しない)。\nfailed という非終端の中間状態は持たない — dead_letter は Job が max_attempts を\n使い切った時点で一度だけ到達する終端状態。\n"
+    values:
+      - pending
+      - in_flight
+      - succeeded
+      - dead_letter
+  # --- value objects ---
+  ProvisioningFeatureFlags:
+    kind: value_object
+    description: connection が下流へ行ってよい操作のトグル (Okta 準拠)。sync_password は out of scope。
+    fields:
+      create_users:
+        type: Boolean
+        default: true
+      update_users:
+        type: Boolean
+        default: true
+      deactivate_users:
+        type: Boolean
+        default: true
+      delete_users:
+        type: Boolean
+        default: false
+      push_groups:
+        type: Boolean
+        default: false
+  ProvisioningCapabilities:
+    kind: value_object
+    description: TestProvisioningConnection の discovery (下流 /ServiceProviderConfig) がキャッシュする read-only capability。PATCH 非対応先は PUT にフォールバックする判断に使う。
+    fields:
+      supports_patch:
+        type: Boolean
+      supports_bulk:
+        type: Boolean
+      supports_filter:
+        type: Boolean
+      supports_etag:
+        type: Boolean
+      supports_sort:
+        type: Boolean
+      discovered_at:
+        type: DateTime
+  ProvisioningConnectionCredentialMetadata:
+    kind: value_object
+    description: Application editor 向けに credential を写像した非機密メタデータ。平文・hash を露出しない (ApplicationClientSecretCredentialMetadata と同型)。
+    fields:
+      credential_id:
+        type: UUID
+      auth_method:
+        type: ProvisioningAuthMethod
+      created_at:
+        type: DateTime
+      rotated_at:
+        type: DateTime
+        optional: true
+  ProvisioningCredentialInput:
+    kind: value_object
+    description: RegisterProvisioningConnection / UpdateProvisioningConnection が受け取る書き込み専用 credential 入力。応答・監査ログ・エラーに値をそのまま含めない。
+    fields:
+      auth_method:
+        type: ProvisioningAuthMethod
+      bearer_token:
+        type: String
+        optional: true
+        annotations:
+          sensitive: true
+        description: auth_method=bearer_token のとき必須。
+      oauth2_token_url:
+        type: URL
+        optional: true
+        description: auth_method=oauth2_client_credentials のとき必須。
+      oauth2_client_id:
+        type: String
+        optional: true
+      oauth2_client_secret:
+        type: String
+        optional: true
+        annotations:
+          sensitive: true
+      oauth2_scope:
+        type: String
+        optional: true
+  GroupPushConfig:
+    kind: value_object
+    description: push_groups 有効時の対象グループ選択と表示名の供給元。
+    fields:
+      selection:
+        type: ProvisioningGroupSelection
+        default: assigned_groups
+      explicit_group_ids:
+        type: "String[]"
+        optional: true
+        description: selection=explicit のとき使う明示的な Group.id 一覧。
+      display_name_source:
+        type: String
+        default: name
+        description: 下流 displayName に写す idmagic Group 属性キー。
+  AttributeMappingRule:
+    kind: value_object
+    description: 1 出力属性の宣言的写像。target_path は SCIM 属性パス (単純・複合・多値フィルタ・enterprise 拡張を許す)。
+    fields:
+      target_path:
+        type: String
+        constraints:
+          - non_empty
+      source_kind:
+        type: AttributeSourceKind
+      source_key:
+        type: String
+        optional: true
+        description: source_kind=attribute のとき必須。idmagic 側の属性キー。
+      constant_value:
+        type: JSON
+        optional: true
+        description: source_kind=constant のとき必須。
+      apply_on:
+        type: AttributeApplyOn
+        default: create_and_update
+      required:
+        type: Boolean
+        default: false
+        description: true のとき値が解決不能なら配送を fail-closed で失敗させる。
+      default_value:
+        type: JSON
+        optional: true
+        description: source が空のとき使う既定値。
+  MatchingRule:
+    kind: value_object
+    description: 409 (既存衝突) 時に下流の既存 resource を養子縁組するための比較属性。externalId 相関 (idmagic の id) が主で、このルールは externalId 未設定の既存 resource との衝突解決に使う二次手段。
+    fields:
+      conflict_match_attribute:
+        type: String
+        default: userName
+  DeprovisionPolicy:
+    kind: value_object
+    description: "deprovision trigger を下流アクションへ翻訳する規則。user disable → deactivate は固定 (設定不可)。\ngroup membership 削除 → PATCH members remove も固定。既定は破壊性が低い側に倒す。\n"
+    fields:
+      on_unassign:
+        type: ProvisioningDeprovisionAction
+        default: deactivate
+        description: Application からの unassign trigger。
+      on_delete:
+        type: ProvisioningDeprovisionAction
+        default: deactivate
+        description: user soft-delete/delete trigger。delete を選ぶと grace_period_days 後に purge する。
+      on_group_deleted_or_unassigned:
+        type: ProvisioningDeprovisionAction
+        default: none
+        constraints:
+          - "!(on_group_deleted_or_unassigned == 'deactivate')"
+        description: group 削除/unassign trigger。group に deactivate 相当は無いため delete/none のみ許す。
+      grace_period_days:
+        type: Integer
+        default: 0
+        constraints:
+          - minimum: 0
+      accidental_deletion_count_threshold:
+        type: Integer
+        optional: true
+        description: 1 回の sync でこの件数を超える deactivate/delete が生じたら実行せず quarantine する。
+      accidental_deletion_percentage_threshold:
+        type: Integer
+        optional: true
+        constraints:
+          - minimum: 1
+          - maximum: 100
+  # --- aggregates ---
+  ProvisioningConnection:
+    kind: entity
+    description: "Application 1 件に対し最大 1 件だけ存在する outbound provisioning 設定。真実源は\nidmagic 側の User/Group aggregate、下流は mirror。scope は既存 ApplicationAssignment を再利用し、\n専用の割当 model は持たない。identity を application_id とすることで 1 Application 1 connection の\n一意制約を構造的に表す。\n"
+    identity: application_id
+    fields:
+      application_id:
+        type: UUID
+      tenant_id:
+        type: String
+      status:
+        type: ProvisioningConnectionStatus
+        default: active
+      base_url:
+        type: URL
+        description: 下流 SCIM v2 base URL。https 必須、内部/リンクローカル IP・任意 redirect を拒否する。
+      credential:
+        type: ProvisioningConnectionCredentialMetadata
+      capabilities:
+        type: ProvisioningCapabilities
+        optional: true
+        description: TestProvisioningConnection の discovery でキャッシュする。未実行の間は未設定。
+      feature_flags:
+        type: ProvisioningFeatureFlags
+      scope:
+        type: ProvisioningScope
+        default: assigned_only
+      group_push:
+        type: GroupPushConfig
+        optional: true
+        description: feature_flags.push_groups が有効なときのみ意味を持つ。
+      attribute_mappings:
+        type: "AttributeMappingRule[]"
+        description: 登録時に SCIM core User の既定マッピングを seed する。
+      matching:
+        type: MatchingRule
+      deprovision_policy:
+        type: DeprovisionPolicy
+      rate_limit_per_minute:
+        type: Integer
+        default: 60
+        constraints:
+          - minimum: 1
+      max_attempts:
+        type: Integer
+        default: 8
+        constraints:
+          - minimum: 1
+      notification_email:
+        type: String
+        optional: true
+        description: 失敗・quarantine の通知先。
+      quarantine_after_consecutive_failures:
+        type: Integer
+        default: 10
+        constraints:
+          - minimum: 1
+      health:
+        type: ProvisioningHealth
+        default: ok
+      consecutive_failure_count:
+        type: Integer
+        default: 0
+        description: quarantine 判定用の内部カウンタ。配送成功でゼロへ戻る。
+      last_full_sync_at:
+        type: DateTime
+        optional: true
+      quarantined_at:
+        type: DateTime
+        optional: true
+      quarantine_reason:
+        type: String
+        optional: true
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+    constraints:
+      - "health == 'quarantined' ? quarantined_at != null : quarantined_at == null"
+  RemoteResourceLink:
+    kind: entity
+    description: idmagic の User/Group と下流 resource の相関の durable な記録。409/404 を冪等に解決するために保持する。
+    identity:
+      - connection_id
+      - source_type
+      - source_id
+    fields:
+      connection_id:
+        type: UUID
+      tenant_id:
+        type: String
+      source_type:
+        type: ProvisioningSourceType
+      source_id:
+        type: String
+        description: idmagic 側の User.id または Group.id。
+      remote_id:
+        type: String
+        description: 下流 SCIM resource の id。
+      external_id:
+        type: String
+        description: 下流へ送出した externalId (既定は idmagic の source_id)。
+      etag:
+        type: String
+        optional: true
+        description: capabilities.supports_etag が true のときだけ意味を持つ。
+      last_synced_version:
+        type: Integer
+        description: 最後に反映した source_version。out-of-order な配送をここで解決する。
+      updated_at:
+        type: DateTime
+  ProvisioningDelivery:
+    kind: entity
+    description: "内部 lifecycle event 1 件分の配送単位。idempotency key\n(tenant_id, connection_id, source_type, source_id, source_version) は一意制約であり、\n同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs (wi-126)\nへ enqueue した後に関連付ける (未 enqueue の間は未設定)。\n"
+    identity: id
+    fields:
+      id:
+        type: UUID
+      tenant_id:
+        type: String
+      connection_id:
+        type: UUID
+      source_type:
+        type: ProvisioningSourceType
+      source_id:
+        type: String
+      source_version:
+        type: Integer
+        description: same-Tx capture が発行する単調増加カウンタ。out-of-order 配送の解決に使う。
+      operation:
+        type: ProvisioningOperation
+      status:
+        type: ProvisioningDeliveryStatus
+        default: pending
+      job_id:
+        type: String
+        optional: true
+        description: dispatcher が enqueue 後に関連付ける Jobs.JobRef.id。
+      last_error:
+        type: String
+        optional: true
+        description: 直近の失敗の sanitised error。secret や属性値は含めない。
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+      completed_at:
+        type: DateTime
+        optional: true
+  # --- events ---
+  ProvisioningConnectionRegistered:
+    kind: event
+    description: 管理者が Application へ ProvisioningConnection を新規登録した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+  ProvisioningConnectionUpdated:
+    kind: event
+    description: 管理者が ProvisioningConnection の設定 (credential 以外) を更新した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+  ProvisioningConnectionDisabled:
+    kind: event
+    description: 管理者が ProvisioningConnection.status を disabled にした。配送を新規に生成しなくなる。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+  ProvisioningConnectionDeleted:
+    kind: event
+    description: 管理者が ProvisioningConnection を削除した (ApplicationStatus と同じく行そのものを除去する hard delete)。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+  ProvisioningCredentialRotated:
+    kind: event
+    description: 管理者が connection の credential を更新した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+      credentialId:
+        type: UUID
+  ProvisioningDeliveryStarted:
+    kind: event
+    description: dispatcher が ProvisioningDelivery に Jobs.Job を関連付け配送を開始した (LifecycleWorkflowRunStarted と同型)。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      connectionId:
+        type: String
+      deliveryId:
+        type: String
+      jobId:
+        type: String
+  UserProvisioned:
+    kind: event
+    description: user の create/update が下流へ反映され配送が succeeded に確定した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      connectionId:
+        type: String
+      deliveryId:
+        type: String
+      userId:
+        type: String
+      remoteId:
+        type: String
+  UserDeprovisioned:
+    kind: event
+    description: user の deactivate/delete が下流へ反映され配送が succeeded に確定した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      connectionId:
+        type: String
+      deliveryId:
+        type: String
+      userId:
+        type: String
+      action:
+        type: ProvisioningDeprovisionAction
+  UserProvisioningFailed:
+    kind: event
+    description: user 向け配送が max_attempts を使い切り dead_letter に確定した (attempt ごとには発行しない)。group 向け配送の dead-letter でも同一イベントを用いる。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      connectionId:
+        type: String
+      deliveryId:
+        type: String
+      sourceType:
+        type: ProvisioningSourceType
+      sourceId:
+        type: String
+      error:
+        type: String
+  GroupPushed:
+    kind: event
+    description: group の create/update/deactivate/delete が下流へ反映され配送が succeeded に確定した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      connectionId:
+        type: String
+      deliveryId:
+        type: String
+      groupId:
+        type: String
+      remoteId:
+        type: String
+  GroupMembershipPushed:
+    kind: event
+    description: group membership の変更が下流へ PATCH members として反映され配送が succeeded に確定した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      connectionId:
+        type: String
+      deliveryId:
+        type: String
+      groupId:
+        type: String
+  ConnectionQuarantined:
+    kind: event
+    description: 連続失敗または誤削除ガード超過により ProvisioningConnection.health が quarantined になった。以後の配送を生成しない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+      reason:
+        type: String
+      consecutiveFailures:
+        type: Integer
+  ProvisioningConnectionQuarantineCleared:
+    kind: event
+    description: 管理者が ResumeProvisioningConnection で quarantine を解除した。SCL 化にあたり wi-45 のイベント一覧へ追加した (quarantine を解除する経路が無いと復旧不能になるため)。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+  FullResyncCompleted:
+    kind: event
+    description: StartFullResync が対象にした scope 内 subject 全件の収束が完了した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      applicationId:
+        type: String
+      totalSubjects:
+        type: Integer
+      succeededCount:
+        type: Integer
+      failedCount:
+        type: Integer
+states:
+  ProvisioningDeliveryLifecycle:
+    description: "ProvisioningDelivery.status の状態機械。pending で作成され、dispatcher が Jobs.Job を\n関連付けて in_flight に遷移する。Jobs レベルの attempt retry 中は in_flight のまま保持し\n(WorkflowRunLifecycle と同じ扱い)、succeeded または dead_letter で終端する。dead_letter からは\nRetryProvisioningDelivery が pending へ戻す (管理者操作であり本状態機械の transition としては\n表さない — 新しい delivery 行の再作成に相当する運用のため RetryProvisioningDelivery の ensures で扱う)。\n"
+    target: ProvisioningDelivery
+    initial: pending
+    terminal:
+      - succeeded
+      - dead_letter
+    transitions:
+      - from: pending
+        event: ProvisioningDeliveryStarted
+        to: in_flight
+      - from: in_flight
+        event: UserProvisioned
+        to: succeeded
+        guard: source_type == 'user'
+      - from: in_flight
+        event: UserDeprovisioned
+        to: succeeded
+        guard: source_type == 'user'
+      - from: in_flight
+        event: GroupPushed
+        to: succeeded
+        guard: source_type == 'group'
+      - from: in_flight
+        event: GroupMembershipPushed
+        to: succeeded
+        guard: source_type == 'group'
+      - from: in_flight
+        event: UserProvisioningFailed
+        to: dead_letter
+interfaces:
+  RegisterProvisioningConnection:
+    description: 管理者が Application に ProvisioningConnection を新規登録する。属性マッピングは SCIM core User の既定を自動 seed する。
+    input:
+      application_id:
+        type: String
+      base_url:
+        type: URL
+      credential:
+        type: ProvisioningCredentialInput
+    output:
+      connection:
+        type: ProvisioningConnection
+    errors:
+      - InvalidRequestError
+      - ProvisioningConnectionAlreadyExistsError
+      - AccessDeniedError
+    emits:
+      - ProvisioningConnectionRegistered
+    requires:
+      - is_safe_outbound_url(input.base_url)
+      - credential_matches_auth_method(input.credential)
+    ensures:
+      - output.connection.application_id == input.application_id
+      - output.connection.status == "active"
+      - emitted.exists(e, e is ProvisioningConnectionRegistered)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/provisioning"
+  GetProvisioningConnection:
+    description: 管理者が Application の ProvisioningConnection を取得する。別テナントは未存在として扱う。
+    input:
+      application_id:
+        type: String
+    output:
+      connection:
+        type: ProvisioningConnection
+    errors:
+      - ProvisioningConnectionNotFoundError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/applications/{application_id}/provisioning"
+  UpdateProvisioningConnection:
+    description: "管理者が ProvisioningConnection の設定を更新する。credential を含む更新は\ncredential rotation として扱い ProvisioningCredentialRotated も発行する。\n"
+    input:
+      application_id:
+        type: String
+      base_url:
+        type: URL
+        optional: true
+      status:
+        type: ProvisioningConnectionStatus
+        optional: true
+      credential:
+        type: ProvisioningCredentialInput
+        optional: true
+      feature_flags:
+        type: ProvisioningFeatureFlags
+        optional: true
+      scope:
+        type: ProvisioningScope
+        optional: true
+      group_push:
+        type: GroupPushConfig
+        optional: true
+      attribute_mappings:
+        type: "AttributeMappingRule[]"
+        optional: true
+      matching:
+        type: MatchingRule
+        optional: true
+      deprovision_policy:
+        type: DeprovisionPolicy
+        optional: true
+      rate_limit_per_minute:
+        type: Integer
+        optional: true
+      max_attempts:
+        type: Integer
+        optional: true
+      notification_email:
+        type: String
+        optional: true
+      quarantine_after_consecutive_failures:
+        type: Integer
+        optional: true
+    output:
+      connection:
+        type: ProvisioningConnection
+    errors:
+      - InvalidRequestError
+      - ProvisioningConnectionNotFoundError
+      - AccessDeniedError
+    emits:
+      - ProvisioningConnectionUpdated
+      - ProvisioningConnectionDisabled
+      - ProvisioningCredentialRotated
+    requires:
+      - input.base_url == null || is_safe_outbound_url(input.base_url)
+      - input.credential == null || credential_matches_auth_method(input.credential)
+    ensures:
+      - input.credential == null || emitted.exists(e, e is ProvisioningCredentialRotated)
+      - "input.status != \"disabled\" || emitted.exists(e, e is ProvisioningConnectionDisabled)"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: PATCH
+        path: "/api/admin/applications/{application_id}/provisioning"
+  DeleteProvisioningConnection:
+    description: 管理者が ProvisioningConnection を削除する (hard delete)。既存の RemoteResourceLink・ProvisioningDelivery は履歴として残す。
+    input:
+      application_id:
+        type: String
+    errors:
+      - ProvisioningConnectionNotFoundError
+      - AccessDeniedError
+    emits:
+      - ProvisioningConnectionDeleted
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/applications/{application_id}/provisioning"
+  TestProvisioningConnection:
+    description: 管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。
+    input:
+      application_id:
+        type: String
+    output:
+      reachable:
+        type: Boolean
+      capabilities:
+        type: ProvisioningCapabilities
+        optional: true
+      error:
+        type: String
+        optional: true
+    errors:
+      - ProvisioningConnectionNotFoundError
+      - AccessDeniedError
+    read_only: true
+    idempotent: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/provisioning/test"
+  ProvisionOnDemand:
+    description: 管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。
+    input:
+      application_id:
+        type: String
+      subject_type:
+        type: ProvisioningSourceType
+      subject_id:
+        type: String
+    output:
+      delivery:
+        type: ProvisioningDelivery
+    errors:
+      - ProvisioningConnectionNotFoundError
+      - ProvisioningSubjectNotInScopeError
+      - AccessDeniedError
+    ensures:
+      - output.delivery.status == "pending"
+      - output.delivery.source_id == input.subject_id
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/provisioning/on-demand"
+  StartFullResync:
+    description: 管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。
+    input:
+      application_id:
+        type: String
+    output:
+      enqueued_count:
+        type: Integer
+    errors:
+      - ProvisioningConnectionNotFoundError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/provisioning/full-resync"
+  ListProvisioningDeliveries:
+    description: 管理者が connection の配送状況を一覧する。status/source_type で絞り込める。
+    input:
+      application_id:
+        type: String
+      status:
+        type: ProvisioningDeliveryStatus
+        optional: true
+      source_type:
+        type: ProvisioningSourceType
+        optional: true
+      cursor:
+        type: String
+        optional: true
+      limit:
+        type: Integer
+        optional: true
+    output:
+      deliveries:
+        type: "ProvisioningDelivery[]"
+      next_cursor:
+        type: String
+        optional: true
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/applications/{application_id}/provisioning/deliveries"
+  GetProvisioningDelivery:
+    description: 管理者が配送 1 件の詳細を取得する。
+    input:
+      application_id:
+        type: String
+      delivery_id:
+        type: String
+    output:
+      delivery:
+        type: ProvisioningDelivery
+    errors:
+      - ProvisioningDeliveryNotFoundError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}"
+  RetryProvisioningDelivery:
+    description: 管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。
+    input:
+      application_id:
+        type: String
+      delivery_id:
+        type: String
+    output:
+      delivery:
+        type: ProvisioningDelivery
+    errors:
+      - ProvisioningDeliveryNotFoundError
+      - ProvisioningDeliveryNotRetryableError
+      - AccessDeniedError
+    requires:
+      - resource.status == "dead_letter"
+    ensures:
+      - output.delivery.status == "pending"
+      - output.delivery.job_id == null
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}/retry"
+  ResumeProvisioningConnection:
+    description: 管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。
+    input:
+      application_id:
+        type: String
+    output:
+      connection:
+        type: ProvisioningConnection
+    errors:
+      - ProvisioningConnectionNotFoundError
+      - AccessDeniedError
+    requires:
+      - resource.health == "quarantined"
+    emits:
+      - ProvisioningConnectionQuarantineCleared
+    ensures:
+      - "output.connection.health != \"quarantined\""
+      - emitted.exists(e, e is ProvisioningConnectionQuarantineCleared)
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/provisioning/resume"
+  ListTenantProvisioningConnections:
+    description: 管理者がテナント内で有効な ProvisioningConnection を横断的に一覧する (テナント設定の read-only 集約ビュー)。書き込みは各 Application 側の interface へ誘導する。
+    output:
+      connections:
+        type: "ProvisioningConnection[]"
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: ProvisioningDirectory
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/provisioning/connections"
+authorization:
+  resources:
+    ProvisioningDirectory:
+      description: テナント内の ProvisioningConnection 一覧を表す singleton resource。
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles'
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.tenant_id
+objectives:
+  ProvisioningDeliveryCaptureLatency:
+    description: "User/Assignment の commit から ProvisioningDelivery (pending) 作成までの遅延の\n99% 以上を 5 秒未満に収める。API process の即時 dispatch が失敗しても、periodic dispatcher が\n同じ目標内に未 enqueue delivery を回収することを含む (LifecycleWorkflowTriggerHandoffLatency と\n同じ仕組みを再利用する)。\n"
+    indicator: measurement.capture_to_pending_delivery_latency < duration("5s")
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
+scenarios:
+  管理者はProvisioningConnectionを登録し接続テストでcapabilitiesを取得できる:
+    actor: TenantAdministrator
+    given:
+      - Application "app-1" は存在し ProvisioningConnection を持たない
+    main_success:
+      - 管理者が RegisterProvisioningConnection を https の base_url と bearer_token で実行する
+      - ProvisioningConnectionRegistered が発行される
+      - 管理者が TestProvisioningConnection を実行する
+      - 下流 /ServiceProviderConfig への到達性が確認され capabilities がキャッシュされる
+    extensions:
+      - at: 1
+        condition: base_url が https でない、または内部/リンクローカル IP を指す
+        steps:
+          - InvalidRequestError が返り ProvisioningConnection は作成されない
+      - at: 1
+        condition: Application "app-1" に既に ProvisioningConnection が存在する
+        steps:
+          - ProvisioningConnectionAlreadyExistsError が返る
+  割当済みユーザーの作成が下流へcreateとして配送される:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" の Application \"app-1\" に有効な ProvisioningConnection (scope=assigned_only, create_users=true) が存在する"
+      - User "user-1" は Application "app-1" に割当済みである
+    main_success:
+      - IdManagement が User "user-1" を作成し commit する
+      - 同一トランザクションで ProvisioningDelivery (operation=create, status=pending) が作成される
+      - dispatcher が Jobs.Job を関連付け ProvisioningDeliveryStarted が発行される
+      - worker が下流へ POST し UserProvisioned が発行され配送が succeeded になる
+    extensions:
+      - at: 2
+        condition: User がこの Application に割当済みでない (scope=assigned_only)
+        steps:
+          - ProvisioningDelivery は作成されない
+  ユーザーのdisableがdeactivateとして下流へ配送される:
+    actor: System
+    given:
+      - "User \"user-1\" は下流に既に存在し RemoteResourceLink を持つ"
+    main_success:
+      - IdManagement が User "user-1" を disable する
+      - ProvisioningDelivery (operation=deactivate) が作成される
+      - worker が下流へ active=false の PATCH を送り UserDeprovisioned が発行される
+  Applicationからのunassignは既定でdeactivateとして配送される:
+    actor: System
+    given:
+      - "User \"user-1\" は Application \"app-1\" に割当済みで下流に存在する"
+      - "DeprovisionPolicy.on_unassign は既定値 deactivate のままである"
+    main_success:
+      - 管理者が User "user-1" の Application "app-1" への割当を解除する
+      - ProvisioningDelivery (operation=deactivate) が作成される
+      - worker が下流へ active=false の PATCH を送り UserDeprovisioned が発行される
+  ユーザー削除はgrace_period_days経過後にdeleteとして配送される:
+    actor: System
+    given:
+      - "DeprovisionPolicy.on_delete=delete, grace_period_days=7 が設定されている"
+      - "User \"user-1\" は下流に存在する"
+    main_success:
+      - User "user-1" が削除される
+      - 7日間は下流へ delete が配送されない
+      - grace_period_days の経過後に purge の ProvisioningDelivery (operation=delete) が作成される
+      - worker が下流へ DELETE を送り UserDeprovisioned (action=delete) が発行される
+    extensions:
+      - at: 3
+        condition: 猶予期間内に User "user-1" が Application "app-1" へ再割当される
+        steps:
+          - 予約されていた purge の ProvisioningDelivery は取り消される
+  下流の409衝突は既存resourceをexternalIdまたはmatch属性で養子縁組する:
+    actor: System
+    given:
+      - "User \"user-1\" 向けの ProvisioningDelivery (operation=create) が in_flight である"
+      - 下流に同じ userName を持つ resource が既に存在し externalId が未設定である
+    main_success:
+      - worker が下流へ POST し 409 Conflict を受け取る
+      - worker が conflict_match_attribute (userName) で既存 resource を検索し RemoteResourceLink を作成する
+      - 以後の配送はこの RemoteResourceLink を使い PATCH で更新する
+      - UserProvisioned が発行され配送が succeeded になる
+  下流で消失したresourceは404検出後に再作成される:
+    actor: System
+    given:
+      - "User \"user-1\" の RemoteResourceLink が存在するが下流の resource は削除されている"
+    main_success:
+      - worker が下流へ PATCH し 404 Not Found を受け取る
+      - worker が新規に下流へ POST し RemoteResourceLink の remote_id を更新する
+      - UserProvisioned が発行され配送が succeeded になる
+  下流の一時的な429と5xxはbackoffで再試行され復旧後に収束する:
+    actor: System
+    given:
+      - "ProvisioningDelivery が in_flight で下流が一時的に 429 (Retry-After あり) を返す"
+    main_success:
+      - worker が Retry-After に従い backoff し Jobs レベルで再試行する
+      - ProvisioningDelivery.status は in_flight のまま保持される
+      - 下流が復旧すると次の attempt が成功し UserProvisioned が発行され succeeded になる
+  max_attempts超過でdead_letterになり管理者は手動retryできる:
+    actor: System
+    given:
+      - "ProvisioningDelivery が in_flight で Jobs.Job の attempts が max_attempts に達している"
+    main_success:
+      - 最終 attempt も失敗し UserProvisioningFailed が発行され配送が dead_letter になる
+      - 管理者が RetryProvisioningDelivery を呼ぶ
+      - 配送が pending に戻り job_id がクリアされる
+    extensions:
+      - at: 2
+        condition: 配送が dead_letter でない (pending/in_flight/succeeded)
+        steps:
+          - ProvisioningDeliveryNotRetryableError が返る
+  誤削除ガードの閾値超過でconnectionがquarantineされ管理者が解除する:
+    actor: TenantAdministrator
+    given:
+      - "accidental_deletion_count_threshold=5 が設定されている"
+      - "1 回の resync で deactivate/delete 対象が 5 件を超える"
+    main_success:
+      - full resync がこれらの deprovision アクションを実行せず ConnectionQuarantined が発行される
+      - connection.health が quarantined になり notification_email へ通知される
+      - 管理者が原因を確認したうえで ResumeProvisioningConnection を呼ぶ
+      - ProvisioningConnectionQuarantineCleared が発行され health が ok に戻る
+    extensions:
+      - at: 4
+        condition: connection.health が quarantined でない状態で ResumeProvisioningConnection を呼ぶ
+        steps:
+          - InvalidRequestError相当の拒否として動作せず対象が無いため何も変化しない (requires が resource.health=quarantined を要求し拒否する)
+  管理者はon-demand provisionで単一ユーザーを試験配送できる:
+    actor: TenantAdministrator
+    given:
+      - "User \"user-1\" は connection の scope 内である"
+    main_success:
+      - 管理者が ProvisionOnDemand を実行する
+      - ProvisioningDelivery (status=pending) が即時に作成される
+    extensions:
+      - at: 1
+        condition: 指定した subject が scope 外である (scope=assigned_only で未割当)
+        steps:
+          - ProvisioningSubjectNotInScopeError が返る
+  管理者はfull resyncでscope内subject全件を収束できる:
+    actor: TenantAdministrator
+    given:
+      - connection の scope 内に複数 subject が存在し一部は下流と乖離している
+    main_success:
+      - 管理者が StartFullResync を実行する
+      - scope 内の全 subject に対して ProvisioningDelivery が作成される
+      - すべての配送が収束すると FullResyncCompleted が発行される
+  credentialのrotationは監査可能でありrotated_atが更新される:
+    actor: TenantAdministrator
+    given:
+      - connection は bearer_token 認証で稼働している
+    main_success:
+      - 管理者が UpdateProvisioningConnection に新しい credential を渡す
+      - ProvisioningCredentialRotated が発行され credential.rotated_at が更新される
+      - 以後の配送は新しい credential で下流へ認証する
+  他テナントのProvisioningConnectionと配送は越境しない:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" の ProvisioningConnection と ProvisioningDelivery が存在する"
+    main_success:
+      - "テナント \"tenant-b\" の管理者が GetProvisioningConnection または GetProvisioningDelivery を同じ application_id/delivery_id で呼ぶ"
+      - ProvisioningConnectionNotFoundError または ProvisioningDeliveryNotFoundError が返る
+  同一idempotencyキーの重複配送は既存行へのno-opになる:
+    actor: System
+    given:
+      - "(tenant_id, connection_id, source_type, source_id, source_version) が一致する ProvisioningDelivery が既に存在する"
+    main_success:
+      - "同じ lifecycle event が at-least-once 配信で再度 capture される (dispatcher の重複実行や再送を模す)"
+      - 新規 ProvisioningDelivery は作成されず既存行がそのまま使われる
+  APIprocessのcapture直後のenqueueが失敗してもperiodicなdispatcherが未関連付けのdeliveryを回収する:
+    actor: System
+    given:
+      - "IdManagement の commit と同一トランザクションで ProvisioningDelivery (job_id 未設定、status=pending) が確定したが、API process の即時 enqueue 呼び出しには失敗した"
+    main_success:
+      - worker process の periodic dispatcher が job_id 未関連付けの pending delivery を再走査する
+      - dispatcher が idempotency key を dedup_key として EnqueueJob を呼び job_id を関連付ける
+      - ProvisioningDeliveryStarted が発行され worker が配送を実行する
+  requiredな属性マッピングが解決不能な配送はfail-closedで失敗する:
+    actor: System
+    given:
+      - "AttributeMappingRule (target_path=\"emails[type eq \\\"work\\\"].value\", required=true) を持つが対象 User に email が未設定である"
+    main_success:
+      - worker が配送前に required 属性の解決を試み失敗する
+      - 下流へは送信されず UserProvisioningFailed が発行される (max_attempts を待たず fail-closed)
+flows:
+  AdminProvisioning:
+    entry: ConnectionSettings
+    views:
+      ConnectionSettings:
+        sees: Application 詳細のプロビジョニング設定画面 (接続・機能トグル・scope・属性マッピング・push groups・deprovision policy・信頼性設定)
+        does:
+          - action: register
+            does: base_url と credential を入力して登録ボタンをクリックする
+            interface: RegisterProvisioningConnection
+            to: ConnectionSettings
+          - action: update
+            does: 設定を編集して保存ボタンをクリックする
+            interface: UpdateProvisioningConnection
+            to: ConnectionSettings
+          - action: test
+            does: 接続テストボタンをクリックする
+            interface: TestProvisioningConnection
+            to: ConnectionSettings
+          - action: on_demand
+            does: 対象ユーザーを選び試験配送ボタンをクリックする
+            interface: ProvisionOnDemand
+            to: ConnectionSettings
+          - action: full_resync
+            does: full resync ボタンをクリックする
+            interface: StartFullResync
+            to: ConnectionSettings
+          - action: resume
+            does: quarantine 解除ボタンをクリックする
+            interface: ResumeProvisioningConnection
+            to: ConnectionSettings
+          - action: view_deliveries
+            does: 配送状況タブをクリックする
+            to: DeliveryList
+          - action: delete
+            does: connection 削除ボタンをクリックし確認する
+            interface: DeleteProvisioningConnection
+            to: ConnectionSettings
+      DeliveryList:
+        sees: 直近の配送一覧 (status・source_type でフィルタ可能)
+        does:
+          - action: open_detail
+            does: 配送行をクリックする
+            interface: ListProvisioningDeliveries
+            to: DeliveryDetail
+          - action: back
+            does: 設定タブへ戻る
+            to: ConnectionSettings
+      DeliveryDetail:
+        sees: 配送 1 件の詳細 (status・last_error・job_id)
+        does:
+          - action: retry
+            does: 再試行ボタンをクリックする
+            interface: RetryProvisioningDelivery
+            to: DeliveryDetail
+          - action: back
+            does: 一覧へ戻る
+            to: DeliveryList
+  TenantProvisioningOverview:
+    entry: TenantProvisioningSummary
+    views:
+      TenantProvisioningSummary:
+        sees: テナント設定のプロビジョニング read-only 集約ビュー (有効 connection 一覧・quarantine 中の connection・直近 24h の失敗件数)
+        does:
+          - action: open_connection
+            does: 一覧の connection 行をクリックする
+            interface: ListTenantProvisioningConnections
+            to: ConnectionSettings

@@ -37,6 +37,19 @@ import type {
   WorkflowAction,
   WorkflowTrigger,
   WorkflowRun,
+  AttributeMappingRule,
+  DeprovisionPolicy,
+  GroupPushConfig,
+  MatchingRule,
+  ProvisioningAuthMethod,
+  ProvisioningConnection,
+  ProvisioningConnectionStatus,
+  ProvisioningDelivery,
+  ProvisioningDeliveryStatus,
+  ProvisioningFeatureFlags,
+  ProvisioningScope,
+  ProvisioningSourceType,
+  ProvisioningTestConnectionResult,
 } from '../types'
 import { AuthenticationAPIError, adminRequest, request, tenantURL } from './core'
 
@@ -1103,4 +1116,154 @@ export async function revokeScimToken(csrfToken: string, id: string): Promise<vo
     `/api/admin/scim/tokens/${encodeURIComponent(id)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
+}
+
+// Provisioning (outbound SCIM, wi-45): Application 詳細ページの「プロビジョニング」サブルート
+// と、テナント全体の読み取り専用集約ビューが使う管理 API クライアント。
+export type ProvisioningCredentialInput = {
+  auth_method: ProvisioningAuthMethod
+  bearer_token?: string
+  oauth2_token_url?: string
+  oauth2_client_id?: string
+  oauth2_client_secret?: string
+  oauth2_scope?: string
+}
+
+export type RegisterAdminApplicationProvisioningInput = {
+  base_url: string
+  credential: ProvisioningCredentialInput
+}
+
+export async function registerAdminApplicationProvisioning(
+  csrfToken: string,
+  applicationID: string,
+  input: RegisterAdminApplicationProvisioningInput,
+): Promise<ProvisioningConnection> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning`,
+    adminRequest(csrfToken, 'POST', input),
+  )
+}
+
+export async function getAdminApplicationProvisioning(
+  applicationID: string,
+): Promise<ProvisioningConnection> {
+  return request(`/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning`)
+}
+
+export type UpdateAdminApplicationProvisioningInput = {
+  base_url?: string
+  status?: ProvisioningConnectionStatus
+  credential?: ProvisioningCredentialInput
+  feature_flags?: ProvisioningFeatureFlags
+  scope?: ProvisioningScope
+  group_push?: GroupPushConfig | null
+  attribute_mappings?: AttributeMappingRule[]
+  matching?: MatchingRule
+  deprovision_policy?: DeprovisionPolicy
+  rate_limit_per_minute?: number
+  max_attempts?: number
+  notification_email?: string | null
+  quarantine_after_consecutive_failures?: number
+}
+
+export async function updateAdminApplicationProvisioning(
+  csrfToken: string,
+  applicationID: string,
+  input: UpdateAdminApplicationProvisioningInput,
+): Promise<ProvisioningConnection> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning`,
+    adminRequest(csrfToken, 'PATCH', input),
+  )
+}
+
+export async function deleteAdminApplicationProvisioning(
+  csrfToken: string,
+  applicationID: string,
+): Promise<void> {
+  await request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+export async function testAdminApplicationProvisioning(
+  csrfToken: string,
+  applicationID: string,
+): Promise<ProvisioningTestConnectionResult> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/test`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function provisionOnDemand(
+  csrfToken: string,
+  applicationID: string,
+  subjectType: ProvisioningSourceType,
+  subjectID: string,
+): Promise<ProvisioningDelivery> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/on-demand`,
+    adminRequest(csrfToken, 'POST', { subject_type: subjectType, subject_id: subjectID }),
+  )
+}
+
+export async function startAdminApplicationProvisioningFullResync(
+  csrfToken: string,
+  applicationID: string,
+): Promise<{ enqueued_count: number }> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/full-resync`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function resumeAdminApplicationProvisioning(
+  csrfToken: string,
+  applicationID: string,
+): Promise<ProvisioningConnection> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/resume`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function listAdminApplicationProvisioningDeliveries(
+  applicationID: string,
+  status?: ProvisioningDeliveryStatus,
+): Promise<ProvisioningDelivery[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  return (
+    await request<{ deliveries: ProvisioningDelivery[] }>(
+      `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries${query}`,
+    )
+  ).deliveries
+}
+
+export async function getAdminApplicationProvisioningDelivery(
+  applicationID: string,
+  deliveryID: string,
+): Promise<ProvisioningDelivery> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries/${encodeURIComponent(deliveryID)}`,
+  )
+}
+
+export async function retryAdminApplicationProvisioningDelivery(
+  csrfToken: string,
+  applicationID: string,
+  deliveryID: string,
+): Promise<ProvisioningDelivery> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries/${encodeURIComponent(deliveryID)}/retry`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function listAdminTenantProvisioningConnections(): Promise<ProvisioningConnection[]> {
+  return (
+    await request<{ connections: ProvisioningConnection[] }>('/api/admin/provisioning/connections')
+  ).connections
 }

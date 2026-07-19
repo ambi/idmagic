@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { AssignmentList } from './AdminApplicationAssignments'
+import { ProvisioningNavButton } from './AdminApplicationProvisioningShared'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
   AppIcon,
@@ -77,6 +78,7 @@ export function AdminApplicationDetailPage({
             <IconArrowLeft size={16} aria-hidden="true" />
             {t.backToList}
           </a>
+          <ProvisioningNavButton app={app} />
           <Button asChild>
             <a href={editURL(app.application_id)}>
               <IconPencil size={16} aria-hidden="true" />
