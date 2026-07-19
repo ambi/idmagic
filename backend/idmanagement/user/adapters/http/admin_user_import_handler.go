@@ -19,7 +19,7 @@ type userImportRequest struct {
 	Mode string `json:"mode"`
 }
 
-func (d Deps) handleImportAdminUsers(c *echo.Context) error {
+func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (d Deps) handleImportAdminUsers(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusAccepted, map[string]any{"id": job.ID, "status": job.Status, "mode": in.Mode})
 }
 
-func (d Deps) handleGetAdminUserImport(c *echo.Context) error {
+func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}

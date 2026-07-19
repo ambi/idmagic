@@ -423,67 +423,85 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   idmanagement-user-adapters:
-    path: backend/idmanagement/user/adapters/persistence/memory
-    responsibility: "User feature の in-memory 永続化 adapter (ADR-130)。"
+    path: backend/idmanagement/user/adapters
+    responsibility: "User feature の HTTP・in-memory・PostgreSQL 永続化 adapter (ADR-130 Phase 2)。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
     context: IdManagement
     layer: adapters
     role: binding
     depends_on:
-      - { module: idmanagement-user-domain, via: published_interface }
-      - { module: shared-adapters, via: technical_shared }
-  idmanagement-group-adapters:
-    path: backend/idmanagement/group/adapters/persistence/memory
-    responsibility: "Group feature の in-memory 永続化 adapter (ADR-130)。"
-    context: IdManagement
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: idmanagement-group-domain, via: published_interface }
-      - { module: shared-adapters, via: technical_shared }
-  idmanagement-agent-adapters:
-    path: backend/idmanagement/agent/adapters/persistence/memory
-    responsibility: "Agent feature の in-memory 永続化 adapter (ADR-130)。"
-    context: IdManagement
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: idmanagement-agent-domain, via: published_interface }
-      - { module: shared-adapters, via: technical_shared }
-  idmanagement-adapters:
-    path: backend/idmanagement/adapters
-
-    responsibility: "IdManagement の HTTP・永続化 adapter。feature 分割の対象外 (ADR-130): Deps 構造体のハンドラメソッドは receiver 型と同一パッケージが要る Go の制約、postgres 永続化は sqlc 単一生成と feature 横断テスト fixture の制約で、context ルート共有のまま維持する。"
-    context: IdManagement
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: application-ports, via: binding }
-      - { module: authentication-ports, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
-      - { module: idmanagement-agent-domain, via: published_interface }
-      - { module: idmanagement-agent-ports, via: published_interface }
-      - { module: idmanagement-agent-usecases, via: published_interface }
+      - { module: idmanagement-httpdeps, via: published_interface }
       - { module: idmanagement-domain, via: published_interface }
-      - { module: idmanagement-group-domain, via: published_interface }
-      - { module: idmanagement-group-ports, via: published_interface }
-      - { module: idmanagement-group-usecases, via: published_interface }
       - { module: idmanagement-usecases, via: published_interface }
       - { module: idmanagement-user-domain, via: published_interface }
-      - { module: idmanagement-user-ports, via: published_interface }
       - { module: idmanagement-user-usecases, via: published_interface }
       - { module: jobs-domain, via: binding }
       - { module: jobs-ports, via: binding }
       - { module: jobs-usecases, via: binding }
       - { module: oauth2-domain, via: binding }
+      - { module: oauth2-usecases, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-kernel, via: technical_shared }
+      - { module: tenancy-public, via: binding }
+  idmanagement-group-adapters:
+    path: backend/idmanagement/group/adapters
+    responsibility: "Group feature の HTTP・in-memory・PostgreSQL 永続化 adapter (ADR-130 Phase 2)。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: http-support, via: binding }
+      - { module: idmanagement-httpdeps, via: published_interface }
+      - { module: idmanagement-group-domain, via: published_interface }
+      - { module: idmanagement-group-usecases, via: published_interface }
+      - { module: idmanagement-usecases, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  idmanagement-agent-adapters:
+    path: backend/idmanagement/agent/adapters
+    responsibility: "Agent feature の HTTP・in-memory・PostgreSQL 永続化 adapter (ADR-130 Phase 2)。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: http-support, via: binding }
+      - { module: idmanagement-httpdeps, via: published_interface }
+      - { module: idmanagement-agent-domain, via: published_interface }
+      - { module: idmanagement-agent-usecases, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-usecases, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  idmanagement-httpdeps:
+    path: backend/idmanagement/adapters/http/httpdeps
+    responsibility: "IdManagement HTTP 層の Deps 型（leaf package）。user/group/agent の adapters/http と context ルートの routes.go 双方が依存するため、module 依存グラフの循環を避けて独立した module にしている (ADR-130 Phase 2)。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-ports, via: binding }
+      - { module: http-support, via: binding }
+      - { module: idmanagement-agent-ports, via: published_interface }
+      - { module: idmanagement-group-ports, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: jobs-ports, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: scim-ports, via: binding }
-      - { module: shared-adapters, via: binding }
-      - { module: shared-kernel, via: binding }
       - { module: shared-spec, via: binding }
       - { module: tenancy-ports, via: binding }
-      - { module: tenancy-public, via: binding }
+  idmanagement-adapters:
+    path: backend/idmanagement/adapters
+
+    responsibility: "IdManagement の route 登録集約点 (routes.go)・feature 横断統合テスト・postgres の lifecycle_workflows 永続化 (IdGovernance 由来、wi-237/ADR-117)。feature 分割の対象外 (ADR-130): Deps 型自体は idmanagement-httpdeps (leaf package) が持ち、ハンドラ実装はフリー関数として user/group/agent へ分割した (Phase 2)。lifecycle_workflows は IdGovernance 所有のテーブルが idmanagement の postgres schema に残る歴史的経緯により、ここに残る。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-agent-adapters, via: published_interface }
+      - { module: idmanagement-group-adapters, via: published_interface }
+      - { module: idmanagement-httpdeps, via: published_interface }
+      - { module: idmanagement-user-adapters, via: published_interface }
   idgovernance-domain:
     path: backend/idgovernance/domain
     responsibility: "IdGovernance の LifecycleWorkflow モデル、状態、純粋な評価規則。"
@@ -1972,25 +1990,51 @@ backend/idmanagement/
   domain/                   # feature 横断の共有型のみ（enum・DomainEvent）
   usecases/                 # feature 横断の共有 usecase ヘルパー・エラー変数のみ
   adapters/
-    http/                   # feature 分割の対象外（Deps 構造体のハンドラメソッドは
-                             # receiver 型と同一パッケージが要る Go の制約）
+    http/
+      routes.go              # Deps 型定義の再エクスポート・route 登録の集約点
+      httpdeps/               # Deps 型定義そのもの（leaf package、後述）
+      extra_identity_test.go  # feature 横断の統合テスト
     persistence/
-      postgres/              # feature 分割の対象外（sqlc 単一生成 + feature 横断
-                              # テスト fixture の制約）
+      postgres/              # lifecycle_workflows のみ（IdGovernance 由来、後述）
   user/
-    domain/  ports/  usecases/  adapters/persistence/memory/
+    domain/  ports/  usecases/
+    adapters/http/  adapters/persistence/{memory,postgres}/
   group/
-    domain/  ports/  usecases/  adapters/persistence/memory/
+    domain/  ports/  usecases/
+    adapters/http/  adapters/persistence/{memory,postgres}/
   agent/
-    domain/  ports/  usecases/  adapters/persistence/memory/
+    domain/  ports/  usecases/
+    adapters/http/  adapters/persistence/{memory,postgres}/
 ```
 
-feature 層は Go の言語制約・コード生成単位・テスト fixture の共有度合いによって
-分割できない層があることが判明した（`adapters/http` と `adapters/persistence/postgres`
-は idmanagement では未分割）。分割可否は context ごとに機械的な制約で決まるため、
-一律に「4 層すべてを feature ごとに分ける」わけではない。package 名は各層のまま
-（`domain`/`ports`/`usecases`/`http`/`memory`）とし、同一 context の複数 feature を
-同時 import する箇所は named import（`userdomain`, `groupdomain` 等）で区別する。
+`adapters/http` と `adapters/persistence/postgres` は Go の言語制約・コード生成単位により
+素朴には分割できなかったが（domain/ports/usecases とは異なる設計判断を要した）、
+別の設計で分割できると判明し実施した（ADR-130）。
+
+- **adapters/http**: ハンドラは元々 `Deps` 構造体のメソッド（`func (d Deps) handleX`）
+  として実装されていた。Go はメソッドを receiver 型と同一パッケージにしか定義できないため、
+  素朴に `Deps` を feature ごとの embedded 部分構造体へ分割すると、feature 横断の port 参照
+  （例: group ハンドラが `UserRepo` を、agent ハンドラが `UserRepo`/`ClientRepo` を参照）
+  により各部分構造体へ同じフィールドを重複定義する必要が生じる。代わりに `Deps` 型定義を
+  `httpdeps` という独立した leaf package へ切り出し、ハンドラを
+  `func handleX(d Deps, c *echo.Context) error` という**フリー関数**へ変換して
+  feature パッケージへ移した。フリー関数は receiver 型と同一パッケージである必要が
+  ないため、`Deps` 型を分割せずに実装コードだけを feature ごとに分離できる。
+  `routes.go` は `type Deps = httpdeps.Deps`（型 alias）で再エクスポートするため、
+  外部の `idmhttp.Deps{...}` 構築コード（bootstrap・テスト）は無変更のまま。
+- **adapters/persistence/postgres**: `sqlc.yaml` の idmanagement 用エントリを feature
+  単位の複数エントリへ分割し、`queries/*.sql` と生成される `sqlcgen/` を feature
+  ディレクトリへ移した。feature 横断のテスト fixture ヘルパー（`seedTenant`/`seedUser` 等）
+  は Go の `_test.go` がパッケージをまたげない制約により、各 feature パッケージへ複製した。
+  ただし `lifecycle_workflows` テーブルは IdGovernance context（wi-237/ADR-117 以前の
+  歴史的経緯）が所有し user/group/agent いずれの feature にも属さないため、
+  `queries`/`sqlcgen` ともに context ルートの `adapters/persistence/postgres/` に残した。
+
+package 名は各層のまま（`domain`/`ports`/`usecases`/`http`/`memory`/`postgres`）とし、
+同一 context の複数 feature を同時 import する箇所は named import
+（`userdomain`, `groupdomain` 等）で区別する。feature の adapters/http パッケージが
+`Deps` 型を参照する箇所は、各パッケージ内の `deps.go` に置いた
+`type Deps = httpdeps.Deps` alias を使う。
 
 ## HTTP Routing
 

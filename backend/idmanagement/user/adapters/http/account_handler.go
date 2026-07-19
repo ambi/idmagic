@@ -68,9 +68,9 @@ func toAccountProfileResponse(user *userdomain.User, defs []userdomain.UserAttri
 	}
 }
 
-func (d Deps) accountProfileDeps() userusecases.AccountProfileDeps {
+func accountProfileDeps(d Deps) userusecases.AccountProfileDeps {
 	return userusecases.AccountProfileDeps{
-		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.legacyEmit(),
+		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.LegacyEmit(),
 	}
 }
 
@@ -89,56 +89,56 @@ func toAccountSummaryResponse(user *userdomain.User) accountSummaryResponse {
 	}
 }
 
-func (d Deps) handleGetAccountSummary(c *echo.Context) error {
-	sub, err := d.requireAuthenticatedSub(c)
+func HandleGetAccountSummary(d Deps, c *echo.Context) error {
+	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
-	user, _, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, _, err := userusecases.GetUserProfile(c.Request().Context(), accountProfileDeps(d), sub)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAccountSummaryResponse(user))
 }
 
-func (d Deps) handleGetAccountProfile(c *echo.Context) error {
-	sub, err := d.requireAuthenticatedSub(c)
+func HandleGetAccountProfile(d Deps, c *echo.Context) error {
+	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
-	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), accountProfileDeps(d), sub)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAccountProfileResponse(user, defs))
 }
 
-func (d Deps) handleUpdateAccountProfile(c *echo.Context) error {
+func HandleUpdateAccountProfile(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	sub, err := d.requireAuthenticatedSub(c)
+	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 	var input accountProfileUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	user, defs, err := userusecases.UpdateUserProfile(c.Request().Context(), d.accountProfileDeps(),
+	user, defs, err := userusecases.UpdateUserProfile(c.Request().Context(), accountProfileDeps(d),
 		userusecases.UpdateUserProfileInput{
 			Sub: sub, Name: input.Name, GivenName: input.GivenName, FamilyName: input.FamilyName,
 			Attributes: input.Attributes, Now: time.Now().UTC(),
 		})
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAccountProfileResponse(user, defs))
 }
 
 // requireAuthenticatedSub は認証済み (pending でない) セッションの sub を返す。
 // self-service では actor == target なので sub をそのまま操作対象に使う。
-func (d Deps) requireAuthenticatedSub(c *echo.Context) (string, error) {
+func requireAuthenticatedSub(d Deps, c *echo.Context) (string, error) {
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil {
 		return "", err
@@ -149,7 +149,7 @@ func (d Deps) requireAuthenticatedSub(c *echo.Context) (string, error) {
 	return authn.UserID, nil
 }
 
-func (d Deps) writeAccountError(c *echo.Context, err error) error {
+func writeAccountError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが必要です")
@@ -170,7 +170,7 @@ func (d Deps) writeAccountError(c *echo.Context, err error) error {
 
 // requireStepUpSub は認証済みセッションを解決し、step-up gate を通過した sub を返す
 // (primary email 変更など高 sensitivity な identity 操作用)。
-func (d Deps) requireStepUpSub(c *echo.Context) (string, error) {
+func requireStepUpSub(d Deps, c *echo.Context) (string, error) {
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil {
 		return "", err

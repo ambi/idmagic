@@ -37,14 +37,14 @@ func toAccountConsentResponse(consent *oauthdomain.Consent) accountConsentRespon
 	}
 }
 
-func (d Deps) handleExportAccountData(c *echo.Context) error {
-	sub, err := d.requireAuthenticatedSub(c)
+func HandleExportAccountData(d Deps, c *echo.Context) error {
+	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
-	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), accountProfileDeps(d), sub)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 	consents, err := oauthusecases.ListConsentsForSub(c.Request().Context(), d.ConsentDeps(), sub)
 	if err != nil {

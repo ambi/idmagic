@@ -17,8 +17,8 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmhttp "github.com/ambi/idmagic/backend/idmanagement/adapters/http"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userhttp "github.com/ambi/idmagic/backend/idmanagement/user/adapters/http"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -88,7 +88,7 @@ func TestAccountProfileGetReturnsSelfView(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body idmhttp.AccountProfileResponse
+	var body userhttp.AccountProfileResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestAccountProfilePatchUpdatesEditableAttribute(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body idmhttp.AccountProfileResponse
+	var body userhttp.AccountProfileResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}

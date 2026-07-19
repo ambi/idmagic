@@ -1,107 +1,66 @@
 // Package http: identity management bounded context の HTTP アダプタ。
 //
-// ユーザー・グループ・エージェントの管理 API と、エンドユーザー自身の
-// profile / email / data export の self-service API を所有する。
+// Deps の定義・route 登録の集約点。ユーザー・グループ・エージェントそれぞれの
+// ハンドラ実装は user/adapters/http・group/adapters/http・agent/adapters/http に
+// feature 垂直スライスとして分割されている (ADR-130 Phase 2)。ハンドラは
+// Deps のメソッドではなくフリー関数 (func HandleX(d Deps, c *echo.Context) error)
+// として実装されており、Deps 型自体の分割（cross-feature port の重複）を避けている。
 package http
 
 import (
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
-	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
-	scimports "github.com/ambi/idmagic/backend/scim/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	httpdeps "github.com/ambi/idmagic/backend/idmanagement/adapters/http/httpdeps"
+	agenthttp "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/http"
+	grouphttp "github.com/ambi/idmagic/backend/idmanagement/group/adapters/http"
+	userhttp "github.com/ambi/idmagic/backend/idmanagement/user/adapters/http"
 
 	"github.com/labstack/echo/v5"
 )
 
-// Deps は identity management HTTP ハンドラが必要とする依存。
-type Deps struct {
-	support.Deps
-	*support.Authenticator
-
-	UserRepo              userports.UserRepository
-	GroupRepo             groupports.GroupRepository
-	AgentRepo             agentports.AgentRepository
-	UserMutationCommitter userports.UserMutationCommitter
-	ProvisioningNotifier  userports.ProvisioningNotifier
-	JobRepo               jobsports.JobRepository
-	ClientRepo            oauthports.OAuth2ClientRepository
-	ScimRepo              scimports.ScimRepository
-	AttrSchemaRepo        tenantports.TenantUserAttributeSchemaRepository
-	ConsentRepo           oauthports.ConsentRepository
-	RefreshStore          oauthports.RefreshTokenStore
-	DeviceCodeStore       oauthports.DeviceCodeStore
-	MfaFactorRepo         authnports.MfaFactorRepository
-	PasswordHasher        authnports.PasswordHasher
-	PasswordHistoryRepo   authnports.PasswordHistoryRepository
-	EmailChangeTokenStore authnports.EmailChangeTokenStore
-	EmailSender           authnports.EmailSender
-}
+// Deps は identity management HTTP ハンドラが必要とする依存。実体は httpdeps.Deps
+// (型 alias)。外部呼び出し元は従来どおり idmhttp.Deps{...} をフラットな field で
+// 構築できる。
+type Deps = httpdeps.Deps
 
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/account/summary", d.handleGetAccountSummary)
-	g.GET("/api/account/profile", d.handleGetAccountProfile)
-	g.PATCH("/api/account/profile", d.handleUpdateAccountProfile)
-	g.POST("/api/account/email/change_request", d.handleRequestEmailChange)
-	g.GET("/api/account/email/verify_context", d.handleEmailVerifyContext)
-	g.POST("/api/account/email/verify", d.handleConfirmEmailChange)
-	g.GET("/api/account/data_export", d.handleExportAccountData)
-	g.GET("/api/admin/users", d.handleListAdminUsers)
-	g.GET("/api/admin/users/:sub", d.handleGetAdminUser)
-	g.POST("/api/admin/users", d.handleCreateAdminUser)
-	g.POST("/api/admin/users/imports", d.handleImportAdminUsers)
-	g.GET("/api/admin/users/imports/:job_id", d.handleGetAdminUserImport)
-	g.PATCH("/api/admin/users/:sub", d.handleUpdateAdminUser)
-	g.POST("/api/admin/users/:sub/disable", d.handleDisableAdminUser)
-	g.POST("/api/admin/users/:sub/enable", d.handleEnableAdminUser)
-	g.DELETE("/api/admin/users/:sub", d.handleDeleteAdminUser)
-	g.POST("/api/admin/users/:sub/restore", d.handleRestoreAdminUser)
-	g.POST("/api/admin/users/:sub/required_actions", d.handleSetUserRequiredAction)
-	g.DELETE("/api/admin/users/:sub/required_actions/:action", d.handleClearUserRequiredAction)
-	g.GET("/api/admin/users/:sub/groups", d.handleListUserGroups)
-	g.GET("/api/admin/groups", d.handleListGroups)
-	g.GET("/api/admin/groups/:group_id", d.handleGetGroup)
-	g.POST("/api/admin/groups", d.handleCreateGroup)
-	g.PATCH("/api/admin/groups/:group_id", d.handleUpdateGroup)
-	g.DELETE("/api/admin/groups/:group_id", d.handleDeleteGroup)
-	g.PUT("/api/admin/groups/:group_id/dynamic-rule", d.handleUpdateDynamicGroupRule)
-	g.POST("/api/admin/groups/:group_id/dynamic-rule/preview", d.handlePreviewDynamicGroupRule)
-	g.POST("/api/admin/groups/:group_id/dynamic-rule/enable", d.handleEnableDynamicGroupRule)
-	g.POST("/api/admin/groups/:group_id/dynamic-rule/disable", d.handleDisableDynamicGroupRule)
-	g.POST("/api/admin/groups/:group_id/members/:user_sub", d.handleAddGroupMember)
-	g.DELETE("/api/admin/groups/:group_id/members/:user_sub", d.handleRemoveGroupMember)
-	g.GET("/api/admin/agents", d.handleListAgents)
-	g.GET("/api/admin/agents/:agent_id", d.handleGetAgent)
-	g.POST("/api/admin/agents", d.handleRegisterAgent)
-	g.PATCH("/api/admin/agents/:agent_id", d.handleUpdateAgent)
-	g.POST("/api/admin/agents/:agent_id/disable", d.handleDisableAgent)
-	g.POST("/api/admin/agents/:agent_id/enable", d.handleEnableAgent)
-	g.POST("/api/admin/agents/:agent_id/kill", d.handleKillAgent)
-	g.DELETE("/api/admin/agents/:agent_id", d.handleDeleteAgent)
-	g.POST("/api/admin/agents/:agent_id/credentials", d.handleBindAgentCredential)
-	g.DELETE("/api/admin/agents/:agent_id/credentials/:client_id", d.handleUnbindAgentCredential)
-}
-
-func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
-	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
-}
-
-// legacyEmit adapts the fire-and-forget support.Deps.Emit to the
-// error-returning signature usecases in this context require (wi-184 T003).
-// It is the default for handlers not yet migrated to the transaction
-// runner; migrated handlers (admin_user_handler.go Create/Update/
-// SetDisabled) override deps.Emit with a transaction-bound one instead.
-func (d Deps) legacyEmit() func(spec.DomainEvent) error {
-	return func(event spec.DomainEvent) error {
-		if d.Emit != nil {
-			d.Emit(event)
-		}
-		return nil
-	}
+	g.GET("/api/account/summary", func(c *echo.Context) error { return userhttp.HandleGetAccountSummary(d, c) })
+	g.GET("/api/account/profile", func(c *echo.Context) error { return userhttp.HandleGetAccountProfile(d, c) })
+	g.PATCH("/api/account/profile", func(c *echo.Context) error { return userhttp.HandleUpdateAccountProfile(d, c) })
+	g.POST("/api/account/email/change_request", func(c *echo.Context) error { return userhttp.HandleRequestEmailChange(d, c) })
+	g.GET("/api/account/email/verify_context", func(c *echo.Context) error { return userhttp.HandleEmailVerifyContext(d, c) })
+	g.POST("/api/account/email/verify", func(c *echo.Context) error { return userhttp.HandleConfirmEmailChange(d, c) })
+	g.GET("/api/account/data_export", func(c *echo.Context) error { return userhttp.HandleExportAccountData(d, c) })
+	g.GET("/api/admin/users", func(c *echo.Context) error { return userhttp.HandleListAdminUsers(d, c) })
+	g.GET("/api/admin/users/:sub", func(c *echo.Context) error { return userhttp.HandleGetAdminUser(d, c) })
+	g.POST("/api/admin/users", func(c *echo.Context) error { return userhttp.HandleCreateAdminUser(d, c) })
+	g.POST("/api/admin/users/imports", func(c *echo.Context) error { return userhttp.HandleImportAdminUsers(d, c) })
+	g.GET("/api/admin/users/imports/:job_id", func(c *echo.Context) error { return userhttp.HandleGetAdminUserImport(d, c) })
+	g.PATCH("/api/admin/users/:sub", func(c *echo.Context) error { return userhttp.HandleUpdateAdminUser(d, c) })
+	g.POST("/api/admin/users/:sub/disable", func(c *echo.Context) error { return userhttp.HandleDisableAdminUser(d, c) })
+	g.POST("/api/admin/users/:sub/enable", func(c *echo.Context) error { return userhttp.HandleEnableAdminUser(d, c) })
+	g.DELETE("/api/admin/users/:sub", func(c *echo.Context) error { return userhttp.HandleDeleteAdminUser(d, c) })
+	g.POST("/api/admin/users/:sub/restore", func(c *echo.Context) error { return userhttp.HandleRestoreAdminUser(d, c) })
+	g.POST("/api/admin/users/:sub/required_actions", func(c *echo.Context) error { return userhttp.HandleSetUserRequiredAction(d, c) })
+	g.DELETE("/api/admin/users/:sub/required_actions/:action", func(c *echo.Context) error { return userhttp.HandleClearUserRequiredAction(d, c) })
+	g.GET("/api/admin/users/:sub/groups", func(c *echo.Context) error { return grouphttp.HandleListUserGroups(d, c) })
+	g.GET("/api/admin/groups", func(c *echo.Context) error { return grouphttp.HandleListGroups(d, c) })
+	g.GET("/api/admin/groups/:group_id", func(c *echo.Context) error { return grouphttp.HandleGetGroup(d, c) })
+	g.POST("/api/admin/groups", func(c *echo.Context) error { return grouphttp.HandleCreateGroup(d, c) })
+	g.PATCH("/api/admin/groups/:group_id", func(c *echo.Context) error { return grouphttp.HandleUpdateGroup(d, c) })
+	g.DELETE("/api/admin/groups/:group_id", func(c *echo.Context) error { return grouphttp.HandleDeleteGroup(d, c) })
+	g.PUT("/api/admin/groups/:group_id/dynamic-rule", func(c *echo.Context) error { return grouphttp.HandleUpdateDynamicGroupRule(d, c) })
+	g.POST("/api/admin/groups/:group_id/dynamic-rule/preview", func(c *echo.Context) error { return grouphttp.HandlePreviewDynamicGroupRule(d, c) })
+	g.POST("/api/admin/groups/:group_id/dynamic-rule/enable", func(c *echo.Context) error { return grouphttp.HandleEnableDynamicGroupRule(d, c) })
+	g.POST("/api/admin/groups/:group_id/dynamic-rule/disable", func(c *echo.Context) error { return grouphttp.HandleDisableDynamicGroupRule(d, c) })
+	g.POST("/api/admin/groups/:group_id/members/:user_sub", func(c *echo.Context) error { return grouphttp.HandleAddGroupMember(d, c) })
+	g.DELETE("/api/admin/groups/:group_id/members/:user_sub", func(c *echo.Context) error { return grouphttp.HandleRemoveGroupMember(d, c) })
+	g.GET("/api/admin/agents", func(c *echo.Context) error { return agenthttp.HandleListAgents(d, c) })
+	g.GET("/api/admin/agents/:agent_id", func(c *echo.Context) error { return agenthttp.HandleGetAgent(d, c) })
+	g.POST("/api/admin/agents", func(c *echo.Context) error { return agenthttp.HandleRegisterAgent(d, c) })
+	g.PATCH("/api/admin/agents/:agent_id", func(c *echo.Context) error { return agenthttp.HandleUpdateAgent(d, c) })
+	g.POST("/api/admin/agents/:agent_id/disable", func(c *echo.Context) error { return agenthttp.HandleDisableAgent(d, c) })
+	g.POST("/api/admin/agents/:agent_id/enable", func(c *echo.Context) error { return agenthttp.HandleEnableAgent(d, c) })
+	g.POST("/api/admin/agents/:agent_id/kill", func(c *echo.Context) error { return agenthttp.HandleKillAgent(d, c) })
+	g.DELETE("/api/admin/agents/:agent_id", func(c *echo.Context) error { return agenthttp.HandleDeleteAgent(d, c) })
+	g.POST("/api/admin/agents/:agent_id/credentials", func(c *echo.Context) error { return agenthttp.HandleBindAgentCredential(d, c) })
+	g.DELETE("/api/admin/agents/:agent_id/credentials/:client_id", func(c *echo.Context) error { return agenthttp.HandleUnbindAgentCredential(d, c) })
 }

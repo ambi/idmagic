@@ -68,11 +68,11 @@ type userGroupsResponse struct {
 	EffectiveRoles []string               `json:"effective_roles"`
 }
 
-func (d Deps) handleListGroups(c *echo.Context) error {
+func HandleListGroups(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := groupusecases.ListGroups(c.Request().Context(), d.adminGroupDeps())
+	views, err := groupusecases.ListGroups(c.Request().Context(), adminGroupDeps(d))
 	if err != nil {
 		return err
 	}
@@ -83,13 +83,13 @@ func (d Deps) handleListGroups(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"groups": groups})
 }
 
-func (d Deps) handleGetGroup(c *echo.Context) error {
+func HandleGetGroup(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	group, members, err := groupusecases.GetGroup(c.Request().Context(), d.adminGroupDeps(), c.Param("group_id"))
+	group, members, err := groupusecases.GetGroup(c.Request().Context(), adminGroupDeps(d), c.Param("group_id"))
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
 	res := toGroupSummaryResponse(group, len(members))
 	if group.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
@@ -107,11 +107,11 @@ func (d Deps) handleGetGroup(c *echo.Context) error {
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
 		"group":   res,
-		"members": d.toGroupMemberResponses(c.Request().Context(), members),
+		"members": toGroupMemberResponses(c.Request().Context(), d, members),
 	})
 }
 
-func (d Deps) handleCreateGroup(c *echo.Context) error {
+func HandleCreateGroup(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -135,24 +135,24 @@ func (d Deps) handleCreateGroup(c *echo.Context) error {
 			}
 		}
 		if _, compileErr := groupdomain.CompileDynamicGroupRule(input.DynamicRule.Expression, defs); compileErr != nil {
-			return d.writeAdminGroupError(c, errors.Join(groupusecases.ErrInvalidDynamicGroupRule, compileErr))
+			return writeAdminGroupError(c, errors.Join(groupusecases.ErrInvalidDynamicGroupRule, compileErr))
 		}
 	}
-	group, err := groupusecases.CreateGroup(c.Request().Context(), d.adminGroupDeps(), groupusecases.CreateGroupInput{
+	group, err := groupusecases.CreateGroup(c.Request().Context(), adminGroupDeps(d), groupusecases.CreateGroupInput{
 		ActorUserID: actor.ID, Name: input.Name, Description: input.Description, Roles: input.Roles, MembershipType: input.MembershipType, Now: time.Now().UTC(),
 	})
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
 	if input.DynamicRule != nil && group.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
-		if _, err := groupusecases.UpdateDynamicGroupRule(c.Request().Context(), d.dynamicGroupDeps(), actor.ID, group.ID, input.DynamicRule.Expression, time.Now().UTC()); err != nil {
-			return d.writeAdminGroupError(c, err)
+		if _, err := groupusecases.UpdateDynamicGroupRule(c.Request().Context(), dynamicGroupDeps(d), actor.ID, group.ID, input.DynamicRule.Expression, time.Now().UTC()); err != nil {
+			return writeAdminGroupError(c, err)
 		}
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, toGroupSummaryResponse(group, 0))
 }
 
-func (d Deps) handleUpdateDynamicGroupRule(c *echo.Context) error {
+func HandleUpdateDynamicGroupRule(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -164,14 +164,14 @@ func (d Deps) handleUpdateDynamicGroupRule(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	rule, err := groupusecases.UpdateDynamicGroupRule(c.Request().Context(), d.dynamicGroupDeps(), actor.ID, c.Param("group_id"), input.Expression, time.Now().UTC())
+	rule, err := groupusecases.UpdateDynamicGroupRule(c.Request().Context(), dynamicGroupDeps(d), actor.ID, c.Param("group_id"), input.Expression, time.Now().UTC())
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, rule)
 }
 
-func (d Deps) handlePreviewDynamicGroupRule(c *echo.Context) error {
+func HandlePreviewDynamicGroupRule(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -182,14 +182,14 @@ func (d Deps) handlePreviewDynamicGroupRule(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	preview, err := groupusecases.PreviewDynamicGroupRule(c.Request().Context(), d.dynamicGroupDeps(), c.Param("group_id"), input.Expression, input.UserIDs)
+	preview, err := groupusecases.PreviewDynamicGroupRule(c.Request().Context(), dynamicGroupDeps(d), c.Param("group_id"), input.Expression, input.UserIDs)
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"results": preview})
 }
 
-func (d Deps) handleSetDynamicGroupRuleEnabled(c *echo.Context, enabled bool) error {
+func handleSetDynamicGroupRuleEnabled(d Deps, c *echo.Context, enabled bool) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -197,22 +197,22 @@ func (d Deps) handleSetDynamicGroupRuleEnabled(c *echo.Context, enabled bool) er
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	rule, err := groupusecases.SetDynamicGroupRuleEnabled(c.Request().Context(), d.dynamicGroupDeps(), actor.ID, c.Param("group_id"), enabled, time.Now().UTC())
+	rule, err := groupusecases.SetDynamicGroupRuleEnabled(c.Request().Context(), dynamicGroupDeps(d), actor.ID, c.Param("group_id"), enabled, time.Now().UTC())
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, rule)
 }
 
-func (d Deps) handleEnableDynamicGroupRule(c *echo.Context) error {
-	return d.handleSetDynamicGroupRuleEnabled(c, true)
+func HandleEnableDynamicGroupRule(d Deps, c *echo.Context) error {
+	return handleSetDynamicGroupRuleEnabled(d, c, true)
 }
 
-func (d Deps) handleDisableDynamicGroupRule(c *echo.Context) error {
-	return d.handleSetDynamicGroupRuleEnabled(c, false)
+func HandleDisableDynamicGroupRule(d Deps, c *echo.Context) error {
+	return handleSetDynamicGroupRuleEnabled(d, c, false)
 }
 
-func (d Deps) handleUpdateGroup(c *echo.Context) error {
+func HandleUpdateGroup(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -224,21 +224,21 @@ func (d Deps) handleUpdateGroup(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	group, err := groupusecases.UpdateGroup(c.Request().Context(), d.adminGroupDeps(), groupusecases.UpdateGroupInput{
+	group, err := groupusecases.UpdateGroup(c.Request().Context(), adminGroupDeps(d), groupusecases.UpdateGroupInput{
 		ActorUserID: actor.ID, ID: c.Param("group_id"),
 		Name: input.Name, Description: input.Description, Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
-	count, err := d.adminGroupDeps().GroupRepo.CountMembers(c.Request().Context(), group.TenantID, group.ID)
+	count, err := adminGroupDeps(d).GroupRepo.CountMembers(c.Request().Context(), group.TenantID, group.ID)
 	if err != nil {
 		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toGroupSummaryResponse(group, count))
 }
 
-func (d Deps) handleDeleteGroup(c *echo.Context) error {
+func HandleDeleteGroup(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -246,14 +246,14 @@ func (d Deps) handleDeleteGroup(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := groupusecases.DeleteGroup(c.Request().Context(), d.adminGroupDeps(), actor.ID, c.Param("group_id"), time.Now().UTC()); err != nil {
-		return d.writeAdminGroupError(c, err)
+	if err := groupusecases.DeleteGroup(c.Request().Context(), adminGroupDeps(d), actor.ID, c.Param("group_id"), time.Now().UTC()); err != nil {
+		return writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleAddGroupMember(c *echo.Context) error {
+func HandleAddGroupMember(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -261,14 +261,14 @@ func (d Deps) handleAddGroupMember(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := groupusecases.AddMember(c.Request().Context(), d.adminGroupDeps(), actor.ID, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
-		return d.writeAdminGroupError(c, err)
+	if err := groupusecases.AddMember(c.Request().Context(), adminGroupDeps(d), actor.ID, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
+		return writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleRemoveGroupMember(c *echo.Context) error {
+func HandleRemoveGroupMember(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -276,20 +276,20 @@ func (d Deps) handleRemoveGroupMember(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := groupusecases.RemoveMember(c.Request().Context(), d.adminGroupDeps(), actor.ID, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
-		return d.writeAdminGroupError(c, err)
+	if err := groupusecases.RemoveMember(c.Request().Context(), adminGroupDeps(d), actor.ID, c.Param("group_id"), c.Param("user_sub"), time.Now().UTC()); err != nil {
+		return writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleListUserGroups(c *echo.Context) error {
+func HandleListUserGroups(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	view, err := groupusecases.UserGroups(c.Request().Context(), d.adminGroupDeps(), c.Param("sub"))
+	view, err := groupusecases.UserGroups(c.Request().Context(), adminGroupDeps(d), c.Param("sub"))
 	if err != nil {
-		return d.writeAdminGroupError(c, err)
+		return writeAdminGroupError(c, err)
 	}
 	groups := make([]groupSummaryResponse, len(view.Groups))
 	for i, group := range view.Groups {
@@ -307,15 +307,15 @@ func (d Deps) handleListUserGroups(c *echo.Context) error {
 	})
 }
 
-func (d Deps) adminGroupDeps() groupusecases.AdminGroupDeps {
-	return groupusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
+func adminGroupDeps(d Deps) groupusecases.AdminGroupDeps {
+	return groupusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit()}
 }
 
-func (d Deps) dynamicGroupDeps() groupusecases.DynamicGroupDeps {
-	return groupusecases.DynamicGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, JobRepo: d.JobRepo, Emit: d.legacyEmit()}
+func dynamicGroupDeps(d Deps) groupusecases.DynamicGroupDeps {
+	return groupusecases.DynamicGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, JobRepo: d.JobRepo, Emit: d.LegacyEmit()}
 }
 
-func (d Deps) toGroupMemberResponses(ctx context.Context, members []*groupdomain.GroupMember) []groupMemberResponse {
+func toGroupMemberResponses(ctx context.Context, d Deps, members []*groupdomain.GroupMember) []groupMemberResponse {
 	out := make([]groupMemberResponse, len(members))
 	for i, member := range members {
 		username := member.UserID
@@ -335,7 +335,7 @@ func toGroupSummaryResponse(group *groupdomain.Group, memberCount int) groupSumm
 	}
 }
 
-func (d Deps) writeAdminGroupError(c *echo.Context, err error) error {
+func writeAdminGroupError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, groupusecases.ErrGroupNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "group_not_found", "グループが存在しません")

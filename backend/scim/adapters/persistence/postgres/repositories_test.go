@@ -7,8 +7,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmpg "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
+	grouppg "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/postgres"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	userpg "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
@@ -63,7 +64,7 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&idmpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := (&userpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user
@@ -80,7 +81,7 @@ func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := (&idmpg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
+	if err := (&grouppg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
 		t.Fatalf("seed group: %v", err)
 	}
 	return group

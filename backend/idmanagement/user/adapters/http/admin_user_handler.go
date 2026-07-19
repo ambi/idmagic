@@ -75,13 +75,13 @@ type adminRequiredActionRequest struct {
 	Action string `json:"action"`
 }
 
-func (d Deps) handleListAdminUsers(c *echo.Context) error {
+func HandleListAdminUsers(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	// lazy-on-access: 猶予期間を過ぎた削除予約 user を一覧取得のついでに Purge する。
 	// 専用スケジューラは別 WI に切り出す。
-	if err := userusecases.PurgeExpiredSoftDeleted(c.Request().Context(), d.adminUserDeps(), time.Now().UTC()); err != nil {
+	if err := userusecases.PurgeExpiredSoftDeleted(c.Request().Context(), adminUserDeps(d), time.Now().UTC()); err != nil {
 		return err
 	}
 	users, err := d.UserRepo.FindAll(c.Request().Context(), support.RequestTenantID(c))
@@ -95,7 +95,7 @@ func (d Deps) handleListAdminUsers(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"users": response})
 }
 
-func (d Deps) handleGetAdminUser(c *echo.Context) error {
+func HandleGetAdminUser(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -120,7 +120,7 @@ func (d Deps) handleGetAdminUser(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, res)
 }
 
-func (d Deps) handleCreateAdminUser(c *echo.Context) error {
+func HandleCreateAdminUser(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (d Deps) handleCreateAdminUser(c *echo.Context) error {
 	defer cancel()
 	user, err := userusecases.CreateUser(
 		ctx,
-		d.adminUserDeps(),
+		adminUserDeps(d),
 		userusecases.CreateUserInput{
 			ActorUserID: actor.ID, PreferredUsername: input.PreferredUsername,
 			Password: input.Password, Name: input.Name, Email: input.Email,
@@ -144,12 +144,12 @@ func (d Deps) handleCreateAdminUser(c *echo.Context) error {
 		},
 	)
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, toAdminUserResponse(user))
 }
 
-func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
+func HandleUpdateAdminUser(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
 	defer cancel()
 	user, err := userusecases.UpdateUser(
 		ctx,
-		d.adminUserDeps(),
+		adminUserDeps(d),
 		userusecases.UpdateUserInput{
 			ActorUserID: actor.ID, Sub: c.Param("sub"),
 			PreferredUsername: input.PreferredUsername, Name: input.Name,
@@ -175,20 +175,20 @@ func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
 		},
 	)
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
 }
 
-func (d Deps) handleDisableAdminUser(c *echo.Context) error {
-	return d.handleSetAdminUserDisabled(c, true)
+func HandleDisableAdminUser(d Deps, c *echo.Context) error {
+	return handleSetAdminUserDisabled(d, c, true)
 }
 
-func (d Deps) handleEnableAdminUser(c *echo.Context) error {
-	return d.handleSetAdminUserDisabled(c, false)
+func HandleEnableAdminUser(d Deps, c *echo.Context) error {
+	return handleSetAdminUserDisabled(d, c, false)
 }
 
-func (d Deps) handleDeleteAdminUser(c *echo.Context) error {
+func HandleDeleteAdminUser(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -207,22 +207,22 @@ func (d Deps) handleDeleteAdminUser(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	if c.QueryParam("purge") == "true" || input.Force {
-		err = userusecases.DeleteUser(ctx, d.adminUserDeps(), userusecases.DeleteUserInput{
+		err = userusecases.DeleteUser(ctx, adminUserDeps(d), userusecases.DeleteUserInput{
 			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	} else {
-		err = userusecases.SoftDeleteUser(ctx, d.adminUserDeps(), userusecases.SoftDeleteUserInput{
+		err = userusecases.SoftDeleteUser(ctx, adminUserDeps(d), userusecases.SoftDeleteUserInput{
 			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	}
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleRestoreAdminUser(c *echo.Context) error {
+func HandleRestoreAdminUser(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -233,15 +233,15 @@ func (d Deps) handleRestoreAdminUser(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	user, err := userusecases.RestoreUser(
-		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), time.Now().UTC(),
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"), time.Now().UTC(),
 	)
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
 }
 
-func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
+func handleSetAdminUserDisabled(d Deps, c *echo.Context, disabled bool) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -252,16 +252,16 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	_, err = userusecases.SetUserDisabled(
-		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
 	)
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) adminUserDeps() userusecases.AdminUserDeps {
+func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 	deps := userusecases.AdminUserDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AttrSchemaRepo: d.AttrSchemaRepo,
 		UserMutationCommitter: d.UserMutationCommitter,
@@ -269,7 +269,7 @@ func (d Deps) adminUserDeps() userusecases.AdminUserDeps {
 		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, MfaFactorRepo: d.MfaFactorRepo,
 		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
-		Emit: d.legacyEmit(),
+		Emit: d.LegacyEmit(),
 	}
 	if d.SessionManager != nil {
 		deps.SessionStore = d.SessionManager.Store
@@ -277,7 +277,7 @@ func (d Deps) adminUserDeps() userusecases.AdminUserDeps {
 	return deps
 }
 
-func (d Deps) writeAdminUserError(c *echo.Context, err error) error {
+func writeAdminUserError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, idmusecases.ErrUserNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
@@ -342,7 +342,7 @@ func toAdminUserResponse(user *userdomain.User) adminUserResponse {
 	}
 }
 
-func (d Deps) handleSetUserRequiredAction(c *echo.Context) error {
+func HandleSetUserRequiredAction(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -357,16 +357,16 @@ func (d Deps) handleSetUserRequiredAction(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	user, err := userusecases.SetUserRequiredAction(
-		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"),
 		idmdomain.RequiredAction(input.Action), time.Now().UTC(),
 	)
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
 }
 
-func (d Deps) handleClearUserRequiredAction(c *echo.Context) error {
+func HandleClearUserRequiredAction(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -377,11 +377,11 @@ func (d Deps) handleClearUserRequiredAction(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	user, err := userusecases.ClearUserRequiredAction(
-		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"),
 		idmdomain.RequiredAction(c.Param("action")), time.Now().UTC(),
 	)
 	if err != nil {
-		return d.writeAdminUserError(c, err)
+		return writeAdminUserError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
 }

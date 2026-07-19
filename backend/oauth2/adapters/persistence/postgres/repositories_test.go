@@ -9,7 +9,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmpg "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
+	idmpg "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"

@@ -167,11 +167,16 @@ feature 層は次の規約に従う（詳細は ADR-130）。
   feature の context に `<context>/<context>/` のような stutter を作ってはならない——
   ディレクトリ構造が「叫ぶ」ことにならず RA 的に有害である。
 - **成長トリガー**: context が 2 つ目の feature を獲得した時点で feature 層を導入する。
-- **分割できない層がある**: ある層を feature ごとに分割できるかは、Go であれば「メソッドは
+- **分割しにくい層がある**: ある層を feature ごとに分割できるかは、Go であれば「メソッドは
   receiver 型と同一パッケージにしか定義できない」といった言語制約や、sqlc のような
   コード生成ツールの単位、複数 feature 間で共有されるテストフィクスチャの有無に左右される。
-  分割できない層は context ルート共有のまま残してよい（機械的な物理配置変更の範囲を
-  超えるコード再設計を伴う分割を、この規約は要求しない）。
+  「共有 struct のメソッド」として実装された層（例: HTTP handler が `Deps` のメソッド）は、
+  素朴に struct を feature ごとの embedded 部分構造体へ分割すると feature 横断の
+  依存フィールドが重複しがちなので、先に「共有 struct はそのまま、メソッドをフリー関数
+  （`func handleX(deps Deps, ...) ...`）へ変換して feature パッケージへ移す」設計を検討する
+  （ADR-130）。それでも codegen 単位や共有テストフィクスチャの複製コストが decluttering の
+  効果に見合わない場合は、その層を context ルート共有のまま残してよい
+  （機械的な物理配置変更の範囲を超える再設計を、この規約は一律には要求しない）。
 - **共有型・共有ヘルパー**: feature 横断で使われる型・エラー変数・小さい utility 関数は、
   無理に 1 feature へ寄せず context ルートの共有パッケージに残す。
 - **package 名は各層名のまま**（`domain`/`ports`/`usecases`/`http`/`memory`/`postgres`）。

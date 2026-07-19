@@ -19,7 +19,7 @@ import (
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
+	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -64,7 +64,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	auditRepo := &auditpostgres.AuditEventRepository{Pool: db}
 	deps := &bootstrap.Dependencies{
 		IdManagement: idmanagement.Module{
-			UserRepo: &idmpostgres.UserRepository{Pool: db},
+			UserRepo: &userpostgres.UserRepository{Pool: db},
 		},
 		Authentication: authentication.Module{
 			PasswordHistoryRepo: &authnpostgres.PasswordHistoryRepository{Pool: db},

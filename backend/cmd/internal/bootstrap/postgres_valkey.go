@@ -18,7 +18,9 @@ import (
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/postgres"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
+	agentpostgres "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/postgres"
+	grouppostgres "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/postgres"
+	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobspostgres "github.com/ambi/idmagic/backend/jobs/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -123,7 +125,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		return nil, errors.New("EVENT_SINK must be console or outbox")
 	}
 
-	userRepo := &idmpostgres.UserRepository{Pool: resilientDB}
+	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
 	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
 	workflowCapture := &igpostgres.UserWorkflowCapture{Pool: resilientDB}
@@ -140,14 +142,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenantRepo,
-			AttrSchemaRepo:     &idmpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+			AttrSchemaRepo:     &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
 			BrandingRepo:       &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
 			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,
-			GroupRepo:             &idmpostgres.GroupRepository{Pool: resilientDB},
-			AgentRepo:             &idmpostgres.AgentRepository{Pool: resilientDB},
+			GroupRepo:             &grouppostgres.GroupRepository{Pool: resilientDB},
+			AgentRepo:             &agentpostgres.AgentRepository{Pool: resilientDB},
 			UserMutationCommitter: userMutationCommitter,
 			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},

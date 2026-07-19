@@ -6,7 +6,7 @@ import (
 
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	impostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
+	impostgres "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )

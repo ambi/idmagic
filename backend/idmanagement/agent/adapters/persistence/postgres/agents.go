@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
+	"github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/postgres/sqlcgen"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
@@ -26,6 +26,13 @@ func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {
 		return pgtype.Timestamptz{}
 	}
 	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+func textOrNil(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
 }
 
 func agentFromRow(row *sqlcgen.Agent) (*agentdomain.Agent, error) {

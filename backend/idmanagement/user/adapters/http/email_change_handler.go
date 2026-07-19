@@ -23,7 +23,7 @@ type emailChangeVerifyRequest struct {
 
 // handleEmailVerifyContext は未認証で開かれうる検証ページ用に CSRF トークンを発行する
 // (handlePasswordResetContext と同方針)。
-func (d Deps) handleEmailVerifyContext(c *echo.Context) error {
+func HandleEmailVerifyContext(d Deps, c *echo.Context) error {
 	csrf, err := d.EnsureCSRFCookie(c)
 	if err != nil {
 		return err
@@ -31,14 +31,14 @@ func (d Deps) handleEmailVerifyContext(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]string{"csrf_token": csrf})
 }
 
-func (d Deps) handleRequestEmailChange(c *echo.Context) error {
+func HandleRequestEmailChange(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
 	// primary email の変更は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
-	sub, err := d.requireStepUpSub(c)
+	sub, err := requireStepUpSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 	var input emailChangeRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
@@ -49,13 +49,13 @@ func (d Deps) handleRequestEmailChange(c *echo.Context) error {
 		EmailSender: d.EmailSender, Emit: d.Emit, Issuer: support.RequestIssuer(c, d.Issuer),
 	}, userusecases.RequestEmailChangeInput{Sub: sub, NewEmail: input.NewEmail, Now: time.Now().UTC()})
 	if err != nil {
-		return d.writeEmailChangeError(c, err)
+		return writeEmailChangeError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleConfirmEmailChange(c *echo.Context) error {
+func HandleConfirmEmailChange(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -69,12 +69,12 @@ func (d Deps) handleConfirmEmailChange(c *echo.Context) error {
 	if _, err := userusecases.ConfirmEmailChange(c.Request().Context(), userusecases.ConfirmEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore, Emit: d.Emit,
 	}, userusecases.ConfirmEmailChangeInput{Token: input.Token, Now: time.Now().UTC()}); err != nil {
-		return d.writeEmailChangeError(c, err)
+		return writeEmailChangeError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (d Deps) writeEmailChangeError(c *echo.Context, err error) error {
+func writeEmailChangeError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, userusecases.ErrInvalidEmail):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_email", "メールアドレスの形式が正しくありません")
@@ -85,6 +85,6 @@ func (d Deps) writeEmailChangeError(c *echo.Context, err error) error {
 	case errors.Is(err, userusecases.ErrInvalidEmailChangeToken):
 		return support.WriteBrowserError(c, http.StatusGone, "invalid_email_change_token", "確認リンクが無効か期限切れです")
 	default:
-		return d.writeAccountError(c, err)
+		return writeAccountError(c, err)
 	}
 }

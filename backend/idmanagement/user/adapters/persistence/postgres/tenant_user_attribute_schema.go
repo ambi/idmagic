@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
+	"github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres/sqlcgen"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )

@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
+	"github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/postgres/sqlcgen"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
@@ -38,6 +38,13 @@ func groupFromRow(row *sqlcgen.Group) (*groupdomain.Group, error) {
 		g.Roles = []string{}
 	}
 	return g, g.Validate()
+}
+
+func textOrNil(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
 }
 
 func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]*groupdomain.Group, error) {

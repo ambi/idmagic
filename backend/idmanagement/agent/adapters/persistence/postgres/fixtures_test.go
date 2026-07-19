@@ -11,7 +11,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	userpg "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthpg "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -21,7 +21,7 @@ import (
 	tenancypg "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
 )
 
-// 本パッケージは pgfixtures が依存する User/Group repository 自身を所有するため、
+// 本パッケージは pgfixtures が依存する Agent repository 自身を所有するため、
 // pgfixtures を import すると postgres -> pgfixtures -> postgres の import cycle に
 // なる。shared/adapters/persistence/postgres 自身の内部テストと同じ理由で、
 // 引き続き自前の unexported フィクスチャヘルパーを持つ (wi-178)。
@@ -64,7 +64,8 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	return tenant
 }
 
-// seedUser は指定テナントにユーザを作成して返す。
+// seedUser は指定テナントにユーザを作成して返す。user/adapters/persistence/postgres は
+// 本パッケージへ依存しないため、そのまま import して再利用できる。
 func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 	t.Helper()
 	now := testClock()
@@ -77,28 +78,10 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := (&userpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user
-}
-
-// seedGroup は指定テナントにグループを作成して返す。
-func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group {
-	t.Helper()
-	now := testClock()
-	group := &groupdomain.Group{
-		ID:        newUUID(t),
-		TenantID:  tenantID,
-		Name:      uniqueID("group-name"),
-		Roles:     []string{},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	if err := (&GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
-		t.Fatalf("seed group: %v", err)
-	}
-	return group
 }
 
 // seedClient は指定テナントに OAuth2 クライアントを作成して返す。oauth2/adapters/persistence/postgres

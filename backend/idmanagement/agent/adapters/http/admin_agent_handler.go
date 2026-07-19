@@ -51,11 +51,11 @@ type agentSummaryResponse struct {
 	KilledAt    *time.Time            `json:"killed_at,omitempty"`
 }
 
-func (d Deps) handleListAgents(c *echo.Context) error {
+func HandleListAgents(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := agentusecases.ListAgents(c.Request().Context(), d.adminAgentDeps())
+	views, err := agentusecases.ListAgents(c.Request().Context(), adminAgentDeps(d))
 	if err != nil {
 		return err
 	}
@@ -66,18 +66,18 @@ func (d Deps) handleListAgents(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"agents": agents})
 }
 
-func (d Deps) handleGetAgent(c *echo.Context) error {
+func HandleGetAgent(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	view, err := agentusecases.GetAgent(c.Request().Context(), d.adminAgentDeps(), c.Param("agent_id"))
+	view, err := agentusecases.GetAgent(c.Request().Context(), adminAgentDeps(d), c.Param("agent_id"))
 	if err != nil {
-		return d.writeAdminAgentError(c, err)
+		return writeAdminAgentError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAgentSummaryResponse(view.Agent, view.ClientIDs))
 }
 
-func (d Deps) handleRegisterAgent(c *echo.Context) error {
+func HandleRegisterAgent(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -93,17 +93,17 @@ func (d Deps) handleRegisterAgent(c *echo.Context) error {
 	if input.OwnerUserID != nil {
 		ownerUserID = *input.OwnerUserID
 	}
-	agent, err := agentusecases.RegisterAgent(c.Request().Context(), d.adminAgentDeps(), agentusecases.RegisterAgentInput{
+	agent, err := agentusecases.RegisterAgent(c.Request().Context(), adminAgentDeps(d), agentusecases.RegisterAgentInput{
 		ActorUserID: actor.ID, Name: input.Name, Description: input.Description,
 		Kind: input.Kind, OwnerUserID: ownerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
-		return d.writeAdminAgentError(c, err)
+		return writeAdminAgentError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, toAgentSummaryResponse(agent, []string{}))
 }
 
-func (d Deps) handleUpdateAgent(c *echo.Context) error {
+func HandleUpdateAgent(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -116,48 +116,48 @@ func (d Deps) handleUpdateAgent(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	agentID := c.Param("agent_id")
-	if _, err := agentusecases.UpdateAgent(c.Request().Context(), d.adminAgentDeps(), agentusecases.UpdateAgentInput{
+	if _, err := agentusecases.UpdateAgent(c.Request().Context(), adminAgentDeps(d), agentusecases.UpdateAgentInput{
 		ActorUserID: actor.ID, ID: agentID,
 		Name: input.Name, Description: input.Description, Kind: input.Kind,
 		OwnerUserID: input.OwnerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	}); err != nil {
-		return d.writeAdminAgentError(c, err)
+		return writeAdminAgentError(c, err)
 	}
-	view, err := agentusecases.GetAgent(c.Request().Context(), d.adminAgentDeps(), agentID)
+	view, err := agentusecases.GetAgent(c.Request().Context(), adminAgentDeps(d), agentID)
 	if err != nil {
-		return d.writeAdminAgentError(c, err)
+		return writeAdminAgentError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAgentSummaryResponse(view.Agent, view.ClientIDs))
 }
 
-func (d Deps) handleDisableAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		_, err := agentusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, true, time.Now().UTC())
+func HandleDisableAgent(d Deps, c *echo.Context) error {
+	return changeAgentStatus(d, c, func(actorUserID, id string) error {
+		_, err := agentusecases.SetAgentDisabled(c.Request().Context(), adminAgentDeps(d), actorUserID, id, true, time.Now().UTC())
 		return err
 	})
 }
 
-func (d Deps) handleEnableAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		_, err := agentusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, false, time.Now().UTC())
+func HandleEnableAgent(d Deps, c *echo.Context) error {
+	return changeAgentStatus(d, c, func(actorUserID, id string) error {
+		_, err := agentusecases.SetAgentDisabled(c.Request().Context(), adminAgentDeps(d), actorUserID, id, false, time.Now().UTC())
 		return err
 	})
 }
 
-func (d Deps) handleKillAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		_, err := agentusecases.KillAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
+func HandleKillAgent(d Deps, c *echo.Context) error {
+	return changeAgentStatus(d, c, func(actorUserID, id string) error {
+		_, err := agentusecases.KillAgent(c.Request().Context(), adminAgentDeps(d), actorUserID, id, time.Now().UTC())
 		return err
 	})
 }
 
-func (d Deps) handleDeleteAgent(c *echo.Context) error {
-	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		return agentusecases.DeleteAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
+func HandleDeleteAgent(d Deps, c *echo.Context) error {
+	return changeAgentStatus(d, c, func(actorUserID, id string) error {
+		return agentusecases.DeleteAgent(c.Request().Context(), adminAgentDeps(d), actorUserID, id, time.Now().UTC())
 	})
 }
 
-func (d Deps) handleBindAgentCredential(c *echo.Context) error {
+func HandleBindAgentCredential(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -169,14 +169,14 @@ func (d Deps) handleBindAgentCredential(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	if err := agentusecases.BindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
-		return d.writeAdminAgentError(c, err)
+	if err := agentusecases.BindCredential(c.Request().Context(), adminAgentDeps(d), actor.ID, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
+		return writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) handleUnbindAgentCredential(c *echo.Context) error {
+func HandleUnbindAgentCredential(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -184,8 +184,8 @@ func (d Deps) handleUnbindAgentCredential(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := agentusecases.UnbindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), c.Param("client_id"), time.Now().UTC()); err != nil {
-		return d.writeAdminAgentError(c, err)
+	if err := agentusecases.UnbindCredential(c.Request().Context(), adminAgentDeps(d), actor.ID, c.Param("agent_id"), c.Param("client_id"), time.Now().UTC()); err != nil {
+		return writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
@@ -193,7 +193,7 @@ func (d Deps) handleUnbindAgentCredential(c *echo.Context) error {
 
 // changeAgentStatus は disable / enable / kill / delete の共通処理 (verify + admin gate
 // + 204)。
-func (d Deps) changeAgentStatus(c *echo.Context, action func(actorUserID, id string) error) error {
+func changeAgentStatus(d Deps, c *echo.Context, action func(actorUserID, id string) error) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
@@ -202,14 +202,14 @@ func (d Deps) changeAgentStatus(c *echo.Context, action func(actorUserID, id str
 		return d.WriteAdminAccessError(c, err)
 	}
 	if err := action(actor.ID, c.Param("agent_id")); err != nil {
-		return d.writeAdminAgentError(c, err)
+		return writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) adminAgentDeps() agentusecases.AdminAgentDeps {
-	return agentusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
+func adminAgentDeps(d Deps) agentusecases.AdminAgentDeps {
+	return agentusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit()}
 }
 
 func toAgentSummaryResponse(agent *agentdomain.Agent, clientIDs []string) agentSummaryResponse {
@@ -225,7 +225,7 @@ func toAgentSummaryResponse(agent *agentdomain.Agent, clientIDs []string) agentS
 	}
 }
 
-func (d Deps) writeAdminAgentError(c *echo.Context, err error) error {
+func writeAdminAgentError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, agentusecases.ErrAgentNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "agent_not_found", "エージェントが存在しません")
