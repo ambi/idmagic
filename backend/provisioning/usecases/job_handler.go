@@ -14,11 +14,12 @@ import (
 // KindProvisioningDelivery is the Jobs.JobKind for one ProvisioningDelivery
 // execution attempt (spec/contexts/provisioning.yaml §配送・信頼性). Registered
 // via jobsdomain.RegisterKind (caller-owned kind, ADR-117 §5 direction) rather
-// than a hardcoded Jobs constant.
+// than a hardcoded Jobs constant. Lane is default (ADR-129): SCIM delivery
+// does not carry the low-latency requirement backchannel_logout_delivery has.
 const KindProvisioningDelivery jobsdomain.JobKind = "provisioning_delivery"
 
 func init() {
-	jobsdomain.RegisterKind(KindProvisioningDelivery)
+	jobsdomain.RegisterKind(KindProvisioningDelivery, jobsdomain.LaneDefault)
 }
 
 // JobHandlerDeps are ProvisioningDeliveryHandler's dependencies.

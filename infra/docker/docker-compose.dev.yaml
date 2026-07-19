@@ -114,6 +114,10 @@ services:
   worker:
     image: idmagic:dev
     entrypoint: ["/app/idmagic-worker"]
+    # JOB_WORKER_LANES is intentionally unset: compat mode (ADR-129), a single
+    # process claims every lane. Production splits this into one Deployment
+    # per lane (infra/k8s/base/worker.yaml) so latency_sensitive gets a
+    # reserved execution slot independent of the bulk backlog.
     environment:
       PERSISTENCE: postgres_valkey
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable

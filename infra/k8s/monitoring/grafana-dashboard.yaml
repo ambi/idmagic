@@ -18,6 +18,10 @@ data:
         {"title":"HTTP requests in flight","type":"timeseries","targets":[{"expr":"sum by (route) (http_requests_in_flight)"}]},
         {"title":"Login attempts by outcome","type":"timeseries","targets":[{"expr":"sum by (outcome) (rate(authn_login_attempts_total[5m]))"}]},
         {"title":"Login throttle hit ratio","type":"timeseries","targets":[{"expr":"idmagic:login_throttle_hit_ratio:ratio_rate5m"}]},
-        {"title":"Token issuance rate by grant_type/outcome","type":"timeseries","targets":[{"expr":"sum by (grant_type, outcome) (rate(oauth2_token_issuance_total[5m]))"}]}
+        {"title":"Token issuance rate by grant_type/outcome","type":"timeseries","targets":[{"expr":"sum by (grant_type, outcome) (rate(oauth2_token_issuance_total[5m]))"}]},
+        {"title":"Jobs queue depth by lane (queued/running, wi-261 ADR-129)","type":"timeseries","targets":[{"expr":"jobs_queue_depth"}]},
+        {"title":"Jobs claim latency p99 by lane","type":"timeseries","targets":[{"expr":"idmagic:jobs_claim_latency_seconds:p99_5m"}]},
+        {"title":"Jobs failure ratio by lane","type":"timeseries","targets":[{"expr":"idmagic:jobs_failure_ratio:ratio_rate5m"}]},
+        {"title":"Jobs retry rate by lane","type":"timeseries","targets":[{"expr":"sum by (lane) (rate(jobs_retry_total[5m]))"}]}
       ]
     }

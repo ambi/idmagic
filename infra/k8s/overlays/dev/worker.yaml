@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-worker-latency-sensitive }
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          envFrom:
+            - secretRef: { name: idmagic-dev-worker-secrets }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-worker-default }
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          envFrom:
+            - secretRef: { name: idmagic-dev-worker-secrets }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-worker-bulk }
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          envFrom:
+            - secretRef: { name: idmagic-dev-worker-secrets }

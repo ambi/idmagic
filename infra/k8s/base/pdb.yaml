@@ -12,3 +12,22 @@ spec:
     matchLabels:
       app.kubernetes.io/name: idmagic
       app.kubernetes.io/component: api
+---
+# ADR-129: latency_sensitive must always keep an execution slot available,
+# independent of voluntary disruptions (node drains, rollouts) — this is the
+# same reservation guarantee the lane isolation itself provides against the
+# bulk backlog, extended to cluster-initiated disruption.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: idmagic-worker-latency-sensitive
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-latency-sensitive
+    app.kubernetes.io/part-of: idmagic
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-latency-sensitive

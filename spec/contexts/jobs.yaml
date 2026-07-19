@@ -58,6 +58,11 @@ glossary:
     definition: 終端状態に達していない Job を取消す。
     aliases:
       - cancel
+  ExecutionLane:
+    definition: "JobKind の登録情報が一意に決める実行枠の区分 (ADR-129)。異なる\nレイテンシ・資源特性を持つ JobKind 間で claim と worker 実行枠を隔離するために使う。\nenqueue 呼び出し元は lane を指定できない。latency_sensitive / default / bulk の3種。\n"
+    aliases:
+      - lane
+      - 実行レーン
   Developer:
     definition: 標準開発環境でこのリポジトリを動かす開発者。
   System:
@@ -87,6 +92,9 @@ models:
       kind:
         type: JobKind
         description: 実行するハンドラを決めるジョブ種別。
+      lane:
+        type: ExecutionLane
+        description: "kind の登録情報から enqueue 時に一意に決まる実行レーン (ADR-129)。\n呼び出し元は指定できず、Job 作成後は不変。claim は対象 lane の Job だけを対象にする。\n"
       status:
         type: JobStatus
       params:
@@ -140,7 +148,7 @@ models:
       - canceled
   JobKind:
     kind: enum
-    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
+    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。\n"
     values:
       - noop_echo
       - user_import_preview
@@ -148,6 +156,14 @@ models:
       - dynamic_group_reconcile
       - lifecycle_workflow_run
       - backchannel_logout_delivery
+      - provisioning_delivery
+  ExecutionLane:
+    kind: enum
+    description: "Job の実行枠を隔離する区分 (ADR-129)。JobKind の登録情報が lane を一意に決め、\nenqueue 呼び出し元は指定できない。latency_sensitive は低遅延配送を専用実行枠で保証し、\nbulk backlog の滞留から隔離される。bulk は長時間・大量ジョブ、default はそのいずれでもない\nジョブに使う。\n"
+    values:
+      - latency_sensitive
+      - default
+      - bulk
   JobProgress:
     kind: value_object
     description: ハンドラが Running 中に任意で報告する進捗スナップショット。
@@ -282,7 +298,7 @@ states:
         to: canceled
 interfaces:
   EnqueueJob:
-    description: "呼び出し元 bounded context が非同期処理を queue に投入する内部インターフェース。\nHTTP には公開せず、同一プロセス内の Go 呼び出しとして各 context の usecase から使う。\ndedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job と一致する場合は\n新規作成せず既存 JobRef を返す。\n"
+    description: "呼び出し元 bounded context が非同期処理を queue に投入する内部インターフェース。\nHTTP には公開せず、同一プロセス内の Go 呼び出しとして各 context の usecase から使う。\ndedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job と一致する場合は\n新規作成せず既存 JobRef を返す。作成される Job の lane は kind の登録情報から一意に\n決まり、呼び出し元は指定できない (ADR-129)。\n"
     input:
       tenant_id:
         type: String
@@ -303,10 +319,12 @@ interfaces:
       - InvalidRequestError
     access: internal
   ClaimJobs:
-    description: "worker が claim 可能な (status=queued かつ run_at <= now) Job をバッチで取得し、\n同一トランザクション内で Running に遷移させ、自分を lease_owner として\nlease_expires_at を設定する内部インターフェース。\n"
+    description: "worker が指定した lane 内で claim 可能な (status=queued かつ run_at <= now、\nまたはリース失効済みの running) Job をバッチで取得し、同一トランザクション内で Running に\n遷移させ、自分を lease_owner として lease_expires_at を設定する内部インターフェース。\n対象 lane 以外の Job は取得しない (ADR-129)。\n"
     input:
       worker_id:
         type: String
+      lane:
+        type: ExecutionLane
       batch_size:
         type: Integer
     output:
@@ -315,6 +333,7 @@ interfaces:
     ensures:
       - all_jobs_leased_by(output.jobs, input.worker_id)
       - single_worker_holds_active_lease(output.jobs)
+      - all_jobs_in_lane(output.jobs, input.lane)
     access: internal
   HeartbeatJob:
     description: worker が実行中の Job のリースを延長する。
@@ -446,3 +465,30 @@ scenarios:
       - worker process の periodic dispatcher が job_id が未関連付けの queued run を再走査する
       - dispatcher が dedup_key=lifecycle-workflow-run:{run_id} で EnqueueJob を呼び job_id を関連付ける
       - worker が Job を claim してハンドラを実行する
+  bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる:
+    actor: System
+    given:
+      - "bulk lane に worker の concurrency を超える件数の長時間 Job が queued で滞留している"
+      - "latency_sensitive lane を claim する worker が別途稼働している"
+    main_success:
+      - "テナント \"tenant-a\" に kind=\"backchannel_logout_delivery\" (lane=latency_sensitive) の Job を enqueue する"
+      - latency_sensitive lane の worker が bulk lane の backlog に関わらず即座に claim する
+      - Job が running に遷移し bulk lane の滞留から実行が妨げられない
+  lane未登録のJobKindはworker起動時に拒否される:
+    actor: Developer
+    given:
+      - "lane が登録されていない JobKind が handler registry に登録されようとしている"
+    main_success:
+      - worker の起動処理が lane 未登録を検出し起動を失敗させる
+    extensions:
+      - at: 1
+        condition: 同一 JobKind に複数の異なる lane が重複登録されようとした
+        steps:
+          - worker の起動処理が重複登録を検出し起動を失敗させる
+  lane列未設定の既存行はdefault laneへbackfillされclaim対象になる:
+    actor: System
+    given:
+      - "lane 導入前に enqueue され lane が未設定 (schema 上の default) の queued Job \"job-legacy\" が存在する"
+    main_success:
+      - schema の backfill により \"job-legacy\" の lane が default になる
+      - default lane を claim する worker が \"job-legacy\" を claim できる

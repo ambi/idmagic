@@ -15,3 +15,25 @@ spec:
       path: /metrics
       interval: 30s
       scrapeTimeout: 10s
+---
+# wi-261 T006: one ServiceMonitor covers all three lane Services
+# (idmagic-worker-{latency-sensitive,default,bulk}) via matchExpressions,
+# since they share the metrics-only "metrics" Service port name.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: idmagic-worker
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [worker-latency-sensitive, worker-default, worker-bulk]
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

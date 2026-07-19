@@ -17,6 +17,7 @@ func newTestJob(t *testing.T, r *JobRepository, now time.Time) *domain.Job {
 	job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
 		TenantID:    "tenant-a",
 		Kind:        domain.KindNoopEcho,
+		Lane:        domain.LaneDefault,
 		Params:      json.RawMessage(`{}`),
 		MaxAttempts: domain.DefaultMaxAttempts,
 		Now:         now,
@@ -33,7 +34,7 @@ func TestEnqueue_DedupReturnsExistingNonTerminalJob(t *testing.T) {
 	now := time.Now().UTC()
 	dedup := "import-2026-01"
 	input := ports.EnqueueInput{
-		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
 		DedupKey: &dedup, MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
 	}
 	first, created, err := r.Enqueue(context.Background(), input)
@@ -60,14 +61,14 @@ func TestEnqueue_DedupIgnoresTerminalJobs(t *testing.T) {
 	now := time.Now().UTC()
 	dedup := "import-2026-01"
 	input := ports.EnqueueInput{
-		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
 		DedupKey: &dedup, MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
 	}
 	first, _, err := r.Enqueue(context.Background(), input)
 	if err != nil {
 		t.Fatalf("first Enqueue() error = %v", err)
 	}
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("ClaimBatch() = %v, %v", claimed, err)
 	}
@@ -86,17 +87,39 @@ func TestEnqueue_DedupIgnoresTerminalJobs(t *testing.T) {
 	}
 }
 
+// TestClaimBatch_ExcludesOtherLanes: RED for ADR-129 lane isolation — a due,
+// queued Job in one lane must never be returned when claiming a different
+// lane, even with ample batchSize.
+func TestClaimBatch_ExcludesOtherLanes(t *testing.T) {
+	r := NewJobRepository()
+	now := time.Now().UTC()
+	_, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Lane: domain.LaneDefault,
+		Params: json.RawMessage(`{}`), MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
+	})
+	if err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneBulk, 10, time.Minute, now)
+	if err != nil {
+		t.Fatalf("ClaimBatch() error = %v", err)
+	}
+	if len(claimed) != 0 {
+		t.Errorf("ClaimBatch(lane=bulk) claimed %d jobs, want 0 (job is lane=default)", len(claimed))
+	}
+}
+
 func TestClaimBatch_ExcludesFutureRunAt(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	_, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
-		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
 		MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now.Add(time.Hour),
 	})
 	if err != nil {
 		t.Fatalf("Enqueue() error = %v", err)
 	}
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	if err != nil {
 		t.Fatalf("ClaimBatch() error = %v", err)
 	}
@@ -110,7 +133,7 @@ func TestClaimBatch_IncrementsAttemptsAndSetsLease(t *testing.T) {
 	now := time.Now().UTC()
 	job := newTestJob(t, r, now)
 
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("ClaimBatch() = %v, %v", claimed, err)
 	}
@@ -137,7 +160,7 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
 
-	first, err := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	first, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	if err != nil || len(first) != 1 {
 		t.Fatalf("first ClaimBatch() = %v, %v", first, err)
 	}
@@ -145,7 +168,7 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	// worker-1 crashes without heartbeating; simulate lease expiry by polling
 	// after the lease's expiry time.
 	afterExpiry := now.Add(2 * time.Minute)
-	stillLocked, err := r.ClaimBatch(context.Background(), "worker-2", 10, time.Minute, now.Add(30*time.Second))
+	stillLocked, err := r.ClaimBatch(context.Background(), "worker-2", domain.LaneDefault, 10, time.Minute, now.Add(30*time.Second))
 	if err != nil {
 		t.Fatalf("ClaimBatch() before expiry error = %v", err)
 	}
@@ -153,7 +176,7 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 		t.Fatalf("ClaimBatch() before lease expiry claimed %d jobs, want 0 (JobLeaseExclusivity)", len(stillLocked))
 	}
 
-	reclaimed, err := r.ClaimBatch(context.Background(), "worker-2", 10, time.Minute, afterExpiry)
+	reclaimed, err := r.ClaimBatch(context.Background(), "worker-2", domain.LaneDefault, 10, time.Minute, afterExpiry)
 	if err != nil || len(reclaimed) != 1 {
 		t.Fatalf("ClaimBatch() after expiry = %v, %v", reclaimed, err)
 	}
@@ -190,7 +213,7 @@ func TestClaimBatch_ConcurrentClaimIsExclusive(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range numJobs {
-				claimed, err := r.ClaimBatch(context.Background(), workerID, 1, time.Minute, now)
+				claimed, err := r.ClaimBatch(context.Background(), workerID, domain.LaneDefault, 1, time.Minute, now)
 				if err != nil {
 					t.Errorf("ClaimBatch() error = %v", err)
 					return
@@ -217,7 +240,7 @@ func TestHeartbeat_ExtendsLease(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	newExpiry, err := r.Heartbeat(context.Background(), job.ID, "worker-1", time.Minute, now.Add(30*time.Second))
@@ -234,7 +257,7 @@ func TestHeartbeat_WrongWorkerReturnsErrJobLeaseLost(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	_, err := r.Heartbeat(context.Background(), job.ID, "worker-2", time.Minute, now)
@@ -247,7 +270,7 @@ func TestComplete_Success(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	result := json.RawMessage(`{"ok":true}`)
@@ -267,7 +290,7 @@ func TestComplete_WrongWorkerReturnsErrJobLeaseLost(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	_, err := r.Complete(context.Background(), job.ID, "worker-2", nil, now)
@@ -280,7 +303,7 @@ func TestFail_RetrySetsQueuedAndRunAt(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	nextRunAt := now.Add(30 * time.Second)
@@ -305,7 +328,7 @@ func TestFail_DeadLetterSetsFailedTerminal(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	got, err := r.Fail(context.Background(), job.ID, "worker-1", ports.FailOutcome{
@@ -332,7 +355,7 @@ func TestCancel_TerminalReturnsErrJobAlreadyTerminal(t *testing.T) {
 	r := NewJobRepository()
 	now := time.Now().UTC()
 	job := newTestJob(t, r, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	if _, err := r.Complete(context.Background(), claimed[0].ID, "worker-1", nil, now); err != nil {
 		t.Fatalf("Complete() error = %v", err)
 	}
@@ -354,6 +377,50 @@ func TestCancel_FromQueuedSucceeds(t *testing.T) {
 	}
 	if got.Status != domain.StatusCanceled {
 		t.Errorf("Status = %q, want %q", got.Status, domain.StatusCanceled)
+	}
+}
+
+// TestLaneDepths_CountsQueuedAndRunningPerLane: RED for wi-261 T006 — the
+// depth/active gauges need one queued+running count pair per lane, with
+// lanes that have no rows simply absent (not a spurious zero entry).
+func TestLaneDepths_CountsQueuedAndRunningPerLane(t *testing.T) {
+	r := NewJobRepository()
+	now := time.Now().UTC()
+	enqueueLane := func(lane domain.ExecutionLane) *domain.Job {
+		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+			TenantID: "tenant-a", Kind: domain.KindNoopEcho, Lane: lane,
+			Params: json.RawMessage(`{}`), MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
+		})
+		if err != nil {
+			t.Fatalf("Enqueue() error = %v", err)
+		}
+		return job
+	}
+
+	enqueueLane(domain.LaneDefault)
+	enqueueLane(domain.LaneDefault)
+	bulkJob := enqueueLane(domain.LaneBulk)
+	if _, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneBulk, 10, time.Minute, now); err != nil {
+		t.Fatalf("ClaimBatch() error = %v", err)
+	}
+	_ = bulkJob
+
+	depths, err := r.LaneDepths(context.Background())
+	if err != nil {
+		t.Fatalf("LaneDepths() error = %v", err)
+	}
+	byLane := map[domain.ExecutionLane]ports.LaneDepth{}
+	for _, d := range depths {
+		byLane[d.Lane] = d
+	}
+	if got := byLane[domain.LaneDefault]; got.Queued != 2 || got.Running != 0 {
+		t.Errorf("default lane depth = %+v, want Queued=2 Running=0", got)
+	}
+	if got := byLane[domain.LaneBulk]; got.Queued != 0 || got.Running != 1 {
+		t.Errorf("bulk lane depth = %+v, want Queued=0 Running=1", got)
+	}
+	if _, ok := byLane[domain.LaneLatencySensitive]; ok {
+		t.Error("latency_sensitive lane has no rows, want it absent from LaneDepths()")
 	}
 }
 

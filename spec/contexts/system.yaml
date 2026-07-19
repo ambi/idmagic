@@ -155,11 +155,13 @@ interfaces:
   MetricsExposition:
     description: |
       Prometheus/OpenMetrics 形式でスクレイプ可能な集約メトリクスを公開する management endpoint。
-      HTTP RED (リクエスト数・エラー率・レイテンシ) と認証ドメインのゴールデンシグナル (login 成否、
-      token 発行、throttle ヒット) を含む。tenant_id、user_id、client_id、path 実値など高カーディナリティな
-      値は label に含めず、route template や outcome class などの有限集合だけを label とする。
-      application API の tenant middleware から分離し、deploy policy で loopback/management network
-      または認証のいずれかにより公開範囲を制限する。
+      idmagic-api は HTTP RED (リクエスト数・エラー率・レイテンシ) と認証ドメインのゴールデンシグナル
+      (login 成否、token 発行、throttle ヒット) を、idmagic-worker は Jobs の実行レーン別ゴールデンシグナル
+      (queue depth、claim latency、成功・失敗、retry。lane は ExecutionLane の有限集合、ADR-129) を公開する
+      independent な endpoint インスタンスであり、両者は同一プロセスを共有しない。tenant_id、user_id、
+      client_id、job_id、path 実値など高カーディナリティな値は label に含めず、route template や
+      outcome class、lane などの有限集合だけを label とする。application API の tenant middleware から
+      分離し、deploy policy で loopback/management network または認証のいずれかにより公開範囲を制限する。
     output:
       body: { type: String, description: "OpenMetrics text format" }
     read_only: true

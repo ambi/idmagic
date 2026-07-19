@@ -12,3 +12,7 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["idp:8081"]
+  - job_name: idmagic-worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["worker:8080"]

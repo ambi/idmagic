@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,10 +14,13 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// RunnerConfig holds the ADR-099 tunables for a worker's poll loop. Zero
-// values fall back to the ADR-099 defaults (see withDefaults).
+// RunnerConfig holds the ADR-099 tunables for a worker's poll loop, plus the
+// ADR-129 Lane it claims. Zero values fall back to the ADR-099 defaults (see
+// withDefaults); Lane has no default and must be a valid domain.ExecutionLane
+// (NewRunner panics otherwise, a startup-time programmer error).
 type RunnerConfig struct {
 	WorkerID      string
+	Lane          domain.ExecutionLane
 	PollInterval  time.Duration
 	Concurrency   int
 	LeaseDuration time.Duration
@@ -51,6 +55,9 @@ type RunnerDeps struct {
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	// Tests inject a fixed/controllable clock.
 	Now func() time.Time
+	// Metrics records lane-scoped observability signals (wi-261 T006). Nil is
+	// valid and records nothing.
+	Metrics JobsMetrics
 }
 
 // Runner is the worker pool (ADR-099): it polls JobRepository for claimable
@@ -63,7 +70,14 @@ type Runner struct {
 	wg   sync.WaitGroup
 }
 
+// NewRunner panics if cfg.Lane is not a valid domain.ExecutionLane: a Runner
+// with no lane, or an unrecognized one, can never claim anything and is a
+// worker misconfiguration caught at startup (ADR-129), matching
+// HandlerRegistry.Register's panic-on-invalid-JobKind precedent.
 func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner {
+	if !cfg.Lane.Valid() {
+		panic(fmt.Sprintf("jobs: cannot start Runner with invalid ExecutionLane %q", cfg.Lane))
+	}
 	cfg = cfg.withDefaults()
 	if deps.Now == nil {
 		deps.Now = func() time.Time { return time.Now().UTC() }
@@ -97,7 +111,7 @@ func (rn *Runner) poll(ctx context.Context) {
 		return
 	}
 	now := rn.deps.Now()
-	claimed, err := rn.deps.Repo.ClaimBatch(ctx, rn.cfg.WorkerID, available, rn.cfg.LeaseDuration, now)
+	claimed, err := rn.deps.Repo.ClaimBatch(ctx, rn.cfg.WorkerID, rn.cfg.Lane, available, rn.cfg.LeaseDuration, now)
 	if err != nil {
 		logging.Warn(ctx, "jobs: claim batch failed", "error", err)
 		return
@@ -107,6 +121,9 @@ func (rn *Runner) poll(ctx context.Context) {
 			At: now, JobID: job.ID, TenantID: job.TenantID,
 			WorkerID: rn.cfg.WorkerID, Attempt: job.Attempts,
 		})
+		if latency := now.Sub(job.RunAt); latency > 0 {
+			rn.jobsMetrics().RecordJobClaimLatency(rn.cfg.Lane, latency)
+		}
 		rn.sem <- struct{}{}
 		rn.wg.Add(1)
 		// Deliberately context.Background() inside execute, not ctx:
@@ -168,6 +185,7 @@ func (rn *Runner) complete(ctx context.Context, job *domain.Job, result json.Raw
 		return
 	}
 	emit(rn.deps.Emit, &domain.JobSucceeded{At: now, JobID: updated.ID, TenantID: updated.TenantID})
+	rn.jobsMetrics().RecordJobOutcome(rn.cfg.Lane, "succeeded")
 }
 
 // fail decides retry vs. dead-letter (JobDeadLetterOnMaxAttempts) from the
@@ -202,5 +220,8 @@ func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
 			At: now, JobID: updated.ID, TenantID: updated.TenantID,
 			Attempt: job.Attempts, NextRunAt: outcome.RunAt,
 		})
+		rn.jobsMetrics().RecordJobRetry(rn.cfg.Lane)
+	} else {
+		rn.jobsMetrics().RecordJobOutcome(rn.cfg.Lane, "failed")
 	}
 }

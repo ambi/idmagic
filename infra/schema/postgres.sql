@@ -769,11 +769,16 @@ CREATE TABLE scim_group_refs (
 -- normative in spec/contexts/jobs.yaml, enforced here via CHECK. params/result are
 -- opaque per-JobKind payloads (ADR-100: plain JSONB, no at-rest encryption in this
 -- WI; terminal rows are purged after a TTL by the worker's relocated retention
--- sweep, not by a dedicated Job).
+-- sweep, not by a dedicated Job). lane (wi-261, ADR-129) isolates claim/execution
+-- capacity across JobKinds with different latency/resource characteristics; a
+-- JobKind's lane is fixed at registration, never chosen by the enqueue caller.
+-- DEFAULT 'default' backfills pre-lane rows in place when this column is added to
+-- an existing table (ADR-129 decision 5's zero-downtime rollout).
 CREATE TABLE jobs (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     kind TEXT NOT NULL,
+    lane TEXT NOT NULL DEFAULT 'default' CHECK (lane IN ('latency_sensitive', 'default', 'bulk')),
     status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'canceled')),
     params JSONB NOT NULL,
     result JSONB,
@@ -790,10 +795,12 @@ CREATE TABLE jobs (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
--- Claim scan (ADR-098 SKIP LOCKED): due StatusQueued jobs ordered by run_at, plus
--- StatusRunning jobs whose lease expired (JobLeaseExclusivity reclaim).
-CREATE INDEX jobs_claimable_idx ON jobs (run_at) WHERE status = 'queued';
-CREATE INDEX jobs_lease_expiry_idx ON jobs (lease_expires_at) WHERE status = 'running';
+-- Claim scan (ADR-098 SKIP LOCKED, lane-scoped per ADR-129): due StatusQueued jobs
+-- within a lane ordered by run_at, plus StatusRunning jobs within a lane whose
+-- lease expired (JobLeaseExclusivity reclaim). lane is the leading index column
+-- since ClaimJobs always filters by a single lane first.
+CREATE INDEX jobs_claimable_idx ON jobs (lane, run_at) WHERE status = 'queued';
+CREATE INDEX jobs_lease_expiry_idx ON jobs (lane, lease_expires_at) WHERE status = 'running';
 
 
 -- JobHandlerIdempotency: at most one non-terminal Job per (tenant_id, dedup_key).

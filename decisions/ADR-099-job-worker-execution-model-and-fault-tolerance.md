@@ -2,7 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-12
-superseded_by: [ADR-124]
+superseded_by: [ADR-124, ADR-129]
 ---
 
 # ADR-099: `idmagic-worker` プロセス分離と at-least-once + リース失効再取得によるジョブ実行の耐障害性
@@ -43,6 +43,10 @@ goroutine として API プロセス内で起動されている。
    （既定値: poll interval 2s、concurrency 4、lease 期間 5 分、heartbeat は
    リース期間の 1/3 ごと。いずれも環境変数 `JOB_POLL_INTERVAL` /
    `JOB_WORKER_CONCURRENCY` / `JOB_LEASE_DURATION` で上書き可能）。
+   単一 `Concurrency` semaphore・`JobKind` を絞らない claim という
+   前提は [[ADR-129-job-execution-lanes]] により lane 単位へ置き換えられた。
+   他の決定（プロセス境界、配信保証、耐障害性の仕組みそのもの、
+   retry/dead-letter、graceful drain、poll-only、標準開発環境）は維持する。
 4. **リトライと dead-letter**: 失敗時は 30 秒を基数とした指数バックオフ
    （cap 30 分）で `run_at` を先送りし `Queued` へ戻す。`max_attempts`
    （既定 5、`JobKind` 登録時に override 可）を超えたら `Failed`

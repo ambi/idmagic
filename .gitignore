@@ -1,6 +1,7 @@
 # Go
 /idmagic
 /idmagic-relay
+/idmagic-worker
 *.exe
 *.test
 *.out

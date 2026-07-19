@@ -22,9 +22,11 @@ type EnqueueDeps struct {
 // now when unset, and emits JobEnqueued only when a new Job was actually
 // created (not on a JobHandlerIdempotency dedup hit).
 func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, now time.Time) (*domain.Job, error) {
-	if !input.Kind.Valid() {
+	lane, ok := domain.LaneFor(input.Kind)
+	if !ok {
 		return nil, fmt.Errorf("jobs: invalid job kind %q", input.Kind)
 	}
+	input.Lane = lane
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}

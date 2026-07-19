@@ -57,6 +57,7 @@ func jobFromRow(row *sqlcgen.Job) *domain.Job {
 		ID:             row.ID,
 		TenantID:       row.TenantID,
 		Kind:           domain.JobKind(row.Kind),
+		Lane:           domain.ExecutionLane(row.Lane),
 		Status:         domain.JobStatus(row.Status),
 		Params:         json.RawMessage(row.Params),
 		Result:         json.RawMessage(row.Result),
@@ -91,6 +92,7 @@ func (r *JobRepository) Enqueue(ctx context.Context, input ports.EnqueueInput) (
 		ID:          id,
 		TenantID:    input.TenantID,
 		Kind:        string(input.Kind),
+		Lane:        string(input.Lane),
 		Params:      []byte(input.Params),
 		MaxAttempts: int32(input.MaxAttempts), //nolint:gosec // G115: MaxAttempts is a small retry budget, well under int32 max
 		DedupKey:    dedup,
@@ -113,12 +115,13 @@ func (r *JobRepository) Enqueue(ctx context.Context, input ports.EnqueueInput) (
 	return jobFromRow(row), true, nil
 }
 
-func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error) {
+func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, lane domain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error) {
 	if batchSize <= 0 {
 		return nil, nil
 	}
 	rows, err := sqlcgen.New(r.Pool).ClaimJobs(ctx, sqlcgen.ClaimJobsParams{
 		UpdatedAt:      now,
+		Lane:           string(lane),
 		Limit:          int32(batchSize), //nolint:gosec // G115: batchSize is a worker's concurrency slot count, well under int32 max
 		LeaseOwner:     pgtype.Text{String: workerID, Valid: true},
 		LeaseExpiresAt: pgtype.Timestamptz{Time: now.Add(leaseDuration), Valid: true},
@@ -195,6 +198,18 @@ func (r *JobRepository) Cancel(ctx context.Context, jobID string, now time.Time)
 		return nil, err
 	}
 	return jobFromRow(row), nil
+}
+
+func (r *JobRepository) LaneDepths(ctx context.Context) ([]ports.LaneDepth, error) {
+	rows, err := sqlcgen.New(r.Pool).LaneDepths(ctx)
+	if err != nil {
+		return nil, err
+	}
+	depths := make([]ports.LaneDepth, 0, len(rows))
+	for _, row := range rows {
+		depths = append(depths, ports.LaneDepth{Lane: domain.ExecutionLane(row.Lane), Queued: int(row.Queued), Running: int(row.Running)})
+	}
+	return depths, nil
 }
 
 func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, error) {

@@ -127,11 +127,15 @@ just dev-compose
 
 ## Kubernetes, Monitoring, and Load Smoke
 
-The Kubernetes base separates the API, UI gateway, and outbox relay in
-`infra/k8s/base`; the relay has no HTTP surface and therefore deliberately has
-no Service. Apply a rendered environment only after your platform has created
-the referenced Secrets (`idmagic-<environment>-runtime-secrets` and
-`idmagic-<environment>-relay-secrets`). Secret values, image release digests,
+The Kubernetes base separates the API, UI gateway, outbox relay, and durable
+job worker in `infra/k8s/base`; the relay has no HTTP surface and therefore
+deliberately has no Service. The worker is split into one Deployment per
+ADR-129 execution lane (`idmagic-worker-{latency-sensitive,default,bulk}`),
+each with its own metrics-only Service (`/metrics`, no application HTTP
+surface). Apply a rendered environment only after your platform has created
+the referenced Secrets (`idmagic-<environment>-runtime-secrets`,
+`idmagic-<environment>-relay-secrets`, and
+`idmagic-<environment>-worker-secrets`). Secret values, image release digests,
 and cloud-specific database endpoints are never stored in this repository.
 
 ```bash
@@ -148,14 +152,19 @@ an immediate `just rollback-k8s idmagic-api` when necessary.
 The API probes `/startupz`, `/livez`, and `/readyz` directly. Its NetworkPolicy
 allows only the UI gateway and Prometheus scrape traffic in, plus DNS,
 PostgreSQL, and Valkey egress; relay egress is additionally limited to Kafka.
+Each worker lane's NetworkPolicy allows only Prometheus scrape traffic in
+(`/metrics`, port 8080), plus DNS, PostgreSQL, and Valkey egress — worker has
+no readiness/liveness probes since it serves no application traffic.
 
 `infra/k8s/monitoring` packages the same HTTP RED/authentication recording and
-alert rules used by the Docker example. It maps `TokenLatency`,
-`TokenErrorRate`, `LoginLatency`, `LoginErrorRate`, and availability evidence
-to the request-rate, error-rate, latency, login, and token panels. Apply the
-`monitoring/operator` directory only when Prometheus Operator is installed;
-otherwise configure Prometheus to scrape the `idmagic-api` Service at
-`/metrics`.
+alert rules used by the Docker example, plus lane-scoped Jobs golden signals
+(queue depth, claim latency, failure ratio, retry rate; wi-261 T006). It maps
+`TokenLatency`, `TokenErrorRate`, `LoginLatency`, `LoginErrorRate`, and
+availability evidence to the request-rate, error-rate, latency, login, and
+token panels. Apply the `monitoring/operator` directory only when Prometheus
+Operator is installed (its `idmagic-worker` `ServiceMonitor` covers all three
+lane Services); otherwise configure Prometheus to scrape the `idmagic-api` and
+`idmagic-worker-{latency-sensitive,default,bulk}` Services at `/metrics`.
 
 ```bash
 just check-monitoring
@@ -264,6 +273,26 @@ adapters are selected with environment variables:
 | `SEED_ENVIRONMENT` | `development`, `test`, `staging`, `production` | required when `SEED_PROFILE` is set |
 | `SEED_FIRST_PARTY_REDIRECT_URIS` | comma-separated HTTPS URIs | required for production bootstrap first-party clients; localhost is rejected |
 | `SEED_GENERATOR_SEED` | arbitrary string | deterministic namespace for performance seed identifiers |
+
+### Durable job worker (`idmagic-worker`)
+
+| Variable | Values | Purpose |
+| --- | --- | --- |
+| `WORKER_ID` | string | lease owner identifier; defaults to hostname |
+| `JOB_WORKER_LANES` | comma-separated `latency_sensitive`, `default`, `bulk` | lanes this process claims (ADR-129); unset = compat mode (all lanes, one process — the `just dev`/docker-compose default) |
+| `JOB_WORKER_CONCURRENCY` | integer, default `4` | fallback concurrency for any lane without a `_<LANE>` override |
+| `JOB_WORKER_CONCURRENCY_LATENCY_SENSITIVE`, `_DEFAULT`, `_BULK` | integer | per-lane concurrency override, e.g. reserving `latency_sensitive` capacity independent of `bulk` |
+| `JOB_POLL_INTERVAL` | duration, default `2s` | claim poll interval per lane `Runner` |
+| `JOB_LEASE_DURATION` | duration, default `5m` | claim lease duration; heartbeat renews at 1/3 of this |
+| `JOB_BACKOFF_BASE`, `JOB_BACKOFF_CAP` | duration, default `30s`/`30m` | retry backoff bounds (ADR-099) |
+| `DRAIN_GRACE_PERIOD_SECONDS` | integer, default `5` | how long SIGTERM/SIGINT waits for in-flight jobs before exiting |
+
+Production splits `idmagic-worker` into one Deployment per lane
+(`infra/k8s/base/worker.yaml`), each with `JOB_WORKER_LANES` pinned to a
+single lane so a lane's execution capacity is never consumed by another
+lane's backlog. `latency_sensitive` additionally has a `PodDisruptionBudget`
+(`infra/k8s/base/pdb.yaml`) keeping a reserved replica available through
+voluntary disruptions.
 
 ### Scheduled batches
 

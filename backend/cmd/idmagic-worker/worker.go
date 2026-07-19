@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,15 +16,22 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
+	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/provisioning/adapters/identitysource"
 	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/adapters/observability"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 )
+
+// allLanes is the ADR-129 compat-mode default for JOB_WORKER_LANES: a single
+// idmagic-worker process claims every lane. Dedicated per-lane deployments
+// (production topology) instead set JOB_WORKER_LANES to a single lane.
+var allLanes = []domain.ExecutionLane{domain.LaneLatencySensitive, domain.LaneDefault, domain.LaneBulk}
 
 // RunWorker starts the durable job queue worker process (ADR-099):
 // idmagic-worker claims and executes Jobs independently of, and horizontally
@@ -47,6 +56,31 @@ func RunWorker() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// MetricsExposition (system.yaml): pull-based /metrics, independent of
+	// OBSERVABILITY/OTLP, same as idmagic-api (cmd/idmagic/server.go). worker
+	// has no other HTTP surface, so this is a metrics-only listener (wi-261
+	// T006); the k8s NetworkPolicy restricts it to Prometheus ingress only.
+	appMetrics, err := observability.NewMetrics(serviceName, buildInfo.Version)
+	if err != nil {
+		return fmt.Errorf("initialize metrics: %w", err)
+	}
+	defer func() { _ = appMetrics.Shutdown(context.Background()) }()
+	metricsServer := &http.Server{
+		Addr:              bootstrap.EnvDefault("ADDR", ":8080"),
+		Handler:           metricsMux(appMetrics),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Warn(context.Background(), "metrics server exited", "error", err)
+		}
+	}()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = metricsServer.Shutdown(shutdownCtx)
+	}()
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
@@ -77,60 +111,138 @@ func RunWorker() error {
 	go provisioningDispatchLoop(ctx, deps)
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
-	runner := usecases.NewRunner(
-		usecases.RunnerConfig{
-			WorkerID:      workerID,
-			PollInterval:  bootstrap.EnvDuration("JOB_POLL_INTERVAL", 2*time.Second),
-			Concurrency:   bootstrap.EnvInt("JOB_WORKER_CONCURRENCY", 4),
-			LeaseDuration: bootstrap.EnvDuration("JOB_LEASE_DURATION", 5*time.Minute),
-			BackoffBase:   bootstrap.EnvDuration("JOB_BACKOFF_BASE", domain.DefaultBackoffBase),
-			BackoffCap:    bootstrap.EnvDuration("JOB_BACKOFF_CAP", domain.DefaultBackoffCap),
-		},
-		usecases.RunnerDeps{
-			Repo:     deps.Jobs.Repo,
-			Handlers: handlers,
-			Emit: func(e spec.DomainEvent) {
-				logger.Info(context.Background(), "job event", "type", e.EventType(), "occurred_at", e.OccurredAt())
+	lanes, err := resolveWorkerLanes()
+	if err != nil {
+		return err
+	}
+	runners := make([]*usecases.Runner, 0, len(lanes))
+	for _, lane := range lanes {
+		runners = append(runners, usecases.NewRunner(
+			usecases.RunnerConfig{
+				WorkerID:      workerID + "-" + string(lane),
+				Lane:          lane,
+				PollInterval:  bootstrap.EnvDuration("JOB_POLL_INTERVAL", 2*time.Second),
+				Concurrency:   laneConcurrency(lane),
+				LeaseDuration: bootstrap.EnvDuration("JOB_LEASE_DURATION", 5*time.Minute),
+				BackoffBase:   bootstrap.EnvDuration("JOB_BACKOFF_BASE", domain.DefaultBackoffBase),
+				BackoffCap:    bootstrap.EnvDuration("JOB_BACKOFF_CAP", domain.DefaultBackoffCap),
 			},
-		},
-	)
+			usecases.RunnerDeps{
+				Repo:     deps.Jobs.Repo,
+				Handlers: handlers,
+				Emit: func(e spec.DomainEvent) {
+					logger.Info(context.Background(), "job event", "type", e.EventType(), "occurred_at", e.OccurredAt())
+				},
+				Metrics: appMetrics,
+			},
+		))
+	}
+	go jobsQueueDepthSamplingLoop(ctx, deps.Jobs.Repo, appMetrics)
 
 	logger.Info(ctx, "worker listening",
-		"commit", buildInfo.GitCommit, "build_date", buildInfo.BuildDate, "worker_id", workerID)
+		"commit", buildInfo.GitCommit, "build_date", buildInfo.BuildDate, "worker_id", workerID, "lanes", lanes)
 
-	runErrChan := make(chan error, 1)
-	go func() { runErrChan <- runner.Run(ctx) }()
-
-	select {
-	case err := <-runErrChan:
-		if err != nil && !errors.Is(err, context.Canceled) {
-			return fmt.Errorf("run worker: %w", err)
-		}
-		return nil
-	case <-ctx.Done():
+	runErrChan := make(chan error, len(runners))
+	for _, rn := range runners {
+		go func(rn *usecases.Runner) { runErrChan <- rn.Run(ctx) }(rn)
 	}
 
-	// received a signal: Runner.Run has already stopped claiming and is
-	// waiting for in-flight jobs (rn.wg.Wait()). Give it a grace period; if
-	// it doesn't finish in time, exit anyway. In-flight leases then expire
-	// naturally and another worker reclaims them (ADR-099), same as a hard
-	// kill.
+	<-ctx.Done()
+
+	// received a signal: every Runner.Run has already stopped claiming and is
+	// waiting for its own in-flight jobs (rn.wg.Wait()). Give the whole
+	// process one shared grace period; lanes that don't finish in time exit
+	// anyway. In-flight leases then expire naturally and another worker
+	// reclaims them (ADR-099), same as a hard kill.
 	drainGracePeriod := 5 * time.Second
 	if val := os.Getenv("DRAIN_GRACE_PERIOD_SECONDS"); val != "" {
 		if parsed, err := time.ParseDuration(val + "s"); err == nil {
 			drainGracePeriod = parsed
 		}
 	}
-	logger.Info(context.Background(), "received signal, draining in-flight jobs", "grace_period", drainGracePeriod.String())
-	select {
-	case err := <-runErrChan:
-		if err != nil && !errors.Is(err, context.Canceled) {
-			return fmt.Errorf("run worker: %w", err)
+	logger.Info(context.Background(), "received signal, draining in-flight jobs", "grace_period", drainGracePeriod.String(), "lanes", lanes)
+	deadline := time.After(drainGracePeriod)
+	for remaining := len(runners); remaining > 0; {
+		select {
+		case runErr := <-runErrChan:
+			remaining--
+			if runErr != nil && !errors.Is(runErr, context.Canceled) {
+				logger.Warn(context.Background(), "lane runner exited with error", "error", runErr)
+			}
+		case <-deadline:
+			logger.Warn(context.Background(), "drain grace period exceeded; exiting with jobs still in flight")
+			return nil
 		}
-	case <-time.After(drainGracePeriod):
-		logger.Warn(context.Background(), "drain grace period exceeded; exiting with jobs still in flight")
 	}
 	return nil
+}
+
+// resolveWorkerLanes parses JOB_WORKER_LANES (comma-separated ExecutionLanes)
+// into the lanes this process's Runners claim. It defaults to every lane
+// (compat mode, ADR-129 decision 5(b)): the standard Docker-less development
+// environment and docker-compose both rely on this default so a single
+// process still serves every JobKind. Dedicated per-lane production
+// deployments set it to exactly one lane.
+func resolveWorkerLanes() ([]domain.ExecutionLane, error) {
+	raw := strings.TrimSpace(os.Getenv("JOB_WORKER_LANES"))
+	if raw == "" {
+		return allLanes, nil
+	}
+	parts := strings.Split(raw, ",")
+	lanes := make([]domain.ExecutionLane, 0, len(parts))
+	for _, p := range parts {
+		lane := domain.ExecutionLane(strings.TrimSpace(p))
+		if !lane.Valid() {
+			return nil, fmt.Errorf("JOB_WORKER_LANES: invalid ExecutionLane %q", lane)
+		}
+		lanes = append(lanes, lane)
+	}
+	return lanes, nil
+}
+
+// laneConcurrency resolves a lane's worker concurrency from
+// JOB_WORKER_CONCURRENCY_<LANE> (e.g. JOB_WORKER_CONCURRENCY_LATENCY_SENSITIVE),
+// falling back to the shared JOB_WORKER_CONCURRENCY (ADR-099 default 4) when
+// no lane-specific override is set. This lets a dedicated
+// latency_sensitive deployment reserve capacity independently of bulk's.
+func laneConcurrency(lane domain.ExecutionLane) int {
+	key := "JOB_WORKER_CONCURRENCY_" + strings.ToUpper(string(lane))
+	return bootstrap.EnvInt(key, bootstrap.EnvInt("JOB_WORKER_CONCURRENCY", 4))
+}
+
+// metricsMux serves only GET /metrics: idmagic-worker has no other HTTP
+// surface, unlike idmagic-api's full route table.
+func metricsMux(appMetrics *observability.Metrics) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", appMetrics.Handler())
+	return mux
+}
+
+// jobsQueueDepthSamplingLoop periodically records each lane's queued/running
+// row count (wi-261 T006's depth/active gauges). It samples ports.JobRepository
+// directly rather than deriving depth from Runner claim/complete events,
+// since depth is a queue-wide fact (every lane, every worker process) and
+// must self-correct after a worker crash the same way lease-expiry reclaim
+// does — an event-sourced counter would drift in that case.
+func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, appMetrics *observability.Metrics) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		depths, err := repo.LaneDepths(ctx)
+		if err != nil {
+			logging.Warn(ctx, "jobs: lane depth sampling failed", "error", err)
+		} else {
+			for _, d := range depths {
+				appMetrics.RecordJobQueueDepth(ctx, d.Lane, "queued", int64(d.Queued))
+				appMetrics.RecordJobQueueDepth(ctx, d.Lane, "running", int64(d.Running))
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {

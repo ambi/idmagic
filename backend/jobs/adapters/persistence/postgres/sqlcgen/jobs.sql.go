@@ -15,7 +15,7 @@ import (
 const cancelJob = `-- name: CancelJob :one
 UPDATE jobs SET status = 'canceled', lease_owner = NULL, lease_expires_at = NULL, updated_at = $2
 WHERE id = $1 AND status IN ('queued', 'running')
-RETURNING id, tenant_id, kind, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+RETURNING id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 `
 
 type CancelJobParams struct {
@@ -30,6 +30,7 @@ func (q *Queries) CancelJob(ctx context.Context, arg CancelJobParams) (*Job, err
 		&i.ID,
 		&i.TenantID,
 		&i.Kind,
+		&i.Lane,
 		&i.Status,
 		&i.Params,
 		&i.Result,
@@ -49,25 +50,27 @@ func (q *Queries) CancelJob(ctx context.Context, arg CancelJobParams) (*Job, err
 const claimJobs = `-- name: ClaimJobs :many
 WITH claimable AS (
     SELECT id FROM jobs
-    WHERE (status = 'queued' AND run_at <= $1)
-       OR (status = 'running' AND lease_expires_at IS NOT NULL AND lease_expires_at < $1)
+    WHERE jobs.lane = $2
+      AND ((status = 'queued' AND run_at <= $1)
+       OR (status = 'running' AND lease_expires_at IS NOT NULL AND lease_expires_at < $1))
     ORDER BY run_at
     FOR UPDATE SKIP LOCKED
-    LIMIT $2
+    LIMIT $3
 )
 UPDATE jobs SET
     status = 'running',
     attempts = jobs.attempts + 1,
-    lease_owner = $3,
-    lease_expires_at = $4,
+    lease_owner = $4,
+    lease_expires_at = $5,
     updated_at = $1
 FROM claimable
 WHERE jobs.id = claimable.id
-RETURNING jobs.id, jobs.tenant_id, jobs.kind, jobs.status, jobs.params, jobs.result, jobs.error, jobs.attempts, jobs.max_attempts, jobs.dedup_key, jobs.lease_owner, jobs.lease_expires_at, jobs.run_at, jobs.created_at, jobs.updated_at
+RETURNING jobs.id, jobs.tenant_id, jobs.kind, jobs.lane, jobs.status, jobs.params, jobs.result, jobs.error, jobs.attempts, jobs.max_attempts, jobs.dedup_key, jobs.lease_owner, jobs.lease_expires_at, jobs.run_at, jobs.created_at, jobs.updated_at
 `
 
 type ClaimJobsParams struct {
 	UpdatedAt      time.Time
+	Lane           string
 	Limit          int32
 	LeaseOwner     pgtype.Text
 	LeaseExpiresAt pgtype.Timestamptz
@@ -75,10 +78,13 @@ type ClaimJobsParams struct {
 
 // Claimable is either a StatusQueued job whose run_at is due, or a StatusRunning
 // job whose lease already expired (a crashed/drained worker's job, reclaimed for
-// a new attempt without changing its status). Both cases increment attempts.
+// a new attempt without changing its status), restricted to a single lane
+// (ADR-129 lane isolation: a lane's worker never claims another lane's backlog).
+// Both cases increment attempts.
 func (q *Queries) ClaimJobs(ctx context.Context, arg ClaimJobsParams) ([]*Job, error) {
 	rows, err := q.db.Query(ctx, claimJobs,
 		arg.UpdatedAt,
+		arg.Lane,
 		arg.Limit,
 		arg.LeaseOwner,
 		arg.LeaseExpiresAt,
@@ -94,6 +100,7 @@ func (q *Queries) ClaimJobs(ctx context.Context, arg ClaimJobsParams) ([]*Job, e
 			&i.ID,
 			&i.TenantID,
 			&i.Kind,
+			&i.Lane,
 			&i.Status,
 			&i.Params,
 			&i.Result,
@@ -120,7 +127,7 @@ func (q *Queries) ClaimJobs(ctx context.Context, arg ClaimJobsParams) ([]*Job, e
 const completeJob = `-- name: CompleteJob :one
 UPDATE jobs SET status = 'succeeded', result = $4, lease_owner = NULL, lease_expires_at = NULL, updated_at = $3
 WHERE id = $1 AND lease_owner = $2 AND status = 'running' AND lease_expires_at >= $3
-RETURNING id, tenant_id, kind, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+RETURNING id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 `
 
 type CompleteJobParams struct {
@@ -142,6 +149,7 @@ func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (*Job,
 		&i.ID,
 		&i.TenantID,
 		&i.Kind,
+		&i.Lane,
 		&i.Status,
 		&i.Params,
 		&i.Result,
@@ -167,7 +175,7 @@ UPDATE jobs SET
     lease_expires_at = NULL,
     updated_at = $3
 WHERE id = $1 AND lease_owner = $2 AND status = 'running' AND lease_expires_at >= $3
-RETURNING id, tenant_id, kind, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+RETURNING id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 `
 
 type FailJobParams struct {
@@ -195,6 +203,7 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (*Job, error) 
 		&i.ID,
 		&i.TenantID,
 		&i.Kind,
+		&i.Lane,
 		&i.Status,
 		&i.Params,
 		&i.Result,
@@ -212,7 +221,7 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (*Job, error) 
 }
 
 const findActiveJobByDedupKey = `-- name: FindActiveJobByDedupKey :one
-SELECT id, tenant_id, kind, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 FROM jobs
 WHERE tenant_id = $1 AND dedup_key = $2 AND status IN ('queued', 'running')
 `
@@ -229,6 +238,7 @@ func (q *Queries) FindActiveJobByDedupKey(ctx context.Context, arg FindActiveJob
 		&i.ID,
 		&i.TenantID,
 		&i.Kind,
+		&i.Lane,
 		&i.Status,
 		&i.Params,
 		&i.Result,
@@ -246,7 +256,7 @@ func (q *Queries) FindActiveJobByDedupKey(ctx context.Context, arg FindActiveJob
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, tenant_id, kind, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 FROM jobs WHERE id = $1
 `
 
@@ -257,6 +267,7 @@ func (q *Queries) GetJob(ctx context.Context, id string) (*Job, error) {
 		&i.ID,
 		&i.TenantID,
 		&i.Kind,
+		&i.Lane,
 		&i.Status,
 		&i.Params,
 		&i.Result,
@@ -299,17 +310,18 @@ func (q *Queries) HeartbeatJob(ctx context.Context, arg HeartbeatJobParams) (pgt
 }
 
 const insertJob = `-- name: InsertJob :one
-INSERT INTO jobs (id, tenant_id, kind, status, params, attempts, max_attempts, dedup_key, run_at, created_at, updated_at)
-VALUES ($1, $2, $3, 'queued', $4, 0, $5, $6, $7, $8, $8)
+INSERT INTO jobs (id, tenant_id, kind, lane, status, params, attempts, max_attempts, dedup_key, run_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, 'queued', $5, 0, $6, $7, $8, $9, $9)
 ON CONFLICT (tenant_id, dedup_key) WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running')
 DO NOTHING
-RETURNING id, tenant_id, kind, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+RETURNING id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 `
 
 type InsertJobParams struct {
 	ID          string
 	TenantID    string
 	Kind        string
+	Lane        string
 	Params      []byte
 	MaxAttempts int32
 	DedupKey    pgtype.Text
@@ -320,12 +332,14 @@ type InsertJobParams struct {
 // ON CONFLICT matches the jobs_tenant_dedup_key_active_idx partial unique index
 // (JobHandlerIdempotency). DO NOTHING means no rows are returned when an active
 // Job with the same (tenant_id, dedup_key) already exists; the caller then looks
-// it up with FindActiveJobByDedupKey.
+// it up with FindActiveJobByDedupKey. lane (ADR-129) is derived by the usecase
+// from kind's registration, never chosen by the enqueue caller.
 func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (*Job, error) {
 	row := q.db.QueryRow(ctx, insertJob,
 		arg.ID,
 		arg.TenantID,
 		arg.Kind,
+		arg.Lane,
 		arg.Params,
 		arg.MaxAttempts,
 		arg.DedupKey,
@@ -337,6 +351,7 @@ func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (*Job, err
 		&i.ID,
 		&i.TenantID,
 		&i.Kind,
+		&i.Lane,
 		&i.Status,
 		&i.Params,
 		&i.Result,
@@ -351,4 +366,44 @@ func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (*Job, err
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const laneDepths = `-- name: LaneDepths :many
+SELECT
+    lane,
+    count(*) FILTER (WHERE status = 'queued')::bigint AS queued,
+    count(*) FILTER (WHERE status = 'running')::bigint AS running
+FROM jobs
+WHERE status IN ('queued', 'running')
+GROUP BY lane
+`
+
+type LaneDepthsRow struct {
+	Lane    string
+	Queued  int64
+	Running int64
+}
+
+// wi-261 T006: point-in-time queued/running row counts per lane, for the
+// worker's periodic queue-depth/active gauge sampling. Lanes with zero rows
+// of both statuses are simply absent (no GROUP BY output row), matching
+// ports.JobRepository.LaneDepths' documented contract.
+func (q *Queries) LaneDepths(ctx context.Context) ([]*LaneDepthsRow, error) {
+	rows, err := q.db.Query(ctx, laneDepths)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*LaneDepthsRow
+	for rows.Next() {
+		var i LaneDepthsRow
+		if err := rows.Scan(&i.Lane, &i.Queued, &i.Running); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

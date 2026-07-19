@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 )
 
@@ -37,6 +38,10 @@ func TestMetricsExposesREDAndGoldenSignals(t *testing.T) {
 	m.RecordTokenIssuance("client_credentials", "success", 42*time.Millisecond)
 	m.IncHTTPAbort(support.HTTPAbortClientAborted)
 	m.IncDetachedCompletionFailure()
+	m.RecordJobClaimLatency(domain.LaneBulk, 250*time.Millisecond)
+	m.RecordJobOutcome(domain.LaneBulk, "succeeded")
+	m.RecordJobRetry(domain.LaneDefault)
+	m.RecordJobQueueDepth(t.Context(), domain.LaneLatencySensitive, "queued", 3)
 
 	body := scrape(t, m)
 
@@ -56,6 +61,13 @@ func TestMetricsExposesREDAndGoldenSignals(t *testing.T) {
 		`http_request_aborts_total{`,
 		`kind="client_aborted"`,
 		`operation_detached_completion_failures_total`,
+		`jobs_claim_latency_seconds`,
+		`jobs_outcome_total{`,
+		`lane="bulk"`,
+		`jobs_retry_total{`,
+		`jobs_queue_depth{`,
+		`lane="latency_sensitive"`,
+		`status="queued"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("scrape output missing %q\n---\n%s", want, body)
@@ -81,10 +93,14 @@ func TestMetricsForbidsHighCardinalityLabels(t *testing.T) {
 	m.RecordLoginOutcome("success", "", "password")
 	m.RecordLoginThrottle("ip", "allowed")
 	m.RecordTokenIssuance("authorization_code", "success", time.Millisecond)
+	m.RecordJobClaimLatency(domain.LaneBulk, time.Second)
+	m.RecordJobOutcome(domain.LaneBulk, "succeeded")
+	m.RecordJobRetry(domain.LaneDefault)
+	m.RecordJobQueueDepth(t.Context(), domain.LaneBulk, "running", 1)
 
 	body := scrape(t, m)
 
-	for _, forbidden := range []string{"tenant_id=", "user_id=", "client_id="} {
+	for _, forbidden := range []string{"tenant_id=", "user_id=", "client_id=", "job_id="} {
 		if strings.Contains(body, forbidden) {
 			t.Errorf("scrape output must not expose high-cardinality label %q\n---\n%s", forbidden, body)
 		}

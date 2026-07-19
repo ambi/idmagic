@@ -1,0 +1,191 @@
+# idmagic-worker split into one Deployment per ADR-129 execution lane so a
+# lane's claim/execution capacity is never consumed by another lane's
+# backlog. JOB_WORKER_LANES pins each Deployment to exactly one lane (unlike
+# the docker-compose dev worker, which leaves it unset and runs compat mode).
+# Each Deployment exposes a metrics-only /metrics listener (wi-261 T006,
+# MetricsExposition system.yaml) — worker has no other HTTP surface.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idmagic-worker-latency-sensitive
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-latency-sensitive
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-latency-sensitive
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: worker-latency-sensitive
+        app.kubernetes.io/part-of: idmagic
+    spec:
+      serviceAccountName: idmagic
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: worker
+          image: ghcr.io/ambi/idmagic:latest
+          imagePullPolicy: IfNotPresent
+          command: [/app/idmagic-worker]
+          ports:
+            - name: metrics
+              containerPort: 8080
+          env:
+            - { name: JOB_WORKER_LANES, value: latency_sensitive }
+          envFrom:
+            - configMapRef: { name: idmagic-runtime }
+            - secretRef: { name: idmagic-worker-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: idmagic-worker-latency-sensitive
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-latency-sensitive
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-latency-sensitive
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idmagic-worker-default
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-default
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-default
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: worker-default
+        app.kubernetes.io/part-of: idmagic
+    spec:
+      serviceAccountName: idmagic
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: worker
+          image: ghcr.io/ambi/idmagic:latest
+          imagePullPolicy: IfNotPresent
+          command: [/app/idmagic-worker]
+          ports:
+            - name: metrics
+              containerPort: 8080
+          env:
+            - { name: JOB_WORKER_LANES, value: default }
+          envFrom:
+            - configMapRef: { name: idmagic-runtime }
+            - secretRef: { name: idmagic-worker-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: idmagic-worker-default
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-default
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-default
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idmagic-worker-bulk
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-bulk
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-bulk
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: worker-bulk
+        app.kubernetes.io/part-of: idmagic
+    spec:
+      serviceAccountName: idmagic
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: worker
+          image: ghcr.io/ambi/idmagic:latest
+          imagePullPolicy: IfNotPresent
+          command: [/app/idmagic-worker]
+          ports:
+            - name: metrics
+              containerPort: 8080
+          env:
+            - { name: JOB_WORKER_LANES, value: bulk }
+          envFrom:
+            - configMapRef: { name: idmagic-runtime }
+            - secretRef: { name: idmagic-worker-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: idmagic-worker-bulk
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-bulk
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-bulk
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics

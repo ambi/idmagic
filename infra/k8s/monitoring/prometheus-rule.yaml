@@ -19,6 +19,14 @@ spec:
           expr: sum(rate(authn_login_attempts_total{outcome="failure"}[5m])) / sum(rate(authn_login_attempts_total[5m]))
         - record: idmagic:login_throttle_hit_ratio:ratio_rate5m
           expr: sum(rate(authn_login_throttle_total{outcome="throttled"}[5m])) / sum(rate(authn_login_throttle_total[5m]))
+    - name: idmagic-jobs-golden-signals
+      rules:
+        - record: idmagic:jobs_failure_ratio:ratio_rate5m
+          expr: sum by (lane) (rate(jobs_outcome_total{outcome="failed"}[5m])) / sum by (lane) (rate(jobs_outcome_total[5m]))
+        - record: idmagic:jobs_claim_latency_seconds:p99_5m
+          expr: histogram_quantile(0.99, sum by (lane, le) (rate(jobs_claim_latency_seconds_bucket[5m])))
+        - record: idmagic:jobs_retry_ratio:ratio_rate5m
+          expr: sum by (lane) (rate(jobs_retry_total[5m])) / (sum by (lane) (rate(jobs_outcome_total[5m])) + sum by (lane) (rate(jobs_retry_total[5m])))
     - name: idmagic-slo-alerts
       rules:
         - alert: TokenErrorRateBudgetBurn
@@ -46,3 +54,18 @@ spec:
           for: 10m
           labels: { severity: warn }
           annotations: { summary: "sustained high login throttle rate; investigate credential stuffing" }
+        - alert: JobsLatencySensitiveClaimLatencyHigh
+          expr: idmagic:jobs_claim_latency_seconds:p99_5m{lane="latency_sensitive"} > 5
+          for: 5m
+          labels: { severity: page }
+          annotations: { summary: "latency_sensitive lane p99 claim latency exceeds 5s despite ADR-129 lane isolation" }
+        - alert: JobsFailureRatioBudgetBurn
+          expr: idmagic:jobs_failure_ratio:ratio_rate5m > 0.05
+          for: 10m
+          labels: { severity: warn }
+          annotations: { summary: "sustained >5% dead-letter rate on a jobs lane" }
+        - alert: JobsLatencySensitiveQueueDepthHigh
+          expr: jobs_queue_depth{status="queued", lane="latency_sensitive"} > 100
+          for: 10m
+          labels: { severity: warn }
+          annotations: { summary: "latency_sensitive lane queued depth sustained above 100; its dedicated worker may be undersized or down" }

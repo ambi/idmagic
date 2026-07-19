@@ -49,6 +49,27 @@ func TestEnqueue_AppliesDefaultsAndEmits(t *testing.T) {
 	}
 }
 
+// TestEnqueue_DerivesLaneFromKind: RED for ADR-129 decision 1 — the caller
+// cannot specify a lane; Enqueue derives it from the JobKind's registration
+// (spec/contexts/jobs.yaml EnqueueJob: "作成される Job の lane は kind の登録情報
+// から一意に決まり、呼び出し元は指定できない").
+func TestEnqueue_DerivesLaneFromKind(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	deps := usecases.EnqueueDeps{Repo: repo}
+
+	job, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a",
+		Kind:     domain.KindUserImportPreview,
+		Params:   json.RawMessage(`{}`),
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	if job.Lane != domain.LaneBulk {
+		t.Errorf("job.Lane = %q, want %q (kind %q's registered lane)", job.Lane, domain.LaneBulk, domain.KindUserImportPreview)
+	}
+}
+
 func TestEnqueue_RejectsUnregisteredKind(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	deps := usecases.EnqueueDeps{Repo: repo}

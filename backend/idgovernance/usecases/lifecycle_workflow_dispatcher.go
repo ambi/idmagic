@@ -31,10 +31,11 @@ type (
 )
 
 // LifecycleWorkflowRunJobKind is owned and registered by IdGovernance rather
-// than Jobs. Jobs remains a generic durable queue (ADR-117).
+// than Jobs. Jobs remains a generic durable queue (ADR-117). Lane is default
+// (ADR-129).
 const LifecycleWorkflowRunJobKind jobsdomain.JobKind = "lifecycle_workflow_run"
 
-func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind) }
+func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind, jobsdomain.LaneDefault) }
 
 type LifecycleWorkflowExecutorDeps struct {
 	RunRepo         igports.LifecycleWorkflowRunRepository

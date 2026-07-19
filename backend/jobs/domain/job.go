@@ -42,23 +42,75 @@ const (
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
 )
 
-var extensionKinds sync.Map // map[JobKind]struct{}
+// ExecutionLane is the ADR-129 execution-lane vocabulary
+// (spec/contexts/jobs.yaml models.ExecutionLane). A JobKind is assigned
+// exactly one lane at registration; enqueue callers cannot choose it.
+type ExecutionLane string
 
-// RegisterKind declares a context-owned job kind. The Jobs context owns the
-// durable queue, while the caller owns the handler vocabulary; this prevents
-// feature-specific kinds from accumulating in Jobs.
-func RegisterKind(kind JobKind) {
-	if kind != "" {
-		extensionKinds.Store(kind, struct{}{})
+const (
+	LaneLatencySensitive ExecutionLane = "latency_sensitive"
+	LaneDefault          ExecutionLane = "default"
+	LaneBulk             ExecutionLane = "bulk"
+)
+
+func (l ExecutionLane) Valid() bool {
+	switch l {
+	case LaneLatencySensitive, LaneDefault, LaneBulk:
+		return true
+	}
+	return false
+}
+
+// kindLanes holds every registered JobKind's ExecutionLane, both the
+// built-in kinds (registered by this package's init below) and
+// extension kinds (registered by the owning bounded context via
+// RegisterKind). A JobKind is Valid() only once it has a registered lane
+// (ADR-129): "未割当の JobKind は拒否する" is enforced by construction rather
+// than as a separate check.
+var kindLanes sync.Map // map[JobKind]ExecutionLane
+
+func init() {
+	RegisterKind(KindNoopEcho, LaneDefault)
+	RegisterKind(KindUserImportPreview, LaneBulk)
+	RegisterKind(KindUserImportApply, LaneBulk)
+	RegisterKind(KindDynamicGroupReconcile, LaneBulk)
+}
+
+// RegisterKind declares a context-owned job kind and the ExecutionLane it
+// runs in (ADR-129). The Jobs context owns the durable queue and lane
+// vocabulary, while the caller owns the handler vocabulary; this prevents
+// feature-specific kinds from accumulating in Jobs. RegisterKind panics if
+// lane is not a valid ExecutionLane, or if kind was already registered with a
+// different lane (a programmer error caught at startup); re-registering the
+// same kind with the same lane is idempotent.
+func RegisterKind(kind JobKind, lane ExecutionLane) {
+	if kind == "" {
+		return
+	}
+	if !lane.Valid() {
+		panic(fmt.Sprintf("jobs: cannot register JobKind %q with invalid ExecutionLane %q", kind, lane))
+	}
+	if existing, loaded := kindLanes.LoadOrStore(kind, lane); loaded && existing != lane {
+		panic(fmt.Sprintf("jobs: JobKind %q already registered with ExecutionLane %q, cannot re-register with %q", kind, existing, lane))
 	}
 }
 
-func (k JobKind) Valid() bool {
-	if k == KindNoopEcho || k == KindUserImportPreview || k == KindUserImportApply || k == KindDynamicGroupReconcile {
-		return true
+// LaneFor returns the ExecutionLane registered for kind, or
+// (\"\", false) if kind has no registration.
+func LaneFor(kind JobKind) (ExecutionLane, bool) {
+	v, ok := kindLanes.Load(kind)
+	if !ok {
+		return "", false
 	}
-	_, registered := extensionKinds.Load(k)
-	return registered
+	lane, ok := v.(ExecutionLane)
+	return lane, ok
+}
+
+// Valid reports whether kind has been registered with an ExecutionLane
+// (ADR-129: every valid JobKind has exactly one lane).
+func (k JobKind) Valid() bool {
+	_, ok := LaneFor(k)
+	return ok
 }
 
 // JobLifecycleEvent is a JobLifecycle state machine event.
@@ -157,6 +209,7 @@ type Job struct {
 	ID          string
 	TenantID    string
 	Kind        JobKind
+	Lane        ExecutionLane
 	Status      JobStatus
 	Params      json.RawMessage
 	Result      json.RawMessage

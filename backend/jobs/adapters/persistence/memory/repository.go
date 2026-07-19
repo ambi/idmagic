@@ -67,6 +67,7 @@ func (r *JobRepository) Enqueue(_ context.Context, input ports.EnqueueInput) (*d
 		ID:          id,
 		TenantID:    input.TenantID,
 		Kind:        input.Kind,
+		Lane:        input.Lane,
 		Status:      domain.StatusQueued,
 		Params:      input.Params,
 		Attempts:    0,
@@ -80,7 +81,7 @@ func (r *JobRepository) Enqueue(_ context.Context, input ports.EnqueueInput) (*d
 	return copyJob(job), true, nil
 }
 
-func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error) {
+func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, lane domain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -90,6 +91,9 @@ func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, batchSize
 
 	var candidates []*domain.Job
 	for _, j := range r.byID {
+		if j.Lane != lane {
+			continue
+		}
 		switch {
 		case j.Status == domain.StatusQueued && !j.RunAt.After(now):
 			candidates = append(candidates, j)
@@ -217,6 +221,35 @@ func (r *JobRepository) Cancel(_ context.Context, jobID string, now time.Time) (
 	j.LeaseExpiresAt = nil
 	j.UpdatedAt = now
 	return copyJob(j), nil
+}
+
+func (r *JobRepository) LaneDepths(_ context.Context) ([]ports.LaneDepth, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	byLane := map[domain.ExecutionLane]*ports.LaneDepth{}
+	for _, j := range r.byID {
+		switch j.Status {
+		case domain.StatusQueued, domain.StatusRunning:
+		default:
+			continue
+		}
+		d, ok := byLane[j.Lane]
+		if !ok {
+			d = &ports.LaneDepth{Lane: j.Lane}
+			byLane[j.Lane] = d
+		}
+		if j.Status == domain.StatusQueued {
+			d.Queued++
+		} else {
+			d.Running++
+		}
+	}
+	depths := make([]ports.LaneDepth, 0, len(byLane))
+	for _, d := range byLane {
+		depths = append(depths, *d)
+	}
+	return depths, nil
 }
 
 func (r *JobRepository) Get(_ context.Context, jobID string) (*domain.Job, error) {

@@ -89,6 +89,54 @@
           "legendFormat": "{{grant_type}}/{{outcome}}"
         }
       ]
+    },
+    {
+      "id": 8,
+      "title": "Jobs queue depth by lane (queued/running, wi-261 ADR-129)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "targets": [
+        {
+          "expr": "jobs_queue_depth",
+          "legendFormat": "{{lane}}/{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Jobs claim latency p99 by lane",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "targets": [
+        {
+          "expr": "idmagic:jobs_claim_latency_seconds:p99_5m",
+          "legendFormat": "{{lane}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Jobs failure ratio by lane",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "targets": [
+        {
+          "expr": "idmagic:jobs_failure_ratio:ratio_rate5m",
+          "legendFormat": "{{lane}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Jobs retry rate by lane",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "targets": [
+        {
+          "expr": "sum by (lane) (rate(jobs_retry_total[5m]))",
+          "legendFormat": "{{lane}}"
+        }
+      ]
     }
   ]
 }

@@ -225,6 +225,7 @@ type Job struct {
 	ID             string
 	TenantID       string
 	Kind           string
+	Lane           string
 	Status         string
 	Params         []byte
 	Result         []byte
@@ -343,6 +344,64 @@ type PasswordResetToken struct {
 	UserID    string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+}
+
+type ProvisioningConnection struct {
+	ApplicationID                      string
+	TenantID                           string
+	Status                             string
+	BaseUrl                            string
+	CredentialID                       string
+	AuthMethod                         string
+	CredentialSecret                   string
+	CredentialCreatedAt                time.Time
+	CredentialRotatedAt                pgtype.Timestamptz
+	Capabilities                       []byte
+	FeatureFlags                       []byte
+	Scope                              string
+	GroupPush                          []byte
+	AttributeMappings                  []byte
+	Matching                           []byte
+	DeprovisionPolicy                  []byte
+	RateLimitPerMinute                 int32
+	MaxAttempts                        int32
+	NotificationEmail                  pgtype.Text
+	QuarantineAfterConsecutiveFailures int32
+	Health                             string
+	ConsecutiveFailureCount            int32
+	LastFullSyncAt                     pgtype.Timestamptz
+	QuarantinedAt                      pgtype.Timestamptz
+	QuarantineReason                   pgtype.Text
+	CreatedAt                          time.Time
+	UpdatedAt                          time.Time
+}
+
+type ProvisioningDelivery struct {
+	ID            string
+	TenantID      string
+	ConnectionID  string
+	SourceType    string
+	SourceID      string
+	SourceVersion int64
+	Operation     string
+	Status        string
+	JobID         pgtype.UUID
+	LastError     pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	CompletedAt   pgtype.Timestamptz
+}
+
+type ProvisioningRemoteLink struct {
+	ConnectionID      string
+	TenantID          string
+	SourceType        string
+	SourceID          string
+	RemoteID          string
+	ExternalID        string
+	Etag              pgtype.Text
+	LastSyncedVersion int64
+	UpdatedAt         time.Time
 }
 
 type RecoveryCode struct {

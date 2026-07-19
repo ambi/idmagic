@@ -60,3 +60,99 @@ spec:
         - podSelector:
             matchLabels: { app.kubernetes.io/name: kafka }
       ports: [{ protocol: TCP, port: 9092 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: idmagic-worker-latency-sensitive
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-latency-sensitive
+    app.kubernetes.io/part-of: idmagic
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-latency-sensitive
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: prometheus }
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: postgresql }
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: valkey }
+      ports: [{ protocol: TCP, port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: idmagic-worker-default
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-default
+    app.kubernetes.io/part-of: idmagic
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-default
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: prometheus }
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: postgresql }
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: valkey }
+      ports: [{ protocol: TCP, port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: idmagic-worker-bulk
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: worker-bulk
+    app.kubernetes.io/part-of: idmagic
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: worker-bulk
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: prometheus }
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: postgresql }
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: valkey }
+      ports: [{ protocol: TCP, port: 6379 }]

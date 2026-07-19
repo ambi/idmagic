@@ -21365,6 +21365,15 @@
         ],
         "description": "device code が token に交換された event。"
       },
+      "ExecutionLane": {
+        "type": "string",
+        "enum": [
+          "latency_sensitive",
+          "default",
+          "bulk"
+        ],
+        "description": "Job の実行枠を隔離する区分 (ADR-129)。JobKind の登録情報が lane を一意に決め、\nenqueue 呼び出し元は指定できない。latency_sensitive は低遅延配送を専用実行枠で保証し、\nbulk backlog の滞留から隔離される。bulk は長時間・大量ジョブ、default はそのいずれでもない\nジョブに使う。\n"
+      },
       "Exhaust": {
         "type": "object",
         "properties": {
@@ -22300,6 +22309,10 @@
             "$ref": "#/components/schemas/JobKind",
             "description": "実行するハンドラを決めるジョブ種別。"
           },
+          "lane": {
+            "$ref": "#/components/schemas/ExecutionLane",
+            "description": "kind の登録情報から enqueue 時に一意に決まる実行レーン (ADR-129)。\n呼び出し元は指定できず、Job 作成後は不変。claim は対象 lane の Job だけを対象にする。\n"
+          },
           "status": {
             "$ref": "#/components/schemas/JobStatus"
           },
@@ -22359,6 +22372,7 @@
           "id",
           "tenant_id",
           "kind",
+          "lane",
           "status",
           "params",
           "attempts",
@@ -22459,9 +22473,10 @@
           "user_import_apply",
           "dynamic_group_reconcile",
           "lifecycle_workflow_run",
-          "backchannel_logout_delivery"
+          "backchannel_logout_delivery",
+          "provisioning_delivery"
         ],
-        "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足す (SCL-first)。\n本 WI (core runtime) は疎通確認用の noop_echo のみを追加する。\n"
+        "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。\n"
       },
       "JobLeaseLostError": {
         "type": "object",

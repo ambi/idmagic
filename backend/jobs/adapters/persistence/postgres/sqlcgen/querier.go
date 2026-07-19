@@ -14,7 +14,9 @@ type Querier interface {
 	CancelJob(ctx context.Context, arg CancelJobParams) (*Job, error)
 	// Claimable is either a StatusQueued job whose run_at is due, or a StatusRunning
 	// job whose lease already expired (a crashed/drained worker's job, reclaimed for
-	// a new attempt without changing its status). Both cases increment attempts.
+	// a new attempt without changing its status), restricted to a single lane
+	// (ADR-129 lane isolation: a lane's worker never claims another lane's backlog).
+	// Both cases increment attempts.
 	ClaimJobs(ctx context.Context, arg ClaimJobsParams) ([]*Job, error)
 	CompleteJob(ctx context.Context, arg CompleteJobParams) (*Job, error)
 	// $4 (next_status) is 'queued' (retry) or 'failed' (dead-letter), decided by the
@@ -26,8 +28,14 @@ type Querier interface {
 	// ON CONFLICT matches the jobs_tenant_dedup_key_active_idx partial unique index
 	// (JobHandlerIdempotency). DO NOTHING means no rows are returned when an active
 	// Job with the same (tenant_id, dedup_key) already exists; the caller then looks
-	// it up with FindActiveJobByDedupKey.
+	// it up with FindActiveJobByDedupKey. lane (ADR-129) is derived by the usecase
+	// from kind's registration, never chosen by the enqueue caller.
 	InsertJob(ctx context.Context, arg InsertJobParams) (*Job, error)
+	// wi-261 T006: point-in-time queued/running row counts per lane, for the
+	// worker's periodic queue-depth/active gauge sampling. Lanes with zero rows
+	// of both statuses are simply absent (no GROUP BY output row), matching
+	// ports.JobRepository.LaneDepths' documented contract.
+	LaneDepths(ctx context.Context) ([]*LaneDepthsRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

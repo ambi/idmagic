@@ -1,0 +1,48 @@
+# Replica counts (ADR-129): latency_sensitive keeps 2 replicas so its
+# reserved execution slot survives a single pod disruption (paired with the
+# PodDisruptionBudget in infra/k8s/base/pdb.yaml); bulk gets 2 replicas for
+# throughput since its jobs are long-running/high-volume; default is the
+# lightest lane and stays at the base replica count (1).
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-worker-latency-sensitive }
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: worker
+          envFrom:
+            - secretRef: { name: idmagic-prod-worker-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-worker-default }
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          envFrom:
+            - secretRef: { name: idmagic-prod-worker-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: idmagic-worker-bulk }
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: worker
+          envFrom:
+            - secretRef: { name: idmagic-prod-worker-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
