@@ -1,5 +1,5 @@
 ---
-status: suggested
+status: accepted
 authors: [tn]
 created_at: 2026-07-04
 ---
@@ -31,8 +31,7 @@ audience 限定を fail-closed の保証義務として確定する。
 
 ## 決定
 
-[[wi-56-mcp-authorization-server]] の意思決定を起草する。wi-56 の実装着手とともに
-「採用」へ移す。[[ADR-002]] (全 client で PKCE 必須)・[[ADR-005]] (DPoP を既定の sender constraint)・
+[[wi-56-mcp-authorization-server]] の実装着手に伴い本 ADR を「採用」へ移す。[[ADR-002]] (全 client で PKCE 必須)・[[ADR-005]] (DPoP を既定の sender constraint)・
 [[ADR-011]] (Discovery を導出成果物として扱う)・[[ADR-012]] (opaque / JWT access token)・
 [[ADR-049]] (Token Exchange と Resource Indicators による audience 限定) を前提に、idmagic が
 MCP リソースサーバー群に対する **Authorization Server** として振る舞うときの境界と保証義務を確定する。

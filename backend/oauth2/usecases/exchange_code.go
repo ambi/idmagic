@@ -38,6 +38,9 @@ type ExchangeCodeInput struct {
 	RedirectURI  string
 	DpopJKT      string
 	MTLSX5TS256  string
+	// Resource は RFC 8707 resource indicator (ADR-055)。/token へ再指定された場合、
+	// /authorize 時に束縛された resource と一致しなければならない (RFC 8707 §2)。
+	Resource []string
 }
 
 type ExchangeCodeOutput struct {
@@ -87,6 +90,14 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
 		return nil, NewOAuthError("invalid_grant", "PKCE 検証失敗")
 	}
+	// RFC 8707 §2 — /token に resource が再指定された場合、/authorize 時に束縛された
+	// resource と一致しなければならない (ADR-055)。新規 resource の後付け指定は拒否する。
+	if requested := nonEmpty(in.Resource); len(requested) > 0 {
+		if len(requested) > 1 || rec.Resource == nil || requested[0] != *rec.Resource {
+			emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: "invalid_target"})
+			return nil, NewOAuthError("invalid_target", "token リクエストの resource が認可リクエストと一致しません")
+		}
+	}
 
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
@@ -127,6 +138,10 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.MTLSX5TS256}
 	}
 
+	var audiences []string
+	if rec.Resource != nil {
+		audiences = []string{*rec.Resource}
+	}
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:               client,
 		Sub:                  user.ID,
@@ -136,12 +151,16 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		AMR:                  rec.AMR,
 		ACR:                  optionalValue(rec.ACR),
 		AuthorizationDetails: rec.AuthorizationDetails,
+		Audiences:            audiences,
 	})
 	if err != nil {
 		return nil, err
 	}
 	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: rec.Scopes, SenderConstraint: senderConstraintTag(sc)})
 	emit(deps.Emit, &domain.AuthorizationCodeRedeemed{At: now, TenantID: tenantID, ClientID: client.ClientID, UserID: user.ID})
+	if rec.Resource != nil {
+		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *rec.Resource, Scopes: rec.Scopes})
+	}
 
 	var idToken string
 	if slices.Contains(rec.Scopes, "openid") {

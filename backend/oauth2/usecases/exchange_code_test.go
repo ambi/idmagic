@@ -22,11 +22,13 @@ import (
 )
 
 type fakeTokenIssuer struct {
-	idTokenCalls     int
-	lastIDTokenInput ports.IDTokenInput
+	idTokenCalls         int
+	lastIDTokenInput     ports.IDTokenInput
+	lastAccessTokenInput ports.AccessTokenInput
 }
 
-func (f *fakeTokenIssuer) SignAccessToken(context.Context, ports.AccessTokenInput) (string, string, error) {
+func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in ports.AccessTokenInput) (string, string, error) {
+	f.lastAccessTokenInput = in
 	return "access-token", "jti-1", nil
 }
 

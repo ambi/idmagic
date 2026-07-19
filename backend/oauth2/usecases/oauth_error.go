@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
@@ -19,4 +20,13 @@ func (e *OAuthError) Error() string {
 
 func NewOAuthError(code, description string) *OAuthError {
 	return &OAuthError{Code: code, Description: kernel.EnglishErrorText(description)}
+}
+
+// errorCode は err が *OAuthError であればその Code を、そうでなければ "server_error" を返す。
+// 監査イベントの reason フィールド用。
+func errorCode(err error) string {
+	if oe, ok := errors.AsType[*OAuthError](err); ok {
+		return oe.Code
+	}
+	return "server_error"
 }

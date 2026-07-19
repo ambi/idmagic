@@ -66,14 +66,17 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 		CodeChallenge: request.CodeChallenge, CodeChallengeMethod: request.CodeChallengeMethod,
 		Prompt: request.Prompt, MaxAge: request.MaxAge, ACRValues: request.AcrValues, ParUsed: parUsed,
 		AuthorizationDetails: details,
+		Resource:             q["resource"],
 	}
 	if requestURI := c.QueryParam("request_uri"); requestURI != "" {
 		in.ParRequestURI = requestURI
 	}
 	out, err := usecases.Authorize(c.Request().Context(), usecases.AuthorizeDeps{
-		ClientRepo:          d.ClientRepo,
-		RequestStore:        d.RequestStore,
-		AuthzDetailTypeRepo: d.AuthzDetailTypeRepo,
+		ClientRepo:            d.ClientRepo,
+		RequestStore:          d.RequestStore,
+		AuthzDetailTypeRepo:   d.AuthzDetailTypeRepo,
+		McpResourceServerRepo: d.McpResourceServerRepo,
+		Emit:                  d.Emit,
 	}, in)
 	if err != nil {
 		return writeOAuthError(c, err)

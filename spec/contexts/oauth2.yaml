@@ -274,6 +274,12 @@ standards:
         strength: SHOULD
         adoption: required
         statement: 発行するAccess Tokenへ非空のaudienceを設定し、意図しないResource Serverでの利用を防ぐ。
+      - id: RFC8707-MCP-RESOURCE-BINDING
+        section: §2
+        strength: MUST
+        adoption: partial
+        reason: "MCP (ADR-055) 向けの resource indicator 必須化・登録済み McpResourceServer への audience 厳格限定・fail-closed 拒否は Authorize / PushAuthorizationRequest / Token(authorization_code redemption) / Token(token-exchange) の 4 経路にのみ実装する。Token(client_credentials) / Token(refresh_token rotation) / DeviceAuthorization は resource パラメータを受理せず、常に client_id を audience とする既存動作のまま変更しない (follow-up work item 待ち)。"
+        statement: "resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する (ADR-055)。"
   RFC9068:
     title: JSON Web Token Profile for OAuth 2.0 Access Tokens
     version: RFC 9068
@@ -370,6 +376,24 @@ standards:
         strength: MUST
         adoption: required
         statement: Refresh Tokenをローテーションし再利用検知時に関連トークンを失効する。
+  RFC9728:
+    title: OAuth 2.0 Protected Resource Metadata
+    version: RFC 9728
+    url: https://www.rfc-editor.org/rfc/rfc9728.html
+    roles:
+      - AuthorizationServer
+    scope: MCP resource server (Protected Resource) のメタデータ発見 (ADR-055)。
+    requirements:
+      - id: RFC9728-METADATA
+        section: §3
+        strength: MUST
+        adoption: required
+        statement: 登録済み McpResourceServer ごとに resource・対応する authorization_servers・サポート scope を含む metadata文書を配信する。
+      - id: RFC9728-WELL-KNOWN
+        section: §3.1
+        strength: MUST
+        adoption: required
+        statement: /.well-known/oauth-protected-resource で resource を指定した metadata取得を提供する。
   OpenIDConnectCore:
     title: OpenID Connect Core 1.0 incorporating errata set 1
     version: Final
@@ -544,6 +568,14 @@ glossary:
     definition: AccessToken を提示する Client に対して保護リソースを返すサーバー。本アプリの外部。
     aliases:
       - resource_server
+  McpResourceServer:
+    definition: MCP エコシステムでツール/データソースを提供する ResourceServer の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata と resource indicator 検証の基準になる。
+    aliases:
+      - mcp_resource_server
+  ResourceIndicator:
+    definition: RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定・未登録・無効は fail-closed で拒否する。
+    aliases:
+      - resource_indicator
   Public:
     definition: "client_secret を安全に保持できない Client（SPA, ネイティブアプリ）。PKCE 必須。"
     aliases:
@@ -761,6 +793,10 @@ glossary:
     definition: OAuth error code server_error。AuthorizationServer 側の予期せぬ内部エラー。
     aliases:
       - server_error
+  InvalidTarget:
+    definition: RFC 8707 error code invalid_target。resource パラメータが未登録・無効・複数指定、または McpResourceServer が Disabled。
+    aliases:
+      - invalid_target
   Fapi2SecurityProfile:
     definition: FAPI 2.0 Security Profile。tls_client_auth または private_key_jwt + PAR 必須。
     aliases:
@@ -1086,6 +1122,7 @@ models:
       - SlowDown
       - InsufficientScope
       - AuthorizationPending
+      - InvalidTarget
   OAuth2Client:
     kind: entity
     description: RFC 7591 + FAPI 2.0 拡張のクライアント。
@@ -1332,6 +1369,117 @@ models:
         type: DateTime
       updated_at:
         type: DateTime
+  McpResourceServerState:
+    kind: enum
+    description: McpResourceServer の運用状態列挙。Active のみ resource indicator 検証を通過する。Disabled は新規発行を拒否する (既存トークンは失効まで有効)。
+    values:
+      - Active
+      - Disabled
+  McpResourceServer:
+    kind: entity
+    description: MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。
+    identity:
+      - resource_server_id
+    fields:
+      tenant_id:
+        type: String
+        default: default
+        description: 所属テナント ID。
+      resource_server_id:
+        type: String
+        constraints:
+          - non_empty
+        description: 登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。
+      resource:
+        type: ResourceIndicator
+        description: 発行トークンの aud に厳格束縛される canonical resource URI。tenant 内で一意。
+      name:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 200
+        description: 管理 UI 表示名。
+      scopes:
+        type: "String[]"
+        constraints:
+          - non_empty
+        description: この resource へのアクセスで許可する scope の allowlist。resource 指定時の要求 scope はこの部分集合でなければならない。
+      state:
+        type: McpResourceServerState
+        default: Active
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+  ResourceIndicator:
+    kind: value_object
+    description: RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。
+    fields:
+      value:
+        type: URI
+        constraints:
+          - non_empty
+  ProtectedResourceMetadata:
+    kind: value_object
+    description: RFC 9728 Protected Resource Metadata。McpResourceServer 登録から導出し手書きで独立に保守しない (ADR-011 と同方針)。
+    fields:
+      resource:
+        type: URI
+      authorization_servers:
+        type: "URI[]"
+        description: この resource を保護する Authorization Server (= idmagic issuer) の一覧。
+      scopes_supported:
+        type: "String[]"
+      bearer_methods_supported:
+        type: "String[]"
+        default:
+          - header
+  McpResourceServerRequest:
+    kind: value_object
+    description: 管理者が McpResourceServer を登録・更新する JSON リクエスト。resource は作成時のみ。
+    fields:
+      resource:
+        type: String
+        optional: true
+        description: 作成時必須。更新では変更不可 (発行済みトークンの aud 意味が変わるため)。
+      name:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 200
+      scopes:
+        type: "String[]"
+        constraints:
+          - non_empty
+      state:
+        type: McpResourceServerState
+        optional: true
+  McpResourceServerResponse:
+    kind: value_object
+    description: McpResourceServer 表現。管理 UI の一覧と詳細で同じ表現を返す。
+    fields:
+      tenant_id:
+        type: String
+      resource_server_id:
+        type: String
+      resource:
+        type: URI
+      name:
+        type: String
+      scopes:
+        type: "String[]"
+      state:
+        type: McpResourceServerState
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+  McpResourceServerListResponse:
+    kind: value_object
+    description: 管理 API の McpResourceServer 一覧。
+    fields:
+      resource_servers:
+        type: "McpResourceServerResponse[]"
   RefreshTokenRecord:
     kind: entity
     constraints:
@@ -2295,6 +2443,10 @@ models:
       scope:
         type: String
         optional: true
+      resource:
+        type: ResourceIndicator
+        optional: true
+        description: "RFC 8707 — authorization_code redemption と token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。client_credentials / refresh_token / device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
   TokenResponse:
     kind: value_object
     description: /token 成功時のレスポンスボディ (RFC 6749 §5.1)。発行されたトークン一式と種別を返す。
@@ -2463,6 +2615,10 @@ models:
       authorization_details:
         type: String
         optional: true
+      resource:
+        type: ResourceIndicator
+        optional: true
+        description: "RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する (ADR-055)。同名parameterの複数指定も invalid_target。"
   BrowserConsentRequest:
     kind: value_object
     description: SPA が POST /api/auth/consent に送る同意判断。
@@ -2589,6 +2745,13 @@ models:
   InvalidScopeError:
     kind: error
     description: 要求された scope が不正、未知、またはクライアントに許可されていない (RFC 6749 §5.2 invalid_scope)。
+  InvalidTargetError:
+    kind: error
+    description: resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。
+    payload:
+      reason:
+        type: String
+        optional: true
   InvalidTokenError:
     kind: error
     description: アクセストークンが期限切れ、改ざん、不正、または失効済み (RFC 6750 §3.1 invalid_token)。
@@ -2915,6 +3078,48 @@ models:
       reason:
         type: String
         description: 拒否理由 (OAuth error code 等)。
+  ProtectedResourceMetadataServed:
+    kind: event
+    description: RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+        description: metadata を配信したテナント ID。
+      resource:
+        type: String
+        description: 配信対象の resource URI。
+  ResourceScopedTokenIssued:
+    kind: event
+    description: RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+        description: トークンを発行したテナント ID。
+      clientId:
+        type: String
+      resource:
+        type: String
+        description: 発行トークンの aud に束縛された resource URI。
+      scopes:
+        type: "String[]"
+  ResourceAudienceRejected:
+    kind: event
+    description: RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+        description: 拒否が起きたテナント ID。
+      clientId:
+        type: String
+      reason:
+        type: String
+        description: 拒否理由 (invalid_target 等)。
   RefreshTokenReuseDetected:
     kind: event
     description: Rotated 状態の RefreshToken が再提示された。ファミリー全失効をトリガーする (RFC 9700 §4.14)。
@@ -3292,6 +3497,7 @@ interfaces:
       - InvalidRequestError
       - InvalidClientError
       - AccessDeniedError
+      - InvalidTargetError
     requires:
       - every_authorization_parameter_has_single_value(input.params)
       - prompt_tokens_supported_and_unambiguous(input.params.prompt)
@@ -3303,9 +3509,11 @@ interfaces:
       - request_uri_is_the_only_authorization_request_source_when_present(input.params)
       - application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)
       - application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)
+      - resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)
     emits:
       - AuthorizationCodeIssued
       - ConsentGranted
+      - ResourceAudienceRejected
     access: public
     bindings:
       - kind: http
@@ -3457,8 +3665,12 @@ interfaces:
     errors:
       - InvalidRequestError
       - InvalidClientError
+      - InvalidTargetError
+    requires:
+      - resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)
     emits:
       - PARStored
+      - ResourceAudienceRejected
     access:
       policies: [AuthenticatedClient]
       resource:
@@ -3494,10 +3706,13 @@ interfaces:
       - SlowDownError
       - AccessDeniedError
       - ExpiredTokenError
+      - InvalidTargetError
     requires:
       - signing_key_provider_healthy(context.tenant_id)
       - token_request_references_are_tenant_local(context.tenant_id, input.request)
       - dpop_proof_is_fresh_and_unique(context.dpop_proof)
+      - input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)
+      - input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)
     ensures:
       - output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)
       - input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request)
@@ -3513,6 +3728,8 @@ interfaces:
       - AuthorizationCodeRedeemed
       - TokenExchanged
       - TokenExchangeRejected
+      - ResourceScopedTokenIssued
+      - ResourceAudienceRejected
     access:
       policies: [TokenAuthorizationCode, TokenRefresh, TokenClientCredentials, TokenDeviceCode, TokenExchange]
       resource:
@@ -3670,6 +3887,28 @@ interfaces:
       - kind: http
         method: GET
         path: /.well-known/oauth-authorization-server
+  GetProtectedResourceMetadata:
+    description: "Protected Resource Metadata (RFC 9728)。resource クエリパラメータで指定した\n登録済み Active な McpResourceServer の metadata を返す。未登録・Disabled は\ninvalid_target として拒否する (ADR-055)。配信内容は McpResourceServer 登録から\n導出し手書きで独立に保守しない (ADR-011 と同方針)。\n"
+    steps:
+      - resource {resource} の Protected Resource Metadata を取得する
+    input:
+      resource:
+        type: String
+    output:
+      metadata:
+        type: ProtectedResourceMetadata
+    errors:
+      - InvalidRequestError
+      - InvalidTargetError
+    emits:
+      - ProtectedResourceMetadataServed
+    read_only: true
+    access: public
+    bindings:
+      - kind: http
+        method: GET
+        path: /.well-known/oauth-protected-resource
+        request_form: query
   Health:
     description: Health check
     read_only: true
@@ -3890,6 +4129,109 @@ interfaces:
       - kind: http
         method: DELETE
         path: "/api/admin/clients/{client_id}"
+        successful_status_codes:
+          - "204"
+  ListAdminMcpResourceServers:
+    description: 管理者が所属テナントの McpResourceServer を一覧する (AdminMcpResourcesManage)。
+    output:
+      response:
+        type: McpResourceServerListResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/mcp-resource-servers
+  GetAdminMcpResourceServer:
+    description: 管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。
+    input:
+      resource_server_id:
+        type: String
+    output:
+      response:
+        type: McpResourceServerResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/mcp-resource-servers/{resource_server_id}"
+  CreateAdminMcpResourceServer:
+    description: 管理者が所属テナントに McpResourceServer を登録する。resource は tenant 内で一意でなければならない。
+    input:
+      request:
+        type: McpResourceServerRequest
+    output:
+      response:
+        type: McpResourceServerResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/mcp-resource-servers
+        request_form: body
+        successful_status_codes:
+          - "201"
+  UpdateAdminMcpResourceServer:
+    description: 管理者が McpResourceServer の name / scopes / state を更新する。resource (canonical URI) は不変。
+    input:
+      resource_server_id:
+        type: String
+      request:
+        type: McpResourceServerRequest
+    output:
+      response:
+        type: McpResourceServerResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: PATCH
+        path: "/api/admin/mcp-resource-servers/{resource_server_id}"
+        request_form: body
+  DeleteAdminMcpResourceServer:
+    description: 管理者が McpResourceServer を削除する。以後この resource を指定する新規発行は invalid_target で拒否する (発行済みトークンは失効まで有効)。
+    input:
+      resource_server_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/mcp-resource-servers/{resource_server_id}"
         successful_status_codes:
           - "204"
   ListAdminConsents:

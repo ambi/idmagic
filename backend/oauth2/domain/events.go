@@ -141,6 +141,46 @@ type TokenExchangeRejected struct {
 func (e *TokenExchangeRejected) EventType() string     { return "TokenExchangeRejected" }
 func (e *TokenExchangeRejected) OccurredAt() time.Time { return e.At }
 
+// ProtectedResourceMetadataServed は RFC 9728 — /.well-known/oauth-protected-resource
+// が登録済み McpResourceServer の metadata を配信した (ADR-055)。
+type ProtectedResourceMetadataServed struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	Resource string    `json:"resource"`
+}
+
+func (e *ProtectedResourceMetadataServed) EventType() string {
+	return "ProtectedResourceMetadataServed"
+}
+func (e *ProtectedResourceMetadataServed) OccurredAt() time.Time { return e.At }
+
+// ResourceScopedTokenIssued は RFC 8707 — resource indicator に基づき audience を単一
+// McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/
+// Token(authorization_code) 経路が対象。token-exchange は TokenExchanged.audience で表現する。
+type ResourceScopedTokenIssued struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	ClientID string    `json:"clientId"`
+	Resource string    `json:"resource"`
+	Scopes   []string  `json:"scopes"`
+}
+
+func (e *ResourceScopedTokenIssued) EventType() string     { return "ResourceScopedTokenIssued" }
+func (e *ResourceScopedTokenIssued) OccurredAt() time.Time { return e.At }
+
+// ResourceAudienceRejected は RFC 8707 — resource indicator が未登録・Disabled・複数指定
+// のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が
+// 対象。token-exchange の拒否は TokenExchangeRejected.reason で表現する。
+type ResourceAudienceRejected struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	ClientID string    `json:"clientId"`
+	Reason   string    `json:"reason"`
+}
+
+func (e *ResourceAudienceRejected) EventType() string     { return "ResourceAudienceRejected" }
+func (e *ResourceAudienceRejected) OccurredAt() time.Time { return e.At }
+
 type RefreshTokenReuseDetected struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`

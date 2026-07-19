@@ -232,6 +232,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Authenticator:              authenticator,
 		ApplicationGate:            appGate,
 		AuthzDetailTypeRepo:        d.OAuth2.AuthzDetailTypeRepo,
+		McpResourceServerRepo:      d.OAuth2.McpResourceServerRepo,
 		ClientRepo:                 d.OAuth2.ClientRepo,
 		ConsentRepo:                d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver:  clientDisplayNames,

@@ -288,6 +288,17 @@ type LifecycleWorkflowStep struct {
 	CreatedAt   time.Time
 }
 
+type McpResourceServer struct {
+	TenantID         string
+	ResourceServerID string
+	Resource         string
+	Name             string
+	Scopes           []byte
+	State            string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
 type MfaEnrollmentBypass struct {
 	ID         string
 	TenantID   string

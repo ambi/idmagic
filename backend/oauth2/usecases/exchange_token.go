@@ -10,13 +10,15 @@
 //     (テナント別上書きは将来)
 //   - may_act 強制: subject_token に may_act があれば現在アクター sub が may_act.sub と
 //     一致しなければ拒否。
-//   - RESOURCE INDICATORS (constrained RFC 8707): resource を必須・1 個のみとし、
-//     発行トークン aud = [resource] とする。resource-server 登録モデルは未導入 (TOFU)。
+//   - RESOURCE INDICATORS (RFC 8707, ADR-055): resource を必須・1 個のみとし、登録済み
+//     Active な McpResourceServer に限定する。未登録・Disabled は invalid_target で
+//     fail-closed 拒否する。発行トークン aud = [resource]。
 //   - REFRESH TOKEN は発行しない。
 package usecases
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"time"
@@ -58,12 +60,13 @@ type ExchangeTokenResult struct {
 }
 
 type ExchangeTokenDeps struct {
-	ClientRepo          ports.OAuth2ClientRepository
-	Introspector        ports.TokenIntrospector
-	TokenIssuer         ports.TokenIssuer
-	Authorizer          ports.Authorizer
-	AuthzDetailTypeRepo ports.AuthorizationDetailTypeRepository
-	Emit                func(spec.DomainEvent)
+	ClientRepo            ports.OAuth2ClientRepository
+	Introspector          ports.TokenIntrospector
+	TokenIssuer           ports.TokenIssuer
+	Authorizer            ports.Authorizer
+	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo ports.McpResourceServerRepository
+	Emit                  func(spec.DomainEvent)
 }
 
 func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeTokenInput, now time.Time) (*ExchangeTokenResult, error) {
@@ -77,15 +80,18 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return nil, err
 	}
 
-	// --- resource (RFC 8707, constrained): 必須・1 個のみ ---
-	resources := nonEmpty(in.Resource)
-	if len(resources) == 0 {
+	// --- resource (RFC 8707): 必須・1 個のみ・登録済み Active な McpResourceServer に限定 ---
+	if len(nonEmpty(in.Resource)) == 0 {
 		return reject("", NewOAuthError("invalid_request", "resource パラメータが必要です"))
 	}
-	if len(resources) > 1 {
-		return reject("", NewOAuthError("invalid_request", "resource は 1 個のみ指定できます (1 token = 1 resource)"))
+	mcpResourceServer, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, nil)
+	if err != nil {
+		if oe, ok := errors.AsType[*OAuthError](err); ok {
+			return reject("", oe)
+		}
+		return nil, err
 	}
-	resource := resources[0]
+	resource := mcpResourceServer.Resource
 	if in.RequestedTokenType != "" && in.RequestedTokenType != tokenTypeAccessTokenURN {
 		return reject("", NewOAuthError("invalid_request", "未対応の requested_token_type です"))
 	}
@@ -158,6 +164,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 			}
 		}
 		grantedScopes = requested
+	}
+	for _, s := range grantedScopes {
+		if !slices.Contains(mcpResourceServer.Scopes, s) {
+			return reject(currentActorSub, NewOAuthError("invalid_scope", "resource の許可 scope を超える要求です"))
+		}
 	}
 
 	// --- authorization_details ダウンスコープ (拡大不可, RFC 9396 / ADR-050) ---

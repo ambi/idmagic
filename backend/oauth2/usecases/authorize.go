@@ -36,6 +36,9 @@ type AuthorizeRequestInput struct {
 	ParUsed              bool
 	ParRequestURI        string
 	AuthorizationDetails []spec.AuthorizationDetail
+	// Resource は RFC 8707 resource indicator (ADR-055)。form/query の resource は複数
+	// 指定され得るため slice で受ける (単一値以外は invalid_target)。
+	Resource []string
 }
 
 type AuthorizeRequestOutput struct {
@@ -44,9 +47,11 @@ type AuthorizeRequestOutput struct {
 }
 
 type AuthorizeDeps struct {
-	ClientRepo          ports.OAuth2ClientRepository
-	RequestStore        ports.AuthorizationRequestStore
-	AuthzDetailTypeRepo ports.AuthorizationDetailTypeRepository
+	ClientRepo            ports.OAuth2ClientRepository
+	RequestStore          ports.AuthorizationRequestStore
+	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo ports.McpResourceServerRepository
+	Emit                  func(spec.DomainEvent)
 }
 
 // Authorize は /authorize のリクエスト検証と保存を行う。
@@ -106,6 +111,17 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		return nil, err
 	}
 
+	// RFC 8707 resource indicator: 登録済み Active な McpResourceServer に限定する (ADR-055)。
+	mcp, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, requestedScopes)
+	if err != nil {
+		emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})
+		return nil, err
+	}
+	var resource *string
+	if mcp != nil {
+		resource = &mcp.Resource
+	}
+
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, err
@@ -128,6 +144,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		ACRValues:            optional(in.ACRValues),
 		ParRequestURI:        optional(in.ParRequestURI),
 		AuthorizationDetails: in.AuthorizationDetails,
+		Resource:             resource,
 		CreatedAt:            now,
 		ExpiresAt:            now.Add(10 * time.Minute),
 	}

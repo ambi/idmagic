@@ -227,3 +227,55 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}
 }
+
+func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &McpResourceServerRepository{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	resourceServerID := newUUID(t)
+	m := &domain.McpResourceServer{
+		TenantID:         tenant.ID,
+		ResourceServerID: resourceServerID,
+		Resource:         "https://mcp.example.com/tools/github",
+		Name:             "GitHub MCP Tools",
+		Scopes:           []string{"mcp.read", "mcp.write"},
+		State:            domain.McpResourceServerActive,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	if err := repo.Save(ctx, m); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, err := repo.FindByID(ctx, tenant.ID, resourceServerID)
+	if err != nil || got == nil {
+		t.Fatalf("find by id: %v %+v", err, got)
+	}
+	if got.Resource != m.Resource || got.State != domain.McpResourceServerActive {
+		t.Fatalf("unexpected resource server: %+v", got)
+	}
+	if len(got.Scopes) != 2 {
+		t.Fatalf("scopes not round-tripped: %+v", got.Scopes)
+	}
+
+	byResource, err := repo.FindByResource(ctx, tenant.ID, "https://mcp.example.com/tools/github")
+	if err != nil || byResource == nil || byResource.ResourceServerID != resourceServerID {
+		t.Fatalf("find by resource: %v %+v", err, byResource)
+	}
+
+	list, err := repo.ListByTenant(ctx, tenant.ID)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list by tenant: %v len=%d", err, len(list))
+	}
+
+	if err := repo.Delete(ctx, tenant.ID, resourceServerID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	got, err = repo.FindByID(ctx, tenant.ID, resourceServerID)
+	if err != nil || got != nil {
+		t.Fatalf("expected deleted: %v %+v", err, got)
+	}
+}

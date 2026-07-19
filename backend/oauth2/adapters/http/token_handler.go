@@ -95,6 +95,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			RedirectURI:  c.Request().PostFormValue("redirect_uri"),
 			DpopJKT:      dpopJKT,
 			MTLSX5TS256:  clientStub.MTLSThumbprintS256,
+			Resource:     c.Request().PostForm["resource"],
 		})
 		if err != nil {
 			return writeOAuthError(c, err)
@@ -232,7 +233,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		res, err := usecases.ExchangeToken(ctx, usecases.ExchangeTokenDeps{
 			ClientRepo: d.ClientRepo, Introspector: d.TokenIntrospector,
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
-			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, Emit: d.Emit,
+			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo, Emit: d.Emit,
 		}, usecases.ExchangeTokenInput{
 			ClientID:             clientStub.ID,
 			SubjectToken:         c.Request().PostFormValue("subject_token"),

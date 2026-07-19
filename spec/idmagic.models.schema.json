@@ -4216,6 +4216,10 @@
         },
         "authorization_details": {
           "type": "string"
+        },
+        "resource": {
+          "$ref": "#/$defs/ResourceIndicator",
+          "description": "RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する (ADR-055)。同名parameterの複数指定も invalid_target。"
         }
       },
       "additionalProperties": false,
@@ -6907,6 +6911,12 @@
       "additionalProperties": false,
       "description": "要求された scope が不正、未知、またはクライアントに許可されていない (RFC 6749 §5.2 invalid_scope)。"
     },
+    "InvalidTargetError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。"
+    },
     "InvalidTokenError": {
       "type": "object",
       "properties": {},
@@ -8248,6 +8258,164 @@
       ],
       "description": "409 (既存衝突) 時に下流の既存 resource を養子縁組するための比較属性。externalId 相関 (idmagic の id) が主で、このルールは externalId 未設定の既存 resource との衝突解決に使う二次手段。"
     },
+    "McpResourceServer": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "default": "default",
+          "description": "所属テナント ID。"
+        },
+        "resource_server_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。"
+        },
+        "resource": {
+          "$ref": "#/$defs/ResourceIndicator",
+          "description": "発行トークンの aud に厳格束縛される canonical resource URI。tenant 内で一意。"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "管理 UI 表示名。"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "この resource へのアクセスで許可する scope の allowlist。resource 指定時の要求 scope はこの部分集合でなければならない。"
+        },
+        "state": {
+          "$ref": "#/$defs/McpResourceServerState",
+          "default": "Active"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "resource_server_id",
+        "resource",
+        "name",
+        "scopes",
+        "state",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。"
+    },
+    "McpResourceServerListResponse": {
+      "type": "object",
+      "properties": {
+        "resource_servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/McpResourceServerResponse"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "resource_servers"
+      ],
+      "description": "管理 API の McpResourceServer 一覧。"
+    },
+    "McpResourceServerRequest": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "作成時必須。更新では変更不可 (発行済みトークンの aud 意味が変わるため)。"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "state": {
+          "$ref": "#/$defs/McpResourceServerState"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "scopes"
+      ],
+      "description": "管理者が McpResourceServer を登録・更新する JSON リクエスト。resource は作成時のみ。"
+    },
+    "McpResourceServerResponse": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "resource_server_id": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string",
+          "format": "uri"
+        },
+        "name": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "state": {
+          "$ref": "#/$defs/McpResourceServerState"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "resource_server_id",
+        "resource",
+        "name",
+        "scopes",
+        "state",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "McpResourceServer 表現。管理 UI の一覧と詳細で同じ表現を返す。"
+    },
+    "McpResourceServerState": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Disabled"
+      ],
+      "description": "McpResourceServer の運用状態列挙。Active のみ resource indicator 検証を通過する。Disabled は新規発行を拒否する (既存トークンは失効まで有効)。"
+    },
     "MfaChallengeFailed": {
       "type": "object",
       "properties": {
@@ -8998,7 +9166,8 @@
         "ExpiredToken",
         "SlowDown",
         "InsufficientScope",
-        "AuthorizationPending"
+        "AuthorizationPending",
+        "InvalidTarget"
       ],
       "description": "OAuth 2.0 / OIDC / DPoP / FAPI / RFC 8628 で規定された標準エラーコード一式。HTTP レスポンスの error フィールド値となる。"
     },
@@ -9249,6 +9418,70 @@
         "name"
       ],
       "description": "利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。"
+    },
+    "ProtectedResourceMetadata": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "format": "uri"
+        },
+        "authorization_servers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "この resource を保護する Authorization Server (= idmagic issuer) の一覧。"
+        },
+        "scopes_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bearer_methods_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "header"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "resource",
+        "authorization_servers",
+        "scopes_supported",
+        "bearer_methods_supported"
+      ],
+      "description": "RFC 9728 Protected Resource Metadata。McpResourceServer 登録から導出し手書きで独立に保守しない (ADR-011 と同方針)。"
+    },
+    "ProtectedResourceMetadataServed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "metadata を配信したテナント ID。"
+        },
+        "resource": {
+          "type": "string",
+          "description": "配信対象の resource URI。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "resource"
+      ],
+      "description": "RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。"
     },
     "ProtocolBinding": {
       "type": "object",
@@ -10432,6 +10665,84 @@
         "Mfa"
       ],
       "description": "サインインポリシーが要求する認証強度。Password は追加要求なし (acr ⊇ urn:idmagic:acr:pwd)、Mfa は第二要素必須 (acr = urn:idmagic:acr:mfa、amr に otp / webauthn / hwk / swk のいずれかを含む)。"
+    },
+    "ResourceAudienceRejected": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "拒否が起きたテナント ID。"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "description": "拒否理由 (invalid_target 等)。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "clientId",
+        "reason"
+      ],
+      "description": "RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。"
+    },
+    "ResourceIndicator": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "value"
+      ],
+      "description": "RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。"
+    },
+    "ResourceScopedTokenIssued": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "トークンを発行したテナント ID。"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string",
+          "description": "発行トークンの aud に束縛された resource URI。"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "clientId",
+        "resource",
+        "scopes"
+      ],
+      "description": "RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。"
     },
     "ResponseMode": {
       "type": "string",
@@ -12575,6 +12886,10 @@
         },
         "scope": {
           "type": "string"
+        },
+        "resource": {
+          "$ref": "#/$defs/ResourceIndicator",
+          "description": "RFC 8707 — authorization_code redemption と token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。client_credentials / refresh_token / device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
         }
       },
       "additionalProperties": false,

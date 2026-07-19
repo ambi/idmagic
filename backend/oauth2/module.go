@@ -17,6 +17,7 @@ type Module struct {
 	ClientRepo                 oauthports.OAuth2ClientRepository
 	ConsentRepo                oauthports.ConsentRepository
 	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo      oauthports.McpResourceServerRepository
 	RequestStore               oauthports.AuthorizationRequestStore
 	CodeStore                  oauthports.AuthorizationCodeStore
 	PARStore                   oauthports.PARStore

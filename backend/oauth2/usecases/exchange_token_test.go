@@ -10,6 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -66,6 +67,14 @@ func newExchangeTokenDeps(t *testing.T, issuer *recordingIssuer, results map[str
 		ClientRepo:   clientRepo,
 		Introspector: tokenIntrospector{results: results},
 		TokenIssuer:  issuer,
+		McpResourceServerRepo: newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+			TenantID:         kernel.DefaultTenantID,
+			ResourceServerID: "rs-api-example",
+			Resource:         "https://api.example",
+			Name:             "API Example",
+			Scopes:           []string{"read", "write"},
+			State:            domain.McpResourceServerActive,
+		}),
 	}
 }
 
@@ -204,6 +213,53 @@ func TestExchangeTokenDownscopes(t *testing.T) {
 	if res.Scope != "read" {
 		t.Fatalf("scope=%q, want read", res.Scope)
 	}
+}
+
+func TestExchangeTokenRejectsUnregisteredResource(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+		"subj": {Active: true, Sub: "user-1", Scope: "read"},
+	})
+	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://unregistered.example"},
+	}, time.Now().UTC())
+	assertOAuthError(t, err, "invalid_target")
+	if issuer.calls != 0 {
+		t.Fatal("拒否されたのにトークンが発行されました")
+	}
+}
+
+func TestExchangeTokenRejectsDisabledResource(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+		"subj": {Active: true, Sub: "user-1", Scope: "read"},
+	})
+	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+		TenantID: kernel.DefaultTenantID, ResourceServerID: "rs-1",
+		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
+		State: domain.McpResourceServerDisabled,
+	})
+	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
+	}, time.Now().UTC())
+	assertOAuthError(t, err, "invalid_target")
+}
+
+func TestExchangeTokenRejectsScopeExceedingResourceAllowlist(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
+	})
+	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+		TenantID: kernel.DefaultTenantID, ResourceServerID: "rs-1",
+		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
+		State: domain.McpResourceServerActive,
+	})
+	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+		ClientID: "client", SubjectToken: "subj", Scope: "write",
+		Resource: []string{"https://api.example"},
+	}, time.Now().UTC())
+	assertOAuthError(t, err, "invalid_scope")
 }
 
 func TestExchangeTokenRequiresSingleResource(t *testing.T) {

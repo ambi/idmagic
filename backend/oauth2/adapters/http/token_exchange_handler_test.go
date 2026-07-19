@@ -52,10 +52,18 @@ func newTokenExchangeServer(t *testing.T) string {
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
+	resourceServers := oauth2memory.NewMcpResourceServerRepository()
+	resourceServers.Seed(&domain.McpResourceServer{
+		ResourceServerID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",
+		Scopes: []string{"read", "write"}, State: domain.McpResourceServerActive,
+	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:     support.Deps{Issuer: "http://test"},
-		OAuth2:   oauth2.Module{ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore()},
+		Deps: support.Deps{Issuer: "http://test"},
+		OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
+			McpResourceServerRepo: resourceServers,
+		},
 		UserRepo: idmmemory.NewUserRepository(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	})

@@ -35,8 +35,9 @@ func (d Deps) handlePAR(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	res, err := usecases.PushAuthorizationRequest(ctx, usecases.PARDeps{
-		ClientRepo: d.ClientRepo, Store: d.PARStore, AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, Emit: d.Emit,
-	}, usecases.PARInput{ClientID: clientStub.ID, Parameters: params}, time.Now().UTC())
+		ClientRepo: d.ClientRepo, Store: d.PARStore, AuthzDetailTypeRepo: d.AuthzDetailTypeRepo,
+		McpResourceServerRepo: d.McpResourceServerRepo, Emit: d.Emit,
+	}, usecases.PARInput{ClientID: clientStub.ID, Parameters: params, Resource: c.Request().PostForm["resource"]}, time.Now().UTC())
 	if err != nil {
 		return writeOAuthError(c, err)
 	}

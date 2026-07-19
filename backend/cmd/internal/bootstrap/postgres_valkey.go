@@ -176,6 +176,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			ClientRepo:                 &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
 			ConsentRepo:                &oauth2postgres.ConsentRepository{Pool: resilientDB},
 			AuthzDetailTypeRepo:        &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
+			McpResourceServerRepo:      &oauth2postgres.McpResourceServerRepository{Pool: resilientDB},
 			RequestStore:               &oauth2valkey.AuthorizationRequestStore{Client: valkeyClient},
 			CodeStore:                  &oauth2valkey.AuthorizationCodeStore{Client: valkeyClient},
 			PARStore:                   &oauth2valkey.PARStore{Client: valkeyClient},

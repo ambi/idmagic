@@ -12822,11 +12822,11 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       <div class="eyebrow">Bounded Context · contexts/oauth2.yaml</div>
       <h1>OAuth2</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">28</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">96</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">135</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">36</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">7</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">33</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">29</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">146</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">42</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">7</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">33</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-oauth2-standards">
-    <h2>Standards <span class="count">28</span></h2>
-    <p class="lead">適用する外部標準と規範要件。56 requirements。採用方針であり実装状態ではない。</p>
+    <h2>Standards <span class="count">29</span></h2>
+    <p class="lead">適用する外部標準と規範要件。59 requirements。採用方針であり実装状態ではない。</p>
     <div class="cards"><article class="card standard" id="context-oauth2-std-rfc6749">
         <header><h3>RFC6749</h3><span class="badge badge-version">RFC 6749</span></header>
         <p class="desc"><strong>The OAuth 2.0 Authorization Framework</strong> — Authorization Code、Refresh Token、Client Credentialsと共通エラー処理。</p>
@@ -13251,6 +13251,17 @@ PostgreSQL keyset pagination index を使用、wi-253)。
             <p>発行するAccess Tokenへ非空のaudienceを設定し、意図しないResource Serverでの利用を防ぐ。</p>
 
 
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/RFC8707/RFC8707-MCP-RESOURCE-BINDING">
+            <header>
+              <code class="name">RFC8707-MCP-RESOURCE-BINDING</code>
+              <span class="badge badge-adoption-partial">partial</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§2</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/RFC8707/RFC8707-MCP-RESOURCE-BINDING</code>
+            </header>
+            <p>resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する (ADR-055)。</p>
+            <p class="exclusion-reason"><strong>reason:</strong> MCP (ADR-055) 向けの resource indicator 必須化・登録済み McpResourceServer への audience 厳格限定・fail-closed 拒否は Authorize / PushAuthorizationRequest / Token(authorization_code redemption) / Token(token-exchange) の 4 経路にのみ実装する。Token(client_credentials) / Token(refresh_token rotation) / DeviceAuthorization は resource パラメータを受理せず、常に client_id を audience とする既存動作のまま変更しない (follow-up work item 待ち)。</p>
+
           </article></div>
       </article><article class="card standard" id="context-oauth2-std-rfc9068">
         <header><h3>RFC9068</h3><span class="badge badge-version">RFC 9068</span></header>
@@ -13410,6 +13421,36 @@ PostgreSQL keyset pagination index を使用、wi-253)。
               <code class="canonical-ref">OAuth2/standard_requirement/RFC9700/RFC9700-REFRESH-REPLAY</code>
             </header>
             <p>Refresh Tokenをローテーションし再利用検知時に関連トークンを失効する。</p>
+
+
+          </article></div>
+      </article><article class="card standard" id="context-oauth2-std-rfc9728">
+        <header><h3>RFC9728</h3><span class="badge badge-version">RFC 9728</span></header>
+        <p class="desc"><strong>OAuth 2.0 Protected Resource Metadata</strong> — MCP resource server (Protected Resource) のメタデータ発見 (ADR-055)。</p>
+        <dl class="kv">
+          <dt>source</dt><dd><a href="https://www.rfc-editor.org/rfc/rfc9728.html">https://www.rfc-editor.org/rfc/rfc9728.html</a></dd>
+          <dt>roles</dt><dd><span class="chip">AuthorizationServer</span></dd>
+        </dl>
+        <div class="requirements"><article class="requirement" id="scl-OAuth2/standard_requirement/RFC9728/RFC9728-METADATA">
+            <header>
+              <code class="name">RFC9728-METADATA</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§3</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/RFC9728/RFC9728-METADATA</code>
+            </header>
+            <p>登録済み McpResourceServer ごとに resource・対応する authorization_servers・サポート scope を含む metadata文書を配信する。</p>
+
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/RFC9728/RFC9728-WELL-KNOWN">
+            <header>
+              <code class="name">RFC9728-WELL-KNOWN</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§3.1</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/RFC9728/RFC9728-WELL-KNOWN</code>
+            </header>
+            <p>/.well-known/oauth-protected-resource で resource を指定した metadata取得を提供する。</p>
 
 
           </article></div>
@@ -13670,7 +13711,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       </article></div>
   </section>
 <section id="context-oauth2-glossary">
-    <h2>Glossary <span class="count">96</span></h2>
+    <h2>Glossary <span class="count">99</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="context-oauth2-glossary-resourceowner">
       <div class="vocab-name"><code class="name">ResourceOwner</code></div>
@@ -13707,6 +13748,24 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       <div class="vocab-body">
         <p class="def">AccessToken を提示する Client に対して保護リソースを返すサーバー。本アプリの外部。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">resource_server</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-oauth2-glossary-mcpresourceserver">
+      <div class="vocab-name"><code class="name">McpResourceServer</code></div>
+      <div class="vocab-body">
+        <p class="def">MCP エコシステムでツール/データソースを提供する ResourceServer の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata と resource indicator 検証の基準になる。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">mcp_resource_server</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-oauth2-glossary-resourceindicator">
+      <div class="vocab-name"><code class="name">ResourceIndicator</code></div>
+      <div class="vocab-body">
+        <p class="def">RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定・未登録・無効は fail-closed で拒否する。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">resource_indicator</span></div>
 
 
       </div>
@@ -14164,6 +14223,15 @@ PostgreSQL keyset pagination index を使用、wi-253)。
 
       </div>
     </article>
+<article class="vocab-entry" id="context-oauth2-glossary-invalidtarget">
+      <div class="vocab-name"><code class="name">InvalidTarget</code></div>
+      <div class="vocab-body">
+        <p class="def">RFC 8707 error code invalid_target。resource パラメータが未登録・無効・複数指定、または McpResourceServer が Disabled。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">invalid_target</span></div>
+
+
+      </div>
+    </article>
 <article class="vocab-entry" id="context-oauth2-glossary-fapi2securityprofile">
       <div class="vocab-name"><code class="name">Fapi2SecurityProfile</code></div>
       <div class="vocab-body">
@@ -14556,10 +14624,10 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     </article></div>
   </section>
 <section id="context-oauth2-models">
-    <h2>Models <span class="count">135</span></h2>
+    <h2>Models <span class="count">146</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">entity <span class="count">14</span></h3>
+      <h3 class="grp-title">entity <span class="count">15</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/OAuth2Client">
     <header><h3>OAuth2Client</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/OAuth2Client</code></header>
     <p class="desc">RFC 7591 + FAPI 2.0 拡張のクライアント。</p>
@@ -14881,6 +14949,64 @@ iframe を含める (wi-28)。
     <td><code class="type">AuthorizationDetailTypeState</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-default">default: Enabled</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">created_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">updated_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/McpResourceServer">
+    <header><h3>McpResourceServer</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/McpResourceServer</code></header>
+    <p class="desc">MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。</p>
+    <dl class="kv"><dt>identity</dt><dd><code>resource_server_id</code></dd></dl>
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">tenant_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-default">default: default</span></td>
+    <td>所属テナント ID。</td>
+  </tr><tr>
+    <td><code class="name">resource_server_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td>登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。</td>
+  </tr><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">ResourceIndicator</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>発行トークンの aud に厳格束縛される canonical resource URI。tenant 内で一意。</td>
+  </tr><tr>
+    <td><code class="name">name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 200</span></td>
+    <td>管理 UI 表示名。</td>
+  </tr><tr>
+    <td><code class="name">scopes</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td>この resource へのアクセスで許可する scope の allowlist。resource 指定時の要求 scope はこの部分集合でなければならない。</td>
+  </tr><tr>
+    <td><code class="name">state</code></td>
+    <td><code class="type">McpResourceServerState</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-default">default: Active</span></td>
     <td></td>
   </tr><tr>
     <td><code class="name">created_at</code></td>
@@ -15634,7 +15760,7 @@ front/back-channel logout の相関に使う (wi-28)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">43</span></h3>
+      <h3 class="grp-title">value object <span class="count">48</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/AuthorizationDetail">
     <header><h3>AuthorizationDetail</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/AuthorizationDetail</code></header>
     <p class="desc">RFC 9396 authorization_details の 1 要素。type で識別される構造化された細粒度権限を表す。 要求・同意・トークン反映を通じて一貫して扱い、登録済み AuthorizationDetailType に対し fail-closed に検証する。</p>
@@ -15733,6 +15859,164 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-constraint">non empty</span></td>
     <td>フィールド規則の集合。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ResourceIndicator">
+    <header><h3>ResourceIndicator</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/ResourceIndicator</code></header>
+    <p class="desc">RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">value</code></td>
+    <td><code class="type">URI</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ProtectedResourceMetadata">
+    <header><h3>ProtectedResourceMetadata</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/ProtectedResourceMetadata</code></header>
+    <p class="desc">RFC 9728 Protected Resource Metadata。McpResourceServer 登録から導出し手書きで独立に保守しない (ADR-011 と同方針)。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">URI</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">authorization_servers</code></td>
+    <td><code class="type">URI[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>この resource を保護する Authorization Server (= idmagic issuer) の一覧。</td>
+  </tr><tr>
+    <td><code class="name">scopes_supported</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">bearer_methods_supported</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-default">default: [&quot;header&quot;]</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/McpResourceServerRequest">
+    <header><h3>McpResourceServerRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/McpResourceServerRequest</code></header>
+    <p class="desc">管理者が McpResourceServer を登録・更新する JSON リクエスト。resource は作成時のみ。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>作成時必須。更新では変更不可 (発行済みトークンの aud 意味が変わるため)。</td>
+  </tr><tr>
+    <td><code class="name">name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 200</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">scopes</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">state</code></td>
+    <td><code class="type">McpResourceServerState</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/McpResourceServerResponse">
+    <header><h3>McpResourceServerResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/McpResourceServerResponse</code></header>
+    <p class="desc">McpResourceServer 表現。管理 UI の一覧と詳細で同じ表現を返す。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">tenant_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">resource_server_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">URI</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">scopes</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">state</code></td>
+    <td><code class="type">McpResourceServerState</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">created_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">updated_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/McpResourceServerListResponse">
+    <header><h3>McpResourceServerListResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/McpResourceServerListResponse</code></header>
+    <p class="desc">管理 API の McpResourceServer 一覧。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">resource_servers</code></td>
+    <td><code class="type">McpResourceServerResponse[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
   </tr></tbody>
   </table>
 
@@ -17047,6 +17331,12 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">ResourceIndicator</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>RFC 8707 — authorization_code redemption と token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。client_credentials / refresh_token / device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。</td>
   </tr></tbody>
   </table>
 
@@ -17431,6 +17721,12 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">ResourceIndicator</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する (ADR-055)。同名parameterの複数指定も invalid_target。</td>
   </tr></tbody>
   </table>
 
@@ -17638,7 +17934,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">21</span></h3>
+      <h3 class="grp-title">enum <span class="count">22</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/ClientType">
     <header><h3>ClientType</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">OAuth2/model/ClientType</code></header>
     <p class="desc">クライアントが client_secret を安全に保持できるかどうかの分類。Public はモバイル/SPA など秘匿不可、Confidential はサーバーサイドで秘密鍵を保持可能。</p>
@@ -17769,7 +18065,14 @@ hint として送るのが通常の RP 実装であるため)。
     <header><h3>OAuthErrorCode</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">OAuth2/model/OAuthErrorCode</code></header>
     <p class="desc">OAuth 2.0 / OIDC / DPoP / FAPI / RFC 8628 で規定された標準エラーコード一式。HTTP レスポンスの error フィールド値となる。</p>
 
-    <div class="enum-vals"><span class="chip chip-enum">InvalidRequest</span> <span class="chip chip-enum">InvalidClient</span> <span class="chip chip-enum">InvalidGrant</span> <span class="chip chip-enum">UnauthorizedClient</span> <span class="chip chip-enum">UnsupportedGrantType</span> <span class="chip chip-enum">InvalidScope</span> <span class="chip chip-enum">InvalidToken</span> <span class="chip chip-enum">ServerError</span> <span class="chip chip-enum">InvalidDpopProof</span> <span class="chip chip-enum">AccessDenied</span> <span class="chip chip-enum">ExpiredToken</span> <span class="chip chip-enum">SlowDown</span> <span class="chip chip-enum">InsufficientScope</span> <span class="chip chip-enum">AuthorizationPending</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">InvalidRequest</span> <span class="chip chip-enum">InvalidClient</span> <span class="chip chip-enum">InvalidGrant</span> <span class="chip chip-enum">UnauthorizedClient</span> <span class="chip chip-enum">UnsupportedGrantType</span> <span class="chip chip-enum">InvalidScope</span> <span class="chip chip-enum">InvalidToken</span> <span class="chip chip-enum">ServerError</span> <span class="chip chip-enum">InvalidDpopProof</span> <span class="chip chip-enum">AccessDenied</span> <span class="chip chip-enum">ExpiredToken</span> <span class="chip chip-enum">SlowDown</span> <span class="chip chip-enum">InsufficientScope</span> <span class="chip chip-enum">AuthorizationPending</span> <span class="chip chip-enum">InvalidTarget</span></div>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/McpResourceServerState">
+    <header><h3>McpResourceServerState</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">OAuth2/model/McpResourceServerState</code></header>
+    <p class="desc">McpResourceServer の運用状態列挙。Active のみ resource indicator 検証を通過する。Disabled は新規発行を拒否する (既存トークンは失効まで有効)。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">Active</span> <span class="chip chip-enum">Disabled</span></div>
 
   </article>
 <article class="card" id="scl-OAuth2/model/LogoutNotificationState">
@@ -17788,7 +18091,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">42</span></h3>
+      <h3 class="grp-title">event <span class="count">45</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/ClientRegistered">
     <header><h3>ClientRegistered</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientRegistered</code></header>
     <p class="desc">/register で新しいクライアントが動的登録された (RFC 7591)。クライアント登録監査の起点。</p>
@@ -18555,6 +18858,108 @@ hint として送るのが通常の RP 実装であるため)。
   </table>
 
   </article>
+<article class="card" id="scl-OAuth2/model/ProtectedResourceMetadataServed">
+    <header><h3>ProtectedResourceMetadataServed</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ProtectedResourceMetadataServed</code></header>
+    <p class="desc">RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>metadata を配信したテナント ID。</td>
+  </tr><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>配信対象の resource URI。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ResourceScopedTokenIssued">
+    <header><h3>ResourceScopedTokenIssued</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ResourceScopedTokenIssued</code></header>
+    <p class="desc">RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>トークンを発行したテナント ID。</td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>発行トークンの aud に束縛された resource URI。</td>
+  </tr><tr>
+    <td><code class="name">scopes</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ResourceAudienceRejected">
+    <header><h3>ResourceAudienceRejected</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ResourceAudienceRejected</code></header>
+    <p class="desc">RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>拒否が起きたテナント ID。</td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">reason</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>拒否理由 (invalid_target 等)。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
 <article class="card" id="scl-OAuth2/model/RefreshTokenReuseDetected">
     <header><h3>RefreshTokenReuseDetected</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/RefreshTokenReuseDetected</code></header>
     <p class="desc">Rotated 状態の RefreshToken が再提示された。ファミリー全失効をトリガーする (RFC 9700 §4.14)。</p>
@@ -19021,7 +19426,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">15</span></h3>
+      <h3 class="grp-title">error <span class="count">16</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/OAuthError">
     <header><h3>OAuthError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/OAuthError</code></header>
     <p class="desc">OAuth 2.0 / OIDC のエラー応答の共通形 (RFC 6749 §5.2)。具体的なエラー種別は error フィールドの OAuthErrorCode で識別される。</p>
@@ -19110,6 +19515,22 @@ hint として送るのが通常の RP 実装であるため)。
     <p class="muted">(no fields)</p>
 
   </article>
+<article class="card" id="scl-OAuth2/model/InvalidTargetError">
+    <header><h3>InvalidTargetError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/InvalidTargetError</code></header>
+    <p class="desc">resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">reason</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
 <article class="card" id="scl-OAuth2/model/InvalidTokenError">
     <header><h3>InvalidTokenError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/InvalidTokenError</code></header>
     <p class="desc">アクセストークンが期限切れ、改ざん、不正、または失効済み (RFC 6750 §3.1 invalid_token)。</p>
@@ -19169,7 +19590,7 @@ hint として送るのが通常の RP 実装であるため)。
     </div>
   </section>
 <section id="context-oauth2-interfaces">
-    <h2>Interfaces <span class="count">36</span></h2>
+    <h2>Interfaces <span class="count">42</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-OAuth2/interface/RegisterClient">
     <header><h3>RegisterClient</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">OAuth2/interface/RegisterClient</code></header>
@@ -19225,9 +19646,9 @@ hint として送るのが通常の RP 実装であるため)。
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
-<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeIssued">AuthorizationCodeIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ConsentGranted">ConsentGranted</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">every_authorization_parameter_has_single_value(input.params)</code></li><li><code class="expr">prompt_tokens_supported_and_unambiguous(input.params.prompt)</code></li><li><code class="expr">registered_client(input.params.client_id)</code></li><li><code class="expr">redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)</code></li><li><code class="expr">requested_scopes_allowed(input.params.client_id, input.params.scope)</code></li><li><code class="expr">pkce_s256_present(input.params)</code></li><li><code class="expr">par_requirement_satisfied(input.params.client_id, input.params.request_uri)</code></li><li><code class="expr">request_uri_is_the_only_authorization_request_source_when_present(input.params)</code></li><li><code class="expr">application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)</code></li></ul></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeIssued">AuthorizationCodeIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ConsentGranted">ConsentGranted</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">every_authorization_parameter_has_single_value(input.params)</code></li><li><code class="expr">prompt_tokens_supported_and_unambiguous(input.params.prompt)</code></li><li><code class="expr">registered_client(input.params.client_id)</code></li><li><code class="expr">redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)</code></li><li><code class="expr">requested_scopes_allowed(input.params.client_id, input.params.scope)</code></li><li><code class="expr">pkce_s256_present(input.params)</code></li><li><code class="expr">par_requirement_satisfied(input.params.client_id, input.params.request_uri)</code></li><li><code class="expr">request_uri_is_the_only_authorization_request_source_when_present(input.params)</code></li><li><code class="expr">application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/authorize</code> <span class="chip chip-hint">response: 302</span> <span class="chip chip-hint">form: query</span></div></div>
@@ -19493,8 +19914,9 @@ LoginSession に解決できるかどうかだけを応答する。session_state
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a></div></div>
-<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/PARStored">PARStored</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/PARStored">PARStored</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/par</code> <span class="chip chip-hint">form: form</span></div></div>
@@ -19532,9 +19954,9 @@ LoginSession に解決できるかどうかだけを応答する。session_state
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidGrantError">InvalidGrantError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/UnsupportedGrantTypeError">UnsupportedGrantTypeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidScopeError">InvalidScopeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidDpopProofError">InvalidDpopProofError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AuthorizationPendingError">AuthorizationPendingError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/SlowDownError">SlowDownError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ExpiredTokenError">ExpiredTokenError</a></div></div>
-<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AccessTokenIssued">AccessTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenIssued">RefreshTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenRotated">RefreshTokenRotated</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenReuseDetected">RefreshTokenReuseDetected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeRedeemed">AuthorizationCodeRedeemed</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchanged">TokenExchanged</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchangeRejected">TokenExchangeRejected</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">signing_key_provider_healthy(context.tenant_id)</code></li><li><code class="expr">token_request_references_are_tenant_local(context.tenant_id, input.request)</code></li><li><code class="expr">dpop_proof_is_fresh_and_unique(context.dpop_proof)</code></li></ul></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidGrantError">InvalidGrantError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/UnsupportedGrantTypeError">UnsupportedGrantTypeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidScopeError">InvalidScopeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidDpopProofError">InvalidDpopProofError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AuthorizationPendingError">AuthorizationPendingError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/SlowDownError">SlowDownError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ExpiredTokenError">ExpiredTokenError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AccessTokenIssued">AccessTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenIssued">RefreshTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenRotated">RefreshTokenRotated</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenReuseDetected">RefreshTokenReuseDetected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeRedeemed">AuthorizationCodeRedeemed</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchanged">TokenExchanged</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchangeRejected">TokenExchangeRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceScopedTokenIssued">ResourceScopedTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">signing_key_provider_healthy(context.tenant_id)</code></li><li><code class="expr">token_request_references_are_tenant_local(context.tenant_id, input.request)</code></li><li><code class="expr">dpop_proof_is_fresh_and_unique(context.dpop_proof)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li></ul></div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request)</code></li><li><code class="expr">input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token)</code></li><li><code class="expr">!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)</code></li><li><code class="expr">client_authentication_failures_are_uniform()</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -19751,6 +20173,45 @@ LoginSession に解決できるかどうかだけを応答する。session_state
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/.well-known/oauth-authorization-server</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-OAuth2/interface/GetProtectedResourceMetadata">
+    <header><h3>GetProtectedResourceMetadata</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">OAuth2/interface/GetProtectedResourceMetadata</code></header>
+    <p class="desc">Protected Resource Metadata (RFC 9728)。resource クエリパラメータで指定した
+登録済み Active な McpResourceServer の metadata を返す。未登録・Disabled は
+invalid_target として拒否する (ADR-055)。配信内容は McpResourceServer 登録から
+導出し手書きで独立に保守しない (ADR-011 と同方針)。
+</p>
+    <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">resource {resource} の Protected Resource Metadata を取得する</code></div>
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">resource</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">metadata</code></td>
+    <td><code class="type">ProtectedResourceMetadata</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/ProtectedResourceMetadataServed">ProtectedResourceMetadataServed</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/.well-known/oauth-protected-resource</code> <span class="chip chip-hint">form: query</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-OAuth2/interface/Health">
@@ -20065,6 +20526,157 @@ LoginSession に解決できるかどうかだけを応答する。session_state
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/clients/{client_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-OAuth2/interface/ListAdminMcpResourceServers">
+    <header><h3>ListAdminMcpResourceServers</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">OAuth2/interface/ListAdminMcpResourceServers</code></header>
+    <p class="desc">管理者が所属テナントの McpResourceServer を一覧する (AdminMcpResourcesManage)。</p>
+
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">McpResourceServerListResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/mcp-resource-servers</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-OAuth2/interface/GetAdminMcpResourceServer">
+    <header><h3>GetAdminMcpResourceServer</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">OAuth2/interface/GetAdminMcpResourceServer</code></header>
+    <p class="desc">管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">resource_server_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">McpResourceServerResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/mcp-resource-servers/{resource_server_id}</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-OAuth2/interface/CreateAdminMcpResourceServer">
+    <header><h3>CreateAdminMcpResourceServer</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><code class="canonical-ref">OAuth2/interface/CreateAdminMcpResourceServer</code></header>
+    <p class="desc">管理者が所属テナントに McpResourceServer を登録する。resource は tenant 内で一意でなければならない。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">McpResourceServerRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">McpResourceServerResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/mcp-resource-servers</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-OAuth2/interface/UpdateAdminMcpResourceServer">
+    <header><h3>UpdateAdminMcpResourceServer</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><code class="canonical-ref">OAuth2/interface/UpdateAdminMcpResourceServer</code></header>
+    <p class="desc">管理者が McpResourceServer の name / scopes / state を更新する。resource (canonical URI) は不変。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">resource_server_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">McpResourceServerRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">McpResourceServerResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/mcp-resource-servers/{resource_server_id}</code> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-OAuth2/interface/DeleteAdminMcpResourceServer">
+    <header><h3>DeleteAdminMcpResourceServer</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><code class="canonical-ref">OAuth2/interface/DeleteAdminMcpResourceServer</code></header>
+    <p class="desc">管理者が McpResourceServer を削除する。以後この resource を指定する新規発行は invalid_target で拒否する (発行済みトークンは失効まで有効)。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">resource_server_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/mcp-resource-servers/{resource_server_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-OAuth2/interface/ListAdminConsents">

@@ -6191,9 +6191,10 @@
           "par_requirement_satisfied(input.params.client_id, input.params.request_uri)",
           "request_uri_is_the_only_authorization_request_source_when_present(input.params)",
           "application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)",
-          "application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)"
+          "application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)",
+          "resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)"
         ],
-        "description": "Requires: every_authorization_parameter_has_single_value(input.params); prompt_tokens_supported_and_unambiguous(input.params.prompt); registered_client(input.params.client_id); redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri); requested_scopes_allowed(input.params.client_id, input.params.scope); pkce_s256_present(input.params); par_requirement_satisfied(input.params.client_id, input.params.request_uri); request_uri_is_the_only_authorization_request_source_when_present(input.params); application_assignment_permits(context.tenant_id, subject.id, input.params.client_id); application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)",
+        "description": "Requires: every_authorization_parameter_has_single_value(input.params); prompt_tokens_supported_and_unambiguous(input.params.prompt); registered_client(input.params.client_id); redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri); requested_scopes_allowed(input.params.client_id, input.params.scope); pkce_s256_present(input.params); par_requirement_satisfied(input.params.client_id, input.params.request_uri); request_uri_is_the_only_authorization_request_source_when_present(input.params); application_assignment_permits(context.tenant_id, subject.id, input.params.client_id); application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id); resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)",
         "security": [],
         "parameters": [
           {
@@ -6210,7 +6211,7 @@
             "description": "Success"
           },
           "default": {
-            "description": "Errors: InvalidRequestError, InvalidClientError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, InvalidClientError, AccessDeniedError, InvalidTargetError",
             "content": {
               "application/json": {
                 "schema": {
@@ -6223,6 +6224,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidTargetError"
                     }
                   ]
                 }
@@ -6571,6 +6575,10 @@
       "post": {
         "operationId": "PushAuthorizationRequest",
         "summary": "Pushed Authorization Request (RFC 9126)",
+        "x-scl-requires": [
+          "resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)"
+        ],
+        "description": "Requires: resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)",
         "security": [
           {
             "SclBearer": []
@@ -6625,7 +6633,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, InvalidClientError",
+            "description": "Errors: InvalidRequestError, InvalidClientError, InvalidTargetError",
             "content": {
               "application/json": {
                 "schema": {
@@ -6635,6 +6643,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/InvalidClientError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidTargetError"
                     }
                   ]
                 }
@@ -6651,7 +6662,9 @@
         "x-scl-requires": [
           "signing_key_provider_healthy(context.tenant_id)",
           "token_request_references_are_tenant_local(context.tenant_id, input.request)",
-          "dpop_proof_is_fresh_and_unique(context.dpop_proof)"
+          "dpop_proof_is_fresh_and_unique(context.dpop_proof)",
+          "input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)",
+          "input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)"
         ],
         "x-scl-ensures": [
           "output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)",
@@ -6661,7 +6674,7 @@
           "!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)",
           "client_authentication_failures_are_uniform()"
         ],
-        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform()",
+        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform()",
         "security": [
           {
             "SclBearer": []
@@ -6720,7 +6733,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, InvalidClientError, InvalidGrantError, UnsupportedGrantTypeError, InvalidScopeError, InvalidDpopProofError, AuthorizationPendingError, SlowDownError, AccessDeniedError, ExpiredTokenError",
+            "description": "Errors: InvalidRequestError, InvalidClientError, InvalidGrantError, UnsupportedGrantTypeError, InvalidScopeError, InvalidDpopProofError, AuthorizationPendingError, SlowDownError, AccessDeniedError, ExpiredTokenError, InvalidTargetError",
             "content": {
               "application/json": {
                 "schema": {
@@ -6754,6 +6767,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ExpiredTokenError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidTargetError"
                     }
                   ]
                 }
@@ -7137,6 +7153,61 @@
                   "additionalProperties": false,
                   "required": [
                     "discovery"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/oauth-protected-resource": {
+      "get": {
+        "operationId": "GetProtectedResourceMetadata",
+        "summary": "Protected Resource Metadata (RFC 9728)。resource クエリパラメータで指定した",
+        "security": [],
+        "parameters": [
+          {
+            "name": "resource",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "metadata": {
+                      "$ref": "#/components/schemas/ProtectedResourceMetadata"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "metadata"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, InvalidTargetError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidTargetError"
+                    }
                   ]
                 }
               }
@@ -7800,6 +7871,343 @@
         "parameters": [
           {
             "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/mcp-resource-servers": {
+      "get": {
+        "operationId": "ListAdminMcpResourceServers",
+        "summary": "管理者が所属テナントの McpResourceServer を一覧する (AdminMcpResourcesManage)。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/McpResourceServerListResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CreateAdminMcpResourceServer",
+        "summary": "管理者が所属テナントに McpResourceServer を登録する。resource は tenant 内で一意でなければならない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/McpResourceServerRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/McpResourceServerResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/mcp-resource-servers/{resource_server_id}": {
+      "get": {
+        "operationId": "GetAdminMcpResourceServer",
+        "summary": "管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "resource_server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/McpResourceServerResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "UpdateAdminMcpResourceServer",
+        "summary": "管理者が McpResourceServer の name / scopes / state を更新する。resource (canonical URI) は不変。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resource_server_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/McpResourceServerRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "resource_server_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "resource_server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/McpResourceServerResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteAdminMcpResourceServer",
+        "summary": "管理者が McpResourceServer を削除する。以後この resource を指定する新規発行は invalid_target で拒否する (発行済みトークンは失効まで有効)。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "resource_server_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -19517,6 +19925,10 @@
           },
           "authorization_details": {
             "type": "string"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/ResourceIndicator",
+            "description": "RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する (ADR-055)。同名parameterの複数指定も invalid_target。"
           }
         },
         "additionalProperties": false,
@@ -22208,6 +22620,12 @@
         "additionalProperties": false,
         "description": "要求された scope が不正、未知、またはクライアントに許可されていない (RFC 6749 §5.2 invalid_scope)。"
       },
+      "InvalidTargetError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。"
+      },
       "InvalidTokenError": {
         "type": "object",
         "properties": {},
@@ -23549,6 +23967,164 @@
         ],
         "description": "409 (既存衝突) 時に下流の既存 resource を養子縁組するための比較属性。externalId 相関 (idmagic の id) が主で、このルールは externalId 未設定の既存 resource との衝突解決に使う二次手段。"
       },
+      "McpResourceServer": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "default": "default",
+            "description": "所属テナント ID。"
+          },
+          "resource_server_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/ResourceIndicator",
+            "description": "発行トークンの aud に厳格束縛される canonical resource URI。tenant 内で一意。"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "管理 UI 表示名。"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "この resource へのアクセスで許可する scope の allowlist。resource 指定時の要求 scope はこの部分集合でなければならない。"
+          },
+          "state": {
+            "$ref": "#/components/schemas/McpResourceServerState",
+            "default": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "resource_server_id",
+          "resource",
+          "name",
+          "scopes",
+          "state",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。"
+      },
+      "McpResourceServerListResponse": {
+        "type": "object",
+        "properties": {
+          "resource_servers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpResourceServerResponse"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "resource_servers"
+        ],
+        "description": "管理 API の McpResourceServer 一覧。"
+      },
+      "McpResourceServerRequest": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "description": "作成時必須。更新では変更不可 (発行済みトークンの aud 意味が変わるため)。"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "state": {
+            "$ref": "#/components/schemas/McpResourceServerState"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "scopes"
+        ],
+        "description": "管理者が McpResourceServer を登録・更新する JSON リクエスト。resource は作成時のみ。"
+      },
+      "McpResourceServerResponse": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "resource_server_id": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string",
+            "format": "uri"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/McpResourceServerState"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "resource_server_id",
+          "resource",
+          "name",
+          "scopes",
+          "state",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "McpResourceServer 表現。管理 UI の一覧と詳細で同じ表現を返す。"
+      },
+      "McpResourceServerState": {
+        "type": "string",
+        "enum": [
+          "Active",
+          "Disabled"
+        ],
+        "description": "McpResourceServer の運用状態列挙。Active のみ resource indicator 検証を通過する。Disabled は新規発行を拒否する (既存トークンは失効まで有効)。"
+      },
       "MfaChallengeFailed": {
         "type": "object",
         "properties": {
@@ -24299,7 +24875,8 @@
           "ExpiredToken",
           "SlowDown",
           "InsufficientScope",
-          "AuthorizationPending"
+          "AuthorizationPending",
+          "InvalidTarget"
         ],
         "description": "OAuth 2.0 / OIDC / DPoP / FAPI / RFC 8628 で規定された標準エラーコード一式。HTTP レスポンスの error フィールド値となる。"
       },
@@ -24550,6 +25127,70 @@
           "name"
         ],
         "description": "利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。"
+      },
+      "ProtectedResourceMetadata": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "format": "uri"
+          },
+          "authorization_servers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "この resource を保護する Authorization Server (= idmagic issuer) の一覧。"
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bearer_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "header"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "resource",
+          "authorization_servers",
+          "scopes_supported",
+          "bearer_methods_supported"
+        ],
+        "description": "RFC 9728 Protected Resource Metadata。McpResourceServer 登録から導出し手書きで独立に保守しない (ADR-011 と同方針)。"
+      },
+      "ProtectedResourceMetadataServed": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "metadata を配信したテナント ID。"
+          },
+          "resource": {
+            "type": "string",
+            "description": "配信対象の resource URI。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "resource"
+        ],
+        "description": "RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。"
       },
       "ProtocolBinding": {
         "type": "object",
@@ -25733,6 +26374,84 @@
           "Mfa"
         ],
         "description": "サインインポリシーが要求する認証強度。Password は追加要求なし (acr ⊇ urn:idmagic:acr:pwd)、Mfa は第二要素必須 (acr = urn:idmagic:acr:mfa、amr に otp / webauthn / hwk / swk のいずれかを含む)。"
+      },
+      "ResourceAudienceRejected": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "拒否が起きたテナント ID。"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "拒否理由 (invalid_target 等)。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "clientId",
+          "reason"
+        ],
+        "description": "RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。"
+      },
+      "ResourceIndicator": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "format": "uri",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "value"
+        ],
+        "description": "RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。"
+      },
+      "ResourceScopedTokenIssued": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "トークンを発行したテナント ID。"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string",
+            "description": "発行トークンの aud に束縛された resource URI。"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "clientId",
+          "resource",
+          "scopes"
+        ],
+        "description": "RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。"
       },
       "ResponseMode": {
         "type": "string",
@@ -27876,6 +28595,10 @@
           },
           "scope": {
             "type": "string"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/ResourceIndicator",
+            "description": "RFC 8707 — authorization_code redemption と token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。client_credentials / refresh_token / device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
           }
         },
         "additionalProperties": false,
@@ -30789,6 +31512,22 @@
             }
           },
           {
+            "name": "CreateAdminMcpResourceServer",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
             "name": "CreateAdminOAuth2Client",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -30897,6 +31636,22 @@
               ],
               "resourceTypes": [
                 "Application"
+              ]
+            }
+          },
+          {
+            "name": "DeleteAdminMcpResourceServer",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
               ]
             }
           },
@@ -31365,6 +32120,22 @@
             }
           },
           {
+            "name": "GetAdminMcpResourceServer",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
             "name": "GetAdminOAuth2Client",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -31686,6 +32457,22 @@
           },
           {
             "name": "ListAdminKeys",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListAdminMcpResourceServers",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
               "TenantAdministrator"
@@ -32369,6 +33156,22 @@
               ],
               "resourceTypes": [
                 "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateAdminMcpResourceServer",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
               ]
             }
           },

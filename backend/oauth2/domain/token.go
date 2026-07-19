@@ -32,8 +32,11 @@ type AuthorizationRequest struct {
 	// AuthorizationCodeRecord / RefreshTokenRecord / IdTokenClaims へそのまま引き継ぐ (ADR-127)。
 	Sid                  *string                    `json:"sid,omitempty"`
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
-	CreatedAt            time.Time                  `json:"created_at"`
-	ExpiresAt            time.Time                  `json:"expires_at"`
+	// Resource は RFC 8707 resource indicator (ADR-055)。非nil のとき、発行トークンの
+	// aud をこの McpResourceServer の resource URI に厳格限定する。
+	Resource  *string   `json:"resource,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 func (a AuthorizationRequest) Validate() error { return spec.ValidateAuthorizationRequest(&a) }
@@ -55,13 +58,15 @@ type AuthorizationCodeRecord struct {
 	ACR                    *string                  `json:"acr,omitempty"`
 	// Sid は認可リクエストから引き継いだ OIDC session id。id_token の sid claim と
 	// 発行 RefreshTokenRecord.sid に伝播する (ADR-127)。
-	Sid                  *string                           `json:"sid,omitempty"`
-	AuthorizationDetails []spec.AuthorizationDetail        `json:"authorization_details,omitempty"`
-	State                spec.AuthorizationCodeRecordState `json:"state"`
-	IssuedAt             time.Time                         `json:"issued_at"`
-	ExpiresAt            time.Time                         `json:"expires_at"`
-	RedeemedAt           *time.Time                        `json:"redeemed_at,omitempty"`
-	IssuedFamilyID       *string                           `json:"issued_family_id,omitempty"`
+	Sid                  *string                    `json:"sid,omitempty"`
+	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
+	// Resource は認可リクエストから引き継いだ resource indicator (ADR-055)。
+	Resource       *string                           `json:"resource,omitempty"`
+	State          spec.AuthorizationCodeRecordState `json:"state"`
+	IssuedAt       time.Time                         `json:"issued_at"`
+	ExpiresAt      time.Time                         `json:"expires_at"`
+	RedeemedAt     *time.Time                        `json:"redeemed_at,omitempty"`
+	IssuedFamilyID *string                           `json:"issued_family_id,omitempty"`
 }
 
 func (a AuthorizationCodeRecord) Validate() error { return spec.ValidateAuthorizationCodeRecord(&a) }

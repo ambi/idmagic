@@ -95,6 +95,7 @@ func assembleMemory() (*Dependencies, error) {
 			ClientRepo:                 oauth2memory.NewClientRepository(),
 			ConsentRepo:                oauth2memory.NewConsentRepository(),
 			AuthzDetailTypeRepo:        oauth2memory.NewAuthorizationDetailTypeRepository(),
+			McpResourceServerRepo:      oauth2memory.NewMcpResourceServerRepository(),
 			RequestStore:               oauth2memory.NewAuthorizationRequestStore(),
 			CodeStore:                  oauth2memory.NewAuthorizationCodeStore(),
 			PARStore:                   oauth2memory.NewPARStore(),

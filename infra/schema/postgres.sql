@@ -601,6 +601,25 @@ CREATE TABLE authorization_detail_types (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
+-- mcp_resource_servers (ADR-055): MCP resource server (ツール/データソース) の
+-- tenant-scoped 登録。resource は tenant 内で一意な canonical resource URI で、
+-- Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。
+CREATE TABLE mcp_resource_servers (
+    tenant_id UUID NOT NULL,
+    resource_server_id UUID PRIMARY KEY,
+    resource TEXT NOT NULL,
+    name TEXT NOT NULL,
+    scopes JSONB NOT NULL,
+    state TEXT NOT NULL DEFAULT 'Active'
+        CHECK (state IN ('Active', 'Disabled')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT mcp_resource_servers_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT mcp_resource_servers_tenant_resource_unique
+        UNIQUE (tenant_id, resource)
+);
+
 CREATE TABLE applications (
     tenant_id UUID NOT NULL,
     application_id UUID PRIMARY KEY,
