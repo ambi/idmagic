@@ -161,14 +161,22 @@ Go 実装スコープ:
       RP の iframe target 一覧を算出、`frontchannel_logout_session_required`
       なら iss/sid クエリパラメータを付与) を実装し、`/end_session` の応答へ
       埋め込む。
-- [ ] T006 [Session Management] `CheckSessionIframe` (`GET /session/check`)
-      を実装する。静的ページ + 現在の browser cookie が有効な LoginSession に
-      解決できるかどうかだけを返す最小実装 (ADR-127 決定8)。
+- [x] T006 [Session Management] `CheckSessionIframe` (`GET /session/check`) —
+      RED: `TestCheckSessionIframe_noSession_respondsChanged` /
+      `TestCheckSessionIframe_validSession_respondsUnchanged` を先に 404 で
+      fail 確認 (`backend/oauth2/adapters/http/check_session_iframe_handler_test.go`)
+      → GREEN (`check_session_iframe_handler.go`)。静的ページ + 現在の browser
+      cookie が有効な LoginSession に解決できるかどうかだけを埋め込んで返す
+      最小実装 (ADR-127 決定8)。`d.AuthnResolver.Resolve` の結果 (nil または
+      `AuthenticationPending`) を fail-safe 側 ("changed") に倒す。
+      route を `backend/oauth2/adapters/http/routes.go` に登録し、
+      `TestAssembledRoutesMatchGeneratedOpenAPI` の `GET /session/check` 差分を
+      解消した (T007 verification の一部を前倒しで満たす)。wi-56 のブランチ作業中に
+      発見した SCL/実装 drift の修正として先行実装。
 - [ ] T007 [Verify] 複数 RP への配送、一時的配送失敗からの再試行、
       max_attempts 到達による dead-letter、同一 `LogoutNotification` の
-      retry を跨いだ jti 不変性、ワーカー再起動後の配送継続、
-      `TestAssembledRoutesMatchGeneratedOpenAPI` の `GET /session/check` 差分
-      解消を検証する。
+      retry を跨いだ jti 不変性、ワーカー再起動後の配送継続を検証する。
+      `GET /session/check` の route 契約差分は T006 で解消済み。
 
 ## Verification
 - `just yaml-check`

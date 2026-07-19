@@ -94,6 +94,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/device_authorization", d.handleDeviceAuthorization)
 	g.GET("/.well-known/openid-configuration", d.handleDiscovery)
 	g.GET("/.well-known/oauth-authorization-server", d.handleDiscovery)
+	g.GET("/session/check", d.handleCheckSessionIframe)
 	g.GET("/api/admin/clients", d.handleListAdminOAuth2Clients)
 	g.GET("/api/admin/clients/:client_id", d.handleGetAdminOAuth2Client)
 	g.POST("/api/admin/clients", d.handleCreateAdminOAuth2Client)
