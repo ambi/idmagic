@@ -121,11 +121,11 @@ sql:
             nullable: false
   - engine: "postgresql"
     schema: "infra/schema/postgres.sql"
-    queries: "backend/idmanagement/adapters/persistence/postgres/queries"
+    queries: "backend/idgovernance/adapters/persistence/postgres/queries"
     gen:
       go:
         package: "sqlcgen"
-        out: "backend/idmanagement/adapters/persistence/postgres/sqlcgen"
+        out: "backend/idgovernance/adapters/persistence/postgres/sqlcgen"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_json_tags: false

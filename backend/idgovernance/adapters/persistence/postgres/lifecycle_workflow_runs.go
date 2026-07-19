@@ -7,9 +7,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/postgres/sqlcgen"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

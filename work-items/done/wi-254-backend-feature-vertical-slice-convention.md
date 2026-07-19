@@ -228,14 +228,23 @@ backend/idmanagement/
       context ルート共有のまま維持した。
   - ADR-130・`REGENERATIVE_ARCHITECTURE.md` §3.8・`ARCHITECTURE.md`
     （module ledger + Go Package Conventions 節）を Phase 2 の実態に合わせて更新した。
+- **Phase 3**（ユーザー指摘を受けて追加実施）: Phase 2 完了報告で「`lifecycle_workflows` は
+  IdGovernance context 所有の歴史的経緯により idmanagement の postgres schema に残した」と
+  開示したところ、根本是正（IdGovernance への物理移設）を求められ実施した。ADR-117 が
+  「context-local な sqlc パッケージ分割（ADR-090）は後続 WI へ後回しする」と明記していた
+  既知の debt そのものだったため、新たな設計判断は不要だった。`lifecycle_workflows.sql` を
+  `backend/idgovernance/adapters/persistence/postgres/queries/` へ `git mv` し、`sqlc.yaml`
+  の該当エントリを idmanagement から idgovernance へ付け替えて `sqlc generate` で再生成。
+  `lifecycle_workflow_runs.go` の sqlcgen import path を更新し、
+  `backend/idmanagement/adapters/persistence/` はこれで完全に消滅した（残るのは
+  `backend/idmanagement/adapters/http/` の Deps・route 登録・feature 横断統合テストのみ）。
+  ADR-117 に一文注記を追加し、`ARCHITECTURE.md` の該当 module（`idmanagement-adapters`・
+  `idgovernance-adapters`）と Go Package Conventions 節を更新した。
 - **Out of Scope として明示的に対応していないこと**（ADR-121 開示）:
   - authentication / oauth2 の feature 分割は当初から Out of Scope（→ wi-255 / wi-256）。
   - signingkeys, tenancy, audit, jobs 等の単一 feature context への feature 層導入は
     条件付き規約により対象外（規約上、意図的に導入しない）。
-  - `lifecycle_workflows` の IdGovernance context への物理的な移設（本来あるべき所有権の
-    是正）は本 wi のスコープ外。今回は「どの feature にも属さない」ことを理由に
-    context ルート共有としたのみで、根本的な bounded context 境界の是正は別 work item。
-- **Verification Results**（Phase 1 + Phase 2 込みで再実行、すべて green）:
+- **Verification Results**（Phase 1 + Phase 2 + Phase 3 込みで再実行、すべて green）:
   - `just build-go` — passed。
   - `just test-go` — passed（idmanagement の全 feature サブパッケージ、外部消費者を含む）。
   - `just verify-go`（lint-go + test-go-race） — passed。
@@ -247,5 +256,6 @@ backend/idmanagement/
   - 旧配置（`backend/idmanagement/{domain,ports,usecases,adapters/http,adapters/persistence/
     postgres}` の feature 固有シンボル）への import 残存はゼロ（grep で確認）。共有パッケージ
     （`backend/idmanagement/domain`・`backend/idmanagement/usecases`・
-    `backend/idmanagement/adapters/http`・`backend/idmanagement/adapters/persistence/postgres`
-    の lifecycle_workflows 分）への参照は意図的に残存。
+    `backend/idmanagement/adapters/http`）への参照は意図的に残存。
+    `backend/idmanagement/adapters/persistence/` は Phase 3 で完全に消滅した
+    （lifecycle_workflows も含め、idmanagement 配下に postgres 永続化コードは残らない）。

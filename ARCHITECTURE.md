@@ -493,7 +493,7 @@ modules:
   idmanagement-adapters:
     path: backend/idmanagement/adapters
 
-    responsibility: "IdManagement の route 登録集約点 (routes.go)・feature 横断統合テスト・postgres の lifecycle_workflows 永続化 (IdGovernance 由来、wi-237/ADR-117)。feature 分割の対象外 (ADR-130): Deps 型自体は idmanagement-httpdeps (leaf package) が持ち、ハンドラ実装はフリー関数として user/group/agent へ分割した (Phase 2)。lifecycle_workflows は IdGovernance 所有のテーブルが idmanagement の postgres schema に残る歴史的経緯により、ここに残る。"
+    responsibility: "IdManagement の route 登録集約点 (routes.go)・feature 横断統合テスト。feature 分割の対象外 (ADR-130): Deps 型自体は idmanagement-httpdeps (leaf package) が持ち、ハンドラ実装はフリー関数として user/group/agent へ分割した (Phase 2)。postgres 永続化は全て user/group/agent へ分割済み。lifecycle_workflows の postgres query/sqlcgen は IdGovernance 所有として backend/idgovernance/adapters/persistence/postgres へ物理移設した（ADR-117 が後続 WI へ後回しにしていた context-local sqlc 分割、ADR-090）。"
     context: IdManagement
     layer: adapters
     role: binding
@@ -546,7 +546,7 @@ modules:
       - { module: tenancy-public, via: published_interface }
   idgovernance-adapters:
     path: backend/idgovernance/adapters
-    responsibility: "IdGovernance の HTTP と memory/PostgreSQL persistence adapter。"
+    responsibility: "IdGovernance の HTTP と memory/PostgreSQL persistence adapter。lifecycle_workflows の postgres query/sqlcgen は本 context が所有する（ADR-117 が後続 WI へ後回しにしていた context-local sqlc 分割、ADR-090。旧 backend/idmanagement/adapters/persistence/postgres から物理移設）。"
     context: IdGovernance
     layer: adapters
     role: binding
@@ -557,7 +557,6 @@ modules:
       - { module: idgovernance-domain, via: published_interface }
       - { module: idgovernance-ports, via: published_interface }
       - { module: idgovernance-usecases, via: published_interface }
-      - { module: idmanagement-adapters, via: binding }
       - { module: idmanagement-group-ports, via: binding }
       - { module: idmanagement-user-adapters, via: binding }
       - { module: idmanagement-user-domain, via: binding }
@@ -1994,8 +1993,6 @@ backend/idmanagement/
       routes.go              # Deps 型定義の再エクスポート・route 登録の集約点
       httpdeps/               # Deps 型定義そのもの（leaf package、後述）
       extra_identity_test.go  # feature 横断の統合テスト
-    persistence/
-      postgres/              # lifecycle_workflows のみ（IdGovernance 由来、後述）
   user/
     domain/  ports/  usecases/
     adapters/http/  adapters/persistence/{memory,postgres}/
@@ -2026,9 +2023,10 @@ backend/idmanagement/
   単位の複数エントリへ分割し、`queries/*.sql` と生成される `sqlcgen/` を feature
   ディレクトリへ移した。feature 横断のテスト fixture ヘルパー（`seedTenant`/`seedUser` 等）
   は Go の `_test.go` がパッケージをまたげない制約により、各 feature パッケージへ複製した。
-  ただし `lifecycle_workflows` テーブルは IdGovernance context（wi-237/ADR-117 以前の
-  歴史的経緯）が所有し user/group/agent いずれの feature にも属さないため、
-  `queries`/`sqlcgen` ともに context ルートの `adapters/persistence/postgres/` に残した。
+  `lifecycle_workflows` テーブルの query/sqlcgen は IdGovernance context 所有
+  （wi-237/ADR-117 が後続 WI へ後回しにしていた context-local sqlc 分割、ADR-090）のため
+  `backend/idgovernance/adapters/persistence/postgres/` へ物理移設し、
+  `backend/idmanagement/adapters/persistence/` は完全に消滅した。
 
 package 名は各層のまま（`domain`/`ports`/`usecases`/`http`/`memory`/`postgres`）とし、
 同一 context の複数 feature を同時 import する箇所は named import
