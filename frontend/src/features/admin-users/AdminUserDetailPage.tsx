@@ -349,6 +349,10 @@ export function AdminUserDetailPage({
                 ))}
               </div>
             </Card>
+
+            <Card className="p-5">
+              <UserGroupsSection user={user} csrfToken={csrfToken} variant="card" />
+            </Card>
           </div>
 
           <div className="flex flex-col gap-5">
@@ -418,8 +422,7 @@ export function AdminUserDetailPage({
             </Card>
 
             <Card className="p-5">
-              <UserGroupsSection user={user} csrfToken={csrfToken} />
-              <UserSessionsSection user={user} csrfToken={csrfToken} />
+              <UserSessionsSection user={user} csrfToken={csrfToken} variant="card" />
             </Card>
           </div>
         </div>

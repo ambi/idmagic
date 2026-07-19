@@ -127,7 +127,27 @@ function RoleGroup({
   )
 }
 
-export function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfToken: string }) {
+// SectionVariant は「他コンテンツの下に積む sub-section」と「単独の card として
+// 独立させる」の2通りの見出しレベルを切り替える。同じ AdminUser* section を、
+// AdminUsersListPage (Profile section の下に積む一覧右ペイン) と
+// AdminUserDetailPage (Profile/Attributes/Lifecycle と並ぶ独立カード) の
+// 両方で見た目の階層を揃えて使い回すための共通 prop。
+type SectionVariant = 'section' | 'card'
+
+const sectionHeadingClassName: Record<SectionVariant, string> = {
+  section: 'text-sm font-semibold text-slate-900',
+  card: 'text-xs font-bold uppercase tracking-[0.1em] text-slate-400',
+}
+
+export function UserGroupsSection({
+  user,
+  csrfToken,
+  variant = 'section',
+}: {
+  user: AdminUser
+  csrfToken: string
+  variant?: SectionVariant
+}) {
   const [data, setData] = useState<AdminUserGroups | null>(null)
   const [allGroups, setAllGroups] = useState<AdminGroup[]>([])
   const [error, setError] = useState('')
@@ -171,10 +191,10 @@ export function UserGroupsSection({ user, csrfToken }: { user: AdminUser; csrfTo
   const addable = allGroups.filter((g) => !memberIDs.has(g.id))
 
   return (
-    <section className="border-t border-slate-200 pt-5">
+    <section className={cn(variant === 'section' && 'border-t border-slate-200 pt-5')}>
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{t.rolesAndGroupsHeading}</h3>
+          <h3 className={sectionHeadingClassName[variant]}>{t.rolesAndGroupsHeading}</h3>
           <p className="mt-0.5 text-xs text-slate-500">{t.effectiveRolesDescription}</p>
         </div>
         <IconShield size={18} className="text-slate-400" aria-hidden="true" />
@@ -320,7 +340,15 @@ function AdminSessionRow({
 // セッションを確認・個別終了・全終了できるようにする (wi-28 T007, ADR-127 決定9)。
 // 終了 (revoke) はサーバー側で同じ sid を共有する RefreshTokenRecord も
 // family/client を横断して失効させる (T004 の RevokeTokensBySid)。
-export function UserSessionsSection({ user, csrfToken }: { user: AdminUser; csrfToken: string }) {
+export function UserSessionsSection({
+  user,
+  csrfToken,
+  variant = 'section',
+}: {
+  user: AdminUser
+  csrfToken: string
+  variant?: SectionVariant
+}) {
   const [sessions, setSessions] = useState<AdminSessionRecord[] | null>(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -370,10 +398,10 @@ export function UserSessionsSection({ user, csrfToken }: { user: AdminUser; csrf
   }
 
   return (
-    <section className="border-t border-slate-200 pt-5">
+    <section className={cn(variant === 'section' && 'border-t border-slate-200 pt-5')}>
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{t.sessionsHeading}</h3>
+          <h3 className={sectionHeadingClassName[variant]}>{t.sessionsHeading}</h3>
           <p className="mt-0.5 text-xs text-slate-500">{t.sessionsDescription}</p>
         </div>
         {sessions && sessions.length > 0 ? (
