@@ -13,7 +13,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
@@ -85,9 +86,9 @@ func RunWorker() error {
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
 	adminDeps := newAdminUserDeps(deps, logger)
-	handlers.Register(domain.KindUserImportPreview, idmusecases.UserImportHandler(adminDeps, false))
-	handlers.Register(domain.KindUserImportApply, idmusecases.UserImportHandler(adminDeps, true))
-	handlers.Register(domain.KindDynamicGroupReconcile, idmusecases.DynamicGroupReconcileHandler(idmusecases.DynamicGroupDeps{
+	handlers.Register(domain.KindUserImportPreview, userusecases.UserImportHandler(adminDeps, false))
+	handlers.Register(domain.KindUserImportApply, userusecases.UserImportHandler(adminDeps, true))
+	handlers.Register(domain.KindDynamicGroupReconcile, groupusecases.DynamicGroupReconcileHandler(groupusecases.DynamicGroupDeps{
 		GroupRepo:  deps.IdManagement.GroupRepo,
 		UserRepo:   deps.IdManagement.UserRepo,
 		SchemaRepo: deps.Tenancy.AttrSchemaRepo,
@@ -286,9 +287,9 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 // (audit.DomainEventsAreAuditedRegardlessOfProcess invariant, wi-205); before
 // this wiring existed, Emit was left nil and UserCreated events emitted by
 // CSV import apply were silently dropped.
-func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) idmusecases.AdminUserDeps {
+func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) userusecases.AdminUserDeps {
 	emit := deps.NewEmitFunc(logger)
-	return idmusecases.AdminUserDeps{
+	return userusecases.AdminUserDeps{
 		UserRepo:              deps.IdManagement.UserRepo,
 		GroupRepo:             deps.IdManagement.GroupRepo,
 		AttrSchemaRepo:        deps.Tenancy.AttrSchemaRepo,

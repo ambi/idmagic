@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
@@ -19,7 +19,7 @@ type TenantUserAttributeSchemaRepository struct{ Pool sharedpg.DB }
 
 func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 	ctx context.Context, tenantID string,
-) (*idmdomain.TenantUserAttributeSchema, error) {
+) (*userdomain.TenantUserAttributeSchema, error) {
 	row, err := sqlcgen.New(r.Pool).FindTenantUserAttributeSchemaByTenant(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -27,7 +27,7 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 	if err != nil {
 		return nil, err
 	}
-	s := &idmdomain.TenantUserAttributeSchema{
+	s := &userdomain.TenantUserAttributeSchema{
 		TenantID:  row.TenantID,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
@@ -40,7 +40,7 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 	return s, nil
 }
 
-func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *idmdomain.TenantUserAttributeSchema) error {
+func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *userdomain.TenantUserAttributeSchema) error {
 	attributes, err := json.Marshal(s.Attributes)
 	if err != nil {
 		return err

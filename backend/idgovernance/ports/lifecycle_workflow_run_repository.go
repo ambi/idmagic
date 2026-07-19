@@ -5,7 +5,7 @@ import (
 	"time"
 
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 // LifecycleWorkflowRunRepository holds the durable handoff record. SaveRun
@@ -30,5 +30,5 @@ type LifecycleWorkflowRunRepository interface {
 // UserWorkflowCapture is the transaction boundary for a User mutation and its
 // derived queued runs. Implementations must commit both or neither.
 type UserWorkflowCapture interface {
-	SaveUserAndRuns(ctx context.Context, user *idmdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error
+	SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error
 }

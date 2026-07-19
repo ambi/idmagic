@@ -14,7 +14,9 @@ import (
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -40,7 +42,7 @@ func assembleMemory() (*Dependencies, error) {
 	if err != nil {
 		return nil, err
 	}
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	workflowRunRepo := igmemory.NewLifecycleWorkflowRunRepository()
 	workflowCapture := &igmemory.UserWorkflowCapture{Users: userRepo, Runs: workflowRunRepo}
@@ -59,14 +61,14 @@ func assembleMemory() (*Dependencies, error) {
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenancymemory.NewTenantRepository(),
-			AttrSchemaRepo:     idmmemory.NewTenantUserAttributeSchemaRepository(),
+			AttrSchemaRepo:     usermemory.NewTenantUserAttributeSchemaRepository(),
 			BrandingRepo:       tenancymemory.NewTenantBrandingRepository(),
 			BrandingAssetStore: tenancymemory.NewTenantBrandingAssetStore(),
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,
-			GroupRepo:             idmmemory.NewGroupRepository(),
-			AgentRepo:             idmmemory.NewAgentRepository(),
+			GroupRepo:             groupmemory.NewGroupRepository(),
+			AgentRepo:             agentmemory.NewAgentRepository(),
 			UserMutationCommitter: userMutationCommitter,
 			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},

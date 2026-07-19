@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
@@ -27,7 +27,7 @@ type Deps struct {
 	ConnectionRepo  ports.ProvisioningConnectionRepository
 	DeliveryRepo    ports.ProvisioningDeliveryRepository
 	AssignmentRepo  appports.AssignmentRepository
-	UserRepo        idmports.UserRepository
+	UserRepo        userports.UserRepository
 	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
 }
 

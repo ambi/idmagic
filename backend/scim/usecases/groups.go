@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	"github.com/ambi/idmagic/backend/scim/domain"
 	"github.com/ambi/idmagic/backend/scim/ports"
 )
@@ -50,7 +50,7 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 	scimID := hex.EncodeToString(scimIDBytes)
 
 	now := time.Now()
-	group := &idmdomain.Group{
+	group := &groupdomain.Group{
 		ID:        id,
 		TenantID:  tenantID,
 		Name:      w.DisplayName,
@@ -139,7 +139,7 @@ func (u *Usecases) ListGroups(ctx context.Context, tenantID string, query ListQu
 
 // groupFilterAttrs flattens a Group into the lower-cased attribute map
 // domain.GroupFilterAttributes expects.
-func groupFilterAttrs(group *idmdomain.Group, scimID string) map[string]any {
+func groupFilterAttrs(group *groupdomain.Group, scimID string) map[string]any {
 	return map[string]any{
 		"displayname":       group.Name,
 		"id":                scimID,
@@ -152,7 +152,7 @@ func groupFilterAttrs(group *idmdomain.Group, scimID string) map[string]any {
 // collision. GroupRepository has no indexed lookup by name, so this is
 // O(n) in tenant group count; acceptable at the usecase layer (ListGroups
 // already does a full tenant scan for every request).
-func (u *Usecases) findGroupByDisplayName(ctx context.Context, tenantID, displayName string) (*idmdomain.Group, error) {
+func (u *Usecases) findGroupByDisplayName(ctx context.Context, tenantID, displayName string) (*groupdomain.Group, error) {
 	groups, err := u.GroupRepo.ListByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (u *Usecases) resolveMemberUserIDs(ctx context.Context, tenantID string, sc
 func (u *Usecases) addMembers(ctx context.Context, tenantID, groupID string, userIDs []string) error {
 	added := make([]string, 0, len(userIDs))
 	for _, userID := range userIDs {
-		if _, err := u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: groupID, UserID: userID, CreatedAt: time.Now()}); err != nil {
+		if _, err := u.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: userID, CreatedAt: time.Now()}); err != nil {
 			for _, a := range added {
 				_, _ = u.GroupRepo.RemoveMember(ctx, tenantID, groupID, a)
 			}
@@ -213,7 +213,7 @@ func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string,
 	for _, m := range existing {
 		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, m.UserID); err != nil {
 			for _, r := range removed {
-				_, _ = u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
+				_, _ = u.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
 			}
 			return err
 		}
@@ -222,7 +222,7 @@ func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string,
 
 	if err := u.addMembers(ctx, tenantID, groupID, newUserIDs); err != nil {
 		for _, r := range removed {
-			_, _ = u.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
+			_, _ = u.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
 		}
 		return err
 	}
@@ -378,7 +378,7 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 	return u.toScimGroup(ctx, group, scimID)
 }
 
-func (u *Usecases) applyGroupPatchOp(ctx context.Context, tenantID string, group *idmdomain.Group, op domain.GroupPatchOp, resolvedUserIDs []string) error {
+func (u *Usecases) applyGroupPatchOp(ctx context.Context, tenantID string, group *groupdomain.Group, op domain.GroupPatchOp, resolvedUserIDs []string) error {
 	switch op.Attr {
 	case domain.GroupAttrDisplayName:
 		if op.Op == "remove" {
@@ -426,7 +426,7 @@ func (u *Usecases) DeleteGroup(ctx context.Context, tenantID, scimID string) err
 	return u.ScimRepo.DeleteGroupRef(ctx, tenantID, scimID)
 }
 
-func (u *Usecases) toScimGroup(ctx context.Context, group *idmdomain.Group, scimID string) (map[string]any, error) {
+func (u *Usecases) toScimGroup(ctx context.Context, group *groupdomain.Group, scimID string) (map[string]any, error) {
 	members, err := u.GroupRepo.ListMembersByGroup(ctx, group.TenantID, group.ID)
 	if err != nil {
 		return nil, err

@@ -10,10 +10,8 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -52,7 +50,7 @@ type exchangeFixture struct {
 func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	codeStore := oauth2memory.NewAuthorizationCodeStore()
 	refreshStore := oauth2memory.NewRefreshTokenStore()
 	issuer := &fakeTokenIssuer{}
@@ -71,7 +69,7 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})

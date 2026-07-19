@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
@@ -27,8 +28,8 @@ func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
-func agentFromRow(row *sqlcgen.Agent) (*idmdomain.Agent, error) {
-	a := &idmdomain.Agent{
+func agentFromRow(row *sqlcgen.Agent) (*agentdomain.Agent, error) {
+	a := &agentdomain.Agent{
 		ID:          row.ID,
 		TenantID:    row.TenantID,
 		Name:        row.Name,
@@ -58,12 +59,12 @@ func agentFromRow(row *sqlcgen.Agent) (*idmdomain.Agent, error) {
 	return a, a.Validate()
 }
 
-func (r *AgentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*idmdomain.Agent, error) {
+func (r *AgentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error) {
 	rows, err := sqlcgen.New(r.Pool).ListAgentsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*idmdomain.Agent, 0, len(rows))
+	out := make([]*agentdomain.Agent, 0, len(rows))
 	for _, row := range rows {
 		agent, err := agentFromRow(row)
 		if err != nil {
@@ -74,7 +75,7 @@ func (r *AgentRepository) ListByTenant(ctx context.Context, tenantID string) ([]
 	return out, nil
 }
 
-func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*idmdomain.Agent, error) {
+func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*agentdomain.Agent, error) {
 	row, err := sqlcgen.New(r.Pool).FindAgentByID(ctx, sqlcgen.FindAgentByIDParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -85,7 +86,7 @@ func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*i
 	return agentFromRow(row)
 }
 
-func (r *AgentRepository) Save(ctx context.Context, agent *idmdomain.Agent) error {
+func (r *AgentRepository) Save(ctx context.Context, agent *agentdomain.Agent) error {
 	roles := agent.Roles
 	if roles == nil {
 		roles = []string{}
@@ -114,21 +115,21 @@ func (r *AgentRepository) Delete(ctx context.Context, tenantID, id string) error
 	return sqlcgen.New(r.Pool).DeleteAgent(ctx, sqlcgen.DeleteAgentParams{TenantID: tenantID, ID: id})
 }
 
-func (r *AgentRepository) ListBindings(ctx context.Context, tenantID, agentID string) ([]*idmdomain.AgentCredentialBinding, error) {
+func (r *AgentRepository) ListBindings(ctx context.Context, tenantID, agentID string) ([]*agentdomain.AgentCredentialBinding, error) {
 	rows, err := sqlcgen.New(r.Pool).ListAgentBindingsByAgent(ctx, sqlcgen.ListAgentBindingsByAgentParams{
 		TenantID: tenantID, AgentID: agentID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*idmdomain.AgentCredentialBinding, 0, len(rows))
+	out := make([]*agentdomain.AgentCredentialBinding, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, &idmdomain.AgentCredentialBinding{AgentID: row.AgentID, ClientID: row.ClientID, CreatedAt: row.CreatedAt})
+		out = append(out, &agentdomain.AgentCredentialBinding{AgentID: row.AgentID, ClientID: row.ClientID, CreatedAt: row.CreatedAt})
 	}
 	return out, nil
 }
 
-func (r *AgentRepository) AddBinding(ctx context.Context, binding *idmdomain.AgentCredentialBinding) (bool, error) {
+func (r *AgentRepository) AddBinding(ctx context.Context, binding *agentdomain.AgentCredentialBinding) (bool, error) {
 	n, err := sqlcgen.New(r.Pool).AddAgentBinding(ctx, sqlcgen.AddAgentBindingParams{
 		AgentID: binding.AgentID, ClientID: binding.ClientID, CreatedAt: binding.CreatedAt,
 	})
@@ -148,7 +149,7 @@ func (r *AgentRepository) RemoveBinding(ctx context.Context, tenantID, agentID, 
 	return n > 0, nil
 }
 
-func (r *AgentRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*idmdomain.Agent, error) {
+func (r *AgentRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*agentdomain.Agent, error) {
 	row, err := sqlcgen.New(r.Pool).FindAgentByClientID(ctx, sqlcgen.FindAgentByClientIDParams{TenantID: tenantID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

@@ -19,11 +19,10 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -94,7 +93,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 		},
 	})
 
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	passwordHash, err := hasher.Hash("correct-password")
 	if err != nil {
@@ -104,7 +103,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	if err != nil {
 		t.Fatalf("hash sentinel: %v", err)
 	}
-	userRepo.Seed(&idmdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
+	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -441,14 +440,14 @@ func wsTrustRST(now time.Time, messageID, appliesTo string) string {
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID:                "admin-1",
 		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: "admin@contoso.com",
 		Roles:             []string{"admin"},
-		Attributes: map[string]idmdomain.AttributeValue{
+		Attributes: map[string]userdomain.AttributeValue{
 			"object_guid": {Type: idmdomain.AttributeTypeString, String: &objectGUID},
 		},
 	})

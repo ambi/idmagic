@@ -7,7 +7,7 @@ import (
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	impostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
@@ -19,7 +19,7 @@ type UserWorkflowCapture struct{ Pool sharedpg.DB }
 
 var _ igports.UserWorkflowCapture = (*UserWorkflowCapture)(nil)
 
-func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *idmdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
+func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
 	if len(runs) != len(steps) {
 		return ErrInvalidWorkflowCapture
 	}

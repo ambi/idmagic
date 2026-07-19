@@ -11,8 +11,8 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthpg "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
@@ -65,10 +65,10 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 }
 
 // seedUser は指定テナントにユーザを作成して返す。
-func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 	t.Helper()
 	now := testClock()
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: uniqueID("username"),
@@ -84,10 +84,10 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
 }
 
 // seedGroup は指定テナントにグループを作成して返す。
-func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.Group {
+func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group {
 	t.Helper()
 	now := testClock()
-	group := &idmdomain.Group{
+	group := &groupdomain.Group{
 		ID:        newUUID(t),
 		TenantID:  tenantID,
 		Name:      uniqueID("group-name"),

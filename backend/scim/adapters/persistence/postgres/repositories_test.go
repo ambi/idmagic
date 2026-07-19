@@ -8,8 +8,8 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmpg "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
@@ -51,10 +51,10 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	return tenant
 }
 
-func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 	t.Helper()
 	now := testClock()
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: "user-" + newUUID(t)[:8],
@@ -69,10 +69,10 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
 	return user
 }
 
-func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.Group {
+func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group {
 	t.Helper()
 	now := testClock()
-	group := &idmdomain.Group{
+	group := &groupdomain.Group{
 		ID:        newUUID(t),
 		TenantID:  tenantID,
 		Name:      "group-" + newUUID(t)[:8],

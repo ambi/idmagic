@@ -13,7 +13,10 @@ import (
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
@@ -39,8 +42,8 @@ func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind, jobsdomain.La
 
 type LifecycleWorkflowExecutorDeps struct {
 	RunRepo         igports.LifecycleWorkflowRunRepository
-	UserRepo        idmports.UserRepository
-	GroupRepo       idmports.GroupRepository
+	UserRepo        userports.UserRepository
+	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	EmailSender     authnports.EmailSender
@@ -165,7 +168,7 @@ func emitWorkflowEvent(emit func(spec.DomainEvent) error, event spec.DomainEvent
 // EvaluateLifecycleAction needs to resolve current state. It excludes RunRepo
 // and UserRepo because callers already hold the target User.
 type LifecycleActionEvalDeps struct {
-	GroupRepo       idmports.GroupRepository
+	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	EmailSender     authnports.EmailSender
@@ -177,7 +180,7 @@ type LifecycleActionEvalDeps struct {
 // igdomain.EvaluateWorkflowAction. It performs no writes, so both the run
 // executor (before it mutates anything) and dry-run (which never mutates)
 // call it to agree on the same answer (wi-222).
-func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, tenantID string, user *idmdomain.User, action igdomain.WorkflowAction) (igdomain.WorkflowActionOutcome, string, error) {
+func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, tenantID string, user *userdomain.User, action igdomain.WorkflowAction) (igdomain.WorkflowActionOutcome, string, error) {
 	var state igdomain.WorkflowActionState
 	switch action.Kind {
 	case igdomain.WorkflowActionAddGroupMember, igdomain.WorkflowActionRemoveGroupMember:
@@ -194,7 +197,7 @@ func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, 
 			if err != nil {
 				return "", "", err
 			}
-			state.UserIsGroupMember = slices.ContainsFunc(groups, func(g *idmdomain.Group) bool { return g.ID == group.ID })
+			state.UserIsGroupMember = slices.ContainsFunc(groups, func(g *groupdomain.Group) bool { return g.ID == group.ID })
 		}
 	case igdomain.WorkflowActionAssignApplication, igdomain.WorkflowActionUnassignApplication:
 		if deps.ApplicationRepo == nil || deps.AssignmentRepo == nil {
@@ -246,7 +249,7 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 	}
 	switch action.Kind {
 	case igdomain.WorkflowActionAddGroupMember:
-		ok, e := deps.GroupRepo.AddMember(ctx, &idmdomain.GroupMember{GroupID: action.GroupID, UserID: user.ID, CreatedAt: time.Now().UTC()})
+		ok, e := deps.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: action.GroupID, UserID: user.ID, CreatedAt: time.Now().UTC()})
 		return changed(ok, e)
 	case igdomain.WorkflowActionRemoveGroupMember:
 		ok, e := deps.GroupRepo.RemoveMember(ctx, run.TenantID, action.GroupID, user.ID)

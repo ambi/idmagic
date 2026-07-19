@@ -11,14 +11,16 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -44,10 +46,10 @@ const (
 func SeedDemoData(
 	ctx context.Context,
 	clients oauthports.OAuth2ClientRepository,
-	users idmports.UserRepository,
+	users userports.UserRepository,
 	mfaFactors authnports.MfaFactorRepository,
 	passwordHistory authnports.PasswordHistoryRepository,
-	groups idmports.GroupRepository,
+	groups groupports.GroupRepository,
 	authzDetailTypes oauthports.AuthorizationDetailTypeRepository,
 	hasher authnports.PasswordHasher,
 ) error {
@@ -94,12 +96,12 @@ func SeedDemoData(
 	}
 	email := "alice@example.com"
 	totpSecret := EnvDefault("DEMO_TOTP_SECRET", "")
-	alice := &idmdomain.User{
+	alice := &userdomain.User{
 		ID: seedUserAliceID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "alice", PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		Roles:     []string{"admin"},
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := ensureDemoUser(ctx, users, passwordHistory, hasher, alice, password, now); err != nil {
@@ -111,12 +113,12 @@ func SeedDemoData(
 	// ロール) とあわせて両方を付与し、全画面を試せるようにする。alice とは別に
 	// 用意し、既定テナントに所属する。
 	rootEmail := "root@example.com"
-	root := &idmdomain.User{
+	root := &userdomain.User{
 		ID: seedUserRootID, TenantID: tenancydomain.DefaultTenantID,
 		PreferredUsername: "root", PasswordHash: hash,
 		Email: &rootEmail, EmailVerified: true,
 		Roles:     []string{"admin", "system_admin"},
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := ensureDemoUser(ctx, users, passwordHistory, hasher, root, password, now); err != nil {
@@ -157,7 +159,7 @@ func sameDemoClient(actual, desired *oauthdomain.OAuth2Client, secret string) bo
 	return sameClient(&left, &right)
 }
 
-func ensureDemoUser(ctx context.Context, users idmports.UserRepository, history authnports.PasswordHistoryRepository, hasher authnports.PasswordHasher, desired *idmdomain.User, password string, now time.Time) error {
+func ensureDemoUser(ctx context.Context, users userports.UserRepository, history authnports.PasswordHistoryRepository, hasher authnports.PasswordHasher, desired *userdomain.User, password string, now time.Time) error {
 	existing, err := users.FindBySub(ctx, desired.ID)
 	if err != nil {
 		return err
@@ -187,7 +189,7 @@ func ensureDemoUser(ctx context.Context, users idmports.UserRepository, history 
 	return history.Add(ctx, desired.ID, desired.PasswordHash, now)
 }
 
-func sameDemoUser(actual, desired *idmdomain.User, password string, hasher authnports.PasswordHasher) bool {
+func sameDemoUser(actual, desired *userdomain.User, password string, hasher authnports.PasswordHasher) bool {
 	matches, err := hasher.Verify(password, actual.PasswordHash)
 	if err != nil || !matches {
 		return false
@@ -354,10 +356,10 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 // engineering に所属させる。再起動時に重複しないよう ID は固定し、Save は id 上の
 // upsert、AddMember は冪等 (no-op on conflict) を利用する。これにより demo.sh で
 // グループ由来ロール (engineering → catalog:read) を確認できる。
-func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now time.Time) error {
+func seedDemoGroups(ctx context.Context, groups groupports.GroupRepository, now time.Time) error {
 	engineeringDesc := "プロダクト開発チーム"
 	supportDesc := "カスタマーサポートチーム"
-	demoGroups := []*idmdomain.Group{
+	demoGroups := []*groupdomain.Group{
 		{
 			ID: seedGroupEngineeringID, TenantID: tenancydomain.DefaultTenantID, Name: "engineering",
 			Description: &engineeringDesc, Roles: []string{"catalog:read"}, CreatedAt: now,
@@ -386,13 +388,13 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 	}
 	for _, member := range members {
 		if member.UserID == seedUserAliceID {
-			if member.Source.Effective() != idmdomain.MembershipSourceManual {
+			if member.Source.Effective() != groupdomain.MembershipSourceManual {
 				return fmt.Errorf("seed drift at group-membership:%s:%s", seedGroupEngineeringID, seedUserAliceID)
 			}
 			return nil
 		}
 	}
-	if _, err := groups.AddMember(ctx, &idmdomain.GroupMember{
+	if _, err := groups.AddMember(ctx, &groupdomain.GroupMember{
 		GroupID: seedGroupEngineeringID, UserID: seedUserAliceID, CreatedAt: now,
 	}); err != nil {
 		return err
@@ -400,7 +402,7 @@ func seedDemoGroups(ctx context.Context, groups idmports.GroupRepository, now ti
 	return nil
 }
 
-func sameGroup(actual, desired *idmdomain.Group) bool {
+func sameGroup(actual, desired *groupdomain.Group) bool {
 	left, right := *actual, *desired
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
 	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}

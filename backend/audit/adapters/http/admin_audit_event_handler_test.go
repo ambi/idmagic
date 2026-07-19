@@ -16,16 +16,14 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	"github.com/ambi/idmagic/backend/audit"
 	audithttp "github.com/ambi/idmagic/backend/audit/adapters/http"
 	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -79,9 +77,9 @@ func (r *singleTenantRepo) FindAll(_ context.Context) ([]*tenancydomain.Tenant, 
 func (r *singleTenantRepo) Save(_ context.Context, _ *tenancydomain.Tenant) error { return nil }
 func (r *singleTenantRepo) Delete(_ context.Context, _ string) error              { return nil }
 
-func newAuditAdminServer(t *testing.T, actor *idmdomain.User, events []*auditports.AuditEventRecord) *echo.Echo {
+func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditports.AuditEventRecord) *echo.Echo {
 	t.Helper()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
@@ -107,9 +105,9 @@ func newAuditAdminServer(t *testing.T, actor *idmdomain.User, events []*auditpor
 	return e
 }
 
-func auditUser(sub, tenantID string, roles []string) *idmdomain.User {
+func auditUser(sub, tenantID string, roles []string) *userdomain.User {
 	now := time.Now().UTC()
-	return &idmdomain.User{
+	return &userdomain.User{
 		ID: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -137,7 +135,7 @@ func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
 	// username を持たないため、username=... は検索時に user_id へ解決してから絞り込む。
 	admin := auditUser("user_admin", "acme", []string{"admin"})
 	target := auditUser("alice", "acme", []string{})
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(admin)
 	userRepo.Seed(target)
 	now := time.Now().UTC()
@@ -174,7 +172,7 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 	// wi-147: 該当ユーザーが存在しない username は 0 件を返す。フィルタ無視で全件返す・
 	// エラーにするのどちらでもない。
 	admin := auditUser("user_admin", "acme", []string{"admin"})
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(admin)
 	now := time.Now().UTC()
 	auditStore := auditmemory.NewAuditEventStore(0)

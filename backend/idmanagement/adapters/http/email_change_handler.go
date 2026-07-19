@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -44,10 +44,10 @@ func (d Deps) handleRequestEmailChange(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	err = idmusecases.RequestEmailChange(c.Request().Context(), idmusecases.RequestEmailChangeDeps{
+	err = userusecases.RequestEmailChange(c.Request().Context(), userusecases.RequestEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore,
 		EmailSender: d.EmailSender, Emit: d.Emit, Issuer: support.RequestIssuer(c, d.Issuer),
-	}, idmusecases.RequestEmailChangeInput{Sub: sub, NewEmail: input.NewEmail, Now: time.Now().UTC()})
+	}, userusecases.RequestEmailChangeInput{Sub: sub, NewEmail: input.NewEmail, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeEmailChangeError(c, err)
 	}
@@ -66,9 +66,9 @@ func (d Deps) handleConfirmEmailChange(c *echo.Context) error {
 	if strings.TrimSpace(input.Token) == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "tokenが必要です")
 	}
-	if _, err := idmusecases.ConfirmEmailChange(c.Request().Context(), idmusecases.ConfirmEmailChangeDeps{
+	if _, err := userusecases.ConfirmEmailChange(c.Request().Context(), userusecases.ConfirmEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore, Emit: d.Emit,
-	}, idmusecases.ConfirmEmailChangeInput{Token: input.Token, Now: time.Now().UTC()}); err != nil {
+	}, userusecases.ConfirmEmailChangeInput{Token: input.Token, Now: time.Now().UTC()}); err != nil {
 		return d.writeEmailChangeError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
@@ -76,13 +76,13 @@ func (d Deps) handleConfirmEmailChange(c *echo.Context) error {
 
 func (d Deps) writeEmailChangeError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, idmusecases.ErrInvalidEmail):
+	case errors.Is(err, userusecases.ErrInvalidEmail):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_email", "メールアドレスの形式が正しくありません")
-	case errors.Is(err, idmusecases.ErrEmailUnchanged):
+	case errors.Is(err, userusecases.ErrEmailUnchanged):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "email_unchanged", "現在のメールアドレスと同じです")
-	case errors.Is(err, idmusecases.ErrEmailTaken):
+	case errors.Is(err, userusecases.ErrEmailTaken):
 		return support.WriteBrowserError(c, http.StatusConflict, "email_taken", "このメールアドレスは既に使われています")
-	case errors.Is(err, idmusecases.ErrInvalidEmailChangeToken):
+	case errors.Is(err, userusecases.ErrInvalidEmailChangeToken):
 		return support.WriteBrowserError(c, http.StatusGone, "invalid_email_change_token", "確認リンクが無効か期限切れです")
 	default:
 		return d.writeAccountError(c, err)

@@ -19,11 +19,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
@@ -109,8 +107,8 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 		},
 	})
 
-	userRepo := idmmemory.NewUserRepository()
-	userRepo.Seed(&idmdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -285,8 +283,8 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub",
 		}},
 	})
-	userRepo := idmmemory.NewUserRepository()
-	userRepo.Seed(&idmdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
@@ -323,7 +321,7 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
-		UserRepo:         idmmemory.NewUserRepository(),
+		UserRepo:         usermemory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
 	})
@@ -362,7 +360,7 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
-		UserRepo:         idmmemory.NewUserRepository(),
+		UserRepo:         usermemory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
 	})
@@ -421,8 +419,8 @@ func TestSamlMetadata_Published(t *testing.T) {
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := idmmemory.NewUserRepository()
-	userRepo.Seed(&idmdomain.User{
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{
 		ID:                "admin-1",
 		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: "admin@example.com",

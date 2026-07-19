@@ -10,10 +10,8 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -28,7 +26,7 @@ type deviceFixture struct {
 
 func newDeviceFixture() deviceFixture {
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	deviceStore := oauth2memory.NewDeviceCodeStore()
 	refreshStore := oauth2memory.NewRefreshTokenStore()
 	now := time.Now().UTC()
@@ -45,7 +43,7 @@ func newDeviceFixture() deviceFixture {
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user", PreferredUsername: "alice", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})

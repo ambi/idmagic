@@ -9,14 +9,13 @@ import (
 	"errors"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/go-webauthn/webauthn/protocol"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -61,17 +60,17 @@ func NewWebAuthn(cfg WebAuthnConfig) (*gowebauthn.WebAuthn, error) {
 // WebAuthnDeps は WebAuthn use case の依存。RP が nil の場合 WebAuthn は未設定として扱う。
 type WebAuthnDeps struct {
 	RP             *gowebauthn.WebAuthn
-	UserRepo       idmports.UserRepository
+	UserRepo       userports.UserRepository
 	CredentialRepo authnports.WebAuthnCredentialRepository
 	MfaFactorRepo  authnports.MfaFactorRepository
 	SessionStore   authnports.WebAuthnSessionStore
 	Emit           func(spec.DomainEvent)
 }
 
-// webauthnUser は idmdomain.User + 登録済み credential を go-webauthn の User interface に適合させる。
+// webauthnUser は userdomain.User + 登録済み credential を go-webauthn の User interface に適合させる。
 // WebAuthnID は user handle として sub (UUID 文字列) の byte 列を使う。
 type webauthnUser struct {
-	user        *idmdomain.User
+	user        *userdomain.User
 	credentials []gowebauthn.Credential
 }
 
@@ -88,7 +87,7 @@ func (u *webauthnUser) WebAuthnDisplayName() string {
 func (u *webauthnUser) WebAuthnCredentials() []gowebauthn.Credential { return u.credentials }
 
 // loadWebAuthnUser は user と登録済み credential をまとめて go-webauthn の User に適合させる。
-func loadWebAuthnUser(user *idmdomain.User, stored []*domain.WebAuthnCredential) (*webauthnUser, error) {
+func loadWebAuthnUser(user *userdomain.User, stored []*domain.WebAuthnCredential) (*webauthnUser, error) {
 	credentials := make([]gowebauthn.Credential, 0, len(stored))
 	for _, c := range stored {
 		converted, err := toWebAuthnCredential(c)

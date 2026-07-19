@@ -7,7 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -19,7 +19,7 @@ var (
 )
 
 type MfaEnrollmentDeps struct {
-	UserRepo               idmports.UserRepository
+	UserRepo               userports.UserRepository
 	MfaFactorRepo          ports.MfaFactorRepository
 	WebAuthnCredentialRepo ports.WebAuthnCredentialRepository
 	BypassRepo             ports.MfaEnrollmentBypassRepository

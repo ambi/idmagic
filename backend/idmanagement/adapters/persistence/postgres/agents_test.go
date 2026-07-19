@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 )
@@ -17,7 +18,7 @@ func TestAgentRepositoryRoundTripAndBindings(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	agent := &idmdomain.Agent{
+	agent := &agentdomain.Agent{
 		ID:          newUUID(t),
 		TenantID:    tenant.ID,
 		Name:        "svc-agent",
@@ -42,14 +43,14 @@ func TestAgentRepositoryRoundTripAndBindings(t *testing.T) {
 		t.Fatalf("list agents: %v len=%d", err, len(list))
 	}
 
-	added, err := repo.AddBinding(ctx, &idmdomain.AgentCredentialBinding{
+	added, err := repo.AddBinding(ctx, &agentdomain.AgentCredentialBinding{
 		AgentID: agent.ID, ClientID: client.ClientID, CreatedAt: now,
 	})
 	if err != nil || !added {
 		t.Fatalf("add binding: %v added=%v", err, added)
 	}
 	// 冪等: 同じ束縛の再追加は false。
-	added, err = repo.AddBinding(ctx, &idmdomain.AgentCredentialBinding{
+	added, err = repo.AddBinding(ctx, &agentdomain.AgentCredentialBinding{
 		AgentID: agent.ID, ClientID: client.ClientID, CreatedAt: now,
 	})
 	if err != nil || added {

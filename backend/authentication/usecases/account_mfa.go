@@ -17,11 +17,10 @@ import (
 	"strings"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -42,7 +41,7 @@ const totpFactorLabel = "Authenticator app"
 // AccountMfaDeps は self-service MFA use case の依存。Issuer は otpauth URI の issuer
 // ラベル導出に使う (authenticator アプリの表示名)。
 type AccountMfaDeps struct {
-	UserRepo      idmports.UserRepository
+	UserRepo      userports.UserRepository
 	MfaFactorRepo authnports.MfaFactorRepository
 	// CredentialRepo は TOTP 解除後の mfa_enrolled 再計算で WebAuthn の残存を見るために使う
 	// (wi-26)。nil の場合は WebAuthn を考慮しない (TOTP のみの旧経路との後方互換)。
@@ -183,7 +182,7 @@ func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFac
 }
 
 // loadSelfUser は self 経路で対象 user を取得する。tenant 不一致は ErrUserNotFound に潰す。
-func loadSelfUser(ctx context.Context, repo idmports.UserRepository, sub string) (*idmdomain.User, error) {
+func loadSelfUser(ctx context.Context, repo userports.UserRepository, sub string) (*userdomain.User, error) {
 	user, err := repo.FindBySub(ctx, sub)
 	if err != nil {
 		return nil, err

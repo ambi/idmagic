@@ -5,13 +5,14 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 func TestEvaluateWorkflowTrigger(t *testing.T) {
 	department := "engineering"
-	before := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}}
+	before := &userdomain.User{Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}}
 	afterDepartment := "security"
-	after := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &afterDepartment}}}
+	after := &userdomain.User{Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &afterDepartment}}}
 	trigger := WorkflowTrigger{Kind: WorkflowTriggerUserAttributesChanged, WatchedAttributes: []string{"department"}, Filters: []WorkflowFilter{{Field: "department", Operator: WorkflowFilterEqual, Value: "security"}}}
 	if _, ok := EvaluateWorkflowTrigger(trigger, before, after, []string{"department"}, ""); !ok {
 		t.Fatal("trigger did not match changed post-state")
@@ -47,12 +48,12 @@ func TestLifecycleWorkflowDeleteDraft(t *testing.T) {
 }
 
 func TestEvaluateWorkflowAction(t *testing.T) {
-	activeUser := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive, RequiredActions: []idmdomain.RequiredAction{idmdomain.RequiredActionVerifyEmail}}}
-	disabledUser := &idmdomain.User{Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}}
+	activeUser := &userdomain.User{Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive, RequiredActions: []idmdomain.RequiredAction{idmdomain.RequiredActionVerifyEmail}}}
+	disabledUser := &userdomain.User{Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}}
 	tests := []struct {
 		name        string
 		action      WorkflowAction
-		user        *idmdomain.User
+		user        *userdomain.User
 		state       WorkflowActionState
 		wantOutcome WorkflowActionOutcome
 		wantReason  string
@@ -90,7 +91,7 @@ func TestEvaluateWorkflowAction(t *testing.T) {
 
 func TestEvaluateWorkflowFilters(t *testing.T) {
 	department := "engineering"
-	user := &idmdomain.User{Attributes: map[string]idmdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}}
+	user := &userdomain.User{Attributes: map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}}
 	matching := []WorkflowFilter{{Field: "department", Operator: WorkflowFilterEqual, Value: "engineering"}}
 	if !EvaluateWorkflowFilters(matching, user) {
 		t.Fatal("filters on the User's current attributes must match")

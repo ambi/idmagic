@@ -15,7 +15,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -31,7 +31,7 @@ var ErrRecoveryCodeInvalid = errors.New("recovery code is invalid")
 
 // RecoveryCodesDeps は recovery code use case の依存。
 type RecoveryCodesDeps struct {
-	UserRepo         idmports.UserRepository
+	UserRepo         userports.UserRepository
 	RecoveryCodeRepo authnports.RecoveryCodeRepository
 	Emit             func(spec.DomainEvent)
 }

@@ -7,7 +7,7 @@ package http
 
 import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -22,7 +22,7 @@ type Deps struct {
 	TenantSaltStore auditports.TenantSaltStore
 	// UserRepo は username -> user_id 解決 (wi-147) に使う。実アカウントが常に確定する
 	// イベントの検索は、payload に username/hash を持たせず検索時にここで解決する。
-	UserRepo idmports.UserRepository
+	UserRepo userports.UserRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに audit コンテキストのエンドポイントを

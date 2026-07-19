@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
@@ -277,13 +278,13 @@ func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
 
 func newAdminUserHandler(
 	t *testing.T,
-) (*echo.Echo, *idmmemory.UserRepository) {
+) (*echo.Echo, *usermemory.UserRepository) {
 	t.Helper()
-	repo := idmmemory.NewUserRepository()
+	repo := usermemory.NewUserRepository()
 	history := authnmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
-	for _, user := range []*idmdomain.User{
+	for _, user := range []*userdomain.User{
 		{
 			ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 			Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
@@ -299,8 +300,8 @@ func newAdminUserHandler(
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
-		AgentRepo: idmmemory.NewAgentRepository(),
-		GroupRepo: idmmemory.NewGroupRepository(),
+		AgentRepo: agentmemory.NewAgentRepository(),
+		GroupRepo: groupmemory.NewGroupRepository(),
 		OAuth2: oauth2.Module{
 			ClientRepo:  oauth2memory.NewClientRepository(),
 			ConsentRepo: oauth2memory.NewConsentRepository(),

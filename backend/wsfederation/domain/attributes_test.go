@@ -6,10 +6,11 @@ import (
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 func TestResolveUserAttributes_StandardFields(t *testing.T) {
-	u := idmdomain.User{
+	u := userdomain.User{
 		ID:                "user-1",
 		PreferredUsername: "alice",
 		Email:             new("alice@contoso.com"),
@@ -50,9 +51,9 @@ func TestResolveUserAttributes_StandardFields(t *testing.T) {
 func TestResolveUserAttributes_CustomAttributes(t *testing.T) {
 	num := 42.0
 	flag := true
-	u := idmdomain.User{
+	u := userdomain.User{
 		ID: "user-2",
-		Attributes: map[string]idmdomain.AttributeValue{
+		Attributes: map[string]userdomain.AttributeValue{
 			"object_guid": {Type: idmdomain.AttributeTypeString, String: new("AAECAwQFBgc=")},
 			"groups":      {Type: idmdomain.AttributeTypeStringArray, StringArray: []string{"g1", "g2"}},
 			"level":       {Type: idmdomain.AttributeTypeNumber, Number: &num},

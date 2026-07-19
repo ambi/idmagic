@@ -14,9 +14,8 @@ import (
 	"testing"
 	"time"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
@@ -50,8 +49,8 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 		FapiProfile:             domain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
-	userRepo := idmmemory.NewUserRepository()
-	userRepo.Seed(&idmdomain.User{
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{
 		ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})

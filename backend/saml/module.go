@@ -2,7 +2,7 @@
 package saml
 
 import (
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlhttp "github.com/ambi/idmagic/backend/saml/adapters/http"
 	"github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -17,7 +17,7 @@ type Module struct {
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	applicationGate *support.ApplicationGate, userRepo idmports.UserRepository, federationSigner *samltoken.Signer,
+	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner *samltoken.Signer,
 ) {
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate,

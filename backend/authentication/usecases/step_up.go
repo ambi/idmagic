@@ -11,11 +11,10 @@ import (
 	"errors"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -59,7 +58,7 @@ func StepUpSatisfied(authn *domain.AuthenticationContext, now time.Time) bool {
 
 // AvailableStepUpMethods は user が step-up に使える method を返す。password は常に利用可能、
 // totp は enrolled の場合のみ。
-func AvailableStepUpMethods(user *idmdomain.User) []StepUpMethod {
+func AvailableStepUpMethods(user *userdomain.User) []StepUpMethod {
 	methods := []StepUpMethod{StepUpMethodPassword}
 	if user != nil && user.MfaEnrolled {
 		methods = append(methods, StepUpMethodTOTP)
@@ -71,7 +70,7 @@ func AvailableStepUpMethods(user *idmdomain.User) []StepUpMethod {
 // WebAuthn / RecoveryCodeRepo は passkey / recovery code による step-up (wi-26) に使い、
 // nil の場合その method は提示・受理しない。
 type StepUpDeps struct {
-	UserRepo         idmports.UserRepository
+	UserRepo         userports.UserRepository
 	PasswordHasher   authnports.PasswordHasher
 	MfaFactorRepo    authnports.MfaFactorRepository
 	WebAuthn         WebAuthnDeps

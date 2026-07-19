@@ -9,7 +9,7 @@ import (
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -72,7 +72,7 @@ func (d Deps) handleGetAccountSecurity(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	user, _, err := idmusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, _, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}

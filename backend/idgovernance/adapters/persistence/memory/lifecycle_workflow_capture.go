@@ -7,8 +7,8 @@ import (
 
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	immemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 var errInvalidWorkflowCapture = errors.New("workflow runs and steps length mismatch")
@@ -17,13 +17,13 @@ var errInvalidWorkflowCapture = errors.New("workflow runs and steps length misma
 // mutation before the queued workflow runs derived from it are stored.
 type UserWorkflowCapture struct {
 	mu    sync.Mutex
-	Users *immemory.UserRepository
+	Users *usermemory.UserRepository
 	Runs  *LifecycleWorkflowRunRepository
 }
 
 var _ igports.UserWorkflowCapture = (*UserWorkflowCapture)(nil)
 
-func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *idmdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
+func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
 	if len(runs) != len(steps) {
 		return errInvalidWorkflowCapture
 	}

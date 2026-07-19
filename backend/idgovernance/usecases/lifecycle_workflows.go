@@ -8,7 +8,7 @@ import (
 
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -27,7 +27,7 @@ type LifecycleWorkflowDeps struct {
 
 // PlanLifecycleWorkflowRuns evaluates enabled definitions against one committed
 // mutation. It intentionally stores no before/after attribute values.
-func PlanLifecycleWorkflowRuns(ctx context.Context, repo igports.LifecycleWorkflowRepository, before, after *idmdomain.User, changed []string, occurrenceID, originRunID string, now time.Time) ([]*igdomain.WorkflowRun, [][]igdomain.WorkflowStep, error) {
+func PlanLifecycleWorkflowRuns(ctx context.Context, repo igports.LifecycleWorkflowRepository, before, after *userdomain.User, changed []string, occurrenceID, originRunID string, now time.Time) ([]*igdomain.WorkflowRun, [][]igdomain.WorkflowStep, error) {
 	if repo == nil || after == nil || occurrenceID == "" {
 		return nil, nil, nil
 	}

@@ -6,7 +6,7 @@ package idgovernance
 
 import (
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 // Module は identity-governance context が所有する永続化 port と境界実装の束。
@@ -16,5 +16,5 @@ type Module struct {
 	UserWorkflowCapture      igports.UserWorkflowCapture
 	// UserMutationCommitter は IdManagement の境界 port を実装し、composition root が
 	// IdManagement.Module.UserMutationCommitter へ注入する。
-	UserMutationCommitter idmports.UserMutationCommitter
+	UserMutationCommitter userports.UserMutationCommitter
 }

@@ -7,7 +7,8 @@ package http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -28,8 +29,8 @@ type Deps struct {
 	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
 	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
-	GroupRepo                   idmports.GroupRepository
-	UserRepo                    idmports.UserRepository
+	GroupRepo                   groupports.GroupRepository
+	UserRepo                    userports.UserRepository
 	ClientRepo                  oauthports.OAuth2ClientRepository
 	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo                  samlports.SamlServiceProviderRepository

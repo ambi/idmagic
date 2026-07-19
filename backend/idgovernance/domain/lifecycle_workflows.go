@@ -13,6 +13,7 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 type LifecycleWorkflowStatus string
@@ -232,7 +233,7 @@ type WorkflowActionState struct {
 // It never performs I/O; callers resolve WorkflowActionState from the target
 // User's actual current group membership, application assignment, and email
 // verification state so both callers agree on the same answer.
-func EvaluateWorkflowAction(action WorkflowAction, user *idmdomain.User, state WorkflowActionState) (WorkflowActionOutcome, string) {
+func EvaluateWorkflowAction(action WorkflowAction, user *userdomain.User, state WorkflowActionState) (WorkflowActionOutcome, string) {
 	switch action.Kind {
 	case WorkflowActionAddGroupMember:
 		if !state.GroupExists {
@@ -432,7 +433,7 @@ type TriggerMatch struct {
 	ChangedFields []string
 }
 
-func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *idmdomain.User, changedFields []string, originRunID string) (TriggerMatch, bool) {
+func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *userdomain.User, changedFields []string, originRunID string) (TriggerMatch, bool) {
 	if originRunID != "" || after == nil || trigger.Validate() != nil {
 		return TriggerMatch{}, false
 	}
@@ -468,7 +469,7 @@ func EvaluateWorkflowTrigger(trigger WorkflowTrigger, before, after *idmdomain.U
 // EvaluateWorkflowTrigger (kind + filters); dry-run calls it directly because
 // it has no mutation event to derive a trigger kind match from, only the
 // target User's present state.
-func EvaluateWorkflowFilters(filters []WorkflowFilter, user *idmdomain.User) bool {
+func EvaluateWorkflowFilters(filters []WorkflowFilter, user *userdomain.User) bool {
 	for _, filter := range filters {
 		value, exists := workflowUserField(user, filter.Field)
 		switch filter.Operator {
@@ -497,7 +498,7 @@ func EvaluateWorkflowFilters(filters []WorkflowFilter, user *idmdomain.User) boo
 	return true
 }
 
-func workflowUserField(user *idmdomain.User, field string) (any, bool) {
+func workflowUserField(user *userdomain.User, field string) (any, bool) {
 	switch field {
 	case "preferred_username":
 		return user.PreferredUsername, true

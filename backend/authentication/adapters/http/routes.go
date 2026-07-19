@@ -8,7 +8,7 @@ package http
 import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -25,7 +25,7 @@ type Deps struct {
 	*support.Authenticator
 
 	AuditEventRepo      auditports.AuditEventRepository
-	UserRepo            idmports.UserRepository
+	UserRepo            userports.UserRepository
 	PasswordHasher      authnports.PasswordHasher
 	PasswordHistoryRepo authnports.PasswordHistoryRepository
 	ConsentRepo         oauthports.ConsentRepository

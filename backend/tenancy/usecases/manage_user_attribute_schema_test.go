@@ -8,13 +8,13 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
-	repo := idmmemory.NewTenantUserAttributeSchemaRepository()
+	repo := usermemory.NewTenantUserAttributeSchemaRepository()
 	schema, err := GetUserAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
@@ -25,9 +25,9 @@ func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
-	repo := idmmemory.NewTenantUserAttributeSchemaRepository()
+	repo := usermemory.NewTenantUserAttributeSchemaRepository()
 	ctx := context.Background()
-	defs := []idmdomain.UserAttributeDef{
+	defs := []userdomain.UserAttributeDef{
 		{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region")},
 	}
 	saved, err := UpdateUserAttributeSchema(ctx, repo, domain.DefaultTenantID, defs, time.Now().UTC())
@@ -47,8 +47,8 @@ func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
-	repo := idmmemory.NewTenantUserAttributeSchemaRepository()
-	defs := []idmdomain.UserAttributeDef{
+	repo := usermemory.NewTenantUserAttributeSchemaRepository()
+	defs := []userdomain.UserAttributeDef{
 		{Key: "nickname", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed},
 	}
 	if _, err := UpdateUserAttributeSchema(
@@ -59,10 +59,10 @@ func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaAllowsEmptyClear(t *testing.T) {
-	repo := idmmemory.NewTenantUserAttributeSchemaRepository()
+	repo := usermemory.NewTenantUserAttributeSchemaRepository()
 	ctx := context.Background()
 	if _, err := UpdateUserAttributeSchema(ctx, repo, domain.DefaultTenantID,
-		[]idmdomain.UserAttributeDef{{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable}},
+		[]userdomain.UserAttributeDef{{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable}},
 		time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}

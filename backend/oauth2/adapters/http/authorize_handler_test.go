@@ -18,10 +18,8 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -52,7 +50,7 @@ const (
 func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *domain.Consent) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 	secretHash := domain.HashClientSecret(authClientSec)
 	now := time.Now().UTC()
@@ -83,7 +81,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		CreatedAt:                now,
 	})
 	if authn != nil {
-		userRepo.Seed(&idmdomain.User{
+		userRepo.Seed(&userdomain.User{
 			ID: authn.UserID, PreferredUsername: "alice",
 			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 		})

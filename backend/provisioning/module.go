@@ -11,7 +11,7 @@ import (
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/adapters/http"
@@ -44,9 +44,9 @@ func (m Module) captureDeps(assignmentRepo appports.AssignmentRepository) usecas
 	return usecases.CaptureDeps{ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, AssignmentRepo: assignmentRepo}
 }
 
-// UserNotifier builds the idmports.ProvisioningNotifier IdManagement calls
+// UserNotifier builds the userports.ProvisioningNotifier IdManagement calls
 // after committing a User mutation (ADR-128 decision 4).
-func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) idmports.ProvisioningNotifier {
+func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) userports.ProvisioningNotifier {
 	return usecases.UserMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }
 
@@ -92,7 +92,7 @@ func (m Module) JobHandlerDeps(attrSource ports.AttributeSource, newTargetClient
 
 // Register registers the Application-detail "provisioning" subroute and the
 // tenant-wide aggregate view (spec/contexts/provisioning.yaml §設定の置き場所).
-func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo idmports.UserRepository) {
+func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository) {
 	provisioninghttp.RegisterRoutes(g, provisioninghttp.Deps{
 		Deps: deps, Authenticator: authenticator,
 		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo,

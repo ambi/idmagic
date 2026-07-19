@@ -9,7 +9,8 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -27,8 +28,8 @@ type Deps struct {
 	// UserRepo/GroupRepo and ApplicationRepo/AssignmentRepo/EmailSender are only
 	// used by dry-run (DryRunLifecycleWorkflow, wi-222) to evaluate actions'
 	// current state without mutating record contexts.
-	UserRepo        idmports.UserRepository
-	GroupRepo       idmports.GroupRepository
+	UserRepo        userports.UserRepository
+	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	EmailSender     authnports.EmailSender

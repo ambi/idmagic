@@ -8,7 +8,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
@@ -16,26 +16,26 @@ import (
 )
 
 type UserAttributeSchemaResponse struct {
-	TenantID   string                       `json:"tenant_id"`
-	Attributes []idmdomain.UserAttributeDef `json:"attributes"`
-	Builtin    []idmdomain.UserAttributeDef `json:"builtin"`
-	CreatedAt  time.Time                    `json:"created_at"`
-	UpdatedAt  time.Time                    `json:"updated_at"`
+	TenantID   string                        `json:"tenant_id"`
+	Attributes []userdomain.UserAttributeDef `json:"attributes"`
+	Builtin    []userdomain.UserAttributeDef `json:"builtin"`
+	CreatedAt  time.Time                     `json:"created_at"`
+	UpdatedAt  time.Time                     `json:"updated_at"`
 }
 
 type userAttributeSchemaUpdateRequest struct {
-	Attributes []idmdomain.UserAttributeDef `json:"attributes"`
+	Attributes []userdomain.UserAttributeDef `json:"attributes"`
 }
 
-func toUserAttributeSchemaResponse(schema *idmdomain.TenantUserAttributeSchema) UserAttributeSchemaResponse {
+func toUserAttributeSchemaResponse(schema *userdomain.TenantUserAttributeSchema) UserAttributeSchemaResponse {
 	attributes := schema.Attributes
 	if attributes == nil {
-		attributes = []idmdomain.UserAttributeDef{}
+		attributes = []userdomain.UserAttributeDef{}
 	}
 	return UserAttributeSchemaResponse{
 		TenantID:   schema.TenantID,
 		Attributes: attributes,
-		Builtin:    idmdomain.BuiltinUserAttributeDefs(),
+		Builtin:    userdomain.BuiltinUserAttributeDefs(),
 		CreatedAt:  schema.CreatedAt,
 		UpdatedAt:  schema.UpdatedAt,
 	}

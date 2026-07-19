@@ -22,8 +22,8 @@ import (
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -78,7 +78,7 @@ const (
 func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 
 	secretHash := domain.HashClientSecret(metricsTestClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
@@ -97,7 +97,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		t.Fatalf("seed password: %v", err)
 	}
 	now := time.Now().UTC()
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user_alice", PreferredUsername: metricsTestUsername, PasswordHash: hash,
 		CreatedAt: now, UpdatedAt: now,
 	})

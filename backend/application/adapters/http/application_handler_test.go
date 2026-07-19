@@ -13,10 +13,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -36,13 +35,13 @@ import (
 
 func newApplicationHandler(t *testing.T) *echo.Echo {
 	t.Helper()
-	users := idmmemory.NewUserRepository()
+	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
-	users.Seed(&idmdomain.User{
+	users.Seed(&userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&idmdomain.User{
+	users.Seed(&userdomain.User{
 		ID: "regular", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "regular",
 		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
 	})
@@ -52,7 +51,7 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 			Issuer: "http://idp.test",
 
 			Emit: func(spec.DomainEvent) {},
-		}, UserRepo: users, GroupRepo: idmmemory.NewGroupRepository(),
+		}, UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(),
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

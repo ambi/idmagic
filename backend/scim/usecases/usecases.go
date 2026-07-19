@@ -8,7 +8,8 @@ import (
 	"errors"
 	"time"
 
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -22,15 +23,15 @@ var ErrDuplicate = errors.New("SCIM resource already exists")
 
 type Usecases struct {
 	ScimRepo  ports.ScimRepository
-	UserRepo  idmports.UserRepository
-	GroupRepo idmports.GroupRepository
+	UserRepo  userports.UserRepository
+	GroupRepo groupports.GroupRepository
 	Emit      func(spec.DomainEvent)
 }
 
 func NewUsecases(
 	scimRepo ports.ScimRepository,
-	userRepo idmports.UserRepository,
-	groupRepo idmports.GroupRepository,
+	userRepo userports.UserRepository,
+	groupRepo groupports.GroupRepository,
 	emit func(spec.DomainEvent),
 ) *Usecases {
 	return &Usecases{

@@ -19,11 +19,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -33,9 +31,9 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newKeyAdminServer(t *testing.T, actor *idmdomain.User) (*echo.Echo, *signingcrypto.InMemoryKeyStore, *[]spec.DomainEvent) {
+func newKeyAdminServer(t *testing.T, actor *userdomain.User) (*echo.Echo, *signingcrypto.InMemoryKeyStore, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
@@ -64,9 +62,9 @@ func newKeyAdminServer(t *testing.T, actor *idmdomain.User) (*echo.Echo, *signin
 	return e, keyStore, &events
 }
 
-func keyAdminUser(sub, tenantID string, roles []string) *idmdomain.User {
+func keyAdminUser(sub, tenantID string, roles []string) *userdomain.User {
 	now := time.Now().UTC()
-	return &idmdomain.User{
+	return &userdomain.User{
 		ID: sub, PreferredUsername: sub, TenantID: tenantID, Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}

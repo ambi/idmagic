@@ -6,7 +6,9 @@ package http
 
 import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
@@ -23,11 +25,11 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 
-	UserRepo              idmports.UserRepository
-	GroupRepo             idmports.GroupRepository
-	AgentRepo             idmports.AgentRepository
-	UserMutationCommitter idmports.UserMutationCommitter
-	ProvisioningNotifier  idmports.ProvisioningNotifier
+	UserRepo              userports.UserRepository
+	GroupRepo             groupports.GroupRepository
+	AgentRepo             agentports.AgentRepository
+	UserMutationCommitter userports.UserMutationCommitter
+	ProvisioningNotifier  userports.ProvisioningNotifier
 	JobRepo               jobsports.JobRepository
 	ClientRepo            oauthports.OAuth2ClientRepository
 	ScimRepo              scimports.ScimRepository

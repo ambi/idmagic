@@ -10,7 +10,8 @@ package http
 import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
@@ -37,7 +38,7 @@ type Deps struct {
 	TenantRepo                 tenantports.TenantRepository
 	PARStore                   oauthports.PARStore
 	RequestStore               oauthports.AuthorizationRequestStore
-	UserRepo                   idmports.UserRepository
+	UserRepo                   userports.UserRepository
 	PasswordHasher             authnports.PasswordHasher
 	LoginAttemptThrottle       authnports.LoginAttemptThrottle
 	MfaFactorRepo              authnports.MfaFactorRepository
@@ -49,7 +50,7 @@ type Deps struct {
 	DpopReplayStore            oauthports.DpopReplayStore
 	RefreshStore               oauthports.RefreshTokenStore
 	TokenIssuer                oauthports.TokenIssuer
-	AgentRepo                  idmports.AgentRepository
+	AgentRepo                  agentports.AgentRepository
 	TokenIntrospector          oauthports.TokenIntrospector
 	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
 	AccessTokenDenylist        oauthports.AccessTokenDenylist

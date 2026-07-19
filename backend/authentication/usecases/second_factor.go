@@ -8,10 +8,9 @@ import (
 	"context"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -43,10 +42,10 @@ func hasSecondFactor(
 // syncMfaEnrolled は残存する第二要素に応じて User.mfa_enrolled を再計算し、変化があれば保存する。
 func syncMfaEnrolled(
 	ctx context.Context,
-	userRepo idmports.UserRepository,
+	userRepo userports.UserRepository,
 	mfaRepo authnports.MfaFactorRepository,
 	credRepo authnports.WebAuthnCredentialRepository,
-	user *idmdomain.User,
+	user *userdomain.User,
 	now time.Time,
 ) error {
 	enrolled, err := hasSecondFactor(ctx, mfaRepo, credRepo, user.ID)

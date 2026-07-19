@@ -10,11 +10,9 @@ import (
 	"testing"
 	"time"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
@@ -24,12 +22,12 @@ import (
 )
 
 func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	tokenStore := authnmemory.NewPasswordResetTokenStore()
 	emailSender := &notification.NoopEmailSender{}
 	email := "alice@example.com"
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Email: &email, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
@@ -63,7 +61,7 @@ func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 	var events []spec.DomainEvent
 	sender := &notification.NoopEmailSender{}
 	err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
-		UserRepo: idmmemory.NewUserRepository(), TokenStore: authnmemory.NewPasswordResetTokenStore(),
+		UserRepo: usermemory.NewUserRepository(), TokenStore: authnmemory.NewPasswordResetTokenStore(),
 		EmailSender: sender, Emit: func(event spec.DomainEvent) { events = append(events, event) },
 		Issuer: "http://idp.test",
 	}, usecases.RequestPasswordResetInput{Email: "unknown@example.com"})
@@ -80,7 +78,7 @@ func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 
 func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	ctx := context.Background()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	tokenStore := authnmemory.NewPasswordResetTokenStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
@@ -89,7 +87,7 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user-alice", PreferredUsername: "alice", PasswordHash: currentHash,
 		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
 	})
@@ -138,7 +136,7 @@ func TestResetPasswordWithTokenRejectsExpiredToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := usecases.ResetPasswordWithToken(context.Background(), usecases.ResetPasswordWithTokenDeps{
-		UserRepo: idmmemory.NewUserRepository(), TokenStore: store,
+		UserRepo: usermemory.NewUserRepository(), TokenStore: store,
 	}, usecases.ResetPasswordWithTokenInput{
 		Token: "expired", NewPassword: "fresh-password-9182", Now: now,
 	})

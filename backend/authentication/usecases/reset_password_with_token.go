@@ -8,10 +8,10 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -19,7 +19,7 @@ import (
 var ErrInvalidResetToken = errors.New("reset token is invalid or expired")
 
 type ResetPasswordWithTokenDeps struct {
-	UserRepo                idmports.UserRepository
+	UserRepo                userports.UserRepository
 	TokenStore              authnports.PasswordResetTokenStore
 	PasswordHasher          authnports.PasswordHasher
 	PasswordHistoryRepo     authnports.PasswordHistoryRepository
@@ -39,7 +39,7 @@ func ResetPasswordWithToken(
 	ctx context.Context,
 	deps ResetPasswordWithTokenDeps,
 	in ResetPasswordWithTokenInput,
-) (*idmdomain.User, error) {
+) (*userdomain.User, error) {
 	now := in.Now.UTC()
 	if now.IsZero() {
 		now = time.Now().UTC()

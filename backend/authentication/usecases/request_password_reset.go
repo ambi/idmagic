@@ -14,7 +14,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -22,7 +22,7 @@ import (
 const PasswordResetTokenTTLSeconds = 1800
 
 type RequestPasswordResetDeps struct {
-	UserRepo    idmports.UserRepository
+	UserRepo    userports.UserRepository
 	TokenStore  authnports.PasswordResetTokenStore
 	EmailSender authnports.EmailSender
 	Emit        func(spec.DomainEvent)

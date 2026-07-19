@@ -1,6 +1,6 @@
 // wi-45 T008: end-to-end verification that a real IdManagement mutation
 // reaches a real downstream over HTTP through the actual capture → deliver
-// wiring (idmusecases.CreateUser/UpdateUser/SetUserDisabled/DeleteUser →
+// wiring (userusecases.CreateUser/UpdateUser/SetUserDisabled/DeleteUser →
 // provisioning.UserMutationNotifier → CaptureLifecycleEvent →
 // ExecuteDelivery → scim.Client → fake SCIM downstream). This intentionally
 // bypasses the Jobs queue/dispatcher (already covered end-to-end by
@@ -22,9 +22,10 @@ import (
 	"time"
 
 	memoryauth "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	memoryidm "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/provisioning/adapters/identitysource"
 	memoryprov "github.com/ambi/idmagic/backend/provisioning/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
@@ -95,11 +96,11 @@ func (f *fakeSCIMDownstream) count() int {
 // production (minus the HTTP layer and Jobs queue).
 type e2eHarness struct {
 	t             *testing.T
-	userRepo      *memoryidm.UserRepository
+	userRepo      *usermemory.UserRepository
 	connRepo      *memoryprov.ProvisioningConnectionRepository
 	deliveryRepo  *memoryprov.ProvisioningDeliveryRepository
 	linkRepo      *memoryprov.RemoteResourceLinkRepository
-	adminUserDeps idmusecases.AdminUserDeps
+	adminUserDeps userusecases.AdminUserDeps
 	deliverDeps   usecases.DeliverDeps
 	downstream    *fakeSCIMDownstream
 	server        *httptest.Server
@@ -115,7 +116,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 	server := httptest.NewServer(downstream.handler())
 	t.Cleanup(server.Close)
 
-	userRepo := memoryidm.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	connRepo := memoryprov.NewProvisioningConnectionRepository()
 	deliveryRepo := memoryprov.NewProvisioningDeliveryRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
@@ -123,7 +124,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 	captureDeps := usecases.CaptureDeps{ConnectionRepo: connRepo, DeliveryRepo: deliveryRepo}
 	notifier := usecases.UserMutationNotifier{CaptureDeps: captureDeps}
 
-	adminUserDeps := idmusecases.AdminUserDeps{
+	adminUserDeps := userusecases.AdminUserDeps{
 		UserRepo:             userRepo,
 		PasswordHasher:       crypto.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo:  memoryauth.NewPasswordHistoryRepository(),
@@ -206,7 +207,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 
 	// 1. Create: IdManagement.CreateUser -> real ProvisioningNotifier -> real
 	// CaptureLifecycleEvent -> real ExecuteDelivery -> real scim.Client POST.
-	user, err := idmusecases.CreateUser(ctx, h.adminUserDeps, idmusecases.CreateUserInput{
+	user, err := userusecases.CreateUser(ctx, h.adminUserDeps, userusecases.CreateUserInput{
 		PreferredUsername: "alice-e2e", Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -229,7 +230,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 
 	// 2. Update: UpdateUser -> ProvisioningUserAttributesChanged -> update delivery -> PUT/PATCH.
 	newName := "Alice E2E"
-	if _, err := idmusecases.UpdateUser(ctx, h.adminUserDeps, idmusecases.UpdateUserInput{
+	if _, err := userusecases.UpdateUser(ctx, h.adminUserDeps, userusecases.UpdateUserInput{
 		Sub: user.ID, Name: &newName, Now: time.Now().UTC(),
 	}); err != nil {
 		t.Fatalf("UpdateUser() error = %v", err)
@@ -243,7 +244,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	}
 
 	// 3. Disable: SetUserDisabled(true) -> deactivate delivery.
-	if _, err := idmusecases.SetUserDisabled(ctx, h.adminUserDeps, "actor", user.ID, true, time.Now().UTC()); err != nil {
+	if _, err := userusecases.SetUserDisabled(ctx, h.adminUserDeps, "actor", user.ID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	disabled := h.executePendingDelivery(user.ID)
@@ -252,7 +253,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	}
 
 	// 4. Delete: DeleteUser -> deprovision per policy (on_delete=deactivate here) -> delivery.
-	if err := idmusecases.DeleteUser(ctx, h.adminUserDeps, idmusecases.DeleteUserInput{
+	if err := userusecases.DeleteUser(ctx, h.adminUserDeps, userusecases.DeleteUserInput{
 		ActorUserID: "actor", Sub: user.ID, Now: time.Now().UTC(),
 	}); err != nil {
 		t.Fatalf("DeleteUser() error = %v", err)
@@ -282,7 +283,7 @@ func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 		t.Fatalf("Update() error = %v", err)
 	}
 
-	user, err := idmusecases.CreateUser(ctx, h.adminUserDeps, idmusecases.CreateUserInput{
+	user, err := userusecases.CreateUser(ctx, h.adminUserDeps, userusecases.CreateUserInput{
 		PreferredUsername: "bob-e2e", Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -290,7 +291,7 @@ func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 	}
 	h.executePendingDelivery(user.ID)
 
-	if err := idmusecases.DeleteUser(ctx, h.adminUserDeps, idmusecases.DeleteUserInput{
+	if err := userusecases.DeleteUser(ctx, h.adminUserDeps, userusecases.DeleteUserInput{
 		ActorUserID: "actor", Sub: user.ID, Now: time.Now().UTC(),
 	}); err != nil {
 		t.Fatalf("DeleteUser() error = %v", err)
@@ -326,7 +327,7 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	userRepo := memoryidm.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	connRepo := memoryprov.NewProvisioningConnectionRepository()
 	deliveryRepo := memoryprov.NewProvisioningDeliveryRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
@@ -345,9 +346,9 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	if err := connRepo.Register(ctx, conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	if err := userRepo.Save(ctx, &idmdomain.User{
+	if err := userRepo.Save(ctx, &userdomain.User{
 		ID: "user-retry", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "carol-e2e",
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now,
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("Save() user error = %v", err)
 	}

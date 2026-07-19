@@ -5,19 +5,19 @@ import (
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 )
 
-// UserMutationNotifier implements idmports.ProvisioningNotifier by translating
+// UserMutationNotifier implements userports.ProvisioningNotifier by translating
 // IdManagement's trigger vocabulary to CaptureLifecycleEvent (ADR-128
 // decision 4's scoped, separate-transaction capture; see CaptureDeps doc).
 type UserMutationNotifier struct{ CaptureDeps CaptureDeps }
 
-var _ idmports.ProvisioningNotifier = UserMutationNotifier{}
+var _ userports.ProvisioningNotifier = UserMutationNotifier{}
 
-func (n UserMutationNotifier) NotifyUserMutation(ctx context.Context, tenantID, userID string, trigger idmports.ProvisioningTrigger, now time.Time) error {
+func (n UserMutationNotifier) NotifyUserMutation(ctx context.Context, tenantID, userID string, trigger userports.ProvisioningTrigger, now time.Time) error {
 	mapped, ok := userTriggerMap[trigger]
 	if !ok {
 		return nil
@@ -25,12 +25,12 @@ func (n UserMutationNotifier) NotifyUserMutation(ctx context.Context, tenantID, 
 	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, domain.SourceTypeUser, userID, mapped, "", now)
 }
 
-var userTriggerMap = map[idmports.ProvisioningTrigger]ports.ProvisioningTrigger{
-	idmports.ProvisioningUserCreated:           ports.TriggerUserCreated,
-	idmports.ProvisioningUserAttributesChanged: ports.TriggerUserAttributes,
-	idmports.ProvisioningUserDisabled:          ports.TriggerUserDisabled,
-	idmports.ProvisioningUserEnabled:           ports.TriggerUserEnabled,
-	idmports.ProvisioningUserDeleted:           ports.TriggerUserDeleted,
+var userTriggerMap = map[userports.ProvisioningTrigger]ports.ProvisioningTrigger{
+	userports.ProvisioningUserCreated:           ports.TriggerUserCreated,
+	userports.ProvisioningUserAttributesChanged: ports.TriggerUserAttributes,
+	userports.ProvisioningUserDisabled:          ports.TriggerUserDisabled,
+	userports.ProvisioningUserEnabled:           ports.TriggerUserEnabled,
+	userports.ProvisioningUserDeleted:           ports.TriggerUserDeleted,
 }
 
 // AssignmentMutationNotifier implements appports.ProvisioningNotifier.

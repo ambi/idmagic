@@ -6,21 +6,23 @@
 package idmanagement
 
 import (
-	"github.com/ambi/idmagic/backend/idmanagement/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 // Module は identity-management context が所有する永続化 port の束。
 // LifecycleWorkflow の port は IdGovernance context (backend/idgovernance) が所有する
 // (wi-237, ADR-117)。User mutation から governance 側の run 生成へは
-// ports.UserMutationCommitter 境界 port 経由で渡す。
+// userports.UserMutationCommitter 境界 port 経由で渡す。
 type Module struct {
-	UserRepo  ports.UserRepository
-	GroupRepo ports.GroupRepository
-	AgentRepo ports.AgentRepository
+	UserRepo  userports.UserRepository
+	GroupRepo groupports.GroupRepository
+	AgentRepo agentports.AgentRepository
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装を注入する。nil のとき admin usecase は UserRepo.Save に fallback する。
-	UserMutationCommitter ports.UserMutationCommitter
+	UserMutationCommitter userports.UserMutationCommitter
 	// ProvisioningNotifier は outbound Provisioning (wi-45, ADR-128) の境界 port。
 	// nil のとき outbound provisioning は未配線として何もしない。
-	ProvisioningNotifier ports.ProvisioningNotifier
+	ProvisioningNotifier userports.ProvisioningNotifier
 }

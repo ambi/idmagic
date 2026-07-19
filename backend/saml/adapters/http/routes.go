@@ -6,7 +6,7 @@
 package http
 
 import (
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
@@ -23,7 +23,7 @@ type Deps struct {
 	SamlSPRepo       samlports.SamlServiceProviderRepository
 	ReplayStore      samlports.AuthnRequestReplayStore
 	FederationSigner *samltoken.Signer
-	UserRepo         idmports.UserRepository
+	UserRepo         userports.UserRepository
 }
 
 // RegisterRoutes は SAML 2.0 IdP のエンドポイントを登録する。

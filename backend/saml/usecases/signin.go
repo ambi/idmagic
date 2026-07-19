@@ -14,7 +14,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -45,7 +45,7 @@ type ApplicationGate interface {
 type SignInService struct {
 	SPRepo      samlports.SamlServiceProviderRepository
 	ReplayStore samlports.AuthnRequestReplayStore
-	UserRepo    idmports.UserRepository
+	UserRepo    userports.UserRepository
 	Gate        ApplicationGate
 	Emit        func(spec.DomainEvent)
 }

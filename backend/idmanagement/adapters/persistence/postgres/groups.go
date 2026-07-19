@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
@@ -19,14 +19,14 @@ import (
 // (wi-178, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
 type GroupRepository struct{ Pool sharedpg.DB }
 
-func groupFromRow(row *sqlcgen.Group) (*idmdomain.Group, error) {
-	g := &idmdomain.Group{
+func groupFromRow(row *sqlcgen.Group) (*groupdomain.Group, error) {
+	g := &groupdomain.Group{
 		ID:             row.ID,
 		TenantID:       row.TenantID,
 		Name:           row.Name,
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
-		MembershipType: idmdomain.GroupMembershipType(row.MembershipType),
+		MembershipType: groupdomain.GroupMembershipType(row.MembershipType),
 	}
 	if row.Description.Valid {
 		g.Description = &row.Description.String
@@ -40,12 +40,12 @@ func groupFromRow(row *sqlcgen.Group) (*idmdomain.Group, error) {
 	return g, g.Validate()
 }
 
-func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]*idmdomain.Group, error) {
+func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]*groupdomain.Group, error) {
 	rows, err := sqlcgen.New(r.Pool).ListGroupsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*idmdomain.Group, 0, len(rows))
+	out := make([]*groupdomain.Group, 0, len(rows))
 	for _, row := range rows {
 		group, err := groupFromRow(row)
 		if err != nil {
@@ -56,7 +56,7 @@ func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]
 	return out, nil
 }
 
-func (r *GroupRepository) FindByID(ctx context.Context, tenantID, id string) (*idmdomain.Group, error) {
+func (r *GroupRepository) FindByID(ctx context.Context, tenantID, id string) (*groupdomain.Group, error) {
 	row, err := sqlcgen.New(r.Pool).FindGroupByID(ctx, sqlcgen.FindGroupByIDParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -67,7 +67,7 @@ func (r *GroupRepository) FindByID(ctx context.Context, tenantID, id string) (*i
 	return groupFromRow(row)
 }
 
-func (r *GroupRepository) Save(ctx context.Context, group *idmdomain.Group) error {
+func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) error {
 	roles := group.Roles
 	if roles == nil {
 		roles = []string{}
@@ -92,16 +92,16 @@ func (r *GroupRepository) Delete(ctx context.Context, tenantID, id string) error
 	return sqlcgen.New(r.Pool).DeleteGroup(ctx, sqlcgen.DeleteGroupParams{TenantID: tenantID, ID: id})
 }
 
-func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*idmdomain.GroupMember, error) {
+func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*groupdomain.GroupMember, error) {
 	rows, err := sqlcgen.New(r.Pool).ListGroupMembersByGroup(ctx, sqlcgen.ListGroupMembersByGroupParams{
 		TenantID: tenantID, GroupID: groupID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*idmdomain.GroupMember, 0, len(rows))
+	out := make([]*groupdomain.GroupMember, 0, len(rows))
 	for _, row := range rows {
-		member := &idmdomain.GroupMember{GroupID: row.GroupID, UserID: row.UserID, Source: idmdomain.GroupMembershipSource(row.Source), CreatedAt: row.CreatedAt}
+		member := &groupdomain.GroupMember{GroupID: row.GroupID, UserID: row.UserID, Source: groupdomain.GroupMembershipSource(row.Source), CreatedAt: row.CreatedAt}
 		if row.RuleVersion.Valid {
 			version := row.RuleVersion.Int64
 			member.RuleVersion = &version
@@ -111,12 +111,12 @@ func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, grou
 	return out, nil
 }
 
-func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID string) ([]*idmdomain.Group, error) {
+func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID string) ([]*groupdomain.Group, error) {
 	rows, err := sqlcgen.New(r.Pool).ListGroupsByUser(ctx, sqlcgen.ListGroupsByUserParams{TenantID: tenantID, UserID: userID})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*idmdomain.Group, 0, len(rows))
+	out := make([]*groupdomain.Group, 0, len(rows))
 	for _, row := range rows {
 		group, err := groupFromRow(row)
 		if err != nil {
@@ -132,7 +132,7 @@ func (r *GroupRepository) CountMembers(ctx context.Context, tenantID, groupID st
 	return int(count), err
 }
 
-func (r *GroupRepository) AddMember(ctx context.Context, member *idmdomain.GroupMember) (bool, error) {
+func (r *GroupRepository) AddMember(ctx context.Context, member *groupdomain.GroupMember) (bool, error) {
 	n, err := sqlcgen.New(r.Pool).AddGroupMember(ctx, sqlcgen.AddGroupMemberParams{
 		GroupID: member.GroupID, UserID: member.UserID, Source: string(member.Source.Effective()), RuleVersion: int8OrNil(member.RuleVersion), CreatedAt: member.CreatedAt,
 	})
@@ -149,9 +149,9 @@ func int8OrNil(value *int64) pgtype.Int8 {
 	return pgtype.Int8{Int64: *value, Valid: true}
 }
 
-func (r *GroupRepository) FindDynamicRule(ctx context.Context, tenantID, groupID string) (*idmdomain.DynamicGroupRule, error) {
+func (r *GroupRepository) FindDynamicRule(ctx context.Context, tenantID, groupID string) (*groupdomain.DynamicGroupRule, error) {
 	row := r.Pool.QueryRow(ctx, `SELECT group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at FROM dynamic_group_rules WHERE tenant_id=$1 AND group_id=$2`, tenantID, groupID)
-	var rule idmdomain.DynamicGroupRule
+	var rule groupdomain.DynamicGroupRule
 	var refs []byte
 	if err := row.Scan(&rule.GroupID, &rule.TenantID, &rule.Expression, &rule.Enabled, &rule.Version, &refs, &rule.CreatedAt, &rule.UpdatedAt); errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -164,13 +164,13 @@ func (r *GroupRepository) FindDynamicRule(ctx context.Context, tenantID, groupID
 	return &rule, nil
 }
 
-func (r *GroupRepository) ListDynamicRules(ctx context.Context, tenantID string) ([]*idmdomain.DynamicGroupRule, error) {
+func (r *GroupRepository) ListDynamicRules(ctx context.Context, tenantID string) ([]*groupdomain.DynamicGroupRule, error) {
 	rows, err := r.Pool.Query(ctx, `SELECT group_id FROM dynamic_group_rules WHERE tenant_id=$1 ORDER BY group_id`, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []*idmdomain.DynamicGroupRule{}
+	out := []*groupdomain.DynamicGroupRule{}
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
@@ -185,7 +185,7 @@ func (r *GroupRepository) ListDynamicRules(ctx context.Context, tenantID string)
 	return out, rows.Err()
 }
 
-func (r *GroupRepository) SaveDynamicRule(ctx context.Context, rule *idmdomain.DynamicGroupRule) error {
+func (r *GroupRepository) SaveDynamicRule(ctx context.Context, rule *groupdomain.DynamicGroupRule) error {
 	refs, err := json.Marshal(rule.ReferencedAttributes)
 	if err != nil {
 		return err

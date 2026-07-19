@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 )
 
@@ -27,7 +27,7 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 		t.Fatalf("list groups: %v len=%d", err, len(list))
 	}
 
-	added, err := repo.AddMember(ctx, &idmdomain.GroupMember{
+	added, err := repo.AddMember(ctx, &groupdomain.GroupMember{
 		GroupID: group.ID, UserID: user.ID, CreatedAt: testClock(),
 	})
 	if err != nil || !added {
@@ -35,7 +35,7 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 	}
 
 	members, err := repo.ListMembersByGroup(ctx, tenant.ID, group.ID)
-	if err != nil || len(members) != 1 || members[0].UserID != user.ID || members[0].Source != idmdomain.MembershipSourceManual {
+	if err != nil || len(members) != 1 || members[0].UserID != user.ID || members[0].Source != groupdomain.MembershipSourceManual {
 		t.Fatalf("list members: %v %+v", err, members)
 	}
 

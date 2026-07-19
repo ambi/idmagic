@@ -6,7 +6,8 @@ package application
 import (
 	apphttp "github.com/ambi/idmagic/backend/application/adapters/http"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -33,7 +34,7 @@ type Module struct {
 // Gate は Application 割当を fail-closed で判定する published capability を組み立てる
 // (SCL context_map: Application publishes ApplicationAssignmentRef)。oauth2 / saml /
 // wsfederation の federation 開始経路がこれを消費する。
-func (m Module) Gate(groupRepo idmports.GroupRepository, trustedForwardedHops int) *support.ApplicationGate {
+func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int) *support.ApplicationGate {
 	return &support.ApplicationGate{
 		ApplicationRepo:             m.Repo,
 		ApplicationAssignmentRepo:   m.AssignmentRepo,
@@ -53,7 +54,7 @@ func (m Module) ClientDisplayNames(clientRepo oauthports.OAuth2ClientRepository)
 // Register は Application カタログの admin / account エンドポイントを登録する。
 func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	groupRepo idmports.GroupRepository, userRepo idmports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
+	groupRepo groupports.GroupRepository, userRepo userports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
 ) {
 	apphttp.RegisterRoutes(g, apphttp.Deps{

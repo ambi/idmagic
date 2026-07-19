@@ -5,7 +5,8 @@
 package http
 
 import (
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -20,8 +21,8 @@ type Deps struct {
 	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
 	BrandingRepo       tenantports.TenantBrandingRepository
 	BrandingAssetStore tenantports.TenantBrandingAssetStore
-	UserRepo           idmports.UserRepository
-	GroupRepo          idmports.GroupRepository
+	UserRepo           userports.UserRepository
+	GroupRepo          groupports.GroupRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・

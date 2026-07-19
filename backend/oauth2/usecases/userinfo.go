@@ -7,9 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -22,7 +21,7 @@ type UserInfoInput struct {
 	// ResolveAttributeDefs はユーザのテナントに有効な属性定義 (builtin + custom) を
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする。tenant_id は対象
 	// ユーザを読み込んだ後に確定するため、関数として遅延解決する。
-	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error)
+	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
 }
 
 type UserInfoResponse struct {
@@ -62,7 +61,7 @@ func (r UserInfoResponse) MarshalJSON() ([]byte, error) {
 
 func UserInfo(
 	ctx context.Context,
-	repo idmports.UserRepository,
+	repo userports.UserRepository,
 	authorizer ports.Authorizer,
 	in UserInfoInput,
 ) (*UserInfoResponse, error) {
@@ -121,7 +120,7 @@ func UserInfo(
 		if err != nil {
 			return nil, err
 		}
-		res.Extra = idmdomain.ClaimsForScopes(*u, defs, in.Scopes)
+		res.Extra = userdomain.ClaimsForScopes(*u, defs, in.Scopes)
 	}
 	return res, nil
 }

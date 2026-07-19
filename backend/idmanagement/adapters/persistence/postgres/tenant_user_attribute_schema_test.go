@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 )
 
@@ -19,9 +20,9 @@ func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
 	}
 
 	now := testClock()
-	schema := &idmdomain.TenantUserAttributeSchema{
+	schema := &userdomain.TenantUserAttributeSchema{
 		TenantID: tenant.ID,
-		Attributes: []idmdomain.UserAttributeDef{
+		Attributes: []userdomain.UserAttributeDef{
 			{Key: "department", Label: "Department", Type: idmdomain.AttributeTypeString},
 		},
 		CreatedAt: now,

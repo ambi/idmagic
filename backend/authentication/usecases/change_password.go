@@ -8,10 +8,10 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -29,7 +29,7 @@ type ChangePasswordInput struct {
 }
 
 type ChangePasswordDeps struct {
-	UserRepo            idmports.UserRepository
+	UserRepo            userports.UserRepository
 	PasswordHasher      authnports.PasswordHasher
 	PasswordHistoryRepo authnports.PasswordHistoryRepository
 	Emit                func(spec.DomainEvent) error
@@ -37,7 +37,7 @@ type ChangePasswordDeps struct {
 	Policy              PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
 }
 
-func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*idmdomain.User, error) {
+func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*userdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, in.Sub)
 	if err != nil {
 		return nil, err

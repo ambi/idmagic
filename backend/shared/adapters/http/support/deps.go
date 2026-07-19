@@ -9,7 +9,8 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -36,8 +37,8 @@ type Deps struct {
 
 // Authenticator は認証・認可の共通ロジックに必要な依存を保持する。
 type Authenticator struct {
-	UserRepo          idmports.UserRepository
-	GroupRepo         idmports.GroupRepository
+	UserRepo          userports.UserRepository
+	GroupRepo         groupports.GroupRepository
 	SessionManager    *authusecases.SessionManager
 	TokenIntrospector oauthports.TokenIntrospector
 	AuthnResolver     authdomain.AuthenticationContextResolver
@@ -47,7 +48,7 @@ type Authenticator struct {
 type ApplicationGate struct {
 	ApplicationRepo             appports.ApplicationRepository
 	ApplicationAssignmentRepo   appports.AssignmentRepository
-	GroupRepo                   idmports.GroupRepository
+	GroupRepo                   groupports.GroupRepository
 	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
 	GateTrustedForwardedHops    int

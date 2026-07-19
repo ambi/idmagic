@@ -20,7 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
@@ -79,7 +79,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
 	adminDeps := newAdminUserDeps(deps, logger)
 
-	params, err := json.Marshal(idmusecases.UserImportParams{
+	params, err := json.Marshal(userusecases.UserImportParams{
 		CSV:         "preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n",
 		ActorUserID: "admin-actor",
 	})
@@ -93,12 +93,12 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 		Params:   params,
 	}
 
-	handler := idmusecases.UserImportHandler(adminDeps, true)
+	handler := userusecases.UserImportHandler(adminDeps, true)
 	rawResult, err := handler(ctx, job)
 	if err != nil {
 		t.Fatalf("run user import apply: %v", err)
 	}
-	var result idmusecases.UserImportResult
+	var result userusecases.UserImportResult
 	if err := json.Unmarshal(rawResult, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}

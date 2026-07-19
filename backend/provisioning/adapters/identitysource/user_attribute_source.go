@@ -8,7 +8,7 @@ import (
 	"context"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 )
@@ -17,7 +17,7 @@ import (
 // spec/contexts/provisioning.yaml models.AttributeMappingRule (source_kind=attribute).
 // The resolved keys match wi-45's default mapping table source column:
 // id, preferred_username, display_name, given_name, family_name, email, active.
-type UserAttributeSource struct{ UserRepo idmports.UserRepository }
+type UserAttributeSource struct{ UserRepo userports.UserRepository }
 
 var _ ports.AttributeSource = (*UserAttributeSource)(nil)
 

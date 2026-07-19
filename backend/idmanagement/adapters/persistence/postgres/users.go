@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres/sqlcgen"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 )
 
@@ -17,8 +17,8 @@ import (
 // Pool は sqlcgen.DBTX を構造的に満たす。
 type UserRepository struct{ Pool sharedpg.DB }
 
-func userFromRow(row *sqlcgen.User) (*idmdomain.User, error) {
-	u := &idmdomain.User{
+func userFromRow(row *sqlcgen.User) (*userdomain.User, error) {
+	u := &userdomain.User{
 		ID:                row.ID,
 		TenantID:          row.TenantID,
 		PreferredUsername: row.PreferredUsername,
@@ -63,7 +63,7 @@ func textOrNil(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*idmdomain.User, error) {
+func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*userdomain.User, error) {
 	row, err := sqlcgen.New(r.Pool).FindUserBySub(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -74,7 +74,7 @@ func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*idmdomain.
 	return userFromRow(row)
 }
 
-func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub string) (*idmdomain.User, error) {
+func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub string) (*userdomain.User, error) {
 	row, err := sqlcgen.New(r.Pool).FindUserBySubIncludingDeleted(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -85,7 +85,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub stri
 	return userFromRow(row)
 }
 
-func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username string) (*idmdomain.User, error) {
+func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username string) (*userdomain.User, error) {
 	row, err := sqlcgen.New(r.Pool).FindUserByUsername(ctx, sqlcgen.FindUserByUsernameParams{
 		TenantID: tenantID, PreferredUsername: username,
 	})
@@ -98,7 +98,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username 
 	return userFromRow(row)
 }
 
-func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string) (*idmdomain.User, error) {
+func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string) (*userdomain.User, error) {
 	row, err := sqlcgen.New(r.Pool).FindUserByEmail(ctx, sqlcgen.FindUserByEmailParams{
 		TenantID: tenantID, Lower: email,
 	})
@@ -111,12 +111,12 @@ func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string
 	return userFromRow(row)
 }
 
-func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*idmdomain.User, error) {
+func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*userdomain.User, error) {
 	rows, err := sqlcgen.New(r.Pool).ListUsersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*idmdomain.User, 0, len(rows))
+	out := make([]*userdomain.User, 0, len(rows))
 	for _, row := range rows {
 		u, err := userFromRow(row)
 		if err != nil {
@@ -127,7 +127,7 @@ func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*idmdo
 	return out, nil
 }
 
-func (r *UserRepository) Save(ctx context.Context, u *idmdomain.User) error {
+func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
 	return saveUser(ctx, r.Pool, u)
 }
 
@@ -135,11 +135,11 @@ func (r *UserRepository) Save(ctx context.Context, u *idmdomain.User) error {
 // transaction). IdGovernance's UserWorkflowCapture uses it to keep the User
 // mutation and its derived lifecycle workflow runs in one transaction after the
 // context split (wi-237, ADR-117); the users table stays owned by IdManagement.
-func SaveUserTx(ctx context.Context, db sqlcgen.DBTX, u *idmdomain.User) error {
+func SaveUserTx(ctx context.Context, db sqlcgen.DBTX, u *userdomain.User) error {
 	return saveUser(ctx, db, u)
 }
 
-func saveUser(ctx context.Context, db sqlcgen.DBTX, u *idmdomain.User) error {
+func saveUser(ctx context.Context, db sqlcgen.DBTX, u *userdomain.User) error {
 	// lifecycle / attributes は JSONB に格納する (ADR-039)。多値属性は本 PR では
 	// 単一カラムで持ち、検索が要るようになった段階で別テーブル化する。
 	roles, err := json.Marshal(u.Roles)

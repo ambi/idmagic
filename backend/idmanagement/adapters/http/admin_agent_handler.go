@@ -6,8 +6,9 @@ import (
 	"slices"
 	"time"
 
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -54,7 +55,7 @@ func (d Deps) handleListAgents(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := idmusecases.ListAgents(c.Request().Context(), d.adminAgentDeps())
+	views, err := agentusecases.ListAgents(c.Request().Context(), d.adminAgentDeps())
 	if err != nil {
 		return err
 	}
@@ -69,7 +70,7 @@ func (d Deps) handleGetAgent(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	view, err := idmusecases.GetAgent(c.Request().Context(), d.adminAgentDeps(), c.Param("agent_id"))
+	view, err := agentusecases.GetAgent(c.Request().Context(), d.adminAgentDeps(), c.Param("agent_id"))
 	if err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
@@ -92,7 +93,7 @@ func (d Deps) handleRegisterAgent(c *echo.Context) error {
 	if input.OwnerUserID != nil {
 		ownerUserID = *input.OwnerUserID
 	}
-	agent, err := idmusecases.RegisterAgent(c.Request().Context(), d.adminAgentDeps(), idmusecases.RegisterAgentInput{
+	agent, err := agentusecases.RegisterAgent(c.Request().Context(), d.adminAgentDeps(), agentusecases.RegisterAgentInput{
 		ActorUserID: actor.ID, Name: input.Name, Description: input.Description,
 		Kind: input.Kind, OwnerUserID: ownerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	})
@@ -115,14 +116,14 @@ func (d Deps) handleUpdateAgent(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
 	agentID := c.Param("agent_id")
-	if _, err := idmusecases.UpdateAgent(c.Request().Context(), d.adminAgentDeps(), idmusecases.UpdateAgentInput{
+	if _, err := agentusecases.UpdateAgent(c.Request().Context(), d.adminAgentDeps(), agentusecases.UpdateAgentInput{
 		ActorUserID: actor.ID, ID: agentID,
 		Name: input.Name, Description: input.Description, Kind: input.Kind,
 		OwnerUserID: input.OwnerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	}); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
-	view, err := idmusecases.GetAgent(c.Request().Context(), d.adminAgentDeps(), agentID)
+	view, err := agentusecases.GetAgent(c.Request().Context(), d.adminAgentDeps(), agentID)
 	if err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
@@ -131,28 +132,28 @@ func (d Deps) handleUpdateAgent(c *echo.Context) error {
 
 func (d Deps) handleDisableAgent(c *echo.Context) error {
 	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		_, err := idmusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, true, time.Now().UTC())
+		_, err := agentusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, true, time.Now().UTC())
 		return err
 	})
 }
 
 func (d Deps) handleEnableAgent(c *echo.Context) error {
 	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		_, err := idmusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, false, time.Now().UTC())
+		_, err := agentusecases.SetAgentDisabled(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, false, time.Now().UTC())
 		return err
 	})
 }
 
 func (d Deps) handleKillAgent(c *echo.Context) error {
 	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		_, err := idmusecases.KillAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
+		_, err := agentusecases.KillAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
 		return err
 	})
 }
 
 func (d Deps) handleDeleteAgent(c *echo.Context) error {
 	return d.changeAgentStatus(c, func(actorUserID, id string) error {
-		return idmusecases.DeleteAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
+		return agentusecases.DeleteAgent(c.Request().Context(), d.adminAgentDeps(), actorUserID, id, time.Now().UTC())
 	})
 }
 
@@ -168,7 +169,7 @@ func (d Deps) handleBindAgentCredential(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	if err := idmusecases.BindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
+	if err := agentusecases.BindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -183,7 +184,7 @@ func (d Deps) handleUnbindAgentCredential(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := idmusecases.UnbindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), c.Param("client_id"), time.Now().UTC()); err != nil {
+	if err := agentusecases.UnbindCredential(c.Request().Context(), d.adminAgentDeps(), actor.ID, c.Param("agent_id"), c.Param("client_id"), time.Now().UTC()); err != nil {
 		return d.writeAdminAgentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -207,11 +208,11 @@ func (d Deps) changeAgentStatus(c *echo.Context, action func(actorUserID, id str
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) adminAgentDeps() idmusecases.AdminAgentDeps {
-	return idmusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
+func (d Deps) adminAgentDeps() agentusecases.AdminAgentDeps {
+	return agentusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.legacyEmit()}
 }
 
-func toAgentSummaryResponse(agent *idmdomain.Agent, clientIDs []string) agentSummaryResponse {
+func toAgentSummaryResponse(agent *agentdomain.Agent, clientIDs []string) agentSummaryResponse {
 	if clientIDs == nil {
 		clientIDs = []string{}
 	}
@@ -226,21 +227,21 @@ func toAgentSummaryResponse(agent *idmdomain.Agent, clientIDs []string) agentSum
 
 func (d Deps) writeAdminAgentError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, idmusecases.ErrAgentNotFound):
+	case errors.Is(err, agentusecases.ErrAgentNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "agent_not_found", "エージェントが存在しません")
-	case errors.Is(err, idmusecases.ErrAgentClientNotFound):
+	case errors.Is(err, agentusecases.ErrAgentClientNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "クライアントが存在しません")
-	case errors.Is(err, idmusecases.ErrAgentNameConflict):
+	case errors.Is(err, agentusecases.ErrAgentNameConflict):
 		return support.WriteBrowserError(c, http.StatusConflict, "agent_name_conflict", "エージェント名は既に使用されています")
-	case errors.Is(err, idmusecases.ErrAgentNameEmpty):
+	case errors.Is(err, agentusecases.ErrAgentNameEmpty):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_name_required", "エージェント名は必須です")
-	case errors.Is(err, idmusecases.ErrAgentOwnerRequired):
+	case errors.Is(err, agentusecases.ErrAgentOwnerRequired):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_owner_required", "所有者は必須です")
-	case errors.Is(err, idmusecases.ErrAgentOwnerNotFound):
+	case errors.Is(err, agentusecases.ErrAgentOwnerNotFound):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_owner_not_found", "所有者ユーザーが存在しません")
-	case errors.Is(err, idmusecases.ErrAgentKilled):
+	case errors.Is(err, agentusecases.ErrAgentKilled):
 		return support.WriteBrowserError(c, http.StatusConflict, "agent_killed", "緊急停止済みのエージェントは変更できません")
-	case errors.Is(err, idmusecases.ErrAgentClientBound):
+	case errors.Is(err, agentusecases.ErrAgentClientBound):
 		return support.WriteBrowserError(c, http.StatusConflict, "agent_client_already_bound", "クライアントは別のエージェントに束縛済みです")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "roleが不正です")

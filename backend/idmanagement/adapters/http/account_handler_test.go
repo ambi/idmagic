@@ -16,12 +16,11 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmhttp "github.com/ambi/idmagic/backend/idmanagement/adapters/http"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -29,9 +28,9 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newAccountServer(t *testing.T, user *idmdomain.User) *echo.Echo {
+func newAccountServer(t *testing.T, user *userdomain.User) *echo.Echo {
 	t.Helper()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	if user != nil {
 		userRepo.Seed(user)
 	}
@@ -52,20 +51,20 @@ func newAccountServer(t *testing.T, user *idmdomain.User) *echo.Echo {
 			TenantRepo: tenantRepo,
 			Emit:       func(spec.DomainEvent) {},
 		}, UserRepo: userRepo,
-		AttrSchemaRepo: idmmemory.NewTenantUserAttributeSchemaRepository(),
+		AttrSchemaRepo: usermemory.NewTenantUserAttributeSchemaRepository(),
 		AuthnResolver:  resolver,
 	})
 	return e
 }
 
-func accountUser() *idmdomain.User {
+func accountUser() *userdomain.User {
 	now := time.Now().UTC()
 	name := "Dave Q"
-	return &idmdomain.User{
+	return &userdomain.User{
 		ID: "user-1", PreferredUsername: "dave", TenantID: tenancydomain.DefaultTenantID, Name: &name,
 		PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHQ$aGFzaGhhc2g",
-		Lifecycle:    idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
-		Attributes: map[string]idmdomain.AttributeValue{
+		Lifecycle:    userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]userdomain.AttributeValue{
 			"nickname":   {Type: idmdomain.AttributeTypeString, String: new("davey")},    // claim_exposed
 			"department": {Type: idmdomain.AttributeTypeString, String: new("Platform")}, // self_readable
 		},

@@ -7,8 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
@@ -18,7 +17,7 @@ import (
 // requireTenantAdmin は actor.tenant_id を権限境界として、admin / system_admin の
 // いずれかが actor.tenant_id に居る場合にだけ通す。AdminSettings* permissions の
 // allow_when と一致する。
-func (d Deps) requireTenantAdmin(c *echo.Context) (*idmdomain.User, error) {
+func (d Deps) requireTenantAdmin(c *echo.Context) (*userdomain.User, error) {
 	actor, err := d.ResolveAdminActor(c)
 	if err != nil {
 		return nil, err

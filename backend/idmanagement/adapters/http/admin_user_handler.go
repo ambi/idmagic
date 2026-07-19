@@ -6,10 +6,11 @@ import (
 	"slices"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 
@@ -26,14 +27,14 @@ type adminUserCreateRequest struct {
 }
 
 type adminUserUpdateRequest struct {
-	PreferredUsername *string                              `json:"preferred_username"`
-	Name              *string                              `json:"name"`
-	GivenName         *string                              `json:"given_name"`
-	FamilyName        *string                              `json:"family_name"`
-	Email             *string                              `json:"email"`
-	EmailVerified     *bool                                `json:"email_verified"`
-	Roles             *[]string                            `json:"roles"`
-	Attributes        *map[string]idmdomain.AttributeValue `json:"attributes"`
+	PreferredUsername *string                               `json:"preferred_username"`
+	Name              *string                               `json:"name"`
+	GivenName         *string                               `json:"given_name"`
+	FamilyName        *string                               `json:"family_name"`
+	Email             *string                               `json:"email"`
+	EmailVerified     *bool                                 `json:"email_verified"`
+	Roles             *[]string                             `json:"roles"`
+	Attributes        *map[string]userdomain.AttributeValue `json:"attributes"`
 }
 
 type adminUserDeleteRequest struct {
@@ -44,20 +45,20 @@ type adminUserDeleteRequest struct {
 }
 
 type adminUserResponse struct {
-	ID                string                              `json:"id"`
-	PreferredUsername string                              `json:"preferred_username"`
-	Name              *string                             `json:"name,omitempty"`
-	GivenName         *string                             `json:"given_name,omitempty"`
-	FamilyName        *string                             `json:"family_name,omitempty"`
-	Email             *string                             `json:"email,omitempty"`
-	EmailVerified     bool                                `json:"email_verified"`
-	MfaEnrolled       bool                                `json:"mfa_enrolled"`
-	Roles             []string                            `json:"roles"`
-	Status            idmdomain.UserStatus                `json:"status"`
-	Attributes        map[string]idmdomain.AttributeValue `json:"attributes,omitempty"`
-	RequiredActions   []idmdomain.RequiredAction          `json:"required_actions,omitempty"`
-	LastLoginAt       *time.Time                          `json:"last_login_at,omitempty"`
-	PasswordChangedAt *time.Time                          `json:"password_changed_at,omitempty"`
+	ID                string                               `json:"id"`
+	PreferredUsername string                               `json:"preferred_username"`
+	Name              *string                              `json:"name,omitempty"`
+	GivenName         *string                              `json:"given_name,omitempty"`
+	FamilyName        *string                              `json:"family_name,omitempty"`
+	Email             *string                              `json:"email,omitempty"`
+	EmailVerified     bool                                 `json:"email_verified"`
+	MfaEnrolled       bool                                 `json:"mfa_enrolled"`
+	Roles             []string                             `json:"roles"`
+	Status            idmdomain.UserStatus                 `json:"status"`
+	Attributes        map[string]userdomain.AttributeValue `json:"attributes,omitempty"`
+	RequiredActions   []idmdomain.RequiredAction           `json:"required_actions,omitempty"`
+	LastLoginAt       *time.Time                           `json:"last_login_at,omitempty"`
+	PasswordChangedAt *time.Time                           `json:"password_changed_at,omitempty"`
 	// DisabledAt は status から導出した後方互換フィールド (現行 UI 用)。
 	DisabledAt *time.Time `json:"disabled_at,omitempty"`
 	// PendingDeletionAt は status == PendingDeletion のとき soft-delete された時刻
@@ -80,7 +81,7 @@ func (d Deps) handleListAdminUsers(c *echo.Context) error {
 	}
 	// lazy-on-access: 猶予期間を過ぎた削除予約 user を一覧取得のついでに Purge する。
 	// 専用スケジューラは別 WI に切り出す。
-	if err := idmusecases.PurgeExpiredSoftDeleted(c.Request().Context(), d.adminUserDeps(), time.Now().UTC()); err != nil {
+	if err := userusecases.PurgeExpiredSoftDeleted(c.Request().Context(), d.adminUserDeps(), time.Now().UTC()); err != nil {
 		return err
 	}
 	users, err := d.UserRepo.FindAll(c.Request().Context(), support.RequestTenantID(c))
@@ -133,10 +134,10 @@ func (d Deps) handleCreateAdminUser(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.CreateUser(
+	user, err := userusecases.CreateUser(
 		ctx,
 		d.adminUserDeps(),
-		idmusecases.CreateUserInput{
+		userusecases.CreateUserInput{
 			ActorUserID: actor.ID, PreferredUsername: input.PreferredUsername,
 			Password: input.Password, Name: input.Name, Email: input.Email,
 			EmailVerified: input.EmailVerified, Roles: input.Roles, Now: time.Now().UTC(),
@@ -162,10 +163,10 @@ func (d Deps) handleUpdateAdminUser(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.UpdateUser(
+	user, err := userusecases.UpdateUser(
 		ctx,
 		d.adminUserDeps(),
-		idmusecases.UpdateUserInput{
+		userusecases.UpdateUserInput{
 			ActorUserID: actor.ID, Sub: c.Param("sub"),
 			PreferredUsername: input.PreferredUsername, Name: input.Name,
 			GivenName: input.GivenName, FamilyName: input.FamilyName, Email: input.Email,
@@ -206,11 +207,11 @@ func (d Deps) handleDeleteAdminUser(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	if c.QueryParam("purge") == "true" || input.Force {
-		err = idmusecases.DeleteUser(ctx, d.adminUserDeps(), idmusecases.DeleteUserInput{
+		err = userusecases.DeleteUser(ctx, d.adminUserDeps(), userusecases.DeleteUserInput{
 			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	} else {
-		err = idmusecases.SoftDeleteUser(ctx, d.adminUserDeps(), idmusecases.SoftDeleteUserInput{
+		err = userusecases.SoftDeleteUser(ctx, d.adminUserDeps(), userusecases.SoftDeleteUserInput{
 			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	}
@@ -231,7 +232,7 @@ func (d Deps) handleRestoreAdminUser(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.RestoreUser(
+	user, err := userusecases.RestoreUser(
 		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), time.Now().UTC(),
 	)
 	if err != nil {
@@ -250,7 +251,7 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	_, err = idmusecases.SetUserDisabled(
+	_, err = userusecases.SetUserDisabled(
 		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
 	)
 	if err != nil {
@@ -260,8 +261,8 @@ func (d Deps) handleSetAdminUserDisabled(c *echo.Context, disabled bool) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) adminUserDeps() idmusecases.AdminUserDeps {
-	deps := idmusecases.AdminUserDeps{
+func (d Deps) adminUserDeps() userusecases.AdminUserDeps {
+	deps := userusecases.AdminUserDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AttrSchemaRepo: d.AttrSchemaRepo,
 		UserMutationCommitter: d.UserMutationCommitter,
 		ProvisioningNotifier:  d.ProvisioningNotifier,
@@ -280,21 +281,21 @@ func (d Deps) writeAdminUserError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, idmusecases.ErrUserNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
-	case errors.Is(err, idmusecases.ErrUsernameConflict):
+	case errors.Is(err, userusecases.ErrUsernameConflict):
 		return support.WriteBrowserError(c, http.StatusConflict, "username_conflict", "ユーザー名は既に使用されています")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "roleが不正です")
-	case errors.Is(err, idmusecases.ErrSelfDeleteForbidden):
+	case errors.Is(err, userusecases.ErrSelfDeleteForbidden):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "self_delete_forbidden", "管理者は自身を削除できません")
-	case errors.Is(err, idmusecases.ErrSelfDisableForbidden):
+	case errors.Is(err, userusecases.ErrSelfDisableForbidden):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "self_disable_forbidden", "管理者は自身を無効化できません")
-	case errors.Is(err, idmusecases.ErrUserNotPendingDeletion):
+	case errors.Is(err, userusecases.ErrUserNotPendingDeletion):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "not_pending_deletion", "削除予約中のユーザーではありません")
-	case errors.Is(err, idmusecases.ErrRestoreGracePeriodExpired):
+	case errors.Is(err, userusecases.ErrRestoreGracePeriodExpired):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "restore_grace_expired", "復元可能期間を過ぎています")
-	case errors.Is(err, idmusecases.ErrInvalidAttribute):
+	case errors.Is(err, userusecases.ErrInvalidAttribute):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "属性がスキーマに適合していません")
-	case errors.Is(err, idmusecases.ErrInvalidRequiredAction):
+	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_required_action", "required action が不正です")
 	default:
 		var policyErr *authusecases.PasswordPolicyError
@@ -312,7 +313,7 @@ func (d Deps) writeAdminUserError(c *echo.Context, err error) error {
 	}
 }
 
-func toAdminUserResponse(user *idmdomain.User) adminUserResponse {
+func toAdminUserResponse(user *userdomain.User) adminUserResponse {
 	var disabledAt *time.Time
 	if user.Lifecycle.Status == idmdomain.UserStatusDisabled {
 		disabledAt = user.Lifecycle.StatusChangedAt
@@ -321,7 +322,7 @@ func toAdminUserResponse(user *idmdomain.User) adminUserResponse {
 	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
 		pendingDeletionAt = user.Lifecycle.StatusChangedAt
 		if pendingDeletionAt != nil {
-			deadline := pendingDeletionAt.Add(idmusecases.UserSoftDeleteGracePeriodSeconds * time.Second)
+			deadline := pendingDeletionAt.Add(userusecases.UserSoftDeleteGracePeriodSeconds * time.Second)
 			purgeAfter = &deadline
 		}
 	}
@@ -355,7 +356,7 @@ func (d Deps) handleSetUserRequiredAction(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.SetUserRequiredAction(
+	user, err := userusecases.SetUserRequiredAction(
 		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
 		idmdomain.RequiredAction(input.Action), time.Now().UTC(),
 	)
@@ -375,7 +376,7 @@ func (d Deps) handleClearUserRequiredAction(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	user, err := idmusecases.ClearUserRequiredAction(
+	user, err := userusecases.ClearUserRequiredAction(
 		ctx, d.adminUserDeps(), actor.ID, c.Param("sub"),
 		idmdomain.RequiredAction(c.Param("action")), time.Now().UTC(),
 	)

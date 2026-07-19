@@ -131,14 +131,52 @@ spec/scl.yaml                  # 第1層  root context map
 spec/contexts/<context>.yaml   # 第1層  この context の SCL（models・interfaces・states …）
 ARCHITECTURE.md                # 第2層  アーキテクチャ設計・構成
 decisions/                     # 第2層  決定記録
-internal/
+backend/
   <context>/
     domain/                    # 第3層  models・states・所有要素の constraints に対応する型と純粋ロジック
     ports/                     # 第4層  interfaces が要求する境界の抽象
     usecases/                  # 第4層  scenarios・interfaces に対応する手続き
     adapters/                  # 第5層  HTTP・永続化・外部 API の実装
-  infrastructure/              # 第6層  プログラムのエントリポイント、ブートストラップ
+  cmd/                         # 第6層  プログラムのエントリポイント、ブートストラップ
 ```
+
+context が複数の独立した sub-domain（**feature**）を抱えると、この格子だけでは
+`domain/`・`usecases/` 等の各層ディレクトリに無関係な feature のファイルが平積みされ、
+物理配置が叫ばなくなる。そこで層 × context の格子に、任意の **feature 垂直スライス層**
+を足せる（ADR-130）。
+
+```text
+backend/
+  <context>/
+    module.go                  # 第6層  context 単位の DI 束（feature に分割しない）
+    domain/                    # 第3層  feature 横断で共有される型（enum・DomainEvent 等）のみ
+    <feature>/
+      domain/                  # 第3層  この feature 固有の型と純粋ロジック
+      ports/                   # 第4層  この feature 固有の境界抽象
+      usecases/                # 第4層  この feature 固有の手続き
+      adapters/
+        http/                  # 第5層  (feature 単位に分割できる場合のみ)
+        persistence/
+          memory/              # 第5層  (feature 単位に分割できる場合のみ)
+          postgres/            # 第5層  (feature 単位に分割できる場合のみ)
+```
+
+feature 層は次の規約に従う（詳細は ADR-130）。
+
+- **条件付き導入**: feature 層は 2 つ以上の feature を持つ context にのみ導入する。単一
+  feature の context に `<context>/<context>/` のような stutter を作ってはならない——
+  ディレクトリ構造が「叫ぶ」ことにならず RA 的に有害である。
+- **成長トリガー**: context が 2 つ目の feature を獲得した時点で feature 層を導入する。
+- **分割できない層がある**: ある層を feature ごとに分割できるかは、Go であれば「メソッドは
+  receiver 型と同一パッケージにしか定義できない」といった言語制約や、sqlc のような
+  コード生成ツールの単位、複数 feature 間で共有されるテストフィクスチャの有無に左右される。
+  分割できない層は context ルート共有のまま残してよい（機械的な物理配置変更の範囲を
+  超えるコード再設計を伴う分割を、この規約は要求しない）。
+- **共有型・共有ヘルパー**: feature 横断で使われる型・エラー変数・小さい utility 関数は、
+  無理に 1 feature へ寄せず context ルートの共有パッケージに残す。
+- **package 名は各層名のまま**（`domain`/`ports`/`usecases`/`http`/`memory`/`postgres`）。
+  同一 context の複数 feature を同時に import する箇所では named import
+  （例 `userdomain`, `groupdomain`）で区別する。
 
 ## 4 コンセプションから検証まで
 

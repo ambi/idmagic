@@ -6,31 +6,32 @@ import (
 	"net/http"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )
 
 type AccountProfileResponse struct {
-	ID                string                              `json:"id"`
-	PreferredUsername string                              `json:"preferred_username"`
-	Name              *string                             `json:"name,omitempty"`
-	GivenName         *string                             `json:"given_name,omitempty"`
-	FamilyName        *string                             `json:"family_name,omitempty"`
-	Email             *string                             `json:"email,omitempty"`
-	EmailVerified     bool                                `json:"email_verified"`
-	MfaEnrolled       bool                                `json:"mfa_enrolled"`
-	Status            idmdomain.UserStatus                `json:"status"`
-	Attributes        map[string]idmdomain.AttributeValue `json:"attributes"`
+	ID                string                               `json:"id"`
+	PreferredUsername string                               `json:"preferred_username"`
+	Name              *string                              `json:"name,omitempty"`
+	GivenName         *string                              `json:"given_name,omitempty"`
+	FamilyName        *string                              `json:"family_name,omitempty"`
+	Email             *string                              `json:"email,omitempty"`
+	EmailVerified     bool                                 `json:"email_verified"`
+	MfaEnrolled       bool                                 `json:"mfa_enrolled"`
+	Status            idmdomain.UserStatus                 `json:"status"`
+	Attributes        map[string]userdomain.AttributeValue `json:"attributes"`
 	// ReadableAttributes は self が参照できる属性定義。
-	ReadableAttributes []idmdomain.UserAttributeDef `json:"readable_attributes"`
+	ReadableAttributes []userdomain.UserAttributeDef `json:"readable_attributes"`
 	// EditableAttributes は self が編集できる属性定義 (editable_by_user=true)。
 	// UI がフォームを描画するために型・multi_valued 等のメタを併せて返す。
-	EditableAttributes []idmdomain.UserAttributeDef `json:"editable_attributes"`
+	EditableAttributes []userdomain.UserAttributeDef `json:"editable_attributes"`
 }
 
 // accountSummaryResponse は portal home 用のアカウント概要 (self-service)。
@@ -49,31 +50,31 @@ type accountSummaryResponse struct {
 }
 
 type accountProfileUpdateRequest struct {
-	Name       *string                              `json:"name"`
-	GivenName  *string                              `json:"given_name"`
-	FamilyName *string                              `json:"family_name"`
-	Attributes *map[string]idmdomain.AttributeValue `json:"attributes"`
+	Name       *string                               `json:"name"`
+	GivenName  *string                               `json:"given_name"`
+	FamilyName *string                               `json:"family_name"`
+	Attributes *map[string]userdomain.AttributeValue `json:"attributes"`
 }
 
-func toAccountProfileResponse(user *idmdomain.User, defs []idmdomain.UserAttributeDef) AccountProfileResponse {
+func toAccountProfileResponse(user *userdomain.User, defs []userdomain.UserAttributeDef) AccountProfileResponse {
 	return AccountProfileResponse{
 		ID: user.ID, PreferredUsername: user.PreferredUsername,
 		Name: user.Name, GivenName: user.GivenName, FamilyName: user.FamilyName,
 		Email: user.Email, EmailVerified: user.EmailVerified, MfaEnrolled: user.MfaEnrolled,
 		Status:             user.Lifecycle.EffectiveStatus(),
-		Attributes:         idmusecases.SelfReadableAttributes(user.Attributes, defs),
-		ReadableAttributes: idmusecases.SelfReadableAttributeDefs(defs),
-		EditableAttributes: idmusecases.EditableAttributeDefs(defs),
+		Attributes:         userusecases.SelfReadableAttributes(user.Attributes, defs),
+		ReadableAttributes: userusecases.SelfReadableAttributeDefs(defs),
+		EditableAttributes: userusecases.EditableAttributeDefs(defs),
 	}
 }
 
-func (d Deps) accountProfileDeps() idmusecases.AccountProfileDeps {
-	return idmusecases.AccountProfileDeps{
+func (d Deps) accountProfileDeps() userusecases.AccountProfileDeps {
+	return userusecases.AccountProfileDeps{
 		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.legacyEmit(),
 	}
 }
 
-func toAccountSummaryResponse(user *idmdomain.User) accountSummaryResponse {
+func toAccountSummaryResponse(user *userdomain.User) accountSummaryResponse {
 	actions := user.Lifecycle.RequiredActions
 	if actions == nil {
 		actions = []idmdomain.RequiredAction{}
@@ -93,7 +94,7 @@ func (d Deps) handleGetAccountSummary(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	user, _, err := idmusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, _, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
@@ -105,7 +106,7 @@ func (d Deps) handleGetAccountProfile(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	user, defs, err := idmusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
@@ -124,8 +125,8 @@ func (d Deps) handleUpdateAccountProfile(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	user, defs, err := idmusecases.UpdateUserProfile(c.Request().Context(), d.accountProfileDeps(),
-		idmusecases.UpdateUserProfileInput{
+	user, defs, err := userusecases.UpdateUserProfile(c.Request().Context(), d.accountProfileDeps(),
+		userusecases.UpdateUserProfileInput{
 			Sub: sub, Name: input.Name, GivenName: input.GivenName, FamilyName: input.FamilyName,
 			Attributes: input.Attributes, Now: time.Now().UTC(),
 		})
@@ -158,9 +159,9 @@ func (d Deps) writeAccountError(c *echo.Context, err error) error {
 		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
 	case errors.Is(err, authusecases.ErrSessionNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "session_not_found", "セッションが存在しません")
-	case errors.Is(err, idmusecases.ErrAttributeNotEditable):
+	case errors.Is(err, userusecases.ErrAttributeNotEditable):
 		return support.WriteBrowserError(c, http.StatusForbidden, "attribute_not_editable", "この属性は編集できません")
-	case errors.Is(err, idmusecases.ErrInvalidAttribute):
+	case errors.Is(err, userusecases.ErrInvalidAttribute):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "属性がスキーマに適合していません")
 	default:
 		return err

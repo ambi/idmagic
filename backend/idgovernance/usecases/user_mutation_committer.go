@@ -4,12 +4,12 @@ import (
 	"context"
 
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // UserMutationCommitter implements the IdManagement boundary port
-// idmports.UserMutationCommitter. It owns the transactional capture that keeps a
+// userports.UserMutationCommitter. It owns the transactional capture that keeps a
 // User mutation and its derived lifecycle workflow runs consistent, so
 // IdManagement stays free of lifecycle workflow types (wi-237, ADR-117).
 type UserMutationCommitter struct {
@@ -18,13 +18,13 @@ type UserMutationCommitter struct {
 	// nil the committer falls back to UserRepo + RunRepo, mirroring the previous
 	// non-transactional wiring for lightweight setups.
 	Capture  igports.UserWorkflowCapture
-	UserRepo idmports.UserRepository
+	UserRepo userports.UserRepository
 	RunRepo  igports.LifecycleWorkflowRunRepository
 }
 
-var _ idmports.UserMutationCommitter = UserMutationCommitter{}
+var _ userports.UserMutationCommitter = UserMutationCommitter{}
 
-func (c UserMutationCommitter) CommitUserMutation(ctx context.Context, m idmports.UserMutation) error {
+func (c UserMutationCommitter) CommitUserMutation(ctx context.Context, m userports.UserMutation) error {
 	if c.WorkflowRepo == nil {
 		return c.UserRepo.Save(ctx, m.After)
 	}

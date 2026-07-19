@@ -6,7 +6,7 @@ package http
 
 import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
@@ -22,7 +22,7 @@ type Deps struct {
 	*support.ApplicationGate
 
 	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
-	UserRepo                   idmports.UserRepository
+	UserRepo                   userports.UserRepository
 	FederationSigner           *samltoken.Signer
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	LoginAttemptThrottle       authnports.LoginAttemptThrottle

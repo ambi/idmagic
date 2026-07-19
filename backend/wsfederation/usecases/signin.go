@@ -14,7 +14,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
@@ -44,7 +44,7 @@ type ApplicationGate interface {
 // SignInService は WS-Federation passive sign-in の発行判断を所有する。
 type SignInService struct {
 	RPRepo   wsfedports.WsFedRelyingPartyRepository
-	UserRepo idmports.UserRepository
+	UserRepo userports.UserRepository
 	Gate     ApplicationGate
 	Emit     func(spec.DomainEvent)
 }

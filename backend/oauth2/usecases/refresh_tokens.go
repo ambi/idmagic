@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -30,7 +30,7 @@ type RefreshResult struct {
 
 type RefreshDeps struct {
 	ClientRepo   ports.OAuth2ClientRepository
-	UserRepo     idmports.UserRepository
+	UserRepo     userports.UserRepository
 	RefreshStore ports.RefreshTokenStore
 	TokenIssuer  ports.TokenIssuer
 	Authorizer   ports.Authorizer

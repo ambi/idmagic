@@ -16,7 +16,9 @@ import (
 	ighttp "github.com/ambi/idmagic/backend/idgovernance/adapters/http"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmhttp "github.com/ambi/idmagic/backend/idmanagement/adapters/http"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/adapters/http"
@@ -55,9 +57,9 @@ type Deps struct {
 	IdManagement   idmanagement.Module
 	IdGovernance   idgovernance.Module
 	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdManagement.Module のみを設定する。
-	UserRepo       idmports.UserRepository
-	GroupRepo      idmports.GroupRepository
-	AgentRepo      idmports.AgentRepository
+	UserRepo       userports.UserRepository
+	GroupRepo      groupports.GroupRepository
+	AgentRepo      agentports.AgentRepository
 	Authentication authentication.Module
 	// Deprecated: wi-177 移行中のテスト用互換入力。bootstrap は Authentication.Module のみを設定する。
 	MfaFactorRepo           authnports.MfaFactorRepository

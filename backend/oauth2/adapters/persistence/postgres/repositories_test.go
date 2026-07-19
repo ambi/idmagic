@@ -10,8 +10,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmpg "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/postgres"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
@@ -53,10 +52,10 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	return tenant
 }
 
-func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *idmdomain.User {
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 	t.Helper()
 	now := testClock()
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenantID,
 		PreferredUsername: "user-" + newUUID(t)[:8],

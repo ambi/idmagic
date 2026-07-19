@@ -9,7 +9,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -42,7 +42,7 @@ func (d Deps) handleExportAccountData(c *echo.Context) error {
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}
-	user, defs, err := idmusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
 	if err != nil {
 		return d.writeAccountError(c, err)
 	}

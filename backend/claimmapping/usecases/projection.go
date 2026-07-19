@@ -8,6 +8,7 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 type Attributes = claimdomain.Attributes
@@ -63,7 +64,7 @@ func IssueClaims(policy claimdomain.ClaimMappingPolicy, attrs Attributes) (Claim
 	return result, nil
 }
 
-func ResolveUserAttributes(u idmdomain.User) Attributes {
+func ResolveUserAttributes(u userdomain.User) Attributes {
 	attrs := Attributes{}
 	put := func(key string, values ...string) {
 		filtered := nonEmpty(values)
@@ -133,7 +134,7 @@ func firstNonEmpty(values []string) (string, bool) {
 	return "", false
 }
 
-func attributeValueStrings(v idmdomain.AttributeValue) []string {
+func attributeValueStrings(v userdomain.AttributeValue) []string {
 	switch v.Type {
 	case idmdomain.AttributeTypeString:
 		if v.String != nil && strings.TrimSpace(*v.String) != "" {

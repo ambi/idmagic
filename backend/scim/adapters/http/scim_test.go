@@ -12,10 +12,10 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/labstack/echo/v5"
 
 	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
@@ -30,8 +30,8 @@ import (
 // repositories, matching the setup TestScimInboundProvisioning /
 // TestScimGroupSync use, for tests that only need list/filter behavior.
 func newScimTestHarness() (*echo.Echo, *usecases.Usecases) {
-	userRepo := idmmemory.NewUserRepository()
-	groupRepo := idmmemory.NewGroupRepository()
+	userRepo := usermemory.NewUserRepository()
+	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
 
@@ -323,8 +323,8 @@ func TestScimListUsersDateTimeFilterAndURNPrefix(t *testing.T) {
 
 func TestScimInboundProvisioning(t *testing.T) {
 	ctx := context.Background()
-	userRepo := idmmemory.NewUserRepository()
-	groupRepo := idmmemory.NewGroupRepository()
+	userRepo := usermemory.NewUserRepository()
+	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
@@ -521,8 +521,8 @@ func TestScimInboundProvisioning(t *testing.T) {
 
 func TestScimGroupSync(t *testing.T) {
 	ctx := context.Background()
-	userRepo := idmmemory.NewUserRepository()
-	groupRepo := idmmemory.NewGroupRepository()
+	userRepo := usermemory.NewUserRepository()
+	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
@@ -546,8 +546,8 @@ func TestScimGroupSync(t *testing.T) {
 	// 1. テストユーザー作成
 	user1Sub := "user_1"
 	user2Sub := "user_2"
-	_ = userRepo.Save(ctx, &idmdomain.User{ID: user1Sub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user1"})
-	_ = userRepo.Save(ctx, &idmdomain.User{ID: user2Sub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user2"})
+	_ = userRepo.Save(ctx, &userdomain.User{ID: user1Sub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user1"})
+	_ = userRepo.Save(ctx, &userdomain.User{ID: user2Sub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user2"})
 	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim_u1", UserID: user1Sub})
 	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim_u2", UserID: user2Sub})
 

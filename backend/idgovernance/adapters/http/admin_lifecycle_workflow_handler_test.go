@@ -12,8 +12,10 @@ import (
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -22,17 +24,17 @@ import (
 
 func newAdminLifecycleWorkflowHandler(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	groupRepo := idmmemory.NewGroupRepository()
+	groupRepo := groupmemory.NewGroupRepository()
 	now := time.Now().UTC()
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now,
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{

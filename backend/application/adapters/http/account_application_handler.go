@@ -8,11 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	"github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -90,7 +89,7 @@ func (d Deps) portalCategories(ctx context.Context) ([]portalCategoryResponse, e
 }
 
 // subjectsForUser は割当解決に使う subject 群 (本人 + 所属グループ) を組み立てる (wi-69)。
-func (d Deps) subjectsForUser(ctx context.Context, user *idmdomain.User) []appports.SubjectRef {
+func (d Deps) subjectsForUser(ctx context.Context, user *userdomain.User) []appports.SubjectRef {
 	subjects := []appports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: user.ID}}
 	if d.GroupRepo == nil {
 		return subjects
@@ -145,7 +144,7 @@ func (d Deps) handleReorderMyApplications(c *echo.Context) error {
 
 // resolvePortalUser は認証済み (pending でない) active な利用者本人を解決する。
 // 解決できなければ errPortalUnauthorized を返す。
-func (d Deps) resolvePortalUser(c *echo.Context) (*idmdomain.User, error) {
+func (d Deps) resolvePortalUser(c *echo.Context) (*userdomain.User, error) {
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err

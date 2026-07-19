@@ -12,11 +12,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -103,13 +101,13 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	users := idmmemory.NewUserRepository()
+	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
-	users.Seed(&idmdomain.User{
+	users.Seed(&userdomain.User{
 		ID: "ops", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "ops",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&idmdomain.User{
+	users.Seed(&userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -144,8 +142,8 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	users := idmmemory.NewUserRepository()
-	users.Seed(&idmdomain.User{
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{
 		ID: "acme-admin", TenantID: "acme", PreferredUsername: "acme-admin",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})

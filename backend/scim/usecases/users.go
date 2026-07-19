@@ -9,6 +9,7 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/scim/domain"
 	"github.com/ambi/idmagic/backend/scim/ports"
 )
@@ -42,7 +43,7 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 	scimID := hex.EncodeToString(scimIDBytes)
 
 	now := time.Now()
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID:                sub,
 		TenantID:          tenantID,
 		PreferredUsername: w.UserName,
@@ -53,11 +54,11 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		Email:             &w.Email,
 		EmailVerified:     true,
 		Roles:             []string{},
-		Lifecycle: idmdomain.UserLifecycle{
+		Lifecycle: userdomain.UserLifecycle{
 			Status:          userStatusFromActive(w.Active),
 			StatusChangedAt: &now,
 		},
-		Attributes: make(map[string]idmdomain.AttributeValue),
+		Attributes: make(map[string]userdomain.AttributeValue),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -190,7 +191,7 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	return u.toScimUser(user, scimID), nil
 }
 
-func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *idmdomain.User, op domain.UserPatchOp) error {
+func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *userdomain.User, op domain.UserPatchOp) error {
 	isRemoveOp := op.Op == "remove"
 
 	switch op.Attr {
@@ -268,7 +269,7 @@ func patchStringField(op domain.UserPatchOp) *string {
 	return &s
 }
 
-func (u *Usecases) setUserActive(user *idmdomain.User, active bool) {
+func (u *Usecases) setUserActive(user *userdomain.User, active bool) {
 	now := time.Now()
 	if active && user.Lifecycle.Status != idmdomain.UserStatusActive {
 		user.Lifecycle.Status = idmdomain.UserStatusActive
@@ -342,7 +343,7 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID string, query ListQue
 
 // userFilterAttrs flattens a User into the lower-cased attribute map
 // domain.UserFilterAttributes expects.
-func userFilterAttrs(user *idmdomain.User, scimID string) map[string]any {
+func userFilterAttrs(user *userdomain.User, scimID string) map[string]any {
 	attrs := map[string]any{
 		"username":          user.PreferredUsername,
 		"active":            user.Lifecycle.Status == idmdomain.UserStatusActive,
@@ -365,7 +366,7 @@ func userFilterAttrs(user *idmdomain.User, scimID string) map[string]any {
 	return attrs
 }
 
-func (u *Usecases) toScimUser(user *idmdomain.User, scimID string) map[string]any {
+func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]any {
 	var emailVal string
 	if user.Email != nil {
 		emailVal = *user.Email

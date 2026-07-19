@@ -10,10 +10,8 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -79,8 +77,8 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
-	users := idmmemory.NewUserRepository()
-	users.Seed(&idmdomain.User{
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{
 		ID: "user", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})
@@ -112,9 +110,9 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
-	users := idmmemory.NewUserRepository()
+	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
-	users.Seed(&idmdomain.User{
+	users.Seed(&userdomain.User{
 		ID: "user", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})

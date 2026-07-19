@@ -3,8 +3,7 @@ package ports
 import (
 	"context"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -36,7 +35,7 @@ type AccessTokenInput struct {
 
 type IDTokenInput struct {
 	Client   *domain.OAuth2Client
-	User     *idmdomain.User
+	User     *userdomain.User
 	Scopes   []string
 	Nonce    *string
 	AuthTime int64
@@ -47,7 +46,7 @@ type IDTokenInput struct {
 	AtHashFor string // access token whose hash goes into at_hash
 	// ResolveAttributeDefs はユーザのテナントに有効な属性定義 (builtin + custom) を
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする (wi-19)。
-	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error)
+	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
 }
 
 type TokenIssuer interface {

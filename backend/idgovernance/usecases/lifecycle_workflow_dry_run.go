@@ -9,15 +9,16 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 var ErrLifecycleWorkflowTargetUserNotFound = errors.New("lifecycle workflow dry-run target user not found")
 
 type DryRunLifecycleWorkflowDeps struct {
 	Repo            igports.LifecycleWorkflowRepository
-	UserRepo        idmports.UserRepository
-	GroupRepo       idmports.GroupRepository
+	UserRepo        userports.UserRepository
+	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	EmailSender     authnports.EmailSender

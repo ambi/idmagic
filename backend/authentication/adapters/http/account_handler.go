@@ -6,13 +6,14 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
 )
 
-func (d Deps) accountProfileDeps() idmusecases.AccountProfileDeps {
-	return idmusecases.AccountProfileDeps{
+func (d Deps) accountProfileDeps() userusecases.AccountProfileDeps {
+	return userusecases.AccountProfileDeps{
 		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.legacyEmit(),
 	}
 }

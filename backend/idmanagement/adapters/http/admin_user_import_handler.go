@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobusecases "github.com/ambi/idmagic/backend/jobs/usecases"
@@ -37,11 +37,11 @@ func (d Deps) handleImportAdminUsers(c *echo.Context) error {
 	if in.Mode != "dry_run" && in.Mode != "apply" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "mode は dry_run または apply です")
 	}
-	_, result := usecases.ParseUserImportCSV(in.CSV)
+	_, result := userusecases.ParseUserImportCSV(in.CSV)
 	if len(result.Errors) > 0 && result.TotalRows == 0 {
 		return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{"error": "invalid_csv", "errors": result.Errors})
 	}
-	params, err := json.Marshal(usecases.UserImportParams{CSV: in.CSV, ActorUserID: actor.ID})
+	params, err := json.Marshal(userusecases.UserImportParams{CSV: in.CSV, ActorUserID: actor.ID})
 	if err != nil {
 		return err
 	}

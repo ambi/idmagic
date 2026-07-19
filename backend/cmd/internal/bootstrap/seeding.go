@@ -9,6 +9,7 @@ import (
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/seeding/domain"
 	seedusecases "github.com/ambi/idmagic/backend/seeding/usecases"
@@ -209,21 +210,21 @@ func (c *seedContributor) performanceOperations(ctx context.Context, request dom
 	return append(operations, domain.Operation{LogicalKey: "performance-users", Kind: kind, Summary: fmt.Sprintf("%d synthetic users", request.Count)}), nil
 }
 
-func performanceUser(index int, generatorSeed, passwordHash string, now time.Time) *idmdomain.User {
+func performanceUser(index int, generatorSeed, passwordHash string, now time.Time) *userdomain.User {
 	digest := sha256.Sum256([]byte(generatorSeed))
 	prefix := fmt.Sprintf("%x", digest[:3])
-	return &idmdomain.User{
+	return &userdomain.User{
 		ID:                fmt.Sprintf("00000000-0000-4000-9000-%06s%06d", prefix, index+1),
 		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: fmt.Sprintf("perf-%s-%06d", prefix, index+1),
 		PasswordHash:      passwordHash,
-		Lifecycle:         idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Lifecycle:         userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
 }
 
-func samePerformanceUser(actual, desired *idmdomain.User, password string, hasher authnports.PasswordHasher) bool {
+func samePerformanceUser(actual, desired *userdomain.User, password string, hasher authnports.PasswordHasher) bool {
 	matches, err := hasher.Verify(password, actual.PasswordHash)
 	if err != nil || !matches {
 		return false

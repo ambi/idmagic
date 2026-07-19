@@ -3,7 +3,7 @@ package wsfederation
 
 import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/adapters/http"
@@ -18,7 +18,7 @@ type Module struct {
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	applicationGate *support.ApplicationGate, userRepo idmports.UserRepository, federationSigner *samltoken.Signer,
+	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner *samltoken.Signer,
 	clientAssertionReplayStore oauthports.ClientAssertionReplayStore, loginAttemptThrottle authnports.LoginAttemptThrottle,
 	passwordHasher authnports.PasswordHasher, sentinelPasswordHash string,
 ) {

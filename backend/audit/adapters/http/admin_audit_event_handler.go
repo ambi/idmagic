@@ -14,10 +14,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -250,7 +249,7 @@ func (d Deps) handleAdminAuditEventSearchOptions(c *echo.Context) error {
 // parseAuditEventQuery は query string を AuditEventQuery へ変換する。第 2 戻り値 noMatch が
 // true の場合、username が実アカウントに解決できなかったことを示し、呼び出し側は
 // AuditEventRepo.List を呼ばず空の結果を返す (フィルタ無視で全件返すという誤動作を避ける)。
-func (d Deps) parseAuditEventQuery(c *echo.Context, actor *idmdomain.User) (auditports.AuditEventQuery, bool, error) {
+func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User) (auditports.AuditEventQuery, bool, error) {
 	q := auditports.AuditEventQuery{
 		TenantID:   actor.TenantID,
 		AllTenants: false,
@@ -354,7 +353,7 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpres
 
 // auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。
 // system_admin で default テナント在籍なら全件 OK、それ以外は所属テナントのみ。
-func auditEventVisibleTo(rec *auditports.AuditEventRecord, actor *idmdomain.User) bool {
+func auditEventVisibleTo(rec *auditports.AuditEventRecord, actor *userdomain.User) bool {
 	if slices.Contains(actor.Roles, "system_admin") && actor.TenantID == tenancydomain.DefaultTenantID {
 		return true
 	}

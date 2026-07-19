@@ -8,21 +8,20 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 )
 
-func userInfoFixture(t *testing.T) *idmmemory.UserRepository {
+func userInfoFixture(t *testing.T) *usermemory.UserRepository {
 	t.Helper()
-	repo := idmmemory.NewUserRepository()
-	repo.Seed(&idmdomain.User{
+	repo := usermemory.NewUserRepository()
+	repo.Seed(&userdomain.User{
 		ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "carol",
 		Name: new("Carol Q"), Email: new("carol@example.com"), EmailVerified: true,
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
-		Attributes: map[string]idmdomain.AttributeValue{
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]userdomain.AttributeValue{
 			"nickname":     {Type: idmdomain.AttributeTypeString, String: new("cici")},
 			"phone_number": {Type: idmdomain.AttributeTypeString, String: new("+819012345678")},
 		},
@@ -31,8 +30,8 @@ func userInfoFixture(t *testing.T) *idmmemory.UserRepository {
 	return repo
 }
 
-func resolveBuiltin(_ context.Context, _ string) ([]idmdomain.UserAttributeDef, error) {
-	return idmdomain.BuiltinUserAttributeDefs(), nil
+func resolveBuiltin(_ context.Context, _ string) ([]userdomain.UserAttributeDef, error) {
+	return userdomain.BuiltinUserAttributeDefs(), nil
 }
 
 func TestUserInfoIncludesAttributeClaimsByScope(t *testing.T) {

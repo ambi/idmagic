@@ -22,12 +22,11 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
@@ -63,10 +62,10 @@ func newServer(t *testing.T) *httptest.Server {
 // newServerWithUserAccess は newServerWithTOTP と同等のスタックを組みつつ、
 // テストから user 状態を直接 mutate するため UserRepository を返す。
 // disable / lifecycle 関連のテスト専用。
-func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRepository) {
+func newServerWithUserAccess(t *testing.T) (*httptest.Server, *usermemory.UserRepository) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
 	requestStore := oauth2memory.NewAuthorizationRequestStore()
@@ -93,7 +92,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *idmmemory.UserRep
 	}
 	email := "alice@example.com"
 	now := time.Now().UTC()
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
 		Email: &email, EmailVerified: true,
 		CreatedAt: now, UpdatedAt: now,
@@ -136,7 +135,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 	t.Helper()
 
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
 	mfaEnrollmentBypassRepo := authnmemory.NewMfaEnrollmentBypassRepository()
 	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
@@ -170,7 +169,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 	}
 	email := "alice@example.com"
 	now := time.Now().UTC()
-	userRepo.Seed(&idmdomain.User{
+	userRepo.Seed(&userdomain.User{
 		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: hash,
 		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
 		CreatedAt: now, UpdatedAt: now,
@@ -1140,7 +1139,7 @@ func mustJSON(t *testing.T, value any) string {
 
 func TestHealthProbes(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	keyStore, _ := signingcrypto.NewInMemoryKeyStore()
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())

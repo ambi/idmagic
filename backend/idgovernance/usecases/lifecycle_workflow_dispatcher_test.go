@@ -12,8 +12,11 @@ import (
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	"github.com/ambi/idmagic/backend/idgovernance/usecases"
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -59,8 +62,8 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := idmmemory.NewUserRepository()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	users := usermemory.NewUserRepository()
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
@@ -96,8 +99,8 @@ func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T)
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := idmmemory.NewUserRepository()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	users := usermemory.NewUserRepository()
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
@@ -134,8 +137,8 @@ func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := idmmemory.NewUserRepository()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	users := usermemory.NewUserRepository()
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
@@ -176,8 +179,8 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := idmmemory.NewUserRepository()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	users := usermemory.NewUserRepository()
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
@@ -211,17 +214,17 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := idmmemory.NewUserRepository()
-	groups := idmmemory.NewGroupRepository()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	users := usermemory.NewUserRepository()
+	groups := groupmemory.NewGroupRepository()
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	group := &idmdomain.Group{ID: "group-1", TenantID: "tenant-a", Name: "Engineering", MembershipType: idmdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
+	group := &groupdomain.Group{ID: "group-1", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
 	if err := groups.Save(ctx, group); err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := groups.AddMember(ctx, &idmdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: now}); err != nil || !ok {
+	if ok, err := groups.AddMember(ctx, &groupdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: now}); err != nil || !ok {
 		t.Fatalf("seed AddMember = %v, %v", ok, err)
 	}
 	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: group.ID}
@@ -250,10 +253,10 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := idmmemory.NewUserRepository()
+	users := usermemory.NewUserRepository()
 	apps := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}

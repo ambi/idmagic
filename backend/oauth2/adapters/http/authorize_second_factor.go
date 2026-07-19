@@ -9,10 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -255,7 +254,7 @@ func (d Deps) finishSecondFactor(
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
 	}
 	d.setSessionCookie(c, completed.SessionID)
-	var user *idmdomain.User
+	var user *userdomain.User
 	found, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID)
 	if err != nil {
 		return err

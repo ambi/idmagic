@@ -10,8 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
@@ -185,7 +184,7 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) requireSystemAdmin(c *echo.Context) (*idmdomain.User, error) {
+func (d Deps) requireSystemAdmin(c *echo.Context) (*userdomain.User, error) {
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err

@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -211,14 +210,14 @@ type ExchangeDeviceCodeResult struct {
 
 type ExchangeDeviceCodeDeps struct {
 	ClientRepo            ports.OAuth2ClientRepository
-	UserRepo              idmports.UserRepository
+	UserRepo              userports.UserRepository
 	DeviceCodeStore       ports.DeviceCodeStore
 	RefreshStore          ports.RefreshTokenStore
 	TokenIssuer           ports.TokenIssuer
 	McpResourceServerRepo ports.McpResourceServerRepository
 	Emit                  func(spec.DomainEvent)
 	// ResolveAttributeDefs は ID Token の属性 claim 生成用 (wi-19)。nil 可。
-	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error)
+	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
 }
 
 func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in ExchangeDeviceCodeInput, now time.Time) (*ExchangeDeviceCodeResult, error) {

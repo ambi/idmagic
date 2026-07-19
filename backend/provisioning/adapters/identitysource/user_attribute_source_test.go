@@ -4,23 +4,24 @@ import (
 	"context"
 	"testing"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/provisioning/adapters/identitysource"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 )
 
 func TestUserAttributeSource_ResolveAttributes_MapsCoreFields(t *testing.T) {
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	ctx := context.Background()
 	name := "Alice Example"
 	given := "Alice"
 	family := "Example"
 	email := "alice@example.com"
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash",
 		Name: &name, GivenName: &given, FamilyName: &family, Email: &email,
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 	}
 	if err := userRepo.Save(ctx, user); err != nil {
 		t.Fatalf("Save() error = %v", err)
@@ -46,9 +47,9 @@ func TestUserAttributeSource_ResolveAttributes_MapsCoreFields(t *testing.T) {
 }
 
 func TestUserAttributeSource_ResolveAttributes_NotFoundOrOtherTenant(t *testing.T) {
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	ctx := context.Background()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusActive}}
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}}
 	_ = userRepo.Save(ctx, user)
 
 	source := &identitysource.UserAttributeSource{UserRepo: userRepo}
@@ -63,9 +64,9 @@ func TestUserAttributeSource_ResolveAttributes_NotFoundOrOtherTenant(t *testing.
 }
 
 func TestUserAttributeSource_ResolveAttributes_DisabledUserIsInactive(t *testing.T) {
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	ctx := context.Background()
-	user := &idmdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}}
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}}
 	_ = userRepo.Save(ctx, user)
 
 	source := &identitysource.UserAttributeSource{UserRepo: userRepo}
@@ -85,11 +86,11 @@ func TestUserAttributeSource_ResolveAttributes_DisabledUserIsInactive(t *testing
 // never reach the downstream (FindBySub excludes deleted users; the fix uses
 // FindBySubIncludingDeleted).
 func TestUserAttributeSource_ResolveAttributes_DeletedUserStillResolvesAsInactive(t *testing.T) {
-	userRepo := idmmemory.NewUserRepository()
+	userRepo := usermemory.NewUserRepository()
 	ctx := context.Background()
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID: "user-1", TenantID: "tenant-a", PreferredUsername: "deleted:user-1", PasswordHash: "hash",
-		Lifecycle: idmdomain.UserLifecycle{Status: idmdomain.UserStatusDeleted},
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDeleted},
 	}
 	if err := userRepo.Save(ctx, user); err != nil {
 		t.Fatalf("Save() error = %v", err)

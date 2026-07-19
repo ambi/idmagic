@@ -12,8 +12,7 @@ import (
 
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 
-	idmmemory "github.com/ambi/idmagic/backend/idmanagement/adapters/persistence/memory"
-
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
@@ -64,7 +63,7 @@ func newTokenExchangeServer(t *testing.T) string {
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
 			McpResourceServerRepo: resourceServers,
 		},
-		UserRepo: idmmemory.NewUserRepository(),
+		UserRepo: usermemory.NewUserRepository(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	})
 	srv := httptest.NewServer(e)

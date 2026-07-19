@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 )
 
@@ -15,7 +15,7 @@ func TestUserRepositorySaveAndFind(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	user := &idmdomain.User{
+	user := &userdomain.User{
 		ID:                newUUID(t),
 		TenantID:          tenant.ID,
 		PreferredUsername: "alice",
