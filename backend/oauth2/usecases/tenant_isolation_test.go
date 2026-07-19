@@ -86,7 +86,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 	})
 
 	store := oauth2memory.NewRefreshTokenStore()
-	gen, err := domain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, nil, time.Now().UTC())
+	gen, err := domain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, nil, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

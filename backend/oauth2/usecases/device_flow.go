@@ -317,7 +317,9 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 
-	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, now)
+	// device_code は resource indicator 未対応のまま (RFC8707-MCP-RESOURCE-BINDING、
+	// MCP 認可仕様が要求する利用パターンではないため)。sid と同様 nil を渡す。
+	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, nil, now)
 	if err != nil {
 		return nil, err
 	}

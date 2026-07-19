@@ -27,7 +27,7 @@ func HashRefreshToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, sid *string, now time.Time) (*GeneratedRefreshToken, error) {
+func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, sid, resource *string, now time.Time) (*GeneratedRefreshToken, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -56,6 +56,7 @@ func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *Send
 		AbsoluteExpiresAt: now.Add(refreshTokenAbsoluteTTL),
 		SenderConstraint:  sc,
 		Sid:               sid,
+		Resource:          resource,
 	}
 	if err := rec.Validate(); err != nil {
 		return nil, err
@@ -95,6 +96,7 @@ func RotateRefreshToken(parent *RefreshTokenRecord, now time.Time) (*GeneratedRe
 		AbsoluteExpiresAt: parent.AbsoluteExpiresAt,
 		SenderConstraint:  parent.SenderConstraint,
 		Sid:               parent.Sid,
+		Resource:          parent.Resource,
 	}
 	if err := rec.Validate(); err != nil {
 		return nil, err

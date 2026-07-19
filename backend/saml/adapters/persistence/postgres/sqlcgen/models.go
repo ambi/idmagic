@@ -439,6 +439,7 @@ type RefreshToken struct {
 	Rotated           bool
 	SenderConstraint  []byte
 	Sid               pgtype.UUID
+	Resource          pgtype.Text
 }
 
 type SamlServiceProvider struct {

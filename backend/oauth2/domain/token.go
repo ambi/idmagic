@@ -102,6 +102,10 @@ type RefreshTokenRecord struct {
 	// Sid は発行元 AuthorizationCodeRecord.sid。Rotate では親の値をそのまま引き継ぐ。
 	// nil は client_credentials 等 browser session を持たない発行 (ADR-127)。
 	Sid *string `json:"sid,omitempty"`
+	// Resource は発行元の resource indicator (ADR-055)。Rotate では親の値をそのまま
+	// 引き継ぎ、ローテーション後も同じ McpResourceServer へ audience を厳格限定する
+	// (wi-262)。nil は resource 未指定の発行。
+	Resource *string `json:"resource,omitempty"`
 }
 
 func (r RefreshTokenRecord) Validate() error { return spec.ValidateRefreshTokenRecord(&r) }

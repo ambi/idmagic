@@ -306,6 +306,10 @@ CREATE TABLE refresh_tokens (
     -- (housekeeping retention による物理削除が refresh_tokens 側の revoke 状態と独立して
     -- 進めるようにするため、ADR-082 の opaque cross-context reference と同じ扱い)。
     sid UUID,
+    -- resource indicator (RFC 8707, ADR-055)。発行元 (authorization_code redemption)
+    -- で束縛された resource をローテーションを跨いで保持する (wi-262)。NULL は
+    -- resource 未指定の発行。
+    resource TEXT,
     CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
     CONSTRAINT refresh_tokens_parent_id_fkey
         FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,

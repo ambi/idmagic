@@ -279,3 +279,50 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}
 }
+
+// ADR-055/wi-262: resource indicator (RFC 8707) の audience 束縛が Postgres 永続化を
+// 跨いで保持されることを確認する。
+func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	store := &RefreshTokenStore{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	resource := "https://mcp.example.com/tools/github"
+	gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, &resource, now)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	gen.Record.TenantID = tenant.ID
+	if err := store.Save(ctx, gen.Record); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	found, err := store.FindByHash(ctx, gen.Record.Hash)
+	if err != nil || found == nil {
+		t.Fatalf("find by hash: %v %+v", err, found)
+	}
+	if found.Resource == nil || *found.Resource != resource {
+		t.Fatalf("expected resource to round-trip, got %v", found.Resource)
+	}
+
+	rotated, err := domain.RotateRefreshToken(found, now.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	rotated.Record.TenantID = tenant.ID
+	if _, err := store.Rotate(ctx, found.ID, rotated.Record); err != nil {
+		t.Fatalf("store rotate: %v", err)
+	}
+
+	afterRotation, err := store.FindByHash(ctx, rotated.Record.Hash)
+	if err != nil || afterRotation == nil {
+		t.Fatalf("find rotated by hash: %v %+v", err, afterRotation)
+	}
+	if afterRotation.Resource == nil || *afterRotation.Resource != resource {
+		t.Fatalf("expected resource to survive rotation round-trip, got %v", afterRotation.Resource)
+	}
+}

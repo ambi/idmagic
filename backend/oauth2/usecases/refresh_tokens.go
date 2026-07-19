@@ -111,17 +111,28 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
 
+	// resource indicator (ADR-055, wi-262): 初回発行時に束縛された resource を
+	// rotation を跨いで保持する。RotateRefreshToken が parent.Resource を
+	// 新レコードへ引き継ぎ済みなので、ここでは newTok.Record.Resource を使う。
+	var audiences []string
+	if newTok.Record.Resource != nil {
+		audiences = []string{*newTok.Record.Resource}
+	}
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:           client,
 		Sub:              record.UserID,
 		Scopes:           record.Scopes,
 		SenderConstraint: record.SenderConstraint,
 		AuthTime:         now.Unix(),
+		Audiences:        audiences,
 	})
 	if err != nil {
 		return nil, err
 	}
 	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: record.UserID, Scopes: record.Scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
+	if newTok.Record.Resource != nil {
+		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *newTok.Record.Resource, Scopes: record.Scopes})
+	}
 
 	tokenType := "Bearer"
 	if record.SenderConstraint != nil && record.SenderConstraint.Type == spec.SenderConstraintDPoP {

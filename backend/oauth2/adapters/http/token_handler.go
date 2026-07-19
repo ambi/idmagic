@@ -151,6 +151,16 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 				return writeOAuthError(c, usecases.NewOAuthError("invalid_scope", "宣言外のスコープ"))
 			}
 		}
+		// RFC 8707 resource indicator (ADR-055, wi-262) — 指定時は登録済み Active な
+		// McpResourceServer に audience を限定する。未指定時は従来どおり client_id。
+		mcpResourceServer, err := usecases.ResolveResourceIndicator(ctx, d.McpResourceServerRepo, support.RequestTenantID(c), c.Request().PostForm["resource"], scopes)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
+		var audiences []string
+		if mcpResourceServer != nil {
+			audiences = []string{mcpResourceServer.Resource}
+		}
 		var sc *domain.SenderConstraint
 		if dpopJKT != "" {
 			sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: dpopJKT}
@@ -175,6 +185,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		token, jti, err := d.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 			Client: client, Sub: client.ClientID, Scopes: scopes,
 			SenderConstraint: sc, AuthTime: now.Unix(), AgentID: agentID,
+			Audiences: audiences,
 		})
 		if err != nil {
 			return writeOAuthError(c, err)
@@ -185,6 +196,9 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 				tag = string(sc.Type)
 			}
 			d.Emit(&domain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag})
+			if mcpResourceServer != nil {
+				d.Emit(&domain.ResourceScopedTokenIssued{At: now, TenantID: support.RequestTenantID(c), ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
+			}
 		}
 		tokenType := "Bearer"
 		if sc != nil && sc.Type == spec.SenderConstraintDPoP {

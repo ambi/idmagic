@@ -95,6 +95,9 @@ func refreshFromRow(row *sqlcgen.GetRefreshTokenByHashRow) (*domain.RefreshToken
 	if sid, ok := row.Sid.(string); ok && sid != "" {
 		rec.Sid = &sid
 	}
+	if row.Resource.Valid {
+		rec.Resource = &row.Resource.String
+	}
 	if err := json.Unmarshal(row.Scopes, &rec.Scopes); err != nil {
 		return nil, err
 	}
@@ -123,10 +126,14 @@ func refreshInsertParams(rec *domain.RefreshTokenRecord) (sqlcgen.InsertRefreshT
 	if rec.Sid != nil {
 		_ = sid.Scan(*rec.Sid)
 	}
+	resource := pgtype.Text{}
+	if rec.Resource != nil {
+		resource = pgtype.Text{String: *rec.Resource, Valid: true}
+	}
 	return sqlcgen.InsertRefreshTokenParams{
 		ID: rec.ID, Hash: rec.Hash, FamilyID: rec.FamilyID,
 		ParentID: parentID, ClientID: rec.ClientID, UserID: rec.UserID, Scopes: scopes, IssuedAt: rec.IssuedAt,
 		ExpiresAt: rec.ExpiresAt, AbsoluteExpiresAt: rec.AbsoluteExpiresAt, Revoked: rec.Revoked, Rotated: rec.Rotated,
-		Column13: string(constraint), Sid: sid,
+		Column13: string(constraint), Sid: sid, Resource: resource,
 	}, nil
 }

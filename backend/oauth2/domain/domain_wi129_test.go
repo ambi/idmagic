@@ -285,7 +285,7 @@ func TestGenerateInitialRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	sc := &SenderConstraint{Type: SenderConstraintDPoP, JKT: "jkt-1"}
 	sid := "session-1"
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, &sid, now)
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, &sid, nil, now)
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestGenerateInitialRefreshToken(t *testing.T) {
 
 func TestGenerateInitialRefreshToken_NilSid(t *testing.T) {
 	// client_credentials 等 browser session を持たない発行では sid は nil のまま (ADR-127)。
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, time.Now().UTC())
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestGenerateInitialRefreshToken_NilSid(t *testing.T) {
 }
 
 func TestGenerateInitialRefreshToken_ZeroNow(t *testing.T) {
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, time.Time{})
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, time.Time{})
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -341,7 +341,8 @@ func TestGenerateInitialRefreshToken_ZeroNow(t *testing.T) {
 func TestRotateRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	sid := "session-1"
-	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, &sid, now)
+	resource := "https://mcp.example.com/tools"
+	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, &sid, &resource, now)
 	if err != nil {
 		t.Fatalf("親生成に失敗: %v", err)
 	}
@@ -362,6 +363,26 @@ func TestRotateRefreshToken(t *testing.T) {
 	// ADR-127: rotate 後も親の sid をそのまま引き継ぐ。
 	if rec.Sid == nil || *rec.Sid != sid {
 		t.Errorf("Sid が rotate で引き継がれていない: %v", rec.Sid)
+	}
+	// ADR-055/wi-262: rotate 後も親の resource indicator をそのまま引き継ぐ。
+	if rec.Resource == nil || *rec.Resource != resource {
+		t.Errorf("Resource が rotate で引き継がれていない: %v", rec.Resource)
+	}
+}
+
+// ADR-055/wi-262: resource 未指定の初回発行は rotate 後も Resource が nil のまま。
+func TestRotateRefreshToken_NilResourceStaysNil(t *testing.T) {
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, now)
+	if err != nil {
+		t.Fatalf("親生成に失敗: %v", err)
+	}
+	rotated, err := RotateRefreshToken(parent.Record, now.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("回転に失敗: %v", err)
+	}
+	if rotated.Record.Resource != nil {
+		t.Errorf("Resource は nil のはず: %v", rotated.Record.Resource)
 	}
 }
 

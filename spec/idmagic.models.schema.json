@@ -10423,6 +10423,10 @@
         "sid": {
           "type": "string",
           "description": "発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を\nそのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。\nAuthentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)\nを本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる (wi-28)。\n"
+        },
+        "resource": {
+          "$ref": "#/$defs/ResourceIndicator",
+          "description": "発行元 (AuthorizationCodeRecord.resource) の resource indicator (ADR-055)。\nRotate では親の値をそのまま引き継ぎ、ローテーション後も同じ McpResourceServer へ\naudience を厳格限定する (wi-262)。null は resource 未指定の発行。\n"
         }
       },
       "additionalProperties": false,
@@ -12889,7 +12893,7 @@
         },
         "resource": {
           "$ref": "#/$defs/ResourceIndicator",
-          "description": "RFC 8707 — authorization_code redemption と token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。client_credentials / refresh_token / device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
+          "description": "RFC 8707 — authorization_code redemption・client_credentials・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
         }
       },
       "additionalProperties": false,

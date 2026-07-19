@@ -278,7 +278,7 @@ standards:
         section: §2
         strength: MUST
         adoption: partial
-        reason: "MCP (ADR-055) 向けの resource indicator 必須化・登録済み McpResourceServer への audience 厳格限定・fail-closed 拒否は Authorize / PushAuthorizationRequest / Token(authorization_code redemption) / Token(token-exchange) の 4 経路にのみ実装する。Token(client_credentials) / Token(refresh_token rotation) / DeviceAuthorization は resource パラメータを受理せず、常に client_id を audience とする既存動作のまま変更しない (follow-up work item 待ち)。"
+        reason: "MCP (ADR-055) 向けの resource indicator 必須化・登録済み McpResourceServer への audience 厳格限定・fail-closed 拒否は Authorize / PushAuthorizationRequest / Token(authorization_code redemption) / Token(authorization_code refresh rotation) / Token(client_credentials) / Token(token-exchange) の 6 経路に実装する (wi-262)。Token(refresh_token rotation) は初回発行時に束縛した resource を rotation を跨いで保持する。DeviceAuthorization のみ resource パラメータを受理せず、常に client_id を audience とする既存動作のまま変更しない — MCP 認可仕様がクライアントに要求する利用パターンではないため (input-constrained device 向け grant であり、MCP クライアントはフル機能アプリ/ブラウザを前提とする)。"
         statement: "resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する (ADR-055)。"
   RFC9068:
     title: JSON Web Token Profile for OAuth 2.0 Access Tokens
@@ -1529,6 +1529,10 @@ models:
         type: String
         optional: true
         description: "発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を\nそのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。\nAuthentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)\nを本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる (wi-28)。\n"
+      resource:
+        type: ResourceIndicator
+        optional: true
+        description: "発行元 (AuthorizationCodeRecord.resource) の resource indicator (ADR-055)。\nRotate では親の値をそのまま引き継ぎ、ローテーション後も同じ McpResourceServer へ\naudience を厳格限定する (wi-262)。null は resource 未指定の発行。\n"
   ClientSession:
     kind: entity
     description: "ある browser session (sid) が特定の OAuth2Client (RP) に対して認証結果を\n発行した記録 (RP participation)。sid は Authentication の LoginSession.id と同値で\nRP 間で共通。session 状態そのものはここに複製せず、session revoke 時にどの RP へ\nfront/back-channel logout を通知するかを解決する索引としてのみ使う (wi-28)。\n"
@@ -2446,7 +2450,7 @@ models:
       resource:
         type: ResourceIndicator
         optional: true
-        description: "RFC 8707 — authorization_code redemption と token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。client_credentials / refresh_token / device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
+        description: "RFC 8707 — authorization_code redemption・client_credentials・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
   TokenResponse:
     kind: value_object
     description: /token 成功時のレスポンスボディ (RFC 6749 §5.1)。発行されたトークン一式と種別を返す。
@@ -3712,12 +3716,14 @@ interfaces:
       - token_request_references_are_tenant_local(context.tenant_id, input.request)
       - dpop_proof_is_fresh_and_unique(context.dpop_proof)
       - input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)
+      - input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)
       - input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)
     ensures:
       - output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)
       - input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request)
       - input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request)
       - input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token)
+      - input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token)
       - "!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)"
       - client_authentication_failures_are_uniform()
     emits:

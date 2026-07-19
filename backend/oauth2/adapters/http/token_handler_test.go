@@ -29,8 +29,9 @@ import (
 )
 
 type tokenFixture struct {
-	e          *echo.Echo
-	clientRepo *oauth2memory.OAuth2ClientRepository
+	e                     *echo.Echo
+	clientRepo            *oauth2memory.OAuth2ClientRepository
+	mcpResourceServerRepo *oauth2memory.McpResourceServerRepository
 }
 
 func newTokenServer(t *testing.T) tokenFixture {
@@ -73,13 +74,18 @@ func newTokenServer(t *testing.T) tokenFixture {
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
 
+	mcpResourceServerRepo := oauth2memory.NewMcpResourceServerRepository()
+
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Deps: support.Deps{
 			Issuer:     "http://test",
 			TenantRepo: tenancymemory.NewTenantRepository(),
 		},
-		OAuth2:            oauth2.Module{ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist()},
+		OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
+			McpResourceServerRepo: mcpResourceServerRepo,
+		},
 		KeyStore:          keyStore,
 		TokenIssuer:       tokenIssuer,
 		TokenIntrospector: tokenIssuer,
@@ -93,8 +99,9 @@ func newTokenServer(t *testing.T) tokenFixture {
 	httpadapter.Register(e, deps)
 
 	return tokenFixture{
-		e:          e,
-		clientRepo: clientRepo,
+		e:                     e,
+		clientRepo:            clientRepo,
+		mcpResourceServerRepo: mcpResourceServerRepo,
 	}
 }
 
