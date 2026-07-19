@@ -12893,7 +12893,7 @@
         },
         "resource": {
           "$ref": "#/$defs/ResourceIndicator",
-          "description": "RFC 8707 — authorization_code redemption・client_credentials・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
+          "description": "RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。"
         }
       },
       "additionalProperties": false,

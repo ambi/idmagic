@@ -195,6 +195,9 @@ type ExchangeDeviceCodeInput struct {
 	DeviceCode   string
 	ProofJKT     string
 	ProofX5TS256 string
+	// Resource は RFC 8707 resource indicator (ADR-055, wi-264)。form の resource は
+	// 複数指定され得るため slice で受ける (単一値以外は invalid_target)。
+	Resource []string
 }
 
 type ExchangeDeviceCodeResult struct {
@@ -207,12 +210,13 @@ type ExchangeDeviceCodeResult struct {
 }
 
 type ExchangeDeviceCodeDeps struct {
-	ClientRepo      ports.OAuth2ClientRepository
-	UserRepo        idmports.UserRepository
-	DeviceCodeStore ports.DeviceCodeStore
-	RefreshStore    ports.RefreshTokenStore
-	TokenIssuer     ports.TokenIssuer
-	Emit            func(spec.DomainEvent)
+	ClientRepo            ports.OAuth2ClientRepository
+	UserRepo              idmports.UserRepository
+	DeviceCodeStore       ports.DeviceCodeStore
+	RefreshStore          ports.RefreshTokenStore
+	TokenIssuer           ports.TokenIssuer
+	McpResourceServerRepo ports.McpResourceServerRepository
+	Emit                  func(spec.DomainEvent)
 	// ResolveAttributeDefs は ID Token の属性 claim 生成用 (wi-19)。nil 可。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]idmdomain.UserAttributeDef, error)
 }
@@ -301,11 +305,28 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
 	}
 
+	// RFC 8707 resource indicator (ADR-055, wi-264) — 指定時は登録済み Active な
+	// McpResourceServer に audience を限定する。未指定時は従来どおり client_id。
+	mcpResourceServer, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, rec.Scopes)
+	if err != nil {
+		return nil, err
+	}
+	var resource *string
+	var audiences []string
+	if mcpResourceServer != nil {
+		resource = &mcpResourceServer.Resource
+		audiences = []string{mcpResourceServer.Resource}
+	}
+
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client: client, Sub: user.ID, Scopes: rec.Scopes, SenderConstraint: sc, AuthTime: *rec.AuthTime,
+		Audiences: audiences,
 	})
 	if err != nil {
 		return nil, err
+	}
+	if mcpResourceServer != nil {
+		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: rec.Scopes})
 	}
 	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: rec.Scopes, SenderConstraint: senderConstraintTag(sc)})
 
@@ -317,9 +338,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 
-	// device_code は resource indicator 未対応のまま (RFC8707-MCP-RESOURCE-BINDING、
-	// MCP 認可仕様が要求する利用パターンではないため)。sid と同様 nil を渡す。
-	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, nil, now)
+	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, resource, now)
 	if err != nil {
 		return nil, err
 	}

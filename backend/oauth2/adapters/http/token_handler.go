@@ -217,12 +217,14 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		res, err := usecases.ExchangeDeviceCode(ctx, usecases.ExchangeDeviceCodeDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			DeviceCodeStore: d.DeviceCodeStore, RefreshStore: d.RefreshStore,
-			TokenIssuer:          d.TokenIssuer,
-			Emit:                 d.Emit,
-			ResolveAttributeDefs: d.effectiveUserAttributeDefs,
+			TokenIssuer:           d.TokenIssuer,
+			McpResourceServerRepo: d.McpResourceServerRepo,
+			Emit:                  d.Emit,
+			ResolveAttributeDefs:  d.effectiveUserAttributeDefs,
 		}, usecases.ExchangeDeviceCodeInput{
 			ClientID: clientStub.ID, DeviceCode: dc,
 			ProofJKT: dpopJKT, ProofX5TS256: clientStub.MTLSThumbprintS256,
+			Resource: c.Request().PostForm["resource"],
 		}, now)
 		if err != nil {
 			return writeOAuthError(c, err)

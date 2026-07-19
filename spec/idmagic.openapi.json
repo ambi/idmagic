@@ -6665,6 +6665,7 @@
           "dpop_proof_is_fresh_and_unique(context.dpop_proof)",
           "input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)",
           "input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
+          "input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
           "input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)"
         ],
         "x-scl-ensures": [
@@ -6676,7 +6677,7 @@
           "!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)",
           "client_authentication_failures_are_uniform()"
         ],
-        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform()",
+        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform()",
         "security": [
           {
             "SclBearer": []
@@ -28604,7 +28605,7 @@
           },
           "resource": {
             "$ref": "#/components/schemas/ResourceIndicator",
-            "description": "RFC 8707 — authorization_code redemption・client_credentials・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。device_code grant では未対応 (RFC8707-MCP-RESOURCE-BINDING adoption: partial)。"
+            "description": "RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。"
           }
         },
         "additionalProperties": false,
