@@ -931,16 +931,18 @@ modules:
       - { module: shared-spec, via: binding }
   seeding-domain:
     path: backend/seeding/domain
-    responsibility: "Seeding の環境 policy、profile、plan と純粋な検証規則。"
+    responsibility: "Seeding の環境 policy、profile、versioned manifest、secret reference、plan と純粋な検証規則。"
     context: Seeding
     layer: domain
     role: published_interface
     realizes:
       - { context: Seeding, kind: model, element: SeedRequest }
       - { context: Seeding, kind: model, element: SeedPlan }
+      - { context: Seeding, kind: model, element: SeedManifest }
+      - { context: Seeding, kind: model, element: SeedSecretReference }
   seeding-usecases:
     path: backend/seeding/usecases
-    responsibility: "Seed request の安全な検証と、将来の context contributor orchestration を担う application service。"
+    responsibility: "Seed request、manifest materialization、secret resolver port と context contributor orchestration を担う application service。"
     context: Seeding
     layer: use_cases
     role: published_interface
@@ -948,6 +950,15 @@ modules:
       - { context: Seeding, kind: interface, element: SeedData }
     depends_on:
       - { module: seeding-domain, via: published_interface }
+  seeding-manifest-adapter:
+    path: backend/seeding/adapters/manifest
+    responsibility: "Strict YAML/include loader と env/file secret resolver により外部 seed manifest を安全に materialize する adapter。"
+    context: Seeding
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: seeding-domain, via: published_interface }
+      - { module: seeding-usecases, via: published_interface }
   oauth2-domain:
     path: backend/oauth2/domain
 
@@ -2030,6 +2041,7 @@ modules:
       - { module: saml-public, via: composition_root }
       - { module: scim-adapters, via: composition_root }
       - { module: scim-public, via: composition_root }
+      - { module: seeding-manifest-adapter, via: composition_root }
       - { module: seeding-domain, via: composition_root }
       - { module: seeding-usecases, via: composition_root }
       - { module: shared-adapters, via: technical_shared }

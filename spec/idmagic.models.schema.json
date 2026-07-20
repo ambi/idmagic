@@ -11347,6 +11347,40 @@
         "production"
       ]
     },
+    "SeedManifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "$ref": "#/$defs/SeedProfileKind"
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "root manifest directory 内のローカル相対 path。循環、root 外 path、remote URL は拒否する。"
+        },
+        "resources": {
+          "type": "object",
+          "description": "対応する record context の公開 command surface へ渡す型付き desired resource。未知 kind と重複 logical key は拒否する。"
+        },
+        "generators": {
+          "type": "object",
+          "description": "profile と明示 seed から決定する bounded generator。performance user は login-disabled で秘密値を持たない。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "profile",
+        "resources"
+      ],
+      "description": "profile ごとの型付き desired resource、include、決定的 generator を持つ versioned manifest。秘密値は SeedSecretReference だけで表す。"
+    },
     "SeedMode": {
       "type": "string",
       "enum": [
@@ -11417,6 +11451,10 @@
         "profile": {
           "$ref": "#/$defs/SeedProfileKind"
         },
+        "manifest_path": {
+          "type": "string",
+          "description": "明示 root manifest path。未指定時は profile ごとの repository default を選ぶ。"
+        },
         "mode": {
           "$ref": "#/$defs/SeedMode"
         },
@@ -11452,6 +11490,36 @@
         "mode"
       ],
       "description": "profile を計画または適用する入力。profile と environment は必須で、件数を増やす場合も明示する。"
+    },
+    "SeedSecretProvider": {
+      "type": "string",
+      "enum": [
+        "env",
+        "file"
+      ]
+    },
+    "SeedSecretReference": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/SeedSecretProvider"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "locator",
+        "version"
+      ],
+      "description": "秘密値を materialize するための opaque reference。version は同一 secret の意図した rotation を識別する。"
     },
     "SenderConstraintCnf": {
       "type": "object",

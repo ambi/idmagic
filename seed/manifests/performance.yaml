@@ -1,0 +1,11 @@
+schema_version: "1"
+profile: performance
+resources:
+  - kind: first_party_clients
+    logical_key: first-party-portals
+    clients:
+      - {id: 00000000-0000-4000-8000-000000000022, name: IdMagic Admin Console, scope: "openid profile idmagic.admin offline_access"}
+      - {id: 00000000-0000-4000-8000-000000000023, name: IdMagic Account Portal, scope: "openid profile idmagic.account offline_access"}
+generators:
+  - kind: performance_users
+    logical_key: performance-users

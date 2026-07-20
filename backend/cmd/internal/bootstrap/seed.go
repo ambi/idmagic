@@ -24,6 +24,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -31,15 +32,8 @@ import (
 // UUID にする。再起動で重複しないよう固定し、UI (frontend/src/api/oidc.ts / authFlow.ts) の
 // OIDC 設定と application binding もこの値を参照する。
 const (
-	seedUserAliceID = "00000000-0000-4000-8000-000000000001"
-	seedUserRootID  = "00000000-0000-4000-8000-000000000002"
-
-	seedGroupEngineeringID = "00000000-0000-4000-8000-000000000011"
-	seedGroupSupportID     = "00000000-0000-4000-8000-000000000012"
-
-	seedDemoClientID          = "00000000-0000-4000-8000-000000000021"
-	seedAdminConsoleClientID  = "00000000-0000-4000-8000-000000000022"
-	seedAccountPortalClientID = "00000000-0000-4000-8000-000000000023"
+	seedUserAliceID  = "00000000-0000-4000-8000-000000000001" // test assertion for the repository default manifest
+	seedDemoClientID = "00000000-0000-4000-8000-000000000021" // test assertion for the repository default manifest
 )
 
 // seedDemoData は SKIP_DEMO_SEED が空のとき、デモ用クライアントとユーザーを 1 件投入する。
@@ -53,17 +47,17 @@ func SeedDemoData(
 	groups groupports.GroupRepository,
 	authzDetailTypes oauthports.AuthorizationDetailTypeRepository,
 	hasher passwordports.PasswordHasher,
+	seed domain.DevelopmentDemoSeed,
+	clientSecret string,
+	password string,
+	totpSecret string,
 ) error {
-	secretHash := oauthdomain.HashClientSecret(EnvDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
+	secretHash := oauthdomain.HashClientSecret(clientSecret)
 	now := time.Now().UTC()
 	demoClient := &oauthdomain.OAuth2Client{
-		TenantID: tenancydomain.DefaultTenantID, ClientID: seedDemoClientID,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: seed.ClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
-		RedirectURIs: []string{
-			"http://localhost:3000/callback",
-			"http://localhost:5173/callback",
-			"http://localhost:8080/callback",
-		},
+		RedirectURIs: seed.ClientRedirectURIs,
 		GrantTypes: []spec.GrantType{
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken,
 			spec.GrantClientCredentials, spec.GrantDeviceCode,
@@ -81,54 +75,33 @@ func SeedDemoData(
 		if err := clients.Save(ctx, demoClient); err != nil {
 			return err
 		}
-	} else if !sameDemoClient(currentClient, demoClient, EnvDefault("DEMO_CLIENT_SECRET", "demo-client-secret")) {
-		return fmt.Errorf("seed drift at oauth2-client:%s", seedDemoClientID)
+	} else if !sameDemoClient(currentClient, demoClient, clientSecret) {
+		return fmt.Errorf("seed drift at oauth2-client:%s", seed.ClientID)
 	}
-	if err := seedFirstPartyPortalClients(ctx, clients, now); err != nil {
-		return err
-	}
-	password := EnvDefault("DEMO_USER_PASSWORD", "demo-password-1234")
 	if result := passwordusecases.ValidatePassword(password); !result.OK {
-		return errors.New("DEMO_USER_PASSWORD violates password policy")
+		return errors.New("seed user password violates password policy")
 	}
 	hash, err := hasher.Hash(password)
 	if err != nil {
 		return err
 	}
-	email := "alice@example.com"
-	totpSecret := EnvDefault("DEMO_TOTP_SECRET", "")
-	alice := &userdomain.User{
-		ID: seedUserAliceID, TenantID: tenancydomain.DefaultTenantID,
-		PreferredUsername: "alice", PasswordHash: hash,
-		Email: &email, EmailVerified: true, MfaEnrolled: totpSecret != "",
-		Roles:     []string{"admin"},
-		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
-		CreatedAt: now, UpdatedAt: now,
+	for index, configured := range seed.Users {
+		email := configured.Email
+		user := &userdomain.User{
+			ID: configured.ID, TenantID: tenancydomain.DefaultTenantID,
+			PreferredUsername: configured.PreferredUsername, PasswordHash: hash,
+			Email: &email, EmailVerified: true, MfaEnrolled: index == 0 && totpSecret != "",
+			Roles: configured.Roles, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+			CreatedAt: now, UpdatedAt: now,
+		}
+		if err := ensureDemoUser(ctx, users, passwordHistory, hasher, user, password, now); err != nil {
+			return err
+		}
 	}
-	if err := ensureDemoUser(ctx, users, passwordHistory, hasher, alice, password, now); err != nil {
+	if err := seedDemoGroups(ctx, groups, seed.Groups, now); err != nil {
 		return err
 	}
-	// root は super-admin デモユーザー。system_admin はテナント横断の管理操作
-	// (例: /admin/keys/health の全テナント署名鍵ヘルス) 専用ロールで admin の
-	// 上位集合ではないため、一般管理コンソール (RequireAdmin が要求する admin
-	// ロール) とあわせて両方を付与し、全画面を試せるようにする。alice とは別に
-	// 用意し、既定テナントに所属する。
-	rootEmail := "root@example.com"
-	root := &userdomain.User{
-		ID: seedUserRootID, TenantID: tenancydomain.DefaultTenantID,
-		PreferredUsername: "root", PasswordHash: hash,
-		Email: &rootEmail, EmailVerified: true,
-		Roles:     []string{"admin", "system_admin"},
-		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
-		CreatedAt: now, UpdatedAt: now,
-	}
-	if err := ensureDemoUser(ctx, users, passwordHistory, hasher, root, password, now); err != nil {
-		return err
-	}
-	if err := seedDemoGroups(ctx, groups, now); err != nil {
-		return err
-	}
-	if err := seedDemoAuthorizationDetailTypes(ctx, authzDetailTypes, now); err != nil {
+	if err := seedDemoAuthorizationDetailTypes(ctx, authzDetailTypes, seed.AuthorizationDetailType, now); err != nil {
 		return err
 	}
 	if totpSecret == "" {
@@ -136,9 +109,9 @@ func SeedDemoData(
 	}
 	label := "Demo TOTP"
 	desiredFactor := &totpdomain.MfaFactor{
-		UserID: seedUserAliceID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
+		UserID: seed.Users[0].ID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
 	}
-	existingFactor, err := mfaFactors.Find(ctx, seedUserAliceID, spec.MfaFactorTOTP)
+	existingFactor, err := mfaFactors.Find(ctx, seed.Users[0].ID, spec.MfaFactorTOTP)
 	if err != nil {
 		return err
 	}
@@ -146,7 +119,7 @@ func SeedDemoData(
 		return mfaFactors.Save(ctx, desiredFactor)
 	}
 	if !sameMfaFactor(existingFactor, desiredFactor) {
-		return fmt.Errorf("seed drift at mfa-factor:%s:totp", seedUserAliceID)
+		return fmt.Errorf("seed drift at mfa-factor:%s:totp", seed.Users[0].ID)
 	}
 	return nil
 }
@@ -209,41 +182,6 @@ func sameMfaFactor(actual, desired *totpdomain.MfaFactor) bool {
 	return reflect.DeepEqual(left, right)
 }
 
-// seedFirstPartyPortalClients は管理コンソールとアカウントポータルを自分自身の IdP の
-// OIDC RP として登録する (ADR-061 / [[wi-66-portals-as-oidc-rp]])。両者は public +
-// authorization_code + PKCE のファーストパーティ SPA クライアントで、client secret を
-// 持たない (token_endpoint_auth_method = none)。redirect_uri は SPA の `/callback`。
-func seedFirstPartyPortalClients(ctx context.Context, clients oauthports.OAuth2ClientRepository, now time.Time) error {
-	portals := []struct {
-		clientID string
-		name     string
-		scope    string
-	}{
-		{seedAdminConsoleClientID, "IdMagic Admin Console", "openid profile idmagic.admin offline_access"},
-		{seedAccountPortalClientID, "IdMagic Account Portal", "openid profile idmagic.account offline_access"},
-	}
-	for _, p := range portals {
-		name := p.name
-		if err := clients.Save(ctx, &oauthdomain.OAuth2Client{
-			TenantID: tenancydomain.DefaultTenantID, ClientID: p.clientID,
-			ClientName: &name, ClientType: spec.ClientPublic,
-			RedirectURIs: []string{
-				"http://localhost:3000/callback",
-				"http://localhost:5173/callback",
-				"http://localhost:8080/callback",
-			},
-			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
-			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-			TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
-			Scope:                   p.scope, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-			FapiProfile: oauthdomain.FapiNone, FirstParty: true, CreatedAt: now, UpdatedAt: now,
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // seedDemoApplications は既存の OIDC クライアント / WS-Fed RP を「アプリケーション」として
 // カタログに登録する。管理コンソール・アカウントポータル・demo-client・demo WS-Fed RP を
 // federated Application として binding 接続し、いずれも user_alice に割り当てる。これにより
@@ -253,27 +191,21 @@ func SeedDemoApplications(
 	ctx context.Context,
 	apps appports.ApplicationRepository,
 	assignments appports.AssignmentRepository,
+	seed domain.DevelopmentDemoSeed,
 	now time.Time,
 ) error {
 	if apps == nil {
 		return nil
 	}
-	seeds := []struct {
-		id        string
-		name      string
-		launchURL string
-		binding   appdomain.ProtocolBinding
-	}{
-		{"00000000-0000-4000-8000-000000000101", "IdMagic Admin Console", "/realms/default/admin", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: seedAdminConsoleClientID}},
-		{"00000000-0000-4000-8000-000000000102", "IdMagic Account Portal", "/realms/default/account", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: seedAccountPortalClientID}},
-		{"00000000-0000-4000-8000-000000000103", "Demo Client", "", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: seedDemoClientID}},
-		{"00000000-0000-4000-8000-000000000104", "Demo WS-Federation RP", "https://rp.example/wsfed", appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingWsFed, Wtrealm: "urn:idmagic:demo-rp"}},
-	}
-	for _, s := range seeds {
+	for _, configured := range seed.Applications {
+		binding := appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: configured.BindingValue}
+		if configured.BindingType == "wsfed" {
+			binding = appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingWsFed, Wtrealm: configured.BindingValue}
+		}
 		desired := &appdomain.Application{
-			TenantID: tenancydomain.DefaultTenantID, ApplicationID: s.id, Name: s.name,
+			TenantID: tenancydomain.DefaultTenantID, ApplicationID: configured.ID, Name: configured.Name,
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-			LaunchURL: s.launchURL, Bindings: []appdomain.ProtocolBinding{s.binding},
+			LaunchURL: configured.LaunchURL, Bindings: []appdomain.ProtocolBinding{binding},
 			CreatedAt: now, UpdatedAt: now,
 		}
 		existing, err := apps.FindByID(ctx, desired.TenantID, desired.ApplicationID)
@@ -291,8 +223,8 @@ func SeedDemoApplications(
 			continue
 		}
 		desiredAssignment := &appdomain.ApplicationAssignment{
-			TenantID: tenancydomain.DefaultTenantID, ApplicationID: s.id,
-			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: seedUserAliceID,
+			TenantID: tenancydomain.DefaultTenantID, ApplicationID: configured.ID,
+			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: configured.AssignedUser,
 			Visibility: appdomain.AssignmentVisible, CreatedAt: now,
 		}
 		currentAssignments, err := assignments.ListByApplication(ctx, desiredAssignment.TenantID, desiredAssignment.ApplicationID)
@@ -320,13 +252,13 @@ func SeedDemoApplications(
 // seedDemoAuthorizationDetailTypes は RFC 9396 のサンプル type を 1 件投入する (ADR-050)。
 // payment_initiation は actions を集合包含、creditorAccount を enum、instructedAmount を
 // 上限 (単調減少) として扱い、エージェントに「口座 X へ最大 N まで」を束縛させる例。
-func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.AuthorizationDetailTypeRepository, now time.Time) error {
+func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.AuthorizationDetailTypeRepository, typeName string, now time.Time) error {
 	if types == nil {
 		return nil
 	}
 	desired := &oauthdomain.AuthorizationDetailType{
 		TenantID:    tenancydomain.DefaultTenantID,
-		Type:        "payment_initiation",
+		Type:        typeName,
 		Description: "口座から指定上限までの送金開始 (RFC 9396 例)",
 		Schema: oauthdomain.AuthorizationDetailsSchema{
 			Rules: []oauthdomain.AuthorizationDetailFieldRule{
@@ -357,20 +289,10 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 // engineering に所属させる。再起動時に重複しないよう ID は固定し、Save は id 上の
 // upsert、AddMember は冪等 (no-op on conflict) を利用する。これにより demo.sh で
 // グループ由来ロール (engineering → catalog:read) を確認できる。
-func seedDemoGroups(ctx context.Context, groups groupports.GroupRepository, now time.Time) error {
-	engineeringDesc := "プロダクト開発チーム"
-	supportDesc := "カスタマーサポートチーム"
-	demoGroups := []*groupdomain.Group{
-		{
-			ID: seedGroupEngineeringID, TenantID: tenancydomain.DefaultTenantID, Name: "engineering",
-			Description: &engineeringDesc, Roles: []string{"catalog:read"}, CreatedAt: now,
-		},
-		{
-			ID: seedGroupSupportID, TenantID: tenancydomain.DefaultTenantID, Name: "support",
-			Description: &supportDesc, Roles: []string{"invoice:read"}, CreatedAt: now,
-		},
-	}
-	for _, group := range demoGroups {
+func seedDemoGroups(ctx context.Context, groups groupports.GroupRepository, seeds []domain.DemoGroupSeed, now time.Time) error {
+	for _, configured := range seeds {
+		description := configured.Description
+		group := &groupdomain.Group{ID: configured.ID, TenantID: tenancydomain.DefaultTenantID, Name: configured.Name, Description: &description, Roles: configured.Roles, CreatedAt: now}
 		existing, err := groups.FindByID(ctx, group.TenantID, group.ID)
 		if err != nil {
 			return err
@@ -382,23 +304,26 @@ func seedDemoGroups(ctx context.Context, groups groupports.GroupRepository, now 
 		} else if !sameGroup(existing, group) {
 			return fmt.Errorf("seed drift at group:%s", group.ID)
 		}
-	}
-	members, err := groups.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, seedGroupEngineeringID)
-	if err != nil {
-		return err
-	}
-	for _, member := range members {
-		if member.UserID == seedUserAliceID {
-			if member.Source.Effective() != groupdomain.MembershipSourceManual {
-				return fmt.Errorf("seed drift at group-membership:%s:%s", seedGroupEngineeringID, seedUserAliceID)
+		for _, userID := range configured.Members {
+			members, err := groups.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, configured.ID)
+			if err != nil {
+				return err
 			}
-			return nil
+			found := false
+			for _, member := range members {
+				if member.UserID == userID {
+					found = true
+					if member.Source.Effective() != groupdomain.MembershipSourceManual {
+						return fmt.Errorf("seed drift at group-membership:%s:%s", configured.ID, userID)
+					}
+				}
+			}
+			if !found {
+				if _, err := groups.AddMember(ctx, &groupdomain.GroupMember{GroupID: configured.ID, UserID: userID, CreatedAt: now}); err != nil {
+					return err
+				}
+			}
 		}
-	}
-	if _, err := groups.AddMember(ctx, &groupdomain.GroupMember{
-		GroupID: seedGroupEngineeringID, UserID: seedUserAliceID, CreatedAt: now,
-	}); err != nil {
-		return err
 	}
 	return nil
 }

@@ -271,6 +271,8 @@ adapters are selected with environment variables:
 | `WEBAUTHN_RP_DISPLAY_NAME` | display name | WebAuthn relying-party display name shown by authenticators |
 | `SEED_PROFILE` | `bootstrap`, `development`, `test`, `performance` | explicit startup seed profile; unset by default |
 | `SEED_ENVIRONMENT` | `development`, `test`, `staging`, `production` | required when `SEED_PROFILE` is set |
+| `SEED_MANIFEST` | local YAML path | optional root manifest; defaults to `seed/manifests/<profile>.yaml` |
+| `SEED_SECRET_ROOT` | local directory | root for relative `file` secret locators |
 | `SEED_FIRST_PARTY_REDIRECT_URIS` | comma-separated HTTPS URIs | required for production bootstrap first-party clients; localhost is rejected |
 | `SEED_GENERATOR_SEED` | arbitrary string | deterministic namespace for performance seed identifiers |
 
@@ -305,9 +307,14 @@ and rejects invalid combinations before opening runtime dependencies.
 
 ### Environment seed profiles
 
-Seed は server 起動時には既定で実行されない。plan/apply は `just seed <environment> <profile> <mode>`
+Seed は server 起動時には既定で実行されない。plan/apply は `just seed <environment> <profile> <mode> [manifest]`
 で明示する。`just dev` / `just dev-memory` だけは、ローカル利用のため development profile を明示して
 同一プロセスで適用する。
+
+profile の desired state は `seed/manifests/*.yaml` に置く。CLI の第 4 引数または
+`SEED_MANIFEST` で別の root manifest を選べる。manifest は strict decode され、ローカル相対
+include だけを許可する。未知 key、重複 logical key、循環、root 外 path、YAML anchor/alias/merge は
+書き込み前に拒否される。
 
 | Profile | Allowed environments | Contents |
 | --- | --- | --- |
@@ -318,6 +325,9 @@ Seed は server 起動時には既定で実行されない。plan/apply は `jus
 
 `just seed development development dry_run` で変更計画を確認してから、末尾を `apply` にして投入する。
 seed の出力は logical key と件数だけで、password・client secret・TOTP secret・hash・PII 全量を含まない。
+秘密値は YAML に直接置かず、`provider` (`env` / `file`)、`locator`、`version` の参照として記述する。
+staging/production は `file` provider のみ許可し、file locator は `SEED_SECRET_ROOT` 配下の regular file
+に限定される。dry-run も参照の解決可能性を検証する。
 旧 `SKIP_DEMO_SEED` は廃止されたため、起動時にデモ投入を止める設定は不要である。既存環境で
 demo seed が既にある場合も、同じ development profile の apply は意味比較を行い、手動変更は conflict として保持する。
 

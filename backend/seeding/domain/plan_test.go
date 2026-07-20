@@ -46,3 +46,57 @@ func TestPlanCount(t *testing.T) {
 		t.Fatalf("create count = %d, want 2", got)
 	}
 }
+
+func TestManifestValidateRejectsInvalidShapeAndDuplicateLogicalKeys(t *testing.T) {
+	valid := Manifest{
+		SchemaVersion: CurrentManifestSchemaVersion,
+		Profile:       ProfileDevelopment,
+		Resources: []Resource{
+			{Kind: ResourceKindFirstPartyClients, LogicalKey: "first-party-portals", Clients: []FirstPartyClientSeed{{ID: "client", Name: "Client", Scope: "openid"}}},
+			{Kind: ResourceKindDevelopmentDemo, LogicalKey: "development-demo", Demo: &DevelopmentDemoSeed{ClientID: "demo", Users: []DemoUserSeed{{ID: "user"}}}, Secrets: map[string]SecretReference{
+				"client_secret": {Provider: SecretProviderEnv, Locator: "DEMO_CLIENT_SECRET", Version: "v1"},
+				"user_password": {Provider: SecretProviderFile, Locator: "demo-password", Version: "v1"},
+			}},
+		},
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid manifest error = %v", err)
+	}
+
+	tests := []Manifest{
+		{SchemaVersion: "2", Profile: ProfileDevelopment},
+		{SchemaVersion: CurrentManifestSchemaVersion, Profile: Profile("unknown")},
+		{SchemaVersion: CurrentManifestSchemaVersion, Profile: ProfileDevelopment, Resources: []Resource{{Kind: ResourceKind("unknown"), LogicalKey: "x"}}},
+		{SchemaVersion: CurrentManifestSchemaVersion, Profile: ProfileDevelopment, Resources: []Resource{{Kind: ResourceKindFirstPartyClients, LogicalKey: "same"}, {Kind: ResourceKindDevelopmentDemo, LogicalKey: "same"}}},
+		{SchemaVersion: CurrentManifestSchemaVersion, Profile: ProfileDevelopment, Resources: []Resource{{Kind: ResourceKindDevelopmentDemo, LogicalKey: "demo", Secrets: map[string]SecretReference{"password": {Provider: SecretProviderEnv, Locator: "", Version: "v1"}}}}},
+	}
+	for _, manifest := range tests {
+		if err := manifest.Validate(); err == nil {
+			t.Errorf("Validate(%+v) succeeded, want error", manifest)
+		}
+	}
+}
+
+func TestManifestValidateForRequestEnforcesProfileAndProductionSecretPolicy(t *testing.T) {
+	manifest := Manifest{
+		SchemaVersion: CurrentManifestSchemaVersion,
+		Profile:       ProfileBootstrap,
+		Resources: []Resource{{
+			Kind:       ResourceKindFirstPartyClients,
+			LogicalKey: "first-party-portals",
+			Clients:    []FirstPartyClientSeed{{ID: "client", Name: "Client", Scope: "openid"}},
+			Secrets: map[string]SecretReference{
+				"example": {Provider: SecretProviderEnv, Locator: "SECRET", Version: "v1"},
+			},
+		}},
+	}
+	if err := manifest.ValidateForRequest(Request{Environment: EnvironmentDevelopment, Profile: ProfileBootstrap, Mode: ModeDryRun}); err != nil {
+		t.Fatalf("development validation error = %v", err)
+	}
+	if err := manifest.ValidateForRequest(Request{Environment: EnvironmentDevelopment, Profile: ProfileTest, Mode: ModeDryRun}); err == nil {
+		t.Fatal("profile mismatch succeeded, want error")
+	}
+	if err := manifest.ValidateForRequest(Request{Environment: EnvironmentProduction, Profile: ProfileBootstrap, Mode: ModeDryRun, FirstPartyRedirectURIs: []string{"https://id.example/callback"}}); err == nil {
+		t.Fatal("production env provider succeeded, want error")
+	}
+}

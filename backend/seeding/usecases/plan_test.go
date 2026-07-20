@@ -16,6 +16,16 @@ type testContributor struct {
 	fail    bool
 }
 
+type fakeSecretResolver map[string]string
+
+func (r fakeSecretResolver) Resolve(reference domain.SecretReference) (string, error) {
+	value := r[reference.Locator]
+	if value == "" {
+		return "", fmt.Errorf("unavailable")
+	}
+	return value, nil
+}
+
 type serialContributor struct {
 	mu      sync.Mutex
 	applied bool
@@ -117,5 +127,33 @@ func TestRunSerializesConcurrentApplyForSameRequest(t *testing.T) {
 	}
 	if contributor.maxRun != 1 {
 		t.Fatalf("concurrent Apply calls = %d, want 1", contributor.maxRun)
+	}
+}
+
+func TestMaterializeManifestValidatesBeforeResolving(t *testing.T) {
+	manifest := domain.Manifest{
+		SchemaVersion: domain.CurrentManifestSchemaVersion,
+		Profile:       domain.ProfileDevelopment,
+		Resources: []domain.Resource{{
+			Kind:       domain.ResourceKindDevelopmentDemo,
+			LogicalKey: "development-demo",
+			Demo:       &domain.DevelopmentDemoSeed{ClientID: "demo", Users: []domain.DemoUserSeed{{ID: "user"}}},
+			Secrets: map[string]domain.SecretReference{
+				"user_password": {Provider: domain.SecretProviderEnv, Locator: "DEMO_USER_PASSWORD", Version: "v1"},
+			},
+		}},
+	}
+	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeDryRun}
+	resolved, err := MaterializeManifest(request, manifest, fakeSecretResolver{"DEMO_USER_PASSWORD": "do-not-print"})
+	if err != nil {
+		t.Fatalf("MaterializeManifest() error = %v", err)
+	}
+	if got := resolved.Secret("development-demo", "user_password"); got != "do-not-print" {
+		t.Fatalf("resolved secret = %q", got)
+	}
+
+	request.Profile = domain.ProfileBootstrap
+	if _, err := MaterializeManifest(request, manifest, fakeSecretResolver{"DEMO_USER_PASSWORD": "do-not-print"}); err == nil {
+		t.Fatal("profile mismatch succeeded, want error")
 	}
 }

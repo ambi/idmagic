@@ -18,6 +18,12 @@ glossary:
     definition: first-party client など、サービス稼働に必要な最小データ。デモ資格情報やサンプル tenant data を含まない。
   SeedOperator:
     definition: 明示した profile を plan または apply するローカル運用者または自動化主体。
+  SeedManifest:
+    definition: seed resource と決定的 generator を宣言する versioned YAML desired state。DB fixture ではなく各 record context の公開 command surface への入力となる。
+    aliases: [seed manifest]
+  SeedSecretReference:
+    definition: manifest が秘密値そのものの代わりに保持する provider、locator、version の組。解決値は plan、log、error に現れない。
+    aliases: [secret reference]
 models:
   SeedEnvironment:
     kind: enum
@@ -31,6 +37,41 @@ models:
   SeedOperationKind:
     kind: enum
     values: [create, update, noop, conflict]
+  SeedSecretProvider:
+    kind: enum
+    values: [env, file]
+  SeedSecretReference:
+    kind: value_object
+    description: 秘密値を materialize するための opaque reference。version は同一 secret の意図した rotation を識別する。
+    fields:
+      provider:
+        type: SeedSecretProvider
+      locator:
+        type: String
+        constraints: [non_empty]
+      version:
+        type: String
+        constraints: [non_empty]
+  SeedManifest:
+    kind: value_object
+    description: profile ごとの型付き desired resource、include、決定的 generator を持つ versioned manifest。秘密値は SeedSecretReference だけで表す。
+    fields:
+      schema_version:
+        type: String
+        constraints: [non_empty]
+      profile:
+        type: SeedProfileKind
+      includes:
+        type: "String[]"
+        optional: true
+        description: root manifest directory 内のローカル相対 path。循環、root 外 path、remote URL は拒否する。
+      resources:
+        type: JSON
+        description: 対応する record context の公開 command surface へ渡す型付き desired resource。未知 kind と重複 logical key は拒否する。
+      generators:
+        type: JSON
+        optional: true
+        description: profile と明示 seed から決定する bounded generator。performance user は login-disabled で秘密値を持たない。
   SeedRequest:
     kind: value_object
     description: profile を計画または適用する入力。profile と environment は必須で、件数を増やす場合も明示する。
@@ -39,6 +80,10 @@ models:
         type: SeedEnvironment
       profile:
         type: SeedProfileKind
+      manifest_path:
+        type: String
+        optional: true
+        description: 明示 root manifest path。未指定時は profile ごとの repository default を選ぶ。
       mode:
         type: SeedMode
       tenant_id:
@@ -93,14 +138,20 @@ interfaces:
       plan:
         type: SeedPlan
     errors: [SeedRejectedError, SeedConflictError]
+    requires:
+      - "manifest_schema_supported(input.request)"
+      - "manifest_profile_matches_request(input.request)"
+      - "manifest_paths_are_local_and_contained(input.request)"
+      - "input.request.environment in ['staging', 'production'] implies manifest_secret_providers(input.request) == ['file']"
     ensures:
       - "input.request.mode == 'dry_run' implies persistent_state_unchanged()"
       - "reapply_same_request_is_noop(input.request)"
       - "input.request.environment == 'production' && input.request.profile == 'bootstrap' implies production_safe_redirect_uris(input.request.first_party_redirect_uris)"
+      - "seed_plan_and_diagnostics_exclude_secret_values(output.plan)"
     access: internal
 objectives:
   SeedScalability:
-    description: performance profile は bounded batch と streamable plan を使い、全 operation をメモリに保持しない。通常 profile の件数上限は安全な既定値を越えず、override は明示される。
+    description: manifest/include は bounded size と depth で読み、performance profile は bounded batch と streamable plan を使い、全 operation をメモリに保持しない。通常 profile の件数上限は安全な既定値を越えず、override は明示される。
     interface: SeedData
     indicator: measurement.memory_bounded == true
     target: 1.0
@@ -115,6 +166,43 @@ scenarios:
       - SeedOperator が SeedData を dry_run で呼ぶ
       - planner は environment policy に許可された manifest だけを選ぶ
       - 応答は redacted な SeedPlan を返し永続状態を変更しない
+  明示manifestまたはprofile既定manifestが選択される:
+    actor: SeedOperator
+    given:
+      - SeedOperator が environment と profile を明示している
+    main_success:
+      - SeedOperator が明示 manifest path を指定して SeedData を呼ぶ
+      - loader は指定 path の manifest と contained include を strict decode する
+      - planner は manifest の typed desired resource を計画する
+    extensions:
+      - at: 1
+        condition: manifest path が未指定である
+        steps:
+          - loader は profile ごとの repository default manifest を選ぶ
+  manifestとrequestのprofile不一致は拒否される:
+    actor: SeedOperator
+    given:
+      - SeedOperator が request と異なる profile の manifest を指定している
+    main_success:
+      - SeedOperator が SeedData を呼ぶ
+      - SeedData は secret 解決と書き込みの前に SeedRejectedError で拒否する
+  不正manifestは書き込み前に拒否される:
+    actor: SeedOperator
+    given:
+      - manifest に未知 key、重複 logical key、未対応 schema version、include cycle、または root 外 path がある
+    main_success:
+      - SeedOperator が SeedData を呼ぶ
+      - loader は secret 解決と書き込みの前に SeedRejectedError で拒否する
+      - 診断には秘密値を含めない
+  productionではenv secret providerを拒否する:
+    actor: SeedOperator
+    given:
+      - environment が production である
+      - manifest が env secret provider を参照している
+    main_success:
+      - SeedOperator が SeedData を dry_run または apply で呼ぶ
+      - SeedData は secret 解決と書き込みの前に SeedRejectedError で拒否する
+      - 永続状態は変更されない
   同一seedの再適用はno-opになる:
     actor: SeedOperator
     given:

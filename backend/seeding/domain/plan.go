@@ -36,6 +36,7 @@ type Request struct {
 	Environment            Environment
 	Profile                Profile
 	Mode                   Mode
+	ManifestPath           string
 	TenantID               string
 	GeneratorSeed          string
 	FirstPartyRedirectURIs []string

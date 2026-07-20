@@ -10,6 +10,8 @@ import (
 )
 
 func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
+	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
+	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
 	deps, err := assembleMemory()
 	if err != nil {
 		t.Fatalf("assembleMemory() error = %v", err)
@@ -66,6 +68,8 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 }
 
 func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
+	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
+	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
 	deps, err := assembleMemory()
 	if err != nil {
 		t.Fatalf("assembleMemory() error = %v", err)

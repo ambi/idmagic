@@ -32324,10 +32324,10 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
       <div class="eyebrow">Bounded Context · contexts/seeding.yaml</div>
       <h1>Seeding</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-seeding-glossary"><span class="stat-num">5</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-seeding-models"><span class="stat-num">8</span><span class="stat-label">models</span></a><a class="stat" href="#context-seeding-interfaces"><span class="stat-num">1</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-seeding-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-seeding-scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#context-seeding-glossary"><span class="stat-num">7</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-seeding-models"><span class="stat-num">11</span><span class="stat-label">models</span></a><a class="stat" href="#context-seeding-interfaces"><span class="stat-num">1</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-seeding-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-seeding-scenarios"><span class="stat-num">10</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="context-seeding-glossary">
-    <h2>Glossary <span class="count">5</span></h2>
+    <h2>Glossary <span class="count">7</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="context-seeding-glossary-seedprofile">
       <div class="vocab-name"><code class="name">SeedProfile</code></div>
@@ -32373,14 +32373,100 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
 
 
       </div>
+    </article>
+<article class="vocab-entry" id="context-seeding-glossary-seedmanifest">
+      <div class="vocab-name"><code class="name">SeedManifest</code></div>
+      <div class="vocab-body">
+        <p class="def">seed resource と決定的 generator を宣言する versioned YAML desired state。DB fixture ではなく各 record context の公開 command surface への入力となる。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">seed manifest</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-seeding-glossary-seedsecretreference">
+      <div class="vocab-name"><code class="name">SeedSecretReference</code></div>
+      <div class="vocab-body">
+        <p class="def">manifest が秘密値そのものの代わりに保持する provider、locator、version の組。解決値は plan、log、error に現れない。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">secret reference</span></div>
+
+
+      </div>
     </article></div>
   </section>
 <section id="context-seeding-models">
-    <h2>Models <span class="count">8</span></h2>
+    <h2>Models <span class="count">11</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">value object <span class="count">2</span></h3>
-      <div class="cards"><article class="card" id="scl-Seeding/model/SeedRequest">
+      <h3 class="grp-title">value object <span class="count">4</span></h3>
+      <div class="cards"><article class="card" id="scl-Seeding/model/SeedSecretReference">
+    <header><h3>SeedSecretReference</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Seeding/model/SeedSecretReference</code></header>
+    <p class="desc">秘密値を materialize するための opaque reference。version は同一 secret の意図した rotation を識別する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">provider</code></td>
+    <td><code class="type">SeedSecretProvider</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locator</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">version</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Seeding/model/SeedManifest">
+    <header><h3>SeedManifest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Seeding/model/SeedManifest</code></header>
+    <p class="desc">profile ごとの型付き desired resource、include、決定的 generator を持つ versioned manifest。秘密値は SeedSecretReference だけで表す。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">schema_version</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">profile</code></td>
+    <td><code class="type">SeedProfileKind</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">includes</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>root manifest directory 内のローカル相対 path。循環、root 外 path、remote URL は拒否する。</td>
+  </tr><tr>
+    <td><code class="name">resources</code></td>
+    <td><code class="type">JSON</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>対応する record context の公開 command surface へ渡す型付き desired resource。未知 kind と重複 logical key は拒否する。</td>
+  </tr><tr>
+    <td><code class="name">generators</code></td>
+    <td><code class="type">JSON</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>profile と明示 seed から決定する bounded generator。performance user は login-disabled で秘密値を持たない。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Seeding/model/SeedRequest">
     <header><h3>SeedRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Seeding/model/SeedRequest</code></header>
     <p class="desc">profile を計画または適用する入力。profile と environment は必須で、件数を増やす場合も明示する。</p>
 
@@ -32398,6 +32484,12 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">manifest_path</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>明示 root manifest path。未指定時は profile ごとの repository default を選ぶ。</td>
   </tr><tr>
     <td><code class="name">mode</code></td>
     <td><code class="type">SeedMode</code></td>
@@ -32486,7 +32578,7 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">4</span></h3>
+      <h3 class="grp-title">enum <span class="count">5</span></h3>
       <div class="cards"><article class="card" id="scl-Seeding/model/SeedEnvironment">
     <header><h3>SeedEnvironment</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Seeding/model/SeedEnvironment</code></header>
 
@@ -32513,6 +32605,13 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
 
 
     <div class="enum-vals"><span class="chip chip-enum">create</span> <span class="chip chip-enum">update</span> <span class="chip chip-enum">noop</span> <span class="chip chip-enum">conflict</span></div>
+
+  </article>
+<article class="card" id="scl-Seeding/model/SeedSecretProvider">
+    <header><h3>SeedSecretProvider</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Seeding/model/SeedSecretProvider</code></header>
+
+
+    <div class="enum-vals"><span class="chip chip-enum">env</span> <span class="chip chip-enum">file</span></div>
 
   </article></div>
     </div>
@@ -32566,7 +32665,8 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Seeding/model/SeedRejectedError">SeedRejectedError</a> <a class="chip chip-error-ref" href="#scl-Seeding/model/SeedConflictError">SeedConflictError</a></div></div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">input.request.mode == 'dry_run' implies persistent_state_unchanged()</code></li><li><code class="expr">reapply_same_request_is_noop(input.request)</code></li><li><code class="expr">input.request.environment == 'production' &amp;&amp; input.request.profile == 'bootstrap' implies production_safe_redirect_uris(input.request.first_party_redirect_uris)</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">manifest_schema_supported(input.request)</code></li><li><code class="expr">manifest_profile_matches_request(input.request)</code></li><li><code class="expr">manifest_paths_are_local_and_contained(input.request)</code></li><li><code class="expr">input.request.environment in ['staging', 'production'] implies manifest_secret_providers(input.request) == ['file']</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">input.request.mode == 'dry_run' implies persistent_state_unchanged()</code></li><li><code class="expr">reapply_same_request_is_noop(input.request)</code></li><li><code class="expr">input.request.environment == 'production' &amp;&amp; input.request.profile == 'bootstrap' implies production_safe_redirect_uris(input.request.first_party_redirect_uris)</code></li><li><code class="expr">seed_plan_and_diagnostics_exclude_secret_values(output.plan)</code></li></ul></div>
   </article></div>
   </section>
 <section id="context-seeding-objectives">
@@ -32574,7 +32674,7 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
     <div class="cards"><article class="card" id="scl-Seeding/objective/SeedScalability">
         <header><h3>SeedScalability</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">Seeding/objective/SeedScalability</code></header>
-        <p class="desc">performance profile は bounded batch と streamable plan を使い、全 operation をメモリに保持しない。通常 profile の件数上限は安全な既定値を越えず、override は明示される。</p>
+        <p class="desc">manifest/include は bounded size と depth で読み、performance profile は bounded batch と streamable plan を使い、全 operation をメモリに保持しない。通常 profile の件数上限は安全な既定値を越えず、override は明示される。</p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-Seeding/interface/SeedData">SeedData</a></dd>
           <dt>indicator</dt><dd><code class="expr">measurement.memory_bounded == true</code></dd>
@@ -32586,13 +32686,40 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
       </article></div>
   </section>
 <section id="context-seeding-scenarios">
-    <h2>Scenarios <span class="count">6</span></h2>
+    <h2>Scenarios <span class="count">10</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-Seeding/scenario/~E7~92~B0~E5~A2~83~E5~88~A5~E3~81~AE~E6~98~8E~E7~A4~BAprofile~E3~81~8C~E9~81~B8~E6~8A~9E~E3~81~95~E3~82~8C~E3~82~8B">
         <header><h3>環境別の明示profileが選択される</h3><span class="chip chip-actor">SeedOperator</span><code class="canonical-ref">Seeding/scenario/環境別の明示profileが選択される</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">SeedOperator が environment と profile を明示している</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SeedOperator が <a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> を dry_run で呼ぶ</li><li class="scn-step">planner は environment policy に許可された manifest だけを選ぶ</li><li class="scn-step">応答は redacted な <a class="chip chip-ref" href="#scl-Seeding/model/SeedPlan">SeedPlan</a> を返し永続状態を変更しない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Seeding/scenario/~E6~98~8E~E7~A4~BAmanifest~E3~81~BE~E3~81~9F~E3~81~AFprofile~E6~97~A2~E5~AE~9Amanifest~E3~81~8C~E9~81~B8~E6~8A~9E~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>明示manifestまたはprofile既定manifestが選択される</h3><span class="chip chip-actor">SeedOperator</span><code class="canonical-ref">Seeding/scenario/明示manifestまたはprofile既定manifestが選択される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">SeedOperator が environment と profile を明示している</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SeedOperator が明示 manifest path を指定して <a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> を呼ぶ</li><li class="scn-step">loader は指定 path の manifest と contained include を strict decode する</li><li class="scn-step">planner は manifest の typed desired resource を計画する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">manifest path が未指定である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">loader は profile ごとの repository default manifest を選ぶ</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Seeding/scenario/manifest~E3~81~A8request~E3~81~AEprofile~E4~B8~8D~E4~B8~80~E8~87~B4~E3~81~AF~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>manifestとrequestのprofile不一致は拒否される</h3><span class="chip chip-actor">SeedOperator</span><code class="canonical-ref">Seeding/scenario/manifestとrequestのprofile不一致は拒否される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">SeedOperator が request と異なる profile の manifest を指定している</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SeedOperator が <a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> を呼ぶ</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> は secret 解決と書き込みの前に <a class="chip chip-ref" href="#scl-Seeding/model/SeedRejectedError">SeedRejectedError</a> で拒否する</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Seeding/scenario/~E4~B8~8D~E6~AD~A3manifest~E3~81~AF~E6~9B~B8~E3~81~8D~E8~BE~BC~E3~81~BF~E5~89~8D~E3~81~AB~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>不正manifestは書き込み前に拒否される</h3><span class="chip chip-actor">SeedOperator</span><code class="canonical-ref">Seeding/scenario/不正manifestは書き込み前に拒否される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">manifest に未知 key、重複 logical key、未対応 schema version、include cycle、または root 外 path がある</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SeedOperator が <a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> を呼ぶ</li><li class="scn-step">loader は secret 解決と書き込みの前に <a class="chip chip-ref" href="#scl-Seeding/model/SeedRejectedError">SeedRejectedError</a> で拒否する</li><li class="scn-step">診断には秘密値を含めない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Seeding/scenario/production~E3~81~A7~E3~81~AFenv~20secret~20provider~E3~82~92~E6~8B~92~E5~90~A6~E3~81~99~E3~82~8B">
+        <header><h3>productionではenv secret providerを拒否する</h3><span class="chip chip-actor">SeedOperator</span><code class="canonical-ref">Seeding/scenario/productionではenv secret providerを拒否する</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">environment が production である</li><li class="scn-step">manifest が env secret provider を参照している</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SeedOperator が <a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> を dry_run または apply で呼ぶ</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Seeding/interface/SeedData">SeedData</a> は secret 解決と書き込みの前に <a class="chip chip-ref" href="#scl-Seeding/model/SeedRejectedError">SeedRejectedError</a> で拒否する</li><li class="scn-step">永続状態は変更されない</li></ol></div>
 
       </article><article class="card scenario" id="scl-Seeding/scenario/~E5~90~8C~E4~B8~80seed~E3~81~AE~E5~86~8D~E9~81~A9~E7~94~A8~E3~81~AFno-op~E3~81~AB~E3~81~AA~E3~82~8B">
         <header><h3>同一seedの再適用はno-opになる</h3><span class="chip chip-actor">SeedOperator</span><code class="canonical-ref">Seeding/scenario/同一seedの再適用はno-opになる</code></header>

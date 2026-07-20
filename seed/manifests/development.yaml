@@ -1,0 +1,40 @@
+schema_version: "1"
+profile: development
+resources:
+  - kind: first_party_clients
+    logical_key: first-party-portals
+    clients:
+      - {id: 00000000-0000-4000-8000-000000000022, name: IdMagic Admin Console, scope: "openid profile idmagic.admin offline_access"}
+      - {id: 00000000-0000-4000-8000-000000000023, name: IdMagic Account Portal, scope: "openid profile idmagic.account offline_access"}
+  - kind: development_demo
+    logical_key: development-demo
+    demo:
+      client_id: 00000000-0000-4000-8000-000000000021
+      client_redirect_uris: [http://localhost:3000/callback, http://localhost:5173/callback, http://localhost:8080/callback]
+      users:
+        - {id: 00000000-0000-4000-8000-000000000001, preferred_username: alice, email: alice@example.com, roles: [admin]}
+        - {id: 00000000-0000-4000-8000-000000000002, preferred_username: root, email: root@example.com, roles: [admin, system_admin]}
+      groups:
+        - {id: 00000000-0000-4000-8000-000000000011, name: engineering, description: プロダクト開発チーム, roles: ["catalog:read"], members: [00000000-0000-4000-8000-000000000001]}
+        - {id: 00000000-0000-4000-8000-000000000012, name: support, description: カスタマーサポートチーム, roles: ["invoice:read"]}
+      authorization_detail_type: payment_initiation
+      wsfed_realm: urn:idmagic:demo-rp
+      wsfed_display_name: Demo WS-Federation RP
+      wsfed_reply_urls: [https://rp.example/wsfed]
+      saml_entity_id: urn:idmagic:demo-sp
+      saml_display_name: Demo SAML SP
+      saml_acs_urls: [https://sp.example/saml/acs]
+      applications:
+        - {id: 00000000-0000-4000-8000-000000000101, name: IdMagic Admin Console, launch_url: /realms/default/admin, binding_type: oidc, binding_value: 00000000-0000-4000-8000-000000000022, assigned_user: 00000000-0000-4000-8000-000000000001}
+        - {id: 00000000-0000-4000-8000-000000000102, name: IdMagic Account Portal, launch_url: /realms/default/account, binding_type: oidc, binding_value: 00000000-0000-4000-8000-000000000023, assigned_user: 00000000-0000-4000-8000-000000000001}
+        - {id: 00000000-0000-4000-8000-000000000103, name: Demo Client, binding_type: oidc, binding_value: 00000000-0000-4000-8000-000000000021, assigned_user: 00000000-0000-4000-8000-000000000001}
+        - {id: 00000000-0000-4000-8000-000000000104, name: Demo WS-Federation RP, launch_url: https://rp.example/wsfed, binding_type: wsfed, binding_value: urn:idmagic:demo-rp, assigned_user: 00000000-0000-4000-8000-000000000001}
+    secrets:
+      client_secret:
+        provider: env
+        locator: DEMO_CLIENT_SECRET
+        version: v1
+      user_password:
+        provider: env
+        locator: DEMO_USER_PASSWORD
+        version: v1

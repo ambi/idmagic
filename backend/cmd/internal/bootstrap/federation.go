@@ -17,6 +17,7 @@ import (
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
@@ -49,13 +50,13 @@ func NewDevFederationSigner() (*samltoken.Signer, error) {
 }
 
 // seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
-func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository) error {
+func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository, seed seedingdomain.DevelopmentDemoSeed) error {
 	now := time.Now().UTC()
 	rp := &domain.WsFedRelyingParty{
 		TenantID:    tenancydomain.DefaultTenantID,
-		Wtrealm:     "urn:idmagic:demo-rp",
-		DisplayName: "Demo WS-Federation RP",
-		ReplyURLs:   []string{"https://rp.example/wsfed"},
+		Wtrealm:     seed.WsFedRealm,
+		DisplayName: seed.WsFedDisplayName,
+		ReplyURLs:   seed.WsFedReplyURLs,
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
@@ -82,13 +83,13 @@ func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 }
 
 // seedSamlServiceProvider は SAML 2.0 Web Browser SSO のデモ用 service provider を投入する。
-func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository) error {
+func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository, seed seedingdomain.DevelopmentDemoSeed) error {
 	now := time.Now().UTC()
 	sp := &samldomain.SamlServiceProvider{
 		TenantID:    tenancydomain.DefaultTenantID,
-		EntityID:    "urn:idmagic:demo-sp",
-		DisplayName: "Demo SAML SP",
-		ACSURLs:     []string{"https://sp.example/saml/acs"},
+		EntityID:    seed.SamlEntityID,
+		DisplayName: seed.SamlDisplayName,
+		ACSURLs:     seed.SamlACSURLs,
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          samldomain.SamlNameIDFormatPersistent,

@@ -8,6 +8,7 @@ func LoadSeedRequest(getenv func(string) string) domain.Request {
 		Environment:            domain.Environment(getenv("SEED_ENVIRONMENT")),
 		Profile:                domain.Profile(getenv("SEED_PROFILE")),
 		Mode:                   domain.ModeApply,
+		ManifestPath:           getenv("SEED_MANIFEST"),
 		GeneratorSeed:          getenv("SEED_GENERATOR_SEED"),
 		FirstPartyRedirectURIs: splitAndTrim(getenv("SEED_FIRST_PARTY_REDIRECT_URIS")),
 	}
