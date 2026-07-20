@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
@@ -87,7 +87,7 @@ describe('AdminKeysPage', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
-    expect(screen.queryByText(inactiveKey.kid)).not.toBeInTheDocument()
+    expect(within(screen.getByRole('table')).queryByText(inactiveKey.kid)).not.toBeInTheDocument()
     expect(screen.getByText(t.disabledNotice.replace('{kid}', inactiveKey.kid))).toBeInTheDocument()
   })
 })
