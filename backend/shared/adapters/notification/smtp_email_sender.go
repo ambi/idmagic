@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 )
 
 // SMTPTLSMode は SMTP 接続時の TLS 戦略を表す (ADR-035 §2)。
@@ -56,7 +56,7 @@ func NewSMTPEmailSender(cfg SMTPEmailSenderConfig) *SMTPEmailSender {
 	return &SMTPEmailSender{config: cfg}
 }
 
-func (s *SMTPEmailSender) SendEmail(ctx context.Context, message authnports.EmailMessage) bool {
+func (s *SMTPEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
 	if err := s.send(ctx, message, time.Now().UTC()); err != nil {
 		// 宛先アドレスは PII なのでマスクする (ADR-018 §4)。
 		logging.Error(ctx, "smtp send failed",
@@ -68,7 +68,7 @@ func (s *SMTPEmailSender) SendEmail(ctx context.Context, message authnports.Emai
 	return true
 }
 
-func (s *SMTPEmailSender) send(ctx context.Context, message authnports.EmailMessage, now time.Time) error {
+func (s *SMTPEmailSender) send(ctx context.Context, message sharednotification.EmailMessage, now time.Time) error {
 	addr := net.JoinHostPort(s.config.Host, fmt.Sprintf("%d", s.config.Port))
 	dialer := &net.Dialer{Timeout: s.config.Timeout}
 
@@ -151,7 +151,7 @@ func (s *SMTPEmailSender) send(ctx context.Context, message authnports.EmailMess
 
 // buildRFC5322Message は EmailMessage を RFC 5322 形式の本文に変換する。
 // Text/HTML 両方ある場合は multipart/alternative (ADR-035 §8)。
-func buildRFC5322Message(from string, message authnports.EmailMessage, now time.Time) (string, error) {
+func buildRFC5322Message(from string, message sharednotification.EmailMessage, now time.Time) (string, error) {
 	messageID, err := newMessageID(from, now)
 	if err != nil {
 		return "", err

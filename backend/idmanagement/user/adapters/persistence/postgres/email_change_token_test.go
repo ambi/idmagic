@@ -5,22 +5,28 @@ import (
 	"testing"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgfixtures"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
 )
 
 func TestEmailChangeTokenStoreSaveAndConsume(t *testing.T) {
 	db := pgtest.Require(t)
-	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, db, tenant.ID)
+	tenant := seedTenant(t, db)
+	now := testClock()
+	user := &userdomain.User{
+		ID: newUUID(t), TenantID: tenant.ID, PreferredUsername: "email-change",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	}
+	if err := (&UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
 	store := &EmailChangeTokenStore{Pool: db}
 	ctx := context.Background()
 
-	now := pgfixtures.TestClock()
-	record := authnports.EmailChangeTokenRecord{
+	record := userports.EmailChangeTokenRecord{
 		Sub:       user.ID,
-		TokenHash: pgfixtures.UniqueID("token"),
+		TokenHash: uniqueID("token"),
 		NewEmail:  "new@example.com",
 		CreatedAt: now,
 		ExpiresAt: now.Add(time.Hour),

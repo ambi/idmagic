@@ -270,11 +270,11 @@ modules:
     depends_on:
       - { module: authentication-domain, via: published_interface }
       - { module: authentication-password-ports, via: published_interface }
-      - { module: authentication-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
       - { module: idmanagement-domain, via: published_interface }
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   authentication-password-adapters:
@@ -517,13 +517,11 @@ modules:
   authentication-ports:
     path: backend/authentication/ports
 
-    responsibility: "Authentication feature 横断の event・email・continuation 公開 port。"
+    responsibility: "Authentication feature 横断の認証失敗 event bucket 公開 port。"
     context: Authentication
     layer: use_cases
     role: published_interface
-    depends_on:
-      - { module: authentication-domain, via: published_interface }
-      - { module: shared-spec, via: technical_shared }
+    depends_on: []
   authentication-usecases:
     path: backend/authentication/usecases
 
@@ -545,7 +543,7 @@ modules:
   authentication-adapters:
     path: backend/authentication/adapters
 
-    responsibility: "Authentication feature 横断 route と event/email persistence adapter。"
+    responsibility: "Authentication feature 横断 route と event bucket persistence adapter。"
     context: Authentication
     layer: adapters
     role: binding
@@ -606,6 +604,7 @@ modules:
       - { module: idmanagement-user-usecases, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: binding }
       - { module: tenancy-ports, via: binding }
   idmanagement-domain:
@@ -645,7 +644,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
   idmanagement-user-ports:
     path: backend/idmanagement/user/ports
-    responsibility: "User feature の公開 port と外界への抽象 (ADR-130)。"
+    responsibility: "User feature の repository・email change token 公開 portと外界への抽象 (ADR-130)。"
     context: IdManagement
     layer: use_cases
     role: published_interface
@@ -738,7 +737,7 @@ modules:
       - { module: tenancy-public, via: published_interface }
   idmanagement-user-adapters:
     path: backend/idmanagement/user/adapters
-    responsibility: "User feature の HTTP・in-memory・PostgreSQL 永続化 adapter (ADR-130 Phase 2)。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
+    responsibility: "User feature の HTTP・in-memory・PostgreSQL 永続化 adapter（email change token を含む、ADR-130 Phase 2）。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
     context: IdManagement
     layer: adapters
     role: binding
@@ -752,6 +751,7 @@ modules:
       - { module: idmanagement-domain, via: published_interface }
       - { module: idmanagement-usecases, via: published_interface }
       - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
       - { module: idmanagement-user-usecases, via: published_interface }
       - { module: jobs-domain, via: binding }
       - { module: jobs-ports, via: binding }
@@ -797,7 +797,6 @@ modules:
     role: binding
     depends_on:
       - { module: authentication-password-ports, via: binding }
-      - { module: authentication-ports, via: binding }
       - { module: authentication-totp-ports, via: binding }
       - { module: http-support, via: binding }
       - { module: idmanagement-agent-ports, via: published_interface }
@@ -807,6 +806,7 @@ modules:
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: scim-ports, via: binding }
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: binding }
       - { module: tenancy-ports, via: binding }
   idmanagement-adapters:
@@ -850,7 +850,6 @@ modules:
     depends_on:
       - { module: application-domain, via: published_interface }
       - { module: application-ports, via: published_interface }
-      - { module: authentication-ports, via: published_interface }
       - { module: idgovernance-domain, via: published_interface }
       - { module: idgovernance-ports, via: published_interface }
       - { module: idmanagement-domain, via: published_interface }
@@ -861,6 +860,7 @@ modules:
       - { module: jobs-domain, via: published_interface }
       - { module: jobs-ports, via: published_interface }
       - { module: jobs-usecases, via: published_interface }
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   idgovernance-adapters:
@@ -871,7 +871,6 @@ modules:
     role: binding
     depends_on:
       - { module: application-ports, via: binding }
-      - { module: authentication-ports, via: binding }
       - { module: http-support, via: binding }
       - { module: idgovernance-domain, via: published_interface }
       - { module: idgovernance-ports, via: published_interface }
@@ -882,6 +881,7 @@ modules:
       - { module: idmanagement-user-ports, via: binding }
       - { module: jobs-ports, via: binding }
       - { module: shared-adapters, via: binding }
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: binding }
       - { module: tenancy-public, via: binding }
   jobs-domain:
@@ -1645,6 +1645,7 @@ modules:
       - { module: saml-public, via: composition_root }
       - { module: scim-public, via: composition_root }
       - { module: shared-adapters, via: technical_shared }
+      - { module: shared-services, via: technical_shared }
       - { module: signingkeys-adapters, via: composition_root }
       - { module: signingkeys-public, via: composition_root }
       - { module: signingkeys-ports, via: composition_root }
@@ -1656,7 +1657,7 @@ modules:
       - { module: wsfederation-public, via: composition_root }
   shared-services:
     path: backend/shared
-    responsibility: "共有 logging、resilience、media validation、version capability。"
+    responsibility: "共有 notification port、logging、resilience、media validation、version capability。"
     context: System
     layer: use_cases
     role: technical_shared

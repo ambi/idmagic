@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -21,7 +20,7 @@ import (
 func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
-	tokenStore := authnmemory.NewEmailChangeTokenStore()
+	tokenStore := usermemory.NewEmailChangeTokenStore()
 	sender := &notification.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
@@ -54,7 +53,7 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
-	tokenStore := authnmemory.NewEmailChangeTokenStore()
+	tokenStore := usermemory.NewEmailChangeTokenStore()
 	sender := &notification.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
@@ -117,7 +116,7 @@ func TestRequestEmailChangeRejectsAddressTakenByAnotherUser(t *testing.T) {
 		Email: &taken, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	err := userusecases.RequestEmailChange(ctx, userusecases.RequestEmailChangeDeps{
-		UserRepo: userRepo, TokenStore: authnmemory.NewEmailChangeTokenStore(),
+		UserRepo: userRepo, TokenStore: usermemory.NewEmailChangeTokenStore(),
 		EmailSender: &notification.NoopEmailSender{}, Issuer: "http://idp.test",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: taken, Now: now})
 	if !errors.Is(err, userusecases.ErrEmailTaken) {

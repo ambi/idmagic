@@ -16,9 +16,10 @@ import (
 // (wi-237, ADR-117)。User mutation から governance 側の run 生成へは
 // userports.UserMutationCommitter 境界 port 経由で渡す。
 type Module struct {
-	UserRepo  userports.UserRepository
-	GroupRepo groupports.GroupRepository
-	AgentRepo agentports.AgentRepository
+	UserRepo              userports.UserRepository
+	GroupRepo             groupports.GroupRepository
+	AgentRepo             agentports.AgentRepository
+	EmailChangeTokenStore userports.EmailChangeTokenStore
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装を注入する。nil のとき admin usecase は UserRepo.Save に fallback する。
 	UserMutationCommitter userports.UserMutationCommitter

@@ -7,7 +7,6 @@ package httpdeps
 
 import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -17,6 +16,7 @@ import (
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -41,8 +41,8 @@ type Deps struct {
 	MfaFactorRepo         mfaports.MfaFactorRepository
 	PasswordHasher        passwordports.PasswordHasher
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
-	EmailChangeTokenStore authnports.EmailChangeTokenStore
-	EmailSender           authnports.EmailSender
+	EmailChangeTokenStore userports.EmailChangeTokenStore
+	EmailSender           sharednotification.EmailSender
 }
 
 func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 func TestEmailChangeTokenStore(t *testing.T) {
@@ -13,7 +13,7 @@ func TestEmailChangeTokenStore(t *testing.T) {
 	store := NewEmailChangeTokenStore()
 
 	t.Run("Save and Consume", func(t *testing.T) {
-		record := authnports.EmailChangeTokenRecord{
+		record := userports.EmailChangeTokenRecord{
 			TokenHash: "hash-1",
 			Sub:       "user-1",
 			NewEmail:  "new@example.com",
@@ -48,13 +48,13 @@ func TestEmailChangeTokenStore(t *testing.T) {
 	})
 
 	t.Run("Overwrite on Save and Expired Token", func(t *testing.T) {
-		record1 := authnports.EmailChangeTokenRecord{
+		record1 := userports.EmailChangeTokenRecord{
 			TokenHash: "hash-old",
 			Sub:       "user-2",
 			NewEmail:  "old@example.com",
 			ExpiresAt: time.Now().Add(1 * time.Hour),
 		}
-		record2 := authnports.EmailChangeTokenRecord{
+		record2 := userports.EmailChangeTokenRecord{
 			TokenHash: "hash-new",
 			Sub:       "user-2", // 同じ sub
 			NewEmail:  "new@example.com",
@@ -71,7 +71,7 @@ func TestEmailChangeTokenStore(t *testing.T) {
 		}
 
 		// 期限切れトークンを検証
-		expiredRecord := authnports.EmailChangeTokenRecord{
+		expiredRecord := userports.EmailChangeTokenRecord{
 			TokenHash: "hash-expired",
 			Sub:       "user-3",
 			ExpiresAt: time.Now().Add(-1 * time.Hour),

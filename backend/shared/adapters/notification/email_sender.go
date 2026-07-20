@@ -3,8 +3,8 @@ package notification
 import (
 	"context"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 )
 
 // ConsoleEmailSender は dev / demo 用の配送アダプタ。本番では EMAIL_SENDER=smtp を使う。
@@ -12,7 +12,7 @@ import (
 // 確認するために出力する (本アダプタは本番では動かない)。
 type ConsoleEmailSender struct{}
 
-func (ConsoleEmailSender) SendEmail(ctx context.Context, message authnports.EmailMessage) bool {
+func (ConsoleEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
 	logging.Info(ctx, "email delivered (console sender)",
 		"to", logging.MaskEmail(message.To),
 		"subject", message.Subject,
@@ -21,10 +21,10 @@ func (ConsoleEmailSender) SendEmail(ctx context.Context, message authnports.Emai
 }
 
 type NoopEmailSender struct {
-	Sent []authnports.EmailMessage
+	Sent []sharednotification.EmailMessage
 }
 
-func (s *NoopEmailSender) SendEmail(_ context.Context, message authnports.EmailMessage) bool {
+func (s *NoopEmailSender) SendEmail(_ context.Context, message sharednotification.EmailMessage) bool {
 	s.Sent = append(s.Sent, message)
 	return true
 }

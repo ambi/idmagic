@@ -6,7 +6,7 @@ created_at: 2026-07-18
 depends_on: [wi-254-backend-feature-vertical-slice-convention]
 completion:
   completed_at: 2026-07-20
-  summary: "authentication を password/totp/webauthn/mfa/session/recovery の 6 feature 垂直スライスへ全層再配置し、Architecture の依存グラフを同期した。"
+  summary: "authentication を6 feature垂直スライスへ全層再配置し、残存portの所有権をIdManagement userとshared notificationへ是正してArchitecture依存グラフを同期した。"
   verification:
     - "just verify-go"
     - "just build-go"
@@ -16,8 +16,10 @@ completion:
     - "just verify"
   affected_guarantees_state:
     - "SCL の authentication 規範振る舞いと bounded context 境界は変更していない。"
-    - "外部 consumer を feature 別 import path へ更新し、全 Go package の build・test・race test で互換性を確認した。"
-    - "ARCHITECTURE.md の module ledger は実 import の feature 依存と一致し、依存グラフは循環しない。"
+    - "EmailChangeTokenStore は IdManagement user が所有し、memory/PostgreSQL/sqlc を同featureに局所化した。"
+    - "EmailSender は shared notification capability が所有し、Authentication 固有portへのcontext横断依存を解消した。"
+    - "Authentication直下portはfeature横断のAuthEventBucketStoreのみで、未使用LoginContinuationは削除した。"
+    - "ARCHITECTURE.md のmodule ledgerは実importと一致し、依存グラフは循環しない。"
   evidence:
     - id: "verify-go"
       kind: "test"
@@ -185,6 +187,14 @@ feature 案（ADR-130 の条件付き規約・命名慣習を踏襲）:
       `new-architecture` skill で feature 粒度へ同期。約 75 の外部 module の `depends_on`
       も実際の import 先 feature へ更新。
 - [x] T009 [Verify] 下記 Verification を実行し全緑を確認。
+- [x] T010 [Ownership] `EmailChangeTokenStore` と persistence adapter / sqlc query を
+      IdManagement `user` feature へ移し、DI 所有権を `idmanagement.Module` へ移す。
+- [x] T011 [Ownership] 汎用 `EmailSender` / `EmailMessage` を shared notification
+      capability へ移し、Authentication 固有 port への context 横断依存を解消する。
+- [x] T012 [Cleanup] 未使用の `LoginContinuation` を削除し、Authentication 直下 port は
+      feature 横断の `AuthEventBucketStore` のみにする。
+- [x] T013 [Docs/Verify] `ARCHITECTURE.md` の責務・依存グラフと traceability を同期し、
+      Verification を再実行する。
 
 ## Verification
 
@@ -204,12 +214,12 @@ feature 案（ADR-130 の条件付き規約・命名慣習を踏襲）:
 ## Completion
 
 - **Completed At**: 2026-07-20
-- **Summary**: authentication を `password` / `totp` / `webauthn` / `mfa` / `session` /
-  `recovery` の 6 feature へ全層再配置し、`httpdeps` leaf package と feature 別 sqlc
-  生成単位を導入した。外部 consumer の import と `ARCHITECTURE.md` の module ledger /
-  `depends_on` を実装へ同期した。
+- **Summary**: Authentication の6 feature全層分割に加え、残存portを再精査した。
+  `EmailChangeTokenStore` と全永続化実装を IdManagement `user` featureへ移設し、
+  `EmailSender` / `EmailMessage` を shared notification capabilityへ移設した。
+  未使用の `LoginContinuation` は削除し、Authentication直下にはfeature横断の
+  `AuthEventBucketStore`だけを残した。DIとArchitectureの依存グラフも新しい所有権へ同期した。
 - **Verification Results**: `just verify-go`、`just build-go`、`just test-go`、
-  `just yaml-check`、`just check-ids`、`just verify` はすべて passed。Git の rename
-  検出で移動履歴を確認し、旧配置に残る import は context 横断共有型・共有 usecase のみ。
-- **Out of Scope**: SCL / context_map、RA §3.8 と Architecture の規約散文、DI の
-  組み立て構造、feature 分割線の再設計は変更していない。
+  `just yaml-check`、`just check-ids`、`just verify` はすべて passed。
+- **Out of Scope**: SCL / context_map、RA §3.8 とArchitectureの規約散文、feature分割線の
+  再設計は変更していない。

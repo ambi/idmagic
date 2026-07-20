@@ -14,8 +14,8 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -25,7 +25,7 @@ const PasswordResetTokenTTLSeconds = 1800
 type RequestPasswordResetDeps struct {
 	UserRepo    userports.UserRepository
 	TokenStore  passwordports.PasswordResetTokenStore
-	EmailSender authnports.EmailSender
+	EmailSender sharednotification.EmailSender
 	Emit        func(spec.DomainEvent)
 	Issuer      string
 	TokenTTL    time.Duration
@@ -79,7 +79,7 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	// Send to the verified address stored on the account, not the raw request
 	// input, so untrusted request data never reaches the email content (CWE-640).
-	delivered := deps.EmailSender.SendEmail(ctx, authnports.EmailMessage{
+	delivered := deps.EmailSender.SendEmail(ctx, sharednotification.EmailMessage{
 		To:      *user.Email,
 		Subject: "Password reset",
 		Text: fmt.Sprintf(

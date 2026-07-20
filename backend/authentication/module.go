@@ -24,7 +24,6 @@ type Module struct {
 	MfaEnrollmentBypassRepo mfaports.MfaEnrollmentBypassRepository
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	PasswordResetTokenStore passwordports.PasswordResetTokenStore
-	EmailChangeTokenStore   ports.EmailChangeTokenStore
 	SessionStore            sessionports.SessionStore
 	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore    webauthnports.WebAuthnSessionStore
@@ -34,7 +33,6 @@ type Module struct {
 	AuthEventBucketStore    ports.AuthEventBucketStore
 
 	PasswordHasher          passwordports.PasswordHasher
-	EmailSender             ports.EmailSender
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 	LoginAttemptThrottle    sessionports.LoginAttemptThrottle
 	SentinelPasswordHash    string

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -39,8 +39,8 @@ func sha256Hex(value string) string {
 // User.Email 更新は確定時まで起きない (新アドレスの所有確認を経るまで反映しない)。
 type RequestEmailChangeDeps struct {
 	UserRepo    userports.UserRepository
-	TokenStore  authnports.EmailChangeTokenStore
-	EmailSender authnports.EmailSender
+	TokenStore  userports.EmailChangeTokenStore
+	EmailSender sharednotification.EmailSender
 	Emit        func(spec.DomainEvent)
 	Issuer      string
 	TokenTTL    time.Duration
@@ -91,7 +91,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 	if ttl == 0 {
 		ttl = EmailChangeTokenTTLSeconds * time.Second
 	}
-	if err := deps.TokenStore.Save(ctx, authnports.EmailChangeTokenRecord{
+	if err := deps.TokenStore.Save(ctx, userports.EmailChangeTokenRecord{
 		Sub: user.ID, TokenHash: sha256Hex(rawToken), NewEmail: newEmail,
 		CreatedAt: now, ExpiresAt: now.Add(ttl),
 	}); err != nil {
@@ -100,7 +100,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 
 	verifyURL := strings.TrimRight(deps.Issuer, "/") + "/account/email/verify?token=" + url.QueryEscape(rawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
-	delivered := deps.EmailSender.SendEmail(ctx, authnports.EmailMessage{
+	delivered := deps.EmailSender.SendEmail(ctx, sharednotification.EmailMessage{
 		To:      newEmail,
 		Subject: "Confirm your new email address",
 		Text: fmt.Sprintf(

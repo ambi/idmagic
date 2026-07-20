@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -21,11 +20,11 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 
 	"github.com/labstack/echo/v5"
 )
@@ -307,7 +306,7 @@ func newAdminUserHandler(
 			ClientRepo:  oauth2memory.NewClientRepository(),
 			ConsentRepo: oauth2memory.NewConsentRepository(),
 		},
-		EmailChangeTokenStore: authnmemory.NewEmailChangeTokenStore(),
+		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
 		EmailSender:           mockEmailSender{},
 	})
 	return e, repo
@@ -315,7 +314,7 @@ func newAdminUserHandler(
 
 type mockEmailSender struct{}
 
-func (m mockEmailSender) SendEmail(ctx context.Context, message authnports.EmailMessage) bool {
+func (m mockEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
 	return true
 }
 

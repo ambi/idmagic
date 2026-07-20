@@ -99,7 +99,7 @@ func RunWorker() error {
 	}))
 	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
-		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, EmailSender: deps.Authentication.EmailSender,
+		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, EmailSender: deps.Notification.EmailSender,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
 			return nil

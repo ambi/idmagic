@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/notification"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 )
 
 // resolveEmailSender は EMAIL_SENDER / SMTP_* 環境変数から EmailSender adapter を組み立てる。
 // 既定は console。smtp 選択時に SMTP_HOST / SMTP_FROM が無い場合は起動失敗 (ADR-035 §影響)。
-func ResolveEmailSender(getenv func(string) string) (authnports.EmailSender, error) {
+func ResolveEmailSender(getenv func(string) string) (sharednotification.EmailSender, error) {
 	kind := strings.ToLower(strings.TrimSpace(getenv("EMAIL_SENDER")))
 	if kind == "" {
 		kind = "console"

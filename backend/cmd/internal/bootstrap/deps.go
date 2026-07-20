@@ -16,6 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/scim"
+	"github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -39,6 +40,7 @@ type Dependencies struct {
 	Application    application.Module
 	Jobs           jobs.Module
 	Provisioning   provisioning.Module
+	Notification   notification.Module
 	Close          func()
 	DbPing         func(context.Context) error
 	ValkeyPing     func(context.Context) error

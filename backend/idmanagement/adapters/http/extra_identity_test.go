@@ -15,7 +15,6 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -23,6 +22,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
@@ -31,7 +31,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -47,7 +46,7 @@ func sha256Hex(value string) string {
 type identityTestHandler struct {
 	echo     *echo.Echo
 	users    *usermemory.UserRepository
-	tokens   *authnmemory.EmailChangeTokenStore
+	tokens   *usermemory.EmailChangeTokenStore
 	groups   *groupmemory.GroupRepository
 	clients  *oauth2memory.OAuth2ClientRepository
 	consents *oauth2memory.ConsentRepository
@@ -56,7 +55,7 @@ type identityTestHandler struct {
 func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	t.Helper()
 	repo := usermemory.NewUserRepository()
-	tokenStore := authnmemory.NewEmailChangeTokenStore()
+	tokenStore := usermemory.NewEmailChangeTokenStore()
 	groupRepo := groupmemory.NewGroupRepository()
 	clientRepo := oauth2memory.NewClientRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
@@ -413,7 +412,7 @@ func TestEmailChangeLifecycle(t *testing.T) {
 	// Seed a valid token for verify
 	rawToken := "my-raw-email-change-token-456"
 	tokenHash := sha256Hex(rawToken)
-	_ = tokenStore.Save(context.Background(), authnports.EmailChangeTokenRecord{
+	_ = tokenStore.Save(context.Background(), userports.EmailChangeTokenRecord{
 		TokenHash: tokenHash,
 		Sub:       "admin",
 		NewEmail:  "admin-new@example.com",

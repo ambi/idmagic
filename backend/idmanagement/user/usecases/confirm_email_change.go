@@ -6,7 +6,6 @@ import (
 	"slices"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -21,7 +20,7 @@ var ErrInvalidEmailChangeToken = errors.New("email change token is invalid or ex
 // 認証済みセッションは要求しない (reset password と同方針)。
 type ConfirmEmailChangeDeps struct {
 	UserRepo   userports.UserRepository
-	TokenStore authnports.EmailChangeTokenStore
+	TokenStore userports.EmailChangeTokenStore
 	Emit       func(spec.DomainEvent)
 }
 

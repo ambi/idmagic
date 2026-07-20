@@ -1,4 +1,4 @@
-package ports
+package notification
 
 import "context"
 
@@ -11,4 +11,9 @@ type EmailMessage struct {
 
 type EmailSender interface {
 	SendEmail(ctx context.Context, message EmailMessage) bool
+}
+
+// Module bundles the shared notification capability for composition roots.
+type Module struct {
+	EmailSender EmailSender
 }

@@ -108,7 +108,7 @@ func Run() error {
 	deps.OAuth2.IDTokenHintVerifier = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
 	deps.Authentication.PasswordHasher = hasher
-	deps.Authentication.EmailSender = emailSender
+	deps.Notification.EmailSender = emailSender
 	deps.Authentication.BreachedPasswordChecker = breachedChecker
 	deps.Authentication.LoginAttemptThrottle = loginThrottle
 	deps.Authentication.SentinelPasswordHash = sentinelPasswordHash
@@ -181,6 +181,7 @@ func Run() error {
 		IdManagement:     deps.IdManagement,
 		IdGovernance:     deps.IdGovernance,
 		Authentication:   deps.Authentication,
+		Notification:     deps.Notification,
 		OAuth2:           deps.OAuth2,
 		SigningKeys:      deps.SigningKeys,
 		Audit:            deps.Audit,

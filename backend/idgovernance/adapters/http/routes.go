@@ -7,12 +7,12 @@ package http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 
 	"github.com/labstack/echo/v5"
 )
@@ -32,7 +32,7 @@ type Deps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     authnports.EmailSender
+	EmailSender     sharednotification.EmailSender
 }
 
 // RegisterRoutes wires the 11 lifecycle workflow admin endpoints.

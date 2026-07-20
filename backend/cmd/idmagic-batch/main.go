@@ -92,7 +92,8 @@ func runSigningKeyLifecycle(ctx context.Context, deps *bootstrap.Dependencies, c
 	if err != nil {
 		return err
 	}
-	emit := deps.NewEmitFunc(logging.Default()) //nolint:contextcheck // batch events use the bounded independent audit context.
+	//nolint:contextcheck // Batch events use the bounded independent audit context.
+	emit := deps.NewEmitFunc(logging.Default())
 	for _, tenant := range tenants {
 		tenantCtx := tenancy.WithTenant(ctx, tenant, "", "")
 		if _, err := signingusecases.RotateSigningKeyIfDue(tenantCtx, signingusecases.RotateSigningKeyDeps{

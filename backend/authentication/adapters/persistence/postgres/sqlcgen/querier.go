@@ -10,10 +10,7 @@ import (
 )
 
 type Querier interface {
-	ConsumeEmailChangeToken(ctx context.Context, tokenHash string) (*ConsumeEmailChangeTokenRow, error)
 	DeleteAuthEventBucketsOlderThan(ctx context.Context, windowStart time.Time) (int64, error)
-	DeleteEmailChangeTokensForSub(ctx context.Context, userID string) error
-	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
 	ListAuthEventBuckets(ctx context.Context, arg ListAuthEventBucketsParams) ([]*ListAuthEventBucketsRow, error)
 	RecordAuthEventBucket(ctx context.Context, arg RecordAuthEventBucketParams) (*RecordAuthEventBucketRow, error)
 }

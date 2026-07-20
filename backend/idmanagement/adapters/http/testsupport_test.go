@@ -14,14 +14,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 
 	"github.com/labstack/echo/v5"
 )
 
 type mockEmailSender struct{}
 
-func (m mockEmailSender) SendEmail(ctx context.Context, message authnports.EmailMessage) bool {
+func (m mockEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
 	return true
 }
 

@@ -9,7 +9,6 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -20,6 +19,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -46,7 +46,7 @@ type LifecycleWorkflowExecutorDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     authnports.EmailSender
+	EmailSender     sharednotification.EmailSender
 	Emit            func(spec.DomainEvent) error
 }
 
@@ -171,7 +171,7 @@ type LifecycleActionEvalDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     authnports.EmailSender
+	EmailSender     sharednotification.EmailSender
 }
 
 // EvaluateLifecycleAction resolves one action's current-state dependencies
@@ -284,7 +284,7 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		updated.Lifecycle.StatusChangedAt, updated.UpdatedAt = &now, now
 		return changed(true, deps.UserRepo.Save(ctx, &updated))
 	case igdomain.WorkflowActionSendEmail:
-		if deps.EmailSender.SendEmail(ctx, authnports.EmailMessage{To: *user.Email, Subject: action.TemplateKey, Text: action.TemplateKey}) {
+		if deps.EmailSender.SendEmail(ctx, sharednotification.EmailMessage{To: *user.Email, Subject: action.TemplateKey, Text: action.TemplateKey}) {
 			return igdomain.WorkflowStepChanged, ""
 		}
 		return igdomain.WorkflowStepFailed, "notification_failed"

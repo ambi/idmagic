@@ -20,7 +20,6 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
@@ -106,7 +105,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 		MfaFactorRepo:         mfaRepo,
 		PasswordHasher:        hasher,
 		PasswordHistoryRepo:   passwordmemory.NewPasswordHistoryRepository(),
-		EmailChangeTokenStore: authnmemory.NewEmailChangeTokenStore(),
+		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
 		SessionManager:        sm, AuthnResolver: sm,
 	})
 	return e, store, &events

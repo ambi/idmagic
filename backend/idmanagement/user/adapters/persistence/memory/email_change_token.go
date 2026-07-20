@@ -5,25 +5,25 @@ import (
 	"sync"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 // =====================================================================
-// EmailChangeTokenStore (Authentication)
+// EmailChangeTokenStore (IdManagement/User)
 // =====================================================================
 
 type EmailChangeTokenStore struct {
 	mu      sync.Mutex
-	records map[string]authnports.EmailChangeTokenRecord
+	records map[string]userports.EmailChangeTokenRecord
 }
 
 func NewEmailChangeTokenStore() *EmailChangeTokenStore {
-	return &EmailChangeTokenStore{records: map[string]authnports.EmailChangeTokenRecord{}}
+	return &EmailChangeTokenStore{records: map[string]userports.EmailChangeTokenRecord{}}
 }
 
 func (s *EmailChangeTokenStore) Save(
 	_ context.Context,
-	record authnports.EmailChangeTokenRecord,
+	record userports.EmailChangeTokenRecord,
 ) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -40,7 +40,7 @@ func (s *EmailChangeTokenStore) Consume(
 	_ context.Context,
 	tokenHash string,
 	now time.Time,
-) (*authnports.EmailChangeTokenRecord, error) {
+) (*userports.EmailChangeTokenRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	record, ok := s.records[tokenHash]

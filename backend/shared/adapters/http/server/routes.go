@@ -32,6 +32,7 @@ import (
 	"github.com/ambi/idmagic/backend/scim"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/adapters/http"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -65,13 +66,14 @@ type Deps struct {
 	GroupRepo      groupports.GroupRepository
 	AgentRepo      agentports.AgentRepository
 	Authentication authentication.Module
+	Notification   sharednotification.Module
 	// Deprecated: wi-177 移行中のテスト用互換入力。bootstrap は Authentication.Module のみを設定する。
 	MfaFactorRepo           totpports.MfaFactorRepository
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
-	EmailChangeTokenStore   authnports.EmailChangeTokenStore
+	EmailChangeTokenStore   userports.EmailChangeTokenStore
 	AuthEventBucketStore    authnports.AuthEventBucketStore
 	PasswordHasher          passwordports.PasswordHasher
-	EmailSender             authnports.EmailSender
+	EmailSender             sharednotification.EmailSender
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 	SentinelPasswordHash    string
 	SessionManager          *sessionusecases.SessionManager
@@ -104,6 +106,7 @@ func Register(e *echo.Echo, d Deps) {
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
+	d.Notification = mergeLegacyNotificationDeps(d.Notification, d)
 	d.Tenancy = mergeLegacyTenancyDeps(d.Tenancy, d)
 	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
@@ -146,17 +149,11 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 	if module.PasswordHistoryRepo == nil {
 		module.PasswordHistoryRepo = d.PasswordHistoryRepo
 	}
-	if module.EmailChangeTokenStore == nil {
-		module.EmailChangeTokenStore = d.EmailChangeTokenStore
-	}
 	if module.AuthEventBucketStore == nil {
 		module.AuthEventBucketStore = d.AuthEventBucketStore
 	}
 	if module.PasswordHasher == nil {
 		module.PasswordHasher = d.PasswordHasher
-	}
-	if module.EmailSender == nil {
-		module.EmailSender = d.EmailSender
 	}
 	if module.BreachedPasswordChecker == nil {
 		module.BreachedPasswordChecker = d.BreachedPasswordChecker
@@ -214,6 +211,16 @@ func mergeLegacyIdManagementDeps(module idmanagement.Module, d Deps) idmanagemen
 	}
 	if module.AgentRepo == nil {
 		module.AgentRepo = d.AgentRepo
+	}
+	if module.EmailChangeTokenStore == nil {
+		module.EmailChangeTokenStore = d.EmailChangeTokenStore
+	}
+	return module
+}
+
+func mergeLegacyNotificationDeps(module sharednotification.Module, d Deps) sharednotification.Module {
+	if module.EmailSender == nil {
+		module.EmailSender = d.EmailSender
 	}
 	return module
 }
@@ -307,7 +314,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AuthEventBucketStore:      d.Authentication.AuthEventBucketStore,
 		TenantRepo:                d.TenantRepo,
 		PasswordResetTokenStore:   d.Authentication.PasswordResetTokenStore,
-		EmailSender:               d.Authentication.EmailSender,
+		EmailSender:               d.Notification.EmailSender,
 		BreachedPasswordChecker:   d.Authentication.BreachedPasswordChecker,
 		WebAuthnRP:                d.Authentication.WebAuthnRP,
 		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
@@ -332,8 +339,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		MfaFactorRepo:         d.Authentication.MfaFactorRepo,
 		PasswordHasher:        d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
-		EmailChangeTokenStore: d.Authentication.EmailChangeTokenStore,
-		EmailSender:           d.Authentication.EmailSender,
+		EmailChangeTokenStore: d.IdManagement.EmailChangeTokenStore,
+		EmailSender:           d.Notification.EmailSender,
 		JobRepo:               d.Jobs.Repo,
 	})
 
@@ -344,7 +351,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		JobRepo:                  d.Jobs.Repo,
 		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
-		EmailSender: d.Authentication.EmailSender,
+		EmailSender: d.Notification.EmailSender,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
