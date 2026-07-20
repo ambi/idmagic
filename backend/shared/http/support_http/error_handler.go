@@ -2,6 +2,7 @@ package support_http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -44,11 +45,12 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 		if tmp := echo.StatusCode(err); tmp != 0 {
 			code = tmp
 		}
-		if code >= http.StatusInternalServerError {
+		if code >= 400 {
 			req := c.Request()
 			logger.Error(
 				req.Context(), "unhandled request error",
 				"error", err.Error(),
+				"stack", fmt.Sprintf("%+v", err),
 				"method", req.Method,
 				"path", req.URL.Path,
 				"status", code,

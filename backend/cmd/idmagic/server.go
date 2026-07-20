@@ -139,6 +139,7 @@ func Run() error {
 	// 自前生成する。信頼できる境界プロキシが所有・消毒している構成でのみ
 	// REQUEST_ID_TRUST_INBOUND=true で受信値の再利用を許可する。
 	e.Use(httpsupport.RequestIDMiddleware(bootstrap.EnvDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
+	e.Use(httpsupport.LoggingMiddleware())
 	e.Use(httpsupport.RecoverMiddleware(logger))
 	// SecurityResponseHeaders / FrameAncestorsPolicy objectives (ADR-076):
 	// backend レスポンスへ CSP (nonce ベース) / frame-ancestors 'none' / nosniff 等を
