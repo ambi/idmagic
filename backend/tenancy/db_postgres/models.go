@@ -552,6 +552,34 @@ type TenantDefaultSignInPolicy struct {
 	UpdatedAt time.Time
 }
 
+type TenantQuota struct {
+	TenantID             string
+	Users                pgtype.Int4
+	Groups               pgtype.Int4
+	Agents               pgtype.Int4
+	Applications         pgtype.Int4
+	Oauth2Clients        pgtype.Int4
+	ActiveSessions       pgtype.Int4
+	Consents             pgtype.Int4
+	ActiveJobs           pgtype.Int4
+	AuditEventsRetained  pgtype.Int4
+	ExportArtifactsBytes pgtype.Int4
+}
+
+type TenantUsage struct {
+	TenantID             string
+	Users                int32
+	Groups               int32
+	Agents               int32
+	Applications         int32
+	Oauth2Clients        int32
+	ActiveSessions       int32
+	Consents             int32
+	ActiveJobs           int32
+	AuditEventsRetained  int32
+	ExportArtifactsBytes int32
+}
+
 type TenantUserAttributeSchema struct {
 	TenantID   string
 	Attributes []byte

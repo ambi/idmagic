@@ -21,10 +21,10 @@ func (m *httpMetricsSpy) BeginHTTPRequest(route, method string) func(statusCode 
 	}
 }
 
-func (m *httpMetricsSpy) RecordLoginOutcome(string, string, string) {}
-func (m *httpMetricsSpy) RecordLoginThrottle(string, string)        {}
-func (m *httpMetricsSpy) RecordTokenIssuance(string, string, time.Duration) {
-}
+func (m *httpMetricsSpy) RecordLoginOutcome(string, string, string)                             {}
+func (m *httpMetricsSpy) RecordLoginThrottle(string, string)                                    {}
+func (m *httpMetricsSpy) RecordTokenIssuance(grantType, outcome string, duration time.Duration) {}
+func (m *httpMetricsSpy) RecordQuotaExceeded(resource string)                                   {}
 
 func TestMetricsMiddlewareUsesRouteTemplateNotResolvedPath(t *testing.T) {
 	spy := &httpMetricsSpy{}

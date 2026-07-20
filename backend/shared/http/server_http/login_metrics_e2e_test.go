@@ -66,6 +66,8 @@ func (s *metricsSpy) RecordTokenIssuance(grantType, outcome string, _ time.Durat
 	s.tokenIssuances = append(s.tokenIssuances, tokenIssuanceCall{grantType, outcome})
 }
 
+func (s *metricsSpy) RecordQuotaExceeded(string) {}
+
 const (
 	metricsTestClientID     = "metrics-client"
 	metricsTestClientSecret = "metrics-client-secret"

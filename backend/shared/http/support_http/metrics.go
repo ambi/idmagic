@@ -28,4 +28,7 @@ type Metrics interface {
 	// grantType is the OAuth2 grant_type value; outcome is "success" or the
 	// bounded error class returned to the caller.
 	RecordTokenIssuance(grantType, outcome string, duration time.Duration)
+	// RecordQuotaExceeded records an event where an operation was rejected
+	// because the tenant reached its quota for the given resource.
+	RecordQuotaExceeded(resource string)
 }

@@ -1362,6 +1362,12 @@
         },
         "password_policy_defaults": {
           "$ref": "#/$defs/PasswordPolicyDefaults"
+        },
+        "quota": {
+          "$ref": "#/$defs/TenantQuota"
+        },
+        "usage": {
+          "$ref": "#/$defs/TenantUsage"
         }
       },
       "additionalProperties": false,
@@ -1369,7 +1375,9 @@
         "tenant_id",
         "realm",
         "display_name",
-        "password_policy_defaults"
+        "password_policy_defaults",
+        "quota",
+        "usage"
       ],
       "description": "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う Authentication context の PasswordPolicy 標準値を併せて返す。\n"
     },
@@ -10186,6 +10194,12 @@
       "additionalProperties": false,
       "description": "ProvisionOnDemand が指定した subject が connection の scope (assigned_only の場合は割当) に含まれない。"
     },
+    "QuotaExceededError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。"
+    },
     "RecoveryCode": {
       "type": "object",
       "properties": {
@@ -12558,6 +12572,114 @@
       ],
       "description": "管理 API のテナント一覧。"
     },
+    "TenantQuota": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "integer"
+        },
+        "groups": {
+          "type": "integer"
+        },
+        "agents": {
+          "type": "integer"
+        },
+        "applications": {
+          "type": "integer"
+        },
+        "oauth2_clients": {
+          "type": "integer"
+        },
+        "active_sessions": {
+          "type": "integer"
+        },
+        "consents": {
+          "type": "integer"
+        },
+        "active_jobs": {
+          "type": "integer"
+        },
+        "audit_events_retained": {
+          "type": "integer"
+        },
+        "export_artifacts_bytes": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "users",
+        "groups",
+        "agents",
+        "applications",
+        "oauth2_clients",
+        "active_sessions",
+        "consents",
+        "active_jobs",
+        "audit_events_retained",
+        "export_artifacts_bytes"
+      ],
+      "description": "テナント単位のリソース上限値 (Hard / Soft)。システム管理者がテナントごとに上書きできる。"
+    },
+    "TenantQuotaUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "integer"
+        },
+        "groups": {
+          "type": "integer"
+        },
+        "agents": {
+          "type": "integer"
+        },
+        "applications": {
+          "type": "integer"
+        },
+        "oauth2_clients": {
+          "type": "integer"
+        },
+        "active_sessions": {
+          "type": "integer"
+        },
+        "consents": {
+          "type": "integer"
+        },
+        "active_jobs": {
+          "type": "integer"
+        },
+        "audit_events_retained": {
+          "type": "integer"
+        },
+        "export_artifacts_bytes": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "system_admin がテナントの Quota を上書きする JSON リクエスト。"
+    },
+    "TenantQuotaUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "tenantId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "actorUserId",
+        "tenantId"
+      ],
+      "description": "system_admin がテナントのリソースクォータを上書きした。"
+    },
     "TenantSigningKey": {
       "type": "object",
       "properties": {
@@ -12628,6 +12750,12 @@
         "password_policy_override": {
           "$ref": "#/$defs/PasswordPolicyOverride"
         },
+        "quota": {
+          "$ref": "#/$defs/TenantQuota"
+        },
+        "usage": {
+          "$ref": "#/$defs/TenantUsage"
+        },
         "created_at": {
           "type": "string",
           "format": "date-time"
@@ -12647,6 +12775,8 @@
         "realm",
         "display_name",
         "status",
+        "quota",
+        "usage",
         "created_at"
       ],
       "description": "テナント表現。管理 UI の一覧と詳細で同じ表現を返す。"
@@ -12695,6 +12825,55 @@
         "changedFields"
       ],
       "description": "system_admin がテナントの表示名を更新した。"
+    },
+    "TenantUsage": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "integer"
+        },
+        "groups": {
+          "type": "integer"
+        },
+        "agents": {
+          "type": "integer"
+        },
+        "applications": {
+          "type": "integer"
+        },
+        "oauth2_clients": {
+          "type": "integer"
+        },
+        "active_sessions": {
+          "type": "integer"
+        },
+        "consents": {
+          "type": "integer"
+        },
+        "active_jobs": {
+          "type": "integer"
+        },
+        "audit_events_retained": {
+          "type": "integer"
+        },
+        "export_artifacts_bytes": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "users",
+        "groups",
+        "agents",
+        "applications",
+        "oauth2_clients",
+        "active_sessions",
+        "consents",
+        "active_jobs",
+        "audit_events_retained",
+        "export_artifacts_bytes"
+      ],
+      "description": "テナント単位の現在のリソース利用量。"
     },
     "TenantUserAttributeSchema": {
       "type": "object",

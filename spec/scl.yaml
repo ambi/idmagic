@@ -15,6 +15,7 @@ context_map:
     publishes:
       - TenantRef
       - ResolveTenant
+      - QuotaExceededError
   IdManagement:
     description: 人間 User、Group、非人間 Agent という identity principal と、そのプロフィール、ロール、ライフサイクル、管理 API、自己管理 API を所有する。資格情報検証、MFA、ログインセッションは Authentication に分離する。
     path: contexts/identity-management.yaml
@@ -28,6 +29,7 @@ context_map:
         via: published_language
         uses:
           - TenantRef
+          - QuotaExceededError
         reason: identity principal と管理 API はテナント境界内に閉じる。
       Jobs:
         via: published_language
@@ -45,6 +47,7 @@ context_map:
         via: published_language
         uses:
           - TenantRef
+          - QuotaExceededError
         reason: LoginSession と認証イベントはテナント境界内に閉じる。
       IdManagement:
         via: published_language
@@ -66,6 +69,7 @@ context_map:
         via: published_language
         uses:
           - TenantRef
+          - QuotaExceededError
         reason: クライアント・コード・トークン・鍵はテナント境界内に閉じる。
       Authentication:
         via: published_language
@@ -117,6 +121,7 @@ context_map:
         via: published_language
         uses:
           - TenantRef
+          - QuotaExceededError
         reason: Application・binding・割当は realm 境界内に閉じる。
       IdManagement:
         via: published_language
@@ -263,6 +268,7 @@ context_map:
         via: published_language
         uses:
           - TenantRef
+          - QuotaExceededError
         reason: Job は tenant_id を必須とし、worker はテナント境界内でのみ副作用を起こす。
   Seeding:
     description: "環境別の seed profile、投入計画、dry-run、適用の安全方針を所有する運用 bounded context。\n各業務データの意味と永続化は各 record context に残し、Seeding は published command\nsurface を通じて依存順の実行を調整する。profile は明示選択であり、production では\nbootstrap 以外を fail-closed で拒否する。\n"

@@ -200,6 +200,9 @@ models:
   AccessDeniedError:
     kind: error
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
+  QuotaExceededError:
+    kind: error
+    description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
   AttributeType:
     kind: enum
     description: 属性値の sum type discriminator。Tenancy context が所有する定義の published language stub。
@@ -1727,6 +1730,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     emits:
       - UserCreated
     access:
@@ -2015,6 +2019,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     emits:
       - GroupCreated
     ensures:
@@ -2273,6 +2278,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     emits:
       - AgentRegistered
     requires:

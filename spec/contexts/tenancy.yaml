@@ -47,6 +47,10 @@ glossary:
     definition: IdP プロセス自身。起動時に default テナントを自動作成する。
   OAuth2Client:
     definition: OIDC / OAuth2 プロトコルエンドポイントを呼び出す外部クライアントアプリケーション。
+  HardQuota:
+    definition: 超過するとリソース作成が同期的にエラーとなる厳格な上限。
+  SoftQuota:
+    definition: 超過しても作成は成功するが、警告が通知される遅延評価の上限。
 models:
   User:
     kind: entity
@@ -61,6 +65,88 @@ models:
         type: String
       roles:
         type: "String[]"
+  TenantQuota:
+    kind: value_object
+    description: テナント単位のリソース上限値 (Hard / Soft)。システム管理者がテナントごとに上書きできる。
+    fields:
+      users:
+        type: Integer
+      groups:
+        type: Integer
+      agents:
+        type: Integer
+      applications:
+        type: Integer
+      oauth2_clients:
+        type: Integer
+      active_sessions:
+        type: Integer
+      consents:
+        type: Integer
+      active_jobs:
+        type: Integer
+      audit_events_retained:
+        type: Integer
+      export_artifacts_bytes:
+        type: Integer
+  TenantUsage:
+    kind: value_object
+    description: テナント単位の現在のリソース利用量。
+    fields:
+      users:
+        type: Integer
+      groups:
+        type: Integer
+      agents:
+        type: Integer
+      applications:
+        type: Integer
+      oauth2_clients:
+        type: Integer
+      active_sessions:
+        type: Integer
+      consents:
+        type: Integer
+      active_jobs:
+        type: Integer
+      audit_events_retained:
+        type: Integer
+      export_artifacts_bytes:
+        type: Integer
+  TenantQuotaUpdateRequest:
+    kind: value_object
+    description: system_admin がテナントの Quota を上書きする JSON リクエスト。
+    fields:
+      users:
+        type: Integer
+        optional: true
+      groups:
+        type: Integer
+        optional: true
+      agents:
+        type: Integer
+        optional: true
+      applications:
+        type: Integer
+        optional: true
+      oauth2_clients:
+        type: Integer
+        optional: true
+      active_sessions:
+        type: Integer
+        optional: true
+      consents:
+        type: Integer
+        optional: true
+      active_jobs:
+        type: Integer
+        optional: true
+      audit_events_retained:
+        type: Integer
+        optional: true
+      export_artifacts_bytes:
+        type: Integer
+        optional: true
   TenantStatus:
     kind: enum
     description: "テナント状態。Active は通常稼働、Disabled はテナント全体のプロトコル受付を停止 (`/authorize` `/token` 等が一律 invalid_request)。"
@@ -231,6 +317,10 @@ models:
         optional: true
       password_policy_defaults:
         type: PasswordPolicyDefaults
+      quota:
+        type: TenantQuota
+      usage:
+        type: TenantUsage
   TenantUserAttributeSchemaResponse:
     kind: value_object
     description: "`/api/admin/tenant/user_attribute_schema` の返り値。tenant 固有の custom 属性定義\n(attributes) に加え、参照用にコードが持つ組み込みカタログ (builtin) を併せて返し、\nUI が key 衝突を避けつつ全属性を一覧できるようにする。\n"
@@ -462,6 +552,10 @@ models:
       password_policy_override:
         type: PasswordPolicyOverride
         optional: true
+      quota:
+        type: TenantQuota
+      usage:
+        type: TenantUsage
       created_at:
         type: DateTime
       updated_at:
@@ -498,6 +592,16 @@ models:
         type: String
       changedFields:
         type: "String[]"
+  TenantQuotaUpdated:
+    kind: event
+    description: system_admin がテナントのリソースクォータを上書きした。
+    payload:
+      occurredAt:
+        type: DateTime
+      actorUserId:
+        type: String
+      tenantId:
+        type: String
   TenantUserAttributeSchemaUpdated:
     kind: event
     description: テナント内 admin が custom 属性定義 (TenantUserAttributeSchema) を更新した。値は持たず、変更後の custom 属性 key 一覧のみを記録する。
@@ -540,6 +644,16 @@ models:
   AccessDeniedError:
     kind: error
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
+  QuotaExceededError:
+    kind: error
+    description: テナントの Hard Quota を超過したため、リソース作成が拒否された。
+    payload:
+      resource_type:
+        type: String
+      limit:
+        type: Integer
+      usage:
+        type: Integer
 states:
   TenantLifecycle:
     description: テナント のライフサイクル。Active で通常稼働、Disable で全プロトコルルートを停止、Enable で復帰。物理削除は本フェーズ対象外。
@@ -697,6 +811,31 @@ interfaces:
         path: "/api/admin/tenants/{tenant_id}/enable"
         successful_status_codes:
           - "204"
+  UpdateTenantQuota:
+    description: system_admin が特定テナントの Quota を更新する。
+    input:
+      tenant_id:
+        type: String
+      request:
+        type: TenantQuotaUpdateRequest
+    output:
+      tenant:
+        type: TenantSummaryResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - TenantQuotaUpdated
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: Tenant
+        id: input.tenant_id
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/tenants/{tenant_id}/quota"
+        request_form: body
   GetAdminSettings:
     description: "テナント内 admin が自身のテナントの設定 (表示名 / パスワードポリシー上書き) を取得する。\n対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) を\n含め、UI が「上書きしないときに実際に適用される値」を具体数字で示せるようにする。\n"
     output:
@@ -989,9 +1128,23 @@ scenarios:
       - at: 1
         condition: 対象テナントが無効化されている
         steps:
-          - "tenant_id \"acme\" を作成して無効化する"
-          - "無効化済みテナントの \"/realms/acme/authorize\" にリクエストを送る"
-          - "テナントの存在を漏らさずエラー \"InvalidRequestError\""
+          - " tenant_id \"acme\" を作成して無効化する"
+          - " 無効化済みテナントの \"/realms/acme/authorize\" にリクエストを送る"
+          - " テナントの存在を漏らさずエラー \"InvalidRequestError\""
+  System管理者はテナントのクォータ上限を調整できる:
+    actor: SystemAdministrator
+    given:
+      - "system_admin ロールを持つ \"sysadmin\" が認証済みである"
+    main_success:
+      - "\"sysadmin\" が UpdateTenantQuota を呼び出し users 上限を 20000 に増やす"
+      - 対象テナントの quota.users が 20000 になる
+  Hard Quota を超過したリソース作成は拒否される:
+    actor: TenantAdministrator
+    given:
+      - "対象テナントの groups 上限が 1000、利用量が 1000 である"
+    main_success:
+      - "テナント内管理者が新しい Group を作成しようとする"
+      - "QuotaExceededError で拒否され作成されない"
   通常のテナント管理者はシステムコンソールのテナント一覧にアクセスできない:
     actor: TenantAdministrator
     given:
@@ -1029,6 +1182,10 @@ flows:
             does: 有効化ボタンをクリックする
             interface: EnableTenant
             to: SystemTenants
+          - action: update_quota
+            does: クォータ変更モーダルを開き、上限値を更新する
+            interface: UpdateTenantQuota
+            to: SystemTenants
   TenantAttributeManagement:
     entry: TenantAttributes
     views:
@@ -1043,7 +1200,7 @@ flows:
     entry: TenantSettings
     views:
       TenantSettings:
-        sees: テナント設定画面(表示名・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム)
+        sees: テナント設定画面(表示名・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示)
         does:
           - action: update_settings
             does: 表示名またはパスワードポリシー上書きを変更して保存する
@@ -1053,3 +1210,28 @@ flows:
             does: 製品名・色・フッターリンク・フッターテキストを変更して保存する
             interface: UpdateTenantBranding
             to: TenantSettings
+objectives:
+  QuotaEnforcement:
+    description: リソース作成時の Quota チェックは DB アクセスを伴うが、作成 API の全体 latency 予算内に収まること。
+    indicator: measurement.latency < duration("500ms")
+    target: 0.99
+    window: 30d
+    budgeting: occurrences
+  QuotaFailClosed:
+    description: "Quota サービスや DB が一時的に利用不能な場合、Hard Quota 対象リソースの新規作成は fail-closed となり、一時的な作成不可を選択すること (上限を超えて作らせない)。"
+    indicator: measurement.error_rate < 0.001
+    target: 0.999
+    window: 30d
+    budgeting: occurrences
+  UsageCounterConsistency:
+    description: "並行するリソース作成・削除・Retain 処理において、Usage カウンタと実際のレコード数との乖離を防ぐ。万一乖離が発生しても、バックグラウンドの Reconciliation ジョブによって eventual consistency が保たれること。"
+    indicator: measurement.error_rate < 0.001
+    target: 0.999
+    window: 30d
+    budgeting: occurrences
+  QuotaAudit:
+    description: Hard Quota 超過時の作成拒否、および Soft Quota 超過時の警告は必ず Audit イベントとして発火されること。
+    indicator: measurement.error_rate < 0.001
+    target: 0.999
+    window: 30d
+    budgeting: occurrences

@@ -13,6 +13,7 @@ import type {
   ScimToken,
   TenantKeyHealth,
   AdminTenant,
+  TenantQuota,
   AdminUser,
   AdminUserGroups,
   ApplicationAssignment,
@@ -127,6 +128,17 @@ export async function clearAdminUserRequiredAction(
   return request(
     `/api/admin/users/${encodeURIComponent(id)}/required_actions/${encodeURIComponent(action)}`,
     adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+export async function updateAdminTenantQuota(
+  csrfToken: string,
+  id: string,
+  input: TenantQuota,
+): Promise<TenantQuota> {
+  return request(
+    `/api/admin/tenants/${encodeURIComponent(id)}/quota`,
+    adminRequest(csrfToken, 'PUT', input),
   )
 }
 

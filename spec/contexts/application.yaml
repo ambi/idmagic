@@ -997,6 +997,9 @@ models:
   AccessDeniedError:
     kind: error
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
+  QuotaExceededError:
+    kind: error
+    description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
 interfaces:
   AssignApplicationDesiredState:
     description: "呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの application_id / user_id だけを渡す。\n"
@@ -1084,6 +1087,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     emits:
       - ApplicationCreated
     access:

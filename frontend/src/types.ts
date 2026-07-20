@@ -623,6 +623,34 @@ export type AdminTenant = {
   created_at: string
   updated_at?: string
   disabled_at?: string
+  quota?: TenantQuota
+  usage?: TenantUsage
+}
+
+export type TenantQuota = {
+  users?: number
+  groups?: number
+  agents?: number
+  applications?: number
+  oauth2_clients?: number
+  active_sessions?: number
+  consents?: number
+  active_jobs?: number
+  audit_events_retained?: number
+  export_artifacts_bytes?: number
+}
+
+export type TenantUsage = {
+  users: number
+  groups: number
+  agents: number
+  applications: number
+  oauth2_clients: number
+  active_sessions: number
+  consents: number
+  active_jobs: number
+  audit_events_retained: number
+  export_artifacts_bytes: number
 }
 
 export type AdminRoleInterface = {
@@ -659,6 +687,8 @@ export type AdminSettings = {
     max_length: number
     history_depth: number
   }
+  quota?: TenantQuota
+  usage?: TenantUsage
 }
 
 export type Branding = {

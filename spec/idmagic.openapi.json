@@ -560,6 +560,97 @@
         }
       }
     },
+    "/api/admin/tenants/{tenant_id}/quota": {
+      "put": {
+        "operationId": "UpdateTenantQuota",
+        "summary": "system_admin が特定テナントの Quota を更新する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "SystemAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "input.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/TenantQuotaUpdateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": {
+                      "$ref": "#/components/schemas/TenantSummaryResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "tenant"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/settings": {
       "get": {
         "operationId": "GetAdminSettings",
@@ -1642,7 +1733,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -1652,6 +1743,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -2570,7 +2664,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -2580,6 +2674,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -3511,7 +3608,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -3521,6 +3618,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -4296,7 +4396,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -4306,6 +4406,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -6161,13 +6264,16 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError",
+            "description": "Errors: InvalidRequestError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
                   "oneOf": [
                     {
                       "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -6340,7 +6446,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -6350,6 +6456,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -7679,7 +7788,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -7689,6 +7798,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -8986,7 +9098,7 @@
             }
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
             "content": {
               "application/json": {
                 "schema": {
@@ -8996,6 +9108,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
                     }
                   ]
                 }
@@ -17074,6 +17189,12 @@
           },
           "password_policy_defaults": {
             "$ref": "#/components/schemas/PasswordPolicyDefaults"
+          },
+          "quota": {
+            "$ref": "#/components/schemas/TenantQuota"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/TenantUsage"
           }
         },
         "additionalProperties": false,
@@ -17081,7 +17202,9 @@
           "tenant_id",
           "realm",
           "display_name",
-          "password_policy_defaults"
+          "password_policy_defaults",
+          "quota",
+          "usage"
         ],
         "description": "`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う Authentication context の PasswordPolicy 標準値を併せて返す。\n"
       },
@@ -25898,6 +26021,12 @@
         "additionalProperties": false,
         "description": "ProvisionOnDemand が指定した subject が connection の scope (assigned_only の場合は割当) に含まれない。"
       },
+      "QuotaExceededError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。"
+      },
       "RecoveryCode": {
         "type": "object",
         "properties": {
@@ -28270,6 +28399,114 @@
         ],
         "description": "管理 API のテナント一覧。"
       },
+      "TenantQuota": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "integer"
+          },
+          "agents": {
+            "type": "integer"
+          },
+          "applications": {
+            "type": "integer"
+          },
+          "oauth2_clients": {
+            "type": "integer"
+          },
+          "active_sessions": {
+            "type": "integer"
+          },
+          "consents": {
+            "type": "integer"
+          },
+          "active_jobs": {
+            "type": "integer"
+          },
+          "audit_events_retained": {
+            "type": "integer"
+          },
+          "export_artifacts_bytes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "users",
+          "groups",
+          "agents",
+          "applications",
+          "oauth2_clients",
+          "active_sessions",
+          "consents",
+          "active_jobs",
+          "audit_events_retained",
+          "export_artifacts_bytes"
+        ],
+        "description": "テナント単位のリソース上限値 (Hard / Soft)。システム管理者がテナントごとに上書きできる。"
+      },
+      "TenantQuotaUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "integer"
+          },
+          "agents": {
+            "type": "integer"
+          },
+          "applications": {
+            "type": "integer"
+          },
+          "oauth2_clients": {
+            "type": "integer"
+          },
+          "active_sessions": {
+            "type": "integer"
+          },
+          "consents": {
+            "type": "integer"
+          },
+          "active_jobs": {
+            "type": "integer"
+          },
+          "audit_events_retained": {
+            "type": "integer"
+          },
+          "export_artifacts_bytes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "description": "system_admin がテナントの Quota を上書きする JSON リクエスト。"
+      },
+      "TenantQuotaUpdated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "actorUserId",
+          "tenantId"
+        ],
+        "description": "system_admin がテナントのリソースクォータを上書きした。"
+      },
       "TenantSigningKey": {
         "type": "object",
         "properties": {
@@ -28340,6 +28577,12 @@
           "password_policy_override": {
             "$ref": "#/components/schemas/PasswordPolicyOverride"
           },
+          "quota": {
+            "$ref": "#/components/schemas/TenantQuota"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/TenantUsage"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -28359,6 +28602,8 @@
           "realm",
           "display_name",
           "status",
+          "quota",
+          "usage",
           "created_at"
         ],
         "description": "テナント表現。管理 UI の一覧と詳細で同じ表現を返す。"
@@ -28407,6 +28652,55 @@
           "changedFields"
         ],
         "description": "system_admin がテナントの表示名を更新した。"
+      },
+      "TenantUsage": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "integer"
+          },
+          "agents": {
+            "type": "integer"
+          },
+          "applications": {
+            "type": "integer"
+          },
+          "oauth2_clients": {
+            "type": "integer"
+          },
+          "active_sessions": {
+            "type": "integer"
+          },
+          "consents": {
+            "type": "integer"
+          },
+          "active_jobs": {
+            "type": "integer"
+          },
+          "audit_events_retained": {
+            "type": "integer"
+          },
+          "export_artifacts_bytes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "users",
+          "groups",
+          "agents",
+          "applications",
+          "oauth2_clients",
+          "active_sessions",
+          "consents",
+          "active_jobs",
+          "audit_events_retained",
+          "export_artifacts_bytes"
+        ],
+        "description": "テナント単位の現在のリソース利用量。"
       },
       "TenantUserAttributeSchema": {
         "type": "object",
@@ -31452,6 +31746,22 @@
           },
           {
             "name": "UpdateTenant",
+            "memberOf": "policy:SystemAdministrator",
+            "policies": [
+              "SystemAdministrator"
+            ],
+            "resourceId": "input.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "UpdateTenantQuota",
             "memberOf": "policy:SystemAdministrator",
             "policies": [
               "SystemAdministrator"

@@ -15,9 +15,13 @@ type Querier interface {
 	FindTenantByID(ctx context.Context, id string) (*Tenant, error)
 	FindTenantByRealm(ctx context.Context, realm string) (*Tenant, error)
 	GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*TenantBrandingAsset, error)
+	GetTenantQuota(ctx context.Context, tenantID string) (*TenantQuota, error)
+	GetTenantUsage(ctx context.Context, tenantID string) (*TenantUsage, error)
 	SaveTenant(ctx context.Context, arg SaveTenantParams) error
 	SaveTenantBranding(ctx context.Context, arg SaveTenantBrandingParams) error
 	UpsertTenantBrandingAsset(ctx context.Context, arg UpsertTenantBrandingAssetParams) error
+	UpsertTenantQuota(ctx context.Context, arg UpsertTenantQuotaParams) error
+	UpsertTenantUsage(ctx context.Context, arg UpsertTenantUsageParams) error
 }
 
 var _ Querier = (*Queries)(nil)

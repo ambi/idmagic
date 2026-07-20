@@ -54,14 +54,14 @@ created_at: 2026-07-10
 - UI は quota を「制限」だけでなく「現在値 / 上限 / 近い上限 / 最終再計算」を見せる。
 
 ## Tasks
-- [ ] T001 [ADR] quota 分類、既定値、hard/soft、override、移行方針を記録する。
-- [ ] T002 [SCL] Tenancy の quota model / interface / permission / invariant / scenario / objective / UX を追加し、各 context の作成系 interface に関連づける。
-- [ ] T003 [Render] `just scl-render` で派生物を更新する。
-- [ ] T004 [Go] quota policy、usage counter、作成前 enforcement、超過 error / audit event を実装する。
-- [ ] T005 [Persistence] quota / usage schema、migration、backfill / reconciliation を実装する。
-- [ ] T006 [UI] system admin / tenant admin の quota usage 表示と更新 UI を追加する。
-- [ ] T007 [Ops] metrics、structured log、runbook を追加する。
-- [ ] T008 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+- [x] T001 [ADR] quota 分類、既定値、hard/soft、override、移行方針を記録する。
+- [x] T002 [SCL] Tenancy の quota model / interface / permission / invariant / scenario / objective / UX を追加し、各 context の作成系 interface に関連づける。
+- [x] T003 [Render] `just scl-render` で派生物を更新する。
+- [x] T004 [Go] quota policy、usage counter、作成前 enforcement、超過 error / audit event を実装する。
+- [x] T005 [Persistence] quota / usage schema、migration、backfill / reconciliation を実装する。
+- [x] T006 [UI] system admin / tenant admin の quota usage 表示と更新 UI を追加する。
+- [x] T007 [Ops] metrics、structured log、runbook を追加する。
+- [x] T008 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
 
 ## Verification
 - `just yaml-check`

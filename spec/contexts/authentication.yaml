@@ -124,6 +124,9 @@ models:
   AccessDeniedError:
     kind: error
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
+  QuotaExceededError:
+    kind: error
+    description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
   BrowserFlowResponse:
     kind: value_object
     description: SPA の認証操作後に表示する次画面またはクライアント redirect URI。OAuth2 context が定義する共通 response の published language stub。
@@ -1392,6 +1395,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     emits:
       - UserAuthenticated
       - AuthenticationFailed

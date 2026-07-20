@@ -50,6 +50,8 @@ type Metrics struct {
 	jobsOutcome      metric.Int64Counter
 	jobsRetry        metric.Int64Counter
 	jobsQueueDepth   metric.Int64Gauge
+
+	quotaExceeded metric.Int64Counter
 }
 
 // NewMetrics builds a dedicated Prometheus registry and OTel MeterProvider for
@@ -128,7 +130,10 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 	if m.jobsRetry, err = meter.Int64Counter("jobs_retry_total"); err != nil {
 		return nil, err
 	}
-	if m.jobsQueueDepth, err = meter.Int64Gauge("jobs_queue_depth"); err != nil {
+	if m.jobsQueueDepth, err = meter.Int64Gauge("jobs_queue_depth", metric.WithDescription("Number of active jobs pending processing")); err != nil {
+		return nil, err
+	}
+	if m.quotaExceeded, err = meter.Int64Counter("quota_exceeded_total", metric.WithDescription("Number of operations rejected due to quota limit")); err != nil {
 		return nil, err
 	}
 	return m, nil
@@ -183,6 +188,12 @@ func (m *Metrics) RecordTokenIssuance(grantType, outcome string, duration time.D
 	)
 	m.tokenIssuance.Add(context.Background(), 1, attrs)
 	m.tokenDuration.Record(context.Background(), duration.Seconds(), attrs)
+}
+
+func (m *Metrics) RecordQuotaExceeded(resName string) {
+	m.quotaExceeded.Add(context.Background(), 1, metric.WithAttributes(
+		attribute.String("resource", resName),
+	))
 }
 
 func (m *Metrics) IncHTTPAbort(kind support.HTTPAbortKind) {

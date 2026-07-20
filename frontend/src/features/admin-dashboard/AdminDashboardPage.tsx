@@ -15,7 +15,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
-import type { AdminAuditEvent } from '../../types'
+import type { AdminAuditEvent, TenantQuota, TenantUsage } from '../../types'
 import { adminDashboardDictionary, friendlyEventName } from './AdminDashboardPage.i18n'
 
 export function AdminDashboardPage({
@@ -28,6 +28,8 @@ export function AdminDashboardPage({
   grantedConsentCount,
   auditEventCount24h,
   recentEvents,
+  quota,
+  usage,
 }: {
   actorUsername?: string
   actorRoles: string[]
@@ -38,6 +40,8 @@ export function AdminDashboardPage({
   grantedConsentCount: number
   auditEventCount24h: number
   recentEvents: AdminAuditEvent[]
+  quota?: TenantQuota
+  usage?: TenantUsage
 }) {
   const t = useDictionary(adminDashboardDictionary)
   const { locale } = useLocale()
@@ -286,6 +290,58 @@ export function AdminDashboardPage({
               />
             </ul>
           </Card>
+
+          {/* Quota Usage */}
+          {usage && (
+            <Card className="p-5 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <IconActivity className="text-blue-600 shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">{t.quotaUsageHeading}</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">{t.quotaUsageDescription}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div className="rounded border border-slate-100 p-2">
+                  <div className="text-xs text-slate-500">Users</div>
+                  <div className="font-semibold">
+                    {usage.users}{' '}
+                    <span className="text-slate-400 font-normal">
+                      {quota?.users ? `/ ${quota.users}` : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded border border-slate-100 p-2">
+                  <div className="text-xs text-slate-500">Groups</div>
+                  <div className="font-semibold">
+                    {usage.groups}{' '}
+                    <span className="text-slate-400 font-normal">
+                      {quota?.groups ? `/ ${quota.groups}` : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded border border-slate-100 p-2">
+                  <div className="text-xs text-slate-500">Apps</div>
+                  <div className="font-semibold">
+                    {usage.applications}{' '}
+                    <span className="text-slate-400 font-normal">
+                      {quota?.applications ? `/ ${quota.applications}` : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded border border-slate-100 p-2">
+                  <div className="text-xs text-slate-500">Clients</div>
+                  <div className="font-semibold">
+                    {usage.oauth2_clients}{' '}
+                    <span className="text-slate-400 font-normal">
+                      {quota?.oauth2_clients ? `/ ${quota.oauth2_clients}` : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* 右カラム: クイックリンク (実務に絞ったもの) */}

@@ -80,6 +80,36 @@ CREATE TABLE tenants (
     )
 );
 
+CREATE TABLE tenant_quotas (
+    tenant_id UUID PRIMARY KEY,
+    users INT,
+    groups INT,
+    agents INT,
+    applications INT,
+    oauth2_clients INT,
+    active_sessions INT,
+    consents INT,
+    active_jobs INT,
+    audit_events_retained INT,
+    export_artifacts_bytes INT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE tenant_usages (
+    tenant_id UUID PRIMARY KEY,
+    users INT NOT NULL DEFAULT 0 CHECK (users >= 0),
+    groups INT NOT NULL DEFAULT 0 CHECK (groups >= 0),
+    agents INT NOT NULL DEFAULT 0 CHECK (agents >= 0),
+    applications INT NOT NULL DEFAULT 0 CHECK (applications >= 0),
+    oauth2_clients INT NOT NULL DEFAULT 0 CHECK (oauth2_clients >= 0),
+    active_sessions INT NOT NULL DEFAULT 0 CHECK (active_sessions >= 0),
+    consents INT NOT NULL DEFAULT 0 CHECK (consents >= 0),
+    active_jobs INT NOT NULL DEFAULT 0 CHECK (active_jobs >= 0),
+    audit_events_retained INT NOT NULL DEFAULT 0 CHECK (audit_events_retained >= 0),
+    export_artifacts_bytes INT NOT NULL DEFAULT 0 CHECK (export_artifacts_bytes >= 0),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
 -- tenant_brandings (wi-89, ADR-096): 1:1 hosted UI branding config per tenant, kept
 -- in its own table rather than columns on tenants so per-feature config growth does
 -- not bloat the core tenant row (same reasoning as tenant_user_attribute_schemas).

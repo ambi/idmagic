@@ -8,6 +8,8 @@ export const adminDashboardDictionary = defineDictionary(
     tenantConfigHeading: 'IdMagic テナント設定',
     tenantConfigSummary:
       'テナントの基本的なアイデンティティ設定は完了しています。MFAの強制化や Entra ID とのドメインフェデレーションを構成することで、セキュリティスコアをさらに向上させることができます。',
+    quotaUsageHeading: 'リソースクォータ使用量',
+    quotaUsageDescription: 'テナントに割り当てられたリソースの消費状況です。',
     tenantStatusLabel: 'テナント状態',
     tenantStatusValue: '正常稼働中',
     activeUserRateLabel: 'アクティブユーザー率',
@@ -64,6 +66,8 @@ export const adminDashboardDictionary = defineDictionary(
     tenantConfigHeading: 'IdMagic tenant configuration',
     tenantConfigSummary:
       'The basic identity configuration for this tenant is complete. Enforcing MFA and configuring domain federation with Entra ID can improve the security score further.',
+    quotaUsageHeading: 'Resource quota usage',
+    quotaUsageDescription: 'Current resource consumption allocated for this tenant.',
     tenantStatusLabel: 'Tenant status',
     tenantStatusValue: 'Operating normally',
     activeUserRateLabel: 'Active user rate',

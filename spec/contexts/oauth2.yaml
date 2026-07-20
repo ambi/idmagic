@@ -2722,6 +2722,9 @@ models:
       error_uri:
         type: String
         optional: true
+  QuotaExceededError:
+    kind: error
+    description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
   InvalidRequestError:
     kind: error
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。
@@ -3479,6 +3482,7 @@ interfaces:
         type: OAuth2Client
     errors:
       - InvalidRequestError
+      - QuotaExceededError
     emits:
       - ClientRegistered
     access: public
@@ -3549,6 +3553,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     requires:
       - valid_authorization_transaction(context.transaction_cookie)
     emits:
@@ -4077,6 +4082,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - QuotaExceededError
     emits:
       - AdminOAuth2ClientCreated
     access:

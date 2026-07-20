@@ -13,4 +13,5 @@ type Module struct {
 	AttrSchemaRepo     ports.TenantUserAttributeSchemaRepository
 	BrandingRepo       ports.TenantBrandingRepository
 	BrandingAssetStore ports.TenantBrandingAssetStore
+	QuotaRepo          ports.QuotaRepository
 }

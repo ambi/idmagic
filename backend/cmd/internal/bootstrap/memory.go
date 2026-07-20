@@ -70,6 +70,7 @@ func assembleMemory() (*Dependencies, error) {
 			AttrSchemaRepo:     usermemory.NewTenantUserAttributeSchemaRepository(),
 			BrandingRepo:       tenancymemory.NewTenantBrandingRepository(),
 			BrandingAssetStore: tenancymemory.NewTenantBrandingAssetStore(),
+			QuotaRepo:          tenancymemory.NewQuotaRepository(),
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,

@@ -23,6 +23,7 @@ type Deps struct {
 	BrandingAssetStore tenantports.TenantBrandingAssetStore
 	UserRepo           userports.UserRepository
 	GroupRepo          groupports.GroupRepository
+	QuotaRepo          tenantports.QuotaRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・
@@ -52,4 +53,5 @@ func RegisterControlPlaneRoutes(g *echo.Group, d Deps) {
 	g.PATCH("/api/admin/tenants/:tenant_id", d.handleUpdateTenant)
 	g.POST("/api/admin/tenants/:tenant_id/disable", d.handleDisableTenant)
 	g.POST("/api/admin/tenants/:tenant_id/enable", d.handleEnableTenant)
+	g.PUT("/api/admin/tenants/:tenant_id/quota", d.handleUpdateTenantQuota)
 }

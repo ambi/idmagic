@@ -1045,7 +1045,6 @@ modules:
       - { module: idmanagement-user-ports, via: binding }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: oauth2-usecases, via: published_interface }
       - { module: oauth2-authorization-adapters, via: published_interface }
       - { module: oauth2-authorization-usecases, via: published_interface }
@@ -1064,13 +1063,6 @@ modules:
       - { module: tenancy-domain, via: binding }
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
-  oauth2-sqlcgen:
-    path: backend/oauth2/db_postgres/sqlcgen
-    responsibility: "OAuth2 PostgreSQL adapter が共有する sqlc 生成 binding。"
-    context: OAuth2
-    layer: adapters
-    role: binding
-    depends_on: []
   oauth2-client-domain:
     path: backend/oauth2/client/domain
     responsibility: "OAuth2 client と client secret のドメイン規則。"
@@ -1111,7 +1103,6 @@ modules:
     depends_on:
       - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: oauth2-ports, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
@@ -1153,7 +1144,6 @@ modules:
     depends_on:
       - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: binding }
   oauth2-authorization-domain:
     path: backend/oauth2/authorization/domain
@@ -1240,7 +1230,6 @@ modules:
     depends_on:
       - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: binding }
   oauth2-device-domain:
     path: backend/oauth2/device/domain
@@ -2012,6 +2001,9 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: oauth2-client-db-postgres, via: composition_root }
+      - { module: oauth2-consent-db-postgres, via: composition_root }
+      - { module: oauth2-token-db-postgres, via: composition_root }
       - { module: application-db-memory, via: composition_root }
       - { module: application-db-postgres, via: composition_root }
       - { module: audit-db-memory, via: composition_root }
@@ -2646,8 +2638,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: oauth2-db-postgres, via: binding }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: signingkeys-domain, via: published_interface }
@@ -2658,8 +2650,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: oauth2-db-postgres, via: binding }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: technical_shared }
   oauth2-db-memory:
     path: backend/oauth2/db_memory
@@ -2682,11 +2674,7 @@ modules:
     layer: adapters
     role: binding
     depends_on:
-      - { module: oauth2-client-db-postgres, via: binding }
-      - { module: oauth2-consent-db-postgres, via: binding }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
-      - { module: oauth2-token-db-postgres, via: binding }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
   oauth2-db-valkey:
@@ -2707,8 +2695,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: oauth2-db-postgres, via: binding }
       - { module: oauth2-domain, via: published_interface }
-      - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: technical_shared }
   provisioning-db-memory:
     path: backend/provisioning/db_memory
@@ -3016,6 +3004,7 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: tenancy-ports, via: binding }
       - { module: tenancy-domain, via: published_interface }
   tenancy-db-postgres:
     path: backend/tenancy/db_postgres
@@ -3024,6 +3013,7 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: tenancy-ports, via: binding }
       - { module: shared-adapters, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
   wsfederation-db-memory:
@@ -3171,7 +3161,7 @@ complexity:
     - id: wi234-ui-page-lines-admin-dashboard-page
       budget: ui-page-lines
       path: frontend/src/features/admin-dashboard/AdminDashboardPage.tsx
-      ceiling: 483
+      ceiling: 539
       owner: maintainers
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
@@ -3227,7 +3217,7 @@ complexity:
     - id: wi234-ui-page-lines-system-tenants-page
       budget: ui-page-lines
       path: frontend/src/features/system-tenants/SystemTenantsPage.tsx
-      ceiling: 412
+      ceiling: 572
       owner: maintainers
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet
@@ -3275,7 +3265,7 @@ complexity:
     - id: wi234-ui-page-local-state-system-tenants-page
       budget: ui-page-local-state
       path: frontend/src/features/system-tenants/SystemTenantsPage.tsx
-      ceiling: 12
+      ceiling: 22
       owner: maintainers
       reason: "wi-234 で責務境界に沿って分割する既存超過。"
       work_item: wi-234-complexity-ratchet

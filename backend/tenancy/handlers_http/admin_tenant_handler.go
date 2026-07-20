@@ -35,6 +35,16 @@ func (d Deps) handleListTenants(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
+	if d.QuotaRepo != nil {
+		for i := range tenants {
+			if q, err := d.QuotaRepo.GetQuota(c.Request().Context(), tenants[i].ID); err == nil {
+				tenants[i].Quota = q
+			}
+			if u, err := d.QuotaRepo.GetUsage(c.Request().Context(), tenants[i].ID); err == nil {
+				tenants[i].Usage = u
+			}
+		}
+	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tenants": tenants})
 }
 
@@ -48,6 +58,14 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 	}
 	if tenant == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "テナントが存在しません")
+	}
+	if d.QuotaRepo != nil {
+		if q, err := d.QuotaRepo.GetQuota(c.Request().Context(), tenant.ID); err == nil {
+			tenant.Quota = q
+		}
+		if u, err := d.QuotaRepo.GetUsage(c.Request().Context(), tenant.ID); err == nil {
+			tenant.Usage = u
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, tenant)
 }
@@ -223,4 +241,56 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 	default:
 		return err
 	}
+}
+
+type tenantQuotaUpdateRequest struct {
+	Users                *int `json:"users,omitempty"`
+	Groups               *int `json:"groups,omitempty"`
+	Agents               *int `json:"agents,omitempty"`
+	Applications         *int `json:"applications,omitempty"`
+	OAuth2Clients        *int `json:"oauth2_clients,omitempty"`
+	ActiveSessions       *int `json:"active_sessions,omitempty"`
+	Consents             *int `json:"consents,omitempty"`
+	ActiveJobs           *int `json:"active_jobs,omitempty"`
+	AuditEventsRetained  *int `json:"audit_events_retained,omitempty"`
+	ExportArtifactsBytes *int `json:"export_artifacts_bytes,omitempty"`
+}
+
+func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
+	ctx := c.Request().Context()
+	tenantID := c.Param("tenant_id")
+	if tenantID == "" {
+		return support.WriteBrowserError(c, 400, "invalid_request", "tenant_id is required")
+	}
+
+	_, err := d.requireSystemAdmin(c)
+	if err != nil {
+		return err
+	}
+
+	var req tenantQuotaUpdateRequest
+	if err := c.Bind(&req); err != nil {
+		return support.WriteBrowserError(c, 400, "invalid_request", "invalid request body: "+err.Error())
+	}
+
+	quota := &domain.TenantQuota{
+		Users:                req.Users,
+		Groups:               req.Groups,
+		Agents:               req.Agents,
+		Applications:         req.Applications,
+		OAuth2Clients:        req.OAuth2Clients,
+		ActiveSessions:       req.ActiveSessions,
+		Consents:             req.Consents,
+		ActiveJobs:           req.ActiveJobs,
+		AuditEventsRetained:  req.AuditEventsRetained,
+		ExportArtifactsBytes: req.ExportArtifactsBytes,
+	}
+
+	if d.QuotaRepo != nil {
+		if err := d.QuotaRepo.SetQuota(ctx, tenantID, quota); err != nil {
+			return support.WriteBrowserError(c, 500, "internal_error", "failed to update quota: "+err.Error())
+		}
+	}
+
+	return c.JSON(200, quota)
 }

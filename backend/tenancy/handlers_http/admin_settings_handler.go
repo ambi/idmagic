@@ -37,6 +37,8 @@ type AdminSettingsResponse struct {
 	DisplayName            string                         `json:"display_name"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	PasswordPolicyDefaults passwordPolicyDefaults         `json:"password_policy_defaults"`
+	Quota                  *domain.TenantQuota            `json:"quota,omitempty"`
+	Usage                  *domain.TenantUsage            `json:"usage,omitempty"`
 }
 
 type passwordPolicyDefaults struct {
@@ -62,7 +64,18 @@ func (d Deps) handleGetAdminSettings(c *echo.Context) error {
 	if tenant == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "テナントが存在しません")
 	}
-	return support.NoStoreJSON(c, http.StatusOK, d.toAdminSettingsResponse(tenant))
+	if d.QuotaRepo != nil {
+		if q, err := d.QuotaRepo.GetQuota(c.Request().Context(), tenant.ID); err == nil {
+			tenant.Quota = q
+		}
+		if u, err := d.QuotaRepo.GetUsage(c.Request().Context(), tenant.ID); err == nil {
+			tenant.Usage = u
+		}
+	}
+	resp := d.toAdminSettingsResponse(tenant)
+	resp.Quota = tenant.Quota
+	resp.Usage = tenant.Usage
+	return support.NoStoreJSON(c, http.StatusOK, resp)
 }
 
 func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
@@ -111,6 +124,8 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			MaxLength:    floor.MaxLength,
 			HistoryDepth: floor.HistoryDepth,
 		},
+		Quota: t.Quota,
+		Usage: t.Usage,
 	}
 }
 

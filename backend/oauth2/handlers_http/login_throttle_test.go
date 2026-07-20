@@ -23,6 +23,7 @@ func (s *spyMetrics) RecordTokenIssuance(grantType, outcome string, _ time.Durat
 func (s *spyMetrics) RecordLoginThrottle(policy, outcome string) {
 	s.throttlePolicy, s.throttleOutcome = policy, outcome
 }
+func (s *spyMetrics) RecordQuotaExceeded(string) {}
 
 type stubLoginThrottle struct {
 	result authnports.LoginThrottleResult

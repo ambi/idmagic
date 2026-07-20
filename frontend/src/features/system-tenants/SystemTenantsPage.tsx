@@ -6,6 +6,7 @@ import {
   listAdminTenants,
   setAdminTenantDisabled,
   updateAdminTenant,
+  updateAdminTenantQuota,
 } from '../../api'
 import { SystemShell } from '../../components/SystemShell'
 import { Alert } from '../../components/ui/alert'
@@ -278,6 +279,31 @@ export function TenantDetailCard({
             <dd>{formatDate(tenant.disabled_at, locale)}</dd>
           </>
         ) : null}
+        {tenant.usage ? (
+          <>
+            <dt className="text-slate-500 mt-2">{t.quotaHeading}</dt>
+            <dd className="col-span-2 mt-2">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  Users: {tenant.usage?.users ?? 0}{' '}
+                  {tenant.quota?.users ? `/ ${tenant.quota.users}` : ''}
+                </div>
+                <div>
+                  Groups: {tenant.usage?.groups ?? 0}{' '}
+                  {tenant.quota?.groups ? `/ ${tenant.quota.groups}` : ''}
+                </div>
+                <div>
+                  Apps: {tenant.usage?.applications ?? 0}{' '}
+                  {tenant.quota?.applications ? `/ ${tenant.quota.applications}` : ''}
+                </div>
+                <div>
+                  Clients: {tenant.usage?.oauth2_clients ?? 0}{' '}
+                  {tenant.quota?.oauth2_clients ? `/ ${tenant.quota.oauth2_clients}` : ''}
+                </div>
+              </div>
+            </dd>
+          </>
+        ) : null}
       </dl>
       <TenantEditor tenant={tenant} csrfToken={csrfToken} busy={busy} onSaved={onSaved} />
     </Card>
@@ -305,6 +331,19 @@ function TenantEditor({
   const [historyDepth, setHistoryDepth] = useState(
     tenant.password_policy_override?.history_depth?.toString() ?? '',
   )
+  const [qUsers, setQUsers] = useState(tenant.quota?.users?.toString() ?? '')
+  const [qGroups, setQGroups] = useState(tenant.quota?.groups?.toString() ?? '')
+  const [qAgents, setQAgents] = useState(tenant.quota?.agents?.toString() ?? '')
+  const [qApps, setQApps] = useState(tenant.quota?.applications?.toString() ?? '')
+  const [qClients, setQClients] = useState(tenant.quota?.oauth2_clients?.toString() ?? '')
+  const [qSessions, setQSessions] = useState(tenant.quota?.active_sessions?.toString() ?? '')
+  const [qConsents, setQConsents] = useState(tenant.quota?.consents?.toString() ?? '')
+  const [qJobs, setQJobs] = useState(tenant.quota?.active_jobs?.toString() ?? '')
+  const [qAudits, setQAudits] = useState(tenant.quota?.audit_events_retained?.toString() ?? '')
+  const [qArtifacts, setQArtifacts] = useState(
+    tenant.quota?.export_artifacts_bytes?.toString() ?? '',
+  )
+
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const t = useDictionary(systemTenantsDictionary)
@@ -323,6 +362,21 @@ function TenantEditor({
         display_name: displayName !== tenant.display_name ? displayName : undefined,
         password_policy_override: hasPolicy ? policy : undefined,
       })
+
+      const num = (v: string) => (v.trim() ? Number.parseInt(v, 10) : undefined)
+      await updateAdminTenantQuota(csrfToken, tenant.id, {
+        users: num(qUsers),
+        groups: num(qGroups),
+        agents: num(qAgents),
+        applications: num(qApps),
+        oauth2_clients: num(qClients),
+        active_sessions: num(qSessions),
+        consents: num(qConsents),
+        active_jobs: num(qJobs),
+        audit_events_retained: num(qAudits),
+        export_artifacts_bytes: num(qArtifacts),
+      })
+
       onSaved(tenant.id)
     } catch (cause) {
       setEditError(
@@ -380,6 +434,112 @@ function TenantEditor({
             min={0}
             value={historyDepth}
             onChange={(e) => setHistoryDepth(e.target.value)}
+          />
+        </div>
+      </div>
+      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {t.quotaHeading}
+      </p>
+      <p className="text-xs text-slate-500">{t.quotaHelp}</p>
+      <div className="grid grid-cols-4 gap-2">
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qu-${tenant.id}`}>{t.quotaUsers}</Label>
+          <Input
+            id={`qu-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qUsers}
+            onChange={(e) => setQUsers(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qg-${tenant.id}`}>{t.quotaGroups}</Label>
+          <Input
+            id={`qg-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qGroups}
+            onChange={(e) => setQGroups(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qa-${tenant.id}`}>{t.quotaAgents}</Label>
+          <Input
+            id={`qa-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qAgents}
+            onChange={(e) => setQAgents(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qap-${tenant.id}`}>{t.quotaApplications}</Label>
+          <Input
+            id={`qap-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qApps}
+            onChange={(e) => setQApps(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qc-${tenant.id}`}>{t.quotaOAuth2Clients}</Label>
+          <Input
+            id={`qc-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qClients}
+            onChange={(e) => setQClients(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qs-${tenant.id}`}>{t.quotaActiveSessions}</Label>
+          <Input
+            id={`qs-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qSessions}
+            onChange={(e) => setQSessions(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qco-${tenant.id}`}>{t.quotaConsents}</Label>
+          <Input
+            id={`qco-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qConsents}
+            onChange={(e) => setQConsents(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qj-${tenant.id}`}>{t.quotaActiveJobs}</Label>
+          <Input
+            id={`qj-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qJobs}
+            onChange={(e) => setQJobs(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qau-${tenant.id}`}>{t.quotaAuditEventsRetained}</Label>
+          <Input
+            id={`qau-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qAudits}
+            onChange={(e) => setQAudits(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qar-${tenant.id}`}>{t.quotaExportArtifactsBytes}</Label>
+          <Input
+            id={`qar-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qArtifacts}
+            onChange={(e) => setQArtifacts(e.target.value)}
           />
         </div>
       </div>

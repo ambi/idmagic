@@ -155,6 +155,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			AttrSchemaRepo:     &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
 			BrandingRepo:       &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
 			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
+			QuotaRepo:          tenancypostgres.NewQuotaRepository(resilientDB),
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,

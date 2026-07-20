@@ -60,3 +60,22 @@ type TenantEnabled struct {
 
 func (e *TenantEnabled) EventType() string     { return "TenantEnabled" }
 func (e *TenantEnabled) OccurredAt() time.Time { return e.At }
+
+type TenantQuotaUpdated struct {
+	At          time.Time `json:"-"`
+	ActorUserID string    `json:"actorUserId"`
+	TenantID    string    `json:"tenantId"`
+}
+
+func (e *TenantQuotaUpdated) EventType() string     { return "TenantQuotaUpdated" }
+func (e *TenantQuotaUpdated) OccurredAt() time.Time { return e.At }
+
+type QuotaExceeded struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	Resource  string    `json:"resource"`
+	HardLimit bool      `json:"hardLimit"`
+}
+
+func (e *QuotaExceeded) EventType() string     { return "QuotaExceeded" }
+func (e *QuotaExceeded) OccurredAt() time.Time { return e.At }

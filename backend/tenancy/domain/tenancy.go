@@ -42,6 +42,8 @@ type Tenant struct {
 	DisplayName            string                  `json:"display_name"`
 	Status                 TenantStatus            `json:"status"`
 	PasswordPolicyOverride *PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	Quota                  *TenantQuota            `json:"quota,omitempty"`
+	Usage                  *TenantUsage            `json:"usage,omitempty"`
 	CreatedAt              time.Time               `json:"created_at"`
 	UpdatedAt              time.Time               `json:"updated_at"`
 	DisabledAt             *time.Time              `json:"disabled_at,omitempty"`
@@ -57,6 +59,41 @@ type PasswordPolicyOverride struct {
 	MinLength    *int `json:"min_length,omitempty"`
 	MaxLength    *int `json:"max_length,omitempty"`
 	HistoryDepth *int `json:"history_depth,omitempty"`
+}
+
+type TenantQuota struct {
+	Users                *int `json:"users,omitempty"`
+	Groups               *int `json:"groups,omitempty"`
+	Agents               *int `json:"agents,omitempty"`
+	Applications         *int `json:"applications,omitempty"`
+	OAuth2Clients        *int `json:"oauth2_clients,omitempty"`
+	ActiveSessions       *int `json:"active_sessions,omitempty"`
+	Consents             *int `json:"consents,omitempty"`
+	ActiveJobs           *int `json:"active_jobs,omitempty"`
+	AuditEventsRetained  *int `json:"audit_events_retained,omitempty"`
+	ExportArtifactsBytes *int `json:"export_artifacts_bytes,omitempty"`
+}
+
+type TenantUsage struct {
+	Users                int `json:"users"`
+	Groups               int `json:"groups"`
+	Agents               int `json:"agents"`
+	Applications         int `json:"applications"`
+	OAuth2Clients        int `json:"oauth2_clients"`
+	ActiveSessions       int `json:"active_sessions"`
+	Consents             int `json:"consents"`
+	ActiveJobs           int `json:"active_jobs"`
+	AuditEventsRetained  int `json:"audit_events_retained"`
+	ExportArtifactsBytes int `json:"export_artifacts_bytes"`
+}
+
+type QuotaExceededError struct {
+	TenantID string
+	Resource string
+}
+
+func (e *QuotaExceededError) Error() string {
+	return "quota exceeded for resource " + e.Resource + " in tenant " + e.TenantID
 }
 
 var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
