@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -49,20 +50,20 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	}
 	grantType := c.Request().PostFormValue("grant_type")
 	if grantType == "" {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "grant_type が必要です"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "grant_type が必要です"))
 	}
 	if !spec.GrantType(grantType).Valid() {
-		return writeOAuthError(c, usecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
 	}
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), clientStub.ID)
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
 	if client == nil {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_client", "未知の client_id"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "未知の client_id"))
 	}
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
-		return writeOAuthError(c, usecases.NewOAuthError("unauthorized_client", "宣言外の grant_type です"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "宣言外の grant_type です"))
 	}
 
 	// DPoP 検証 (任意)
@@ -71,7 +72,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		htu := support.RequestHTU(c, d.Issuer)
 		r, err := crypto.VerifyDPoP(c.Request().Context(), proof, "POST", htu, d.DpopReplayStore, time.Now().UTC())
 		if err != nil {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_dpop_proof", err.Error()))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_dpop_proof", err.Error()))
 		}
 		if r != nil {
 			dpopJKT = r.JKT
@@ -84,12 +85,12 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 
 	switch grantType {
 	case "authorization_code":
-		out, err := usecases.ExchangeCodeForToken(ctx, usecases.ExchangeCodeDeps{
+		out, err := tokenusecases.ExchangeCodeForToken(ctx, tokenusecases.ExchangeCodeDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			RequestStore: d.RequestStore, CodeStore: d.CodeStore,
 			RefreshStore: d.RefreshStore, TokenIssuer: d.TokenIssuer,
 			Emit: d.Emit, ResolveAttributeDefs: d.effectiveUserAttributeDefs,
-		}, usecases.ExchangeCodeInput{
+		}, tokenusecases.ExchangeCodeInput{
 			ClientID: clientStub.ID, Code: c.Request().PostFormValue("code"),
 			CodeVerifier: c.Request().PostFormValue("code_verifier"),
 			RedirectURI:  c.Request().PostFormValue("redirect_uri"),
@@ -115,13 +116,13 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	case "refresh_token":
 		rt := c.Request().PostFormValue("refresh_token")
 		if rt == "" {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "refresh_token が必要"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "refresh_token が必要"))
 		}
-		res, err := usecases.RefreshTokens(ctx, usecases.RefreshDeps{
+		res, err := tokenusecases.RefreshTokens(ctx, tokenusecases.RefreshDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			RefreshStore: d.RefreshStore, TokenIssuer: d.TokenIssuer,
 			Authorizer: d.Authorizer, Emit: d.Emit,
-		}, usecases.RefreshInput{
+		}, tokenusecases.RefreshInput{
 			ClientID: clientStub.ID, RefreshToken: rt,
 			ProofJKT: dpopJKT, ProofX5TS256: clientStub.MTLSThumbprintS256,
 		}, now)
@@ -135,7 +136,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 
 	case "client_credentials":
 		if client.ClientType != spec.ClientConfidential {
-			return writeOAuthError(c, usecases.NewOAuthError("unauthorized_client", "public client は不可"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "public client は不可"))
 		}
 		scope := c.Request().PostFormValue("scope")
 		if scope == "" {
@@ -148,12 +149,12 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		for _, s := range scopes {
 			if !declared[s] {
-				return writeOAuthError(c, usecases.NewOAuthError("invalid_scope", "宣言外のスコープ"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "宣言外のスコープ"))
 			}
 		}
 		// RFC 8707 resource indicator (ADR-055, wi-262) — 指定時は登録済み Active な
 		// McpResourceServer に audience を限定する。未指定時は従来どおり client_id。
-		mcpResourceServer, err := usecases.ResolveResourceIndicator(ctx, d.McpResourceServerRepo, support.RequestTenantID(c), c.Request().PostForm["resource"], scopes)
+		mcpResourceServer, err := tokenusecases.ResolveResourceIndicator(ctx, d.McpResourceServerRepo, support.RequestTenantID(c), c.Request().PostForm["resource"], scopes)
 		if err != nil {
 			return writeOAuthError(c, err)
 		}
@@ -177,7 +178,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			}
 			if agent != nil {
 				if !agent.IsActive() {
-					return writeOAuthError(c, usecases.NewOAuthError("invalid_client", "agent is disabled or killed"))
+					return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "agent is disabled or killed"))
 				}
 				agentID = agent.ID
 			}
@@ -212,16 +213,16 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	case "urn:ietf:params:oauth:grant-type:device_code":
 		dc := c.Request().PostFormValue("device_code")
 		if dc == "" {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "device_code が必要"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "device_code が必要"))
 		}
-		res, err := usecases.ExchangeDeviceCode(ctx, usecases.ExchangeDeviceCodeDeps{
+		res, err := deviceusecases.ExchangeDeviceCode(ctx, deviceusecases.ExchangeDeviceCodeDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			DeviceCodeStore: d.DeviceCodeStore, RefreshStore: d.RefreshStore,
 			TokenIssuer:           d.TokenIssuer,
 			McpResourceServerRepo: d.McpResourceServerRepo,
 			Emit:                  d.Emit,
 			ResolveAttributeDefs:  d.effectiveUserAttributeDefs,
-		}, usecases.ExchangeDeviceCodeInput{
+		}, deviceusecases.ExchangeDeviceCodeInput{
 			ClientID: clientStub.ID, DeviceCode: dc,
 			ProofJKT: dpopJKT, ProofX5TS256: clientStub.MTLSThumbprintS256,
 			Resource: c.Request().PostForm["resource"],
@@ -242,15 +243,15 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		return c.JSON(http.StatusOK, body)
 
 	case "urn:ietf:params:oauth:grant-type:token-exchange":
-		exchangeDetails, err := usecases.ParseAuthorizationDetails(c.Request().PostFormValue("authorization_details"))
+		exchangeDetails, err := tokenusecases.ParseAuthorizationDetails(c.Request().PostFormValue("authorization_details"))
 		if err != nil {
 			return writeOAuthError(c, err)
 		}
-		res, err := usecases.ExchangeToken(ctx, usecases.ExchangeTokenDeps{
+		res, err := tokenusecases.ExchangeToken(ctx, tokenusecases.ExchangeTokenDeps{
 			ClientRepo: d.ClientRepo, Introspector: d.TokenIntrospector,
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
 			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo, Emit: d.Emit,
-		}, usecases.ExchangeTokenInput{
+		}, tokenusecases.ExchangeTokenInput{
 			ClientID:             clientStub.ID,
 			SubjectToken:         c.Request().PostFormValue("subject_token"),
 			SubjectTokenType:     c.Request().PostFormValue("subject_token_type"),
@@ -278,7 +279,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		return c.JSON(http.StatusOK, body)
 	}
-	return writeOAuthError(c, usecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
+	return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
 }
 
 func (d Deps) handleRevoke(c *echo.Context) error {
@@ -291,7 +292,7 @@ func (d Deps) handleRevoke(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	if err := usecases.RevokeToken(ctx, usecases.RevokeDeps{
+	if err := tokenusecases.RevokeToken(ctx, tokenusecases.RevokeDeps{
 		RefreshStore: d.RefreshStore, Introspector: d.TokenIntrospector,
 		AccessTokenDenylist: d.AccessTokenDenylist, Emit: d.Emit,
 	}, client.ID, c.Request().PostFormValue("token"), time.Now().UTC()); err != nil {
@@ -308,10 +309,10 @@ func (d Deps) handleIntrospect(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	resp, err := usecases.IntrospectToken(c.Request().Context(), usecases.IntrospectDeps{
+	resp, err := tokenusecases.IntrospectToken(c.Request().Context(), tokenusecases.IntrospectDeps{
 		Introspector: d.TokenIntrospector, RefreshStore: d.RefreshStore,
 		AccessTokenDenylist: d.AccessTokenDenylist,
-	}, usecases.IntrospectInput{
+	}, tokenusecases.IntrospectInput{
 		Token:         c.Request().PostFormValue("token"),
 		TokenTypeHint: c.Request().PostFormValue("token_type_hint"),
 	}, time.Now().UTC())

@@ -13,7 +13,7 @@ import (
 )
 
 func TestCompleteLogin(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	ctx := tenantContext()
 	requestStore := memory.NewAuthorizationRequestStore()
 	codeStore := memory.NewAuthorizationCodeStore()
 

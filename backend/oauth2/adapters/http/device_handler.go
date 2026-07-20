@@ -7,7 +7,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -26,11 +26,11 @@ func (d Deps) handleDeviceAuthorization(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	in := usecases.DeviceAuthorizationInput{
+	in := deviceusecases.DeviceAuthorizationInput{
 		ClientID: client.ID,
 		Scope:    c.Request().PostFormValue("scope"),
 	}
-	res, err := usecases.RequestDeviceAuthorization(c.Request().Context(), usecases.DeviceAuthorizationDeps{
+	res, err := deviceusecases.RequestDeviceAuthorization(c.Request().Context(), deviceusecases.DeviceAuthorizationDeps{
 		ClientRepo: d.ClientRepo, DeviceCodeStore: d.DeviceCodeStore,
 		BaseVerification: support.RequestIssuer(c, d.Issuer) + "/device", Emit: d.Emit,
 	}, in, time.Now().UTC())
@@ -70,9 +70,9 @@ func (d Deps) handleDeviceAPI(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "ログインが必要です")
 	}
 	if input.Action == "deny" {
-		if err := usecases.DenyUserCode(
+		if err := deviceusecases.DenyUserCode(
 			c.Request().Context(),
-			usecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
+			deviceusecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
 			input.UserCode,
 			authn.UserID,
 			time.Now().UTC(),
@@ -81,9 +81,9 @@ func (d Deps) handleDeviceAPI(c *echo.Context) error {
 		}
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: "/status?state=denied"})
 	}
-	if err := usecases.ApproveUserCode(
+	if err := deviceusecases.ApproveUserCode(
 		c.Request().Context(),
-		usecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
+		deviceusecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
 		input.UserCode,
 		authn.UserID,
 		time.Now().UTC(),

@@ -9,8 +9,8 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -152,10 +152,10 @@ func (d Deps) issueCodeURL(
 			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションにアクセスできません"), nil
 		}
 	}
-	out, err := usecases.CompleteLogin(ctx, usecases.CompleteLoginDeps{
+	out, err := authorizationusecases.CompleteLogin(ctx, authorizationusecases.CompleteLoginDeps{
 		RequestStore: d.RequestStore,
 		CodeStore:    d.CodeStore,
-	}, usecases.CompleteLoginInput{
+	}, authorizationusecases.CompleteLoginInput{
 		RequestID: req.ID,
 		Sub:       authn.UserID,
 		AuthTime:  authTime,
@@ -164,7 +164,7 @@ func (d Deps) issueCodeURL(
 		Sid:       authn.SessionID,
 	})
 	if err != nil {
-		var oauthErr *usecases.OAuthError
+		var oauthErr *authorizationusecases.OAuthError
 		if errors.As(err, &oauthErr) {
 			return authorizationErrorURL(req, iss, oauthErr.Code, oauthErr.Description), nil
 		}

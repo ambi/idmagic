@@ -196,6 +196,7 @@ modules:
       - { module: idmanagement-user-domain, via: binding }
       - { module: idmanagement-user-ports, via: binding }
       - { module: oauth2-domain, via: binding }
+      - { module: oauth2-client-usecases, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: saml-domain, via: binding }
@@ -470,6 +471,7 @@ modules:
       - { module: authentication-session-usecases, via: published_interface }
       - { module: http-support, via: binding }
       - { module: oauth2-usecases, via: binding }
+      - { module: oauth2-token-usecases, via: binding }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: binding }
@@ -571,6 +573,7 @@ modules:
       - { module: idmanagement-user-ports, via: binding }
       - { module: idmanagement-user-usecases, via: binding }
       - { module: oauth2-domain, via: binding }
+      - { module: oauth2-consent-usecases, via: binding }
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: shared-adapters, via: binding }
@@ -603,6 +606,7 @@ modules:
       - { module: idmanagement-user-ports, via: binding }
       - { module: idmanagement-user-usecases, via: binding }
       - { module: oauth2-ports, via: binding }
+      - { module: oauth2-consent-usecases, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: binding }
@@ -757,6 +761,7 @@ modules:
       - { module: jobs-ports, via: binding }
       - { module: jobs-usecases, via: binding }
       - { module: oauth2-domain, via: binding }
+      - { module: oauth2-consent-usecases, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-kernel, via: technical_shared }
@@ -804,6 +809,7 @@ modules:
       - { module: idmanagement-user-ports, via: published_interface }
       - { module: jobs-ports, via: binding }
       - { module: oauth2-ports, via: binding }
+      - { module: oauth2-consent-usecases, via: binding }
       - { module: oauth2-usecases, via: binding }
       - { module: scim-ports, via: binding }
       - { module: shared-services, via: technical_shared }
@@ -945,29 +951,39 @@ modules:
   oauth2-domain:
     path: backend/oauth2/domain
 
-    responsibility: "OAuth2 のドメインモデルと純粋な規則。"
+    responsibility: "OAuth2 feature 横断のイベント・resource server 型と互換 facade。"
     context: OAuth2
     layer: domain
     role: published_interface
     depends_on:
       - { module: shared-spec, via: technical_shared }
+      - { module: oauth2-authorization-domain, via: published_interface }
+      - { module: oauth2-client-domain, via: published_interface }
+      - { module: oauth2-consent-domain, via: published_interface }
+      - { module: oauth2-device-domain, via: published_interface }
+      - { module: oauth2-token-domain, via: published_interface }
       - { module: signingkeys-domain, via: published_interface }
       - { module: tenancy-domain, via: published_interface }
   oauth2-ports:
     path: backend/oauth2/ports
 
-    responsibility: "OAuth2 の公開 port と外界への抽象。"
+    responsibility: "OAuth2 feature 横断 port と feature port の互換 facade。"
     context: OAuth2
     layer: use_cases
     role: published_interface
     depends_on:
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-authorization-ports, via: published_interface }
+      - { module: oauth2-client-ports, via: published_interface }
+      - { module: oauth2-consent-ports, via: published_interface }
+      - { module: oauth2-device-ports, via: published_interface }
+      - { module: oauth2-token-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   oauth2-usecases:
     path: backend/oauth2/usecases
 
-    responsibility: "OAuth2 のユースケース。"
+    responsibility: "OAuth2 feature 横断のエラー・イベント・resource indicator helper。"
     context: OAuth2
     layer: use_cases
     role: published_interface
@@ -1016,7 +1032,18 @@ modules:
       - { module: idmanagement-user-ports, via: binding }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
       - { module: oauth2-usecases, via: published_interface }
+      - { module: oauth2-authorization-adapters, via: published_interface }
+      - { module: oauth2-authorization-usecases, via: published_interface }
+      - { module: oauth2-client-adapters, via: published_interface }
+      - { module: oauth2-client-usecases, via: published_interface }
+      - { module: oauth2-consent-adapters, via: published_interface }
+      - { module: oauth2-consent-usecases, via: published_interface }
+      - { module: oauth2-device-adapters, via: published_interface }
+      - { module: oauth2-device-usecases, via: published_interface }
+      - { module: oauth2-token-adapters, via: published_interface }
+      - { module: oauth2-token-usecases, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
       - { module: signingkeys-domain, via: published_interface }
@@ -1024,6 +1051,220 @@ modules:
       - { module: tenancy-domain, via: binding }
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
+  oauth2-sqlcgen:
+    path: backend/oauth2/adapters/persistence/postgres/sqlcgen
+    responsibility: "OAuth2 PostgreSQL adapter が共有する sqlc 生成 binding。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on: []
+  oauth2-client-domain:
+    path: backend/oauth2/client/domain
+    responsibility: "OAuth2 client と client secret のドメイン規則。"
+    context: OAuth2
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+  oauth2-client-ports:
+    path: backend/oauth2/client/ports
+    responsibility: "Client repository の feature port。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+  oauth2-client-usecases:
+    path: backend/oauth2/client/usecases
+    responsibility: "Client 登録・管理・secret rotation のユースケース。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: oauth2-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
+  oauth2-client-adapters:
+    path: backend/oauth2/client/adapters
+    responsibility: "Client の memory / PostgreSQL persistence adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: shared-adapters, via: binding }
+      - { module: shared-spec, via: binding }
+      - { module: signingkeys-domain, via: published_interface }
+  oauth2-consent-domain:
+    path: backend/oauth2/consent/domain
+    responsibility: "Consent のドメインモデルとイベント。"
+    context: OAuth2
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  oauth2-consent-usecases:
+    path: backend/oauth2/consent/usecases
+    responsibility: "管理者・account consent のユースケース。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-consent-ports, via: published_interface }
+      - { module: oauth2-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  oauth2-consent-ports:
+    path: backend/oauth2/consent/ports
+    responsibility: "Consent repository の feature port。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-consent-domain, via: published_interface }
+  oauth2-consent-adapters:
+    path: backend/oauth2/consent/adapters
+    responsibility: "Consent の memory / PostgreSQL persistence adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: shared-adapters, via: binding }
+  oauth2-authorization-domain:
+    path: backend/oauth2/authorization/domain
+    responsibility: "Authorization request/code、PKCE、authorization details のドメイン規則。"
+    context: OAuth2
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+  oauth2-authorization-ports:
+    path: backend/oauth2/authorization/ports
+    responsibility: "Authorization request/code/PAR store の feature port。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  oauth2-authorization-usecases:
+    path: backend/oauth2/authorization/usecases
+    responsibility: "Authorize、complete login、PAR のユースケース。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-ports, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: oauth2-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  oauth2-authorization-adapters:
+    path: backend/oauth2/authorization/adapters
+    responsibility: "Authorization request/code/PAR の memory persistence adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: shared-adapters, via: binding }
+      - { module: shared-spec, via: binding }
+  oauth2-token-domain:
+    path: backend/oauth2/token/domain
+    responsibility: "Refresh token 発行・rotation のドメイン規則。"
+    context: OAuth2
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  oauth2-token-ports:
+    path: backend/oauth2/token/ports
+    responsibility: "Refresh token store と access-token denylist の feature port。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+  oauth2-token-usecases:
+    path: backend/oauth2/token/usecases
+    responsibility: "Code/token exchange、refresh、revoke、introspect、userinfo のユースケース。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: idmanagement-agent-ports, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: oauth2-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  oauth2-token-adapters:
+    path: backend/oauth2/token/adapters
+    responsibility: "Token の memory / PostgreSQL persistence adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: shared-adapters, via: binding }
+  oauth2-device-domain:
+    path: backend/oauth2/device/domain
+    responsibility: "Device code / user code のドメイン規則。"
+    context: OAuth2
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  oauth2-device-ports:
+    path: backend/oauth2/device/ports
+    responsibility: "Device code store の feature port。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+  oauth2-device-usecases:
+    path: backend/oauth2/device/usecases
+    responsibility: "Device authorization、user code approval、device code exchange のユースケース。"
+    context: OAuth2
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: oauth2-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  oauth2-device-adapters:
+    path: backend/oauth2/device/adapters
+    responsibility: "Device code の memory persistence adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: shared-adapters, via: binding }
+      - { module: shared-spec, via: binding }
   saml-domain:
     path: backend/saml/domain
 
@@ -1601,6 +1842,7 @@ modules:
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: idmanagement-user-ports, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
+      - { module: oauth2-consent-usecases, via: published_interface }
       - { module: oauth2-usecases, via: published_interface }
       - { module: shared-kernel, via: technical_shared }
       - { module: shared-services, via: technical_shared }

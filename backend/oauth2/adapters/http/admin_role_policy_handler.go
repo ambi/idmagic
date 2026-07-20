@@ -8,7 +8,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -98,7 +98,7 @@ func (d Deps) handleListAdminRolePolicies(c *echo.Context) error {
 	if !slices.Contains(actor.Roles, "admin") && !slices.Contains(actor.Roles, "system_admin") {
 		return d.WriteAdminAccessError(c, support.ErrAdminAccessDenied)
 	}
-	roles, err := usecases.ListRolePolicies(
+	roles, err := tokenusecases.ListRolePolicies(
 		d.SCL,
 		actor.Roles,
 		support.RequestTenantID(c) == tenancydomain.DefaultTenantID && actor.TenantID == tenancydomain.DefaultTenantID,
@@ -113,7 +113,7 @@ func (d Deps) handleListAdminRolePolicies(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"roles": response})
 }
 
-func toAdminRolePolicyResponse(role usecases.RolePolicy) AdminRolePolicyResponse {
+func toAdminRolePolicyResponse(role tokenusecases.RolePolicy) AdminRolePolicyResponse {
 	permissions := make([]adminRolePermissionResponse, len(role.Permissions))
 	for i, permission := range role.Permissions {
 		interfaces := make([]adminRoleInterfaceResponse, len(permission.Interfaces))

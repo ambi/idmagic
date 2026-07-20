@@ -9,7 +9,7 @@ import (
 	"time"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -40,7 +40,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 	bearer := strings.HasPrefix(auth, "Bearer ")
 	dpopAuth := strings.HasPrefix(auth, "DPoP ")
 	if !bearer && !dpopAuth {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_token", "Bearer token が必要"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "Bearer token が必要"))
 	}
 	var token string
 	if bearer {
@@ -53,7 +53,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 	if !intro.Active {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_token", "トークンが無効"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "トークンが無効"))
 	}
 	if d.AccessTokenDenylist != nil && intro.JTI != "" {
 		revoked, err := d.AccessTokenDenylist.IsRevoked(c.Request().Context(), intro.JTI)
@@ -61,7 +61,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			return writeOAuthError(c, err)
 		}
 		if revoked {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_token", "トークンが失効済みです"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "トークンが失効済みです"))
 		}
 	}
 	if intro.SenderConstraint != nil {
@@ -72,11 +72,11 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 				[]byte(cert.ThumbprintS256),
 				[]byte(intro.SenderConstraint.X5TS256),
 			) != 1 {
-				return writeOAuthError(c, usecases.NewOAuthError("invalid_token", "mTLS 証明書バインドが一致しません"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "mTLS 証明書バインドが一致しません"))
 			}
 		case spec.SenderConstraintDPoP:
 			if dpopHeader == "" || d.DpopReplayStore == nil {
-				return writeOAuthError(c, usecases.NewOAuthError("invalid_token", "DPoP proof が必要"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP proof が必要"))
 			}
 			r, err := crypto.VerifyDPoP(
 				c.Request().Context(), dpopHeader,
@@ -86,11 +86,11 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			if err != nil || r == nil || subtle.ConstantTimeCompare(
 				[]byte(r.JKT), []byte(intro.SenderConstraint.JKT),
 			) != 1 {
-				return writeOAuthError(c, usecases.NewOAuthError("invalid_token", "DPoP 鍵バインドが一致しません"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP 鍵バインドが一致しません"))
 			}
 		}
 	}
-	res, err := usecases.UserInfo(c.Request().Context(), d.UserRepo, d.Authorizer, usecases.UserInfoInput{
+	res, err := tokenusecases.UserInfo(c.Request().Context(), d.UserRepo, d.Authorizer, tokenusecases.UserInfoInput{
 		Scopes: strings.Fields(intro.Scope), Sub: intro.Sub, Active: intro.Active, ClientID: intro.ClientID,
 		ResolveAttributeDefs: d.effectiveUserAttributeDefs,
 	})

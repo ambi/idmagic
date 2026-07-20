@@ -10,7 +10,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -84,7 +84,7 @@ func (d Deps) handleGetAdminOAuth2Client(c *echo.Context) error {
 		return err
 	}
 	if client == nil {
-		return d.writeAdminOAuth2ClientError(c, oauthusecases.ErrClientNotFound)
+		return d.writeAdminOAuth2ClientError(c, clientusecases.ErrClientNotFound)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminOAuth2ClientResponse(client))
 }
@@ -109,7 +109,7 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 		}
 	}
-	registration := oauthusecases.RegisterClientInput{
+	registration := clientusecases.RegisterClientInput{
 		ClientName: req.ClientName, ClientType: spec.ClientType(req.ClientType),
 		RedirectURIs: req.RedirectURIs, TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
 		Scope: req.Scope, JWKS: req.JWKS, JwksURI: req.JwksURI,
@@ -122,7 +122,7 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 	for _, responseType := range req.ResponseTypes {
 		registration.ResponseTypes = append(registration.ResponseTypes, spec.ResponseType(responseType))
 	}
-	result, err := oauthusecases.CreateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), oauthusecases.CreateAdminOAuth2ClientInput{
+	result, err := clientusecases.CreateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.CreateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, Registration: registration, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -147,7 +147,7 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	client, err := oauthusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), oauthusecases.UpdateAdminOAuth2ClientInput{
+	client, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
@@ -167,7 +167,7 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := oauthusecases.DeleteAdminOAuth2Client(
+	if err := clientusecases.DeleteAdminOAuth2Client(
 		c.Request().Context(), d.adminClientDeps(), actor.ID, c.Param("client_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
@@ -176,15 +176,15 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) adminClientDeps() oauthusecases.AdminOAuth2ClientDeps {
-	return oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}
+func (d Deps) adminClientDeps() clientusecases.AdminOAuth2ClientDeps {
+	return clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}
 }
 
 func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
-	if errors.Is(err, oauthusecases.ErrClientNotFound) {
+	if errors.Is(err, clientusecases.ErrClientNotFound) {
 		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "クライアントが存在しません")
 	}
-	var oauthErr *oauthusecases.OAuthError
+	var oauthErr *clientusecases.OAuthError
 	if errors.As(err, &oauthErr) {
 		return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
 	}

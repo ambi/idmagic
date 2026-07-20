@@ -7,7 +7,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -17,17 +17,17 @@ import (
 func (d Deps) handleRegisterClient(c *echo.Context) error {
 	var req registerClientRequest
 	if err := c.Bind(&req); err != nil {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", err.Error()))
+		return writeOAuthError(c, clientusecases.NewOAuthError("invalid_request", err.Error()))
 	}
 	if err := validateRegisterClientRequest(&req); err != nil {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_client_metadata", err.Error()))
+		return writeOAuthError(c, clientusecases.NewOAuthError("invalid_client_metadata", err.Error()))
 	}
 	if req.JwksURI != nil {
 		if err := crypto.ValidateJWKSURI(*req.JwksURI); err != nil {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_client_metadata", err.Error()))
+			return writeOAuthError(c, clientusecases.NewOAuthError("invalid_client_metadata", err.Error()))
 		}
 	}
-	in := usecases.RegisterClientInput{
+	in := clientusecases.RegisterClientInput{
 		ClientName:              req.ClientName,
 		ClientType:              spec.ClientType(req.ClientType),
 		RedirectURIs:            req.RedirectURIs,
@@ -46,7 +46,7 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 	for _, r := range req.ResponseTypes {
 		in.ResponseTypes = append(in.ResponseTypes, spec.ResponseType(r))
 	}
-	result, err := usecases.RegisterClient(c.Request().Context(), usecases.RegisterClientDeps{
+	result, err := clientusecases.RegisterClient(c.Request().Context(), clientusecases.RegisterClientDeps{
 		ClientRepo: d.ClientRepo, Emit: d.Emit,
 	}, in, time.Now().UTC())
 	if err != nil {

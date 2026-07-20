@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/adapters/http/httpdeps"
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -55,8 +55,8 @@ func revokeOAuthSessionTokens(d httpdeps.Deps, c *echo.Context, sid string) erro
 	if d.RefreshStore == nil {
 		return nil
 	}
-	return oauthusecases.RevokeTokensBySid(
-		c.Request().Context(), oauthusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, time.Now().UTC(),
+	return tokenusecases.RevokeTokensBySid(
+		c.Request().Context(), tokenusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, time.Now().UTC(),
 	)
 }
 

@@ -10,6 +10,16 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
+func nonEmpty(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
 // ResolveResourceIndicator は resource パラメータを検証し、対応する Active な
 // McpResourceServer を返す。
 //

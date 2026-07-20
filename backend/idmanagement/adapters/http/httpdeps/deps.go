@@ -12,8 +12,8 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
@@ -45,8 +45,8 @@ type Deps struct {
 	EmailSender           sharednotification.EmailSender
 }
 
-func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
-	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
+func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
+	return consentusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }
 
 // LegacyEmit adapts the fire-and-forget support.Deps.Emit to the

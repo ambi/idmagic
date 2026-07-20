@@ -11,7 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	"github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )

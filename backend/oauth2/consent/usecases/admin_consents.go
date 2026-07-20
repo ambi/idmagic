@@ -9,9 +9,8 @@ import (
 	"errors"
 	"time"
 
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -19,7 +18,7 @@ import (
 var ErrConsentNotFound = errors.New("consent not found")
 
 type ConsentDeps struct {
-	ConsentRepo oauthports.ConsentRepository
+	ConsentRepo consentports.ConsentRepository
 	Emit        func(spec.DomainEvent)
 }
 

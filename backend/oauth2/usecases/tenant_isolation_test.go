@@ -1,4 +1,4 @@
-package usecases
+package usecases_test
 
 import (
 	"context"
@@ -13,8 +13,13 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
+	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
+	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -24,6 +29,18 @@ func tenantContext(id string) context.Context {
 		ID: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }
+
+type fakeTokenIssuer struct{}
+
+func (*fakeTokenIssuer) SignAccessToken(context.Context, ports.AccessTokenInput) (string, string, error) {
+	return "access-token", "jti-1", nil
+}
+
+func (*fakeTokenIssuer) SignIDToken(context.Context, ports.IDTokenInput) (string, error) {
+	return "id-token", nil
+}
+func (*fakeTokenIssuer) AccessTokenTTLSeconds() int { return 600 }
+func (*fakeTokenIssuer) IDTokenTTLSeconds() int     { return 3600 }
 
 func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 	clients := oauth2memory.NewClientRepository()
@@ -36,9 +53,9 @@ func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
-	_, err := Authorize(tenantContext("acme"), AuthorizeDeps{
+	_, err := authorizationusecases.Authorize(tenantContext("acme"), authorizationusecases.AuthorizeDeps{
 		ClientRepo: clients, RequestStore: oauth2memory.NewAuthorizationRequestStore(),
-	}, AuthorizeRequestInput{
+	}, authorizationusecases.AuthorizeRequestInput{
 		ClientID: "web-app", RedirectURI: "https://app.example/callback",
 		ResponseType: string(spec.ResponseTypeCode), Scope: "openid",
 		CodeChallenge: "challenge", CodeChallengeMethod: string(spec.CodeChallengeMethodS256),
@@ -57,9 +74,9 @@ func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := ExchangeCodeForToken(tenantContext(tenancydomain.DefaultTenantID), ExchangeCodeDeps{
+	_, err := tokenusecases.ExchangeCodeForToken(tenantContext(tenancydomain.DefaultTenantID), tokenusecases.ExchangeCodeDeps{
 		CodeStore: codes,
-	}, ExchangeCodeInput{
+	}, tokenusecases.ExchangeCodeInput{
 		ClientID: "web-app", Code: "AC1", CodeVerifier: "verifier",
 		RedirectURI: "https://app.example/callback",
 	})
@@ -93,9 +110,9 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = RefreshTokens(tenantContext(tenancydomain.DefaultTenantID), RefreshDeps{
+	_, err = tokenusecases.RefreshTokens(tenantContext(tenancydomain.DefaultTenantID), tokenusecases.RefreshDeps{
 		ClientRepo: clients, UserRepo: users, RefreshStore: store,
-	}, RefreshInput{ClientID: "web-app", RefreshToken: gen.Token}, time.Now().UTC())
+	}, tokenusecases.RefreshInput{ClientID: "web-app", RefreshToken: gen.Token}, time.Now().UTC())
 	assertOAuthErrorCode(t, err, "invalid_grant")
 }
 
@@ -138,16 +155,16 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := ExchangeDeviceCode(tenantContext(tenancydomain.DefaultTenantID), ExchangeDeviceCodeDeps{
+	_, err := deviceusecases.ExchangeDeviceCode(tenantContext(tenancydomain.DefaultTenantID), deviceusecases.ExchangeDeviceCodeDeps{
 		ClientRepo: clients, UserRepo: users, DeviceCodeStore: deviceStore,
 		RefreshStore: oauth2memory.NewRefreshTokenStore(), TokenIssuer: &fakeTokenIssuer{},
-	}, ExchangeDeviceCodeInput{ClientID: "tv-app", DeviceCode: deviceCode}, now.Add(20*time.Second))
+	}, deviceusecases.ExchangeDeviceCodeInput{ClientID: "tv-app", DeviceCode: deviceCode}, now.Add(20*time.Second))
 	assertOAuthErrorCode(t, err, "invalid_grant")
 }
 
 func assertOAuthErrorCode(t *testing.T, err error, code string) {
 	t.Helper()
-	oauthErr := &OAuthError{}
+	oauthErr := &sharedusecases.OAuthError{}
 	ok := errors.As(err, &oauthErr)
 	if !ok || oauthErr.Code != code {
 		t.Fatalf("error = %#v, want OAuth code %s", err, code)

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -34,10 +34,10 @@ func (d Deps) handlePAR(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	res, err := usecases.PushAuthorizationRequest(ctx, usecases.PARDeps{
+	res, err := authorizationusecases.PushAuthorizationRequest(ctx, authorizationusecases.PARDeps{
 		ClientRepo: d.ClientRepo, Store: d.PARStore, AuthzDetailTypeRepo: d.AuthzDetailTypeRepo,
 		McpResourceServerRepo: d.McpResourceServerRepo, Emit: d.Emit,
-	}, usecases.PARInput{ClientID: clientStub.ID, Parameters: params, Resource: c.Request().PostForm["resource"]}, time.Now().UTC())
+	}, authorizationusecases.PARInput{ClientID: clientStub.ID, Parameters: params, Resource: c.Request().PostForm["resource"]}, time.Now().UTC())
 	if err != nil {
 		return writeOAuthError(c, err)
 	}

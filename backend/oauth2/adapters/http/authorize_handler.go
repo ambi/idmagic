@@ -10,8 +10,8 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/tenancy"
 
@@ -21,13 +21,13 @@ import (
 func (d Deps) handleAuthorize(c *echo.Context) error {
 	q := c.QueryParams()
 	if err := validateAuthorizationParameterCardinality(q); err != nil {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", err.Error()))
+		return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", err.Error()))
 	}
 	parUsed := false
 	if requestURI := q.Get("request_uri"); requestURI != "" {
 		for key := range q {
 			if key != "request_uri" && key != "client_id" {
-				return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "request_uri と authorization parameter を混在できません"))
+				return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "request_uri と authorization parameter を混在できません"))
 			}
 		}
 		consumed, err := d.PARStore.Consume(c.Request().Context(), requestURI)
@@ -35,13 +35,13 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			return writeOAuthError(c, err)
 		}
 		if consumed == nil {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_request_uri", "request_uri 無効または使用済み"))
+			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request_uri", "request_uri 無効または使用済み"))
 		}
 		if consumed.TenantID != support.RequestTenantID(c) {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_request_uri", "request_uri 無効または使用済み"))
+			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request_uri", "request_uri 無効または使用済み"))
 		}
 		if cid := q.Get("client_id"); cid != "" && cid != consumed.ClientID {
-			return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "client_id が PAR と不一致"))
+			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "client_id が PAR と不一致"))
 		}
 		q = url.Values{}
 		for k, v := range consumed.Parameters {
@@ -53,13 +53,13 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 
 	request, err := parseAuthorizeRequest(q)
 	if err != nil {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", err.Error()))
+		return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", err.Error()))
 	}
-	details, err := usecases.ParseAuthorizationDetails(q.Get("authorization_details"))
+	details, err := authorizationusecases.ParseAuthorizationDetails(q.Get("authorization_details"))
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	in := usecases.AuthorizeRequestInput{
+	in := authorizationusecases.AuthorizeRequestInput{
 		ClientID: request.ClientID, RedirectURI: request.RedirectURI,
 		ResponseType: request.ResponseType, Scope: request.Scope,
 		StateParam: request.StateParam, Nonce: request.Nonce,
@@ -71,7 +71,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if requestURI := c.QueryParam("request_uri"); requestURI != "" {
 		in.ParRequestURI = requestURI
 	}
-	out, err := usecases.Authorize(c.Request().Context(), usecases.AuthorizeDeps{
+	out, err := authorizationusecases.Authorize(c.Request().Context(), authorizationusecases.AuthorizeDeps{
 		ClientRepo:            d.ClientRepo,
 		RequestStore:          d.RequestStore,
 		AuthzDetailTypeRepo:   d.AuthzDetailTypeRepo,
@@ -95,7 +95,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			prompt, _ := oauthdomain.ParsePromptTokens(in.Prompt)
 			if authn.AuthenticationPending {
 				if prompt.None {
-					return writeOAuthError(c, usecases.NewOAuthError("login_required", "追加factor検証が必要です"))
+					return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "追加factor検証が必要です"))
 				}
 				return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 			}
@@ -113,7 +113,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 						return err
 					}
 					if pending == nil {
-						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
+						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 					}
 					d.setSessionCookie(c, pending.SessionID)
 					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
@@ -127,7 +127,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				}
 				if redirected {
 					if prompt.None {
-						return writeOAuthError(c, usecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
+						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
 					}
 					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 				}

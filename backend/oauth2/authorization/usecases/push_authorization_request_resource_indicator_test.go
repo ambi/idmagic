@@ -22,7 +22,7 @@ func parDepsWithResourceServer(servers ...*domain.McpResourceServer) (PARDeps, *
 }
 
 func TestPushAuthorizationRequest_unregisteredResource_rejectedFailClosed(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	ctx := tenantContext()
 	deps, clientRepo := parDepsWithResourceServer()
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1",
@@ -39,7 +39,7 @@ func TestPushAuthorizationRequest_unregisteredResource_rejectedFailClosed(t *tes
 }
 
 func TestPushAuthorizationRequest_registeredResource_accepted(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	ctx := tenantContext()
 	rs := &domain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ResourceServerID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",

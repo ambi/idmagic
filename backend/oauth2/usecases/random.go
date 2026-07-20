@@ -15,3 +15,8 @@ func generateOpaqueToken() (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
+
+// GenerateOpaqueToken is shared by feature use cases that issue opaque values.
+func GenerateOpaqueToken() (string, error) {
+	return generateOpaqueToken()
+}

@@ -10,7 +10,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -46,7 +46,7 @@ func HandleExportAccountData(d Deps, c *echo.Context) error {
 	if err != nil {
 		return writeAccountError(c, err)
 	}
-	consents, err := oauthusecases.ListConsentsForSub(c.Request().Context(), d.ConsentDeps(), sub)
+	consents, err := consentusecases.ListConsentsForSub(c.Request().Context(), d.ConsentDeps(), sub)
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 func TestPushAuthorizationRequest(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	ctx := tenantContext()
 	clientRepo := oauth2memory.NewClientRepository()
 	parStore := oauth2memory.NewPARStore()
 	authzDetailRepo := oauth2memory.NewAuthorizationDetailTypeRepository()

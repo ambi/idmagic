@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -15,10 +15,10 @@ import (
 func (d Deps) handleProtectedResourceMetadata(c *echo.Context) error {
 	resource := c.QueryParam("resource")
 	if resource == "" {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "resource パラメータが必要です"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "resource パラメータが必要です"))
 	}
 	tenantID := support.RequestTenantID(c)
-	meta, err := usecases.BuildProtectedResourceMetadata(
+	meta, err := tokenusecases.BuildProtectedResourceMetadata(
 		c.Request().Context(), d.McpResourceServerRepo, tenantID, resource, support.RequestIssuer(c, d.Issuer),
 	)
 	if err != nil {

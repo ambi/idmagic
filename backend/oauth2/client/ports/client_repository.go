@@ -16,13 +16,3 @@ type OAuth2ClientRepository interface {
 	SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
 	UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
 }
-
-type ConsentRepository interface {
-	Find(ctx context.Context, tenantID, sub, clientID string) (*domain.Consent, error)
-	FindAll(ctx context.Context, tenantID string) ([]*domain.Consent, error)
-	Save(ctx context.Context, tenantID string, c *domain.Consent) error
-	Revoke(ctx context.Context, tenantID, sub, clientID string) error
-	// DeleteAllForSub は ADR-036 の anonymize cascade から呼ばれる。
-	// 対象 sub の Consent を物理削除する。
-	DeleteAllForSub(ctx context.Context, sub string) error
-}

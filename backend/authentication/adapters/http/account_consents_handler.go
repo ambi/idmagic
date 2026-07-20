@@ -10,7 +10,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/authentication/adapters/http/httpdeps"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -39,7 +39,7 @@ func handleListAccountConsents(d Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	ctx := c.Request().Context()
-	consents, err := oauthusecases.ListConsentsForSub(ctx, d.ConsentDeps(), sub)
+	consents, err := consentusecases.ListConsentsForSub(ctx, d.ConsentDeps(), sub)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func handleRevokeAccountConsent(d Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	// actor も target も自分の sub に固定する。URL の client_id 以外は信用しない。
-	if err := oauthusecases.RevokeConsent(
+	if err := consentusecases.RevokeConsent(
 		c.Request().Context(), d.ConsentDeps(), sub, sub, c.Param("client_id"), time.Now().UTC(),
 	); err != nil {
 		return d.WriteConsentError(c, err)

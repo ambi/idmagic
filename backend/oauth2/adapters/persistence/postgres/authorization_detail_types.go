@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -16,6 +17,13 @@ import (
 // (ADR-050) を PostgreSQL に永続化する。schema は JSONB として保持する。すべての
 // 参照はテナント境界に閉じる。クエリは sqlc 生成 (wi-173, ADR-090)。
 type AuthorizationDetailTypeRepository struct{ Pool sharedpg.DB }
+
+func textOrNil(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
 
 func authorizationDetailTypeFromRow(row *sqlcgen.AuthorizationDetailType) (*domain.AuthorizationDetailType, error) {
 	t := &domain.AuthorizationDetailType{

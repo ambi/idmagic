@@ -35,7 +35,7 @@ checks:
   - id: pkce-s256-verifies
     recipe: test-go
     kind: property_test
-    implementation: { path: backend/oauth2/domain/pkce_test.go, symbol: TestPKCES256Verifies }
+    implementation: { path: backend/oauth2/authorization/domain/pkce_test.go, symbol: TestPKCES256Verifies }
     targets:
       - { context: OAuth2, kind: interface, element: Token }
   - id: authorization-code-memory-atomic-redeem
@@ -53,13 +53,13 @@ checks:
   - id: refresh-token-absolute-ttl
     recipe: test-go
     kind: property_test
-    implementation: { path: backend/oauth2/usecases/refresh_tokens_test.go, symbol: TestRefreshTokensRejectsAbsoluteTTLExpired }
+    implementation: { path: backend/oauth2/token/usecases/refresh_tokens_test.go, symbol: TestRefreshTokensRejectsAbsoluteTTLExpired }
     targets:
       - { context: OAuth2, kind: model, element: RefreshTokenRecord }
   - id: refresh-token-family-revocation
     recipe: test-go
     kind: contract_test
-    implementation: { path: backend/oauth2/usecases/exchange_code_test.go, symbol: TestExchangeCodeReplayRevokesRefreshFamily }
+    implementation: { path: backend/oauth2/token/usecases/exchange_code_test.go, symbol: TestExchangeCodeReplayRevokesRefreshFamily }
     targets:
       - { context: OAuth2, kind: interface, element: Token }
       - { context: OAuth2, kind: model, element: RefreshTokenRecord }
@@ -96,7 +96,7 @@ checks:
   - id: client-secret-hashing
     recipe: test-go
     kind: test
-    implementation: { path: backend/oauth2/usecases/register_client_test.go, symbol: TestRegisterClientHashesSecret }
+    implementation: { path: backend/oauth2/client/usecases/register_client_test.go, symbol: TestRegisterClientHashesSecret }
     targets:
       - { context: OAuth2, kind: interface, element: RegisterClient }
   - id: specification-coherence

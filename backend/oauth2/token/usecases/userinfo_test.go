@@ -11,7 +11,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	"github.com/ambi/idmagic/backend/oauth2/token/usecases"
 )
 
 func userInfoFixture(t *testing.T) *usermemory.UserRepository {

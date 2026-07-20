@@ -8,7 +8,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
 	"github.com/labstack/echo/v5"
@@ -31,7 +31,7 @@ func (d Deps) handleListAdminConsents(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	ctx := c.Request().Context()
-	consents, err := oauthusecases.ListConsents(ctx, d.ConsentDeps())
+	consents, err := consentusecases.ListConsents(ctx, d.ConsentDeps())
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (d Deps) handleGetAdminConsent(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	ctx := c.Request().Context()
-	consent, err := oauthusecases.GetConsent(
+	consent, err := consentusecases.GetConsent(
 		ctx, d.ConsentDeps(), c.Param("sub"), c.Param("client_id"),
 	)
 	if err != nil {
@@ -92,7 +92,7 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := oauthusecases.RevokeConsent(
+	if err := consentusecases.RevokeConsent(
 		c.Request().Context(), d.ConsentDeps(), actor.ID,
 		c.Param("sub"), c.Param("client_id"), time.Now().UTC(),
 	); err != nil {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -32,9 +32,9 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 		post = c.Request().PostFormValue("post_logout_redirect_uri")
 	}
 
-	target, err := usecases.ResolveEndSession(ctx, usecases.EndSessionDeps{
+	target, err := tokenusecases.ResolveEndSession(ctx, tokenusecases.EndSessionDeps{
 		ClientRepo: d.ClientRepo, HintVerifier: d.IDTokenHintVerifier,
-	}, usecases.EndSessionInput{ClientID: clientID, PostLogoutRedirectURI: post, IDTokenHint: idTokenHint})
+	}, tokenusecases.EndSessionInput{ClientID: clientID, PostLogoutRedirectURI: post, IDTokenHint: idTokenHint})
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
@@ -49,7 +49,7 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 	// user input.
 	u, err := url.Parse(target.RedirectURI)
 	if err != nil {
-		return writeOAuthError(c, usecases.NewOAuthError("invalid_request", "post_logout_redirect_uri が不正"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "post_logout_redirect_uri が不正"))
 	}
 	query := u.Query()
 	if state := c.QueryParam("state"); state != "" {
@@ -75,7 +75,7 @@ func (d Deps) endLocalSession(c *echo.Context, sid string) {
 	if sid != "" {
 		_ = authusecases.EndSession(ctx, authusecases.SessionDeps{Store: d.SessionManager.Store, Emit: d.Emit}, sid, now)
 		if d.RefreshStore != nil {
-			_ = usecases.RevokeTokensBySid(ctx, usecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, now)
+			_ = tokenusecases.RevokeTokensBySid(ctx, tokenusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, now)
 		}
 	}
 	d.clearSessionCookie(c)

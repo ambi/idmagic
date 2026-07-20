@@ -23,8 +23,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	"github.com/ambi/idmagic/backend/oauth2/device/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/usecases"
 
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"

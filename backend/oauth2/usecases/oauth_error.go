@@ -30,3 +30,8 @@ func errorCode(err error) string {
 	}
 	return "server_error"
 }
+
+// ErrorCode returns the OAuth error code for feature-package audit attributes.
+func ErrorCode(err error) string {
+	return errorCode(err)
+}

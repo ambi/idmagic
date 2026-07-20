@@ -16,7 +16,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -146,7 +146,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if len(req.RedirectURIs) == 0 {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "リダイレクト URI を 1 つ以上指定してください")
 		}
-		registration := oauthusecases.RegisterClientInput{
+		registration := clientusecases.RegisterClientInput{
 			ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
@@ -158,7 +158,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if uri := strings.TrimSpace(req.JwksURI); uri != "" {
 			registration.JwksURI = &uri
 		}
-		result, err := oauthusecases.CreateAdminOAuth2Client(ctx, oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.CreateAdminOAuth2ClientInput{
+		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.CreateAdminOAuth2ClientInput{
 			ActorUserID:  actor.ID,
 			Registration: registration,
 			Now:          now,
@@ -178,9 +178,9 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	case "service":
 		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
 		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
-		result, err := oauthusecases.CreateAdminOAuth2Client(ctx, oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.CreateAdminOAuth2ClientInput{
+		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.CreateAdminOAuth2ClientInput{
 			ActorUserID: actor.ID,
-			Registration: oauthusecases.RegisterClientInput{
+			Registration: clientusecases.RegisterClientInput{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,
 				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 				TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: nonEmpty(req.Scope, defaultServiceScope),
@@ -364,7 +364,7 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if req.GraceDays != nil {
 		graceDays = *req.GraceDays
 	}
-	result, err := oauthusecases.RotateClientSecret(c.Request().Context(), oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
+	result, err := clientusecases.RotateClientSecret(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -404,7 +404,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
 	}
-	if _, err := oauthusecases.UpdateAdminOAuth2Client(c.Request().Context(), oauthusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, oauthusecases.UpdateAdminOAuth2ClientInput{
+	if _, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: clientID,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,

@@ -14,8 +14,8 @@ import (
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -55,8 +55,8 @@ type Deps struct {
 	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
 }
 
-func (d Deps) ConsentDeps() oauthusecases.ConsentDeps {
-	return oauthusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
+func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
+	return consentusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }
 
 // LegacyEmit adapts the fire-and-forget support.Deps.Emit to the
