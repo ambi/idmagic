@@ -15,7 +15,7 @@ import (
 	"time"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"

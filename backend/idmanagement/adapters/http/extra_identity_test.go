@@ -16,6 +16,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
@@ -60,7 +61,7 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	clientRepo := oauth2memory.NewClientRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
 
-	history := authnmemory.NewPasswordHistoryRepository()
+	history := passwordmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
 	for _, user := range []*userdomain.User{

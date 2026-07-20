@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -153,11 +154,11 @@ func writeAccountError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが必要です")
-	case errors.Is(err, authusecases.ErrStepUpRequired):
+	case errors.Is(err, mfausecases.ErrStepUpRequired):
 		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "この操作には再認証が必要です")
 	case errors.Is(err, idmusecases.ErrUserNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
-	case errors.Is(err, authusecases.ErrSessionNotFound):
+	case errors.Is(err, sessionusecases.ErrSessionNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "session_not_found", "セッションが存在しません")
 	case errors.Is(err, userusecases.ErrAttributeNotEditable):
 		return support.WriteBrowserError(c, http.StatusForbidden, "attribute_not_editable", "この属性は編集できません")
@@ -178,8 +179,8 @@ func requireStepUpSub(d Deps, c *echo.Context) (string, error) {
 	if authn == nil || authn.AuthenticationPending {
 		return "", support.ErrAdminAuthenticationRequired
 	}
-	if !authusecases.StepUpSatisfied(authn, time.Now().UTC()) {
-		return "", authusecases.ErrStepUpRequired
+	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
+		return "", mfausecases.ErrStepUpRequired
 	}
 	return authn.UserID, nil
 }

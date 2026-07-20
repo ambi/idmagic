@@ -10,7 +10,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"github.com/ambi/idmagic/backend/authentication/usecases"
+	usecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"

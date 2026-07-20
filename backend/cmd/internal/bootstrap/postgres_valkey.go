@@ -12,8 +12,15 @@ import (
 	auditpostgres "github.com/ambi/idmagic/backend/audit/adapters/persistence/postgres"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/adapters/persistence/postgres"
-	authnvalkey "github.com/ambi/idmagic/backend/authentication/adapters/persistence/valkey"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	mfapostgres "github.com/ambi/idmagic/backend/authentication/mfa/adapters/persistence/postgres"
+	passwordpostgres "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/postgres"
+	recoverypostgres "github.com/ambi/idmagic/backend/authentication/recovery/adapters/persistence/postgres"
+	sessionpostgres "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/postgres"
+	sessionvalkey "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/valkey"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	totppostgres "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/postgres"
+	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/webauthn/adapters/persistence/postgres"
+	webauthnvalkey "github.com/ambi/idmagic/backend/authentication/webauthn/adapters/persistence/valkey"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/postgres"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -160,17 +167,17 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
-			MfaFactorRepo:           &authnpostgres.MfaFactorRepository{Pool: resilientDB},
-			MfaEnrollmentBypassRepo: &authnpostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
-			PasswordHistoryRepo:     &authnpostgres.PasswordHistoryRepository{Pool: resilientDB},
-			PasswordResetTokenStore: &authnpostgres.PasswordResetTokenStore{Pool: resilientDB},
+			MfaFactorRepo:           &totppostgres.MfaFactorRepository{Pool: resilientDB},
+			MfaEnrollmentBypassRepo: &mfapostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
+			PasswordHistoryRepo:     &passwordpostgres.PasswordHistoryRepository{Pool: resilientDB},
+			PasswordResetTokenStore: &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
 			EmailChangeTokenStore:   &authnpostgres.EmailChangeTokenStore{Pool: resilientDB},
-			SessionStore:            &authnpostgres.SessionRepository{Pool: resilientDB},
-			WebAuthnCredentialRepo:  &authnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
-			WebAuthnSessionStore:    &authnvalkey.WebAuthnSessionStore{Client: valkeyClient},
-			RecoveryCodeRepo:        &authnpostgres.RecoveryCodeRepository{Pool: resilientDB},
-			NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
-				return &authnvalkey.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
+			SessionStore:            &sessionpostgres.SessionRepository{Pool: resilientDB},
+			WebAuthnCredentialRepo:  &webauthnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
+			WebAuthnSessionStore:    &webauthnvalkey.WebAuthnSessionStore{Client: valkeyClient},
+			RecoveryCodeRepo:        &recoverypostgres.RecoveryCodeRepository{Pool: resilientDB},
+			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
+				return &sessionvalkey.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
 			},
 			AuthEventBucketStore: &authnpostgres.AuthEventBucketStore{Pool: resilientDB},
 		},

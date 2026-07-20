@@ -10,7 +10,9 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
+	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -33,8 +35,8 @@ type totpAPIRequest struct {
 	ReturnTo string `json:"return_to,omitempty"`
 }
 
-func (d Deps) webAuthnLoginDeps() authusecases.WebAuthnDeps {
-	return authusecases.WebAuthnDeps{
+func (d Deps) webAuthnLoginDeps() webauthnusecases.WebAuthnDeps {
+	return webauthnusecases.WebAuthnDeps{
 		RP:             d.WebAuthnRP,
 		UserRepo:       d.UserRepo,
 		CredentialRepo: d.WebAuthnCredentialRepo,
@@ -44,8 +46,8 @@ func (d Deps) webAuthnLoginDeps() authusecases.WebAuthnDeps {
 	}
 }
 
-func (d Deps) recoveryCodesDeps() authusecases.RecoveryCodesDeps {
-	return authusecases.RecoveryCodesDeps{
+func (d Deps) recoveryCodesDeps() recoveryusecases.RecoveryCodesDeps {
+	return recoveryusecases.RecoveryCodesDeps{
 		UserRepo: d.UserRepo, RecoveryCodeRepo: d.RecoveryCodeRepo, Emit: d.Emit,
 	}
 }
@@ -101,9 +103,9 @@ func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 	if !authn.AuthenticationPending {
 		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "追加の認証は不要です")
 	}
-	assertion, err := authusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID)
+	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID)
 	if err != nil {
-		if errors.Is(err, authusecases.ErrWebAuthnNoCredential) {
+		if errors.Is(err, webauthnusecases.ErrWebAuthnNoCredential) {
 			return support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_enrolled", "登録済みのパスキーがありません")
 		}
 		return err
@@ -139,7 +141,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
-	if _, err := authusecases.FinishWebAuthnAssertion(
+	if _, err := webauthnusecases.FinishWebAuthnAssertion(
 		c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
 	); err != nil {
 		d.recordLoginOutcome("failure", "webauthn_invalid", "webauthn")
@@ -177,10 +179,10 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
-	if _, err := authusecases.ConsumeRecoveryCode(
+	if _, err := recoveryusecases.ConsumeRecoveryCode(
 		c.Request().Context(), d.recoveryCodesDeps(), authn.UserID, input.Code, time.Now().UTC(),
 	); err != nil {
-		if errors.Is(err, authusecases.ErrRecoveryCodeInvalid) {
+		if errors.Is(err, recoveryusecases.ErrRecoveryCodeInvalid) {
 			d.recordLoginOutcome("failure", "recovery_code_invalid", "recovery_code")
 			d.emitAuthenticationFailure(c, authn.UserID, "recovery_code_invalid")
 			return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_recovery_code", "リカバリコードを確認してください。")
@@ -218,7 +220,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
-	result, err := authusecases.VerifyTOTPFactor(
+	result, err := totpusecases.VerifyTOTPFactor(
 		c.Request().Context(),
 		d.MfaFactorRepo,
 		authn.UserID,

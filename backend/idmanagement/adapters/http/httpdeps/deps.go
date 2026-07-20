@@ -6,7 +6,9 @@
 package httpdeps
 
 import (
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -36,9 +38,9 @@ type Deps struct {
 	ConsentRepo           oauthports.ConsentRepository
 	RefreshStore          oauthports.RefreshTokenStore
 	DeviceCodeStore       oauthports.DeviceCodeStore
-	MfaFactorRepo         authnports.MfaFactorRepository
-	PasswordHasher        authnports.PasswordHasher
-	PasswordHistoryRepo   authnports.PasswordHistoryRepository
+	MfaFactorRepo         mfaports.MfaFactorRepository
+	PasswordHasher        passwordports.PasswordHasher
+	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore authnports.EmailChangeTokenStore
 	EmailSender           authnports.EmailSender
 }

@@ -13,8 +13,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
 	httpsupport "github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -84,13 +84,13 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("resolve breached password checker: %w", err)
 	}
-	loginThrottle := deps.Authentication.NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
-		Account: authnports.LoginThrottleConfig{
+	loginThrottle := deps.Authentication.NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
+		Account: sessionports.LoginThrottleConfig{
 			MaxFailures:    10,
 			WindowSeconds:  900,
 			LockoutSeconds: 900,
 		},
-		IP: authnports.LoginThrottleConfig{
+		IP: sessionports.LoginThrottleConfig{
 			MaxFailures:    30,
 			WindowSeconds:  900,
 			LockoutSeconds: 900,
@@ -100,7 +100,7 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	sessionManager := authusecases.NewSessionManager(deps.Authentication.SessionStore)
+	sessionManager := sessionusecases.NewSessionManager(deps.Authentication.SessionStore)
 	tokenSigner := crypto.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := crypto.NewJWKResolver()
 	deps.OAuth2.TokenIssuer = tokenSigner

@@ -24,7 +24,7 @@ type authEventBucketResponse struct {
 	LastSeen    time.Time `json:"last_seen"`
 }
 
-func (d Deps) handleListAuthEventBuckets(c *echo.Context) error {
+func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
 	actor, err := d.RequireAuditReader(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)

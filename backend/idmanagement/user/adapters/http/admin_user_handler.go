@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"

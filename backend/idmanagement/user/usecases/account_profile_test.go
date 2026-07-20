@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"

@@ -84,13 +84,13 @@ checks:
   - id: password-reuse-protection
     recipe: test-go
     kind: test
-    implementation: { path: backend/authentication/usecases/change_password_test.go, symbol: TestChangePasswordRejectsPasswordReuse }
+    implementation: { path: backend/authentication/password/usecases/change_password_test.go, symbol: TestChangePasswordRejectsPasswordReuse }
     targets:
       - { context: Authentication, kind: interface, element: ChangePassword }
   - id: reset-token-single-consumption
     recipe: test-go
     kind: contract_test
-    implementation: { path: backend/authentication/adapters/persistence/memory/password_reset_token_store_test.go, symbol: TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently }
+    implementation: { path: backend/authentication/password/adapters/persistence/memory/password_reset_token_store_test.go, symbol: TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently }
     targets:
       - { context: Authentication, kind: model, element: PasswordResetTokenRecord }
   - id: client-secret-hashing

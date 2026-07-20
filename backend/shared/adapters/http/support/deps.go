@@ -8,7 +8,7 @@ import (
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -39,7 +39,7 @@ type Deps struct {
 type Authenticator struct {
 	UserRepo          userports.UserRepository
 	GroupRepo         groupports.GroupRepository
-	SessionManager    *authusecases.SessionManager
+	SessionManager    *sessionusecases.SessionManager
 	TokenIntrospector oauthports.TokenIntrospector
 	AuthnResolver     authdomain.AuthenticationContextResolver
 }

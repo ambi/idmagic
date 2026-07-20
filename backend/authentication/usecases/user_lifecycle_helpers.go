@@ -1,23 +1,34 @@
 package usecases
 
 import (
+	"context"
+	"errors"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-// removeRequiredAction は action を除いた新しいスライスを返す (元を破壊しない)。
-func removeRequiredAction(actions []idmdomain.RequiredAction, action idmdomain.RequiredAction) []idmdomain.RequiredAction {
-	out := make([]idmdomain.RequiredAction, 0, len(actions))
-	for _, a := range actions {
-		if a != action {
-			out = append(out, a)
-		}
+// ErrUserNotFound は自己サービス経路で対象 user が存在しない、または tenant が
+// 不一致な場合。password/totp/webauthn/mfa/session/recovery 各 feature から共有で
+// 参照されるため context ルートに置く (ADR-130 決定 6 と同方針)。
+var ErrUserNotFound = errors.New("user not found")
+
+// LoadSelfUser は self 経路で対象 user を取得する。tenant 不一致は ErrUserNotFound に潰す。
+// webauthn/mfa/recovery の各 feature から使われる横断ヘルパー。
+func LoadSelfUser(ctx context.Context, repo userports.UserRepository, sub string) (*userdomain.User, error) {
+	user, err := repo.FindBySub(ctx, sub)
+	if err != nil {
+		return nil, err
 	}
-	return out
+	if user == nil || user.TenantID != tenancy.TenantID(ctx) {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }
 
-func normalizedNow(now time.Time) time.Time {
+func NormalizedNow(now time.Time) time.Time {
 	if now.IsZero() {
 		return time.Now().UTC()
 	}

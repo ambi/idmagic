@@ -10,52 +10,12 @@ import (
 )
 
 type Querier interface {
-	ConsumeActiveMfaEnrollmentBypass(ctx context.Context, arg ConsumeActiveMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
 	ConsumeEmailChangeToken(ctx context.Context, tokenHash string) (*ConsumeEmailChangeTokenRow, error)
-	// ADR-036 の anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
-	DeleteAllAuthenticationSessionsForUser(ctx context.Context, arg DeleteAllAuthenticationSessionsForUserParams) error
 	DeleteAuthEventBucketsOlderThan(ctx context.Context, windowStart time.Time) (int64, error)
 	DeleteEmailChangeTokensForSub(ctx context.Context, userID string) error
-	// housekeeping cleanup。primary key を選んで小 batch で削除する (wi-253 Plan §7)。
-	DeleteExpiredAuthenticationSessionsBatch(ctx context.Context, arg DeleteExpiredAuthenticationSessionsBatchParams) (int64, error)
-	DeleteMfaFactor(ctx context.Context, arg DeleteMfaFactorParams) error
-	DeleteMfaFactorsForSub(ctx context.Context, userID string) error
-	DeletePasswordHistoryForSub(ctx context.Context, userID string) error
-	DeleteRecoveryCodesForSub(ctx context.Context, userID string) error
-	DeleteWebAuthnCredential(ctx context.Context, arg DeleteWebAuthnCredentialParams) error
-	DeleteWebAuthnCredentialsForSub(ctx context.Context, userID string) error
-	ExpireOpenMfaEnrollmentBypass(ctx context.Context, arg ExpireOpenMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
-	// 認証解決用の fail-closed lookup。tenant_id / revoked_at / expires_at を DB 層で検証し、
-	// 別 tenant または失効・期限切れの行を返さない (ADR-126)。
-	FindActiveAuthenticationSession(ctx context.Context, arg FindActiveAuthenticationSessionParams) (*FindActiveAuthenticationSessionRow, error)
-	FindActiveMfaEnrollmentBypass(ctx context.Context, arg FindActiveMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
-	// revoked/expired を含む所有者確認用 lookup。self-service revoke の idempotency 判定に使う。
-	FindOwnedAuthenticationSession(ctx context.Context, arg FindOwnedAuthenticationSessionParams) (*FindOwnedAuthenticationSessionRow, error)
-	GetMfaFactor(ctx context.Context, arg GetMfaFactorParams) (*GetMfaFactorRow, error)
-	GetWebAuthnCredentialByID(ctx context.Context, credentialID string) (*GetWebAuthnCredentialByIDRow, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
-	InsertPasswordHistory(ctx context.Context, arg InsertPasswordHistoryParams) error
-	InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error
-	// keyset pagination を意識した index (tenant_id, user_id, auth_time DESC, id DESC) を使う。
-	// 初期実装は先頭ページのみを返す (wi-253 Plan §2)。
-	ListActiveAuthenticationSessionsByUser(ctx context.Context, arg ListActiveAuthenticationSessionsByUserParams) ([]*ListActiveAuthenticationSessionsByUserRow, error)
 	ListAuthEventBuckets(ctx context.Context, arg ListAuthEventBucketsParams) ([]*ListAuthEventBucketsRow, error)
-	ListMfaFactorsBySub(ctx context.Context, userID string) ([]*ListMfaFactorsBySubRow, error)
-	ListRecoveryCodesBySub(ctx context.Context, userID string) ([]*RecoveryCode, error)
-	ListWebAuthnCredentialsBySub(ctx context.Context, userID string) ([]*ListWebAuthnCredentialsBySubRow, error)
-	MarkRecoveryCodeConsumed(ctx context.Context, arg MarkRecoveryCodeConsumedParams) (int64, error)
-	RecentPasswordHistory(ctx context.Context, arg RecentPasswordHistoryParams) ([]*RecentPasswordHistoryRow, error)
 	RecordAuthEventBucket(ctx context.Context, arg RecordAuthEventBucketParams) (*RecordAuthEventBucketRow, error)
-	RevokeActiveMfaEnrollmentBypass(ctx context.Context, arg RevokeActiveMfaEnrollmentBypassParams) (*MfaEnrollmentBypass, error)
-	// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。
-	RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) error
-	SaveMfaEnrollmentBypass(ctx context.Context, arg SaveMfaEnrollmentBypassParams) error
-	// LoginSessionTouchInterval 未満の再 touch は更新しない粗粒度な条件更新。
-	TouchAuthenticationSession(ctx context.Context, arg TouchAuthenticationSessionParams) error
-	UpdateWebAuthnCredentialSignCount(ctx context.Context, arg UpdateWebAuthnCredentialSignCountParams) error
-	UpsertAuthenticationSession(ctx context.Context, arg UpsertAuthenticationSessionParams) error
-	UpsertMfaFactor(ctx context.Context, arg UpsertMfaFactorParams) error
-	UpsertWebAuthnCredential(ctx context.Context, arg UpsertWebAuthnCredentialParams) error
 }
 
 var _ Querier = (*Queries)(nil)

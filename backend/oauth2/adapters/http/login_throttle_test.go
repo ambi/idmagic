@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 
 	"github.com/labstack/echo/v5"
 )

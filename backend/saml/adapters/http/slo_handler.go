@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"

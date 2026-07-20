@@ -240,17 +240,284 @@ modules:
   authentication-domain:
     path: backend/authentication/domain
 
-    responsibility: "Authentication のドメインモデルと純粋な規則。"
+    responsibility: "Authentication feature 横断の認証コンテキスト・イベント型と純粋規則。"
     context: Authentication
     layer: domain
     role: published_interface
     depends_on:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
+  authentication-password-domain:
+    path: backend/authentication/password/domain
+    responsibility: "Password policy のドメイン規則。"
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: tenancy-domain, via: published_interface }
+  authentication-password-ports:
+    path: backend/authentication/password/ports
+    responsibility: "Password hash・履歴・reset token・breach 検査の公開 port。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+  authentication-password-usecases:
+    path: backend/authentication/password/usecases
+    responsibility: "Password policy、変更、reset のユースケース。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-password-ports, via: published_interface }
+      - { module: authentication-ports, via: published_interface }
+      - { module: authentication-usecases, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  authentication-password-adapters:
+    path: backend/authentication/password/adapters
+    responsibility: "Password の HTTP・memory・PostgreSQL adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-httpdeps, via: binding }
+      - { module: authentication-mfa-usecases, via: published_interface }
+      - { module: authentication-password-domain, via: published_interface }
+      - { module: authentication-password-ports, via: published_interface }
+      - { module: authentication-password-usecases, via: published_interface }
+      - { module: http-support, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-kernel, via: technical_shared }
+      - { module: tenancy-domain, via: binding }
+      - { module: tenancy-public, via: binding }
+  authentication-totp-domain:
+    path: backend/authentication/totp/domain
+    responsibility: "TOTP factor のドメイン型。"
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  authentication-totp-ports:
+    path: backend/authentication/totp/ports
+    responsibility: "TOTP factor repository の公開 port。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-totp-domain, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  authentication-totp-usecases:
+    path: backend/authentication/totp/usecases
+    responsibility: "TOTP 生成・検証のユースケース。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-totp-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  authentication-totp-adapters:
+    path: backend/authentication/totp/adapters
+    responsibility: "TOTP factor の memory・PostgreSQL adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-totp-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+  authentication-webauthn-domain:
+    path: backend/authentication/webauthn/domain
+    responsibility: "WebAuthn credential のドメイン型。"
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  authentication-webauthn-ports:
+    path: backend/authentication/webauthn/ports
+    responsibility: "WebAuthn credential・ceremony session の公開 port。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-webauthn-domain, via: published_interface }
+  authentication-webauthn-usecases:
+    path: backend/authentication/webauthn/usecases
+    responsibility: "WebAuthn enrollment・authentication・factor 検証のユースケース。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
+      - { module: authentication-usecases, via: published_interface }
+      - { module: authentication-webauthn-domain, via: published_interface }
+      - { module: authentication-webauthn-ports, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  authentication-webauthn-adapters:
+    path: backend/authentication/webauthn/adapters
+    responsibility: "WebAuthn の HTTP・memory・PostgreSQL・Valkey adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-httpdeps, via: binding }
+      - { module: authentication-webauthn-domain, via: published_interface }
+      - { module: authentication-webauthn-usecases, via: published_interface }
+      - { module: http-support, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-mfa-domain:
+    path: backend/authentication/mfa/domain
+    responsibility: "MFA enrollment decision・bypass のドメイン型。"
+    context: Authentication
+    layer: domain
+    role: published_interface
+  authentication-mfa-ports:
+    path: backend/authentication/mfa/ports
+    responsibility: "MFA enrollment bypass repository の公開 port。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-mfa-domain, via: published_interface }
+  authentication-mfa-usecases:
+    path: backend/authentication/mfa/usecases
+    responsibility: "TOTP・WebAuthn 横断の enrollment・second factor・step-up orchestration。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-mfa-domain, via: published_interface }
+      - { module: authentication-mfa-ports, via: published_interface }
+      - { module: authentication-password-ports, via: published_interface }
+      - { module: authentication-recovery-ports, via: published_interface }
+      - { module: authentication-recovery-usecases, via: published_interface }
+      - { module: authentication-session-usecases, via: published_interface }
+      - { module: authentication-totp-domain, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
+      - { module: authentication-totp-usecases, via: published_interface }
+      - { module: authentication-usecases, via: published_interface }
+      - { module: authentication-webauthn-ports, via: published_interface }
+      - { module: authentication-webauthn-usecases, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  authentication-mfa-adapters:
+    path: backend/authentication/mfa/adapters
+    responsibility: "MFA orchestration の HTTP・memory・PostgreSQL adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-httpdeps, via: binding }
+      - { module: authentication-mfa-domain, via: published_interface }
+      - { module: authentication-mfa-usecases, via: published_interface }
+      - { module: authentication-webauthn-adapters, via: binding }
+      - { module: authentication-webauthn-usecases, via: published_interface }
+      - { module: http-support, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-session-domain:
+    path: backend/authentication/session/domain
+    responsibility: "Login session・pending request のドメイン型。"
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  authentication-session-ports:
+    path: backend/authentication/session/ports
+    responsibility: "Login session store・login throttle の公開 port。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-session-domain, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  authentication-session-usecases:
+    path: backend/authentication/session/usecases
+    responsibility: "Login session lifecycle と cookie 管理のユースケース。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-mfa-domain, via: published_interface }
+      - { module: authentication-session-domain, via: published_interface }
+      - { module: authentication-session-ports, via: published_interface }
+      - { module: authentication-usecases, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  authentication-session-adapters:
+    path: backend/authentication/session/adapters
+    responsibility: "Login session の HTTP・memory・PostgreSQL・Valkey adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-httpdeps, via: binding }
+      - { module: authentication-session-domain, via: published_interface }
+      - { module: authentication-session-ports, via: published_interface }
+      - { module: authentication-session-usecases, via: published_interface }
+      - { module: http-support, via: binding }
+      - { module: oauth2-usecases, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: binding }
+  authentication-recovery-domain:
+    path: backend/authentication/recovery/domain
+    responsibility: "Recovery code のドメイン型。"
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  authentication-recovery-ports:
+    path: backend/authentication/recovery/ports
+    responsibility: "Recovery code repository の公開 port。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-recovery-domain, via: published_interface }
+  authentication-recovery-usecases:
+    path: backend/authentication/recovery/usecases
+    responsibility: "Recovery code の生成・再生成・消費ユースケース。"
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-recovery-domain, via: published_interface }
+      - { module: authentication-recovery-ports, via: published_interface }
+      - { module: authentication-usecases, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+  authentication-recovery-adapters:
+    path: backend/authentication/recovery/adapters
+    responsibility: "Recovery code の HTTP・memory・PostgreSQL adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-httpdeps, via: binding }
+      - { module: authentication-recovery-domain, via: published_interface }
+      - { module: authentication-recovery-usecases, via: published_interface }
+      - { module: http-support, via: binding }
+      - { module: shared-adapters, via: technical_shared }
   authentication-ports:
     path: backend/authentication/ports
 
-    responsibility: "Authentication の公開 port と外界への抽象。"
+    responsibility: "Authentication feature 横断の event・email・continuation 公開 port。"
     context: Authentication
     layer: use_cases
     role: published_interface
@@ -260,7 +527,7 @@ modules:
   authentication-usecases:
     path: backend/authentication/usecases
 
-    responsibility: "Authentication のユースケース。"
+    responsibility: "Authentication feature 横断の ACR・event・retention・lifecycle helper。"
     context: Authentication
     layer: use_cases
     role: published_interface
@@ -268,6 +535,8 @@ modules:
       - { module: audit-ports, via: published_interface }
       - { module: authentication-domain, via: published_interface }
       - { module: authentication-ports, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
+      - { module: authentication-webauthn-ports, via: published_interface }
       - { module: idmanagement-domain, via: published_interface }
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: idmanagement-user-ports, via: published_interface }
@@ -276,15 +545,29 @@ modules:
   authentication-adapters:
     path: backend/authentication/adapters
 
-    responsibility: "Authentication の HTTP・永続化 adapter。"
+    responsibility: "Authentication feature 横断 route と event/email persistence adapter。"
     context: Authentication
     layer: adapters
     role: binding
     depends_on:
       - { module: audit-ports, via: binding }
       - { module: authentication-domain, via: published_interface }
+      - { module: authentication-httpdeps, via: binding }
+      - { module: authentication-mfa-adapters, via: binding }
+      - { module: authentication-mfa-usecases, via: published_interface }
+      - { module: authentication-password-adapters, via: binding }
+      - { module: authentication-password-ports, via: published_interface }
       - { module: authentication-ports, via: published_interface }
+      - { module: authentication-recovery-adapters, via: binding }
+      - { module: authentication-recovery-ports, via: published_interface }
+      - { module: authentication-recovery-usecases, via: published_interface }
+      - { module: authentication-session-adapters, via: binding }
+      - { module: authentication-session-usecases, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
+      - { module: authentication-webauthn-adapters, via: binding }
+      - { module: authentication-webauthn-ports, via: published_interface }
+      - { module: authentication-webauthn-usecases, via: published_interface }
       - { module: http-support, via: binding }
       - { module: idmanagement-usecases, via: binding }
       - { module: idmanagement-user-ports, via: binding }
@@ -298,6 +581,33 @@ modules:
       - { module: tenancy-domain, via: binding }
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
+  authentication-httpdeps:
+    path: backend/authentication/adapters/http/httpdeps
+    responsibility: "Authentication HTTP handler 群が共有する Deps と account 認証 helper の leaf package。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: audit-ports, via: binding }
+      - { module: authentication-domain, via: published_interface }
+      - { module: authentication-mfa-ports, via: published_interface }
+      - { module: authentication-mfa-usecases, via: published_interface }
+      - { module: authentication-password-ports, via: published_interface }
+      - { module: authentication-ports, via: published_interface }
+      - { module: authentication-recovery-ports, via: published_interface }
+      - { module: authentication-recovery-usecases, via: published_interface }
+      - { module: authentication-session-usecases, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
+      - { module: authentication-webauthn-ports, via: published_interface }
+      - { module: authentication-webauthn-usecases, via: published_interface }
+      - { module: http-support, via: binding }
+      - { module: idmanagement-usecases, via: binding }
+      - { module: idmanagement-user-ports, via: binding }
+      - { module: idmanagement-user-usecases, via: binding }
+      - { module: oauth2-ports, via: binding }
+      - { module: oauth2-usecases, via: binding }
+      - { module: shared-spec, via: binding }
+      - { module: tenancy-ports, via: binding }
   idmanagement-domain:
     path: backend/idmanagement/domain
     responsibility: "IdManagement の feature 横断ドメイン型（enum・DomainEvent）。feature 固有の集約モデルは idmanagement-{user,group,agent}-domain が持つ (ADR-130)。"
@@ -372,7 +682,11 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - { module: authentication-password-ports, via: published_interface }
+      - { module: authentication-password-usecases, via: published_interface }
       - { module: authentication-ports, via: published_interface }
+      - { module: authentication-session-ports, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
       - { module: idmanagement-domain, via: published_interface }
       - { module: idmanagement-group-ports, via: published_interface }
@@ -429,6 +743,9 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: authentication-mfa-usecases, via: binding }
+      - { module: authentication-password-usecases, via: binding }
+      - { module: authentication-session-usecases, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
       - { module: idmanagement-httpdeps, via: published_interface }
@@ -479,7 +796,9 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: authentication-password-ports, via: binding }
       - { module: authentication-ports, via: binding }
+      - { module: authentication-totp-ports, via: binding }
       - { module: http-support, via: binding }
       - { module: idmanagement-agent-ports, via: published_interface }
       - { module: idmanagement-group-ports, via: published_interface }
@@ -675,8 +994,21 @@ modules:
       - { module: application-usecases, via: binding }
       - { module: audit-ports, via: binding }
       - { module: authentication-domain, via: binding }
+      - { module: authentication-mfa-domain, via: binding }
+      - { module: authentication-mfa-ports, via: binding }
+      - { module: authentication-mfa-usecases, via: binding }
+      - { module: authentication-password-ports, via: binding }
+      - { module: authentication-password-usecases, via: binding }
       - { module: authentication-ports, via: binding }
+      - { module: authentication-recovery-ports, via: binding }
+      - { module: authentication-recovery-usecases, via: binding }
+      - { module: authentication-session-ports, via: binding }
+      - { module: authentication-session-usecases, via: binding }
+      - { module: authentication-totp-ports, via: binding }
+      - { module: authentication-totp-usecases, via: binding }
       - { module: authentication-usecases, via: binding }
+      - { module: authentication-webauthn-ports, via: binding }
+      - { module: authentication-webauthn-usecases, via: binding }
       - { module: http-support, via: binding }
       - { module: idmanagement-agent-ports, via: binding }
       - { module: idmanagement-domain, via: binding }
@@ -736,6 +1068,7 @@ modules:
     depends_on:
       - { module: application-domain, via: binding }
       - { module: authentication-domain, via: binding }
+      - { module: authentication-session-usecases, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: claimmapping-domain, via: published_interface }
       - { module: claimmapping-usecases, via: published_interface }
@@ -904,6 +1237,7 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: authentication-password-usecases, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
       - { module: idmanagement-domain, via: binding }
@@ -962,7 +1296,10 @@ modules:
       - { module: claimmapping-domain, via: published_interface }
       - { module: application-domain, via: binding }
       - { module: authentication-domain, via: binding }
+      - { module: authentication-password-ports, via: binding }
       - { module: authentication-ports, via: binding }
+      - { module: authentication-session-ports, via: binding }
+      - { module: authentication-session-usecases, via: binding }
       - { module: authentication-usecases, via: binding }
       - { module: http-support, via: binding }
       - { module: idmanagement-user-domain, via: binding }
@@ -1033,8 +1370,15 @@ modules:
     depends_on:
       - { module: authentication-adapters, via: published_interface }
       - { module: authentication-domain, via: published_interface }
+      - { module: authentication-mfa-ports, via: published_interface }
+      - { module: authentication-password-ports, via: published_interface }
       - { module: authentication-ports, via: published_interface }
+      - { module: authentication-recovery-ports, via: published_interface }
+      - { module: authentication-session-ports, via: published_interface }
+      - { module: authentication-session-usecases, via: published_interface }
+      - { module: authentication-totp-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
+      - { module: authentication-webauthn-ports, via: published_interface }
   idmanagement-public:
     path: backend/idmanagement/
     responsibility: "IdManagement root package の公開 facade。"
@@ -1191,7 +1535,9 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: authentication-password-ports, via: composition_root }
       - { module: authentication-ports, via: composition_root }
+      - { module: authentication-session-ports, via: composition_root }
       - { module: http-support, via: composition_root }
       - { module: idmanagement-user-ports, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
@@ -1248,6 +1594,7 @@ modules:
       - { module: application-ports, via: published_interface }
       - { module: application-usecases, via: published_interface }
       - { module: authentication-domain, via: published_interface }
+      - { module: authentication-session-usecases, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
       - { module: idmanagement-group-domain, via: published_interface }
       - { module: idmanagement-group-ports, via: published_interface }
@@ -1274,9 +1621,14 @@ modules:
       - { module: audit-public, via: composition_root }
       - { module: authentication-adapters, via: composition_root }
       - { module: authentication-domain, via: composition_root }
+      - { module: authentication-password-ports, via: composition_root }
       - { module: authentication-ports, via: composition_root }
       - { module: authentication-public, via: composition_root }
+      - { module: authentication-recovery-ports, via: composition_root }
+      - { module: authentication-session-usecases, via: composition_root }
+      - { module: authentication-totp-ports, via: composition_root }
       - { module: authentication-usecases, via: composition_root }
+      - { module: authentication-webauthn-ports, via: composition_root }
       - { module: http-support, via: technical_shared }
       - { module: idgovernance-adapters, via: composition_root }
       - { module: idgovernance-public, via: composition_root }
@@ -1320,6 +1672,8 @@ modules:
     role: composition_root
     depends_on:
       - { module: authentication-ports, via: composition_root }
+      - { module: authentication-session-ports, via: composition_root }
+      - { module: authentication-session-usecases, via: composition_root }
       - { module: authentication-usecases, via: composition_root }
       - { module: bootstrap, via: published_interface }
       - { module: http-server, via: published_interface }
@@ -1385,9 +1739,21 @@ modules:
       - { module: audit-usecases, via: composition_root }
       - { module: authentication-adapters, via: composition_root }
       - { module: authentication-domain, via: composition_root }
+      - { module: authentication-mfa-adapters, via: composition_root }
+      - { module: authentication-password-adapters, via: composition_root }
+      - { module: authentication-password-ports, via: composition_root }
+      - { module: authentication-password-usecases, via: composition_root }
       - { module: authentication-ports, via: composition_root }
       - { module: authentication-public, via: composition_root }
+      - { module: authentication-recovery-adapters, via: composition_root }
+      - { module: authentication-session-adapters, via: composition_root }
+      - { module: authentication-session-ports, via: composition_root }
+      - { module: authentication-totp-adapters, via: composition_root }
+      - { module: authentication-totp-domain, via: composition_root }
+      - { module: authentication-totp-ports, via: composition_root }
       - { module: authentication-usecases, via: composition_root }
+      - { module: authentication-webauthn-adapters, via: composition_root }
+      - { module: authentication-webauthn-usecases, via: composition_root }
       - { module: claimmapping-domain, via: composition_root }
       - { module: http-support, via: technical_shared }
       - { module: idgovernance-adapters, via: composition_root }

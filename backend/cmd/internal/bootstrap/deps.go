@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -97,7 +97,7 @@ func loadWebAuthnRP() (*gowebauthn.WebAuthn, error) {
 	if len(origins) == 0 {
 		return nil, errors.New("WEBAUTHN_RP_ORIGINS must be set when WEBAUTHN_RP_ID is set")
 	}
-	return authusecases.NewWebAuthn(authusecases.WebAuthnConfig{
+	return webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
 		RPID:          rpID,
 		RPDisplayName: EnvDefault("WEBAUTHN_RP_DISPLAY_NAME", "idmagic"),
 		RPOrigins:     origins,

@@ -25,6 +25,33 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+// rootTestCSRF は /api/auth/password_reset_context (CSRF cookie 発行専用の GET) を叩いて
+// CSRF token/cookie を得る。password feature の password_reset_handler_test.go の
+// passwordResetCSRF と同じ実装だが、_test.go はパッケージを跨げないため複製する
+// (ADR-130 Phase 2 と同方針)。
+func rootTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, "/api/auth/password_reset_context", http.NoBody)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("context status=%d body=%s", response.Code, response.Body.String())
+	}
+	var body struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	result := response.Result()
+	defer result.Body.Close()
+	cookies := result.Cookies()
+	if len(cookies) != 1 || body.CSRFToken == "" {
+		t.Fatalf("csrf=%q cookies=%v", body.CSRFToken, cookies)
+	}
+	return body.CSRFToken, cookies[0]
+}
+
 func TestDisabledUserCannotLogIn(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
@@ -50,7 +77,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 		OAuth2:         oauth2.Module{RequestStore: requestStore},
 		PasswordHasher: hasher,
 	})
-	csrf, csrfCookie := passwordResetCSRF(t, e)
+	csrf, csrfCookie := rootTestCSRF(t, e)
 	requestBody, err := json.Marshal(map[string]string{
 		"username": "disabled", "password": "current-password-1",
 	})

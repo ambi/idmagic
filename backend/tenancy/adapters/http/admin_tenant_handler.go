@@ -9,7 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"

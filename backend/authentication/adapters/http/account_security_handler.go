@@ -1,14 +1,14 @@
-// /api/account/security — エンドユーザー自身のセキュリティ概要と MFA (TOTP) の
-// self-service 登録・解除 (wi-21 / ADR-042)。登録は確認コード、解除は有効な TOTP コードに
-// よる所持証明に加え、step-up 再認証 (ADR-043) を要求する。
+// /api/account/security — エンドユーザー自身のセキュリティ概要 (password/totp/webauthn/
+// recovery を横断した集計、wi-21 / ADR-042)。TOTP self-service 登録・解除は mfa feature の
+// adapters/http (ADR-130 Phase 2) へ分割されている。
 package http
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/authentication/adapters/http/httpdeps"
+	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -45,36 +45,14 @@ type accountSecurityResponse struct {
 	RecoveryCodes       recoveryCodeStatusResponse          `json:"recovery_codes"`
 }
 
-type totpEnrollmentStartResponse struct {
-	Secret      string `json:"secret"`
-	OTPAuthURI  string `json:"otpauth_uri"`
-	AccountName string `json:"account_name"`
-	Issuer      string `json:"issuer"`
-}
-
-type totpEnrollmentConfirmRequest struct {
-	Secret string `json:"secret"`
-	Code   string `json:"code"`
-}
-
-type mfaFactorRemoveRequest struct {
-	Code string `json:"code"`
-}
-
-func (d Deps) accountMfaDeps() authusecases.AccountMfaDeps {
-	return authusecases.AccountMfaDeps{
-		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo, Emit: d.Emit, Issuer: d.Issuer,
-	}
-}
-
-func (d Deps) handleGetAccountSecurity(c *echo.Context) error {
-	sub, err := d.requireAuthenticatedSub(c)
+func handleGetAccountSecurity(d Deps, c *echo.Context) error {
+	sub, err := httpdeps.RequireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return httpdeps.WriteAccountError(c, err)
 	}
-	user, _, err := userusecases.GetUserProfile(c.Request().Context(), d.accountProfileDeps(), sub)
+	user, _, err := userusecases.GetUserProfile(c.Request().Context(), httpdeps.AccountProfileDeps(d), sub)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return httpdeps.WriteAccountError(c, err)
 	}
 	factors, err := d.MfaFactorRepo.ListBySub(c.Request().Context(), sub)
 	if err != nil {
@@ -110,7 +88,7 @@ func (d Deps) handleGetAccountSecurity(c *echo.Context) error {
 	}
 	recovery := recoveryCodeStatusResponse{}
 	if d.RecoveryCodeRepo != nil {
-		status, err := authusecases.RecoveryCodeStatusFor(c.Request().Context(), d.RecoveryCodeRepo, sub)
+		status, err := recoveryusecases.RecoveryCodeStatusFor(c.Request().Context(), d.RecoveryCodeRepo, sub)
 		if err != nil {
 			return err
 		}
@@ -125,95 +103,4 @@ func (d Deps) handleGetAccountSecurity(c *echo.Context) error {
 		WebAuthnCredentials: credentials,
 		RecoveryCodes:       recovery,
 	})
-}
-
-func (d Deps) handleStartTotpEnrollment(c *echo.Context) error {
-	if err := d.VerifyBrowserRequest(c); err != nil {
-		return err
-	}
-	sub, err := d.requireAuthenticatedSub(c)
-	if err != nil {
-		return d.writeAccountError(c, err)
-	}
-	start, err := authusecases.StartTOTPEnrollment(c.Request().Context(), d.accountMfaDeps(), sub)
-	if err != nil {
-		return d.writeAccountError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusOK, totpEnrollmentStartResponse{
-		Secret: start.Secret, OTPAuthURI: start.OTPAuthURI,
-		AccountName: start.AccountName, Issuer: start.Issuer,
-	})
-}
-
-func (d Deps) handleConfirmTotpEnrollment(c *echo.Context) error {
-	if err := d.VerifyBrowserRequest(c); err != nil {
-		return err
-	}
-	// TOTP factor の確定は認証強度を変更する高 sensitivity 操作。
-	sub, err := d.requireStepUpSub(c)
-	if err != nil {
-		return d.writeAccountError(c, err)
-	}
-	var input totpEnrollmentConfirmRequest
-	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
-	}
-	if err := authusecases.ConfirmTOTPEnrollment(c.Request().Context(), d.accountMfaDeps(),
-		authusecases.ConfirmTOTPEnrollmentInput{
-			Sub: sub, Secret: input.Secret, Code: input.Code, Now: time.Now().UTC(),
-		}); err != nil {
-		return d.writeAccountError(c, err)
-	}
-	c.Response().Header().Set("Cache-Control", "no-store")
-	return c.NoContent(http.StatusNoContent)
-}
-
-func (d Deps) handleRemoveTotpFactor(c *echo.Context) error {
-	if err := d.VerifyBrowserRequest(c); err != nil {
-		return err
-	}
-	// MFA factor の解除は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
-	sub, err := d.requireStepUpSub(c)
-	if err != nil {
-		return d.writeAccountError(c, err)
-	}
-	var input mfaFactorRemoveRequest
-	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
-	}
-	if err := authusecases.RemoveTOTPFactor(c.Request().Context(), d.accountMfaDeps(),
-		authusecases.RemoveTOTPFactorInput{Sub: sub, Code: input.Code, Now: time.Now().UTC()}); err != nil {
-		return d.writeAccountError(c, err)
-	}
-	c.Response().Header().Set("Cache-Control", "no-store")
-	return c.NoContent(http.StatusNoContent)
-}
-
-// writeAccountMfaError は MFA self-service 固有のエラーを HTTP に写す。該当した場合は
-// handled=true と書き込み結果を返し、それ以外は handled=false で writeAccountError に委ねる。
-func writeAccountMfaError(c *echo.Context, err error) (handled bool, result error) {
-	switch {
-	case errors.Is(err, authusecases.ErrMfaAlreadyEnrolled):
-		return true, support.WriteBrowserError(c, http.StatusConflict, "mfa_already_enrolled", "認証アプリは既に登録されています")
-	case errors.Is(err, authusecases.ErrMfaNotEnrolled):
-		return true, support.WriteBrowserError(c, http.StatusNotFound, "mfa_not_enrolled", "登録済みの認証アプリがありません")
-	case errors.Is(err, authusecases.ErrInvalidTOTPCode):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_totp", "認証コードを確認してください。")
-	case errors.Is(err, authusecases.ErrInvalidTOTPSecret):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "登録手続きをやり直してください。")
-	case errors.Is(err, authusecases.ErrWebAuthnNotConfigured):
-		return true, support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "パスキー認証は利用できません")
-	case errors.Is(err, authusecases.ErrWebAuthnChallengeMissing):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "webauthn_challenge_expired", "パスキー登録をやり直してください。")
-	case errors.Is(err, authusecases.ErrWebAuthnCredentialCloned):
-		return true, support.WriteBrowserError(c, http.StatusUnauthorized, "webauthn_cloned", "このパスキーは利用できません。")
-	case errors.Is(err, authusecases.ErrWebAuthnVerification):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_webauthn", "パスキーの検証に失敗しました。")
-	case errors.Is(err, authusecases.ErrWebAuthnCredentialNotFound):
-		return true, support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_found", "対象のパスキーが見つかりません。")
-	case errors.Is(err, authusecases.ErrRecoveryCodeInvalid):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_recovery_code", "リカバリコードを確認してください。")
-	default:
-		return false, nil
-	}
 }

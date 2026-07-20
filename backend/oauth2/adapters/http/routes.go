@@ -9,7 +9,13 @@ package http
 
 import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -39,10 +45,10 @@ type Deps struct {
 	PARStore                   oauthports.PARStore
 	RequestStore               oauthports.AuthorizationRequestStore
 	UserRepo                   userports.UserRepository
-	PasswordHasher             authnports.PasswordHasher
-	LoginAttemptThrottle       authnports.LoginAttemptThrottle
-	MfaFactorRepo              authnports.MfaFactorRepository
-	MfaEnrollmentBypassRepo    authnports.MfaEnrollmentBypassRepository
+	PasswordHasher             passwordports.PasswordHasher
+	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
+	MfaFactorRepo              totpports.MfaFactorRepository
+	MfaEnrollmentBypassRepo    mfaports.MfaEnrollmentBypassRepository
 	CodeStore                  oauthports.AuthorizationCodeStore
 	JWKResolver                *crypto.JWKResolver
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
@@ -63,9 +69,9 @@ type Deps struct {
 	// WebAuthn / recovery code を第二要素 (login step) として使うための依存 (wi-26)。
 	// WebAuthnRP が nil の場合 WebAuthn login は無効。
 	WebAuthnRP             *gowebauthn.WebAuthn
-	WebAuthnCredentialRepo authnports.WebAuthnCredentialRepository
-	WebAuthnSessionStore   authnports.WebAuthnSessionStore
-	RecoveryCodeRepo       authnports.RecoveryCodeRepository
+	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore   webauthnports.WebAuthnSessionStore
+	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに oauth2 コンテキストのエンドポイントを

@@ -8,7 +8,8 @@ import (
 	"context"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -18,8 +19,8 @@ import (
 // credRepo が nil の場合は WebAuthn を考慮しない (TOTP のみの旧経路との後方互換)。
 func hasSecondFactor(
 	ctx context.Context,
-	mfaRepo authnports.MfaFactorRepository,
-	credRepo authnports.WebAuthnCredentialRepository,
+	mfaRepo totpports.MfaFactorRepository,
+	credRepo webauthnports.WebAuthnCredentialRepository,
 	sub string,
 ) (bool, error) {
 	factor, err := mfaRepo.Find(ctx, sub, spec.MfaFactorTOTP)
@@ -39,12 +40,14 @@ func hasSecondFactor(
 	return len(credentials) > 0, nil
 }
 
-// syncMfaEnrolled は残存する第二要素に応じて User.mfa_enrolled を再計算し、変化があれば保存する。
-func syncMfaEnrolled(
+// SyncMfaEnrolled は残存する第二要素に応じて User.mfa_enrolled を再計算し、変化があれば保存する。
+// totp/webauthn を横断するため mfa (このパッケージ) が所有し、export して webauthn 側からも
+// package 境界を越えて呼べるようにする (ADR-130 Phase 2 と同方針)。
+func SyncMfaEnrolled(
 	ctx context.Context,
 	userRepo userports.UserRepository,
-	mfaRepo authnports.MfaFactorRepository,
-	credRepo authnports.WebAuthnCredentialRepository,
+	mfaRepo totpports.MfaFactorRepository,
+	credRepo webauthnports.WebAuthnCredentialRepository,
 	user *userdomain.User,
 	now time.Time,
 ) error {

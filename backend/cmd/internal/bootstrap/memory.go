@@ -9,7 +9,13 @@ import (
 	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/adapters/persistence/memory"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
+	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/adapters/persistence/memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
+	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/adapters/persistence/memory"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -79,17 +85,17 @@ func assembleMemory() (*Dependencies, error) {
 			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
-			MfaFactorRepo:           authnmemory.NewMfaFactorRepository(),
-			MfaEnrollmentBypassRepo: authnmemory.NewMfaEnrollmentBypassRepository(),
-			PasswordHistoryRepo:     authnmemory.NewPasswordHistoryRepository(),
-			PasswordResetTokenStore: authnmemory.NewPasswordResetTokenStore(),
+			MfaFactorRepo:           totpmemory.NewMfaFactorRepository(),
+			MfaEnrollmentBypassRepo: mfamemory.NewMfaEnrollmentBypassRepository(),
+			PasswordHistoryRepo:     passwordmemory.NewPasswordHistoryRepository(),
+			PasswordResetTokenStore: passwordmemory.NewPasswordResetTokenStore(),
 			EmailChangeTokenStore:   authnmemory.NewEmailChangeTokenStore(),
-			SessionStore:            authnmemory.NewSessionStore(),
-			WebAuthnCredentialRepo:  authnmemory.NewWebAuthnCredentialRepository(),
-			WebAuthnSessionStore:    authnmemory.NewWebAuthnSessionStore(),
-			RecoveryCodeRepo:        authnmemory.NewRecoveryCodeRepository(),
-			NewLoginAttemptThrottle: func(configs authnports.LoginThrottleConfigs) authnports.LoginAttemptThrottle {
-				return authnmemory.NewLoginAttemptThrottle(configs)
+			SessionStore:            sessionmemory.NewSessionStore(),
+			WebAuthnCredentialRepo:  webauthnmemory.NewWebAuthnCredentialRepository(),
+			WebAuthnSessionStore:    webauthnmemory.NewWebAuthnSessionStore(),
+			RecoveryCodeRepo:        recoverymemory.NewRecoveryCodeRepository(),
+			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
+				return sessionmemory.NewLoginAttemptThrottle(configs)
 			},
 			AuthEventBucketStore: authnmemory.NewAuthEventBucketStore(),
 		},

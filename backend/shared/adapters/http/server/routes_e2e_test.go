@@ -23,7 +23,13 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/adapters/persistence/memory"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
+	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -34,8 +40,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
 	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
@@ -66,8 +71,8 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *usermemory.UserRe
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
-	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
-	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
+	mfaFactorRepo := totpmemory.NewMfaFactorRepository()
+	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
 	requestStore := oauth2memory.NewAuthorizationRequestStore()
 	codeStore := oauth2memory.NewAuthorizationCodeStore()
 	hasher := crypto.NewArgon2idPasswordHasher()
@@ -103,7 +108,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *usermemory.UserRe
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
+	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
@@ -136,9 +141,9 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
-	mfaFactorRepo := authnmemory.NewMfaFactorRepository()
-	mfaEnrollmentBypassRepo := authnmemory.NewMfaEnrollmentBypassRepository()
-	passwordHistoryRepo := authnmemory.NewPasswordHistoryRepository()
+	mfaFactorRepo := totpmemory.NewMfaFactorRepository()
+	mfaEnrollmentBypassRepo := mfamemory.NewMfaEnrollmentBypassRepository()
+	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
 	requestStore := oauth2memory.NewAuthorizationRequestStore()
 	codeStore := oauth2memory.NewAuthorizationCodeStore()
 	applicationRepo := appmemory.NewApplicationRepository()
@@ -178,7 +183,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		t.Fatalf("seed password history: %v", err)
 	}
 	if totpSecret != "" {
-		if err := mfaFactorRepo.Save(context.Background(), &authdomain.MfaFactor{
+		if err := mfaFactorRepo.Save(context.Background(), &totpdomain.MfaFactor{
 			UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &totpSecret, CreatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed mfa factor: %v", err)
@@ -195,7 +200,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 			if len(enrollment) > 1 && enrollment[1] {
 				bypassExpiresAt = now.Add(-time.Second)
 			}
-			if err := mfaEnrollmentBypassRepo.Save(context.Background(), &authdomain.MfaEnrollmentBypass{
+			if err := mfaEnrollmentBypassRepo.Save(context.Background(), &mfadomain.MfaEnrollmentBypass{
 				ID: "bypass-alice", TenantID: tenancydomain.DefaultTenantID, UserID: "user_alice", IssuedBy: "admin",
 				IssuedAt: now.Add(-time.Minute), ExpiresAt: bypassExpiresAt,
 			}); err != nil {
@@ -234,7 +239,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
+	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
@@ -406,7 +411,7 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	if totpTransaction.Kind != "totp" || totpTransaction.CSRFToken == "" {
 		t.Fatalf("unexpected totp transaction: %+v", totpTransaction)
 	}
-	code, err := authusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}
@@ -444,7 +449,7 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	start := postJSON[struct {
 		Secret string `json:"secret"`
 	}](t, client, srv.URL+"/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
-	code, err := authusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
+	code, err := totpusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -685,7 +690,7 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 	if totpTransaction.Kind != "totp" {
 		t.Fatalf("kind=%q, want totp", totpTransaction.Kind)
 	}
-	code, err := authusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
+	code, err := totpusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}
@@ -1142,7 +1147,7 @@ func TestHealthProbes(t *testing.T) {
 	userRepo := usermemory.NewUserRepository()
 	keyStore, _ := signingcrypto.NewInMemoryKeyStore()
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
+	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	hasher := crypto.NewArgon2idPasswordHasher()
 
 	startupComplete := &atomic.Bool{}

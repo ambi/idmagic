@@ -19,9 +19,9 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -107,11 +107,11 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := crypto.NewJWTSigner("http://test", keyStore)
-	loginThrottle := authnmemory.NewLoginAttemptThrottle(authnports.LoginThrottleConfigs{
-		Account: authnports.LoginThrottleConfig{MaxFailures: 2, WindowSeconds: 900, LockoutSeconds: 900},
-		IP:      authnports.LoginThrottleConfig{MaxFailures: 100, WindowSeconds: 900, LockoutSeconds: 900},
+	loginThrottle := sessionmemory.NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
+		Account: sessionports.LoginThrottleConfig{MaxFailures: 2, WindowSeconds: 900, LockoutSeconds: 900},
+		IP:      sessionports.LoginThrottleConfig{MaxFailures: 100, WindowSeconds: 900, LockoutSeconds: 900},
 	})
-	sessionManager := authusecases.NewSessionManager(authnmemory.NewSessionStore())
+	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	spy := &metricsSpy{}

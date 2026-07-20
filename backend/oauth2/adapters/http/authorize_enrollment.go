@@ -8,7 +8,8 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	authusecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/tenancy"
 
@@ -70,8 +71,8 @@ func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.Authenticati
 			d.Emit(&authdomain.MfaEnrollmentBypassExpired{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: expired.ID})
 		}
 	}
-	decision, deadline := authdomain.EvaluateMfaEnrollment(now, policy.EnforcementStartAt, time.Duration(*policy.GracePeriodSeconds)*time.Second, policy.AllowAdminBypass, bypass)
-	if decision != authdomain.MfaEnrollmentRequired || deadline == nil {
+	decision, deadline := mfadomain.EvaluateMfaEnrollment(now, policy.EnforcementStartAt, time.Duration(*policy.GracePeriodSeconds)*time.Second, policy.AllowAdminBypass, bypass)
+	if decision != mfadomain.MfaEnrollmentRequired || deadline == nil {
 		return false, nil
 	}
 	consumed, err := d.MfaEnrollmentBypassRepo.ConsumeActive(c.Request().Context(), support.RequestTenantID(c), authn.UserID, now)

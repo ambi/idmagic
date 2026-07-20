@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/kernel"

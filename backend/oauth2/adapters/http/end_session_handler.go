@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/usecases"
 
 	"github.com/labstack/echo/v5"

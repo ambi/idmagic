@@ -12,6 +12,8 @@ import (
 	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 )
 
@@ -168,11 +170,11 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	store := authnmemory.NewSessionStore()
+	store := sessionmemory.NewSessionStore()
 
 	mustSave := func(id string, expiresAt time.Time) {
 		t.Helper()
-		if err := store.Save(ctx, &authdomain.LoginSession{
+		if err := store.Save(ctx, &sessiondomain.LoginSession{
 			ID: id, UserID: "user-1", AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
 			ExpiresAt: expiresAt,
 		}); err != nil {

@@ -5,8 +5,14 @@ package authentication
 
 import (
 	"github.com/ambi/idmagic/backend/authentication/domain"
+	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/ambi/idmagic/backend/authentication/ports"
-	"github.com/ambi/idmagic/backend/authentication/usecases"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -14,24 +20,24 @@ import (
 // Module は authentication context が所有する永続化 port と実行時依存の束。
 // bootstrap は backend ごとの adapter を組み立て、起動時に実行時依存を補完する。
 type Module struct {
-	MfaFactorRepo           ports.MfaFactorRepository
-	MfaEnrollmentBypassRepo ports.MfaEnrollmentBypassRepository
-	PasswordHistoryRepo     ports.PasswordHistoryRepository
-	PasswordResetTokenStore ports.PasswordResetTokenStore
+	MfaFactorRepo           totpports.MfaFactorRepository
+	MfaEnrollmentBypassRepo mfaports.MfaEnrollmentBypassRepository
+	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
+	PasswordResetTokenStore passwordports.PasswordResetTokenStore
 	EmailChangeTokenStore   ports.EmailChangeTokenStore
-	SessionStore            ports.SessionStore
-	WebAuthnCredentialRepo  ports.WebAuthnCredentialRepository
-	WebAuthnSessionStore    ports.WebAuthnSessionStore
+	SessionStore            sessionports.SessionStore
+	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore    webauthnports.WebAuthnSessionStore
 	WebAuthnRP              *webauthn.WebAuthn
-	RecoveryCodeRepo        ports.RecoveryCodeRepository
-	NewLoginAttemptThrottle func(ports.LoginThrottleConfigs) ports.LoginAttemptThrottle
+	RecoveryCodeRepo        recoveryports.RecoveryCodeRepository
+	NewLoginAttemptThrottle func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
 	AuthEventBucketStore    ports.AuthEventBucketStore
 
-	PasswordHasher          ports.PasswordHasher
+	PasswordHasher          passwordports.PasswordHasher
 	EmailSender             ports.EmailSender
-	BreachedPasswordChecker ports.BreachedPasswordChecker
-	LoginAttemptThrottle    ports.LoginAttemptThrottle
+	BreachedPasswordChecker passwordports.BreachedPasswordChecker
+	LoginAttemptThrottle    sessionports.LoginAttemptThrottle
 	SentinelPasswordHash    string
-	SessionManager          *usecases.SessionManager
+	SessionManager          *sessionusecases.SessionManager
 	AuthnResolver           domain.AuthenticationContextResolver
 }

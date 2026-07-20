@@ -10,6 +10,7 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -27,11 +28,11 @@ func (d Deps) emitAuthenticationFailure(c *echo.Context, username, reason string
 
 func (d Deps) acquireLoginThrottle(
 	c *echo.Context,
-	kind authnports.LoginThrottleKind,
+	kind sessionports.LoginThrottleKind,
 	key string,
-) (authnports.LoginThrottleResult, error) {
+) (sessionports.LoginThrottleResult, error) {
 	if d.LoginAttemptThrottle == nil {
-		return authnports.LoginThrottleResult{Allowed: true}, nil
+		return sessionports.LoginThrottleResult{Allowed: true}, nil
 	}
 	result, err := d.LoginAttemptThrottle.TryAcquire(c.Request().Context(), kind, key, time.Now().UTC())
 	if d.Metrics != nil {
@@ -58,11 +59,11 @@ func (d Deps) recordLoginFailure(c *echo.Context, username, clientIP string) (bo
 	now := time.Now().UTC()
 	aggregated := false
 	for _, attempt := range []struct {
-		kind authnports.LoginThrottleKind
+		kind sessionports.LoginThrottleKind
 		key  string
 	}{
-		{authnports.LoginThrottleAccount, username},
-		{authnports.LoginThrottleIP, clientIP},
+		{sessionports.LoginThrottleAccount, username},
+		{sessionports.LoginThrottleIP, clientIP},
 	} {
 		if attempt.key == "" {
 			continue

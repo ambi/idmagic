@@ -5,7 +5,8 @@
 package http
 
 import (
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
@@ -25,8 +26,8 @@ type Deps struct {
 	UserRepo                   userports.UserRepository
 	FederationSigner           *samltoken.Signer
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
-	LoginAttemptThrottle       authnports.LoginAttemptThrottle
-	PasswordHasher             authnports.PasswordHasher
+	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
+	PasswordHasher             passwordports.PasswordHasher
 	SentinelPasswordHash       string
 }
 

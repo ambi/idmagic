@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/adapters/http/httpdeps"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -42,10 +43,10 @@ func parseLimitParam(c *echo.Context, fallback int) int {
 	return fallback
 }
 
-func (d Deps) handleListSignInActivity(c *echo.Context) error {
-	sub, err := d.requireAuthenticatedSub(c)
+func handleListSignInActivity(d Deps, c *echo.Context) error {
+	sub, err := httpdeps.RequireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return httpdeps.WriteAccountError(c, err)
 	}
 	limit := parseLimitParam(c, authusecases.SignInActivityDefaultLimit)
 	items, err := authusecases.ListSignInActivity(
@@ -57,7 +58,7 @@ func (d Deps) handleListSignInActivity(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"activities": toSignInActivityResponses(items)})
 }
 
-func (d Deps) handleGetUserSignInActivity(c *echo.Context) error {
+func handleGetUserSignInActivity(d Deps, c *echo.Context) error {
 	actor, err := d.RequireAdmin(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)

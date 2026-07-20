@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	authmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
@@ -39,7 +39,7 @@ const hintClientID = "hint-web-app"
 type hintTestServer struct {
 	e            *echo.Echo
 	signer       *cryptoadapter.JWTSigner
-	sessionStore *authmemory.SessionStore
+	sessionStore *sessionmemory.SessionStore
 	refreshStore *oauth2memory.RefreshTokenStore
 }
 
@@ -63,7 +63,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 		CreatedAt:               time.Now().UTC(),
 	})
 
-	sessionStore := authmemory.NewSessionStore()
+	sessionStore := sessionmemory.NewSessionStore()
 	refreshStore := oauth2memory.NewRefreshTokenStore()
 
 	e := echo.New()
@@ -73,7 +73,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 			ClientRepo: clientRepo, RefreshStore: refreshStore,
 			TokenIssuer: signer, TokenIntrospector: signer, IDTokenHintVerifier: signer,
 		},
-		Authentication: authentication.Module{SessionManager: authusecases.NewSessionManager(sessionStore)},
+		Authentication: authentication.Module{SessionManager: sessionusecases.NewSessionManager(sessionStore)},
 	})
 	return hintTestServer{e: e, signer: signer, sessionStore: sessionStore, refreshStore: refreshStore}
 }
@@ -81,7 +81,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 func (s hintTestServer) seedSession(t *testing.T, sid string) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := s.sessionStore.Save(context.Background(), &authdomain.LoginSession{
+	if err := s.sessionStore.Save(context.Background(), &sessiondomain.LoginSession{
 		ID: sid, TenantID: tenancydomain.DefaultTenantID, UserID: "alice", AuthTime: now.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver", ExpiresAt: now.Add(time.Hour),
 	}); err != nil {

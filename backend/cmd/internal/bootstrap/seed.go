@@ -13,9 +13,10 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -47,11 +48,11 @@ func SeedDemoData(
 	ctx context.Context,
 	clients oauthports.OAuth2ClientRepository,
 	users userports.UserRepository,
-	mfaFactors authnports.MfaFactorRepository,
-	passwordHistory authnports.PasswordHistoryRepository,
+	mfaFactors totpports.MfaFactorRepository,
+	passwordHistory passwordports.PasswordHistoryRepository,
 	groups groupports.GroupRepository,
 	authzDetailTypes oauthports.AuthorizationDetailTypeRepository,
-	hasher authnports.PasswordHasher,
+	hasher passwordports.PasswordHasher,
 ) error {
 	secretHash := oauthdomain.HashClientSecret(EnvDefault("DEMO_CLIENT_SECRET", "demo-client-secret"))
 	now := time.Now().UTC()
@@ -87,7 +88,7 @@ func SeedDemoData(
 		return err
 	}
 	password := EnvDefault("DEMO_USER_PASSWORD", "demo-password-1234")
-	if result := authusecases.ValidatePassword(password); !result.OK {
+	if result := passwordusecases.ValidatePassword(password); !result.OK {
 		return errors.New("DEMO_USER_PASSWORD violates password policy")
 	}
 	hash, err := hasher.Hash(password)
@@ -134,7 +135,7 @@ func SeedDemoData(
 		return nil
 	}
 	label := "Demo TOTP"
-	desiredFactor := &authdomain.MfaFactor{
+	desiredFactor := &totpdomain.MfaFactor{
 		UserID: seedUserAliceID, Type: spec.MfaFactorTOTP, Secret: &totpSecret, Label: &label, CreatedAt: now,
 	}
 	existingFactor, err := mfaFactors.Find(ctx, seedUserAliceID, spec.MfaFactorTOTP)
@@ -159,7 +160,7 @@ func sameDemoClient(actual, desired *oauthdomain.OAuth2Client, secret string) bo
 	return sameClient(&left, &right)
 }
 
-func ensureDemoUser(ctx context.Context, users userports.UserRepository, history authnports.PasswordHistoryRepository, hasher authnports.PasswordHasher, desired *userdomain.User, password string, now time.Time) error {
+func ensureDemoUser(ctx context.Context, users userports.UserRepository, history passwordports.PasswordHistoryRepository, hasher passwordports.PasswordHasher, desired *userdomain.User, password string, now time.Time) error {
 	existing, err := users.FindBySub(ctx, desired.ID)
 	if err != nil {
 		return err
@@ -189,7 +190,7 @@ func ensureDemoUser(ctx context.Context, users userports.UserRepository, history
 	return history.Add(ctx, desired.ID, desired.PasswordHash, now)
 }
 
-func sameDemoUser(actual, desired *userdomain.User, password string, hasher authnports.PasswordHasher) bool {
+func sameDemoUser(actual, desired *userdomain.User, password string, hasher passwordports.PasswordHasher) bool {
 	matches, err := hasher.Verify(password, actual.PasswordHash)
 	if err != nil || !matches {
 		return false
@@ -201,7 +202,7 @@ func sameDemoUser(actual, desired *userdomain.User, password string, hasher auth
 	return reflect.DeepEqual(left, right)
 }
 
-func sameMfaFactor(actual, desired *authdomain.MfaFactor) bool {
+func sameMfaFactor(actual, desired *totpdomain.MfaFactor) bool {
 	left, right := *actual, *desired
 	left.CreatedAt, left.LastUsedAt = time.Time{}, nil
 	right.CreatedAt, right.LastUsedAt = time.Time{}, nil

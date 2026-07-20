@@ -10,8 +10,12 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	authhttp "github.com/ambi/idmagic/backend/authentication/adapters/http"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	ighttp "github.com/ambi/idmagic/backend/idgovernance/adapters/http"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -62,19 +66,19 @@ type Deps struct {
 	AgentRepo      agentports.AgentRepository
 	Authentication authentication.Module
 	// Deprecated: wi-177 移行中のテスト用互換入力。bootstrap は Authentication.Module のみを設定する。
-	MfaFactorRepo           authnports.MfaFactorRepository
-	PasswordHistoryRepo     authnports.PasswordHistoryRepository
+	MfaFactorRepo           totpports.MfaFactorRepository
+	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore   authnports.EmailChangeTokenStore
 	AuthEventBucketStore    authnports.AuthEventBucketStore
-	PasswordHasher          authnports.PasswordHasher
+	PasswordHasher          passwordports.PasswordHasher
 	EmailSender             authnports.EmailSender
-	BreachedPasswordChecker authnports.BreachedPasswordChecker
+	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 	SentinelPasswordHash    string
-	SessionManager          *authusecases.SessionManager
+	SessionManager          *sessionusecases.SessionManager
 	AuthnResolver           authdomain.AuthenticationContextResolver
 	WebAuthnRP              *gowebauthn.WebAuthn
-	WebAuthnCredentialRepo  authnports.WebAuthnCredentialRepository
-	RecoveryCodeRepo        authnports.RecoveryCodeRepository
+	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
+	RecoveryCodeRepo        recoveryports.RecoveryCodeRepository
 	OAuth2                  oauth2.Module
 	// Deprecated: 移行中のテスト用互換入力。bootstrap は OAuth2.Module のみを設定する。
 	TokenIssuer       oauthports.TokenIssuer

@@ -12,8 +12,10 @@ import (
 	"strings"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
@@ -53,10 +55,10 @@ type AdminUserDeps struct {
 	ConsentRepo         oauthports.ConsentRepository
 	RefreshStore        oauthports.RefreshTokenStore
 	DeviceCodeStore     oauthports.DeviceCodeStore
-	SessionStore        authnports.SessionStore
-	MfaFactorRepo       authnports.MfaFactorRepository
-	PasswordHasher      authnports.PasswordHasher
-	PasswordHistoryRepo authnports.PasswordHistoryRepository
+	SessionStore        sessionports.SessionStore
+	MfaFactorRepo       mfaports.MfaFactorRepository
+	PasswordHasher      passwordports.PasswordHasher
+	PasswordHistoryRepo passwordports.PasswordHistoryRepository
 	Emit                func(spec.DomainEvent) error
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで

@@ -9,6 +9,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
+	"github.com/ambi/idmagic/backend/authentication/adapters/http/httpdeps"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
 
@@ -32,10 +33,10 @@ func toAccountConsentResponse(consent *oauthdomain.Consent, clientName string) a
 	}
 }
 
-func (d Deps) handleListAccountConsents(c *echo.Context) error {
-	sub, err := d.requireAuthenticatedSub(c)
+func handleListAccountConsents(d Deps, c *echo.Context) error {
+	sub, err := httpdeps.RequireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return httpdeps.WriteAccountError(c, err)
 	}
 	ctx := c.Request().Context()
 	consents, err := oauthusecases.ListConsentsForSub(ctx, d.ConsentDeps(), sub)
@@ -54,13 +55,13 @@ func (d Deps) handleListAccountConsents(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"consents": response})
 }
 
-func (d Deps) handleRevokeAccountConsent(c *echo.Context) error {
+func handleRevokeAccountConsent(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	sub, err := d.requireAuthenticatedSub(c)
+	sub, err := httpdeps.RequireAuthenticatedSub(d, c)
 	if err != nil {
-		return d.writeAccountError(c, err)
+		return httpdeps.WriteAccountError(c, err)
 	}
 	// actor も target も自分の sub に固定する。URL の client_id 以外は信用しない。
 	if err := oauthusecases.RevokeConsent(

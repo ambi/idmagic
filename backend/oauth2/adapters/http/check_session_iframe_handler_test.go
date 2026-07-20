@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -25,9 +26,9 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newCheckSessionIframeServer() (*echo.Echo, *authnmemory.SessionStore) {
-	store := authnmemory.NewSessionStore()
-	sm := authusecases.NewSessionManager(store)
+func newCheckSessionIframeServer() (*echo.Echo, *sessionmemory.SessionStore) {
+	store := sessionmemory.NewSessionStore()
+	sm := sessionusecases.NewSessionManager(store)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps:           support.Deps{Issuer: "http://idp.test"},
@@ -58,7 +59,7 @@ func TestCheckSessionIframe_noSession_respondsChanged(t *testing.T) {
 
 func TestCheckSessionIframe_validSession_respondsUnchanged(t *testing.T) {
 	e, store := newCheckSessionIframeServer()
-	sess := &authdomain.LoginSession{
+	sess := &sessiondomain.LoginSession{
 		ID: "sess-1", TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
 		AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		ACR:       authusecases.DeriveACR([]string{"pwd"}),
@@ -68,7 +69,7 @@ func TestCheckSessionIframe_validSession_respondsUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := httptest.NewRequest(http.MethodGet, "/session/check", http.NoBody)
-	req.AddCookie(&http.Cookie{Name: authusecases.SessionCookie, Value: sess.ID})
+	req.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: sess.ID})
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

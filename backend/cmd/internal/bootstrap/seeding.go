@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -26,7 +26,7 @@ func Seed(ctx context.Context, deps *Dependencies, request domain.Request) (doma
 
 type seedContributor struct {
 	deps   *Dependencies
-	hasher authnports.PasswordHasher
+	hasher passwordports.PasswordHasher
 }
 
 func firstPartyClients(redirectURIs []string, now time.Time) []*oauthdomain.OAuth2Client {
@@ -224,7 +224,7 @@ func performanceUser(index int, generatorSeed, passwordHash string, now time.Tim
 	}
 }
 
-func samePerformanceUser(actual, desired *userdomain.User, password string, hasher authnports.PasswordHasher) bool {
+func samePerformanceUser(actual, desired *userdomain.User, password string, hasher passwordports.PasswordHasher) bool {
 	matches, err := hasher.Verify(password, actual.PasswordHash)
 	if err != nil || !matches {
 		return false

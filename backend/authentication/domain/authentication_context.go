@@ -22,6 +22,22 @@ type AuthenticationContext struct {
 	StepUpAt int64
 }
 
+type LoginPendingPurpose string
+
+const (
+	LoginPendingNone       LoginPendingPurpose = "None"
+	LoginPendingChallenge  LoginPendingPurpose = "Challenge"
+	LoginPendingEnrollment LoginPendingPurpose = "Enrollment"
+)
+
+func (p LoginPendingPurpose) Valid() bool {
+	switch p {
+	case LoginPendingNone, LoginPendingChallenge, LoginPendingEnrollment:
+		return true
+	}
+	return false
+}
+
 type AuthenticationContextResolver interface {
 	Resolve(ctx context.Context, headers Headers) (*AuthenticationContext, error)
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
@@ -281,7 +282,7 @@ func newAdminUserHandler(
 ) (*echo.Echo, *usermemory.UserRepository) {
 	t.Helper()
 	repo := usermemory.NewUserRepository()
-	history := authnmemory.NewPasswordHistoryRepository()
+	history := passwordmemory.NewPasswordHistoryRepository()
 	hasher := crypto.NewArgon2idPasswordHasher()
 	now := time.Now().UTC()
 	for _, user := range []*userdomain.User{
