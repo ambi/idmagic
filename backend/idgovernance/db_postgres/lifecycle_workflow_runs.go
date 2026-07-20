@@ -7,7 +7,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idgovernance/db_postgres/sqlcgen"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -106,7 +105,7 @@ func (r *LifecycleWorkflowRunRepository) ListRuns(ctx context.Context, tenantID,
 	if limit < 1 || limit > math.MaxInt32 {
 		return nil, errors.New("invalid workflow run limit")
 	}
-	rows, err := sqlcgen.New(r.Pool).ListLifecycleWorkflowRuns(ctx, sqlcgen.ListLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID, Limit: int32(limit)})
+	rows, err := New(r.Pool).ListLifecycleWorkflowRuns(ctx, ListLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID, Limit: int32(limit)})
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +133,8 @@ func (r *LifecycleWorkflowRunRepository) RetryRun(ctx context.Context, tenantID,
 		return false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := sqlcgen.New(tx)
-	affected, err := q.RetryLifecycleWorkflowRun(ctx, sqlcgen.RetryLifecycleWorkflowRunParams{TenantID: tenantID, ID: runID})
+	q := New(tx)
+	affected, err := q.RetryLifecycleWorkflowRun(ctx, RetryLifecycleWorkflowRunParams{TenantID: tenantID, ID: runID})
 	if err != nil || affected != 1 {
 		return false, err
 	}
@@ -146,7 +145,7 @@ func (r *LifecycleWorkflowRunRepository) RetryRun(ctx context.Context, tenantID,
 }
 
 func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(ctx context.Context, tenantID, workflowID string, _ time.Time) ([]*igdomain.WorkflowRun, error) {
-	rows, err := sqlcgen.New(r.Pool).CancelQueuedLifecycleWorkflowRuns(ctx, sqlcgen.CancelQueuedLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID})
+	rows, err := New(r.Pool).CancelQueuedLifecycleWorkflowRuns(ctx, CancelQueuedLifecycleWorkflowRunsParams{TenantID: tenantID, WorkflowID: workflowID})
 	if err != nil {
 		return nil, err
 	}

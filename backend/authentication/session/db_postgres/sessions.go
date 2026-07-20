@@ -5,14 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/authentication/session/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // defaultSessionListLimit は ListBySub の先頭ページ件数。repository contract は
@@ -25,14 +23,14 @@ const defaultSessionListLimit = 50
 // 慣習に合わせ、呼び出し側の ctx から tenancy.TenantID で取得する。
 type SessionRepository struct{ Pool sharedpg.DB }
 
-func (r *SessionRepository) queries() *sqlcgen.Queries { return sqlcgen.New(r.Pool) }
+func (r *SessionRepository) queries() *Queries { return New(r.Pool) }
 
 func (r *SessionRepository) Save(ctx context.Context, sess *domain.LoginSession) error {
 	pendingPurpose := sess.PendingPurpose
 	if pendingPurpose == "" {
 		pendingPurpose = domain.LoginPendingNone
 	}
-	return r.queries().UpsertAuthenticationSession(ctx, sqlcgen.UpsertAuthenticationSessionParams{
+	return r.queries().UpsertAuthenticationSession(ctx, UpsertAuthenticationSessionParams{
 		ID:                    sess.ID,
 		TenantID:              sess.TenantID,
 		UserID:                sess.UserID,
@@ -49,7 +47,7 @@ func (r *SessionRepository) Save(ctx context.Context, sess *domain.LoginSession)
 }
 
 func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*domain.LoginSession, error) {
-	row, err := r.queries().FindActiveAuthenticationSession(ctx, sqlcgen.FindActiveAuthenticationSessionParams{
+	row, err := r.queries().FindActiveAuthenticationSession(ctx, FindActiveAuthenticationSessionParams{
 		ID:        sessionID,
 		TenantID:  tenancy.TenantID(ctx),
 		ExpiresAt: time.Now().UTC(),
@@ -64,7 +62,7 @@ func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*domain
 }
 
 func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID string) (*domain.LoginSession, error) {
-	row, err := r.queries().FindOwnedAuthenticationSession(ctx, sqlcgen.FindOwnedAuthenticationSessionParams{
+	row, err := r.queries().FindOwnedAuthenticationSession(ctx, FindOwnedAuthenticationSessionParams{
 		ID:       sessionID,
 		TenantID: tenancy.TenantID(ctx),
 		UserID:   userID,
@@ -79,7 +77,7 @@ func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID str
 }
 
 func (r *SessionRepository) Revoke(ctx context.Context, sessionID string, reason spec.SessionEndReason, now time.Time) error {
-	return r.queries().RevokeAuthenticationSession(ctx, sqlcgen.RevokeAuthenticationSessionParams{
+	return r.queries().RevokeAuthenticationSession(ctx, RevokeAuthenticationSessionParams{
 		ID:           sessionID,
 		TenantID:     tenancy.TenantID(ctx),
 		RevokeReason: pgtype.Text{String: string(reason), Valid: true},
@@ -89,7 +87,7 @@ func (r *SessionRepository) Revoke(ctx context.Context, sessionID string, reason
 
 func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now time.Time) error {
 	cutoff := now.Add(-domain.LoginSessionTouchInterval)
-	return r.queries().TouchAuthenticationSession(ctx, sqlcgen.TouchAuthenticationSessionParams{
+	return r.queries().TouchAuthenticationSession(ctx, TouchAuthenticationSessionParams{
 		ID:           sessionID,
 		TenantID:     tenancy.TenantID(ctx),
 		LastSeenAt:   now,
@@ -98,7 +96,7 @@ func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now tim
 }
 
 func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*domain.LoginSession, error) {
-	rows, err := r.queries().ListActiveAuthenticationSessionsByUser(ctx, sqlcgen.ListActiveAuthenticationSessionsByUserParams{
+	rows, err := r.queries().ListActiveAuthenticationSessionsByUser(ctx, ListActiveAuthenticationSessionsByUserParams{
 		TenantID:  tenancy.TenantID(ctx),
 		UserID:    sub,
 		ExpiresAt: time.Now().UTC(),
@@ -122,14 +120,14 @@ func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*domai
 }
 
 func (r *SessionRepository) DeleteAllForSub(ctx context.Context, sub string) error {
-	return r.queries().DeleteAllAuthenticationSessionsForUser(ctx, sqlcgen.DeleteAllAuthenticationSessionsForUserParams{
+	return r.queries().DeleteAllAuthenticationSessionsForUser(ctx, DeleteAllAuthenticationSessionsForUserParams{
 		TenantID: tenancy.TenantID(ctx),
 		UserID:   sub,
 	})
 }
 
 func (r *SessionRepository) DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error) {
-	deleted, err := r.queries().DeleteExpiredAuthenticationSessionsBatch(ctx, sqlcgen.DeleteExpiredAuthenticationSessionsBatchParams{
+	deleted, err := r.queries().DeleteExpiredAuthenticationSessionsBatch(ctx, DeleteExpiredAuthenticationSessionsBatchParams{
 		ExpiresAt: cutoff,
 		Limit:     int32(limit), //nolint:gosec // G115: limit is a small housekeeping batch size, well under int32 max
 	})
@@ -144,7 +142,7 @@ func sessionEndReasonPtr(t pgtype.Text) *spec.SessionEndReason {
 	return &r
 }
 
-func sessionFromActiveRow(row *sqlcgen.FindActiveAuthenticationSessionRow) *domain.LoginSession {
+func sessionFromActiveRow(row *FindActiveAuthenticationSessionRow) *domain.LoginSession {
 	return &domain.LoginSession{
 		ID: row.ID, TenantID: row.TenantID, UserID: row.UserID, AuthTime: row.AuthTime,
 		AMR: row.Amr, ACR: row.Acr, AuthenticationPending: row.AuthenticationPending,
@@ -155,7 +153,7 @@ func sessionFromActiveRow(row *sqlcgen.FindActiveAuthenticationSessionRow) *doma
 	}
 }
 
-func sessionFromOwnedRow(row *sqlcgen.FindOwnedAuthenticationSessionRow) *domain.LoginSession {
+func sessionFromOwnedRow(row *FindOwnedAuthenticationSessionRow) *domain.LoginSession {
 	return &domain.LoginSession{
 		ID: row.ID, TenantID: row.TenantID, UserID: row.UserID, AuthTime: row.AuthTime,
 		AMR: row.Amr, ACR: row.Acr, AuthenticationPending: row.AuthenticationPending,

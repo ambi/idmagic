@@ -5,19 +5,17 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/authentication/totp/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // MfaFactorRepository (Authentication)
 type MfaFactorRepository struct{ Pool sharedpg.DB }
 
-func (r *MfaFactorRepository) queries() *sqlcgen.Queries { return sqlcgen.New(r.Pool) }
+func (r *MfaFactorRepository) queries() *Queries { return New(r.Pool) }
 
 func (r *MfaFactorRepository) ListBySub(ctx context.Context, sub string) ([]*domain.MfaFactor, error) {
 	rows, err := r.queries().ListMfaFactorsBySub(ctx, sub)
@@ -40,7 +38,7 @@ func (r *MfaFactorRepository) Find(
 	sub string,
 	factorType spec.MfaFactorType,
 ) (*domain.MfaFactor, error) {
-	row, err := r.queries().GetMfaFactor(ctx, sqlcgen.GetMfaFactorParams{UserID: sub, Type: string(factorType)})
+	row, err := r.queries().GetMfaFactor(ctx, GetMfaFactorParams{UserID: sub, Type: string(factorType)})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -51,7 +49,7 @@ func (r *MfaFactorRepository) Find(
 }
 
 func (r *MfaFactorRepository) Save(ctx context.Context, factor *domain.MfaFactor) error {
-	return r.queries().UpsertMfaFactor(ctx, sqlcgen.UpsertMfaFactorParams{
+	return r.queries().UpsertMfaFactor(ctx, UpsertMfaFactorParams{
 		UserID:     factor.UserID,
 		Type:       string(factor.Type),
 		Secret:     textOrNil(factor.Secret),
@@ -62,7 +60,7 @@ func (r *MfaFactorRepository) Save(ctx context.Context, factor *domain.MfaFactor
 }
 
 func (r *MfaFactorRepository) Delete(ctx context.Context, sub string, factorType spec.MfaFactorType) error {
-	return r.queries().DeleteMfaFactor(ctx, sqlcgen.DeleteMfaFactorParams{UserID: sub, Type: string(factorType)})
+	return r.queries().DeleteMfaFactor(ctx, DeleteMfaFactorParams{UserID: sub, Type: string(factorType)})
 }
 
 func (r *MfaFactorRepository) DeleteAllForSub(ctx context.Context, sub string) error {

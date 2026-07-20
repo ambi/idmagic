@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/ambi/idmagic/backend/oauth2/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 // McpResourceServerRepository は MCP resource server 登録 (ADR-055) を PostgreSQL に
@@ -17,7 +15,7 @@ import (
 // クエリは sqlc 生成 (wi-173, ADR-090)。
 type McpResourceServerRepository struct{ Pool sharedpg.DB }
 
-func mcpResourceServerFromRow(row *sqlcgen.McpResourceServer) (*domain.McpResourceServer, error) {
+func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer, error) {
 	m := &domain.McpResourceServer{
 		TenantID:         row.TenantID,
 		ResourceServerID: row.ResourceServerID,
@@ -36,7 +34,7 @@ func mcpResourceServerFromRow(row *sqlcgen.McpResourceServer) (*domain.McpResour
 }
 
 func (r *McpResourceServerRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
-	rows, err := sqlcgen.New(r.Pool).ListMcpResourceServersByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListMcpResourceServersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +50,7 @@ func (r *McpResourceServerRepository) ListByTenant(ctx context.Context, tenantID
 }
 
 func (r *McpResourceServerRepository) FindByID(ctx context.Context, tenantID, resourceServerID string) (*domain.McpResourceServer, error) {
-	row, err := sqlcgen.New(r.Pool).GetMcpResourceServer(ctx, sqlcgen.GetMcpResourceServerParams{
+	row, err := New(r.Pool).GetMcpResourceServer(ctx, GetMcpResourceServerParams{
 		TenantID: tenantID, ResourceServerID: resourceServerID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -65,7 +63,7 @@ func (r *McpResourceServerRepository) FindByID(ctx context.Context, tenantID, re
 }
 
 func (r *McpResourceServerRepository) FindByResource(ctx context.Context, tenantID, resource string) (*domain.McpResourceServer, error) {
-	row, err := sqlcgen.New(r.Pool).GetMcpResourceServerByResource(ctx, sqlcgen.GetMcpResourceServerByResourceParams{
+	row, err := New(r.Pool).GetMcpResourceServerByResource(ctx, GetMcpResourceServerByResourceParams{
 		TenantID: tenantID, Resource: resource,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -82,7 +80,7 @@ func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpRes
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).UpsertMcpResourceServer(ctx, sqlcgen.UpsertMcpResourceServerParams{
+	return New(r.Pool).UpsertMcpResourceServer(ctx, UpsertMcpResourceServerParams{
 		TenantID:         m.TenantID,
 		ResourceServerID: m.ResourceServerID,
 		Resource:         m.Resource,
@@ -95,7 +93,7 @@ func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpRes
 }
 
 func (r *McpResourceServerRepository) Delete(ctx context.Context, tenantID, resourceServerID string) error {
-	return sqlcgen.New(r.Pool).DeleteMcpResourceServer(ctx, sqlcgen.DeleteMcpResourceServerParams{
+	return New(r.Pool).DeleteMcpResourceServer(ctx, DeleteMcpResourceServerParams{
 		TenantID: tenantID, ResourceServerID: resourceServerID,
 	})
 }

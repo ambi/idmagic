@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/wsfederation/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
@@ -16,7 +15,7 @@ import (
 // クエリは sqlc 生成で管理する (wi-174, ADR-090)。
 type WsFedRelyingPartyRepository struct{ Pool sharedpg.DB }
 
-func relyingPartyFromRow(row *sqlcgen.WsfedRelyingParty) (*domain.WsFedRelyingParty, error) {
+func relyingPartyFromRow(row *WsfedRelyingParty) (*domain.WsFedRelyingParty, error) {
 	rp := &domain.WsFedRelyingParty{
 		TenantID: row.TenantID, Wtrealm: row.Wtrealm, DisplayName: row.DisplayName,
 		Audience: row.Audience, TokenType: domain.WsFedTokenType(row.TokenType),
@@ -38,7 +37,7 @@ func relyingPartyFromRow(row *sqlcgen.WsfedRelyingParty) (*domain.WsFedRelyingPa
 }
 
 func (r *WsFedRelyingPartyRepository) FindByWtrealm(ctx context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error) {
-	row, err := sqlcgen.New(r.Pool).GetWsFedRelyingParty(ctx, sqlcgen.GetWsFedRelyingPartyParams{TenantID: tenantID, Wtrealm: wtrealm})
+	row, err := New(r.Pool).GetWsFedRelyingParty(ctx, GetWsFedRelyingPartyParams{TenantID: tenantID, Wtrealm: wtrealm})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -49,7 +48,7 @@ func (r *WsFedRelyingPartyRepository) FindByWtrealm(ctx context.Context, tenantI
 }
 
 func (r *WsFedRelyingPartyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error) {
-	rows, err := sqlcgen.New(r.Pool).ListWsFedRelyingPartiesByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListWsFedRelyingPartiesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +79,7 @@ func (r *WsFedRelyingPartyRepository) Save(ctx context.Context, rp *domain.WsFed
 			return err
 		}
 	}
-	return sqlcgen.New(r.Pool).UpsertWsFedRelyingParty(ctx, sqlcgen.UpsertWsFedRelyingPartyParams{
+	return New(r.Pool).UpsertWsFedRelyingParty(ctx, UpsertWsFedRelyingPartyParams{
 		TenantID: rp.TenantID, Wtrealm: rp.Wtrealm, DisplayName: rp.DisplayName, ReplyUrls: replyURLs,
 		Audience: rp.Audience, TokenType: string(rp.TokenType), ClaimPolicy: claimPolicy, EntraProfile: entraProfile,
 		CreatedAt: rp.CreatedAt, UpdatedAt: rp.UpdatedAt,
@@ -88,5 +87,5 @@ func (r *WsFedRelyingPartyRepository) Save(ctx context.Context, rp *domain.WsFed
 }
 
 func (r *WsFedRelyingPartyRepository) Delete(ctx context.Context, tenantID, wtrealm string) error {
-	return sqlcgen.New(r.Pool).DeleteWsFedRelyingParty(ctx, sqlcgen.DeleteWsFedRelyingPartyParams{TenantID: tenantID, Wtrealm: wtrealm})
+	return New(r.Pool).DeleteWsFedRelyingParty(ctx, DeleteWsFedRelyingPartyParams{TenantID: tenantID, Wtrealm: wtrealm})
 }

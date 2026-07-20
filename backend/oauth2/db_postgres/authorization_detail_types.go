@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/oauth2/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // AuthorizationDetailTypeRepository は RFC 9396 authorization_details の type 定義
@@ -25,7 +23,7 @@ func textOrNil(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-func authorizationDetailTypeFromRow(row *sqlcgen.AuthorizationDetailType) (*domain.AuthorizationDetailType, error) {
+func authorizationDetailTypeFromRow(row *AuthorizationDetailType) (*domain.AuthorizationDetailType, error) {
 	t := &domain.AuthorizationDetailType{
 		TenantID:        row.TenantID,
 		Type:            row.Type,
@@ -46,7 +44,7 @@ func authorizationDetailTypeFromRow(row *sqlcgen.AuthorizationDetailType) (*doma
 }
 
 func (r *AuthorizationDetailTypeRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
-	rows, err := sqlcgen.New(r.Pool).ListAuthorizationDetailTypesByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListAuthorizationDetailTypesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +60,7 @@ func (r *AuthorizationDetailTypeRepository) ListByTenant(ctx context.Context, te
 }
 
 func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tenantID, detailType string) (*domain.AuthorizationDetailType, error) {
-	row, err := sqlcgen.New(r.Pool).GetAuthorizationDetailType(ctx, sqlcgen.GetAuthorizationDetailTypeParams{
+	row, err := New(r.Pool).GetAuthorizationDetailType(ctx, GetAuthorizationDetailTypeParams{
 		TenantID: tenantID, Type: detailType,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -79,7 +77,7 @@ func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *domain.
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).UpsertAuthorizationDetailType(ctx, sqlcgen.UpsertAuthorizationDetailTypeParams{
+	return New(r.Pool).UpsertAuthorizationDetailType(ctx, UpsertAuthorizationDetailTypeParams{
 		TenantID:        t.TenantID,
 		Type:            t.Type,
 		Description:     textOrNil(&t.Description),
@@ -92,7 +90,7 @@ func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *domain.
 }
 
 func (r *AuthorizationDetailTypeRepository) Delete(ctx context.Context, tenantID, detailType string) error {
-	return sqlcgen.New(r.Pool).DeleteAuthorizationDetailType(ctx, sqlcgen.DeleteAuthorizationDetailTypeParams{
+	return New(r.Pool).DeleteAuthorizationDetailType(ctx, DeleteAuthorizationDetailTypeParams{
 		TenantID: tenantID, Type: detailType,
 	})
 }

@@ -1,4 +1,4 @@
-package db_postgres
+package db_postgres_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -14,7 +15,7 @@ import (
 
 func TestOutboxEventSinkEmit(t *testing.T) {
 	db := pgtest.Require(t)
-	sink := &OutboxEventSink{Pool: db}
+	sink := &oauth2postgres.OutboxEventSink{Pool: db}
 	clientID, err := spec.NewUUIDv4()
 	if err != nil {
 		t.Fatal(err)

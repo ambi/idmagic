@@ -5,16 +5,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/scim/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ScimRepository は SCIM token/user-ref/group-ref を PostgreSQL に永続化する。クエリは
-// sqlc 生成 (wi-176, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
+// sqlc 生成 (wi-176, ADR-090); Pool は DBTX を構造的に満たす。
 type ScimRepository struct{ Pool sharedpg.DB }
 
 func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {
@@ -40,7 +38,7 @@ func tokenFromRow(id, tenantID, tokenHash string, description pgtype.Text, creat
 }
 
 func (r *ScimRepository) SaveToken(ctx context.Context, token *ports.ScimToken) error {
-	return sqlcgen.New(r.Pool).SaveScimToken(ctx, sqlcgen.SaveScimTokenParams{
+	return New(r.Pool).SaveScimToken(ctx, SaveScimTokenParams{
 		ID:          token.ID,
 		TenantID:    token.TenantID,
 		TokenHash:   token.TokenHash,
@@ -51,7 +49,7 @@ func (r *ScimRepository) SaveToken(ctx context.Context, token *ports.ScimToken) 
 }
 
 func (r *ScimRepository) FindToken(ctx context.Context, tokenHash string) (*ports.ScimToken, error) {
-	row, err := sqlcgen.New(r.Pool).FindScimTokenByHash(ctx, tokenHash)
+	row, err := New(r.Pool).FindScimTokenByHash(ctx, tokenHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -62,7 +60,7 @@ func (r *ScimRepository) FindToken(ctx context.Context, tokenHash string) (*port
 }
 
 func (r *ScimRepository) ListTokens(ctx context.Context, tenantID string) ([]*ports.ScimToken, error) {
-	rows, err := sqlcgen.New(r.Pool).ListScimTokensByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListScimTokensByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,17 +72,17 @@ func (r *ScimRepository) ListTokens(ctx context.Context, tenantID string) ([]*po
 }
 
 func (r *ScimRepository) DeleteToken(ctx context.Context, tenantID, id string) error {
-	return sqlcgen.New(r.Pool).DeleteScimToken(ctx, sqlcgen.DeleteScimTokenParams{TenantID: tenantID, ID: id})
+	return New(r.Pool).DeleteScimToken(ctx, DeleteScimTokenParams{TenantID: tenantID, ID: id})
 }
 
 func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef) error {
-	return sqlcgen.New(r.Pool).SaveScimUserRef(ctx, sqlcgen.SaveScimUserRefParams{
+	return New(r.Pool).SaveScimUserRef(ctx, SaveScimUserRefParams{
 		TenantID: ref.TenantID, ScimID: ref.ScimID, UserID: ref.UserID,
 	})
 }
 
 func (r *ScimRepository) FindUserRefByScimID(ctx context.Context, tenantID, scimID string) (*ports.ScimUserRef, error) {
-	row, err := sqlcgen.New(r.Pool).FindScimUserRefByScimID(ctx, sqlcgen.FindScimUserRefByScimIDParams{TenantID: tenantID, ScimID: scimID})
+	row, err := New(r.Pool).FindScimUserRefByScimID(ctx, FindScimUserRefByScimIDParams{TenantID: tenantID, ScimID: scimID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -95,7 +93,7 @@ func (r *ScimRepository) FindUserRefByScimID(ctx context.Context, tenantID, scim
 }
 
 func (r *ScimRepository) FindUserRefByUserID(ctx context.Context, tenantID, userID string) (*ports.ScimUserRef, error) {
-	row, err := sqlcgen.New(r.Pool).FindScimUserRefByUserID(ctx, sqlcgen.FindScimUserRefByUserIDParams{TenantID: tenantID, UserID: userID})
+	row, err := New(r.Pool).FindScimUserRefByUserID(ctx, FindScimUserRefByUserIDParams{TenantID: tenantID, UserID: userID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -106,17 +104,17 @@ func (r *ScimRepository) FindUserRefByUserID(ctx context.Context, tenantID, user
 }
 
 func (r *ScimRepository) DeleteUserRef(ctx context.Context, tenantID, scimID string) error {
-	return sqlcgen.New(r.Pool).DeleteScimUserRef(ctx, sqlcgen.DeleteScimUserRefParams{TenantID: tenantID, ScimID: scimID})
+	return New(r.Pool).DeleteScimUserRef(ctx, DeleteScimUserRefParams{TenantID: tenantID, ScimID: scimID})
 }
 
 func (r *ScimRepository) SaveGroupRef(ctx context.Context, ref *ports.ScimGroupRef) error {
-	return sqlcgen.New(r.Pool).SaveScimGroupRef(ctx, sqlcgen.SaveScimGroupRefParams{
+	return New(r.Pool).SaveScimGroupRef(ctx, SaveScimGroupRefParams{
 		TenantID: ref.TenantID, ScimID: ref.ScimID, GroupID: ref.GroupID,
 	})
 }
 
 func (r *ScimRepository) FindGroupRefByScimID(ctx context.Context, tenantID, scimID string) (*ports.ScimGroupRef, error) {
-	row, err := sqlcgen.New(r.Pool).FindScimGroupRefByScimID(ctx, sqlcgen.FindScimGroupRefByScimIDParams{TenantID: tenantID, ScimID: scimID})
+	row, err := New(r.Pool).FindScimGroupRefByScimID(ctx, FindScimGroupRefByScimIDParams{TenantID: tenantID, ScimID: scimID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -127,7 +125,7 @@ func (r *ScimRepository) FindGroupRefByScimID(ctx context.Context, tenantID, sci
 }
 
 func (r *ScimRepository) FindGroupRefByGroupID(ctx context.Context, tenantID, groupID string) (*ports.ScimGroupRef, error) {
-	row, err := sqlcgen.New(r.Pool).FindScimGroupRefByGroupID(ctx, sqlcgen.FindScimGroupRefByGroupIDParams{TenantID: tenantID, GroupID: groupID})
+	row, err := New(r.Pool).FindScimGroupRefByGroupID(ctx, FindScimGroupRefByGroupIDParams{TenantID: tenantID, GroupID: groupID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -138,5 +136,5 @@ func (r *ScimRepository) FindGroupRefByGroupID(ctx context.Context, tenantID, gr
 }
 
 func (r *ScimRepository) DeleteGroupRef(ctx context.Context, tenantID, scimID string) error {
-	return sqlcgen.New(r.Pool).DeleteScimGroupRef(ctx, sqlcgen.DeleteScimGroupRefParams{TenantID: tenantID, ScimID: scimID})
+	return New(r.Pool).DeleteScimGroupRef(ctx, DeleteScimGroupRefParams{TenantID: tenantID, ScimID: scimID})
 }

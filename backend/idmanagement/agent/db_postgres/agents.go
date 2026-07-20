@@ -6,19 +6,17 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/idmanagement/agent/db_postgres/sqlcgen"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // AgentRepository は ADR-048 の Agent 集約と OAuth2Client 束縛を PostgreSQL に永続化
 // する。すべての参照はテナント境界に閉じる。agent_credential_bindings は agents への
 // ON DELETE CASCADE FK を持つため、DeleteAgent の cascade は DB 側でも保証される。
-// クエリは sqlc 生成 (wi-178, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
+// クエリは sqlc 生成 (wi-178, ADR-090); Pool は DBTX を構造的に満たす。
 type AgentRepository struct{ Pool sharedpg.DB }
 
 func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {
@@ -35,7 +33,7 @@ func textOrNil(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-func agentFromRow(row *sqlcgen.Agent) (*agentdomain.Agent, error) {
+func agentFromRow(row *Agent) (*agentdomain.Agent, error) {
 	a := &agentdomain.Agent{
 		ID:          row.ID,
 		TenantID:    row.TenantID,
@@ -67,7 +65,7 @@ func agentFromRow(row *sqlcgen.Agent) (*agentdomain.Agent, error) {
 }
 
 func (r *AgentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error) {
-	rows, err := sqlcgen.New(r.Pool).ListAgentsByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListAgentsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +81,7 @@ func (r *AgentRepository) ListByTenant(ctx context.Context, tenantID string) ([]
 }
 
 func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*agentdomain.Agent, error) {
-	row, err := sqlcgen.New(r.Pool).FindAgentByID(ctx, sqlcgen.FindAgentByIDParams{TenantID: tenantID, ID: id})
+	row, err := New(r.Pool).FindAgentByID(ctx, FindAgentByIDParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -102,7 +100,7 @@ func (r *AgentRepository) Save(ctx context.Context, agent *agentdomain.Agent) er
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).SaveAgent(ctx, sqlcgen.SaveAgentParams{
+	return New(r.Pool).SaveAgent(ctx, SaveAgentParams{
 		ID:          agent.ID,
 		TenantID:    agent.TenantID,
 		Name:        agent.Name,
@@ -119,11 +117,11 @@ func (r *AgentRepository) Save(ctx context.Context, agent *agentdomain.Agent) er
 }
 
 func (r *AgentRepository) Delete(ctx context.Context, tenantID, id string) error {
-	return sqlcgen.New(r.Pool).DeleteAgent(ctx, sqlcgen.DeleteAgentParams{TenantID: tenantID, ID: id})
+	return New(r.Pool).DeleteAgent(ctx, DeleteAgentParams{TenantID: tenantID, ID: id})
 }
 
 func (r *AgentRepository) ListBindings(ctx context.Context, tenantID, agentID string) ([]*agentdomain.AgentCredentialBinding, error) {
-	rows, err := sqlcgen.New(r.Pool).ListAgentBindingsByAgent(ctx, sqlcgen.ListAgentBindingsByAgentParams{
+	rows, err := New(r.Pool).ListAgentBindingsByAgent(ctx, ListAgentBindingsByAgentParams{
 		TenantID: tenantID, AgentID: agentID,
 	})
 	if err != nil {
@@ -137,7 +135,7 @@ func (r *AgentRepository) ListBindings(ctx context.Context, tenantID, agentID st
 }
 
 func (r *AgentRepository) AddBinding(ctx context.Context, binding *agentdomain.AgentCredentialBinding) (bool, error) {
-	n, err := sqlcgen.New(r.Pool).AddAgentBinding(ctx, sqlcgen.AddAgentBindingParams{
+	n, err := New(r.Pool).AddAgentBinding(ctx, AddAgentBindingParams{
 		AgentID: binding.AgentID, ClientID: binding.ClientID, CreatedAt: binding.CreatedAt,
 	})
 	if err != nil {
@@ -147,7 +145,7 @@ func (r *AgentRepository) AddBinding(ctx context.Context, binding *agentdomain.A
 }
 
 func (r *AgentRepository) RemoveBinding(ctx context.Context, tenantID, agentID, clientID string) (bool, error) {
-	n, err := sqlcgen.New(r.Pool).RemoveAgentBinding(ctx, sqlcgen.RemoveAgentBindingParams{
+	n, err := New(r.Pool).RemoveAgentBinding(ctx, RemoveAgentBindingParams{
 		TenantID: tenantID, AgentID: agentID, ClientID: clientID,
 	})
 	if err != nil {
@@ -157,7 +155,7 @@ func (r *AgentRepository) RemoveBinding(ctx context.Context, tenantID, agentID, 
 }
 
 func (r *AgentRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*agentdomain.Agent, error) {
-	row, err := sqlcgen.New(r.Pool).FindAgentByClientID(ctx, sqlcgen.FindAgentByClientIDParams{TenantID: tenantID, ClientID: clientID})
+	row, err := New(r.Pool).FindAgentByClientID(ctx, FindAgentByClientIDParams{TenantID: tenantID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

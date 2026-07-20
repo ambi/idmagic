@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -18,7 +17,7 @@ import (
 type TenantBrandingRepository struct{ Pool sharedpg.DB }
 
 func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID string) (*domain.TenantBranding, error) {
-	row, err := sqlcgen.New(r.Pool).FindTenantBrandingByTenant(ctx, tenantID)
+	row, err := New(r.Pool).FindTenantBrandingByTenant(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -43,7 +42,7 @@ func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID st
 }
 
 func (r *TenantBrandingRepository) Save(ctx context.Context, branding *domain.TenantBranding) error {
-	return sqlcgen.New(r.Pool).SaveTenantBranding(ctx, sqlcgen.SaveTenantBrandingParams{
+	return New(r.Pool).SaveTenantBranding(ctx, SaveTenantBrandingParams{
 		TenantID:         branding.TenantID,
 		ProductName:      textOrNil(branding.ProductName),
 		LogoObjectKey:    textOrNil(branding.LogoObjectKey),
@@ -74,7 +73,7 @@ func textOrNil(s string) pgtype.Text {
 type TenantBrandingAssetStore struct{ Pool sharedpg.DB }
 
 func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *domain.TenantBrandingAsset) error {
-	return sqlcgen.New(s.Pool).UpsertTenantBrandingAsset(ctx, sqlcgen.UpsertTenantBrandingAssetParams{
+	return New(s.Pool).UpsertTenantBrandingAsset(ctx, UpsertTenantBrandingAssetParams{
 		TenantID: asset.TenantID, Kind: string(asset.Kind), ObjectKey: asset.ObjectKey,
 		ContentType: asset.ContentType, SizeBytes: int32(asset.SizeBytes), //nolint:gosec // G115: asset size is bounded by upload limits, well under int32 max
 		Data: asset.Data, CreatedAt: asset.CreatedAt, UpdatedAt: asset.UpdatedAt,
@@ -82,7 +81,7 @@ func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *domain.Tenan
 }
 
 func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, kind domain.TenantBrandingAssetKind, objectKey string) (*domain.TenantBrandingAsset, error) {
-	row, err := sqlcgen.New(s.Pool).GetTenantBrandingAsset(ctx, sqlcgen.GetTenantBrandingAssetParams{
+	row, err := New(s.Pool).GetTenantBrandingAsset(ctx, GetTenantBrandingAssetParams{
 		TenantID: tenantID, Kind: string(kind), ObjectKey: objectKey,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -99,7 +98,7 @@ func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, ki
 }
 
 func (s *TenantBrandingAssetStore) DeleteByTenant(ctx context.Context, tenantID string, kind domain.TenantBrandingAssetKind) error {
-	return sqlcgen.New(s.Pool).DeleteTenantBrandingAssetsByKind(ctx, sqlcgen.DeleteTenantBrandingAssetsByKindParams{
+	return New(s.Pool).DeleteTenantBrandingAssetsByKind(ctx, DeleteTenantBrandingAssetsByKindParams{
 		TenantID: tenantID, Kind: string(kind),
 	})
 }

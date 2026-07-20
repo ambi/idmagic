@@ -5,18 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/ambi/idmagic/backend/saml/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/saml/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 // SamlServiceProviderRepository は SAML 2.0 SP trust を PostgreSQL に永続化する。
 // URI 識別子と claim policy は tenant scope の行と JSONB に閉じる。
 type SamlServiceProviderRepository struct{ Pool sharedpg.DB }
 
-func samlServiceProviderFromRow(row *sqlcgen.SamlServiceProvider) (*domain.SamlServiceProvider, error) {
+func samlServiceProviderFromRow(row *SamlServiceProvider) (*domain.SamlServiceProvider, error) {
 	var sp domain.SamlServiceProvider
 	sp.TenantID, sp.EntityID, sp.DisplayName, sp.SLOURL, sp.Audience = row.TenantID, row.EntityID, row.DisplayName, row.SloUrl, row.Audience
 	sp.SignAssertion, sp.SignResponse, sp.WantAuthnRequestsSigned = row.SignAssertion, row.SignResponse, row.WantAuthnRequestsSigned
@@ -31,7 +29,7 @@ func samlServiceProviderFromRow(row *sqlcgen.SamlServiceProvider) (*domain.SamlS
 }
 
 func (r *SamlServiceProviderRepository) FindByEntityID(ctx context.Context, tenantID, entityID string) (*domain.SamlServiceProvider, error) {
-	row, err := sqlcgen.New(r.Pool).GetSamlServiceProvider(ctx, sqlcgen.GetSamlServiceProviderParams{TenantID: tenantID, EntityID: entityID})
+	row, err := New(r.Pool).GetSamlServiceProvider(ctx, GetSamlServiceProviderParams{TenantID: tenantID, EntityID: entityID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -42,7 +40,7 @@ func (r *SamlServiceProviderRepository) FindByEntityID(ctx context.Context, tena
 }
 
 func (r *SamlServiceProviderRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.SamlServiceProvider, error) {
-	rows, err := sqlcgen.New(r.Pool).ListSamlServiceProvidersByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListSamlServiceProvidersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +68,9 @@ func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *domain.Sam
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).UpsertSamlServiceProvider(ctx, sqlcgen.UpsertSamlServiceProviderParams{TenantID: sp.TenantID, EntityID: sp.EntityID, DisplayName: sp.DisplayName, AcsUrls: encodedACSURLs, SloUrl: sp.SLOURL, Audience: sp.Audience, ClaimPolicy: encodedClaimPolicy, SignAssertion: sp.SignAssertion, SignResponse: sp.SignResponse, WantAuthnRequestsSigned: sp.WantAuthnRequestsSigned, AuthnRequestSigningCertificatePem: sp.AuthnRequestSigningCertificatePEM, CreatedAt: sp.CreatedAt, UpdatedAt: sp.UpdatedAt})
+	return New(r.Pool).UpsertSamlServiceProvider(ctx, UpsertSamlServiceProviderParams{TenantID: sp.TenantID, EntityID: sp.EntityID, DisplayName: sp.DisplayName, AcsUrls: encodedACSURLs, SloUrl: sp.SLOURL, Audience: sp.Audience, ClaimPolicy: encodedClaimPolicy, SignAssertion: sp.SignAssertion, SignResponse: sp.SignResponse, WantAuthnRequestsSigned: sp.WantAuthnRequestsSigned, AuthnRequestSigningCertificatePem: sp.AuthnRequestSigningCertificatePEM, CreatedAt: sp.CreatedAt, UpdatedAt: sp.UpdatedAt})
 }
 
 func (r *SamlServiceProviderRepository) Delete(ctx context.Context, tenantID, entityID string) error {
-	return sqlcgen.New(r.Pool).DeleteSamlServiceProvider(ctx, sqlcgen.DeleteSamlServiceProviderParams{TenantID: tenantID, EntityID: entityID})
+	return New(r.Pool).DeleteSamlServiceProvider(ctx, DeleteSamlServiceProviderParams{TenantID: tenantID, EntityID: entityID})
 }

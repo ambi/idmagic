@@ -13,18 +13,16 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/jobs/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// JobRepository persists Jobs to PostgreSQL. Pool is sqlcgen.DBTX-compatible
-// (ADR-090); a fresh sqlcgen.Queries is created per call, matching the
+// JobRepository persists Jobs to PostgreSQL. Pool is DBTX-compatible
+// (ADR-090); a fresh Queries is created per call, matching the
 // convention in backend/scim/db_postgres.
 type JobRepository struct{ Pool sharedpg.DB }
 
@@ -52,7 +50,7 @@ func timePtrOrNil(t pgtype.Timestamptz) *time.Time {
 	return &tt
 }
 
-func jobFromRow(row *sqlcgen.Job) *domain.Job {
+func jobFromRow(row *Job) *domain.Job {
 	return &domain.Job{
 		ID:             row.ID,
 		TenantID:       row.TenantID,
@@ -88,7 +86,7 @@ func (r *JobRepository) Enqueue(ctx context.Context, input ports.EnqueueInput) (
 	}
 	dedup := textOrNil(input.DedupKey)
 
-	row, err := sqlcgen.New(r.Pool).InsertJob(ctx, sqlcgen.InsertJobParams{
+	row, err := New(r.Pool).InsertJob(ctx, InsertJobParams{
 		ID:          id,
 		TenantID:    input.TenantID,
 		Kind:        string(input.Kind),
@@ -101,7 +99,7 @@ func (r *JobRepository) Enqueue(ctx context.Context, input ports.EnqueueInput) (
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		// ON CONFLICT DO NOTHING: an active Job already holds this dedup key.
-		existing, findErr := sqlcgen.New(r.Pool).FindActiveJobByDedupKey(ctx, sqlcgen.FindActiveJobByDedupKeyParams{
+		existing, findErr := New(r.Pool).FindActiveJobByDedupKey(ctx, FindActiveJobByDedupKeyParams{
 			TenantID: input.TenantID, DedupKey: dedup,
 		})
 		if findErr != nil {
@@ -119,7 +117,7 @@ func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, lane do
 	if batchSize <= 0 {
 		return nil, nil
 	}
-	rows, err := sqlcgen.New(r.Pool).ClaimJobs(ctx, sqlcgen.ClaimJobsParams{
+	rows, err := New(r.Pool).ClaimJobs(ctx, ClaimJobsParams{
 		UpdatedAt:      now,
 		Lane:           string(lane),
 		Limit:          int32(batchSize), //nolint:gosec // G115: batchSize is a worker's concurrency slot count, well under int32 max
@@ -137,7 +135,7 @@ func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, lane do
 }
 
 func (r *JobRepository) Heartbeat(ctx context.Context, jobID, workerID string, leaseDuration time.Duration, now time.Time) (time.Time, error) {
-	expiresAt, err := sqlcgen.New(r.Pool).HeartbeatJob(ctx, sqlcgen.HeartbeatJobParams{
+	expiresAt, err := New(r.Pool).HeartbeatJob(ctx, HeartbeatJobParams{
 		ID:             jobID,
 		LeaseOwner:     pgtype.Text{String: workerID, Valid: true},
 		UpdatedAt:      now,
@@ -153,7 +151,7 @@ func (r *JobRepository) Heartbeat(ctx context.Context, jobID, workerID string, l
 }
 
 func (r *JobRepository) Complete(ctx context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*domain.Job, error) {
-	row, err := sqlcgen.New(r.Pool).CompleteJob(ctx, sqlcgen.CompleteJobParams{
+	row, err := New(r.Pool).CompleteJob(ctx, CompleteJobParams{
 		ID:         jobID,
 		LeaseOwner: pgtype.Text{String: workerID, Valid: true},
 		UpdatedAt:  now,
@@ -169,7 +167,7 @@ func (r *JobRepository) Complete(ctx context.Context, jobID, workerID string, re
 }
 
 func (r *JobRepository) Fail(ctx context.Context, jobID, workerID string, outcome ports.FailOutcome, now time.Time) (*domain.Job, error) {
-	row, err := sqlcgen.New(r.Pool).FailJob(ctx, sqlcgen.FailJobParams{
+	row, err := New(r.Pool).FailJob(ctx, FailJobParams{
 		ID:         jobID,
 		LeaseOwner: pgtype.Text{String: workerID, Valid: true},
 		UpdatedAt:  now,
@@ -187,9 +185,9 @@ func (r *JobRepository) Fail(ctx context.Context, jobID, workerID string, outcom
 }
 
 func (r *JobRepository) Cancel(ctx context.Context, jobID string, now time.Time) (*domain.Job, error) {
-	row, err := sqlcgen.New(r.Pool).CancelJob(ctx, sqlcgen.CancelJobParams{ID: jobID, UpdatedAt: now})
+	row, err := New(r.Pool).CancelJob(ctx, CancelJobParams{ID: jobID, UpdatedAt: now})
 	if errors.Is(err, pgx.ErrNoRows) {
-		if _, getErr := sqlcgen.New(r.Pool).GetJob(ctx, jobID); errors.Is(getErr, pgx.ErrNoRows) {
+		if _, getErr := New(r.Pool).GetJob(ctx, jobID); errors.Is(getErr, pgx.ErrNoRows) {
 			return nil, ports.ErrJobNotFound
 		}
 		return nil, ports.ErrJobAlreadyTerminal
@@ -201,7 +199,7 @@ func (r *JobRepository) Cancel(ctx context.Context, jobID string, now time.Time)
 }
 
 func (r *JobRepository) LaneDepths(ctx context.Context) ([]ports.LaneDepth, error) {
-	rows, err := sqlcgen.New(r.Pool).LaneDepths(ctx)
+	rows, err := New(r.Pool).LaneDepths(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +211,7 @@ func (r *JobRepository) LaneDepths(ctx context.Context) ([]ports.LaneDepth, erro
 }
 
 func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, error) {
-	row, err := sqlcgen.New(r.Pool).GetJob(ctx, jobID)
+	row, err := New(r.Pool).GetJob(ctx, jobID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ports.ErrJobNotFound
 	}
@@ -227,7 +225,7 @@ func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, err
 // conditional Heartbeat/Complete/Fail UPDATE affects zero rows: both look the
 // same to the UPDATE (0 rows RETURNING), so a follow-up GetJob tells them apart.
 func (r *JobRepository) leaseLostOrNotFound(ctx context.Context, jobID string) error {
-	_, err := sqlcgen.New(r.Pool).GetJob(ctx, jobID)
+	_, err := New(r.Pool).GetJob(ctx, jobID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ports.ErrJobNotFound
 	}

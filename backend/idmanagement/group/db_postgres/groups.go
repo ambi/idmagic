@@ -5,21 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/idmanagement/group/db_postgres/sqlcgen"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // GroupRepository は ADR-038 の Group 集約とメンバーシップを PostgreSQL に永続化する。
 // すべての参照はテナント境界に閉じる。group_members は groups への ON DELETE CASCADE
 // FK を持つため、DeleteGroup の cascade は DB 側でも保証される。クエリは sqlc 生成
-// (wi-178, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
+// (wi-178, ADR-090); Pool は DBTX を構造的に満たす。
 type GroupRepository struct{ Pool sharedpg.DB }
 
-func groupFromRow(row *sqlcgen.Group) (*groupdomain.Group, error) {
+func groupFromRow(row *Group) (*groupdomain.Group, error) {
 	g := &groupdomain.Group{
 		ID:             row.ID,
 		TenantID:       row.TenantID,
@@ -48,7 +46,7 @@ func textOrNil(s *string) pgtype.Text {
 }
 
 func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]*groupdomain.Group, error) {
-	rows, err := sqlcgen.New(r.Pool).ListGroupsByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListGroupsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +62,7 @@ func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]
 }
 
 func (r *GroupRepository) FindByID(ctx context.Context, tenantID, id string) (*groupdomain.Group, error) {
-	row, err := sqlcgen.New(r.Pool).FindGroupByID(ctx, sqlcgen.FindGroupByIDParams{TenantID: tenantID, ID: id})
+	row, err := New(r.Pool).FindGroupByID(ctx, FindGroupByIDParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -83,7 +81,7 @@ func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) er
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).SaveGroup(ctx, sqlcgen.SaveGroupParams{
+	return New(r.Pool).SaveGroup(ctx, SaveGroupParams{
 		ID:             group.ID,
 		TenantID:       group.TenantID,
 		Name:           group.Name,
@@ -96,11 +94,11 @@ func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) er
 }
 
 func (r *GroupRepository) Delete(ctx context.Context, tenantID, id string) error {
-	return sqlcgen.New(r.Pool).DeleteGroup(ctx, sqlcgen.DeleteGroupParams{TenantID: tenantID, ID: id})
+	return New(r.Pool).DeleteGroup(ctx, DeleteGroupParams{TenantID: tenantID, ID: id})
 }
 
 func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*groupdomain.GroupMember, error) {
-	rows, err := sqlcgen.New(r.Pool).ListGroupMembersByGroup(ctx, sqlcgen.ListGroupMembersByGroupParams{
+	rows, err := New(r.Pool).ListGroupMembersByGroup(ctx, ListGroupMembersByGroupParams{
 		TenantID: tenantID, GroupID: groupID,
 	})
 	if err != nil {
@@ -119,7 +117,7 @@ func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, grou
 }
 
 func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID string) ([]*groupdomain.Group, error) {
-	rows, err := sqlcgen.New(r.Pool).ListGroupsByUser(ctx, sqlcgen.ListGroupsByUserParams{TenantID: tenantID, UserID: userID})
+	rows, err := New(r.Pool).ListGroupsByUser(ctx, ListGroupsByUserParams{TenantID: tenantID, UserID: userID})
 	if err != nil {
 		return nil, err
 	}
@@ -135,12 +133,12 @@ func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID
 }
 
 func (r *GroupRepository) CountMembers(ctx context.Context, tenantID, groupID string) (int, error) {
-	count, err := sqlcgen.New(r.Pool).CountGroupMembers(ctx, sqlcgen.CountGroupMembersParams{TenantID: tenantID, GroupID: groupID})
+	count, err := New(r.Pool).CountGroupMembers(ctx, CountGroupMembersParams{TenantID: tenantID, GroupID: groupID})
 	return int(count), err
 }
 
 func (r *GroupRepository) AddMember(ctx context.Context, member *groupdomain.GroupMember) (bool, error) {
-	n, err := sqlcgen.New(r.Pool).AddGroupMember(ctx, sqlcgen.AddGroupMemberParams{
+	n, err := New(r.Pool).AddGroupMember(ctx, AddGroupMemberParams{
 		GroupID: member.GroupID, UserID: member.UserID, Source: string(member.Source.Effective()), RuleVersion: int8OrNil(member.RuleVersion), CreatedAt: member.CreatedAt,
 	})
 	if err != nil {
@@ -202,7 +200,7 @@ func (r *GroupRepository) SaveDynamicRule(ctx context.Context, rule *groupdomain
 }
 
 func (r *GroupRepository) RemoveMember(ctx context.Context, tenantID, groupID, userID string) (bool, error) {
-	n, err := sqlcgen.New(r.Pool).RemoveGroupMember(ctx, sqlcgen.RemoveGroupMemberParams{
+	n, err := New(r.Pool).RemoveGroupMember(ctx, RemoveGroupMemberParams{
 		TenantID: tenantID, GroupID: groupID, UserID: userID,
 	})
 	if err != nil {

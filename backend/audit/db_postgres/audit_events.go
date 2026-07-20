@@ -13,13 +13,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/audit/ports"
+	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/audit/db_postgres/sqlcgen"
-	"github.com/ambi/idmagic/backend/audit/ports"
-	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
 // pgInvalidTextRepresentation は Postgres の型キャスト失敗 (SQLSTATE 22P02)。user_id は UUID 列
@@ -74,8 +72,8 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 	if err != nil {
 		return err
 	}
-	queries := sqlcgen.New(r.Pool).WithTx(tx)
-	if err := queries.AppendAuditEvent(ctx, sqlcgen.AppendAuditEventParams{
+	queries := New(r.Pool).WithTx(tx)
+	if err := queries.AppendAuditEvent(ctx, AppendAuditEventParams{
 		ID: rec.ID, TenantID: rec.TenantID, Type: rec.Type, UserID: userID,
 		OccurredAt: rec.OccurredAt, Payload: payloadJSON,
 	}); err != nil {
@@ -86,7 +84,7 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 		if value == "" {
 			continue
 		}
-		if err := queries.AppendAuditEventSearchAttribute(ctx, sqlcgen.AppendAuditEventSearchAttributeParams{
+		if err := queries.AppendAuditEventSearchAttribute(ctx, AppendAuditEventSearchAttributeParams{
 			EventID: rec.ID, TenantID: rec.TenantID, AttrName: name, AttrValue: value, OccurredAt: rec.OccurredAt,
 		}); err != nil {
 			return err
@@ -202,7 +200,7 @@ func handleAuditListError(err error) ([]*ports.AuditEventRecord, error) {
 }
 
 func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.AuditEventRecord, error) {
-	row, err := sqlcgen.New(r.Pool).GetAuditEventByID(ctx, id)
+	row, err := New(r.Pool).GetAuditEventByID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -212,7 +210,7 @@ func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.
 	return auditEventFromRow(row)
 }
 
-func auditEventFromRow(row *sqlcgen.AuditEvent) (*ports.AuditEventRecord, error) {
+func auditEventFromRow(row *AuditEvent) (*ports.AuditEventRecord, error) {
 	rec := &ports.AuditEventRecord{ID: row.ID, TenantID: row.TenantID, Type: row.Type, OccurredAt: row.OccurredAt}
 	if err := json.Unmarshal(row.Payload, &rec.Payload); err != nil {
 		return nil, err
@@ -249,15 +247,15 @@ func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports
 		if before.IsZero() {
 			continue
 		}
-		count, err := sqlcgen.New(r.Pool).DeleteAuditEventsByTypeBefore(ctx, sqlcgen.DeleteAuditEventsByTypeBeforeParams{Type: t, OccurredAt: before})
+		count, err := New(r.Pool).DeleteAuditEventsByTypeBefore(ctx, DeleteAuditEventsByTypeBeforeParams{Type: t, OccurredAt: before})
 		if err != nil {
 			return deleted, err
 		}
 		deleted += count
 	}
 	if !cutoff.Default.IsZero() {
-		count, err := sqlcgen.New(r.Pool).DeleteAuditEventsBeforeExceptTypes(ctx,
-			sqlcgen.DeleteAuditEventsBeforeExceptTypesParams{OccurredAt: cutoff.Default, Column2: excluded})
+		count, err := New(r.Pool).DeleteAuditEventsBeforeExceptTypes(ctx,
+			DeleteAuditEventsBeforeExceptTypesParams{OccurredAt: cutoff.Default, Column2: excluded})
 		if err != nil {
 			return deleted, err
 		}

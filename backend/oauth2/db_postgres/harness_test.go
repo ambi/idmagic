@@ -1,4 +1,4 @@
-package db_postgres
+package db_postgres_test
 
 import (
 	"os"

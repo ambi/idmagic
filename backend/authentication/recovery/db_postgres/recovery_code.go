@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/recovery/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -12,7 +11,7 @@ import (
 // RecoveryCodeRepository (Authentication) — wi-26 / ADR-087
 type RecoveryCodeRepository struct{ Pool sharedpg.DB }
 
-func (r *RecoveryCodeRepository) queries() *sqlcgen.Queries { return sqlcgen.New(r.Pool) }
+func (r *RecoveryCodeRepository) queries() *Queries { return New(r.Pool) }
 
 func (r *RecoveryCodeRepository) ListBySub(ctx context.Context, sub string) ([]*domain.RecoveryCode, error) {
 	rows, err := r.queries().ListRecoveryCodesBySub(ctx, sub)
@@ -43,12 +42,12 @@ func (r *RecoveryCodeRepository) ReplaceAll(
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	queries := sqlcgen.New(tx)
+	queries := New(tx)
 	if err := queries.DeleteRecoveryCodesForSub(ctx, sub); err != nil {
 		return err
 	}
 	for _, c := range codes {
-		if err := queries.InsertRecoveryCode(ctx, sqlcgen.InsertRecoveryCodeParams{
+		if err := queries.InsertRecoveryCode(ctx, InsertRecoveryCodeParams{
 			UserID: c.UserID, CodeHash: c.CodeHash, GeneratedAt: c.GeneratedAt,
 			ConsumedAt: timestamptzOrNil(c.ConsumedAt),
 		}); err != nil {
@@ -66,7 +65,7 @@ func (r *RecoveryCodeRepository) MarkConsumed(
 	codeHash string,
 	now time.Time,
 ) (bool, error) {
-	affected, err := r.queries().MarkRecoveryCodeConsumed(ctx, sqlcgen.MarkRecoveryCodeConsumedParams{
+	affected, err := r.queries().MarkRecoveryCodeConsumed(ctx, MarkRecoveryCodeConsumedParams{
 		UserID: sub, CodeHash: codeHash, ConsumedAt: timestamptzOrNil(&now),
 	})
 	if err != nil {

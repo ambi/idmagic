@@ -5,7 +5,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/password/db_postgres/sqlcgen"
 	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -13,8 +12,8 @@ import (
 // PasswordHistoryRepository (Authentication)。
 type PasswordHistoryRepository struct{ Pool sharedpg.DB }
 
-func (r *PasswordHistoryRepository) queries() *sqlcgen.Queries {
-	return sqlcgen.New(r.Pool)
+func (r *PasswordHistoryRepository) queries() *Queries {
+	return New(r.Pool)
 }
 
 func (r *PasswordHistoryRepository) Recent(
@@ -28,7 +27,7 @@ func (r *PasswordHistoryRepository) Recent(
 	if depth > math.MaxInt32 {
 		depth = math.MaxInt32
 	}
-	rows, err := r.queries().RecentPasswordHistory(ctx, sqlcgen.RecentPasswordHistoryParams{
+	rows, err := r.queries().RecentPasswordHistory(ctx, RecentPasswordHistoryParams{
 		UserID: sub, Limit: int32(depth),
 	})
 	if err != nil {
@@ -42,7 +41,7 @@ func (r *PasswordHistoryRepository) Recent(
 }
 
 func (r *PasswordHistoryRepository) Add(ctx context.Context, sub, encoded string, now time.Time) error {
-	return r.queries().InsertPasswordHistory(ctx, sqlcgen.InsertPasswordHistoryParams{
+	return r.queries().InsertPasswordHistory(ctx, InsertPasswordHistoryParams{
 		UserID: sub, Encoded: encoded, CreatedAt: now,
 	})
 }

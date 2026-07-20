@@ -6,18 +6,16 @@ import (
 	"math"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // WebAuthnCredentialRepository (Authentication) — wi-26 / ADR-087
 type WebAuthnCredentialRepository struct{ Pool sharedpg.DB }
 
-func (r *WebAuthnCredentialRepository) queries() *sqlcgen.Queries { return sqlcgen.New(r.Pool) }
+func (r *WebAuthnCredentialRepository) queries() *Queries { return New(r.Pool) }
 
 func (r *WebAuthnCredentialRepository) ListBySub(
 	ctx context.Context,
@@ -63,7 +61,7 @@ func (r *WebAuthnCredentialRepository) Save(ctx context.Context, c *domain.WebAu
 	if transports == nil {
 		transports = []string{}
 	}
-	return r.queries().UpsertWebAuthnCredential(ctx, sqlcgen.UpsertWebAuthnCredentialParams{
+	return r.queries().UpsertWebAuthnCredential(ctx, UpsertWebAuthnCredentialParams{
 		CredentialID:   c.CredentialID,
 		UserID:         c.UserID,
 		PublicKey:      c.PublicKey,
@@ -84,7 +82,7 @@ func (r *WebAuthnCredentialRepository) UpdateSignCount(
 	signCount uint32,
 	lastUsedAt time.Time,
 ) error {
-	return r.queries().UpdateWebAuthnCredentialSignCount(ctx, sqlcgen.UpdateWebAuthnCredentialSignCountParams{
+	return r.queries().UpdateWebAuthnCredentialSignCount(ctx, UpdateWebAuthnCredentialSignCountParams{
 		CredentialID: credentialID,
 		SignCount:    int64(signCount),
 		LastUsedAt:   timestamptzOrNil(&lastUsedAt),
@@ -92,7 +90,7 @@ func (r *WebAuthnCredentialRepository) UpdateSignCount(
 }
 
 func (r *WebAuthnCredentialRepository) Delete(ctx context.Context, sub, credentialID string) error {
-	return r.queries().DeleteWebAuthnCredential(ctx, sqlcgen.DeleteWebAuthnCredentialParams{
+	return r.queries().DeleteWebAuthnCredential(ctx, DeleteWebAuthnCredentialParams{
 		UserID: sub, CredentialID: credentialID,
 	})
 }

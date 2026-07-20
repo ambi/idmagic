@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ambi/idmagic/backend/oauth2/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -47,7 +46,7 @@ func (s *OutboxEventSink) Emit(ctx context.Context, event spec.DomainEvent) erro
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(s.Pool).AppendOutboxEvent(ctx, sqlcgen.AppendOutboxEventParams{
+	return New(s.Pool).AppendOutboxEvent(ctx, AppendOutboxEventParams{
 		EventType: event.EventType(), Topic: topic, Payload: payload,
 	})
 }

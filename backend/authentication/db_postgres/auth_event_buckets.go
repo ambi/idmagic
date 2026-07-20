@@ -10,7 +10,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/db_postgres/sqlcgen"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -22,7 +21,7 @@ const (
 
 type AuthEventBucketStore struct{ Pool sharedpg.DB }
 
-func (s *AuthEventBucketStore) queries() *sqlcgen.Queries { return sqlcgen.New(s.Pool) }
+func (s *AuthEventBucketStore) queries() *Queries { return New(s.Pool) }
 
 func (s *AuthEventBucketStore) Record(
 	ctx context.Context,
@@ -32,7 +31,7 @@ func (s *AuthEventBucketStore) Record(
 ) (authnports.AuthEventBucketResult, error) {
 	nowUTC := now.UTC()
 	windowStart := nowUTC.Truncate(authnports.AuthEventBucketWindow)
-	row, err := s.queries().RecordAuthEventBucket(ctx, sqlcgen.RecordAuthEventBucketParams{
+	row, err := s.queries().RecordAuthEventBucket(ctx, RecordAuthEventBucketParams{
 		TenantID: tenantID, Kind: string(kind), KeyHash: keyHash, WindowStart: windowStart, FirstSeen: nowUTC,
 	})
 	if err != nil {
@@ -69,7 +68,7 @@ func (s *AuthEventBucketStore) List(
 	if limit > authEventBucketMaxListLimit {
 		limit = authEventBucketMaxListLimit
 	}
-	rows, err := s.queries().ListAuthEventBuckets(ctx, sqlcgen.ListAuthEventBucketsParams{
+	rows, err := s.queries().ListAuthEventBuckets(ctx, ListAuthEventBucketsParams{
 		Column1: tenantID, Limit: int32(limit),
 	})
 	if err != nil {

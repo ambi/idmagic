@@ -5,19 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ambi/idmagic/backend/idmanagement/user/db_postgres/sqlcgen"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // UserRepository (IdManagement)。クエリは sqlc 生成 (wi-178, ADR-090);
-// Pool は sqlcgen.DBTX を構造的に満たす。
+// Pool は DBTX を構造的に満たす。
 type UserRepository struct{ Pool sharedpg.DB }
 
-func userFromRow(row *sqlcgen.User) (*userdomain.User, error) {
+func userFromRow(row *User) (*userdomain.User, error) {
 	u := &userdomain.User{
 		ID:                row.ID,
 		TenantID:          row.TenantID,
@@ -64,7 +62,7 @@ func textOrNil(s *string) pgtype.Text {
 }
 
 func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*userdomain.User, error) {
-	row, err := sqlcgen.New(r.Pool).FindUserBySub(ctx, sub)
+	row, err := New(r.Pool).FindUserBySub(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -75,7 +73,7 @@ func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*userdomain
 }
 
 func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub string) (*userdomain.User, error) {
-	row, err := sqlcgen.New(r.Pool).FindUserBySubIncludingDeleted(ctx, sub)
+	row, err := New(r.Pool).FindUserBySubIncludingDeleted(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -86,7 +84,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub stri
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username string) (*userdomain.User, error) {
-	row, err := sqlcgen.New(r.Pool).FindUserByUsername(ctx, sqlcgen.FindUserByUsernameParams{
+	row, err := New(r.Pool).FindUserByUsername(ctx, FindUserByUsernameParams{
 		TenantID: tenantID, PreferredUsername: username,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -99,7 +97,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username 
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string) (*userdomain.User, error) {
-	row, err := sqlcgen.New(r.Pool).FindUserByEmail(ctx, sqlcgen.FindUserByEmailParams{
+	row, err := New(r.Pool).FindUserByEmail(ctx, FindUserByEmailParams{
 		TenantID: tenantID, Lower: email,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -112,7 +110,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string
 }
 
 func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*userdomain.User, error) {
-	rows, err := sqlcgen.New(r.Pool).ListUsersByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListUsersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,18 +126,18 @@ func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*userd
 }
 
 func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
-	return saveUser(ctx, r.Pool, u)
+	return internalSaveUser(ctx, r.Pool, u)
 }
 
 // SaveUserTx writes a User row on the caller's DBTX (e.g. an in-flight
 // transaction). IdGovernance's UserWorkflowCapture uses it to keep the User
 // mutation and its derived lifecycle workflow runs in one transaction after the
 // context split (wi-237, ADR-117); the users table stays owned by IdManagement.
-func SaveUserTx(ctx context.Context, db sqlcgen.DBTX, u *userdomain.User) error {
-	return saveUser(ctx, db, u)
+func SaveUserTx(ctx context.Context, db DBTX, u *userdomain.User) error {
+	return internalSaveUser(ctx, db, u)
 }
 
-func saveUser(ctx context.Context, db sqlcgen.DBTX, u *userdomain.User) error {
+func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {
 	// lifecycle / attributes は JSONB に格納する (ADR-039)。多値属性は本 PR では
 	// 単一カラムで持ち、検索が要るようになった段階で別テーブル化する。
 	roles, err := json.Marshal(u.Roles)
@@ -154,7 +152,7 @@ func saveUser(ctx context.Context, db sqlcgen.DBTX, u *userdomain.User) error {
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(db).SaveUser(ctx, sqlcgen.SaveUserParams{
+	return New(db).SaveUser(ctx, SaveUserParams{
 		ID:                u.ID,
 		TenantID:          u.TenantID,
 		PreferredUsername: u.PreferredUsername,

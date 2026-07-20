@@ -6,20 +6,18 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/ambi/idmagic/backend/application/db_postgres/sqlcgen"
 	"github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 // ApplicationRepository は ApplicationCatalog の Application aggregate を PostgreSQL に
 // 永続化する (wi-69)。protocol binding は JSONB に格納し、参照はテナント境界に閉じる。
-// クエリは sqlc 生成 (wi-172, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
+// クエリは sqlc 生成 (wi-172, ADR-090); Pool は DBTX を構造的に満たす。
 type ApplicationRepository struct{ Pool sharedpg.DB }
 
-func applicationFromRow(row *sqlcgen.Application) (*domain.Application, error) {
+func applicationFromRow(row *Application) (*domain.Application, error) {
 	app := &domain.Application{
 		TenantID:      row.TenantID,
 		ApplicationID: row.ApplicationID,
@@ -46,7 +44,7 @@ func applicationFromRow(row *sqlcgen.Application) (*domain.Application, error) {
 }
 
 func (r *ApplicationRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.Application, error) {
-	rows, err := sqlcgen.New(r.Pool).ListApplicationsByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListApplicationsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +60,7 @@ func (r *ApplicationRepository) ListByTenant(ctx context.Context, tenantID strin
 }
 
 func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error) {
-	row, err := sqlcgen.New(r.Pool).GetApplicationByID(ctx, sqlcgen.GetApplicationByIDParams{
+	row, err := New(r.Pool).GetApplicationByID(ctx, GetApplicationByIDParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -119,7 +117,7 @@ func (r *ApplicationRepository) Save(ctx context.Context, app *domain.Applicatio
 	if categoryIDs == nil {
 		categoryIDs = []string{}
 	}
-	return sqlcgen.New(r.Pool).UpsertApplication(ctx, sqlcgen.UpsertApplicationParams{
+	return New(r.Pool).UpsertApplication(ctx, UpsertApplicationParams{
 		TenantID:      app.TenantID,
 		ApplicationID: app.ApplicationID,
 		Name:          app.Name,
@@ -136,13 +134,13 @@ func (r *ApplicationRepository) Save(ctx context.Context, app *domain.Applicatio
 }
 
 func (r *ApplicationRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
-	return sqlcgen.New(r.Pool).DeleteApplication(ctx, sqlcgen.DeleteApplicationParams{
+	return New(r.Pool).DeleteApplication(ctx, DeleteApplicationParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 }
 
 func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, categoryID string) error {
-	return sqlcgen.New(r.Pool).RemoveApplicationCategory(ctx, sqlcgen.RemoveApplicationCategoryParams{
+	return New(r.Pool).RemoveApplicationCategory(ctx, RemoveApplicationCategoryParams{
 		TenantID: tenantID, ArrayRemove: categoryID,
 	})
 }
@@ -165,7 +163,7 @@ func signInPolicyFromFields(tenantID, applicationID string, rules []byte, create
 }
 
 func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationID string) (*domain.AppSignInPolicy, error) {
-	row, err := sqlcgen.New(r.Pool).GetAppSignInPolicy(ctx, sqlcgen.GetAppSignInPolicyParams{
+	row, err := New(r.Pool).GetAppSignInPolicy(ctx, GetAppSignInPolicyParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -178,7 +176,7 @@ func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationI
 }
 
 func (r *SignInPolicyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
-	rows, err := sqlcgen.New(r.Pool).ListAppSignInPoliciesByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListAppSignInPoliciesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,14 +200,14 @@ func (r *SignInPolicyRepository) Save(ctx context.Context, policy *domain.AppSig
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).UpsertAppSignInPolicy(ctx, sqlcgen.UpsertAppSignInPolicyParams{
+	return New(r.Pool).UpsertAppSignInPolicy(ctx, UpsertAppSignInPolicyParams{
 		ApplicationID: policy.ApplicationID, Rules: encoded,
 		CreatedAt: policy.CreatedAt, UpdatedAt: policy.UpdatedAt,
 	})
 }
 
 func (r *SignInPolicyRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
-	return sqlcgen.New(r.Pool).DeleteAppSignInPolicy(ctx, sqlcgen.DeleteAppSignInPolicyParams{
+	return New(r.Pool).DeleteAppSignInPolicy(ctx, DeleteAppSignInPolicyParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 }
@@ -218,7 +216,7 @@ func (r *SignInPolicyRepository) Delete(ctx context.Context, tenantID, applicati
 type DefaultSignInPolicyRepository struct{ Pool sharedpg.DB }
 
 func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string) (*domain.TenantDefaultSignInPolicy, error) {
-	row, err := sqlcgen.New(r.Pool).GetTenantDefaultSignInPolicy(ctx, tenantID)
+	row, err := New(r.Pool).GetTenantDefaultSignInPolicy(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -246,7 +244,7 @@ func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *domain
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).UpsertTenantDefaultSignInPolicy(ctx, sqlcgen.UpsertTenantDefaultSignInPolicyParams{
+	return New(r.Pool).UpsertTenantDefaultSignInPolicy(ctx, UpsertTenantDefaultSignInPolicyParams{
 		TenantID: policy.TenantID, Rules: encoded, CreatedAt: policy.CreatedAt, UpdatedAt: policy.UpdatedAt,
 	})
 }
@@ -255,7 +253,7 @@ func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *domain
 type ApplicationIconStore struct{ Pool sharedpg.DB }
 
 func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.ApplicationIcon) error {
-	return sqlcgen.New(s.Pool).UpsertApplicationIcon(ctx, sqlcgen.UpsertApplicationIconParams{
+	return New(s.Pool).UpsertApplicationIcon(ctx, UpsertApplicationIconParams{
 		ApplicationID: icon.ApplicationID, ObjectKey: icon.ObjectKey,
 		ContentType: icon.ContentType, SizeBytes: int32(icon.SizeBytes), Data: icon.Data, //nolint:gosec // G115: icon size is bounded by upload limits, well under int32 max
 		CreatedAt: icon.CreatedAt, UpdatedAt: icon.UpdatedAt,
@@ -263,7 +261,7 @@ func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.Applicatio
 }
 
 func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID, objectKey string) (*domain.ApplicationIcon, error) {
-	row, err := sqlcgen.New(s.Pool).GetApplicationIcon(ctx, sqlcgen.GetApplicationIconParams{
+	row, err := New(s.Pool).GetApplicationIcon(ctx, GetApplicationIconParams{
 		TenantID: tenantID, ApplicationID: applicationID, ObjectKey: objectKey,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -280,7 +278,7 @@ func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID
 }
 
 func (s *ApplicationIconStore) DeleteByApplication(ctx context.Context, tenantID, applicationID string) error {
-	return sqlcgen.New(s.Pool).DeleteApplicationIconsByApplication(ctx, sqlcgen.DeleteApplicationIconsByApplicationParams{
+	return New(s.Pool).DeleteApplicationIconsByApplication(ctx, DeleteApplicationIconsByApplicationParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 }
@@ -296,7 +294,7 @@ func assignmentFromFields(tenantID, applicationID, subjectType, subjectID, visib
 }
 
 func (r *ApplicationAssignmentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
-	rows, err := sqlcgen.New(r.Pool).ListApplicationAssignmentsByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListApplicationAssignmentsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +306,7 @@ func (r *ApplicationAssignmentRepository) ListByTenant(ctx context.Context, tena
 }
 
 func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context, tenantID, applicationID string) ([]*domain.ApplicationAssignment, error) {
-	rows, err := sqlcgen.New(r.Pool).ListApplicationAssignmentsByApplication(ctx, sqlcgen.ListApplicationAssignmentsByApplicationParams{
+	rows, err := New(r.Pool).ListApplicationAssignmentsByApplication(ctx, ListApplicationAssignmentsByApplicationParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 	if err != nil {
@@ -357,20 +355,20 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 }
 
 func (r *ApplicationAssignmentRepository) Save(ctx context.Context, a *domain.ApplicationAssignment) error {
-	return sqlcgen.New(r.Pool).UpsertApplicationAssignment(ctx, sqlcgen.UpsertApplicationAssignmentParams{
+	return New(r.Pool).UpsertApplicationAssignment(ctx, UpsertApplicationAssignmentParams{
 		ApplicationID: a.ApplicationID, SubjectType: string(a.SubjectType),
 		SubjectID: a.SubjectID, Visibility: string(a.Visibility), CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	})
 }
 
 func (r *ApplicationAssignmentRepository) Delete(ctx context.Context, tenantID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string) error {
-	return sqlcgen.New(r.Pool).DeleteApplicationAssignment(ctx, sqlcgen.DeleteApplicationAssignmentParams{
+	return New(r.Pool).DeleteApplicationAssignment(ctx, DeleteApplicationAssignmentParams{
 		TenantID: tenantID, ApplicationID: applicationID, SubjectType: string(subjectType), SubjectID: subjectID,
 	})
 }
 
 func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Context, tenantID, applicationID string) error {
-	return sqlcgen.New(r.Pool).DeleteApplicationAssignmentsByApplication(ctx, sqlcgen.DeleteApplicationAssignmentsByApplicationParams{
+	return New(r.Pool).DeleteApplicationAssignmentsByApplication(ctx, DeleteApplicationAssignmentsByApplicationParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 }
@@ -382,7 +380,7 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Contex
 type ApplicationOrderingRepository struct{ Pool sharedpg.DB }
 
 func (r *ApplicationOrderingRepository) Get(ctx context.Context, _ /*tenantID*/, userID string) (*domain.ApplicationOrdering, error) {
-	row, err := sqlcgen.New(r.Pool).GetApplicationOrdering(ctx, userID)
+	row, err := New(r.Pool).GetApplicationOrdering(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -400,7 +398,7 @@ func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *domain.Appl
 	if ids == nil {
 		ids = []string{}
 	}
-	return sqlcgen.New(r.Pool).UpsertApplicationOrdering(ctx, sqlcgen.UpsertApplicationOrderingParams{
+	return New(r.Pool).UpsertApplicationOrdering(ctx, UpsertApplicationOrderingParams{
 		UserID: o.UserID, ApplicationIds: ids, CreatedAt: o.CreatedAt, UpdatedAt: o.UpdatedAt,
 	})
 }
@@ -409,7 +407,7 @@ func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *domain.Appl
 // すべてテナント境界に閉じる。
 type ApplicationCategoryRepository struct{ Pool sharedpg.DB }
 
-func categoryFromRow(row *sqlcgen.ApplicationCategory) *domain.ApplicationCategory {
+func categoryFromRow(row *ApplicationCategory) *domain.ApplicationCategory {
 	return &domain.ApplicationCategory{
 		TenantID: row.TenantID, CategoryID: row.CategoryID, Name: row.Name,
 		Position: int(row.Position), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
@@ -417,7 +415,7 @@ func categoryFromRow(row *sqlcgen.ApplicationCategory) *domain.ApplicationCatego
 }
 
 func (r *ApplicationCategoryRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
-	rows, err := sqlcgen.New(r.Pool).ListApplicationCategoriesByTenant(ctx, tenantID)
+	rows, err := New(r.Pool).ListApplicationCategoriesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +427,7 @@ func (r *ApplicationCategoryRepository) ListByTenant(ctx context.Context, tenant
 }
 
 func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, categoryID string) (*domain.ApplicationCategory, error) {
-	row, err := sqlcgen.New(r.Pool).GetApplicationCategoryByID(ctx, sqlcgen.GetApplicationCategoryByIDParams{
+	row, err := New(r.Pool).GetApplicationCategoryByID(ctx, GetApplicationCategoryByIDParams{
 		TenantID: tenantID, CategoryID: categoryID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -442,14 +440,14 @@ func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, 
 }
 
 func (r *ApplicationCategoryRepository) Save(ctx context.Context, c *domain.ApplicationCategory) error {
-	return sqlcgen.New(r.Pool).UpsertApplicationCategory(ctx, sqlcgen.UpsertApplicationCategoryParams{
+	return New(r.Pool).UpsertApplicationCategory(ctx, UpsertApplicationCategoryParams{
 		TenantID: c.TenantID, CategoryID: c.CategoryID, Name: c.Name, Position: int32(c.Position), //nolint:gosec // G115: category position is a small manual-ordering index, well under int32 max
 		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 	})
 }
 
 func (r *ApplicationCategoryRepository) Delete(ctx context.Context, tenantID, categoryID string) error {
-	return sqlcgen.New(r.Pool).DeleteApplicationCategory(ctx, sqlcgen.DeleteApplicationCategoryParams{
+	return New(r.Pool).DeleteApplicationCategory(ctx, DeleteApplicationCategoryParams{
 		TenantID: tenantID, CategoryID: categoryID,
 	})
 }

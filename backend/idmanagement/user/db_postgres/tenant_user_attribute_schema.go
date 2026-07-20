@@ -5,22 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/ambi/idmagic/backend/idmanagement/user/db_postgres/sqlcgen"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom 属性定義を保持する
 // (ADR-040 / wi-19)。定義一覧は attributes JSONB 列に格納する。クエリは sqlc 生成
-// (wi-178, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
+// (wi-178, ADR-090); Pool は DBTX を構造的に満たす。
 type TenantUserAttributeSchemaRepository struct{ Pool sharedpg.DB }
 
 func (r *TenantUserAttributeSchemaRepository) FindByTenant(
 	ctx context.Context, tenantID string,
 ) (*userdomain.TenantUserAttributeSchema, error) {
-	row, err := sqlcgen.New(r.Pool).FindTenantUserAttributeSchemaByTenant(ctx, tenantID)
+	row, err := New(r.Pool).FindTenantUserAttributeSchemaByTenant(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -45,7 +43,7 @@ func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *userd
 	if err != nil {
 		return err
 	}
-	return sqlcgen.New(r.Pool).SaveTenantUserAttributeSchema(ctx, sqlcgen.SaveTenantUserAttributeSchemaParams{
+	return New(r.Pool).SaveTenantUserAttributeSchema(ctx, SaveTenantUserAttributeSchemaParams{
 		TenantID:   s.TenantID,
 		Attributes: attributes,
 		CreatedAt:  s.CreatedAt,
@@ -54,5 +52,5 @@ func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *userd
 }
 
 func (r *TenantUserAttributeSchemaRepository) Delete(ctx context.Context, tenantID string) error {
-	return sqlcgen.New(r.Pool).DeleteTenantUserAttributeSchema(ctx, tenantID)
+	return New(r.Pool).DeleteTenantUserAttributeSchema(ctx, tenantID)
 }

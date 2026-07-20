@@ -31,9 +31,12 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	jobspostgres "github.com/ambi/idmagic/backend/jobs/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
+	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
+	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/db_valkey"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/token/db_postgres"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/db_postgres"
 	"github.com/ambi/idmagic/backend/saml"
@@ -182,14 +185,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			AuthEventBucketStore: &authnpostgres.AuthEventBucketStore{Pool: resilientDB},
 		},
 		OAuth2: oauth2.Module{
-			ClientRepo:                 &oauth2postgres.OAuth2ClientRepository{Pool: resilientDB},
-			ConsentRepo:                &oauth2postgres.ConsentRepository{Pool: resilientDB},
+			ClientRepo:                 &oauth2clientpostgres.OAuth2ClientRepository{Pool: resilientDB},
+			ConsentRepo:                &oauth2consentpostgres.ConsentRepository{Pool: resilientDB},
 			AuthzDetailTypeRepo:        &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
 			McpResourceServerRepo:      &oauth2postgres.McpResourceServerRepository{Pool: resilientDB},
 			RequestStore:               &oauth2valkey.AuthorizationRequestStore{Client: valkeyClient},
 			CodeStore:                  &oauth2valkey.AuthorizationCodeStore{Client: valkeyClient},
 			PARStore:                   &oauth2valkey.PARStore{Client: valkeyClient},
-			RefreshStore:               &oauth2postgres.RefreshTokenStore{Pool: resilientDB},
+			RefreshStore:               &oauth2tokenpostgres.RefreshTokenStore{Pool: resilientDB},
 			DeviceCodeStore:            &oauth2valkey.DeviceCodeStore{Client: valkeyClient},
 			DpopReplayStore:            &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
 			ClientAssertionReplayStore: &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},

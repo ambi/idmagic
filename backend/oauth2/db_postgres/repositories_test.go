@@ -1,4 +1,4 @@
-package db_postgres
+package db_postgres_test
 
 import (
 	"context"
@@ -16,6 +16,11 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+
+	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
+	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
+	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
+	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/token/db_postgres"
 )
 
 // testClock は決定的なタイムスタンプ生成に用いる基準時刻。
@@ -87,7 +92,7 @@ func seedClient(t *testing.T, db sharedpg.DB, tenantID string) *domain.OAuth2Cli
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}
-	if err := (&OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
+	if err := (&oauth2clientpostgres.OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
 		t.Fatalf("seed client: %v", err)
 	}
 	return client
@@ -96,7 +101,7 @@ func seedClient(t *testing.T, db sharedpg.DB, tenantID string) *domain.OAuth2Cli
 func TestOAuth2ClientRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
-	repo := &OAuth2ClientRepository{Pool: db}
+	repo := &oauth2clientpostgres.OAuth2ClientRepository{Pool: db}
 	ctx := context.Background()
 
 	client := seedClient(t, db, tenant.ID)
@@ -131,7 +136,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 	tenant := seedTenant(t, db)
 	user := seedUser(t, db, tenant.ID)
 	client := seedClient(t, db, tenant.ID)
-	repo := &ConsentRepository{Pool: db}
+	repo := &oauth2consentpostgres.ConsentRepository{Pool: db}
 	ctx := context.Background()
 
 	now := testClock()
@@ -180,7 +185,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
-	repo := &AuthorizationDetailTypeRepository{Pool: db}
+	repo := &oauth2postgres.AuthorizationDetailTypeRepository{Pool: db}
 	ctx := context.Background()
 
 	now := testClock()
@@ -230,7 +235,7 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
-	repo := &McpResourceServerRepository{Pool: db}
+	repo := &oauth2postgres.McpResourceServerRepository{Pool: db}
 	ctx := context.Background()
 
 	now := testClock()
@@ -286,7 +291,7 @@ func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 	tenant := seedTenant(t, db)
 	user := seedUser(t, db, tenant.ID)
 	client := seedClient(t, db, tenant.ID)
-	store := &RefreshTokenStore{Pool: db}
+	store := &oauth2tokenpostgres.RefreshTokenStore{Pool: db}
 	ctx := context.Background()
 
 	now := testClock()

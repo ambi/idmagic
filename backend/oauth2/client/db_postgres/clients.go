@@ -11,17 +11,17 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/oauth2/db_postgres/sqlcgen"
+	oauth2pg "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
 // OAuth2ClientRepository は OAuth2Client を PostgreSQL に永続化する。クエリは sqlc 生成
-// (wi-173, ADR-090); Pool は sqlcgen.DBTX を構造的に満たす。
+// (wi-173, ADR-090); Pool は oauth2pg.DBTX を構造的に満たす。
 type OAuth2ClientRepository struct{ Pool sharedpg.DB }
 
-func clientFromRow(row *sqlcgen.Client) (*domain.OAuth2Client, error) {
+func clientFromRow(row *oauth2pg.Client) (*domain.OAuth2Client, error) {
 	c := &domain.OAuth2Client{
 		TenantID:                           row.TenantID,
 		ClientID:                           row.ClientID,
@@ -66,7 +66,7 @@ func clientFromRow(row *sqlcgen.Client) (*domain.OAuth2Client, error) {
 }
 
 func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error) {
-	row, err := sqlcgen.New(r.Pool).GetClientByID(ctx, sqlcgen.GetClientByIDParams{TenantID: tenantID, ClientID: clientID})
+	row, err := oauth2pg.New(r.Pool).GetClientByID(ctx, oauth2pg.GetClientByIDParams{TenantID: tenantID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -77,7 +77,7 @@ func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, clientI
 }
 
 func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error) {
-	rows, err := sqlcgen.New(r.Pool).ListClientsByTenant(ctx, tenantID)
+	rows, err := oauth2pg.New(r.Pool).ListClientsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Clien
 			return err
 		}
 	}
-	return sqlcgen.New(r.Pool).UpsertClient(ctx, sqlcgen.UpsertClientParams{
+	return oauth2pg.New(r.Pool).UpsertClient(ctx, oauth2pg.UpsertClientParams{
 		TenantID:                           c.TenantID,
 		ClientID:                           c.ClientID,
 		ClientSecretHash:                   textOrNil(c.ClientSecretHash),
@@ -144,10 +144,10 @@ func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Clien
 }
 
 func (r *OAuth2ClientRepository) Delete(ctx context.Context, tenantID, clientID string) error {
-	return sqlcgen.New(r.Pool).DeleteClient(ctx, sqlcgen.DeleteClientParams{TenantID: tenantID, ClientID: clientID})
+	return oauth2pg.New(r.Pool).DeleteClient(ctx, oauth2pg.DeleteClientParams{TenantID: tenantID, ClientID: clientID})
 }
 
-func credentialFromRow(row *sqlcgen.Oauth2ClientSecret) domain.ClientSecretCredential {
+func credentialFromRow(row *oauth2pg.Oauth2ClientSecret) domain.ClientSecretCredential {
 	credential := domain.ClientSecretCredential{
 		CredentialID: row.CredentialID, ClientID: row.ClientID, SecretHash: row.SecretHash, CreatedAt: row.CreatedAt,
 	}
@@ -170,7 +170,7 @@ func timestamptzOrNil(value *time.Time) pgtype.Timestamptz {
 }
 
 func (r *OAuth2ClientRepository) ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error) {
-	rows, err := sqlcgen.New(r.Pool).ListClientSecretCredentials(ctx, clientID)
+	rows, err := oauth2pg.New(r.Pool).ListClientSecretCredentials(ctx, clientID)
 	if err != nil {
 		return nil, err
 	}
@@ -182,14 +182,14 @@ func (r *OAuth2ClientRepository) ListClientSecretCredentials(ctx context.Context
 }
 
 func (r *OAuth2ClientRepository) SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
-	return sqlcgen.New(r.Pool).InsertClientSecretCredential(ctx, sqlcgen.InsertClientSecretCredentialParams{
+	return oauth2pg.New(r.Pool).InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
 		CredentialID: credential.CredentialID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
 		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	})
 }
 
 func (r *OAuth2ClientRepository) UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
-	return sqlcgen.New(r.Pool).UpdateClientSecretCredential(ctx, sqlcgen.UpdateClientSecretCredentialParams{
+	return oauth2pg.New(r.Pool).UpdateClientSecretCredential(ctx, oauth2pg.UpdateClientSecretCredentialParams{
 		CredentialID: credential.CredentialID, ClientID: credential.ClientID,
 		ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	})

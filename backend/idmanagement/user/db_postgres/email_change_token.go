@@ -5,11 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/ambi/idmagic/backend/idmanagement/user/db_postgres/sqlcgen"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 // EmailChangeTokenStore (IdManagement/User)
@@ -24,11 +22,11 @@ func (s *EmailChangeTokenStore) Save(
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	queries := sqlcgen.New(tx)
+	queries := New(tx)
 	if err := queries.DeleteEmailChangeTokensForSub(ctx, record.Sub); err != nil {
 		return err
 	}
-	if err := queries.InsertEmailChangeToken(ctx, sqlcgen.InsertEmailChangeTokenParams{
+	if err := queries.InsertEmailChangeToken(ctx, InsertEmailChangeTokenParams{
 		TokenHash: record.TokenHash, UserID: record.Sub, NewEmail: record.NewEmail,
 		CreatedAt: record.CreatedAt, ExpiresAt: record.ExpiresAt,
 	}); err != nil {
@@ -42,7 +40,7 @@ func (s *EmailChangeTokenStore) Consume(
 	tokenHash string,
 	now time.Time,
 ) (*userports.EmailChangeTokenRecord, error) {
-	row, err := sqlcgen.New(s.Pool).ConsumeEmailChangeToken(ctx, tokenHash)
+	row, err := New(s.Pool).ConsumeEmailChangeToken(ctx, tokenHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
