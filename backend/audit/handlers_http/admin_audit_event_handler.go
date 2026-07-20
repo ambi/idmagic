@@ -152,7 +152,7 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	}
 	records, err := d.AuditEventRepo.List(c.Request().Context(), query)
 	if err != nil {
-		return err
+		return support.WriteServerError(c, err)
 	}
 	response := make([]AdminAuditEventResponse, len(records))
 	for i, rec := range records {
@@ -171,7 +171,7 @@ func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
 	}
 	rec, err := d.AuditEventRepo.FindByID(c.Request().Context(), c.Param("id"))
 	if err != nil {
-		return err
+		return support.WriteServerError(c, err)
 	}
 	if rec == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "監査イベントが存在しません")
@@ -197,7 +197,7 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 	if d.AuditEventRepo != nil && !noMatch {
 		records, err = d.AuditEventRepo.List(c.Request().Context(), query)
 		if err != nil {
-			return err
+			return support.WriteServerError(c, err)
 		}
 	}
 	response := make([]AdminAuditEventResponse, len(records))
