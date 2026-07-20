@@ -24,6 +24,7 @@ import type {
   ProtocolBinding,
   ProtocolBindingType,
   AuthorizationDetailType,
+  McpResourceServer,
   TenantUserAttributeSchema,
   UserAttributeDef,
   EntraFederationProfile,
@@ -292,6 +293,48 @@ export async function deleteAuthorizationDetailType(
 ): Promise<void> {
   await request(
     `/api/admin/authorization-detail-types/${encodeURIComponent(detailType)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+// MCP resource server (RFC 9728 / RFC 8707) の管理 API クライアント。
+export type McpResourceServerInput = {
+  resource?: string
+  name: string
+  scopes: string[]
+  state?: McpResourceServer['state']
+}
+
+export async function listMcpResourceServers(): Promise<McpResourceServer[]> {
+  return (
+    await request<{ resource_servers: McpResourceServer[] }>('/api/admin/mcp-resource-servers')
+  ).resource_servers
+}
+
+export async function createMcpResourceServer(
+  csrfToken: string,
+  input: McpResourceServerInput,
+): Promise<McpResourceServer> {
+  return request('/api/admin/mcp-resource-servers', adminRequest(csrfToken, 'POST', input))
+}
+
+export async function updateMcpResourceServer(
+  csrfToken: string,
+  resourceServerID: string,
+  input: McpResourceServerInput,
+): Promise<McpResourceServer> {
+  return request(
+    `/api/admin/mcp-resource-servers/${encodeURIComponent(resourceServerID)}`,
+    adminRequest(csrfToken, 'PATCH', input),
+  )
+}
+
+export async function deleteMcpResourceServer(
+  csrfToken: string,
+  resourceServerID: string,
+): Promise<void> {
+  await request(
+    `/api/admin/mcp-resource-servers/${encodeURIComponent(resourceServerID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }

@@ -32,6 +32,7 @@ import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-po
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as AdminProvisioningRouteImport } from './routes/admin/provisioning'
+import { Route as AdminMcpResourceServersRouteImport } from './routes/admin/mcp-resource-servers'
 import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
 import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
@@ -185,6 +186,11 @@ const AdminRolesRoute = AdminRolesRouteImport.update({
 const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
   id: '/provisioning',
   path: '/provisioning',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminMcpResourceServersRoute = AdminMcpResourceServersRouteImport.update({
+  id: '/mcp-resource-servers',
+  path: '/mcp-resource-servers',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminLifecycleWorkflowsRoute = AdminLifecycleWorkflowsRouteImport.update({
@@ -420,6 +426,7 @@ export interface FileRoutesByFullPath {
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
+  '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -481,6 +488,7 @@ export interface FileRoutesByTo {
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
+  '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -542,6 +550,7 @@ export interface FileRoutesById {
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
+  '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -608,6 +617,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
+    | '/admin/mcp-resource-servers'
     | '/admin/provisioning'
     | '/admin/roles'
     | '/admin/settings'
@@ -669,6 +679,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
+    | '/admin/mcp-resource-servers'
     | '/admin/provisioning'
     | '/admin/roles'
     | '/admin/settings'
@@ -729,6 +740,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
+    | '/admin/mcp-resource-servers'
     | '/admin/provisioning'
     | '/admin/roles'
     | '/admin/settings'
@@ -941,6 +953,13 @@ declare module '@tanstack/react-router' {
       path: '/provisioning'
       fullPath: '/admin/provisioning'
       preLoaderRoute: typeof AdminProvisioningRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/mcp-resource-servers': {
+      id: '/admin/mcp-resource-servers'
+      path: '/mcp-resource-servers'
+      fullPath: '/admin/mcp-resource-servers'
+      preLoaderRoute: typeof AdminMcpResourceServersRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/lifecycle-workflows': {
@@ -1310,6 +1329,7 @@ interface AdminRouteRouteChildren {
   AdminGroupsRoute: typeof AdminGroupsRoute
   AdminKeysRoute: typeof AdminKeysRoute
   AdminLifecycleWorkflowsRoute: typeof AdminLifecycleWorkflowsRoute
+  AdminMcpResourceServersRoute: typeof AdminMcpResourceServersRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -1340,6 +1360,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGroupsRoute: AdminGroupsRoute,
   AdminKeysRoute: AdminKeysRoute,
   AdminLifecycleWorkflowsRoute: AdminLifecycleWorkflowsRoute,
+  AdminMcpResourceServersRoute: AdminMcpResourceServersRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,

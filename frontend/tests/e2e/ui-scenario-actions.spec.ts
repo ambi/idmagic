@@ -129,6 +129,35 @@ test('admin general settings can be updated from the browser', async () => {
   }
 }, 60_000)
 
+test('admin MCP resource server lifecycle works from the browser', async () => {
+  const view = new Bun.WebView({ width: 1280, height: 1800 })
+  try {
+    await navigateAndLogin(view, '/admin/mcp-resource-servers', 'admin-mcp-resource-servers')
+
+    const resource = `https://mcp-${Date.now()}.example.com`
+    await clickButtonByText(view, 'Register resource server')
+    await setInputValue(view, '#resource', resource)
+    await setInputValue(view, '#name', 'MCP E2E')
+    await setInputValue(view, '#scopes', 'mcp.read, mcp.write')
+    await clickButtonByText(view, 'Register')
+    await waitForText(view, `${resource} has been registered.`)
+
+    await clickButtonByText(view, 'Edit')
+    await setInputValue(view, '#name', 'MCP E2E updated')
+    await setInputValue(view, '#scopes', 'mcp.read')
+    await setSelectValue(view, '#state', 'Disabled')
+    await clickButtonByText(view, 'Update')
+    await waitForText(view, `${resource} has been updated.`)
+    await waitForText(view, 'Disabled')
+
+    await clickElementByAriaLabel(view, `Delete: ${resource}`)
+    await waitForText(view, `${resource} has been deleted.`)
+    await waitForText(view, 'No MCP resource servers have been registered yet.')
+  } finally {
+    view.close()
+  }
+}, 60_000)
+
 test('admin signing key rotation action is available to tenant admins', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1800 })
   try {

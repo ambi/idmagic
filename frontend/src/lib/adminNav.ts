@@ -5,6 +5,7 @@ import {
   IconCloudUpload,
   IconForms,
   IconLayoutDashboard,
+  IconPlugConnected,
   IconRobot,
   IconSettings,
   IconShieldLock,
@@ -29,6 +30,7 @@ export type AdminNavKey =
   | 'sign-in-policy'
   | 'entra-federation'
   | 'authz-detail-types'
+  | 'mcp-resource-servers'
   | 'consents'
   | 'audit-events'
   | 'keys'
@@ -115,6 +117,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconForms,
       href: tenantURL('/admin/authorization-detail-types'),
       active: active === 'authz-detail-types',
+    },
+    {
+      key: 'mcp-resource-servers',
+      label: t.mcpResourceServers,
+      icon: IconPlugConnected,
+      href: tenantURL('/admin/mcp-resource-servers'),
+      active: active === 'mcp-resource-servers',
     },
     {
       key: 'consents',

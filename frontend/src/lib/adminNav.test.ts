@@ -21,6 +21,7 @@ describe('adminNavItems', () => {
 
     const dashboard = items.find((i) => i.key === 'dashboard')
     const users = items.find((i) => i.key === 'users')
+    const mcpResourceServers = items.find((i) => i.key === 'mcp-resource-servers')
     const settings = items.find((i) => i.key === 'settings')
 
     expect(dashboard?.active).toBe(false)
@@ -28,5 +29,12 @@ describe('adminNavItems', () => {
     expect(settings?.active).toBe(false)
 
     expect(users?.href).toBe('/realms/test-tenant/admin/users')
+    expect(mcpResourceServers).toEqual(
+      expect.objectContaining({
+        label: 'MCP リソースサーバー',
+        href: '/realms/test-tenant/admin/mcp-resource-servers',
+        active: false,
+      }),
+    )
   })
 })

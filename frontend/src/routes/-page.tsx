@@ -46,6 +46,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-consents': `同意 | ${ADMIN}`,
   'admin-audit-events': `監査イベント | ${ADMIN}`,
   'admin-authz-detail-types': `認可詳細の種類 | ${ADMIN}`,
+  'admin-mcp-resource-servers': `MCP リソースサーバー | ${ADMIN}`,
   'admin-keys': `署名鍵 | ${ADMIN}`,
   'admin-settings': `設定 | ${ADMIN}`,
   'admin-sign-in-policy': `サインインポリシー | ${ADMIN}`,

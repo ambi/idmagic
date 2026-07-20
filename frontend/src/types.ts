@@ -454,6 +454,17 @@ export type AuthorizationDetailType = {
   updated_at: string
 }
 
+export type McpResourceServer = {
+  tenant_id: string
+  resource_server_id: string
+  resource: string
+  name: string
+  scopes: string[]
+  state: 'Active' | 'Disabled'
+  created_at: string
+  updated_at: string
+}
+
 export type WsFedClaimMappingRule = {
   claim_type: string
   source: 'user_attribute' | 'fixed' | 'nameid'

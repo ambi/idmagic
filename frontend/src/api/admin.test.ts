@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as adminAPI from './admin'
 import {
   addAdminGroupMember,
   assignApplication,
@@ -48,6 +49,76 @@ const response = (status: number, body: unknown = {}) => ({
 describe('admin API client', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204))))
   afterEach(() => vi.unstubAllGlobals())
+
+  it('MCP resource server 管理契約を公開する', () => {
+    expect(adminAPI).toEqual(
+      expect.objectContaining({
+        listMcpResourceServers: expect.any(Function),
+        createMcpResourceServer: expect.any(Function),
+        updateMcpResourceServer: expect.any(Function),
+        deleteMcpResourceServer: expect.any(Function),
+      }),
+    )
+  })
+
+  it('MCP resource server 管理契約を正しい envelope・URL・CSRF で送受信する', async () => {
+    const resourceServer = {
+      tenant_id: 'tenant-1',
+      resource_server_id: 'resource/a b',
+      resource: 'https://mcp.example.com',
+      name: 'Example MCP',
+      scopes: ['mcp.read'],
+      state: 'Active' as const,
+      created_at: '2026-07-20T00:00:00Z',
+      updated_at: '2026-07-20T00:00:00Z',
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(200, { resource_servers: [resourceServer] }))
+        .mockResolvedValueOnce(response(201, resourceServer))
+        .mockResolvedValueOnce(response(200, resourceServer))
+        .mockResolvedValueOnce(response(204)),
+    )
+
+    await expect(adminAPI.listMcpResourceServers()).resolves.toEqual([resourceServer])
+    await adminAPI.createMcpResourceServer('csrf', {
+      resource: resourceServer.resource,
+      name: resourceServer.name,
+      scopes: resourceServer.scopes,
+      state: resourceServer.state,
+    })
+    await adminAPI.updateMcpResourceServer('csrf', resourceServer.resource_server_id, {
+      name: 'Renamed MCP',
+      scopes: ['mcp.read', 'mcp.write'],
+      state: 'Disabled',
+    })
+    await adminAPI.deleteMcpResourceServer('csrf', resourceServer.resource_server_id)
+
+    const calls = vi.mocked(fetch).mock.calls
+    expect(calls.map(([url]) => url)).toEqual([
+      expect.stringContaining('/api/admin/mcp-resource-servers'),
+      expect.stringContaining('/api/admin/mcp-resource-servers'),
+      expect.stringContaining('/api/admin/mcp-resource-servers/resource%2Fa%20b'),
+      expect.stringContaining('/api/admin/mcp-resource-servers/resource%2Fa%20b'),
+    ])
+    expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'POST' }))
+    expect(calls[2][1]).toEqual(
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: 'Renamed MCP',
+          scopes: ['mcp.read', 'mcp.write'],
+          state: 'Disabled',
+        }),
+      }),
+    )
+    expect(calls[3][1]).toEqual(expect.objectContaining({ method: 'DELETE' }))
+    expect(
+      calls.slice(1).every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
+    ).toBe(true)
+  })
 
   it('ユーザーとグループの破壊的な管理操作を CSRF 保護して送る', async () => {
     const id = 'user/a b'

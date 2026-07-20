@@ -76,6 +76,11 @@ test('admin console scenarios are reachable after admin-audience login', async (
       [['アプリケーション', 'Applications'], '/admin/applications', 'admin-applications'],
       [['エージェント', 'Agents'], '/admin/agents', 'admin-agents'],
       [['監査イベント', 'Audit events'], '/admin/audit_events', 'admin-audit-events'],
+      [
+        ['MCP リソースサーバー', 'MCP resource servers'],
+        '/admin/mcp-resource-servers',
+        'admin-mcp-resource-servers',
+      ],
       [['署名鍵', 'Signing keys'], '/admin/keys', 'admin-keys'],
       [['ユーザー属性', 'User attributes'], '/admin/tenant/attributes', 'admin-tenant-attributes'],
       [['設定', 'Settings'], '/admin/settings', 'admin-settings'],
