@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

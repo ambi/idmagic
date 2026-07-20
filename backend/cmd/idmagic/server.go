@@ -15,11 +15,13 @@ import (
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	httpadapter "github.com/ambi/idmagic/backend/shared/adapters/http/server"
-	httpsupport "github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/shared/adapters/observability"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	metricsPrometheus "github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
+	telemetryOTLP "github.com/ambi/idmagic/backend/shared/observability/telemetry_otlp"
+	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
@@ -55,7 +57,7 @@ func Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
 	if err := tenantusecases.EnsureDefault(ctx, deps.Tenancy.TenantRepo, time.Now().UTC()); err != nil {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
@@ -101,8 +103,8 @@ func Run() error {
 		return err
 	}
 	sessionManager := sessionusecases.NewSessionManager(deps.Authentication.SessionStore)
-	tokenSigner := crypto.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
-	jwkResolver := crypto.NewJWKResolver()
+	tokenSigner := tokensJOSE.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
+	jwkResolver := tokensJOSE.NewJWKResolver()
 	deps.OAuth2.TokenIssuer = tokenSigner
 	deps.OAuth2.TokenIntrospector = tokenSigner
 	deps.OAuth2.IDTokenHintVerifier = tokenSigner
@@ -137,16 +139,16 @@ func Run() error {
 	// MetricsExposition objective: pull-based /metrics は OTLP collector の有無に
 	// 依存しないため、OBSERVABILITY 設定 (OTLP push tracing/metrics) とは独立に
 	// 常時構築する。RED middleware はここで組み立てた Meter へ記録する。
-	appMetrics, err := observability.NewMetrics(bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
+	appMetrics, err := metricsPrometheus.NewMetrics(bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
 	if err != nil {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
 	e.Use(httpsupport.MetricsMiddleware(appMetrics))
 	hardening := bootstrap.LoadHTTPServerHardening()
 	e.Use(middleware.BodyLimit(hardening.MaxBodyBytes))
-	var otelProvider *observability.Provider
+	var otelProvider *telemetryOTLP.Provider
 	if runtime.Observability == "otel" {
-		otelProvider, err = observability.New(ctx, bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
+		otelProvider, err = telemetryOTLP.New(ctx, bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
 		if err != nil {
 			return fmt.Errorf("initialize OpenTelemetry: %w", err)
 		}

@@ -7,7 +7,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	memory "github.com/ambi/idmagic/backend/oauth2/authorization/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

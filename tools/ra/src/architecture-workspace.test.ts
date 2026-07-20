@@ -117,6 +117,7 @@ describe('architecture production import graph', () => {
       'backend/generated/client.go',
       'backend/sqlc/queries.go',
       'backend/persistence/pgfixtures/data.go',
+      'backend/shared/storage/fixtures_postgres/data.go',
       'frontend/src/routeTree.gen.ts',
       'backend/domain/model_test.go',
       'frontend/src/page.test.tsx',

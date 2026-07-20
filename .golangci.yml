@@ -111,7 +111,7 @@ linters:
           - errcheck
       # support.ResolveAuthentication intentionally represents "unauthenticated"
       # as (nil, nil); callers distinguish it from authentication errors.
-      - path: backend/shared/adapters/http/support/auth\.go
+      - path: backend/shared/http/support_http/auth\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
@@ -122,39 +122,33 @@ linters:
         linters:
           - nilnil
       # DPoP is optional for non-DPoP-bound calls; no header means no result.
-      - path: backend/shared/adapters/crypto/dpop_verifier\.go
-        text: "return both a `nil` error and an invalid value"
-        linters:
-          - nilnil
-      # Key lookup ports use nil result + nil error for "not found".
-      - path: backend/shared/adapters/crypto/key_store\.go
+      - path: backend/shared/security/tokens_jose/dpop_verifier\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Test repositories mirror production Find* not-found contracts.
-      - path: backend/oauth2/adapters/http/userinfo_handler_test\.go
+      - path: backend/oauth2/handlers_http/userinfo_handler_test\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
-      - path: backend/audit/adapters/http/admin_audit_event_handler_test\.go
+      - path: backend/audit/handlers_http/admin_audit_event_handler_test\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Persistence repository Find* methods use nil result + nil error for
       # "not found" to match existing port contracts. Matches both the
-      # shared location, per-context adapters/persistence/ (ADR-090), and
-      # per-feature adapters/persistence/ under a vertical slice (ADR-124).
-      - path: backend/[^/]+/(?:[^/]+/)?adapters/persistence/
+      # Per-context, per-feature, and shared persistence adapters in Flat Architecture.
+      - path: backend/[^/]+/(?:[^/]+/)?db_(?:memory|postgres|valkey)/
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # HIBP Range API requires a SHA-1 fingerprint for k-anonymity lookup.
       # This is not password storage/verification; stored password hashes use Argon2id.
-      - path: backend/shared/adapters/policy/hibp_breached_password_checker\.go
+      - path: backend/shared/policy/breaches_hibp/hibp_breached_password_checker\.go
         text: "G505: Blocklisted import crypto/sha1"
         linters:
           - gosec
-      - path: backend/shared/adapters/policy/hibp_breached_password_checker\.go
+      - path: backend/shared/policy/breaches_hibp/hibp_breached_password_checker\.go
         text: "G401: Use of weak cryptographic primitive"
         linters:
           - gosec

@@ -5,19 +5,20 @@ import (
 	"os"
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/policy"
+	authorizationHTTP "github.com/ambi/idmagic/backend/shared/policy/authorization_http"
+	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 )
 
 func AssembleAuthorizer() (oauthports.Authorizer, error) {
 	switch EnvDefault("AUTHZEN", "local") {
 	case "local":
-		return policy.Local{}, nil
+		return authorizationLocal.Local{}, nil
 	case "remote":
 		endpoint := os.Getenv("AUTHZEN_URL")
 		if endpoint == "" {
 			return nil, errors.New("AUTHZEN=remote requires AUTHZEN_URL")
 		}
-		return policy.NewRemote(endpoint), nil
+		return authorizationHTTP.NewRemote(endpoint), nil
 	default:
 		return nil, errors.New("AUTHZEN must be local or remote")
 	}

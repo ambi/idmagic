@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/adapters/persistence/memory"
+	memory "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"

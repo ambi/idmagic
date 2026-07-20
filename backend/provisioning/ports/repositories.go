@@ -1,6 +1,6 @@
 // Package ports defines the Provisioning bounded context's repository
 // abstractions (spec/contexts/provisioning.yaml). Implementations live in
-// backend/provisioning/adapters/persistence/{memory,postgres}.
+// backend/provisioning/{db_memory,db_postgres}.
 package ports
 
 import (

@@ -9,10 +9,10 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

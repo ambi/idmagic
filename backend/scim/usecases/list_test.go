@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
-	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	scimmemory "github.com/ambi/idmagic/backend/scim/db_memory"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"

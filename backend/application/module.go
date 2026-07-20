@@ -4,13 +4,13 @@
 package application
 
 import (
-	apphttp "github.com/ambi/idmagic/backend/application/adapters/http"
+	apphttp "github.com/ambi/idmagic/backend/application/handlers_http"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"

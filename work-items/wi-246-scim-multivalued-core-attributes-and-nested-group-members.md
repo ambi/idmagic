@@ -24,7 +24,7 @@ initial_context:
     - backend/idmanagement/domain
   tests:
     - backend/scim/domain/mutation_test.go
-    - backend/scim/adapters/http/resource_contract_test.go
+    - backend/scim/handlers_http/resource_contract_test.go
   stop_before_reading:
     - frontend
 affected_spec:

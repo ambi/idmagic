@@ -9,7 +9,7 @@ import (
 
 // ValidateOutboundBaseURL enforces spec/contexts/provisioning.yaml
 // ProvisioningConnection.base_url's contract: https required, no userinfo, no
-// fragment, non-empty host (mirrors backend/shared/adapters/crypto.ValidateJWKSURI,
+// fragment, non-empty host (mirrors backend/shared/security/tokens_jose.ValidateJWKSURI,
 // the equivalent guard for jwks_uri). It is a pure syntax check with no network
 // I/O; the SSRF-relevant DNS/connect-time guard lives in the scim protocol
 // package's newSafeHTTPClient (ADR-128 decision 2: usecases must not depend on

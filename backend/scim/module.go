@@ -4,10 +4,10 @@ package scim
 import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	scimhttp "github.com/ambi/idmagic/backend/scim/adapters/http"
+	scimhttp "github.com/ambi/idmagic/backend/scim/handlers_http"
 	"github.com/ambi/idmagic/backend/scim/ports"
 	scimusecases "github.com/ambi/idmagic/backend/scim/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"

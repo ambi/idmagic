@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,7 +22,7 @@ func newRequiredActionFixture(t *testing.T) (context.Context, userusecases.Admin
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	events := &[]spec.DomainEvent{}
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,

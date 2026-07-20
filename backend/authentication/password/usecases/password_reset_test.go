@@ -10,21 +10,21 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/ambi/idmagic/backend/authentication/password/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/notification"
+	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 	userRepo := usermemory.NewUserRepository()
 	tokenStore := authnmemory.NewPasswordResetTokenStore()
-	emailSender := &notification.NoopEmailSender{}
+	emailSender := &email_memory.NoopEmailSender{}
 	email := "alice@example.com"
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	userRepo.Seed(&userdomain.User{
@@ -59,7 +59,7 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 
 func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 	var events []spec.DomainEvent
-	sender := &notification.NoopEmailSender{}
+	sender := &email_memory.NoopEmailSender{}
 	err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
 		UserRepo: usermemory.NewUserRepository(), TokenStore: authnmemory.NewPasswordResetTokenStore(),
 		EmailSender: sender, Emit: func(event spec.DomainEvent) { events = append(events, event) },
@@ -81,7 +81,7 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	tokenStore := authnmemory.NewPasswordResetTokenStore()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	currentHash, err := hasher.Hash("current-password-1")
 	if err != nil {
 		t.Fatal(err)

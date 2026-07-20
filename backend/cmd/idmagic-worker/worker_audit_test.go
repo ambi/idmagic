@@ -13,21 +13,21 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit"
-	auditpostgres "github.com/ambi/idmagic/backend/audit/adapters/persistence/postgres"
+	auditpostgres "github.com/ambi/idmagic/backend/audit/db_postgres"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/authentication"
-	passwordpostgres "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/postgres"
+	passwordpostgres "github.com/ambi/idmagic/backend/authentication/password/db_postgres"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/postgres"
+	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres/pgtest"
+	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/postgres"
+	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -70,7 +70,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 			PasswordHistoryRepo: &passwordpostgres.PasswordHistoryRepository{Pool: db},
 		},
 		OAuth2: oauth2.Module{
-			EventSink: eventsink.NewConsoleSink(),
+			EventSink: sinks_console.NewConsoleSink(),
 		},
 		Audit: audit.Module{
 			AuditEventRepo: auditRepo,

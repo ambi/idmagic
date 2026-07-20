@@ -20,11 +20,11 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/provisioning"
-	"github.com/ambi/idmagic/backend/provisioning/adapters/identitysource"
+	identitysource "github.com/ambi/idmagic/backend/provisioning/source_idmanagement"
 	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/observability"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	"github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 )
@@ -62,7 +62,7 @@ func RunWorker() error {
 	// OBSERVABILITY/OTLP, same as idmagic-api (cmd/idmagic/server.go). worker
 	// has no other HTTP surface, so this is a metrics-only listener (wi-261
 	// T006); the k8s NetworkPolicy restricts it to Prometheus ingress only.
-	appMetrics, err := observability.NewMetrics(serviceName, buildInfo.Version)
+	appMetrics, err := metrics_prometheus.NewMetrics(serviceName, buildInfo.Version)
 	if err != nil {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
@@ -213,7 +213,7 @@ func laneConcurrency(lane domain.ExecutionLane) int {
 
 // metricsMux serves only GET /metrics: idmagic-worker has no other HTTP
 // surface, unlike idmagic-api's full route table.
-func metricsMux(appMetrics *observability.Metrics) http.Handler {
+func metricsMux(appMetrics *metrics_prometheus.Metrics) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", appMetrics.Handler())
 	return mux
@@ -225,7 +225,7 @@ func metricsMux(appMetrics *observability.Metrics) http.Handler {
 // since depth is a queue-wide fact (every lane, every worker process) and
 // must self-correct after a worker crash the same way lease-expiry reclaim
 // does — an event-sourced counter would drift in that case.
-func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, appMetrics *observability.Metrics) {
+func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, appMetrics *metrics_prometheus.Metrics) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -297,7 +297,7 @@ func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) useru
 		RefreshStore:          deps.OAuth2.RefreshStore,
 		DeviceCodeStore:       deps.OAuth2.DeviceCodeStore,
 		MfaFactorRepo:         deps.Authentication.MfaFactorRepo,
-		PasswordHasher:        crypto.NewArgon2idPasswordHasher(),
+		PasswordHasher:        passwords_argon2id.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo:   deps.Authentication.PasswordHistoryRepo,
 		UserMutationCommitter: deps.IdManagement.UserMutationCommitter,
 		Emit: func(event spec.DomainEvent) error {

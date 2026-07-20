@@ -15,7 +15,7 @@ import (
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )

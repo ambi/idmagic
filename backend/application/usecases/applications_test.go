@@ -6,7 +6,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"

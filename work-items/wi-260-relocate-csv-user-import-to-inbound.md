@@ -11,7 +11,7 @@ depends_on: [wi-258-inbound-integration-taxonomy]
 ## Motivation
 
 CSV user import (`backend/idmanagement/usecases/user_import.go` と
-`backend/idmanagement/adapters/http/admin_user_import_handler.go`) は現状 IdManagement context の
+`backend/idmanagement/user/handlers_http/admin_user_import_handler.go`) は現状 IdManagement context の
 管理者一括操作として実装されているが、これは実質 **inbound provisioning の upload / batch 型**である。
 ADR-128 §影響 が「適所でない、別 WI で然るべき場所へリファクタすべき」と明記し、
 [[wi-258-inbound-integration-taxonomy]] が upload 型の帰属先を確定する。本 WI はその確定先へ CSV

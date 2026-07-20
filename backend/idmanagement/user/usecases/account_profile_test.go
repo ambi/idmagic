@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -23,7 +23,7 @@ func accountTestDeps(t *testing.T) (context.Context, userusecases.AccountProfile
 	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
 	adminDeps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, AttrSchemaRepo: schemaRepo,
-		PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
+		PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit: func(spec.DomainEvent) error { return nil },
 	}
 	ctx := context.Background()

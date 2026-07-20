@@ -4,7 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/notification"
+	emailConsole "github.com/ambi/idmagic/backend/shared/notification/email_console"
+	emailSMTP "github.com/ambi/idmagic/backend/shared/notification/email_smtp"
 )
 
 func TestResolveEmailSenderDefaultsToConsole(t *testing.T) {
@@ -13,7 +14,7 @@ func TestResolveEmailSenderDefaultsToConsole(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveEmailSender: %v", err)
 	}
-	if _, ok := sender.(notification.ConsoleEmailSender); !ok {
+	if _, ok := sender.(emailConsole.ConsoleEmailSender); !ok {
 		t.Fatalf("default sender = %T, want ConsoleEmailSender", sender)
 	}
 }
@@ -51,7 +52,7 @@ func TestResolveEmailSenderSMTPBuildsAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveEmailSender: %v", err)
 	}
-	if _, ok := sender.(*notification.SMTPEmailSender); !ok {
+	if _, ok := sender.(*emailSMTP.SMTPEmailSender); !ok {
 		t.Fatalf("smtp sender = %T, want *SMTPEmailSender", sender)
 	}
 }
@@ -71,7 +72,7 @@ func TestParseSMTPTLSModeDefault(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseSMTPTLSMode(%q): %v", raw, err)
 		}
-		if mode != notification.SMTPTLSSTARTTLS {
+		if mode != emailSMTP.SMTPTLSSTARTTLS {
 			t.Fatalf("parseSMTPTLSMode(%q) = %q, want starttls", raw, mode)
 		}
 	}
@@ -80,19 +81,19 @@ func TestParseSMTPTLSModeDefault(t *testing.T) {
 func TestParseSMTPPortDefaultsPerMode(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		mode notification.SMTPTLSMode
+		mode emailSMTP.SMTPTLSMode
 		want int
 	}{
-		{notification.SMTPTLSSTARTTLS, 587},
-		{notification.SMTPTLSImplicit, 465},
-		{notification.SMTPTLSNone, 25},
+		{emailSMTP.SMTPTLSSTARTTLS, 587},
+		{emailSMTP.SMTPTLSImplicit, 465},
+		{emailSMTP.SMTPTLSNone, 25},
 	}
 	for _, tc := range cases {
 		if got := parseSMTPPort("", tc.mode); got != tc.want {
 			t.Errorf("mode=%s port=%d, want %d", tc.mode, got, tc.want)
 		}
 	}
-	if got := parseSMTPPort("2525", notification.SMTPTLSSTARTTLS); got != 2525 {
+	if got := parseSMTPPort("2525", emailSMTP.SMTPTLSSTARTTLS); got != 2525 {
 		t.Errorf("explicit port override = %d, want 2525", got)
 	}
 }

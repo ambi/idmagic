@@ -2,7 +2,7 @@
 // job queue and worker leasing operations backing spec/contexts/jobs.yaml
 // interfaces (EnqueueJob / ClaimJobs / HeartbeatJob / CompleteJob / FailJob /
 // CancelJob). Implementations live in
-// backend/jobs/adapters/persistence/{memory,postgres}.
+// backend/jobs/{db_memory,db_postgres}.
 package ports
 
 import (

@@ -7,9 +7,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
-	"github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
+	eventports "github.com/ambi/idmagic/backend/shared/events/ports"
+	publishersKafka "github.com/ambi/idmagic/backend/shared/events/publishers_kafka"
+	publishersLog "github.com/ambi/idmagic/backend/shared/events/publishers_log"
+	publishersPubSub "github.com/ambi/idmagic/backend/shared/events/publishers_pubsub"
+	relayPostgres "github.com/ambi/idmagic/backend/shared/events/relay_postgres"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
 // Run は outbox → 選択した transport (kafka | pubsub | log) のリレーを起動する。
@@ -41,7 +45,7 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("create publisher: %w", err)
 	}
-	relay := eventsink.NewRelay(pool, pub)
+	relay := relayPostgres.NewRelay(pool, pub)
 	defer relay.Close()
 	relay.PollInterval = cfg.PollInterval
 	relay.BatchSize = cfg.BatchSize
@@ -54,18 +58,18 @@ func Run() error {
 
 // newPublisher は RELAY_SINK に応じた Publisher を構築する。pubsub は build タグ
 // `pubsub` 付きビルドでのみ利用でき、非タグビルドでは明示エラーになる ([[ADR-120]])。
-func newPublisher(ctx context.Context, cfg Config) (eventsink.Publisher, error) {
+func newPublisher(ctx context.Context, cfg Config) (eventports.Publisher, error) {
 	switch cfg.Sink {
 	case "kafka":
-		pub, err := eventsink.NewKafkaPublisher(cfg.Brokers, cfg.ClientID)
+		pub, err := publishersKafka.NewKafkaPublisher(cfg.Brokers, cfg.ClientID)
 		if err != nil {
 			return nil, err
 		}
 		return pub, nil
 	case "pubsub":
-		return eventsink.NewPubSubPublisher(ctx, cfg.PubSubProject)
+		return publishersPubSub.NewPubSubPublisher(ctx, cfg.PubSubProject)
 	case "log":
-		return eventsink.NewLogPublisher(), nil
+		return publishersLog.NewLogPublisher(), nil
 	default:
 		return nil, fmt.Errorf("unknown sink %q", cfg.Sink)
 	}

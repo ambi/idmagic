@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/notification"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
+	emailConsole "github.com/ambi/idmagic/backend/shared/notification/email_console"
+	emailSMTP "github.com/ambi/idmagic/backend/shared/notification/email_smtp"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
 // resolveEmailSender は EMAIL_SENDER / SMTP_* 環境変数から EmailSender adapter を組み立てる。
@@ -21,7 +22,7 @@ func ResolveEmailSender(getenv func(string) string) (sharednotification.EmailSen
 	switch kind {
 	case "console":
 		logging.Info(context.Background(), "email sender configured", "kind", "console")
-		return notification.ConsoleEmailSender{}, nil
+		return emailConsole.ConsoleEmailSender{}, nil
 	case "smtp":
 		cfg, err := buildSMTPConfig(getenv)
 		if err != nil {
@@ -30,14 +31,14 @@ func ResolveEmailSender(getenv func(string) string) (sharednotification.EmailSen
 		// from はサービス自身の送信元 (運用設定) であり data subject の PII ではない。
 		logging.Info(context.Background(), "email sender configured",
 			"kind", "smtp", "host", cfg.Host, "port", cfg.Port, "tls", cfg.TLSMode, "from", cfg.From)
-		return notification.NewSMTPEmailSender(cfg), nil
+		return emailSMTP.NewSMTPEmailSender(cfg), nil
 	default:
 		return nil, fmt.Errorf("unsupported EMAIL_SENDER=%q (want console or smtp)", kind)
 	}
 }
 
-func buildSMTPConfig(getenv func(string) string) (notification.SMTPEmailSenderConfig, error) {
-	var zero notification.SMTPEmailSenderConfig
+func buildSMTPConfig(getenv func(string) string) (emailSMTP.SMTPEmailSenderConfig, error) {
+	var zero emailSMTP.SMTPEmailSenderConfig
 	host := strings.TrimSpace(getenv("SMTP_HOST"))
 	if host == "" {
 		return zero, fmt.Errorf("EMAIL_SENDER=smtp requires SMTP_HOST")
@@ -50,7 +51,7 @@ func buildSMTPConfig(getenv func(string) string) (notification.SMTPEmailSenderCo
 	if err != nil {
 		return zero, err
 	}
-	return notification.SMTPEmailSenderConfig{
+	return emailSMTP.SMTPEmailSenderConfig{
 		Host:     host,
 		Port:     parseSMTPPort(getenv("SMTP_PORT"), tlsMode),
 		Username: getenv("SMTP_USERNAME"),
@@ -62,27 +63,27 @@ func buildSMTPConfig(getenv func(string) string) (notification.SMTPEmailSenderCo
 	}, nil
 }
 
-func parseSMTPTLSMode(raw string) (notification.SMTPTLSMode, error) {
+func parseSMTPTLSMode(raw string) (emailSMTP.SMTPTLSMode, error) {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "", "starttls":
-		return notification.SMTPTLSSTARTTLS, nil
+		return emailSMTP.SMTPTLSSTARTTLS, nil
 	case "implicit":
-		return notification.SMTPTLSImplicit, nil
+		return emailSMTP.SMTPTLSImplicit, nil
 	case "none":
-		return notification.SMTPTLSNone, nil
+		return emailSMTP.SMTPTLSNone, nil
 	default:
 		return "", fmt.Errorf("unsupported SMTP_TLS=%q (want starttls, implicit, or none)", raw)
 	}
 }
 
-func parseSMTPPort(raw string, mode notification.SMTPTLSMode) int {
+func parseSMTPPort(raw string, mode emailSMTP.SMTPTLSMode) int {
 	if port := envIntFrom(raw, 0); port > 0 {
 		return port
 	}
 	switch mode {
-	case notification.SMTPTLSImplicit:
+	case emailSMTP.SMTPTLSImplicit:
 		return 465
-	case notification.SMTPTLSNone:
+	case emailSMTP.SMTPTLSNone:
 		return 25
 	default:
 		return 587

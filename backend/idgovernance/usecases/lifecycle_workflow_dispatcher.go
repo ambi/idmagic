@@ -19,7 +19,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 

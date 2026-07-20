@@ -4,43 +4,43 @@ import (
 	"context"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
+	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	"github.com/ambi/idmagic/backend/authentication"
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/adapters/persistence/memory"
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
-	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/adapters/persistence/memory"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
+	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/db_memory"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
-	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/adapters/persistence/memory"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
+	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
 	"github.com/ambi/idmagic/backend/idgovernance"
-	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
+	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/adapters/persistence/memory"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
+	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning"
-	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/adapters/persistence/memory"
+	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/adapters/persistence/memory"
+	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	"github.com/ambi/idmagic/backend/scim"
-	scimmemory "github.com/ambi/idmagic/backend/scim/adapters/persistence/memory"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
-	"github.com/ambi/idmagic/backend/shared/adapters/eventsink"
+	scimmemory "github.com/ambi/idmagic/backend/scim/db_memory"
+	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
+	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/adapters/persistence/memory"
+	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 )
 
 func assembleMemory() (*Dependencies, error) {
@@ -112,12 +112,12 @@ func assembleMemory() (*Dependencies, error) {
 			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
 			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
-			EventSink:                  eventsink.NewConsoleSink(),
+			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
 		Audit: audit.Module{
 			AuditEventRepo:  auditmemory.NewAuditEventStore(0),
-			TenantSaltStore: crypto.NewInMemoryTenantSaltStore(),
+			TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(),
 		},
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository(), ReplayStore: samlmemory.NewAuthnRequestReplayStore()},

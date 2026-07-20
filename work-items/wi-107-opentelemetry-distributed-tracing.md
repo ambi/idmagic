@@ -25,7 +25,7 @@ W3C Trace Context を用いたコンテキスト伝播と OpenTelemetry Tracing 
 - プロファイラ（pprof 等）の常時監視統合。
 
 ## Plan
-- [[ADR-017-opentelemetry-as-observability-interface]] と既存 `backend/shared/adapters/observability/otel.go` を拡張し、global SDKを各contextが直接設定しない。server composition rootがTracerProvider/propagator/resourceを構築してshutdownを所有する。
+- [[ADR-017-opentelemetry-as-observability-interface]] と既存 `backend/shared/observability/telemetry_otlp/otel.go` を拡張し、global SDKを各contextが直接設定しない。server composition rootがTracerProvider/propagator/resourceを構築してshutdownを所有する。
 - ingressはotelhttp/Echo middlewareでW3C traceparent/tracestateを抽出し、route template、method、statusを低cardinality属性にする。request_idは別の相関値としてspan/log/event metadataへ付与するが、trace IDの代用にしない。
 - usecaseは重要なorchestrationだけmanual spanを持ち、domain entity/modelはOTel依存をimportしない。pgx、Valkey、relay/outbox HTTP/Kafkaは公式instrumentationまたはport wrapperでchild spanを作る。
 - async boundaryではevent/outbox metadataにtrace contextを明示伝播し、relay側でproducer spanへlink/consumer spanを作る。business payloadへtrace headerを混ぜない。

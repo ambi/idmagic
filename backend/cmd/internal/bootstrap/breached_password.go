@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/policy"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	breachesHIBP "github.com/ambi/idmagic/backend/shared/policy/breaches_hibp"
+	breachesNoop "github.com/ambi/idmagic/backend/shared/policy/breaches_noop"
 )
 
 // breachedPasswordCheckerVersion は HIBP の User-Agent に乗せる版番号 (HIBP の etiquette)。
@@ -24,10 +25,10 @@ func ResolveBreachedPasswordChecker(getenv func(string) string) (passwordports.B
 	switch kind {
 	case "noop":
 		logging.Info(context.Background(), "breached password checker configured", "kind", "noop")
-		return policy.NoopBreachedPasswordChecker{}, nil
+		return breachesNoop.NoopBreachedPasswordChecker{}, nil
 	case "hibp":
 		logging.Info(context.Background(), "breached password checker configured", "kind", "hibp")
-		return policy.NewHibpBreachedPasswordChecker(breachedPasswordCheckerVersion), nil
+		return breachesHIBP.NewHibpBreachedPasswordChecker(breachedPasswordCheckerVersion), nil
 	default:
 		return nil, fmt.Errorf("unsupported BREACHED_PASSWORD_CHECKER=%q (want noop or hibp)", kind)
 	}

@@ -14,12 +14,12 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/adapters/http"
+	provisioningscim "github.com/ambi/idmagic/backend/provisioning/client_scim"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
+	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/handlers_http"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
-	provisioningscim "github.com/ambi/idmagic/backend/provisioning/scim"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )

@@ -9,11 +9,11 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/notification"
+	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -21,7 +21,7 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	tokenStore := usermemory.NewEmailChangeTokenStore()
-	sender := &notification.NoopEmailSender{}
+	sender := &email_memory.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
 	userRepo.Seed(&userdomain.User{
@@ -54,7 +54,7 @@ func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	tokenStore := usermemory.NewEmailChangeTokenStore()
-	sender := &notification.NoopEmailSender{}
+	sender := &email_memory.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	current := "old@example.com"
 	userRepo.Seed(&userdomain.User{
@@ -117,7 +117,7 @@ func TestRequestEmailChangeRejectsAddressTakenByAnotherUser(t *testing.T) {
 	})
 	err := userusecases.RequestEmailChange(ctx, userusecases.RequestEmailChangeDeps{
 		UserRepo: userRepo, TokenStore: usermemory.NewEmailChangeTokenStore(),
-		EmailSender: &notification.NoopEmailSender{}, Issuer: "http://idp.test",
+		EmailSender: &email_memory.NoopEmailSender{}, Issuer: "http://idp.test",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: taken, Now: now})
 	if !errors.Is(err, userusecases.ErrEmailTaken) {
 		t.Fatalf("error=%v, want ErrEmailTaken", err)

@@ -7,10 +7,10 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"

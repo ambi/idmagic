@@ -18,9 +18,9 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 // newDevFederationSigner は開発用の自己署名 federation 署名証明書から署名器を作る。

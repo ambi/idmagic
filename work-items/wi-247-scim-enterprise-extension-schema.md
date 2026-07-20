@@ -17,10 +17,10 @@ initial_context:
   source:
     - backend/scim/domain/mutation.go
     - backend/scim/domain/discovery.go
-    - backend/scim/adapters/http/handlers.go
+    - backend/scim/handlers_http/handlers.go
   tests:
     - backend/scim/domain/discovery_test.go
-    - backend/scim/adapters/http/resource_contract_test.go
+    - backend/scim/handlers_http/resource_contract_test.go
   stop_before_reading:
     - frontend
 affected_spec:

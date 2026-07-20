@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+	memory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 

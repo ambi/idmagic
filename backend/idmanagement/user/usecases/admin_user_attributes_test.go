@@ -8,13 +8,13 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -24,7 +24,7 @@ func attrTestDeps(t *testing.T) (context.Context, userusecases.AdminUserDeps, *u
 	deps := userusecases.AdminUserDeps{
 		UserRepo:            usermemory.NewUserRepository(),
 		AttrSchemaRepo:      schemaRepo,
-		PasswordHasher:      crypto.NewArgon2idPasswordHasher(),
+		PasswordHasher:      passwords_argon2id.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit:                func(spec.DomainEvent) error { return nil },
 	}

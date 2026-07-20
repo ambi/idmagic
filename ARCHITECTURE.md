@@ -120,7 +120,7 @@ modules:
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   signingkeys-adapters:
-    path: backend/signingkeys/adapters
+    path: backend/signingkeys/handlers_http
     responsibility: "SigningKeys の HTTP、memory/PostgreSQL/Vault/crypto adapter。"
     context: SigningKeys
     layer: adapters
@@ -180,7 +180,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   application-adapters:
-    path: backend/application/adapters
+    path: backend/application/handlers_http
 
     responsibility: "Application の HTTP・永続化 adapter。"
     context: Application
@@ -222,7 +222,7 @@ modules:
       - { module: audit-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   audit-adapters:
-    path: backend/audit/adapters
+    path: backend/audit/handlers_http
 
     responsibility: "Audit の HTTP・永続化 adapter。"
     context: Audit
@@ -279,7 +279,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   authentication-password-adapters:
-    path: backend/authentication/password/adapters
+    path: backend/authentication/password/handlers_http
     responsibility: "Password の HTTP・memory・PostgreSQL adapter。"
     context: Authentication
     layer: adapters
@@ -322,7 +322,7 @@ modules:
       - { module: authentication-totp-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   authentication-totp-adapters:
-    path: backend/authentication/totp/adapters
+    path: backend/authentication/totp/db_memory
     responsibility: "TOTP factor の memory・PostgreSQL adapter。"
     context: Authentication
     layer: adapters
@@ -363,7 +363,7 @@ modules:
       - { module: idmanagement-user-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   authentication-webauthn-adapters:
-    path: backend/authentication/webauthn/adapters
+    path: backend/authentication/webauthn/handlers_http
     responsibility: "WebAuthn の HTTP・memory・PostgreSQL・Valkey adapter。"
     context: Authentication
     layer: adapters
@@ -413,7 +413,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   authentication-mfa-adapters:
-    path: backend/authentication/mfa/adapters
+    path: backend/authentication/mfa/handlers_http
     responsibility: "MFA orchestration の HTTP・memory・PostgreSQL adapter。"
     context: Authentication
     layer: adapters
@@ -459,7 +459,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   authentication-session-adapters:
-    path: backend/authentication/session/adapters
+    path: backend/authentication/session/handlers_http
     responsibility: "Login session の HTTP・memory・PostgreSQL・Valkey adapter。"
     context: Authentication
     layer: adapters
@@ -505,7 +505,7 @@ modules:
       - { module: idmanagement-user-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   authentication-recovery-adapters:
-    path: backend/authentication/recovery/adapters
+    path: backend/authentication/recovery/handlers_http
     responsibility: "Recovery code の HTTP・memory・PostgreSQL adapter。"
     context: Authentication
     layer: adapters
@@ -543,7 +543,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   authentication-adapters:
-    path: backend/authentication/adapters
+    path: backend/authentication/handlers_http
 
     responsibility: "Authentication feature 横断 route と event bucket persistence adapter。"
     context: Authentication
@@ -583,7 +583,7 @@ modules:
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
   authentication-httpdeps:
-    path: backend/authentication/adapters/http/httpdeps
+    path: backend/authentication/deps_http
     responsibility: "Authentication HTTP handler 群が共有する Deps と account 認証 helper の leaf package。"
     context: Authentication
     layer: adapters
@@ -740,7 +740,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   idmanagement-user-adapters:
-    path: backend/idmanagement/user/adapters
+    path: backend/idmanagement/user/handlers_http
     responsibility: "User feature の HTTP・in-memory・PostgreSQL 永続化 adapter（email change token を含む、ADR-130 Phase 2）。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
     context: IdManagement
     layer: adapters
@@ -767,7 +767,7 @@ modules:
       - { module: shared-kernel, via: technical_shared }
       - { module: tenancy-public, via: binding }
   idmanagement-group-adapters:
-    path: backend/idmanagement/group/adapters
+    path: backend/idmanagement/group/handlers_http
     responsibility: "Group feature の HTTP・in-memory・PostgreSQL 永続化 adapter (ADR-130 Phase 2)。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
     context: IdManagement
     layer: adapters
@@ -781,7 +781,7 @@ modules:
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
   idmanagement-agent-adapters:
-    path: backend/idmanagement/agent/adapters
+    path: backend/idmanagement/agent/handlers_http
     responsibility: "Agent feature の HTTP・in-memory・PostgreSQL 永続化 adapter (ADR-130 Phase 2)。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
     context: IdManagement
     layer: adapters
@@ -795,8 +795,8 @@ modules:
       - { module: idmanagement-usecases, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
   idmanagement-httpdeps:
-    path: backend/idmanagement/adapters/http/httpdeps
-    responsibility: "IdManagement HTTP 層の Deps 型（leaf package）。user/group/agent の adapters/http と context ルートの routes.go 双方が依存するため、module 依存グラフの循環を避けて独立した module にしている (ADR-130 Phase 2)。"
+    path: backend/idmanagement/deps_http
+    responsibility: "IdManagement HTTP 層の Deps 型（leaf package）。user/group/agent の handlers_http と context ルートの routes.go 双方が依存するため、module 依存グラフの循環を避けて独立した module にしている (ADR-130 Phase 2)。"
     context: IdManagement
     layer: adapters
     role: binding
@@ -816,9 +816,9 @@ modules:
       - { module: shared-spec, via: binding }
       - { module: tenancy-ports, via: binding }
   idmanagement-adapters:
-    path: backend/idmanagement/adapters
+    path: backend/idmanagement/handlers_http
 
-    responsibility: "IdManagement の route 登録集約点 (routes.go)・feature 横断統合テスト。feature 分割の対象外 (ADR-130): Deps 型自体は idmanagement-httpdeps (leaf package) が持ち、ハンドラ実装はフリー関数として user/group/agent へ分割した (Phase 2)。postgres 永続化は全て user/group/agent へ分割済み。lifecycle_workflows の postgres query/sqlcgen は IdGovernance 所有として backend/idgovernance/adapters/persistence/postgres へ物理移設した（ADR-117 が後続 WI へ後回しにしていた context-local sqlc 分割、ADR-090）。"
+    responsibility: "IdManagement の route 登録集約点 (routes.go)・feature 横断統合テスト。feature 分割の対象外 (ADR-130): Deps 型自体は idmanagement-httpdeps (leaf package) が持ち、ハンドラ実装はフリー関数として user/group/agent へ分割した (Phase 2)。PostgreSQL 永続化は全て user/group/agent の db_postgres へ分割済み。lifecycle_workflows の query/sqlcgen は IdGovernance の db_postgres が所有する（ADR-117、ADR-090、ADR-133）。"
     context: IdManagement
     layer: adapters
     role: binding
@@ -870,8 +870,8 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   idgovernance-adapters:
-    path: backend/idgovernance/adapters
-    responsibility: "IdGovernance の HTTP と memory/PostgreSQL persistence adapter。lifecycle_workflows の postgres query/sqlcgen は本 context が所有する（ADR-117 が後続 WI へ後回しにしていた context-local sqlc 分割、ADR-090。旧 backend/idmanagement/adapters/persistence/postgres から物理移設）。"
+    path: backend/idgovernance/handlers_http
+    responsibility: "IdGovernance の handlers_http、db_memory、db_postgres Adapter。lifecycle_workflows の PostgreSQL query/sqlcgen は本 context が所有する（ADR-117、ADR-090、ADR-133）。"
     context: IdGovernance
     layer: adapters
     role: binding
@@ -917,7 +917,7 @@ modules:
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
   jobs-adapters:
-    path: backend/jobs/adapters
+    path: backend/jobs/db_memory
 
     responsibility: "Jobs の HTTP・永続化 adapter。"
     context: Jobs
@@ -951,7 +951,7 @@ modules:
     depends_on:
       - { module: seeding-domain, via: published_interface }
   seeding-manifest-adapter:
-    path: backend/seeding/adapters/manifest
+    path: backend/seeding/manifests_yaml
     responsibility: "Strict YAML/include loader と env/file secret resolver により外部 seed manifest を安全に materialize する adapter。"
     context: Seeding
     layer: adapters
@@ -1010,13 +1010,15 @@ modules:
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   oauth2-adapters:
-    path: backend/oauth2/adapters
+    path: backend/oauth2/handlers_http
 
     responsibility: "OAuth2 の HTTP・永続化 adapter。"
     context: OAuth2
     layer: adapters
     role: binding
     depends_on:
+      - { module: shared-security-certificates-mtls, via: technical_shared }
+      - { module: shared-security-tokens-jose, via: technical_shared }
       - { module: application-domain, via: binding }
       - { module: application-usecases, via: binding }
       - { module: audit-ports, via: binding }
@@ -1063,7 +1065,7 @@ modules:
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
   oauth2-sqlcgen:
-    path: backend/oauth2/adapters/persistence/postgres/sqlcgen
+    path: backend/oauth2/db_postgres/sqlcgen
     responsibility: "OAuth2 PostgreSQL adapter が共有する sqlc 生成 binding。"
     context: OAuth2
     layer: adapters
@@ -1101,12 +1103,13 @@ modules:
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   oauth2-client-adapters:
-    path: backend/oauth2/client/adapters
+    path: backend/oauth2/client/db_memory
     responsibility: "Client の memory / PostgreSQL persistence adapter。"
     context: OAuth2
     layer: adapters
     role: binding
     depends_on:
+      - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-sqlcgen, via: binding }
       - { module: oauth2-ports, via: published_interface }
@@ -1142,12 +1145,13 @@ modules:
     depends_on:
       - { module: oauth2-consent-domain, via: published_interface }
   oauth2-consent-adapters:
-    path: backend/oauth2/consent/adapters
+    path: backend/oauth2/consent/db_memory
     responsibility: "Consent の memory / PostgreSQL persistence adapter。"
     context: OAuth2
     layer: adapters
     role: binding
     depends_on:
+      - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: binding }
@@ -1185,12 +1189,13 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   oauth2-authorization-adapters:
-    path: backend/oauth2/authorization/adapters
+    path: backend/oauth2/authorization/db_memory
     responsibility: "Authorization request/code/PAR の memory persistence adapter。"
     context: OAuth2
     layer: adapters
     role: binding
     depends_on:
+      - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
       - { module: shared-adapters, via: binding }
@@ -1227,12 +1232,13 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   oauth2-token-adapters:
-    path: backend/oauth2/token/adapters
+    path: backend/oauth2/token/db_memory
     responsibility: "Token の memory / PostgreSQL persistence adapter。"
     context: OAuth2
     layer: adapters
     role: binding
     depends_on:
+      - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
       - { module: oauth2-sqlcgen, via: binding }
       - { module: shared-adapters, via: binding }
@@ -1267,12 +1273,13 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
   oauth2-device-adapters:
-    path: backend/oauth2/device/adapters
+    path: backend/oauth2/device/db_memory
     responsibility: "Device code の memory persistence adapter。"
     context: OAuth2
     layer: adapters
     role: binding
     depends_on:
+      - { module: shared-storage-db-memory, via: technical_shared }
       - { module: oauth2-domain, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
@@ -1311,13 +1318,16 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: wsfederation-domain, via: published_interface }
   saml-adapters:
-    path: backend/saml/adapters
+    path: backend/saml/handlers_http
 
     responsibility: "Saml の HTTP・永続化 adapter。"
     context: Saml
     layer: adapters
     role: binding
     depends_on:
+      - { module: saml-metadata-saml, via: binding }
+      - { module: saml-responses-saml, via: binding }
+      - { module: wsfederation-tokens-saml, via: binding }
       - { module: application-domain, via: binding }
       - { module: authentication-domain, via: binding }
       - { module: authentication-session-usecases, via: binding }
@@ -1365,7 +1375,7 @@ modules:
       - { module: scim-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   scim-adapters:
-    path: backend/scim/adapters
+    path: backend/scim/handlers_http
 
     responsibility: "Scim の HTTP・永続化 adapter。"
     context: Scim
@@ -1393,7 +1403,7 @@ modules:
     depends_on:
       - { module: provisioning-domain, via: published_interface }
   provisioning-scim:
-    path: backend/provisioning/scim
+    path: backend/provisioning/client_scim
     responsibility: "SCIM プロトコル別 outbound feature slice (ADR-128 決定2)。"
     context: Provisioning
     layer: adapters
@@ -1417,7 +1427,7 @@ modules:
       - { module: provisioning-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
   provisioning-adapters:
-    path: backend/provisioning/adapters
+    path: backend/provisioning/handlers_http
     responsibility: "Provisioning の HTTP・永続化・IdManagement 属性取得 adapter。"
     context: Provisioning
     layer: adapters
@@ -1482,7 +1492,7 @@ modules:
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
   tenancy-adapters:
-    path: backend/tenancy/adapters
+    path: backend/tenancy/handlers_http
 
     responsibility: "Tenancy の HTTP・永続化 adapter。"
     context: Tenancy
@@ -1537,13 +1547,17 @@ modules:
       - { module: wsfederation-domain, via: published_interface }
       - { module: wsfederation-ports, via: published_interface }
   wsfederation-adapters:
-    path: backend/wsfederation/adapters
+    path: backend/wsfederation/handlers_http
 
     responsibility: "WsFederation の HTTP・永続化 adapter。"
     context: WsFederation
     layer: adapters
     role: binding
     depends_on:
+      - { module: wsfederation-metadata-wsfederation, via: binding }
+      - { module: wsfederation-requests-wstrust, via: binding }
+      - { module: wsfederation-responses-wsfederation, via: binding }
+      - { module: wsfederation-tokens-saml, via: binding }
       - { module: claimmapping-usecases, via: published_interface }
       - { module: claimmapping-domain, via: published_interface }
       - { module: application-domain, via: binding }
@@ -1721,6 +1735,7 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: wsfederation-tokens-saml, via: composition_root }
       - { module: http-support, via: composition_root }
       - { module: idmanagement-user-ports, via: composition_root }
       - { module: saml-adapters, via: published_interface }
@@ -1787,6 +1802,7 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: wsfederation-tokens-saml, via: binding }
       - { module: authentication-password-ports, via: composition_root }
       - { module: authentication-ports, via: composition_root }
       - { module: authentication-session-ports, via: composition_root }
@@ -1813,7 +1829,7 @@ modules:
     depends_on:
       - { module: shared-kernel, via: technical_shared }
   shared-adapters:
-    path: backend/shared/adapters
+    path: backend/shared/storage/db_postgres
 
     responsibility: "HTTP、crypto、persistence、observability の共有 adapter。"
     context: System
@@ -1835,7 +1851,7 @@ modules:
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   http-support:
-    path: backend/shared/adapters/http/support
+    path: backend/shared/http/support_http
 
     responsibility: "context 横断 HTTP handler binding と request support。"
     context: System
@@ -1862,13 +1878,15 @@ modules:
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   http-server:
-    path: backend/shared/adapters/http/server
+    path: backend/shared/http/server_http
 
     responsibility: "context route を API runtime へ束ねる composition module。"
     context: System
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: shared-security-tokens-jose, via: technical_shared }
+      - { module: wsfederation-tokens-saml, via: composition_root }
       - { module: application-public, via: composition_root }
       - { module: audit-adapters, via: composition_root }
       - { module: audit-public, via: composition_root }
@@ -1925,6 +1943,14 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: shared-events-publishers-kafka, via: technical_shared }
+      - { module: shared-events-publishers-log, via: technical_shared }
+      - { module: shared-events-publishers-pubsub, via: technical_shared }
+      - { module: shared-events-relay-postgres, via: technical_shared }
+      - { module: shared-observability-metrics-prometheus, via: technical_shared }
+      - { module: shared-observability-telemetry-otlp, via: technical_shared }
+      - { module: shared-security-passwords-argon2id, via: technical_shared }
+      - { module: shared-security-tokens-jose, via: technical_shared }
       - { module: authentication-ports, via: composition_root }
       - { module: authentication-session-ports, via: composition_root }
       - { module: authentication-session-usecases, via: composition_root }
@@ -1961,6 +1987,9 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: provisioning-source-idmanagement, via: composition_root }
+      - { module: shared-observability-metrics-prometheus, via: technical_shared }
+      - { module: shared-security-passwords-argon2id, via: technical_shared }
       - { module: bootstrap, via: composition_root }
       - { module: idgovernance-usecases, via: composition_root }
       - { module: idmanagement-group-usecases, via: composition_root }
@@ -1983,6 +2012,62 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - { module: application-db-memory, via: composition_root }
+      - { module: application-db-postgres, via: composition_root }
+      - { module: audit-db-memory, via: composition_root }
+      - { module: audit-db-postgres, via: composition_root }
+      - { module: authentication-db-memory, via: composition_root }
+      - { module: authentication-db-postgres, via: composition_root }
+      - { module: authentication-mfa-db-memory, via: composition_root }
+      - { module: authentication-mfa-db-postgres, via: composition_root }
+      - { module: authentication-password-db-memory, via: composition_root }
+      - { module: authentication-password-db-postgres, via: composition_root }
+      - { module: authentication-recovery-db-memory, via: composition_root }
+      - { module: authentication-recovery-db-postgres, via: composition_root }
+      - { module: authentication-session-db-memory, via: composition_root }
+      - { module: authentication-session-db-postgres, via: composition_root }
+      - { module: authentication-session-db-valkey, via: composition_root }
+      - { module: authentication-totp-db-postgres, via: composition_root }
+      - { module: authentication-webauthn-db-memory, via: composition_root }
+      - { module: authentication-webauthn-db-postgres, via: composition_root }
+      - { module: authentication-webauthn-db-valkey, via: composition_root }
+      - { module: idgovernance-db-memory, via: composition_root }
+      - { module: idgovernance-db-postgres, via: composition_root }
+      - { module: idmanagement-agent-db-memory, via: composition_root }
+      - { module: idmanagement-agent-db-postgres, via: composition_root }
+      - { module: idmanagement-group-db-memory, via: composition_root }
+      - { module: idmanagement-group-db-postgres, via: composition_root }
+      - { module: idmanagement-user-db-memory, via: composition_root }
+      - { module: idmanagement-user-db-postgres, via: composition_root }
+      - { module: jobs-db-postgres, via: composition_root }
+      - { module: oauth2-db-memory, via: composition_root }
+      - { module: oauth2-db-postgres, via: composition_root }
+      - { module: oauth2-db-valkey, via: composition_root }
+      - { module: provisioning-db-memory, via: composition_root }
+      - { module: provisioning-db-postgres, via: composition_root }
+      - { module: saml-db-memory, via: composition_root }
+      - { module: saml-db-postgres, via: composition_root }
+      - { module: saml-db-valkey, via: composition_root }
+      - { module: scim-db-memory, via: composition_root }
+      - { module: scim-db-postgres, via: composition_root }
+      - { module: shared-events-sinks-console, via: technical_shared }
+      - { module: shared-notification-email-console, via: technical_shared }
+      - { module: shared-notification-email-smtp, via: technical_shared }
+      - { module: shared-policy-authorization-http, via: technical_shared }
+      - { module: shared-policy-authorization-local, via: technical_shared }
+      - { module: shared-policy-breaches-hibp, via: technical_shared }
+      - { module: shared-policy-breaches-noop, via: technical_shared }
+      - { module: shared-security-passwords-argon2id, via: technical_shared }
+      - { module: shared-security-salts-memory, via: technical_shared }
+      - { module: shared-storage-db-valkey, via: technical_shared }
+      - { module: signingkeys-db-postgres, via: composition_root }
+      - { module: signingkeys-keys-memory, via: composition_root }
+      - { module: signingkeys-keys-vault, via: composition_root }
+      - { module: tenancy-db-memory, via: composition_root }
+      - { module: tenancy-db-postgres, via: composition_root }
+      - { module: wsfederation-db-memory, via: composition_root }
+      - { module: wsfederation-db-postgres, via: composition_root }
+      - { module: wsfederation-tokens-saml, via: composition_root }
       - { module: application-adapters, via: composition_root }
       - { module: application-domain, via: composition_root }
       - { module: application-ports, via: composition_root }
@@ -2291,6 +2376,719 @@ modules:
     role: implementation
     realizes:
       - { context: System, kind: scenario, element: "Operatorは分離された運用資産でSLOを検証する" }
+  application-db-memory:
+    path: backend/application/db_memory
+    responsibility: "backend/application/db_memory の Flat Architecture adapter。"
+    context: Application
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: application-domain, via: published_interface }
+      - { module: application-ports, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  application-db-postgres:
+    path: backend/application/db_postgres
+    responsibility: "backend/application/db_postgres の Flat Architecture adapter。"
+    context: Application
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: application-domain, via: published_interface }
+      - { module: application-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  audit-db-memory:
+    path: backend/audit/db_memory
+    responsibility: "backend/audit/db_memory の Flat Architecture adapter。"
+    context: Audit
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: audit-ports, via: published_interface }
+  audit-db-postgres:
+    path: backend/audit/db_postgres
+    responsibility: "backend/audit/db_postgres の Flat Architecture adapter。"
+    context: Audit
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: audit-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-db-memory:
+    path: backend/authentication/db_memory
+    responsibility: "backend/authentication/db_memory の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-ports, via: published_interface }
+  authentication-db-postgres:
+    path: backend/authentication/db_postgres
+    responsibility: "backend/authentication/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-mfa-db-memory:
+    path: backend/authentication/mfa/db_memory
+    responsibility: "backend/authentication/mfa/db_memory の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-mfa-domain, via: published_interface }
+  authentication-mfa-db-postgres:
+    path: backend/authentication/mfa/db_postgres
+    responsibility: "backend/authentication/mfa/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-mfa-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-password-db-memory:
+    path: backend/authentication/password/db_memory
+    responsibility: "backend/authentication/password/db_memory の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-password-ports, via: published_interface }
+  authentication-password-db-postgres:
+    path: backend/authentication/password/db_postgres
+    responsibility: "backend/authentication/password/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-password-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-recovery-db-memory:
+    path: backend/authentication/recovery/db_memory
+    responsibility: "backend/authentication/recovery/db_memory の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-recovery-domain, via: published_interface }
+  authentication-recovery-db-postgres:
+    path: backend/authentication/recovery/db_postgres
+    responsibility: "backend/authentication/recovery/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-recovery-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-session-db-memory:
+    path: backend/authentication/session/db_memory
+    responsibility: "backend/authentication/session/db_memory の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-session-domain, via: published_interface }
+      - { module: authentication-session-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  authentication-session-db-postgres:
+    path: backend/authentication/session/db_postgres
+    responsibility: "backend/authentication/session/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-session-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  authentication-session-db-valkey:
+    path: backend/authentication/session/db_valkey
+    responsibility: "backend/authentication/session/db_valkey の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-session-ports, via: published_interface }
+      - { module: shared-storage-db-valkey, via: technical_shared }
+  authentication-totp-db-postgres:
+    path: backend/authentication/totp/db_postgres
+    responsibility: "backend/authentication/totp/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-totp-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+  authentication-webauthn-db-memory:
+    path: backend/authentication/webauthn/db_memory
+    responsibility: "backend/authentication/webauthn/db_memory の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-webauthn-domain, via: published_interface }
+  authentication-webauthn-db-postgres:
+    path: backend/authentication/webauthn/db_postgres
+    responsibility: "backend/authentication/webauthn/db_postgres の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: authentication-webauthn-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  authentication-webauthn-db-valkey:
+    path: backend/authentication/webauthn/db_valkey
+    responsibility: "backend/authentication/webauthn/db_valkey の Flat Architecture adapter。"
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: shared-storage-db-valkey, via: technical_shared }
+  idgovernance-db-memory:
+    path: backend/idgovernance/db_memory
+    responsibility: "backend/idgovernance/db_memory の Flat Architecture adapter。"
+    context: IdGovernance
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idgovernance-domain, via: published_interface }
+      - { module: idgovernance-ports, via: published_interface }
+      - { module: idmanagement-user-db-memory, via: binding }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  idgovernance-db-postgres:
+    path: backend/idgovernance/db_postgres
+    responsibility: "backend/idgovernance/db_postgres の Flat Architecture adapter。"
+    context: IdGovernance
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idgovernance-domain, via: published_interface }
+      - { module: idgovernance-ports, via: published_interface }
+      - { module: idmanagement-user-db-postgres, via: binding }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  idmanagement-agent-db-memory:
+    path: backend/idmanagement/agent/db_memory
+    responsibility: "backend/idmanagement/agent/db_memory の Flat Architecture adapter。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-agent-domain, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  idmanagement-agent-db-postgres:
+    path: backend/idmanagement/agent/db_postgres
+    responsibility: "backend/idmanagement/agent/db_postgres の Flat Architecture adapter。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-agent-domain, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  idmanagement-group-db-memory:
+    path: backend/idmanagement/group/db_memory
+    responsibility: "backend/idmanagement/group/db_memory の Flat Architecture adapter。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-group-domain, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  idmanagement-group-db-postgres:
+    path: backend/idmanagement/group/db_postgres
+    responsibility: "backend/idmanagement/group/db_postgres の Flat Architecture adapter。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-group-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  idmanagement-user-db-memory:
+    path: backend/idmanagement/user/db_memory
+    responsibility: "backend/idmanagement/user/db_memory の Flat Architecture adapter。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  idmanagement-user-db-postgres:
+    path: backend/idmanagement/user/db_postgres
+    responsibility: "backend/idmanagement/user/db_postgres の Flat Architecture adapter。"
+    context: IdManagement
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  jobs-db-postgres:
+    path: backend/jobs/db_postgres
+    responsibility: "backend/jobs/db_postgres の Flat Architecture adapter。"
+    context: Jobs
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: jobs-domain, via: published_interface }
+      - { module: jobs-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+  oauth2-client-db-postgres:
+    path: backend/oauth2/client/db_postgres
+    responsibility: "backend/oauth2/client/db_postgres の Flat Architecture adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+  oauth2-consent-db-postgres:
+    path: backend/oauth2/consent/db_postgres
+    responsibility: "backend/oauth2/consent/db_postgres の Flat Architecture adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+  oauth2-db-memory:
+    path: backend/oauth2/db_memory
+    responsibility: "backend/oauth2/db_memory の Flat Architecture adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-authorization-adapters, via: binding }
+      - { module: oauth2-client-adapters, via: binding }
+      - { module: oauth2-consent-adapters, via: binding }
+      - { module: oauth2-device-adapters, via: binding }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-token-adapters, via: binding }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  oauth2-db-postgres:
+    path: backend/oauth2/db_postgres
+    responsibility: "backend/oauth2/db_postgres の Flat Architecture adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-client-db-postgres, via: binding }
+      - { module: oauth2-consent-db-postgres, via: binding }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: oauth2-token-db-postgres, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+  oauth2-db-valkey:
+    path: backend/oauth2/db_valkey
+    responsibility: "backend/oauth2/db_valkey の Flat Architecture adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: shared-storage-db-valkey, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  oauth2-token-db-postgres:
+    path: backend/oauth2/token/db_postgres
+    responsibility: "backend/oauth2/token/db_postgres の Flat Architecture adapter。"
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-sqlcgen, via: binding }
+      - { module: shared-adapters, via: technical_shared }
+  provisioning-db-memory:
+    path: backend/provisioning/db_memory
+    responsibility: "backend/provisioning/db_memory の Flat Architecture adapter。"
+    context: Provisioning
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  provisioning-db-postgres:
+    path: backend/provisioning/db_postgres
+    responsibility: "backend/provisioning/db_postgres の Flat Architecture adapter。"
+    context: Provisioning
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  provisioning-source-idmanagement:
+    path: backend/provisioning/source_idmanagement
+    responsibility: "backend/provisioning/source_idmanagement の Flat Architecture adapter。"
+    context: Provisioning
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: provisioning-domain, via: published_interface }
+      - { module: provisioning-ports, via: published_interface }
+  saml-db-memory:
+    path: backend/saml/db_memory
+    responsibility: "backend/saml/db_memory の Flat Architecture adapter。"
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: saml-domain, via: published_interface }
+      - { module: shared-storage-db-memory, via: technical_shared }
+  saml-db-postgres:
+    path: backend/saml/db_postgres
+    responsibility: "backend/saml/db_postgres の Flat Architecture adapter。"
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: saml-domain, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  saml-db-valkey:
+    path: backend/saml/db_valkey
+    responsibility: "backend/saml/db_valkey の Flat Architecture adapter。"
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: shared-storage-db-valkey, via: technical_shared }
+  saml-metadata-saml:
+    path: backend/saml/metadata_saml
+    responsibility: "backend/saml/metadata_saml の Flat Architecture adapter。"
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: saml-domain, via: published_interface }
+  saml-responses-saml:
+    path: backend/saml/responses_saml
+    responsibility: "backend/saml/responses_saml の Flat Architecture adapter。"
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: http-support, via: technical_shared }
+      - { module: wsfederation-tokens-saml, via: binding }
+  scim-db-memory:
+    path: backend/scim/db_memory
+    responsibility: "backend/scim/db_memory の Flat Architecture adapter。"
+    context: Scim
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: scim-ports, via: published_interface }
+  scim-db-postgres:
+    path: backend/scim/db_postgres
+    responsibility: "backend/scim/db_postgres の Flat Architecture adapter。"
+    context: Scim
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: scim-ports, via: published_interface }
+      - { module: shared-adapters, via: technical_shared }
+  shared-events-publishers-kafka:
+    path: backend/shared/events/publishers_kafka
+    responsibility: "backend/shared/events/publishers_kafka の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-events-publishers-log:
+    path: backend/shared/events/publishers_log
+    responsibility: "backend/shared/events/publishers_log の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-events-publishers-pubsub:
+    path: backend/shared/events/publishers_pubsub
+    responsibility: "backend/shared/events/publishers_pubsub の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-events-relay-postgres:
+    path: backend/shared/events/relay_postgres
+    responsibility: "backend/shared/events/relay_postgres の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-adapters, via: technical_shared }
+      - { module: shared-services, via: technical_shared }
+  shared-events-sinks-console:
+    path: backend/shared/events/sinks_console
+    responsibility: "backend/shared/events/sinks_console の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: oauth2-ports, via: published_interface }
+      - { module: shared-services, via: technical_shared }
+      - { module: shared-spec, via: technical_shared }
+  shared-notification-email-console:
+    path: backend/shared/notification/email_console
+    responsibility: "backend/shared/notification/email_console の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-notification-email-memory:
+    path: backend/shared/notification/email_memory
+    responsibility: "backend/shared/notification/email_memory の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-notification-email-smtp:
+    path: backend/shared/notification/email_smtp
+    responsibility: "backend/shared/notification/email_smtp の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-observability-metrics-prometheus:
+    path: backend/shared/observability/metrics_prometheus
+    responsibility: "backend/shared/observability/metrics_prometheus の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: http-support, via: technical_shared }
+      - { module: jobs-domain, via: published_interface }
+  shared-observability-telemetry-otlp:
+    path: backend/shared/observability/telemetry_otlp
+    responsibility: "backend/shared/observability/telemetry_otlp の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on: []
+  shared-policy-authorization-http:
+    path: backend/shared/policy/authorization_http
+    responsibility: "backend/shared/policy/authorization_http の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  shared-policy-authorization-local:
+    path: backend/shared/policy/authorization_local
+    responsibility: "backend/shared/policy/authorization_local の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-spec, via: technical_shared }
+  shared-policy-breaches-hibp:
+    path: backend/shared/policy/breaches_hibp
+    responsibility: "backend/shared/policy/breaches_hibp の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+  shared-policy-breaches-noop:
+    path: backend/shared/policy/breaches_noop
+    responsibility: "backend/shared/policy/breaches_noop の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on: []
+  shared-security-certificates-mtls:
+    path: backend/shared/security/certificates_mtls
+    responsibility: "backend/shared/security/certificates_mtls の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on: []
+  shared-security-passwords-argon2id:
+    path: backend/shared/security/passwords_argon2id
+    responsibility: "backend/shared/security/passwords_argon2id の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on: []
+  shared-security-salts-memory:
+    path: backend/shared/security/salts_memory
+    responsibility: "backend/shared/security/salts_memory の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: tenancy-public, via: published_interface }
+  shared-security-tokens-jose:
+    path: backend/shared/security/tokens_jose
+    responsibility: "backend/shared/security/tokens_jose の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
+      - { module: shared-spec, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-ports, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
+  shared-storage-db-memory:
+    path: backend/shared/storage/db_memory
+    responsibility: "backend/shared/storage/db_memory の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: tenancy-domain, via: published_interface }
+  shared-storage-db-valkey:
+    path: backend/shared/storage/db_valkey
+    responsibility: "backend/shared/storage/db_valkey の Flat Architecture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
+  signingkeys-db-postgres:
+    path: backend/signingkeys/db_postgres
+    responsibility: "backend/signingkeys/db_postgres の Flat Architecture adapter。"
+    context: SigningKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: shared-adapters, via: technical_shared }
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-keys-jose, via: binding }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
+  signingkeys-keys-jose:
+    path: backend/signingkeys/keys_jose
+    responsibility: "backend/signingkeys/keys_jose の Flat Architecture adapter。"
+    context: SigningKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: signingkeys-domain, via: published_interface }
+  signingkeys-keys-memory:
+    path: backend/signingkeys/keys_memory
+    responsibility: "backend/signingkeys/keys_memory の Flat Architecture adapter。"
+    context: SigningKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-keys-jose, via: binding }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
+  signingkeys-keys-vault:
+    path: backend/signingkeys/keys_vault
+    responsibility: "backend/signingkeys/keys_vault の Flat Architecture adapter。"
+    context: SigningKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: signingkeys-domain, via: published_interface }
+      - { module: signingkeys-keys-jose, via: binding }
+      - { module: tenancy-public, via: published_interface }
+  tenancy-db-memory:
+    path: backend/tenancy/db_memory
+    responsibility: "backend/tenancy/db_memory の Flat Architecture adapter。"
+    context: Tenancy
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: tenancy-domain, via: published_interface }
+  tenancy-db-postgres:
+    path: backend/tenancy/db_postgres
+    responsibility: "backend/tenancy/db_postgres の Flat Architecture adapter。"
+    context: Tenancy
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: shared-adapters, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+  wsfederation-db-memory:
+    path: backend/wsfederation/db_memory
+    responsibility: "backend/wsfederation/db_memory の Flat Architecture adapter。"
+    context: WsFederation
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: shared-storage-db-memory, via: technical_shared }
+      - { module: wsfederation-domain, via: published_interface }
+  wsfederation-db-postgres:
+    path: backend/wsfederation/db_postgres
+    responsibility: "backend/wsfederation/db_postgres の Flat Architecture adapter。"
+    context: WsFederation
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: shared-adapters, via: technical_shared }
+      - { module: wsfederation-domain, via: published_interface }
+  wsfederation-metadata-wsfederation:
+    path: backend/wsfederation/metadata_wsfederation
+    responsibility: "backend/wsfederation/metadata_wsfederation の Flat Architecture adapter。"
+    context: WsFederation
+    layer: adapters
+    role: binding
+    depends_on: []
+  wsfederation-requests-wstrust:
+    path: backend/wsfederation/requests_wstrust
+    responsibility: "backend/wsfederation/requests_wstrust の Flat Architecture adapter。"
+    context: WsFederation
+    layer: adapters
+    role: binding
+    depends_on: []
+  wsfederation-responses-wsfederation:
+    path: backend/wsfederation/responses_wsfederation
+    responsibility: "backend/wsfederation/responses_wsfederation の Flat Architecture adapter。"
+    context: WsFederation
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: http-support, via: technical_shared }
+  wsfederation-tokens-saml:
+    path: backend/wsfederation/tokens_saml
+    responsibility: "backend/wsfederation/tokens_saml の Flat Architecture adapter。"
+    context: WsFederation
+    layer: adapters
+    role: binding
+    depends_on:
+      - { module: claimmapping-usecases, via: published_interface }
+      - { module: wsfederation-domain, via: published_interface }
+  shared-storage-fixtures-postgres:
+    path: backend/shared/storage/fixtures_postgres
+    responsibility: "context-local PostgreSQL adapter tests が共有する fixture adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on: []
+  shared-storage-testing-postgres:
+    path: backend/shared/storage/testing_postgres
+    responsibility: "context-local PostgreSQL adapter tests が共有する embedded PostgreSQL adapter。"
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on: []
 runtime_units:
   idmagic-api:
     kind: api
@@ -2526,6 +3324,7 @@ complexity:
 - LifecycleWorkflow を IdManagement の record-of-truth から IdGovernance の policy/orchestration へ分離する境界は [ADR-117](decisions/ADR-117-extract-identity-governance-context.md) に従う。
 - 環境別 seed の policy と execution orchestration は record context から分離し、各 context の公開 command surface を介して適用する ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md))。
 - Outbound provisioning (SCIM client) は inbound の `Scim` (server) とは独立の `Provisioning` context とし、protocol 非依存コア + protocol 別 feature slice で構成する。配送は既存 outbox を観測せず、呼び出し元の Postgres トランザクション内で `ProvisioningDelivery` を書く same-Tx capture で確定する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。
+- Core を feature 直下へ置き、Adapter を `<役割>_<技術詳細>` でフラット配置する規約は [ADR-133](decisions/ADR-133-flat-wikipedia-architecture.md) に従う。
 
 ## 読む順序
 
@@ -2534,7 +3333,7 @@ complexity:
 1. `spec/scl.yaml` の `context_map` で対象 bounded context と依存先を特定する。
 2. 対象 context の `spec/contexts/<context>.yaml` を読む。機能追加・挙動変更は SCL-first で行う。
 3. 該当 ADR を読む。迷ったら `decisions/` をファイル名検索し、古い work item の要約だけで判断しない。
-4. Go 実装は対象 context の `domain/`、`usecases/`、`ports/`、`adapters/` の順に読む。
+4. Go 実装は対象 context / feature の `domain/`、`usecases/`、`ports/`、必要な `<役割>_<技術詳細>/` Adapter の順に読む。
 5. HTTP や永続化の横断挙動を触る場合だけ `backend/shared/` と `backend/cmd/internal/bootstrap/` を読む。
 6. UI を触る場合は `frontend/ARCHITECTURE.md` と `frontend/src/features/README.md` を先に読む。
 
@@ -2549,7 +3348,7 @@ complexity:
 | Specification Core | `spec/scl.yaml`, `spec/contexts/*.yaml` | 規範仕様。変更は原則ここから始める。 |
 | Decision Record | `decisions/*.md` | SCL だけでは分からない採用理由・除外理由。 |
 | Application Logic | `backend/<context>/domain`, `backend/<context>/usecases`, `backend/shared/spec` | フレームワーク非依存のドメイン・ユースケース・SCL binding。 |
-| Adapter Layer | `backend/<context>/adapters`, `backend/shared/adapters` | HTTP、persistence、crypto、policy、notification など外界との接続。 |
+| Adapter Layer | `backend/<context>/{handlers_http,db_postgres,...}`, `backend/shared/<capability>/<role>_<technology>` | HTTP、persistence、crypto、policy、notification など外界との接続。 |
 | Runtime & Infrastructure | `backend/cmd/`, `backend/cmd/internal/bootstrap`, `infra/`, `frontend/`, `docker compose` | 起動、DI、配信、プロセス境界。 |
 
 `backend/shared/spec` は SCL の Go binding と派生検証であり、仕様核そのものではない。SCL の内容を変える代わりに Go binding だけを調整しない。
@@ -2560,7 +3359,7 @@ SCL context と Go package の主な対応は次の通り。
 
 | SCL context | Go package | 主な責務 |
 | --- | --- | --- |
-| `System` | `backend/cmd/internal/bootstrap`, `backend/shared/adapters/http/server`, `frontend/` | 横断 UX、起動、ルーティング集約、health。 |
+| `System` | `backend/cmd/internal/bootstrap`, `backend/shared/http/server_http`, `frontend/` | 横断 UX、起動、ルーティング集約、health。 |
 | `Tenancy` | `backend/tenancy` | tenant / realm、tenant-scoped settings、user attribute schema、control-plane tenant 管理。 |
 | `IdManagement` | `backend/idmanagement` | User、Group、Agent、自己プロフィール、identity lifecycle、CEL 動的 membership rule と再評価。 |
 | `Authentication` | `backend/authentication` | 資格情報検証、MFA、ログインセッション、step-up、パスワード変更・リセット、認証イベント。 |
@@ -2569,7 +3368,7 @@ SCL context と Go package の主な対応は次の通り。
 | `Audit` | `backend/audit` | authentication / identity-management / oauth2 / tenancy / signing-keys / application / saml / wsfederation を横断する監査イベントの read model。検索属性 registry、PII 変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | `backend/claimmapping` | protocol-neutral な claim release policy、identity 属性 projection、fail-closed validation。 |
 | `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。 |
-| `Provisioning` | `backend/provisioning`（未実装、後続タスクで新設） | SCIM 2.0 outbound provisioning。下流 SaaS への user/group push lifecycle management。真実源は idmagic の User/Group、下流は mirror。protocol 非依存コア + protocol 別 feature slice (`provisioning/scim` など) で構成する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。 |
+| `Provisioning` | `backend/provisioning` | SCIM 2.0 outbound provisioning。下流 SaaS への user/group push lifecycle management。真実源は idmagic の User/Group、下流は mirror。protocol 非依存コア、`client_scim`、`source_idmanagement` などの Flat Adapter で構成する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用非同期ジョブ基盤。durable job queue (PostgreSQL SKIP LOCKED リース)、worker runtime、handler registry を所有する。業務ロジックは呼び出し元 context の usecase に残る。管理 UI/API は `wi-157`。 |
 | `Seeding` | `backend/seeding` | 環境別 profile、dry-run、redacted plan、適用 policy を所有する。業務データとその永続化は各 record context に残す。 |
 | `SigningKeys` | `backend/signingkeys` | tenant-scoped 鍵 metadata、rotation、repository port、管理/JWKS HTTP、memory/PostgreSQL/Vault adapter。JWT/XML wire signer は protocol/technical adapter に残す。 |
@@ -2584,22 +3383,26 @@ context 間の公開語彙と依存は `spec/scl.yaml` の `context_map` が正�
 
 ```text
 backend/<context>/
-  domain/      # エンティティ、値オブジェクト、状態機械、純粋な検証
-  usecases/    # 仕様上の操作を実行するアプリケーション論理
-  ports/       # repository、store、外部 service への抽象
-  adapters/    # HTTP、wire format、外部 protocol 固有処理
+  domain/          # エンティティ、値オブジェクト、状態機械、純粋な検証
+  usecases/        # 仕様上の操作を実行するアプリケーション論理
+  ports/           # repository、store、外部 service への抽象
+  handlers_http/   # inbound HTTP Adapter
+  db_memory/       # memory repository Adapter
+  db_postgres/     # PostgreSQL repository Adapter
 ```
 
-`domain/` は Echo、PostgreSQL、Valkey、HTTP request/response を知らない。`usecases/` は `ports/` に依存し、具体 adapter には依存しない。`adapters/http` は入力の wire 変換、HTTP status、cookie/header、CSRF/Origin など境界処理を持つ。`usecases/` が adapter を import しない依存方向は全 context 共通で、外界の能力（署名・割当ゲート・認証解決など）は `ports/` の抽象か usecase パッケージ内の interface で受け、adapter が具体実装を注入する（例: `oauth2` の `ports.TokenIssuer`、`saml` / `wsfederation` の `ApplicationGate` interface）。
+`domain/` は Echo、PostgreSQL、Valkey、HTTP request/response を知らない。`usecases/` は `ports/` に依存し、具体 Adapter には依存しない。`handlers_http` は入力の wire 変換、HTTP status、cookie/header、CSRF/Origin など境界処理を持つ。`usecases/` が Adapter を import しない依存方向は全 context 共通で、外界の能力（署名・割当ゲート・認証解決など）は `ports/` の抽象か usecase パッケージ内の interface で受け、Adapter が具体実装を注入する（例: `oauth2` の `ports.TokenIssuer`、`saml` / `wsfederation` の `ApplicationGate` interface）。
 
-`domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、4 層すべてを機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `idmanagement`（User/Group/Agent 集約、属性スキーマ、field validation）や `saml` / `wsfederation`（プロトコル固有の解析・claim mapping）のように固有ロジックを持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`adapters/http` は wire と HTTP 境界に閉じる。
+Adapter は分類用の `adapters/` や `persistence/` を介さず、所有 context / feature の直下に `<役割>_<技術詳細>` の snake_case 名で置く。役割が handler、repository、publisher、client のどれか、技術が HTTP、PostgreSQL、Kafka、SCIM のどれかを package 名だけで判別できるようにする。
+
+`domain/` と `usecases/` の有無は「その context 固有ロジックの有無」で決まり、全 package を機械的に置くわけではない。共有される SCL Go binding は `backend/shared/spec` に残し（ADR-070）、context 固有の業務型は各 context の `domain/` が所有する（ADR-089）。`tenancy` のように binding を超える固有ドメインロジックを持たない context は per-context `domain/` を持たない。逆に `idmanagement`（User/Group/Agent 集約、属性スキーマ、field validation）や `saml` / `wsfederation`（プロトコル固有の解析・claim mapping）のように固有ロジックを持つ context は `domain/` を、SSO/sign-in のオーケストレーション（SP/RP 解決・署名検証・割当ゲート・claim 発行）を持つ context は `usecases/` を持つ。ブラウザ federation の発行判断はすべて `usecases/` にあり、`handlers_http` は wire と HTTP 境界に閉じる。
 
 `backend/shared/` は「複数 context が本当に共有する technical capability」だけに使う。context 固有の概念を便利だからという理由で `shared` に置くと、次の変更で読む範囲が広がる。domain event の具象 struct は owning context の `domain/events.go` に置き、`backend/shared/spec/events.go` は event envelope interface と wire marshal だけを持つ。Audit の分類は具象型 registry ではなく安定した event type discriminator を読む。
 
 ### Feature 垂直スライス
 
 2 つ以上の独立した sub-domain（feature）を持つ context では、上記 4 層の格子に
-`backend/<context>/<feature>/{domain,ports,usecases,adapters/...}/` という
+`backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/` という
 feature 垂直スライス層を追加できる（[ADR-130](decisions/ADR-130-idmanagement-feature-vertical-slice.md)）。
 単一 feature の context には導入しない（stutter を作らない）。パイロットは
 `idmanagement` で、`user`/`group`/`agent` の 3 feature に分割した:
@@ -2609,57 +3412,54 @@ backend/idmanagement/
   module.go                 # context ルートに1つ（DI 束は feature に分割しない）
   domain/                   # feature 横断の共有型のみ（enum・DomainEvent）
   usecases/                 # feature 横断の共有 usecase ヘルパー・エラー変数のみ
-  adapters/
-    http/
-      routes.go              # Deps 型定義の再エクスポート・route 登録の集約点
-      httpdeps/               # Deps 型定義そのもの（leaf package、後述）
-      extra_identity_test.go  # feature 横断の統合テスト
+  deps_http/                # Deps 型定義そのもの（leaf package、後述）
+  handlers_http/            # route 登録の集約点と feature 横断の統合テスト
   user/
     domain/  ports/  usecases/
-    adapters/http/  adapters/persistence/{memory,postgres}/
+    handlers_http/  db_memory/  db_postgres/
   group/
     domain/  ports/  usecases/
-    adapters/http/  adapters/persistence/{memory,postgres}/
+    handlers_http/  db_memory/  db_postgres/
   agent/
     domain/  ports/  usecases/
-    adapters/http/  adapters/persistence/{memory,postgres}/
+    handlers_http/  db_memory/  db_postgres/
 ```
 
-`adapters/http` と `adapters/persistence/postgres` は Go の言語制約・コード生成単位により
+`handlers_http` と `db_postgres` は Go の言語制約・コード生成単位により
 素朴には分割できなかったが（domain/ports/usecases とは異なる設計判断を要した）、
 別の設計で分割できると判明し実施した（ADR-130）。
 
-- **adapters/http**: ハンドラは元々 `Deps` 構造体のメソッド（`func (d Deps) handleX`）
+- **handlers_http**: ハンドラは元々 `Deps` 構造体のメソッド（`func (d Deps) handleX`）
   として実装されていた。Go はメソッドを receiver 型と同一パッケージにしか定義できないため、
   素朴に `Deps` を feature ごとの embedded 部分構造体へ分割すると、feature 横断の port 参照
   （例: group ハンドラが `UserRepo` を、agent ハンドラが `UserRepo`/`ClientRepo` を参照）
   により各部分構造体へ同じフィールドを重複定義する必要が生じる。代わりに `Deps` 型定義を
-  `httpdeps` という独立した leaf package へ切り出し、ハンドラを
+  `deps_http` という独立した leaf package へ切り出し、ハンドラを
   `func handleX(d Deps, c *echo.Context) error` という**フリー関数**へ変換して
   feature パッケージへ移した。フリー関数は receiver 型と同一パッケージである必要が
   ないため、`Deps` 型を分割せずに実装コードだけを feature ごとに分離できる。
-  `routes.go` は `type Deps = httpdeps.Deps`（型 alias）で再エクスポートするため、
+  `routes.go` は `type Deps = httpdeps.Deps`（import alias を介した型 alias）で再エクスポートするため、
   外部の `idmhttp.Deps{...}` 構築コード（bootstrap・テスト）は無変更のまま。
-- **adapters/persistence/postgres**: `sqlc.yaml` の idmanagement 用エントリを feature
+- **db_postgres**: `sqlc.yaml` の idmanagement 用エントリを feature
   単位の複数エントリへ分割し、`queries/*.sql` と生成される `sqlcgen/` を feature
   ディレクトリへ移した。feature 横断のテスト fixture ヘルパー（`seedTenant`/`seedUser` 等）
   は Go の `_test.go` がパッケージをまたげない制約により、各 feature パッケージへ複製した。
   `lifecycle_workflows` テーブルの query/sqlcgen は IdGovernance context 所有
   （wi-237/ADR-117 が後続 WI へ後回しにしていた context-local sqlc 分割、ADR-090）のため
-  `backend/idgovernance/adapters/persistence/postgres/` へ物理移設し、
-  `backend/idmanagement/adapters/persistence/` は完全に消滅した。
+  `backend/idgovernance/db_postgres/` に置く。
 
-package 名は各層のまま（`domain`/`ports`/`usecases`/`http`/`memory`/`postgres`）とし、
+Core package 名は各層のまま（`domain`/`ports`/`usecases`）、Adapter package 名は
+`<役割>_<技術詳細>`（`handlers_http`/`db_memory`/`db_postgres` 等）とし、
 同一 context の複数 feature を同時 import する箇所は named import
-（`userdomain`, `groupdomain` 等）で区別する。feature の adapters/http パッケージが
+（`userDomain`, `groupDomain` 等）で区別する。feature の `handlers_http` package が
 `Deps` 型を参照する箇所は、各パッケージ内の `deps.go` に置いた
 `type Deps = httpdeps.Deps` alias を使う。
 
 ## HTTP Routing
 
-HTTP route の集約点は `backend/shared/adapters/http/server/routes.go` である。ここで default tenant と `/realms/:tenant_id` の両方に tenant-scoped routes を登録し、control-plane tenant 管理だけを `/realms/default/admin/tenants` に分ける。
+HTTP route の集約点は `backend/shared/http/server_http/routes.go` である。ここで default tenant と `/realms/:tenant_id` の両方に tenant-scoped routes を登録し、control-plane tenant 管理だけを `/realms/default/admin/tenants` に分ける。
 
-各 context の route は `backend/<context>/adapters/http/routes.go` に置く。エンドポイントの正確な一覧はそのファイルを読む。新しい HTTP API は、所有 context の `routes.go` に登録し、handler は同じ `adapters/http` 配下に置く。context 固有の repository とルート配線は `backend/<context>/module.go` に集約し、中央 router は Module を呼び出すだけにする（ADR-091）。
+各 context の route は `backend/<context>/handlers_http/routes.go` に置く。エンドポイントの正確な一覧はそのファイルを読む。新しい HTTP API は、所有 context の `routes.go` に登録し、handler は同じ `handlers_http` 配下に置く。context 固有の repository とルート配線は `backend/<context>/module.go` に集約し、中央 router は Module を呼び出すだけにする（ADR-091）。
 
 ## Bootstrap And Adapters
 
@@ -2755,7 +3555,7 @@ scheduled batch との境界は
 
 ## Persistence
 
-永続化 port と repository 実装は所有 context 側に置く。context 固有の memory / postgres adapter は `backend/<context>/adapters/persistence/{memory,postgres}` に同居し、`backend/shared/adapters/persistence/` は DB pool、row scanner、transaction helper、Valkey client などの技術的共通部品だけを持つ（ADR-090）。
+永続化 port と repository 実装は所有 context 側に置く。context 固有の memory / PostgreSQL / Valkey Adapter は `backend/<context>/{db_memory,db_postgres,db_valkey}` に置き、共有する DB pool、row scanner、transaction helper、Valkey client は `backend/shared/storage/{db_postgres,db_valkey}` に置く（ADR-090、ADR-133）。
 
 PostgreSQL の構造を増やすときは、まず `infra/schema/postgres.sql` の現在形 schema を更新する。構造差分は `psqldef` の dry-run で確認し、デプロイ前ジョブで適用する。既存データの backfill、値変換、削除前の退避など、構造差分だけでは表せない変更は、対象 WI の runbook または専用 SQL script として明示する。アプリ起動時の migration runner は持たない。memory adapter はテスト・ローカル demo の基準にもなるため、postgres だけを更新しない。
 

@@ -17,10 +17,10 @@ initial_context:
       - interfaces.CreateScimGroup
       - interfaces.GetScimServiceProviderConfig
   source:
-    - backend/scim/adapters/http/handlers.go
+    - backend/scim/handlers_http/handlers.go
     - backend/scim/usecases
   tests:
-    - backend/scim/adapters/http/resource_contract_test.go
+    - backend/scim/handlers_http/resource_contract_test.go
   stop_before_reading:
     - frontend
 affected_spec:

@@ -10,7 +10,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	memory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"

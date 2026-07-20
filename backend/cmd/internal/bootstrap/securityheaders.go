@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	httpsupport "github.com/ambi/idmagic/backend/shared/adapters/http/support"
+	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 // loadSecurityHeaders builds the security response header configuration

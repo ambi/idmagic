@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: [ADR-133]
 ---
 
 # ADR-047: Adapter Layer をコンテキスト所有へ（層×コンテキスト格子）

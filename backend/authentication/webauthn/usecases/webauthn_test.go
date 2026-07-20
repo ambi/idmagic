@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
-	authnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/adapters/persistence/memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"

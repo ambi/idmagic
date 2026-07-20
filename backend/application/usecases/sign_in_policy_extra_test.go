@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"

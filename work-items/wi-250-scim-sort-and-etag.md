@@ -15,9 +15,9 @@ initial_context:
       - interfaces.GetScimServiceProviderConfig
   source:
     - backend/scim/usecases/list.go
-    - backend/scim/adapters/http/handlers.go
+    - backend/scim/handlers_http/handlers.go
   tests:
-    - backend/scim/adapters/http/scim_test.go
+    - backend/scim/handlers_http/scim_test.go
   stop_before_reading:
     - frontend
 affected_spec:

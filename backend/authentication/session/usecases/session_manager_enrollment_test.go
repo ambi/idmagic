@@ -6,7 +6,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	memory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	memory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 )
 

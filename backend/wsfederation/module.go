@@ -6,10 +6,10 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/adapters/http"
-	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/handlers_http"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

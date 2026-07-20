@@ -1,0 +1,108 @@
+package db_memory
+
+import (
+	"context"
+	"errors"
+	"sync"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+)
+
+// =====================================================================
+// RefreshTokenStore (OAuth2, ファミリーローテーション対応)
+// =====================================================================
+
+type RefreshTokenStore struct {
+	mu     sync.Mutex
+	byHash map[string]*domain.RefreshTokenRecord
+	byID   map[string]*domain.RefreshTokenRecord
+}
+
+func NewRefreshTokenStore() *RefreshTokenStore {
+	return &RefreshTokenStore{
+		byHash: map[string]*domain.RefreshTokenRecord{},
+		byID:   map[string]*domain.RefreshTokenRecord{},
+	}
+}
+
+func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*domain.RefreshTokenRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return cloneRefreshToken(s.byHash[hash]), nil
+}
+
+func (s *RefreshTokenStore) Save(_ context.Context, rec *domain.RefreshTokenRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sharedmem.DefaultTenant(&rec.TenantID)
+	stored := cloneRefreshToken(rec)
+	s.byHash[stored.Hash] = stored
+	s.byID[stored.ID] = stored
+	return nil
+}
+
+func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *domain.RefreshTokenRecord) (*domain.RefreshTokenRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	parent, ok := s.byID[parentID]
+	if !ok {
+		return nil, errors.New("parent refresh token not found")
+	}
+	if parent.Rotated || parent.Revoked {
+		return nil, nil
+	}
+	parent.Rotated = true
+	sharedmem.DefaultTenant(&newRec.TenantID)
+	stored := cloneRefreshToken(newRec)
+	s.byHash[stored.Hash] = stored
+	s.byID[stored.ID] = stored
+	return cloneRefreshToken(stored), nil
+}
+
+func (s *RefreshTokenStore) RevokeFamily(_ context.Context, familyID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, rec := range s.byID {
+		if rec.FamilyID == familyID {
+			rec.Revoked = true
+		}
+	}
+	return nil
+}
+
+func (s *RefreshTokenStore) RevokeBySid(_ context.Context, sid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, rec := range s.byID {
+		if rec.Sid != nil && *rec.Sid == sid {
+			rec.Revoked = true
+		}
+	}
+	return nil
+}
+
+func (s *RefreshTokenStore) DeleteAllForSub(_ context.Context, sub string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, rec := range s.byID {
+		if rec.UserID == sub {
+			delete(s.byID, id)
+			delete(s.byHash, rec.Hash)
+		}
+	}
+	return nil
+}
+
+func cloneRefreshToken(in *domain.RefreshTokenRecord) *domain.RefreshTokenRecord {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	out.Scopes = append([]string(nil), in.Scopes...)
+	if in.SenderConstraint != nil {
+		senderConstraint := *in.SenderConstraint
+		out.SenderConstraint = &senderConstraint
+	}
+	return &out
+}

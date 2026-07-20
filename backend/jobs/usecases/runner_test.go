@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	memoryjobs "github.com/ambi/idmagic/backend/jobs/adapters/persistence/memory"
+	memoryjobs "github.com/ambi/idmagic/backend/jobs/db_memory"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"

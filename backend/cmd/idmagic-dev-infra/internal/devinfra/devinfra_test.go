@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/jobs"
-	jobspostgres "github.com/ambi/idmagic/backend/jobs/adapters/persistence/postgres"
+	jobspostgres "github.com/ambi/idmagic/backend/jobs/db_postgres"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	sharedpg "github.com/ambi/idmagic/backend/shared/adapters/persistence/postgres"
+	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
 func TestWriteReadyFilePublishesURLs(t *testing.T) {

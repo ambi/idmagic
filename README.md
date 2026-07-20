@@ -543,7 +543,7 @@ spec/             SCL source and generated specification artifacts
 decisions/        Architecture Decision Records
 work-items/       planned and completed change records
 backend/cmd/              process entry points
-backend/         Go bounded contexts, use cases, ports, and adapters
+backend/         Go bounded contexts with feature-local Flat Architecture packages
 frontend/               React SPA for auth, account, admin, and system flows
 infra/            Docker, schema, and runtime infrastructure assets
 ```
@@ -562,7 +562,7 @@ IdMagic follows Regenerative Architecture:
 | Specification Core | `spec/scl.yaml`, `spec/contexts/*.yaml` |
 | Decisions | `decisions/*.md` |
 | Application logic | `backend/<context>/domain`, `backend/<context>/usecases` |
-| Ports and adapters | `backend/<context>/ports`, `backend/<context>/adapters`, `backend/shared/adapters` |
+| Core and adapters | `backend/<context>/{domain,usecases,ports}`, `backend/<context>/{handlers_http,db_postgres,...}`, `backend/shared/<role>/<role>_<technology>` |
 | Runtime and infrastructure | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
 
 Start with [ARCHITECTURE.md](ARCHITECTURE.md) when changing code. It is the

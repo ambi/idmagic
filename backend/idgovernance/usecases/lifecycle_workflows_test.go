@@ -6,17 +6,17 @@ import (
 	"testing"
 	"time"
 
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
-	igmemory "github.com/ambi/idmagic/backend/idgovernance/adapters/persistence/memory"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	"github.com/ambi/idmagic/backend/idgovernance/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/adapters/persistence/memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -332,7 +332,7 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 			WorkflowRepo: workflowRepo, RunRepo: runs, UserRepo: users,
 			Capture: &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
 		},
-		PasswordHasher: crypto.NewArgon2idPasswordHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
+		PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
 	}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{PreferredUsername: "alice", Password: "initial-password-9182", Now: now})

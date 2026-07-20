@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-20
+superseded_by: [ADR-133]
 ---
 
 # ADR-130: 大型 bounded context に feature 垂直スライス層を条件付きで導入する

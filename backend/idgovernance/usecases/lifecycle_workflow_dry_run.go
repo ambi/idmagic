@@ -10,7 +10,7 @@ import (
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
 var ErrLifecycleWorkflowTargetUserNotFound = errors.New("lifecycle workflow dry-run target user not found")

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	appmemory "github.com/ambi/idmagic/backend/application/adapters/persistence/memory"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/provisioning/adapters/persistence/memory"
+	memory "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	"github.com/ambi/idmagic/backend/authentication/mfa/usecases"

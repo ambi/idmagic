@@ -12,10 +12,10 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	manifestadapter "github.com/ambi/idmagic/backend/seeding/adapters/manifest"
 	"github.com/ambi/idmagic/backend/seeding/domain"
+	manifestadapter "github.com/ambi/idmagic/backend/seeding/manifests_yaml"
 	seedusecases "github.com/ambi/idmagic/backend/seeding/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -42,7 +42,7 @@ func Seed(ctx context.Context, deps *Dependencies, request domain.Request) (doma
 	if err != nil {
 		return domain.Plan{}, err
 	}
-	return seedusecases.Run(ctx, request, &seedContributor{deps: deps, hasher: crypto.NewArgon2idPasswordHasher(), manifest: materialized})
+	return seedusecases.Run(ctx, request, &seedContributor{deps: deps, hasher: passwords_argon2id.NewArgon2idPasswordHasher(), manifest: materialized})
 }
 
 type seedContributor struct {

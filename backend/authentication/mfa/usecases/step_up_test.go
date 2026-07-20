@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -64,7 +64,7 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *sessionusecases
 	t.Helper()
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)

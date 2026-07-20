@@ -8,20 +8,20 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
-	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -29,7 +29,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
@@ -91,7 +91,7 @@ func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, PasswordHasher: crypto.NewArgon2idPasswordHasher(),
+		UserRepo: userRepo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
@@ -150,7 +150,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	_, err := userusecases.CreateUser(context.Background(), userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: crypto.NewArgon2idPasswordHasher(),
+		UserRepo: repo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}, userusecases.CreateUserInput{
 		PreferredUsername: "bob", Password: "initial-password-9182",
@@ -169,7 +169,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	deviceStore := oauth2memory.NewDeviceCodeStore()
 	sessionStore := sessionmemory.NewSessionStore()
 	mfaRepo := totpmemory.NewMfaFactorRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, ConsentRepo: consentRepo, RefreshStore: refreshStore,

@@ -7,7 +7,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 

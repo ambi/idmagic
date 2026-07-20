@@ -57,7 +57,7 @@ gcloud redis instances create idmagic-valkey \
 
 # ---------------------------------------------------------------------------
 # 3) Pub/Sub（イベント配信, ADR-120）。outbox.topic 列に対応する topic を作成。
-#    一覧は backend/oauth2/adapters/persistence/postgres/outbox.go の eventTopics マップ。
+#    一覧は backend/oauth2/db_postgres/outbox.go の eventTopics マップ。
 #    per-aggregate ordering (partitionKey) を使うため message-ordering を有効化。
 # ---------------------------------------------------------------------------
 TOPICS=(

@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-10
+superseded_by: [ADR-133]
 ---
 
 # ADR-090: 永続化アダプタのコンテキスト同居と sqlc 採用

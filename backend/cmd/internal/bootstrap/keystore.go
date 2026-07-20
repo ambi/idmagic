@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/adapters/crypto"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 

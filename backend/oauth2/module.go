@@ -3,7 +3,7 @@
 // field を Module へ集約していく。client/consent/認可詳細タイプ分から着手し (wi-173)、
 // token/grant (wi-181) が Module へフィールドを追加していく。監査 (audit) の repository は
 // wi-146 で独立した audit context の Module へ移設した。
-// 全フィールドが揃うまでは oauth2/adapters/http.RegisterRoutes は中央 routes.go から
+// 全フィールドが揃うまでは oauth2/handlers_http.RegisterRoutes は中央 routes.go から
 // 直接呼ばれ続け、Module 自身の Register は持たない。
 package oauth2
 

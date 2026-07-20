@@ -41,13 +41,13 @@ checks:
   - id: authorization-code-memory-atomic-redeem
     recipe: test-go
     kind: contract_test
-    implementation: { path: backend/oauth2/adapters/persistence/memory/memory_test.go, symbol: TestAuthorizationCodeRedeemIsAtomic }
+    implementation: { path: backend/oauth2/db_memory/memory_test.go, symbol: TestAuthorizationCodeRedeemIsAtomic }
     targets:
       - { context: OAuth2, kind: model, element: AuthorizationCodeRecord }
   - id: authorization-policy-boundary
     recipe: test-go
     kind: test
-    implementation: { path: backend/oauth2/adapters/http/authorize_handler_test.go, symbol: TestAuthorize }
+    implementation: { path: backend/oauth2/handlers_http/authorize_handler_test.go, symbol: TestAuthorize }
     targets:
       - { context: OAuth2, kind: interface, element: Authorize }
   - id: refresh-token-absolute-ttl
@@ -72,7 +72,7 @@ checks:
   - id: tenant-http-boundary
     recipe: test-go
     kind: contract_test
-    implementation: { path: backend/oauth2/adapters/http/admin_client_handler_test.go, symbol: TestAdminOAuth2ClientCannotCrossTenantBoundary }
+    implementation: { path: backend/oauth2/handlers_http/admin_client_handler_test.go, symbol: TestAdminOAuth2ClientCannotCrossTenantBoundary }
     targets:
       - { context: OAuth2, kind: interface, element: RegisterClient }
   - id: tenant-oauth-boundary
@@ -90,7 +90,7 @@ checks:
   - id: reset-token-single-consumption
     recipe: test-go
     kind: contract_test
-    implementation: { path: backend/authentication/password/adapters/persistence/memory/password_reset_token_store_test.go, symbol: TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently }
+    implementation: { path: backend/authentication/password/db_memory/password_reset_token_store_test.go, symbol: TestPasswordResetTokenStoreConsumeSucceedsOnceConcurrently }
     targets:
       - { context: Authentication, kind: model, element: PasswordResetTokenRecord }
   - id: client-secret-hashing

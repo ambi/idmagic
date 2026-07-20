@@ -9,10 +9,10 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	auditmemory "github.com/ambi/idmagic/backend/audit/adapters/persistence/memory"
+	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 )

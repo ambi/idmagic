@@ -3,10 +3,10 @@ package saml
 
 import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	samlhttp "github.com/ambi/idmagic/backend/saml/adapters/http"
+	samlhttp "github.com/ambi/idmagic/backend/saml/handlers_http"
 	"github.com/ambi/idmagic/backend/saml/ports"
-	"github.com/ambi/idmagic/backend/shared/adapters/http/support"
-	"github.com/ambi/idmagic/backend/wsfederation/adapters/samltoken"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

@@ -23,14 +23,14 @@ initial_context:
     - backend/oauth2/domain/client.go
     - backend/oauth2/usecases/admin_clients.go
     - backend/oauth2/usecases/exchange_code.go
-    - backend/oauth2/adapters/http/end_session_handler.go
-    - backend/oauth2/adapters/http/discovery_handler.go
+    - backend/oauth2/handlers_http/end_session_handler.go
+    - backend/oauth2/handlers_http/discovery_handler.go
     - backend/jobs/domain/job.go
     - backend/jobs/usecases/handler_registry.go
     - backend/cmd/idmagic-worker/worker.go
   tests:
     - backend/oauth2/usecases
-    - backend/oauth2/adapters/http/end_session_hint_test.go
+    - backend/oauth2/handlers_http/end_session_hint_test.go
   stop_before_reading:
     - backend/saml
     - backend/wsfederation
@@ -164,12 +164,12 @@ Go 実装スコープ:
 - [x] T006 [Session Management] `CheckSessionIframe` (`GET /session/check`) —
       RED: `TestCheckSessionIframe_noSession_respondsChanged` /
       `TestCheckSessionIframe_validSession_respondsUnchanged` を先に 404 で
-      fail 確認 (`backend/oauth2/adapters/http/check_session_iframe_handler_test.go`)
+      fail 確認 (`backend/oauth2/handlers_http/check_session_iframe_handler_test.go`)
       → GREEN (`check_session_iframe_handler.go`)。静的ページ + 現在の browser
       cookie が有効な LoginSession に解決できるかどうかだけを埋め込んで返す
       最小実装 (ADR-127 決定8)。`d.AuthnResolver.Resolve` の結果 (nil または
       `AuthenticationPending`) を fail-safe 側 ("changed") に倒す。
-      route を `backend/oauth2/adapters/http/routes.go` に登録し、
+      route を `backend/oauth2/handlers_http/routes.go` に登録し、
       `TestAssembledRoutesMatchGeneratedOpenAPI` の `GET /session/check` 差分を
       解消した (T007 verification の一部を前倒しで満たす)。wi-56 のブランチ作業中に
       発見した SCL/実装 drift の修正として先行実装。

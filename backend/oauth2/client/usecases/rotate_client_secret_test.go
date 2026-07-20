@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	oauthmemory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
+	oauthmemory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

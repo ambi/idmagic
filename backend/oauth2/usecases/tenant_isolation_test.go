@@ -10,10 +10,10 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/adapters/persistence/memory"
 	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"

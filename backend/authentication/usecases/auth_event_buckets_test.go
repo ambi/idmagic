@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 )

@@ -8,11 +8,11 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
-	authnmemory "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -21,7 +21,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +90,7 @@ func TestChangePasswordRejectsCurrentPasswordMismatch(t *testing.T) {
 
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +121,7 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +160,7 @@ func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := crypto.NewArgon2idPasswordHasher()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	initialHash, err := hasher.Hash("demo-password-1234")
 	if err != nil {
 		t.Fatal(err)

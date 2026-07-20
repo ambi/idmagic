@@ -21,18 +21,18 @@ import (
 	"testing"
 	"time"
 
-	memoryauth "github.com/ambi/idmagic/backend/authentication/password/adapters/persistence/memory"
+	memoryauth "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/adapters/persistence/memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/provisioning/adapters/identitysource"
-	memoryprov "github.com/ambi/idmagic/backend/provisioning/adapters/persistence/memory"
+	scim "github.com/ambi/idmagic/backend/provisioning/client_scim"
+	memoryprov "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
-	"github.com/ambi/idmagic/backend/provisioning/scim"
+	identitysource "github.com/ambi/idmagic/backend/provisioning/source_idmanagement"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
-	"github.com/ambi/idmagic/backend/shared/adapters/crypto"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -126,7 +126,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 
 	adminUserDeps := userusecases.AdminUserDeps{
 		UserRepo:             userRepo,
-		PasswordHasher:       crypto.NewArgon2idPasswordHasher(),
+		PasswordHasher:       passwords_argon2id.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo:  memoryauth.NewPasswordHistoryRepository(),
 		ProvisioningNotifier: notifier,
 	}

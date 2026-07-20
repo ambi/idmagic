@@ -16,7 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/scim"
-	"github.com/ambi/idmagic/backend/shared/notification"
+	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/wsfederation"

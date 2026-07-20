@@ -18,12 +18,12 @@ Go バックエンドのカバレッジ改善は複数の work item に分割さ
 この WI は旧 `wi-137` と `wi-138` を統合した残作業の正本とする。
 
 ## Scope
-- `internal/shared/adapters/crypto` の鍵生成・署名検証・エラー系を中心に、意味のあるユニットテストを追加する。
-- `internal/shared/spec` の OpenAPI / SCL 由来 spec helper をテストする。
-- `internal/authentication/adapters/http` の正常系・異常系・認可 / CSRF / tenant 境界をテストする。
-- `internal/shared/adapters/http/support` の auth、tenant middleware、CSRF、consent、response helper をテストする。
+- `backend/shared/security/tokens_jose と backend/signingkeys/keys_memory` の鍵生成・署名検証・エラー系を中心に、意味のあるユニットテストを追加する。
+- `backend/shared/spec` の OpenAPI / SCL 由来 spec helper をテストする。
+- `backend/authentication/handlers_http` の正常系・異常系・認可 / CSRF / tenant 境界をテストする。
+- `backend/shared/http/support_http` の auth、tenant middleware、CSRF、consent、response helper をテストする。
 - `internal/scim/usecases` の SCIM inbound provisioning use case をテストする。
-- `internal/shared/resilience`、`internal/shared/adapters/eventsink`、`internal/shared/adapters/observability` の横断的関心事をテストする。
+- `backend/shared/resilience`、`backend/shared/events`、`backend/shared/observability` の横断的関心事をテストする。
 - `internal/application/domain` の `ValidateApplication` / `ValidateBinding` などの不変条件をテストする。
 - `internal/relay` と `cmd/idmagic-relay` の実行分岐を、外部副作用を避けられる範囲でテストする。
 
@@ -41,24 +41,24 @@ Go バックエンドのカバレッジ改善は複数の work item に分割さ
 - `cmd/idmagic-relay` は process 起動ではなく、設定解析や分岐を抽出できる範囲でテストする。
 
 ## Tasks
-- [ ] T001 [Go] `internal/shared/adapters/crypto` と `internal/shared/spec` のユニットテストを追加する。
-- [ ] T002 [Go] `internal/authentication/adapters/http` と `internal/shared/adapters/http/support` の HTTP 境界テストを追加する。
+- [ ] T001 [Go] `backend/shared/security/tokens_jose と backend/signingkeys/keys_memory` と `backend/shared/spec` のユニットテストを追加する。
+- [ ] T002 [Go] `backend/authentication/handlers_http` と `backend/shared/http/support_http` の HTTP 境界テストを追加する。
 - [ ] T003 [Go] `internal/scim/usecases` の provisioning use case テストを追加する。
-- [ ] T004 [Go] `internal/shared/resilience` / `eventsink` / `observability` の横断パッケージをテストする。
+- [ ] T004 [Go] `backend/shared/resilience` / `eventsink` / `observability` の横断パッケージをテストする。
 - [ ] T005 [Go] `internal/application/domain`、`internal/relay`、`cmd/idmagic-relay` の残り低カバレッジ領域をテストする。
 - [ ] T006 [Verify] `just verify-go` と `just test-go-cover` を通し、対象 package の改善を確認する。
 
 ## Verification
 - `just verify-go`
 - `just test-go-cover` で以下を確認:
-  - `internal/shared/adapters/crypto` >= 75%
-  - `internal/shared/spec` >= 75%
-  - `internal/authentication/adapters/http` >= 70%
-  - `internal/shared/adapters/http/support` >= 70%
+  - `backend/shared/security/tokens_jose と backend/signingkeys/keys_memory` >= 75%
+  - `backend/shared/spec` >= 75%
+  - `backend/authentication/handlers_http` >= 70%
+  - `backend/shared/http/support_http` >= 70%
   - `internal/scim/usecases` >= 70%
-  - `internal/shared/resilience` >= 70%
-  - `internal/shared/adapters/eventsink` >= 70%
-  - `internal/shared/adapters/observability` >= 70%
+  - `backend/shared/resilience` >= 70%
+  - `backend/shared/events` >= 70%
+  - `backend/shared/observability` >= 70%
   - `internal/application/domain` >= 80%
   - `internal/relay` >= 70%
 

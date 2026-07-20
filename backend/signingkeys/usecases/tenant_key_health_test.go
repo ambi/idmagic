@@ -8,7 +8,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/adapters/persistence/memory"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )

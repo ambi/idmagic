@@ -56,7 +56,7 @@ export function isProductionSource(path: string): boolean {
   const name = parts.at(-1) ?? ''
   if (parts.some((part) => ALWAYS_EXCLUDED_DIRECTORIES.has(part))) return false
   if (parts.includes('generated') || parts.includes('sqlc')) return false
-  if (parts.includes('pgfixtures')) return false
+  if (parts.includes('pgfixtures') || parts.includes('fixtures_postgres')) return false
   if (name === 'routeTree.gen.ts') return false
   if (name.endsWith('_test.go')) return false
   if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(name)) return false
