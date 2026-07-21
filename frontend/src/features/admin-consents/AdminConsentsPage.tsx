@@ -255,14 +255,20 @@ export function NameWithId({ name, id }: { name: string; id: string }) {
 }
 
 export function ConsentStateBadge({ state }: { state: AdminConsent['state'] }) {
+  const t = useDictionary(adminConsentsDictionary)
   const variants: Record<AdminConsent['state'], string> = {
     granted: 'bg-emerald-50 text-emerald-700',
     revoked: 'bg-rose-50 text-rose-700',
     expired: 'bg-amber-50 text-amber-700',
   }
+  const labels: Record<AdminConsent['state'], string> = {
+    granted: t.stateGranted,
+    revoked: t.stateRevoked,
+    expired: t.stateExpired,
+  }
   return (
     <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${variants[state]}`}>
-      {state}
+      {labels[state]}
     </span>
   )
 }

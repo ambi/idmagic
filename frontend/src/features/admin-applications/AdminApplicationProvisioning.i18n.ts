@@ -158,6 +158,8 @@ export const provisioningDictionary = defineDictionary(
     overviewDescription:
       'テナント内のすべてのアプリケーションのプロビジョニング接続を一覧します (読み取り専用)。',
     overviewLoadFailedError: '接続一覧を取得できませんでした。',
+    overviewGuidanceNotice:
+      '新しい接続の追加や設定変更は、各アプリケーションの詳細画面にある「プロビジョニング」タブから行います。ここでは全アプリケーションの接続状況を横断で確認できます。',
     overviewEmptyNotice: 'プロビジョニング接続はまだありません。',
     tableHeaderApplication: 'アプリケーション',
     tableHeaderBaseUrl: 'ベース URL',
@@ -325,6 +327,8 @@ export const provisioningDictionary = defineDictionary(
     overviewDescription:
       'Lists provisioning connections for every application in the tenant (read-only).',
     overviewLoadFailedError: 'Could not load the connection list.',
+    overviewGuidanceNotice:
+      "To add a connection or change its settings, use the Provisioning tab on that application's detail page. This overview only shows connection status across all applications.",
     overviewEmptyNotice: 'There are no provisioning connections yet.',
     tableHeaderApplication: 'Application',
     tableHeaderBaseUrl: 'Base URL',

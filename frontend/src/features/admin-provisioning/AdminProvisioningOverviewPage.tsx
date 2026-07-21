@@ -31,6 +31,9 @@ export function AdminProvisioningOverviewPage({
       title={t.overviewHeading}
       description={t.overviewDescription}
     >
+      <p className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
+        {t.overviewGuidanceNotice}
+      </p>
       <Card className="overflow-hidden">
         {connections.length === 0 ? (
           <Alert className="m-5">{t.overviewEmptyNotice}</Alert>

@@ -13,7 +13,7 @@ export const adminTenantAttributesDictionary = defineDictionary(
     pageTitle: 'ユーザー属性',
     pageDescription:
       'このテナント固有のカスタム属性を定義します。組み込み属性はコードが提供します。',
-    addAttribute: '属性を追加',
+    addAttribute: 'ユーザー属性を追加',
     customAttributesHeading: 'カスタム属性',
     customAttributesDescription:
       'key は snake_case (英字始まり)。組み込み属性と同じ key は使えません。',
@@ -59,7 +59,7 @@ export const adminTenantAttributesDictionary = defineDictionary(
     pageTitle: 'User attributes',
     pageDescription:
       'Define custom attributes specific to this tenant. Built-in attributes are provided by the code.',
-    addAttribute: 'Add attribute',
+    addAttribute: 'Add user attribute',
     customAttributesHeading: 'Custom attributes',
     customAttributesDescription:
       'The key must be snake_case starting with a letter. It cannot match a built-in attribute key.',

@@ -1,4 +1,4 @@
-import { IconPlus, IconRefresh, IconUsersGroup } from '@tabler/icons-react'
+import { IconRefresh, IconUsersGroup, IconUsersPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import { AuthenticationAPIError, listAdminGroups, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -71,7 +71,7 @@ export function AdminGroupsPage({
           </Button>
           <Button asChild disabled={busy}>
             <a href={tenantURL('/admin/groups/new')}>
-              <IconPlus size={16} aria-hidden="true" />
+              <IconUsersPlus size={16} aria-hidden="true" />
               {t.newGroup}
             </a>
           </Button>
@@ -128,6 +128,7 @@ export function AdminGroupsPage({
           group={selected}
           csrfToken={csrfToken}
           busy={busy}
+          allowEditing={false}
           detailHref={
             selected ? tenantURL(`/admin/groups/${encodeURIComponent(selected.id)}`) : undefined
           }

@@ -23,7 +23,7 @@ export const adminSignInPolicyDictionary = defineDictionary(
     mfaStepUpHelp:
       '「MFA 必須」の場合、単要素セッションはサインイン時に再認証 (step-up) へ誘導されます。',
     unenrolledWarning:
-      'MFA 未登録の active user が {count} 人います。強制開始前に登録または管理者承認を準備してください。',
+      'MFA 未登録の有効なユーザーが {count} 人います。強制開始前に登録または管理者承認を準備してください。',
     enforcementStartLabel: 'MFA 強制開始日時',
     gracePeriodLabel: '登録承認を利用できる期間（秒）',
     gracePeriodHelp:

@@ -139,14 +139,19 @@ const sectionHeadingClassName: Record<SectionVariant, string> = {
   card: 'text-xs font-bold uppercase tracking-[0.1em] text-slate-400',
 }
 
+// allowEditing=false は一覧右ペインのような参照専用の文脈で使う。所属ロール /
+// グループは読み取り表示のみとし、グループ追加の操作 UI は出さない。実際の追加は
+// 専用の詳細画面 (allowEditing=true) から行う。
 export function UserGroupsSection({
   user,
   csrfToken,
   variant = 'section',
+  allowEditing = true,
 }: {
   user: AdminUser
   csrfToken: string
   variant?: SectionVariant
+  allowEditing?: boolean
 }) {
   const [data, setData] = useState<AdminUserGroups | null>(null)
   const [allGroups, setAllGroups] = useState<AdminGroup[]>([])
@@ -219,51 +224,55 @@ export function UserGroupsSection({
             {t.memberGroupsHeading}
           </h4>
         </div>
-        <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
-          {data && data.groups.length === 0 ? (
-            <span className="text-xs text-slate-400">{t.notInAnyGroup}</span>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {data?.groups.map((group) => (
-                <li key={group.id} className="flex items-center justify-between gap-2">
-                  <a
-                    href={tenantURL(`/admin/groups?group=${encodeURIComponent(group.id)}`)}
-                    className="text-sm font-medium text-indigo-700 hover:underline"
-                  >
+        <div className="mt-2 rounded-xl border border-slate-200 bg-white">
+          <div className="p-3">
+            {data && data.groups.length === 0 ? (
+              <span className="text-xs text-slate-400">{t.notInAnyGroup}</span>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {data?.groups.map((group) => (
+                  <li key={group.id} className="flex items-center justify-between gap-2">
+                    <a
+                      href={tenantURL(`/admin/groups?group=${encodeURIComponent(group.id)}`)}
+                      className="text-sm font-medium text-indigo-700 hover:underline"
+                    >
+                      {group.name}
+                    </a>
+                    <RoleList roles={group.roles} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {allowEditing && addable.length > 0 && (
+            <div className="flex items-center gap-2 border-t border-slate-100 p-3">
+              <select
+                value={selectedGroup}
+                onChange={(event) => setSelectedGroup(event.target.value)}
+                disabled={adding}
+                aria-label={t.selectGroupPlaceholder}
+                className="h-10 flex-1 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+              >
+                <option value="">{t.selectGroupPlaceholder}</option>
+                {addable.map((group) => (
+                  <option key={group.id} value={group.id}>
                     {group.name}
-                  </a>
-                  <RoleList roles={group.roles} />
-                </li>
-              ))}
-            </ul>
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                className="h-10"
+                disabled={adding || !selectedGroup}
+                onClick={() => void handleAdd()}
+              >
+                <IconUserPlus size={16} aria-hidden="true" />
+                {t.add}
+              </Button>
+            </div>
           )}
         </div>
-
-        {addable.length > 0 && (
-          <div className="mt-2 flex items-center gap-2">
-            <select
-              value={selectedGroup}
-              onChange={(event) => setSelectedGroup(event.target.value)}
-              disabled={adding}
-              className="h-9 flex-1 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-            >
-              <option value="">{t.selectGroupPlaceholder}</option>
-              {addable.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              disabled={adding || !selectedGroup}
-              onClick={() => void handleAdd()}
-            >
-              <IconUserPlus size={16} aria-hidden="true" />
-              {t.add}
-            </Button>
-          </div>
-        )}
       </div>
     </section>
   )

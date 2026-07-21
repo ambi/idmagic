@@ -5,10 +5,7 @@ import {
   IconChevronRight,
   IconKey,
   IconShieldCheck,
-  IconShieldLock,
-  IconUserPlus,
   IconUsers,
-  IconLayoutGrid,
 } from '@tabler/icons-react'
 import { tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -20,7 +17,6 @@ import { adminDashboardDictionary, friendlyEventName } from './AdminDashboardPag
 
 export function AdminDashboardPage({
   actorUsername,
-  actorRoles,
   userCount,
   activeUserCount,
   disabledUserCount,
@@ -32,7 +28,6 @@ export function AdminDashboardPage({
   usage,
 }: {
   actorUsername?: string
-  actorRoles: string[]
   userCount: number
   activeUserCount: number
   disabledUserCount: number
@@ -117,10 +112,6 @@ export function AdminDashboardPage({
                   </span>
                 </div>
               </div>
-              <span className="mt-3 text-xs font-semibold text-slate-400">
-                {t.recommendedTasksHeading}{' '}
-                {securityScore === 100 ? t.recommendedTasksAllDone : t.recommendedTasksRemaining}
-              </span>
             </div>
           </div>
         </Card>
@@ -208,9 +199,9 @@ export function AdminDashboardPage({
         />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        {/* 左カラム: 直近の監査イベント & 推奨タスク */}
-        <div className="grid gap-6">
+      <div className="grid gap-6">
+        {/* 直近の監査イベントと推奨セキュリティ構成を横 2 列で並べ、縦の間延びを抑える */}
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
           {/* 直近の監査イベント */}
           <Card className="overflow-hidden shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -275,7 +266,7 @@ export function AdminDashboardPage({
               </div>
             </div>
 
-            <ul className="mt-4 grid gap-3.5 sm:grid-cols-2">
+            <ul className="mt-4 grid gap-3.5">
               <SecurityTaskCard
                 title={t.mfaTaskTitle}
                 description={t.mfaTaskDescription}
@@ -290,103 +281,59 @@ export function AdminDashboardPage({
               />
             </ul>
           </Card>
-
-          {/* Quota Usage */}
-          {usage && (
-            <Card className="p-5 shadow-sm">
-              <div className="flex items-start gap-2.5">
-                <IconActivity className="text-blue-600 shrink-0 mt-0.5" size={20} />
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">{t.quotaUsageHeading}</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">{t.quotaUsageDescription}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div className="rounded border border-slate-100 p-2">
-                  <div className="text-xs text-slate-500">Users</div>
-                  <div className="font-semibold">
-                    {usage.users}{' '}
-                    <span className="text-slate-400 font-normal">
-                      {quota?.users ? `/ ${quota.users}` : ''}
-                    </span>
-                  </div>
-                </div>
-                <div className="rounded border border-slate-100 p-2">
-                  <div className="text-xs text-slate-500">Groups</div>
-                  <div className="font-semibold">
-                    {usage.groups}{' '}
-                    <span className="text-slate-400 font-normal">
-                      {quota?.groups ? `/ ${quota.groups}` : ''}
-                    </span>
-                  </div>
-                </div>
-                <div className="rounded border border-slate-100 p-2">
-                  <div className="text-xs text-slate-500">Apps</div>
-                  <div className="font-semibold">
-                    {usage.applications}{' '}
-                    <span className="text-slate-400 font-normal">
-                      {quota?.applications ? `/ ${quota.applications}` : ''}
-                    </span>
-                  </div>
-                </div>
-                <div className="rounded border border-slate-100 p-2">
-                  <div className="text-xs text-slate-500">Clients</div>
-                  <div className="font-semibold">
-                    {usage.oauth2_clients}{' '}
-                    <span className="text-slate-400 font-normal">
-                      {quota?.oauth2_clients ? `/ ${quota.oauth2_clients}` : ''}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
 
-        {/* 右カラム: クイックリンク (実務に絞ったもの) */}
-        <div className="grid gap-6 self-start">
-          <Card className="p-5 shadow-sm bg-slate-50/30">
-            <div className="flex items-center gap-2 mb-4">
-              <IconLayoutGrid size={18} className="text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-900">{t.quickLinksHeading}</h2>
+        {/* Quota Usage */}
+        {usage && (
+          <Card className="p-5 shadow-sm">
+            <div className="flex items-start gap-2.5">
+              <IconActivity className="text-blue-600 shrink-0 mt-0.5" size={20} />
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">{t.quotaUsageHeading}</h2>
+                <p className="mt-0.5 text-xs text-slate-500">{t.quotaUsageDescription}</p>
+              </div>
             </div>
-            <ul className="grid gap-2">
-              <DashboardQuickLink
-                href={tenantURL('/admin/users/new')}
-                icon={IconUserPlus}
-                label={t.addUserLabel}
-                description={t.addUserDescription}
-              />
-              <DashboardQuickLink
-                href={tenantURL('/admin/applications')}
-                icon={IconKey}
-                label={t.manageApplicationsLabel}
-                description={t.manageApplicationsDescription}
-              />
-              <DashboardQuickLink
-                href={tenantURL('/admin/sign-in-policy')}
-                icon={IconShieldLock}
-                label={t.signInPolicyLabel}
-                description={t.signInPolicyDescription}
-              />
-              <DashboardQuickLink
-                href={tenantURL('/admin/audit_events')}
-                icon={IconActivity}
-                label={t.auditEventsViewLabel}
-                description={t.auditEventsViewDescription}
-              />
-              {actorRoles.includes('system_admin') ? (
-                <DashboardQuickLink
-                  href="/system"
-                  icon={IconShieldCheck}
-                  label={t.systemConsoleLabel}
-                  description={t.systemConsoleDescription}
-                />
-              ) : null}
-            </ul>
+
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div className="rounded border border-slate-100 p-2">
+                <div className="text-xs text-slate-500">Users</div>
+                <div className="font-semibold">
+                  {usage.users}{' '}
+                  <span className="text-slate-400 font-normal">
+                    {quota?.users ? `/ ${quota.users}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="rounded border border-slate-100 p-2">
+                <div className="text-xs text-slate-500">Groups</div>
+                <div className="font-semibold">
+                  {usage.groups}{' '}
+                  <span className="text-slate-400 font-normal">
+                    {quota?.groups ? `/ ${quota.groups}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="rounded border border-slate-100 p-2">
+                <div className="text-xs text-slate-500">Apps</div>
+                <div className="font-semibold">
+                  {usage.applications}{' '}
+                  <span className="text-slate-400 font-normal">
+                    {quota?.applications ? `/ ${quota.applications}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="rounded border border-slate-100 p-2">
+                <div className="text-xs text-slate-500">Clients</div>
+                <div className="font-semibold">
+                  {usage.oauth2_clients}{' '}
+                  <span className="text-slate-400 font-normal">
+                    {quota?.oauth2_clients ? `/ ${quota.oauth2_clients}` : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
           </Card>
-        </div>
+        )}
       </div>
     </AdminShell>
   )
@@ -429,36 +376,6 @@ export function DashboardMetricCard({
       </div>
       {extra}
     </Card>
-  )
-}
-
-export function DashboardQuickLink({
-  href,
-  icon: Icon,
-  label,
-  description,
-}: {
-  href: string
-  icon: typeof IconUsers
-  label: string
-  description: string
-}) {
-  return (
-    <li>
-      <a
-        href={href}
-        className="flex items-start gap-3 rounded-lg border border-slate-200/80 bg-white p-3 transition-[background-color,border-color,box-shadow] hover:border-slate-300 hover:bg-slate-50 hover:shadow-xs"
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
-          <Icon size={18} stroke={1.8} aria-hidden="true" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900">{label}</span>
-          <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{description}</span>
-        </span>
-        <IconArrowRight size={16} className="mt-1 shrink-0 text-slate-400" aria-hidden="true" />
-      </a>
-    </li>
   )
 }
 

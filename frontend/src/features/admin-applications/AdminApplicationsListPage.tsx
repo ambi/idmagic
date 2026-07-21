@@ -12,6 +12,7 @@ import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
   AppIcon,
   detailURL,
+  editURL,
   kindLabel,
   KindBadge,
   messageOf,
@@ -191,6 +192,7 @@ function ApplicationSummaryCard({
         <div className="mt-4">
           <AdminPaneActions
             detailHref={detailURL(app.application_id)}
+            editHref={editURL(app.application_id)}
             busy={busy}
             actions={[
               {

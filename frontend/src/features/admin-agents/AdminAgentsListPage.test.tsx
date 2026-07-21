@@ -70,7 +70,7 @@ describe('AdminAgentsPage', () => {
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: t.register }))
+    fireEvent.click(screen.getByRole('button', { name: t.addAgent }))
     const nameInput = await screen.findByLabelText(t.agentNameLabel)
     fireEvent.change(nameInput, { target: { value: 'billing-bot' } })
     const form = nameInput.closest('form') as HTMLFormElement
@@ -88,7 +88,7 @@ describe('AdminAgentsPage', () => {
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: t.register }))
+    fireEvent.click(screen.getByRole('button', { name: t.addAgent }))
     const nameInput = await screen.findByLabelText(t.agentNameLabel)
     fireEvent.change(nameInput, { target: { value: 'billing-bot' } })
     const form = nameInput.closest('form') as HTMLFormElement

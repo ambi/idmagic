@@ -93,7 +93,7 @@ export function AdminAgentsPage({
           </Button>
           <Button onClick={() => setShowCreate(true)} disabled={busy}>
             <IconPlus size={16} aria-hidden="true" />
-            {t.register}
+            {t.addAgent}
           </Button>
         </>
       }

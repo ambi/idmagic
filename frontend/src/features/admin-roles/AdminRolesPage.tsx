@@ -58,7 +58,7 @@ export function AdminRolesPage({
         ))}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
         <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -113,6 +113,7 @@ export function AdminRolesPage({
                 usernames={users
                   .filter((user) => user.roles.includes(selected.name))
                   .map((user) => user.preferred_username)}
+                showEndpoints={false}
               />
             </div>
           ) : (
@@ -183,10 +184,12 @@ function RoleDetails({
   role,
   count,
   usernames,
+  showEndpoints = true,
 }: {
   role: AdminRole
   count: number
   usernames: string[]
+  showEndpoints?: boolean
 }) {
   const t = useDictionary(adminRolesDictionary)
   return (
@@ -218,27 +221,24 @@ function RoleDetails({
         {role.permissions.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">{t.noPermissionsNotice}</p>
         ) : (
-          <div className="mt-3 grid gap-3">
+          <div className="mt-3 grid gap-2.5">
             {role.permissions.map((permission) => (
-              <div key={permission.name} className="rounded-xl border border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-900">{permission.name}</p>
-                  <code className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                    {permission.action}
-                  </code>
-                </div>
-                <p className="mt-2 text-xs leading-5 text-slate-600">{permission.description}</p>
-                <div className="mt-3 grid gap-1.5">
-                  {permission.interfaces.map((iface) => (
-                    <div
-                      key={iface.name}
-                      className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"
-                    >
-                      <span className="w-14 font-bold text-blue-700">{iface.method}</span>
-                      <code className="min-w-0 break-all text-slate-700">{iface.path}</code>
-                    </div>
-                  ))}
-                </div>
+              <div key={permission.action} className="rounded-xl border border-slate-200 p-3">
+                <code className="text-sm font-semibold text-slate-900">{permission.action}</code>
+                <p className="mt-1 text-xs leading-5 text-slate-600">{permission.description}</p>
+                {showEndpoints && (
+                  <div className="mt-3 grid gap-1.5">
+                    {permission.interfaces.map((iface) => (
+                      <div
+                        key={iface.name}
+                        className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"
+                      >
+                        <span className="w-14 font-bold text-blue-700">{iface.method}</span>
+                        <code className="min-w-0 break-all text-slate-700">{iface.path}</code>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -23,12 +23,16 @@ import { useDictionary } from '../../lib/i18n'
 import type { AdminGroup, AdminGroupMember, AdminUser } from '../../types'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 
+// allowEditing=false は一覧右ペインのような参照専用の文脈で使う。メンバーの追加・
+// 除外の操作 UI は出さず、読み取り表示のみとする。実際のメンバー編集は専用の
+// 詳細画面 (allowEditing=true) から行う。
 export function GroupDetailCard({
   group,
   csrfToken,
   busy,
   detailHref,
   showActions = true,
+  allowEditing = true,
   onDeleted,
 }: {
   group: AdminGroup | null
@@ -36,6 +40,7 @@ export function GroupDetailCard({
   busy: boolean
   detailHref?: string
   showActions?: boolean
+  allowEditing?: boolean
   onDeleted: () => void
 }) {
   const [members, setMembers] = useState<AdminGroupMember[]>([])
@@ -243,56 +248,61 @@ export function GroupDetailCard({
                   {t.dynamicMembership}
                 </span>
               ) : null}
-              <Button
-                variant="ghost"
-                className="text-rose-700 hover:bg-rose-50"
-                disabled={localBusy || !!group.scim_source || group.membership_type === 'dynamic'}
-                onClick={() =>
-                  withLocal(async () => {
-                    await removeAdminGroupMember(csrfToken, group.id, member.user_id)
-                    await reloadMembers()
-                  })
-                }
-              >
-                <IconUserMinus size={14} aria-hidden="true" />
-                {t.removeMember}
-              </Button>
+              {allowEditing ? (
+                <Button
+                  variant="ghost"
+                  className="text-rose-700 hover:bg-rose-50"
+                  disabled={localBusy || !!group.scim_source || group.membership_type === 'dynamic'}
+                  onClick={() =>
+                    withLocal(async () => {
+                      await removeAdminGroupMember(csrfToken, group.id, member.user_id)
+                      await reloadMembers()
+                    })
+                  }
+                >
+                  <IconUserMinus size={14} aria-hidden="true" />
+                  {t.removeMember}
+                </Button>
+              ) : null}
             </li>
           ))}
           {members.length === 0 ? <li className="text-xs text-slate-400">{t.noMembers}</li> : null}
         </ul>
 
-        <div className="mt-3 flex items-center gap-2">
-          <select
-            value={addSub}
-            onChange={(e) => setAddSub(e.target.value)}
-            disabled={!!group.scim_source || group.membership_type === 'dynamic'}
-            className="h-9 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
-            aria-label={t.selectUserToAddAria}
-          >
-            <option value="">{t.selectUserPlaceholder}</option>
-            {addableUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.preferred_username}
-              </option>
-            ))}
-          </select>
-          <Button
-            disabled={
-              localBusy || !addSub || !!group.scim_source || group.membership_type === 'dynamic'
-            }
-            onClick={() =>
-              withLocal(async () => {
-                await addAdminGroupMember(csrfToken, group.id, addSub)
-                setAddSub('')
-                await reloadMembers()
-              })
-            }
-          >
-            <IconUserPlus size={14} aria-hidden="true" />
-            {t.add}
-          </Button>
-        </div>
+        {allowEditing ? (
+          <div className="mt-3 flex items-center gap-2">
+            <select
+              value={addSub}
+              onChange={(e) => setAddSub(e.target.value)}
+              disabled={!!group.scim_source || group.membership_type === 'dynamic'}
+              className="h-10 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
+              aria-label={t.selectUserToAddAria}
+            >
+              <option value="">{t.selectUserPlaceholder}</option>
+              {addableUsers.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.preferred_username}
+                </option>
+              ))}
+            </select>
+            <Button
+              className="h-10"
+              disabled={
+                localBusy || !addSub || !!group.scim_source || group.membership_type === 'dynamic'
+              }
+              onClick={() =>
+                withLocal(async () => {
+                  await addAdminGroupMember(csrfToken, group.id, addSub)
+                  setAddSub('')
+                  await reloadMembers()
+                })
+              }
+            >
+              <IconUserPlus size={14} aria-hidden="true" />
+              {t.add}
+            </Button>
+          </div>
+        ) : null}
 
         {group.scim_source && (
           <p className="mt-3 text-xs text-blue-700 flex items-center gap-1.5">

@@ -1,3 +1,4 @@
+import { IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import {
   deleteLifecycleWorkflow,
@@ -11,46 +12,39 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import type { AdminLifecycleWorkflow, WorkflowRun } from '../../types'
-import {
-  workflowActionLabel,
-  workflowStatusLabel,
-  workflowTriggerLabel,
-} from './WorkflowDefinitionForm'
+import { useDictionary } from '../../lib/i18n'
+import type {
+  AdminLifecycleWorkflow,
+  WorkflowActionKind,
+  WorkflowRun,
+  WorkflowTrigger,
+} from '../../types'
+import { adminLifecycleWorkflowsDictionary } from './AdminLifecycleWorkflowsPage.i18n'
 
-function runStatusLabel(status: string): string {
-  return (
-    {
-      queued: '実行待ち',
-      running: '実行中',
-      succeeded: '成功',
-      partially_failed: '一部失敗',
-      failed: '失敗',
-      canceled: '中止',
-    }[status] ?? '不明'
-  )
+type WorkflowsDictionary = (typeof adminLifecycleWorkflowsDictionary)['ja']
+
+function statusLabel(status: AdminLifecycleWorkflow['status'], t: WorkflowsDictionary): string {
+  return t[`status_${status}` as const] ?? status
 }
 
-function stepOutcomeLabel(outcome: string): string {
-  return (
-    {
-      pending: '未実行',
-      changed: '変更あり',
-      no_op: '変更なし',
-      failed: '失敗',
-      canceled: '中止',
-    }[outcome] ?? '不明'
-  )
+function triggerLabel(kind: WorkflowTrigger['kind'], t: WorkflowsDictionary): string {
+  return t[`trigger_${kind}` as const] ?? t.trigger_unknown
 }
 
-function dryRunOutcomeLabel(outcome: string): string {
-  return (
-    {
-      would_change: '変更予定',
-      no_op: '変更なし',
-      blocked: '実行不可',
-    }[outcome] ?? '判定不明'
-  )
+function actionLabel(kind: WorkflowActionKind, t: WorkflowsDictionary): string {
+  return t[`action_${kind}` as const] ?? t.action_unknown
+}
+
+function runStatusLabel(status: string, t: WorkflowsDictionary): string {
+  return t[`runStatus_${status}` as keyof WorkflowsDictionary] ?? t.runStatus_unknown
+}
+
+function stepOutcomeLabel(outcome: string, t: WorkflowsDictionary): string {
+  return t[`stepOutcome_${outcome}` as keyof WorkflowsDictionary] ?? t.stepOutcome_unknown
+}
+
+function dryRunOutcomeLabel(outcome: string, t: WorkflowsDictionary): string {
+  return t[`dryRunOutcome_${outcome}` as keyof WorkflowsDictionary] ?? t.dryRunOutcome_unknown
 }
 
 export function AdminLifecycleWorkflowsPage({
@@ -62,6 +56,7 @@ export function AdminLifecycleWorkflowsPage({
   actorUsername?: string
   workflows: AdminLifecycleWorkflow[]
 }) {
+  const t = useDictionary(adminLifecycleWorkflowsDictionary)
   const [workflows, setWorkflows] = useState(initial)
   const [error, setError] = useState('')
   const [runs, setRuns] = useState<WorkflowRun[]>([])
@@ -80,7 +75,7 @@ export function AdminLifecycleWorkflowsPage({
       if (selected?.id === next.id) setSelected(next)
       setError('')
     } catch {
-      setError('状態を変更できませんでした。')
+      setError(t.stateChangeError)
     }
   }
   async function selectWorkflow(workflow: AdminLifecycleWorkflow) {
@@ -89,23 +84,23 @@ export function AdminLifecycleWorkflowsPage({
       setRuns(await listLifecycleWorkflowRuns(workflow.id))
       setDryRun([])
     } catch {
-      setError('実行履歴を取得できませんでした。')
+      setError(t.runsFetchError)
     }
   }
   async function dryRunWorkflow() {
     if (!selected) return
-    const target = window.prompt('対象ユーザー ID')?.trim()
+    const target = window.prompt(t.dryRunPrompt)?.trim()
     if (!target) return
     try {
       const result = await dryRunLifecycleWorkflow(csrfToken, selected.id, target)
       setDryRun(
         result.steps.map(
           (step) =>
-            `${workflowActionLabel(step.action_kind as Parameters<typeof workflowActionLabel>[0])}: ${dryRunOutcomeLabel(step.would_change)}`,
+            `${actionLabel(step.action_kind as WorkflowActionKind, t)}: ${dryRunOutcomeLabel(step.would_change, t)}`,
         ),
       )
     } catch {
-      setError('実行前確認を実行できませんでした。')
+      setError(t.dryRunError)
     }
   }
   async function retry(run: WorkflowRun) {
@@ -113,11 +108,11 @@ export function AdminLifecycleWorkflowsPage({
       const next = await retryLifecycleWorkflowRun(csrfToken, run.id)
       setRuns(runs.map((item) => (item.id === next.id ? next : item)))
     } catch {
-      setError('再実行を開始できませんでした。')
+      setError(t.retryError)
     }
   }
   async function deleteWorkflow(workflow: AdminLifecycleWorkflow) {
-    if (!window.confirm(`「${workflow.name}」を削除しますか？`)) return
+    if (!window.confirm(t.deleteConfirm.replace('{name}', workflow.name))) return
     try {
       await deleteLifecycleWorkflow(csrfToken, workflow.id, workflow.current_revision)
       setWorkflows((current) => current.filter((item) => item.id !== workflow.id))
@@ -128,30 +123,33 @@ export function AdminLifecycleWorkflowsPage({
       }
       setError('')
     } catch {
-      setError('ワークフローを削除できませんでした。')
+      setError(t.deleteError)
     }
   }
   return (
     <AdminShell
       active="workflows"
       actorUsername={actorUsername}
-      title="ライフサイクルワークフロー"
-      description="ユーザーの変化をきっかけに、自動で行う処理を管理します。"
+      title={t.pageTitle}
+      description={t.pageDescription}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="mb-6 flex justify-end">
         <Button asChild>
-          <a href={tenantURL('/admin/lifecycle-workflows/new')}>新規作成</a>
+          <a href={tenantURL('/admin/lifecycle-workflows/new')}>
+            <IconPlus size={16} aria-hidden="true" />
+            {t.addWorkflow}
+          </a>
         </Button>
       </div>
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
-              <th className="p-3">名前</th>
-              <th className="p-3">状態</th>
-              <th className="p-3">トリガー</th>
-              <th className="p-3">アクション</th>
+              <th className="p-3">{t.tableHeaderName}</th>
+              <th className="p-3">{t.tableHeaderStatus}</th>
+              <th className="p-3">{t.tableHeaderTrigger}</th>
+              <th className="p-3">{t.tableHeaderActions}</th>
               <th className="p-3" />
             </tr>
           </thead>
@@ -164,12 +162,14 @@ export function AdminLifecycleWorkflowsPage({
               >
                 <td className="p-3 font-medium">
                   {workflow.name}
-                  <p className="text-xs text-slate-500">第{workflow.current_revision}版</p>
+                  <p className="text-xs text-slate-500">
+                    {t.revisionLabel.replace('{revision}', String(workflow.current_revision))}
+                  </p>
                 </td>
-                <td className="p-3">{workflowStatusLabel(workflow.status)}</td>
-                <td className="p-3">{workflowTriggerLabel(workflow.trigger.kind)}</td>
+                <td className="p-3">{statusLabel(workflow.status, t)}</td>
+                <td className="p-3">{triggerLabel(workflow.trigger.kind, t)}</td>
                 <td className="p-3">
-                  {workflow.actions.map((action) => workflowActionLabel(action.kind)).join(' → ')}
+                  {workflow.actions.map((action) => actionLabel(action.kind, t)).join(' → ')}
                 </td>
                 <td className="flex gap-2 p-3">
                   <Button asChild variant="outline">
@@ -179,7 +179,7 @@ export function AdminLifecycleWorkflowsPage({
                       )}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      編集
+                      {t.edit}
                     </a>
                   </Button>
                   <Button
@@ -189,7 +189,7 @@ export function AdminLifecycleWorkflowsPage({
                       selectWorkflow(workflow)
                     }}
                   >
-                    履歴
+                    {t.history}
                   </Button>
                   <Button
                     variant="destructive"
@@ -198,7 +198,7 @@ export function AdminLifecycleWorkflowsPage({
                       deleteWorkflow(workflow)
                     }}
                   >
-                    削除
+                    {t.delete}
                   </Button>
                   <Button
                     variant="outline"
@@ -209,10 +209,10 @@ export function AdminLifecycleWorkflowsPage({
                     }}
                   >
                     {workflow.status === 'archived'
-                      ? '操作不可'
+                      ? t.toggleUnavailable
                       : workflow.status === 'enabled'
-                        ? '無効化'
-                        : '有効化'}
+                        ? t.disable
+                        : t.enable}
                   </Button>
                 </td>
               </tr>
@@ -223,9 +223,9 @@ export function AdminLifecycleWorkflowsPage({
       {selected ? (
         <Card className="mt-6 p-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">{selected.name} の実行状況</h2>
+            <h2 className="font-semibold">{t.executionHeading.replace('{name}', selected.name)}</h2>
             <Button variant="outline" onClick={dryRunWorkflow}>
-              実行前確認
+              {t.dryRunButton}
             </Button>
           </div>
           {dryRun.length ? (
@@ -240,11 +240,12 @@ export function AdminLifecycleWorkflowsPage({
               <div className="rounded border p-3 text-sm" key={run.id}>
                 <div className="flex items-center justify-between">
                   <span>
-                    {runStatusLabel(run.status)} · 第{run.revision}版
+                    {runStatusLabel(run.status, t)} ·{' '}
+                    {t.revisionLabel.replace('{revision}', String(run.revision))}
                   </span>
                   {run.status === 'failed' || run.status === 'partially_failed' ? (
                     <Button variant="outline" onClick={() => retry(run)}>
-                      再実行
+                      {t.retry}
                     </Button>
                   ) : null}
                 </div>
@@ -252,7 +253,7 @@ export function AdminLifecycleWorkflowsPage({
                   {run.steps
                     .map(
                       (step) =>
-                        `${workflowActionLabel(step.action_kind as Parameters<typeof workflowActionLabel>[0])}: ${stepOutcomeLabel(step.outcome)}${step.error_code ? `（${step.error_code}）` : ''}`,
+                        `${actionLabel(step.action_kind as WorkflowActionKind, t)}: ${stepOutcomeLabel(step.outcome, t)}${step.error_code ? `（${step.error_code}）` : ''}`,
                     )
                     .join(' · ')}
                 </p>

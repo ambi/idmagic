@@ -10,7 +10,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     pageTitle: 'MCP リソースサーバー',
     pageDescription:
       'MCP ツールやデータソースのリソース URI と、アクセストークンで許可するスコープを管理します。',
-    registerResourceServer: 'リソースサーバーを登録',
+    registerResourceServer: 'リソースサーバーを追加',
     resourceLabel: 'リソース URI',
     resourcePlaceholder: 'https://mcp.example.com',
     nameLabel: '表示名',
@@ -34,7 +34,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     pageTitle: 'MCP resource servers',
     pageDescription:
       'Manage resource URIs for MCP tools and data sources and the scopes allowed in access tokens.',
-    registerResourceServer: 'Register resource server',
+    registerResourceServer: 'Add resource server',
     resourceLabel: 'Resource URI',
     resourcePlaceholder: 'https://mcp.example.com',
     nameLabel: 'Display name',

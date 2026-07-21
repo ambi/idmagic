@@ -500,7 +500,7 @@ function UserDetails({
             <DetailRow
               icon={IconKey}
               label={t.authMethod}
-              value={user.mfa_enrolled ? `Password + MFA` : t.passwordBadge}
+              value={user.mfa_enrolled ? t.passwordAndMfaBadge : t.passwordBadge}
             />
             <DetailRow
               icon={IconClock}
@@ -523,13 +523,13 @@ function UserDetails({
                   : t.noRecord
               }
             />
-            <DetailRow icon={IconUser} label={t.subjectId} value={user.id} mono />
+            <DetailRow icon={IconUser} label={t.userId} value={user.id} mono />
           </dl>
         </section>
 
         <UserRequiredActionsSection user={user} busy={busy} onToggle={onRequiredAction} />
 
-        <UserGroupsSection user={user} csrfToken={csrfToken} />
+        <UserGroupsSection user={user} csrfToken={csrfToken} allowEditing={false} />
       </div>
     </div>
   )

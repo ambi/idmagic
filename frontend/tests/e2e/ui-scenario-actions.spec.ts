@@ -135,7 +135,7 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await navigateAndLogin(view, '/admin/mcp-resource-servers', 'admin-mcp-resource-servers')
 
     const resource = `https://mcp-${Date.now()}.example.com`
-    await clickButtonByText(view, 'Register resource server')
+    await clickButtonByText(view, 'Add resource server')
     await setInputValue(view, '#resource', resource)
     await setInputValue(view, '#name', 'MCP E2E')
     await setInputValue(view, '#scopes', 'mcp.read, mcp.write')
@@ -343,7 +343,7 @@ test('admin user attribute schema can add and delete a custom attribute', async 
     await navigateAndLogin(view, '/admin/tenant/attributes', 'admin-tenant-attributes')
 
     const key = `e2e_attr_${Date.now()}`
-    await clickButtonByText(view, 'Add attribute')
+    await clickButtonByText(view, 'Add user attribute')
     await setInputValue(view, '#attr-label', 'E2E attribute')
     await setInputValue(view, '#attr-key', key)
     await setSelectValue(view, '#attr-type', 'string')
@@ -481,7 +481,7 @@ test('admin application lifecycle and agent credential binding work from the bro
 
     await view.navigate(`${uiOrigin}/admin/agents`)
     await waitForPage(view, 'admin-agents')
-    await clickButtonByText(view, 'Register')
+    await clickButtonByText(view, 'Add agent')
     await setInputValue(view, '#agent-name', agentName)
     await setInputValue(view, '#agent-description', 'E2E credential binding')
     await setSelectValue(view, '#agent-kind', 'supervised')

@@ -39,7 +39,7 @@ describe('consent presentation components', () => {
 
     expect(screen.getByText('taro')).toBeInTheDocument()
     expect(screen.getByText('user-1')).toBeInTheDocument()
-    expect(screen.getByText('granted')).toBeInTheDocument()
+    expect(screen.getByText(adminConsentsDictionary.ja.stateGranted)).toBeInTheDocument()
   })
 })
 

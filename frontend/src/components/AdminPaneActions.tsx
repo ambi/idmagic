@@ -36,10 +36,30 @@ export function AdminPaneActions({
 }) {
   const hasSecondaryAction = Boolean(editHref || onEdit) || actions.length > 0
   const t = useDictionary(adminPaneActionsDictionary)
+
+  // 詳細だけの場合 (例: ロール一覧) は 1 ボタンをそのまま置く。
+  if (!hasSecondaryAction) {
+    return detailHref ? (
+      <Button asChild className="min-w-28">
+        <a href={detailHref}>
+          {t.detail}
+          <IconChevronRight size={16} aria-hidden="true" />
+        </a>
+      </Button>
+    ) : null
+  }
+
+  // ボタン総数に応じてレイアウトを切り替える。3 個まで (グループ・アプリの
+  // 詳細/編集/削除 など) は 1 行に均等幅で並べる。ユーザーだけは
+  // 詳細/編集/無効化/削除 の 4 個になるため、2 列グリッドにして 2×2 に収め、
+  // 端数のボタンが 1 つだけ全幅に伸びて悪目立ちしないようにする。
+  const count = (detailHref ? 1 : 0) + (editHref || onEdit ? 1 : 0) + actions.length
+  const useGrid = count >= 4
+  const itemClass = useGrid ? '' : 'flex-1'
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={useGrid ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap items-center gap-2'}>
       {detailHref ? (
-        <Button asChild className={hasSecondaryAction ? 'flex-1' : 'min-w-28'}>
+        <Button asChild className={itemClass}>
           <a href={detailHref}>
             {t.detail}
             <IconChevronRight size={16} aria-hidden="true" />
@@ -47,14 +67,20 @@ export function AdminPaneActions({
         </Button>
       ) : null}
       {editHref ? (
-        <Button asChild variant="outline" className="flex-1">
+        <Button asChild variant="outline" className={itemClass}>
           <a href={editHref}>
             <IconPencil size={16} aria-hidden="true" />
             {t.edit}
           </a>
         </Button>
       ) : onEdit ? (
-        <Button type="button" variant="outline" className="flex-1" disabled={busy} onClick={onEdit}>
+        <Button
+          type="button"
+          variant="outline"
+          className={itemClass}
+          disabled={busy}
+          onClick={onEdit}
+        >
           <IconPencil size={16} aria-hidden="true" />
           {t.edit}
         </Button>
@@ -67,7 +93,7 @@ export function AdminPaneActions({
             type="button"
             variant="outline"
             className={cn(
-              'flex-1',
+              itemClass,
               action.tone === 'danger' &&
                 'border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50',
             )}

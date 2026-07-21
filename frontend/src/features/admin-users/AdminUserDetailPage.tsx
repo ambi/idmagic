@@ -321,7 +321,7 @@ export function AdminUserDetailPage({
                 <DetailRow
                   icon={IconKey}
                   label={t.authMethod}
-                  value={user.mfa_enrolled ? `Password + MFA` : t.passwordBadge}
+                  value={user.mfa_enrolled ? t.passwordAndMfaBadge : t.passwordBadge}
                 />
                 <DetailRow icon={IconUser} label={t.userId} value={user.id} mono />
               </dl>

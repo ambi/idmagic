@@ -303,7 +303,7 @@ export function AdminUserEditPage({
       }
     >
       {error && <Alert>{error}</Alert>}
-      <Card className="mx-auto w-full max-w-3xl overflow-hidden">
+      <Card className="w-full max-w-4xl overflow-hidden">
         <div className="border-b border-slate-200 px-6 py-5">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
             {t.profileAndAccessLabel}
@@ -362,31 +362,31 @@ export function AdminUserEditPage({
                   <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
                     {t.profileHeading}
                   </h3>
-                  <div className="grid gap-2">
-                    <Label htmlFor="user-editor-username">{t.username}</Label>
-                    <Input
-                      id="user-editor-username"
-                      value={username}
-                      onChange={(event) => setUsername(event.target.value)}
-                      autoFocus={!user.scim_source}
-                      required
-                      aria-invalid={usernameInvalid}
-                      readOnly={!!user.scim_source}
-                      className={user.scim_source ? 'bg-slate-50' : undefined}
-                    />
-                    <p className="text-xs leading-5 text-slate-500">{t.usernameHelp}</p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="user-editor-name">{t.displayName}</Label>
-                    <Input
-                      id="user-editor-name"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      readOnly={!!user.scim_source}
-                      className={user.scim_source ? 'bg-slate-50' : undefined}
-                    />
-                  </div>
                   <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="user-editor-username">{t.username}</Label>
+                      <Input
+                        id="user-editor-username"
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        autoFocus={!user.scim_source}
+                        required
+                        aria-invalid={usernameInvalid}
+                        readOnly={!!user.scim_source}
+                        className={user.scim_source ? 'bg-slate-50' : undefined}
+                      />
+                      <p className="text-xs leading-5 text-slate-500">{t.usernameHelp}</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="user-editor-name">{t.displayName}</Label>
+                      <Input
+                        id="user-editor-name"
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        readOnly={!!user.scim_source}
+                        className={user.scim_source ? 'bg-slate-50' : undefined}
+                      />
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="user-editor-given-name">{t.givenName} (given_name)</Label>
                       <Input
@@ -407,25 +407,25 @@ export function AdminUserEditPage({
                         className={user.scim_source ? 'bg-slate-50' : undefined}
                       />
                     </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="user-editor-email">{t.emailFieldLabel}</Label>
-                    <Input
-                      id="user-editor-email"
-                      type="email"
-                      value={email}
-                      onChange={(event) => {
-                        setEmail(event.target.value)
-                        setEmailVerifiedTouched(false)
-                      }}
-                      readOnly={!!user.scim_source}
-                      className={user.scim_source ? 'bg-slate-50' : undefined}
-                    />
-                    {emailChanged && (
-                      <p className="text-xs leading-5 text-amber-700">
-                        {t.emailChangedVerificationNotice}
-                      </p>
-                    )}
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label htmlFor="user-editor-email">{t.emailFieldLabel}</Label>
+                      <Input
+                        id="user-editor-email"
+                        type="email"
+                        value={email}
+                        onChange={(event) => {
+                          setEmail(event.target.value)
+                          setEmailVerifiedTouched(false)
+                        }}
+                        readOnly={!!user.scim_source}
+                        className={user.scim_source ? 'bg-slate-50' : undefined}
+                      />
+                      {emailChanged && (
+                        <p className="text-xs leading-5 text-amber-700">
+                          {t.emailChangedVerificationNotice}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                     <input
@@ -446,11 +446,14 @@ export function AdminUserEditPage({
                     </span>
                   </label>
                 </section>
+
                 <section className="grid gap-2 border-t border-slate-200 pt-5">
                   <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
                     {t.rolesHeading}
                   </h3>
-                  <Label htmlFor="user-editor-roles">{t.rolesHeading}</Label>
+                  <Label htmlFor="user-editor-roles" className="sr-only">
+                    {t.rolesHeading}
+                  </Label>
                   <Input
                     id="user-editor-roles"
                     value={roles}
@@ -459,6 +462,7 @@ export function AdminUserEditPage({
                   />
                   <p className="text-xs leading-5 text-slate-500">{t.rolesHelp}</p>
                 </section>
+
                 <AdminAttributeEditorGroups
                   defs={attributeDefs}
                   values={attrDraft}
