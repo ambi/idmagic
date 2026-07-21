@@ -9,7 +9,9 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import type { AdminApplication, AdminGroup, AdminLifecycleWorkflow } from '../../types'
 import { tenantURL } from '../../api/core'
+import { useDictionary } from '../../lib/i18n'
 import { WorkflowDefinitionForm } from './WorkflowDefinitionForm'
+import { workflowFormDictionary } from './WorkflowDefinitionForm.i18n'
 
 function EditorLayout({
   actorUsername,
@@ -24,6 +26,7 @@ function EditorLayout({
   error: string
   children: React.ReactNode
 }) {
+  const t = useDictionary(workflowFormDictionary)
   return (
     <AdminShell
       active="workflows"
@@ -35,11 +38,11 @@ function EditorLayout({
         <a
           href={tenantURL('/admin/lifecycle-workflows')}
           className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-          aria-label="ワークフロー一覧へ戻る"
+          aria-label={t.backToList}
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <span className="text-sm text-slate-600">ワークフロー一覧へ戻る</span>
+        <span className="text-sm text-slate-600">{t.backToList}</span>
       </div>
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="max-w-4xl">{children}</div>
@@ -58,6 +61,7 @@ export function AdminLifecycleWorkflowCreatePage({
   groups: AdminGroup[]
   applications: AdminApplication[]
 }) {
+  const t = useDictionary(workflowFormDictionary)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -70,7 +74,7 @@ export function AdminLifecycleWorkflowCreatePage({
         tenantURL(`/admin/lifecycle-workflows/${encodeURIComponent(workflow.id)}/edit`),
       )
     } catch {
-      setError('ワークフローを作成できませんでした。入力内容を確認してください。')
+      setError(t.createError)
       setBusy(false)
     }
   }
@@ -78,8 +82,8 @@ export function AdminLifecycleWorkflowCreatePage({
   return (
     <EditorLayout
       actorUsername={actorUsername}
-      title="ワークフローを作成"
-      description="トリガーとアクションを設定し、下書きとして保存します。"
+      title={t.createTitle}
+      description={t.createDescription}
       error={error}
     >
       <WorkflowDefinitionForm
@@ -106,6 +110,7 @@ export function AdminLifecycleWorkflowEditPage({
   groups: AdminGroup[]
   applications: AdminApplication[]
 }) {
+  const t = useDictionary(workflowFormDictionary)
   const [workflow, setWorkflow] = useState(initialWorkflow)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -120,7 +125,7 @@ export function AdminLifecycleWorkflowEditPage({
       })
       setWorkflow(updated)
     } catch {
-      setError('ワークフローの変更を保存できませんでした。最新の内容を確認してください。')
+      setError(t.updateError)
     } finally {
       setBusy(false)
     }
@@ -129,8 +134,10 @@ export function AdminLifecycleWorkflowEditPage({
   return (
     <EditorLayout
       actorUsername={actorUsername}
-      title="ワークフローを編集"
-      description={`${workflow.name}（第${workflow.current_revision}版）の設定を変更します。`}
+      title={t.editTitle}
+      description={t.editDescription
+        .replace('{name}', workflow.name)
+        .replace('{revision}', String(workflow.current_revision))}
       error={error}
     >
       <WorkflowDefinitionForm

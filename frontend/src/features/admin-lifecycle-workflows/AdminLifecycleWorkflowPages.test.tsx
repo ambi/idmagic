@@ -5,8 +5,10 @@ import type { AdminLifecycleWorkflow } from '../../types'
 import { AdminLifecycleWorkflowCreatePage } from './AdminLifecycleWorkflowEditorPage'
 import { AdminLifecycleWorkflowsPage } from './AdminLifecycleWorkflowsPage'
 import { adminLifecycleWorkflowsDictionary } from './AdminLifecycleWorkflowsPage.i18n'
+import { workflowFormDictionary } from './WorkflowDefinitionForm.i18n'
 
 const wf = adminLifecycleWorkflowsDictionary.ja
+const form = workflowFormDictionary.ja
 
 const workflow: AdminLifecycleWorkflow = {
   id: 'workflow-1',
@@ -72,9 +74,9 @@ describe('lifecycle workflow page separation', () => {
       { locale: 'ja' },
     )
 
-    expect(screen.getByRole('heading', { name: 'ワークフローを作成' })).toBeInTheDocument()
-    expect(screen.getByLabelText('名前')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'ワークフロー一覧へ戻る' })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: form.createTitle })).toBeInTheDocument()
+    expect(screen.getByLabelText(form.nameLabel)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: form.backToList })).toHaveAttribute(
       'href',
       '/admin/lifecycle-workflows',
     )

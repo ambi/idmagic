@@ -10,37 +10,52 @@ import {
   workflowStatusLabel,
   workflowTriggerLabel,
 } from './WorkflowDefinitionForm'
+import { workflowFormDictionary } from './WorkflowDefinitionForm.i18n'
+
+const ja = workflowFormDictionary.ja
+const en = workflowFormDictionary.en
 
 describe('WorkflowDefinitionForm', () => {
-  it('機械向けの値ではなく日本語の意味を表示する', async () => {
+  it('機械向けの値ではなく利用者向けの表示名を出す', async () => {
     await renderWithRouter(
       <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={vi.fn()} />,
       { locale: 'ja' },
     )
 
-    expect(screen.getByText('トリガー（いつ実行するか）')).toBeInTheDocument()
-    expect(screen.getByText('アクション（何を行うか）')).toBeInTheDocument()
-    expect(screen.getByText('ユーザーが作成されたとき')).toBeInTheDocument()
-    expect(screen.getByText('アクションの種類を選択')).toBeInTheDocument()
+    expect(screen.getByText(ja.triggerSectionLabel)).toBeInTheDocument()
+    expect(screen.getByText(ja.actionsSectionLabel)).toBeInTheDocument()
+    expect(screen.getByText(ja.trigger_user_created)).toBeInTheDocument()
+    expect(screen.getByText(ja.actionKindPlaceholder)).toBeInTheDocument()
     expect(screen.queryByText('user_created')).not.toBeInTheDocument()
     expect(screen.queryByText('send_email')).not.toBeInTheDocument()
     expect(screen.queryByText('current_revision')).not.toBeInTheDocument()
   })
 
-  it('必須設定が不足していると日本語で案内する', async () => {
+  it('英語ロケールでは英語で表示する', async () => {
+    await renderWithRouter(
+      <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={vi.fn()} />,
+      { locale: 'en' },
+    )
+
+    expect(screen.getByText(en.triggerSectionLabel)).toBeInTheDocument()
+    expect(screen.getByText(en.trigger_user_created)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en.createDraft })).toBeInTheDocument()
+  })
+
+  it('必須設定が不足しているとロケールに沿った文言で案内する', async () => {
     const onSubmit = vi.fn()
     await renderWithRouter(
       <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={onSubmit} />,
       { locale: 'ja' },
     )
 
-    expect(screen.getByRole('button', { name: '下書きを作成' })).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent('ワークフロー名を入力してください。')
-    expect(screen.getByRole('status')).toHaveTextContent('アクション 1の種類を選択してください。')
+    expect(screen.getByRole('button', { name: ja.createDraft })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(ja.errNameRequired)
+    expect(screen.getByRole('status')).toHaveTextContent(ja.errActionKind.replace('{index}', '1'))
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('既存定義を日本語の表示名で復元する', async () => {
+  it('既存定義を表示名で復元する', async () => {
     const workflow: AdminLifecycleWorkflow = {
       id: 'workflow-1',
       name: '退職処理',
@@ -68,8 +83,8 @@ describe('WorkflowDefinitionForm', () => {
     )
 
     expect(screen.getByDisplayValue('退職処理')).toBeInTheDocument()
-    expect(screen.getByText('ユーザー状態が変更されたとき')).toBeInTheDocument()
-    expect(screen.getAllByText('ユーザーを無効化').length).toBeGreaterThan(0)
+    expect(screen.getByText(ja.trigger_user_status_changed)).toBeInTheDocument()
+    expect(screen.getAllByText(ja.action_disable_user).length).toBeGreaterThan(0)
     expect(screen.getByDisplayValue('退職')).toBeInTheDocument()
   })
 })
@@ -89,7 +104,7 @@ describe('workflow definition mapping', () => {
       ],
     }
 
-    expect(validateWorkflowDraft(draft)).toEqual([])
+    expect(validateWorkflowDraft(draft, ja)).toEqual([])
     expect(workflowInput(draft)).toEqual({
       name: '入社処理',
       description: '初期設定',
@@ -104,9 +119,9 @@ describe('workflow definition mapping', () => {
     })
   })
 
-  it('状態・トリガー・アクションを利用者向け表示へ変換する', () => {
-    expect(workflowStatusLabel('draft')).toBe('下書き')
-    expect(workflowTriggerLabel('user_created')).toBe('ユーザーが作成されたとき')
-    expect(workflowActionLabel('send_email')).toBe('メールを送信')
+  it('状態・トリガー・アクションを辞書の表示名へ変換する', () => {
+    expect(workflowStatusLabel('draft', ja)).toBe(ja.status_draft)
+    expect(workflowTriggerLabel('user_created', ja)).toBe(ja.trigger_user_created)
+    expect(workflowActionLabel('send_email', en)).toBe(en.action_send_email)
   })
 })
