@@ -3,9 +3,17 @@ import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminGroupEditPage } from './AdminGroupEditPage'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
-import type { AdminGroup } from '../../types'
+import type { AdminGroup, TenantUserAttributeSchema } from '../../types'
 
 const t = adminGroupsDictionary.en
+
+const schema: TenantUserAttributeSchema = {
+  tenant_id: 'tenant-1',
+  attributes: [],
+  builtin: [],
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -33,7 +41,7 @@ describe('AdminGroupEditPage', () => {
       'fetch',
       vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the group.' }))),
     )
-    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} />)
+    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
 
     fireEvent.change(screen.getByLabelText(t.groupNameLabel), { target: { value: 'Platform' } })
     fireEvent.click(screen.getByRole('button', { name: t.save }))

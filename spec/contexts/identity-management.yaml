@@ -2769,11 +2769,11 @@ flows:
             interface: RemoveGroupMember
             to: AdminGroups
           - action: update_dynamic_rule
-            does: 動的グループの制限 CEL ルールを編集して保存する
+            does: 属性・演算子・値を選ぶビルダーで条件を AND 結合して組み立てるか、詳細設定で CEL を直接編集し、制限 CEL ルールを保存する
             interface: UpdateDynamicGroupRule
             to: AdminGroups
           - action: preview_dynamic_rule
-            does: 未保存の CEL ルールをプレビューして、現在所属との差分を確認する
+            does: ビルダーまたは詳細設定で組み立てた未保存の CEL ルールをプレビューして、現在所属との差分を確認する
             interface: PreviewDynamicGroupRule
             to: AdminGroups
           - action: enable_dynamic_rule
