@@ -77,9 +77,27 @@ standards:
         section: §2
         strength: MUST
         adoption: required
-        statement: SCIM protocol endpoint は tenant-scoped Bearer token で認証・認可する。
+        statement: >-
+          SCIM protocol endpoint は tenant-scoped Bearer token で認証・認可する。
+          token は ApiTokens context が発行する API アクセストークンで、SCIM 操作は
+          scim:users:read / scim:users:write / scim:groups:read / scim:groups:write の
+          該当 scope を要求する。discovery endpoint は scim:* のいずれかで参照できる。
         refs:
-          - models.ScimToken
+          - interfaces.GetScimServiceProviderConfig
+          - interfaces.GetScimResourceTypes
+          - interfaces.GetScimSchemas
+          - interfaces.ListScimUsers
+          - interfaces.CreateScimUser
+          - interfaces.GetScimUser
+          - interfaces.UpdateScimUser
+          - interfaces.PatchScimUser
+          - interfaces.DeleteScimUser
+          - interfaces.ListScimGroups
+          - interfaces.CreateScimGroup
+          - interfaces.GetScimGroup
+          - interfaces.UpdateScimGroup
+          - interfaces.PatchScimGroup
+          - interfaces.DeleteScimGroup
       - id: RFC7644-ERROR-RESPONSE
         section: §3.12
         strength: MUST
@@ -109,11 +127,6 @@ standards:
           - interfaces.ListScimGroups
 
 glossary:
-  ScimToken:
-    definition: SCIM 2.0 API アクセス用のアクセストークン。SCIM クライアントは Authorization ヘッダに Bearer スキームで提示する。現状はテナント管理者が発行・失効を管理する長寿命トークンだが、認証方式は SCIM 2.0 仕様では規定されておらず、将来 OAuth 2.0 で発行したアクセストークンを受け入れる余地も残す。
-    aliases:
-      - SCIM アクセストークン
-      - access token
   ScimClient:
     definition: tenant-scoped Bearer token を提示して SCIM provisioning API を呼び出す外部 agent。
 
@@ -149,12 +162,6 @@ models:
     fields:
       id:
         type: String
-  InvalidRequestError:
-    kind: error
-    description: SCIM token 管理入力が不正である。
-  AccessDeniedError:
-    kind: error
-    description: SCIM Bearer token または管理者 principal が操作を許可されない。
   ScimProtocolError:
     kind: error
     description: RFC 7644 §3.12 に従う SCIM protocol error response。
@@ -189,24 +196,6 @@ models:
         type: String
       group_id:
         type: String
-  ScimToken:
-    kind: entity
-    description: SCIM 2.0 API アクセス用のアクセストークン。Bearer スキームで提示する。有効なアクセストークンが1本もなければ SCIM API は事実上利用できず、これがテナントごとの有効・無効の唯一の判断軸となる。
-    identity: [tenant_id, id]
-    fields:
-      tenant_id:
-        type: String
-      id:
-        type: String
-      token_hash:
-        type: String
-      description:
-        type: String
-      created_at:
-        type: DateTime
-      expires_at:
-        type: DateTime
-        optional: true
 interfaces:
   GetScimServiceProviderConfig:
     description: |
@@ -224,7 +213,7 @@ interfaces:
     errors: [ScimProtocolError]
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimDiscovery]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -243,7 +232,7 @@ interfaces:
     errors: [ScimProtocolError]
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimDiscovery]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -263,7 +252,7 @@ interfaces:
     errors: [ScimProtocolError]
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimDiscovery]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -289,7 +278,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteUsers]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -336,7 +325,7 @@ interfaces:
       - input.tenant_id == context.tenant_id
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimReadUsers]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -360,7 +349,7 @@ interfaces:
       - input.tenant_id == context.tenant_id
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimReadUsers]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -389,7 +378,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteUsers]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -416,7 +405,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteUsers]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -433,7 +422,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteUsers]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -461,7 +450,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteGroups]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -507,7 +496,7 @@ interfaces:
       - input.tenant_id == context.tenant_id
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimReadGroups]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -531,7 +520,7 @@ interfaces:
       - input.tenant_id == context.tenant_id
     read_only: true
     access:
-      policies: [ScimProvision]
+      policies: [ScimReadGroups]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -560,7 +549,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteGroups]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -588,7 +577,7 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteGroups]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
@@ -605,90 +594,65 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
     access:
-      policies: [ScimProvision]
+      policies: [ScimWriteGroups]
       resource: {type: Tenant, id: context.tenant_id}
     bindings:
       - kind: http
         method: DELETE
         path: "/scim/v2/Groups/{id}"
-  ListScimTokens:
-    description: テナントの SCIM アクセストークン一覧を取得する。
-    input:
-      tenant_id:
-        type: String
-    output:
-      tokens:
-        type: "Map<String,JSON>[]"
-    errors: [AccessDeniedError]
-    read_only: true
-    access:
-      policies: [ManageScimSettings]
-      resource: {type: Tenant, id: context.tenant_id}
-    bindings:
-      - kind: http
-        method: GET
-        path: /api/admin/scim/tokens
-  CreateScimToken:
-    description: テナントの SCIM アクセストークンを新規発行する。
-    input:
-      tenant_id:
-        type: String
-      description:
-        type: String
-      expiry_days:
-        type: Integer
-    output:
-      token:
-        type: "Map<String,JSON>"
-    errors: [InvalidRequestError, AccessDeniedError]
-    requires:
-      - input.tenant_id == context.tenant_id
-      - input.expiry_days > 0
-    access:
-      policies: [ManageScimSettings]
-      resource: {type: Tenant, id: context.tenant_id}
-    bindings:
-      - kind: http
-        method: POST
-        path: /api/admin/scim/tokens
-  RevokeScimToken:
-    description: テナントの SCIM アクセストークンを無効化する。
-    input:
-      tenant_id:
-        type: String
-      id:
-        type: String
-    errors: [InvalidRequestError, AccessDeniedError]
-    requires:
-      - input.tenant_id == context.tenant_id
-    access:
-      policies: [ManageScimSettings]
-      resource: {type: Tenant, id: context.tenant_id}
-    bindings:
-      - kind: http
-        method: DELETE
-        path: "/api/admin/scim/tokens/{id}"
 authorization:
   principals:
+    # discovery endpoint 用。scim:* のいずれかの scope を持てば足りる。
     ScimBearerClient:
       type: Agent
       matches:
         - context.authenticated
         - principal.status == "Active"
-    TenantAdministrator:
-      type: User
+        - '"scim:users:read" in context.token_scopes || "scim:users:write" in context.token_scopes || "scim:groups:read" in context.token_scopes || "scim:groups:write" in context.token_scopes'
+    ScimUserReader:
+      type: Agent
       matches:
         - context.authenticated
         - principal.status == "Active"
-        - '"admin" in principal.roles || "system_admin" in principal.roles'
+        - '"scim:users:read" in context.token_scopes'
+    ScimUserWriter:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"scim:users:write" in context.token_scopes'
+    ScimGroupReader:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"scim:groups:read" in context.token_scopes'
+    ScimGroupWriter:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"scim:groups:write" in context.token_scopes'
   policies:
-    ScimProvision:
+    ScimDiscovery:
       effect: permit
       principal: ScimBearerClient
       when: principal.tenant_id == resource.id
-    ManageScimSettings:
+    ScimReadUsers:
       effect: permit
-      principal: TenantAdministrator
+      principal: ScimUserReader
+      when: principal.tenant_id == resource.id
+    ScimWriteUsers:
+      effect: permit
+      principal: ScimUserWriter
+      when: principal.tenant_id == resource.id
+    ScimReadGroups:
+      effect: permit
+      principal: ScimGroupReader
+      when: principal.tenant_id == resource.id
+    ScimWriteGroups:
+      effect: permit
+      principal: ScimGroupWriter
       when: principal.tenant_id == resource.id
 scenarios:
   SCIM clientはUsersとGroups collectionを検索できる:
@@ -793,17 +757,3 @@ scenarios:
         condition: 追加対象 User が別 tenant に属する
         steps:
           - ScimProtocolError を返し membership を作成しない
-  テナント管理者はSCIMアクセストークンを管理できる:
-    actor: TenantAdministrator
-    given:
-      - admin は対象 tenant で認証済みである
-    main_success:
-      - admin が CreateScimToken を呼び出す
-      - 平文 token は作成応答で一度だけ返される
-      - admin が RevokeScimToken を呼び出す
-      - 失効した token で SCIM API を呼ぶと拒否される
-    extensions:
-      - at: 1
-        condition: admin が別 tenant の token を作成または失効しようとする
-        steps:
-          - AccessDeniedError を返し token を変更しない

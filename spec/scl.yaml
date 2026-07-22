@@ -258,6 +258,22 @@ context_map:
           - UserRef
           - GroupRef
         reason: SCIM のプロビジョニング要求は User および Group aggregate の作成・更新・削除へと変換・適用される。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: SCIM endpoint は ApiTokens が発行・認証する token の scim:* scope で操作を認可する。
+  ApiTokens:
+    description: "管理用 API と SCIM API を認証する tenant-scoped な API アクセストークン (idmagic_pat_ 接頭辞) の発行・失効・一覧と、scope 語彙を所有する。トークンに付与された scope 集合は認証時に実行コンテキストの token_scopes として展開され、各 record context の操作認可に使われる。SCIM を含む各 API surface の endpoint 自体は所有せず、トークンと scope 語彙という横断的な認証基盤だけを提供する。"
+    path: contexts/api-tokens.yaml
+    publishes:
+      - ApiTokenScope
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: API アクセストークンはテナント境界内に閉じ、tenant_id を必須とする。
   Jobs:
     description: "テナント境界を保つ汎用非同期ジョブ基盤の durable queue と worker runtime を所有する。\n各ジョブの業務ロジックは呼び出し元の bounded context の usecase に残り、Jobs は\nenqueue・claim・リース・リトライ・進捗可視化という技術的能力だけを提供する。管理者向け\n一覧/詳細/キャンセル API と運用 metrics は wi-157-job-admin-operations-surface が別途所有する。\n"
     path: contexts/jobs.yaml

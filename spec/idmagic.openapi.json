@@ -12476,7 +12476,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimDiscovery"
           ],
           "resource": {
             "type": "Tenant",
@@ -12541,7 +12541,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimDiscovery"
           ],
           "resource": {
             "type": "Tenant",
@@ -12609,7 +12609,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimDiscovery"
           ],
           "resource": {
             "type": "Tenant",
@@ -12681,7 +12681,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteUsers"
           ],
           "resource": {
             "type": "Tenant",
@@ -12761,7 +12761,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimReadUsers"
           ],
           "resource": {
             "type": "Tenant",
@@ -12857,7 +12857,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimReadUsers"
           ],
           "resource": {
             "type": "Tenant",
@@ -12932,7 +12932,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteUsers"
           ],
           "resource": {
             "type": "Tenant",
@@ -13026,7 +13026,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteUsers"
           ],
           "resource": {
             "type": "Tenant",
@@ -13120,7 +13120,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteUsers"
           ],
           "resource": {
             "type": "Tenant",
@@ -13181,7 +13181,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteGroups"
           ],
           "resource": {
             "type": "Tenant",
@@ -13261,7 +13261,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimReadGroups"
           ],
           "resource": {
             "type": "Tenant",
@@ -13357,7 +13357,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimReadGroups"
           ],
           "resource": {
             "type": "Tenant",
@@ -13432,7 +13432,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteGroups"
           ],
           "resource": {
             "type": "Tenant",
@@ -13526,7 +13526,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteGroups"
           ],
           "resource": {
             "type": "Tenant",
@@ -13620,7 +13620,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ScimProvision"
+            "ScimWriteGroups"
           ],
           "resource": {
             "type": "Tenant",
@@ -13666,10 +13666,10 @@
         }
       }
     },
-    "/api/admin/scim/tokens": {
+    "/api/admin/api-tokens": {
       "get": {
-        "operationId": "ListScimTokens",
-        "summary": "テナントの SCIM アクセストークン一覧を取得する。",
+        "operationId": "ListApiTokens",
+        "summary": "テナントの API アクセストークンを一覧する。token_hash と平文は返さない。",
         "security": [
           {
             "SclBearer": []
@@ -13677,7 +13677,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ManageScimSettings"
+            "ManageApiTokens"
           ],
           "resource": {
             "type": "Tenant",
@@ -13705,7 +13705,7 @@
                     "tokens": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "$ref": "#/components/schemas/ApiTokenMetadata"
                       }
                     }
                   },
@@ -13734,8 +13734,8 @@
         }
       },
       "post": {
-        "operationId": "CreateScimToken",
-        "summary": "テナントの SCIM アクセストークンを新規発行する。",
+        "operationId": "IssueApiToken",
+        "summary": "テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を 指定する。平文トークン (idmagic_pat_...) を含む応答を一度だけ返す。",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id",
           "input.expiry_days > 0"
@@ -13748,7 +13748,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ManageScimSettings"
+            "ManageApiTokens"
           ],
           "resource": {
             "type": "Tenant",
@@ -13768,6 +13768,12 @@
                   "description": {
                     "type": "string"
                   },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ApiTokenScope"
+                    }
+                  },
                   "expiry_days": {
                     "type": "integer"
                   }
@@ -13776,6 +13782,7 @@
                 "required": [
                   "tenant_id",
                   "description",
+                  "scopes",
                   "expiry_days"
                 ]
               }
@@ -13791,12 +13798,16 @@
                   "type": "object",
                   "properties": {
                     "token": {
-                      "type": "object"
+                      "type": "string"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiTokenMetadata"
                     }
                   },
                   "additionalProperties": false,
                   "required": [
-                    "token"
+                    "token",
+                    "meta"
                   ]
                 }
               }
@@ -13822,10 +13833,10 @@
         }
       }
     },
-    "/api/admin/scim/tokens/{id}": {
+    "/api/admin/api-tokens/{id}": {
       "delete": {
-        "operationId": "RevokeScimToken",
-        "summary": "テナントの SCIM アクセストークンを無効化する。",
+        "operationId": "RevokeApiToken",
+        "summary": "テナントの API アクセストークンを失効する。存在しない id への呼び出しも冪等に成功する。",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id"
         ],
@@ -13837,7 +13848,7 @@
         ],
         "x-scl-access": {
           "policies": [
-            "ManageScimSettings"
+            "ManageApiTokens"
           ],
           "resource": {
             "type": "Tenant",
@@ -17373,21 +17384,13 @@
         "properties": {
           "id": {
             "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
           }
         },
         "additionalProperties": false,
         "required": [
-          "id",
-          "tenant_id",
-          "status"
+          "id"
         ],
-        "description": "有効な SCIM Bearer token から解決される provisioning principal。"
+        "description": "API アクセストークンを提示する外部 client principal の最小 stub。"
       },
       "AgentCredentialBindRequest": {
         "type": "object",
@@ -17852,6 +17855,129 @@
           "changedFields"
         ],
         "description": "管理者が Agent の name / description / kind / roles を更新した。"
+      },
+      "ApiToken": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "token_hash": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiTokenScope"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "id",
+          "token_hash",
+          "scopes",
+          "description",
+          "created_at"
+        ],
+        "description": "管理用 API / SCIM API を認証する tenant-scoped アクセストークン。scopes が空、または expires_at を過ぎたトークンは認可されない。平文は発行時に一度だけ返し、token_hash (sha256) のみ永続化する。"
+      },
+      "ApiTokenMetadata": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiTokenScope"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "scopes",
+          "created_at"
+        ],
+        "description": "一覧・発行応答で返すトークンのメタデータ。token_hash と平文を含まない。"
+      },
+      "ApiTokenPrincipal": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiTokenScope"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "scopes"
+        ],
+        "description": "有効な API アクセストークンから解決した tenant と scope の認証コンテキスト。"
+      },
+      "ApiTokenScope": {
+        "type": "string",
+        "enum": [
+          "users:read",
+          "users:write",
+          "groups:read",
+          "groups:write",
+          "agents:read",
+          "agents:write",
+          "sessions:read",
+          "sessions:write",
+          "consents:read",
+          "consents:write",
+          "lifecycle-workflows:read",
+          "lifecycle-workflows:write",
+          "tenants:read",
+          "tenants:write",
+          "settings:read",
+          "settings:write",
+          "signing-keys:read",
+          "signing-keys:write",
+          "audit:read",
+          "scim:users:read",
+          "scim:users:write",
+          "scim:groups:read",
+          "scim:groups:write"
+        ],
+        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。application とその protocol binding (OIDC / SAML / WS-Fed) および独立 protocol リソース (applications / oauth-clients / saml / wsfed / provisioning) の scope は、そのエンドポイントパス構成が確定した後に追記する。アカウント自己管理 API の account:* scope も別途定義して追記する。公開・プロトコル・認証フロー endpoint は scope 対象外。"
       },
       "AppAccessDeniedByPolicy": {
         "type": "object",
@@ -27089,40 +27215,6 @@
         "additionalProperties": false,
         "description": "RFC 7644 §3.12 に従う SCIM protocol error response。"
       },
-      "ScimToken": {
-        "type": "object",
-        "properties": {
-          "tenant_id": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "token_hash": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expires_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "tenant_id",
-          "id",
-          "token_hash",
-          "description",
-          "created_at"
-        ],
-        "description": "SCIM 2.0 API アクセス用のアクセストークン。Bearer スキームで提示する。有効なアクセストークンが1本もなければ SCIM API は事実上利用できず、これがテナントごとの有効・無効の唯一の判断軸となる。"
-      },
       "ScimUserRef": {
         "type": "object",
         "properties": {
@@ -30763,6 +30855,30 @@
         ]
       },
       {
+        "name": "policy:AuthenticateApiTokens",
+        "policies": [
+          "AuthenticateApiTokens"
+        ],
+        "actions": [
+          {
+            "name": "AuthenticateApiToken",
+            "memberOf": "policy:AuthenticateApiTokens",
+            "policies": [
+              "AuthenticateApiTokens"
+            ],
+            "resourceId": "input.token",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "ApiToken"
+              ]
+            }
+          }
+        ]
+      },
+      {
         "name": "policy:AuthenticatedClient",
         "policies": [
           "AuthenticatedClient"
@@ -31315,16 +31431,16 @@
         ]
       },
       {
-        "name": "policy:ManageScimSettings",
+        "name": "policy:ManageApiTokens",
         "policies": [
-          "ManageScimSettings"
+          "ManageApiTokens"
         ],
         "actions": [
           {
-            "name": "CreateScimToken",
-            "memberOf": "policy:ManageScimSettings",
+            "name": "IssueApiToken",
+            "memberOf": "policy:ManageApiTokens",
             "policies": [
-              "ManageScimSettings"
+              "ManageApiTokens"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31337,10 +31453,10 @@
             }
           },
           {
-            "name": "ListScimTokens",
-            "memberOf": "policy:ManageScimSettings",
+            "name": "ListApiTokens",
+            "memberOf": "policy:ManageApiTokens",
             "policies": [
-              "ManageScimSettings"
+              "ManageApiTokens"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31353,10 +31469,10 @@
             }
           },
           {
-            "name": "RevokeScimToken",
-            "memberOf": "policy:ManageScimSettings",
+            "name": "RevokeApiToken",
+            "memberOf": "policy:ManageApiTokens",
             "policies": [
-              "ManageScimSettings"
+              "ManageApiTokens"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31395,96 +31511,16 @@
         ]
       },
       {
-        "name": "policy:ScimProvision",
+        "name": "policy:ScimDiscovery",
         "policies": [
-          "ScimProvision"
+          "ScimDiscovery"
         ],
         "actions": [
           {
-            "name": "CreateScimGroup",
-            "memberOf": "policy:ScimProvision",
-            "policies": [
-              "ScimProvision"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "CreateScimUser",
-            "memberOf": "policy:ScimProvision",
-            "policies": [
-              "ScimProvision"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "DeleteScimGroup",
-            "memberOf": "policy:ScimProvision",
-            "policies": [
-              "ScimProvision"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "DeleteScimUser",
-            "memberOf": "policy:ScimProvision",
-            "policies": [
-              "ScimProvision"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "GetScimGroup",
-            "memberOf": "policy:ScimProvision",
-            "policies": [
-              "ScimProvision"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "GetScimResourceTypes",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimDiscovery",
             "policies": [
-              "ScimProvision"
+              "ScimDiscovery"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31498,9 +31534,9 @@
           },
           {
             "name": "GetScimSchemas",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimDiscovery",
             "policies": [
-              "ScimProvision"
+              "ScimDiscovery"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31514,9 +31550,9 @@
           },
           {
             "name": "GetScimServiceProviderConfig",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimDiscovery",
             "policies": [
-              "ScimProvision"
+              "ScimDiscovery"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31527,12 +31563,20 @@
                 "Tenant"
               ]
             }
-          },
+          }
+        ]
+      },
+      {
+        "name": "policy:ScimReadGroups",
+        "policies": [
+          "ScimReadGroups"
+        ],
+        "actions": [
           {
-            "name": "GetScimUser",
-            "memberOf": "policy:ScimProvision",
+            "name": "GetScimGroup",
+            "memberOf": "policy:ScimReadGroups",
             "policies": [
-              "ScimProvision"
+              "ScimReadGroups"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31546,9 +31590,33 @@
           },
           {
             "name": "ListScimGroups",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimReadGroups",
             "policies": [
-              "ScimProvision"
+              "ScimReadGroups"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ScimReadUsers",
+        "policies": [
+          "ScimReadUsers"
+        ],
+        "actions": [
+          {
+            "name": "GetScimUser",
+            "memberOf": "policy:ScimReadUsers",
+            "policies": [
+              "ScimReadUsers"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31562,9 +31630,49 @@
           },
           {
             "name": "ListScimUsers",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimReadUsers",
             "policies": [
-              "ScimProvision"
+              "ScimReadUsers"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ScimWriteGroups",
+        "policies": [
+          "ScimWriteGroups"
+        ],
+        "actions": [
+          {
+            "name": "CreateScimGroup",
+            "memberOf": "policy:ScimWriteGroups",
+            "policies": [
+              "ScimWriteGroups"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteScimGroup",
+            "memberOf": "policy:ScimWriteGroups",
+            "policies": [
+              "ScimWriteGroups"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31578,25 +31686,9 @@
           },
           {
             "name": "PatchScimGroup",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimWriteGroups",
             "policies": [
-              "ScimProvision"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "PatchScimUser",
-            "memberOf": "policy:ScimProvision",
-            "policies": [
-              "ScimProvision"
+              "ScimWriteGroups"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31610,9 +31702,65 @@
           },
           {
             "name": "UpdateScimGroup",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimWriteGroups",
             "policies": [
-              "ScimProvision"
+              "ScimWriteGroups"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ScimWriteUsers",
+        "policies": [
+          "ScimWriteUsers"
+        ],
+        "actions": [
+          {
+            "name": "CreateScimUser",
+            "memberOf": "policy:ScimWriteUsers",
+            "policies": [
+              "ScimWriteUsers"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteScimUser",
+            "memberOf": "policy:ScimWriteUsers",
+            "policies": [
+              "ScimWriteUsers"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "PatchScimUser",
+            "memberOf": "policy:ScimWriteUsers",
+            "policies": [
+              "ScimWriteUsers"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {
@@ -31626,9 +31774,9 @@
           },
           {
             "name": "UpdateScimUser",
-            "memberOf": "policy:ScimProvision",
+            "memberOf": "policy:ScimWriteUsers",
             "policies": [
-              "ScimProvision"
+              "ScimWriteUsers"
             ],
             "resourceId": "context.tenant_id",
             "appliesTo": {

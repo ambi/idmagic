@@ -31,6 +31,17 @@ type AgentCredentialBinding struct {
 	CreatedAt time.Time
 }
 
+type ApiToken struct {
+	ID          string
+	TenantID    string
+	TokenHash   string
+	Scopes      []string
+	Description pgtype.Text
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ExpiresAt   pgtype.Timestamptz
+}
+
 type Application struct {
 	TenantID      string
 	ApplicationID string
@@ -464,16 +475,6 @@ type ScimGroupRef struct {
 	GroupID   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-type ScimToken struct {
-	ID          string
-	TenantID    string
-	TokenHash   string
-	Description pgtype.Text
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ExpiresAt   pgtype.Timestamptz
 }
 
 type ScimUserRef struct {

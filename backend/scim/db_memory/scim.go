@@ -9,59 +9,15 @@ import (
 
 type ScimRepository struct {
 	mu        sync.RWMutex
-	tokens    map[string]*ports.ScimToken
 	userRefs  map[string]map[string]*ports.ScimUserRef  // tenantID -> scimID -> Ref
 	groupRefs map[string]map[string]*ports.ScimGroupRef // tenantID -> scimID -> Ref
 }
 
 func NewScimRepository() *ScimRepository {
 	return &ScimRepository{
-		tokens:    make(map[string]*ports.ScimToken),
 		userRefs:  make(map[string]map[string]*ports.ScimUserRef),
 		groupRefs: make(map[string]map[string]*ports.ScimGroupRef),
 	}
-}
-
-func (r *ScimRepository) SaveToken(_ context.Context, token *ports.ScimToken) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	cloned := *token
-	r.tokens[token.ID] = &cloned
-	return nil
-}
-
-func (r *ScimRepository) FindToken(_ context.Context, tokenHash string) (*ports.ScimToken, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for _, tok := range r.tokens {
-		if tok.TokenHash == tokenHash {
-			cloned := *tok
-			return &cloned, nil
-		}
-	}
-	return nil, nil
-}
-
-func (r *ScimRepository) ListTokens(_ context.Context, tenantID string) ([]*ports.ScimToken, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var out []*ports.ScimToken
-	for _, tok := range r.tokens {
-		if tok.TenantID == tenantID {
-			cloned := *tok
-			out = append(out, &cloned)
-		}
-	}
-	return out, nil
-}
-
-func (r *ScimRepository) DeleteToken(_ context.Context, tenantID, id string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if tok, ok := r.tokens[id]; ok && tok.TenantID == tenantID {
-		delete(r.tokens, id)
-	}
-	return nil
 }
 
 func (r *ScimRepository) SaveUserRef(_ context.Context, ref *ports.ScimUserRef) error {

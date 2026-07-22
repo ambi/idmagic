@@ -49,7 +49,7 @@
 --   in schema. Second-precision rounding happens only at external protocol
 --   boundaries (SCIM/SAML/WS-Fed formatting).
 -- - Ids that idmagic generates internally use UUID: users.id, clients.client_id,
---   groups.id, agents.id, audit_events.id, scim_tokens.id, and the already-UUID
+--   groups.id, agents.id, audit_events.id, api_tokens.id, and the already-UUID
 --   refresh_tokens/applications/application_categories keys, plus every FK column
 --   that references them (user_id, owner_user_id, group_id, agent_id, client_id,
 --   subject_id). Go keeps these as string; base.go registers a text codec for the
@@ -778,17 +778,42 @@ CREATE TABLE application_categories (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
-CREATE TABLE scim_tokens (
+-- api_tokens (wi-273): unified tenant-scoped API access token for the
+-- management API and SCIM (replaces the former SCIM-only scim_tokens).
+-- scopes lists the granted <resource>:<action> permissions (ApiTokenScope in
+-- spec/contexts/api-tokens.yaml); the CHECK mirrors that enum as defense in
+-- depth alongside Go-side validation.
+CREATE TABLE api_tokens (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     token_hash TEXT NOT NULL,
+    scopes TEXT[] NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ,
-    CONSTRAINT scim_tokens_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+    CONSTRAINT api_tokens_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT api_tokens_token_hash_key UNIQUE (token_hash),
+    CONSTRAINT api_tokens_scopes_valid CHECK (
+        scopes <@ ARRAY[
+            'users:read', 'users:write',
+            'groups:read', 'groups:write',
+            'agents:read', 'agents:write',
+            'sessions:read', 'sessions:write',
+            'consents:read', 'consents:write',
+            'lifecycle-workflows:read', 'lifecycle-workflows:write',
+            'tenants:read', 'tenants:write',
+            'settings:read', 'settings:write',
+            'signing-keys:read', 'signing-keys:write',
+            'audit:read',
+            'scim:users:read', 'scim:users:write',
+            'scim:groups:read', 'scim:groups:write'
+        ]::TEXT[]
+    )
 );
+
+CREATE INDEX api_tokens_tenant_id_created_at_idx ON api_tokens (tenant_id, created_at);
 
 CREATE TABLE scim_user_refs (
     tenant_id UUID NOT NULL,

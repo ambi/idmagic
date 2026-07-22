@@ -4,6 +4,7 @@ package server_http
 import (
 	"net/http"
 
+	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 	audithttp "github.com/ambi/idmagic/backend/audit/handlers_http"
@@ -96,6 +97,7 @@ type Deps struct {
 	Scim             scim.Module
 	FederationSigner *samltoken.Signer
 	Application      application.Module
+	ApiTokens        apitoken.Module
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
 
@@ -372,7 +374,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
 
-	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit)
+	d.ApiTokens.Register(g, d.Deps, authenticator)
+
+	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, d.ApiTokens.Service())
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo)
 }

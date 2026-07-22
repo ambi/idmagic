@@ -223,6 +223,23 @@ sql:
             nullable: false
   - engine: "postgresql"
     schema: "infra/schema/postgres.sql"
+    queries: "backend/apitoken/db_postgres"
+    gen:
+      go:
+        package: "db_postgres"
+        out: "backend/apitoken/db_postgres"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_result_struct_pointers: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "string"
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+            nullable: false
+  - engine: "postgresql"
+    schema: "infra/schema/postgres.sql"
     queries: "backend/idgovernance/db_postgres"
     gen:
       go:

@@ -7,51 +7,6 @@ import (
 	"github.com/ambi/idmagic/backend/scim/ports"
 )
 
-func TestScimRepositoryTokens(t *testing.T) {
-	ctx := context.Background()
-	repo := NewScimRepository()
-
-	token := &ports.ScimToken{
-		ID: "t1", TenantID: "acme", TokenHash: "hash-1", Description: "prov",
-	}
-	if err := repo.SaveToken(ctx, token); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.SaveToken(ctx, &ports.ScimToken{ID: "t2", TenantID: "acme", TokenHash: "hash-2"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.SaveToken(ctx, &ports.ScimToken{ID: "t3", TenantID: "other", TokenHash: "hash-3"}); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := repo.FindToken(ctx, "hash-1")
-	if err != nil || got == nil || got.ID != "t1" {
-		t.Fatalf("FindToken: %v got=%v", err, got)
-	}
-	if missing, _ := repo.FindToken(ctx, "nope"); missing != nil {
-		t.Fatalf("expected nil token, got %+v", missing)
-	}
-
-	list, err := repo.ListTokens(ctx, "acme")
-	if err != nil || len(list) != 2 {
-		t.Fatalf("ListTokens: %v len=%d", err, len(list))
-	}
-
-	// 別テナントの id では削除されない。
-	if err := repo.DeleteToken(ctx, "other", "t1"); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := repo.FindToken(ctx, "hash-1"); got == nil {
-		t.Fatal("token deleted across tenant boundary")
-	}
-	if err := repo.DeleteToken(ctx, "acme", "t1"); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := repo.FindToken(ctx, "hash-1"); got != nil {
-		t.Fatal("token not deleted")
-	}
-}
-
 func TestScimRepositoryUserRefs(t *testing.T) {
 	ctx := context.Background()
 	repo := NewScimRepository()

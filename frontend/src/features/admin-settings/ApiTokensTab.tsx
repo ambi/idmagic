@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { createScimToken, listScimTokens, revokeScimToken } from '../../api'
+import { createApiToken, listApiTokens, revokeApiToken } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -7,16 +7,49 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
-import type { ScimToken } from '../../types'
+import type { ApiToken, ApiTokenScope } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 
-export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: string }) {
-  const [tokens, setTokens] = useState<ScimToken[]>([])
+const apiTokenScopes: ApiTokenScope[] = [
+  'users:read',
+  'users:write',
+  'groups:read',
+  'groups:write',
+  'agents:read',
+  'agents:write',
+  'sessions:read',
+  'sessions:write',
+  'consents:read',
+  'consents:write',
+  'lifecycle-workflows:read',
+  'lifecycle-workflows:write',
+  'tenants:read',
+  'tenants:write',
+  'settings:read',
+  'settings:write',
+  'signing-keys:read',
+  'signing-keys:write',
+  'audit:read',
+  'scim:users:read',
+  'scim:users:write',
+  'scim:groups:read',
+  'scim:groups:write',
+]
+
+export function ApiTokensTab({
+  csrfToken,
+  tenantRealm,
+}: {
+  csrfToken: string
+  tenantRealm: string
+}) {
+  const [tokens, setTokens] = useState<ApiToken[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [tokenDesc, setTokenDesc] = useState('')
   const [tokenExpiry, setTokenExpiry] = useState('7')
+  const [selectedScopes, setSelectedScopes] = useState<ApiTokenScope[]>([])
   const [generatedToken, setGeneratedToken] = useState('')
   const [creating, setCreating] = useState(false)
   const t = useDictionary(adminSettingsDictionary)
@@ -26,10 +59,10 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
   useEffect(() => {
     async function loadData() {
       try {
-        const tList = await listScimTokens()
+        const tList = await listApiTokens()
         setTokens(tList)
       } catch {
-        setError(t.scimTokensFetchFailedError)
+        setError(t.apiTokensFetchFailedError)
       } finally {
         setLoading(false)
       }
@@ -47,16 +80,18 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
       return
     }
     try {
-      const res = await createScimToken(csrfToken, {
+      const res = await createApiToken(csrfToken, {
         description: tokenDesc.trim(),
+        scopes: selectedScopes,
         expiry_days: Number.parseInt(tokenExpiry, 10),
       })
       setGeneratedToken(res.token)
       setTokenDesc('')
+      setSelectedScopes([])
       setCreating(false)
-      const tList = await listScimTokens()
+      const tList = await listApiTokens()
       setTokens(tList)
-      setNotice(t.scimTokenIssuedNotice)
+      setNotice(t.apiTokenIssuedNotice)
     } catch {
       setError(t.tokenIssueFailedError)
     }
@@ -66,7 +101,7 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
     setError('')
     setNotice('')
     try {
-      await revokeScimToken(csrfToken, id)
+      await revokeApiToken(csrfToken, id)
       setTokens(tokens.filter((token) => token.id !== id))
       setNotice(t.tokenRevokedNotice)
     } catch {
@@ -78,13 +113,13 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
     return <div className="text-sm text-slate-500">{t.loadingNotice}</div>
   }
 
-  const endpointUrl = `${window.location.origin}/realms/${tenantID}/scim/v2`
+  const endpointUrl = `${window.location.origin}/realms/${tenantRealm}/scim/v2`
 
   return (
     <Card className="p-6">
       <header>
-        <h2 className="text-base font-semibold text-slate-900">{t.scimHeading}</h2>
-        <p className="mt-1 text-sm text-slate-600">{t.scimDescription}</p>
+        <h2 className="text-base font-semibold text-slate-900">{t.apiTokensHeading}</h2>
+        <p className="mt-1 text-sm text-slate-600">{t.apiTokensDescription}</p>
       </header>
 
       <div className="mt-6 grid gap-6">
@@ -120,7 +155,7 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
 
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">{t.scimTokenHeading}</h3>
+            <h3 className="text-sm font-semibold text-slate-900">{t.apiTokensListHeading}</h3>
             {!creating ? (
               <Button type="button" variant="outline" onClick={() => setCreating(true)}>
                 {t.issueToken}
@@ -160,6 +195,7 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
                 <thead className="bg-slate-50 font-semibold text-slate-900">
                   <tr>
                     <th className="px-4 py-2">{t.tableHeaderDescription}</th>
+                    <th className="px-4 py-2">{t.tableHeaderScopes}</th>
                     <th className="px-4 py-2">{t.tableHeaderCreatedAt}</th>
                     <th className="px-4 py-2">{t.tableHeaderExpiresAt}</th>
                     <th className="px-4 py-2">{t.tableHeaderAction}</th>
@@ -169,6 +205,18 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
                   {tokens.map((tok) => (
                     <tr key={tok.id}>
                       <td className="px-4 py-3">{tok.description}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex max-w-md flex-wrap gap-1">
+                          {tok.scopes.map((scope) => (
+                            <code
+                              key={scope}
+                              className="rounded bg-slate-100 px-1.5 py-0.5 text-xs"
+                            >
+                              {scope}
+                            </code>
+                          ))}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         {new Date(tok.created_at).toLocaleString(
                           locale === 'ja' ? 'ja-JP' : 'en-US',
@@ -226,6 +274,31 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
                   />
                 </div>
               </div>
+              <fieldset className="mt-4 rounded-md border border-slate-200 p-3">
+                <legend className="px-1 text-sm font-semibold text-slate-800">
+                  {t.tokenScopesLabel}
+                </legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {apiTokenScopes.map((scope) => (
+                    <label key={scope} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        name="api-token-scopes"
+                        value={scope}
+                        checked={selectedScopes.includes(scope)}
+                        onChange={(event) => {
+                          setSelectedScopes((current) =>
+                            event.target.checked
+                              ? [...current, scope]
+                              : current.filter((candidate) => candidate !== scope),
+                          )
+                        }}
+                      />
+                      <code>{scope}</code>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <div className="mt-4 flex items-center gap-2">
                 <Button type="submit">{t.issueToken}</Button>
                 <Button
@@ -233,6 +306,7 @@ export function ScimTab({ csrfToken, tenantID }: { csrfToken: string; tenantID: 
                   variant="ghost"
                   onClick={() => {
                     setTokenDesc('')
+                    setSelectedScopes([])
                     setError('')
                     setCreating(false)
                   }}

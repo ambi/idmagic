@@ -197,6 +197,7 @@ func Run() error {
 		Scim:             deps.Scim,
 		FederationSigner: federationSigner,
 		Application:      deps.Application,
+		ApiTokens:        deps.ApiTokens,
 		Jobs:             deps.Jobs,
 		Provisioning:     deps.Provisioning,
 	})

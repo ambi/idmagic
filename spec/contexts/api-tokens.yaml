@@ -1,0 +1,288 @@
+system: idmagic
+spec_version: "3.0"
+context: ApiTokens
+
+glossary:
+  ApiAccessToken:
+    definition: >-
+      IdMagic の管理用 API と SCIM API を呼び出すための tenant-scoped アクセストークン。
+      Authorization ヘッダに Bearer スキームで提示する。テナント管理者が発行・失効を
+      管理する長寿命トークンで、付与された scope の集合が呼び出せる操作を決める。値は
+      idmagic_pat_ プレフィックスを持ち、発行時に一度だけ平文を返す。永続化するのは
+      sha256 ハッシュだけで、平文は保存しない。
+    aliases:
+      - API アクセストークン
+      - PAT
+      - Personal Access Token
+  ApiTokenScope:
+    definition: >-
+      API アクセストークンに付与される権限単位。<resource>:<action> 形式で、read は
+      参照系、write は変更系操作を許可する。scim scope は SCIM 2.0 provisioning API 全体への
+      アクセスを表す。トークンの scope 集合は認証時に実行コンテキストの token_scopes として
+      展開され、各操作の認可判断に使われる。
+
+models:
+  Tenant:
+    kind: entity
+    description: Tenancy が publish するテナント resource の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  User:
+    kind: entity
+    description: IdManagement が publish する管理者 principal の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  Agent:
+    kind: entity
+    description: API アクセストークンを提示する外部 client principal の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  ApiTokenScope:
+    kind: enum
+    description: >-
+      API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式
+      (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の
+      scope で、users/groups × read/write に分ける。SCIM discovery endpoint
+      (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば
+      参照できる。application とその protocol binding (OIDC / SAML / WS-Fed) および独立
+      protocol リソース (applications / oauth-clients / saml / wsfed / provisioning) の
+      scope は、そのエンドポイントパス構成が確定した後に追記する。アカウント自己管理
+      API の account:* scope も別途定義して追記する。公開・プロトコル・認証フロー
+      endpoint は scope 対象外。
+    values:
+      - "users:read"
+      - "users:write"
+      - "groups:read"
+      - "groups:write"
+      - "agents:read"
+      - "agents:write"
+      - "sessions:read"
+      - "sessions:write"
+      - "consents:read"
+      - "consents:write"
+      - "lifecycle-workflows:read"
+      - "lifecycle-workflows:write"
+      - "tenants:read"
+      - "tenants:write"
+      - "settings:read"
+      - "settings:write"
+      - "signing-keys:read"
+      - "signing-keys:write"
+      - "audit:read"
+      - "scim:users:read"
+      - "scim:users:write"
+      - "scim:groups:read"
+      - "scim:groups:write"
+  ApiToken:
+    kind: entity
+    description: >-
+      管理用 API / SCIM API を認証する tenant-scoped アクセストークン。scopes が空、または
+      expires_at を過ぎたトークンは認可されない。平文は発行時に一度だけ返し、token_hash
+      (sha256) のみ永続化する。
+    identity: [tenant_id, id]
+    fields:
+      tenant_id:
+        type: String
+      id:
+        type: String
+      token_hash:
+        type: String
+        annotations:
+          sensitive: true
+      scopes:
+        type: "ApiTokenScope[]"
+      description:
+        type: String
+      created_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+        optional: true
+  ApiTokenMetadata:
+    kind: value_object
+    description: 一覧・発行応答で返すトークンのメタデータ。token_hash と平文を含まない。
+    fields:
+      id:
+        type: String
+      description:
+        type: String
+      scopes:
+        type: "ApiTokenScope[]"
+      created_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+        optional: true
+  ApiTokenPrincipal:
+    kind: value_object
+    description: 有効な API アクセストークンから解決した tenant と scope の認証コンテキスト。
+    fields:
+      tenant_id:
+        type: String
+      scopes:
+        type: "ApiTokenScope[]"
+  InvalidRequestError:
+    kind: error
+    description: API アクセストークン発行・失効の入力が不正である。
+  AccessDeniedError:
+    kind: error
+    description: 呼び出し元が API アクセストークン管理操作を許可されない。
+
+interfaces:
+  AuthenticateApiToken:
+    description: >-
+      Bearer token の形式・hash・有効期限を検証し、空でない scope 集合を持つ有効な
+      API アクセストークンを tenant-scoped principal として解決する。失効済み、期限切れ、
+      不正形式、未知 token、scope なしは fail-closed で拒否する。
+    input:
+      token:
+        type: String
+        annotations:
+          sensitive: true
+    output:
+      principal:
+        type: ApiTokenPrincipal
+    errors: [AccessDeniedError]
+    read_only: true
+    access:
+      policies: [AuthenticateApiTokens]
+      resource: {type: ApiToken, id: input.token}
+  ListApiTokens:
+    description: テナントの API アクセストークンを一覧する。token_hash と平文は返さない。
+    input:
+      tenant_id:
+        type: String
+    output:
+      tokens:
+        type: "ApiTokenMetadata[]"
+    errors: [AccessDeniedError]
+    read_only: true
+    access:
+      policies: [ManageApiTokens]
+      resource: {type: Tenant, id: context.tenant_id}
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/api-tokens
+  IssueApiToken:
+    description: >-
+      テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を
+      指定する。平文トークン (idmagic_pat_...) を含む応答を一度だけ返す。
+    input:
+      tenant_id:
+        type: String
+      description:
+        type: String
+      scopes:
+        type: "ApiTokenScope[]"
+      expiry_days:
+        type: Integer
+    output:
+      token:
+        type: String
+        annotations:
+          sensitive: true
+      meta:
+        type: ApiTokenMetadata
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - input.tenant_id == context.tenant_id
+      - input.expiry_days > 0
+    access:
+      policies: [ManageApiTokens]
+      resource: {type: Tenant, id: context.tenant_id}
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/api-tokens
+  RevokeApiToken:
+    description: テナントの API アクセストークンを失効する。存在しない id への呼び出しも冪等に成功する。
+    input:
+      tenant_id:
+        type: String
+      id:
+        type: String
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - input.tenant_id == context.tenant_id
+    access:
+      policies: [ManageApiTokens]
+      resource: {type: Tenant, id: context.tenant_id}
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/api-tokens/{id}"
+
+authorization:
+  principals:
+    ApiTokenBearerClient:
+      type: Agent
+      matches:
+        - context.bearer_token_present
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"admin" in principal.roles || "system_admin" in principal.roles'
+  policies:
+    AuthenticateApiTokens:
+      effect: permit
+      principal: ApiTokenBearerClient
+      when: "true"
+    ManageApiTokens:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == resource.id
+
+scenarios:
+  APIアクセストークンは有効なscope付きtokenだけを認証する:
+    actor: ApiTokenBearerClient
+    given:
+      - scope 集合と将来の有効期限を持つ API アクセストークンが発行済みである
+    main_success:
+      - 呼び出し元が平文 token を AuthenticateApiToken に提示する
+      - token の tenant_id と scope 集合を持つ ApiTokenPrincipal が返る
+    extensions:
+      - at: 1
+        condition: token が idmagic_pat_ + 64 桁 hex の形式ではない
+        steps:
+          - AccessDeniedError で拒否する
+      - at: 1
+        condition: token が未知、失効済み、期限切れ、または scope 集合が空である
+        steps:
+          - AccessDeniedError で拒否する
+  管理者はAPIアクセストークンを発行・失効できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者として認証済みである
+    main_success:
+      - 管理者が scope 集合と有効日数を指定して IssueApiToken を呼ぶ
+      - 平文トークン (idmagic_pat_...) を含む応答が一度だけ返る
+      - ListApiTokens で発行済みトークンのメタデータ (token_hash と平文を除く) を確認できる
+      - 管理者が RevokeApiToken でトークンを失効する
+    extensions:
+      - at: 1
+        condition: expiry_days が 0 以下である
+        steps:
+          - InvalidRequestError で拒否され、トークンを発行しない
+      - at: 1
+        condition: 呼び出し元が admin / system_admin ロールを持たない
+        steps:
+          - AccessDeniedError で拒否される
+      - at: 4
+        condition: 指定した id のトークンが存在しない
+        steps:
+          - 冪等に成功として扱い、副作用を起こさない

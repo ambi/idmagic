@@ -3,77 +3,15 @@ package db_postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/ambi/idmagic/backend/scim/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ScimRepository は SCIM token/user-ref/group-ref を PostgreSQL に永続化する。クエリは
+// ScimRepository は SCIM user-ref/group-ref を PostgreSQL に永続化する。クエリは
 // sqlc 生成 (wi-176, ADR-090); Pool は DBTX を構造的に満たす。
 type ScimRepository struct{ Pool sharedpg.DB }
-
-func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {
-	if t == nil {
-		return pgtype.Timestamptz{}
-	}
-	return pgtype.Timestamptz{Time: *t, Valid: true}
-}
-
-func tokenFromRow(id, tenantID, tokenHash string, description pgtype.Text, createdAt time.Time, expiresAt pgtype.Timestamptz) *ports.ScimToken {
-	tok := &ports.ScimToken{
-		ID:          id,
-		TenantID:    tenantID,
-		TokenHash:   tokenHash,
-		Description: description.String,
-		CreatedAt:   createdAt,
-	}
-	if expiresAt.Valid {
-		expires := expiresAt.Time
-		tok.ExpiresAt = &expires
-	}
-	return tok
-}
-
-func (r *ScimRepository) SaveToken(ctx context.Context, token *ports.ScimToken) error {
-	return New(r.Pool).SaveScimToken(ctx, SaveScimTokenParams{
-		ID:          token.ID,
-		TenantID:    token.TenantID,
-		TokenHash:   token.TokenHash,
-		Description: pgtype.Text{String: token.Description, Valid: true},
-		CreatedAt:   token.CreatedAt,
-		ExpiresAt:   timestamptzOrNil(token.ExpiresAt),
-	})
-}
-
-func (r *ScimRepository) FindToken(ctx context.Context, tokenHash string) (*ports.ScimToken, error) {
-	row, err := New(r.Pool).FindScimTokenByHash(ctx, tokenHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return tokenFromRow(row.ID, row.TenantID, row.TokenHash, row.Description, row.CreatedAt, row.ExpiresAt), nil
-}
-
-func (r *ScimRepository) ListTokens(ctx context.Context, tenantID string) ([]*ports.ScimToken, error) {
-	rows, err := New(r.Pool).ListScimTokensByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*ports.ScimToken, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, tokenFromRow(row.ID, row.TenantID, row.TokenHash, row.Description, row.CreatedAt, row.ExpiresAt))
-	}
-	return out, nil
-}
-
-func (r *ScimRepository) DeleteToken(ctx context.Context, tenantID, id string) error {
-	return New(r.Pool).DeleteScimToken(ctx, DeleteScimTokenParams{TenantID: tenantID, ID: id})
-}
 
 func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef) error {
 	return New(r.Pool).SaveScimUserRef(ctx, SaveScimUserRefParams{

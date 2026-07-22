@@ -3,6 +3,7 @@ package handlers_http
 import (
 	"github.com/labstack/echo/v5"
 
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
@@ -10,7 +11,8 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Usecases *usecases.Usecases
+	Usecases              *usecases.Usecases
+	ApiTokenAuthenticator apitokenports.Authenticator
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
@@ -34,9 +36,4 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.PUT("/scim/v2/Groups/:id", h.handleUpdateGroup)
 	g.PATCH("/scim/v2/Groups/:id", h.handlePatchGroup)
 	g.DELETE("/scim/v2/Groups/:id", h.handleDeleteGroup)
-
-	// Admin API for SCIM access tokens
-	g.GET("/api/admin/scim/tokens", h.handleListAdminTokens)
-	g.POST("/api/admin/scim/tokens", h.handleCreateAdminToken)
-	g.DELETE("/api/admin/scim/tokens/:id", h.handleRevokeAdminToken)
 }

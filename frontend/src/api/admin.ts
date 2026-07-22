@@ -10,7 +10,8 @@ import type {
   AdminKey,
   AdminSessionRecord,
   AdminSettings,
-  ScimToken,
+  ApiToken,
+  ApiTokenScope,
   TenantKeyHealth,
   AdminTenant,
   TenantQuota,
@@ -1155,20 +1156,20 @@ export async function setApplicationCategories(
   )
 }
 
-export async function listScimTokens(): Promise<ScimToken[]> {
-  return (await request<{ tokens: ScimToken[] }>('/api/admin/scim/tokens')).tokens
+export async function listApiTokens(): Promise<ApiToken[]> {
+  return (await request<{ tokens: ApiToken[] }>('/api/admin/api-tokens')).tokens
 }
 
-export async function createScimToken(
+export async function createApiToken(
   csrfToken: string,
-  input: { description: string; expiry_days: number },
-): Promise<{ token: string; meta: ScimToken }> {
-  return request('/api/admin/scim/tokens', adminRequest(csrfToken, 'POST', input))
+  input: { description: string; scopes: ApiTokenScope[]; expiry_days: number },
+): Promise<{ token: string; meta: ApiToken }> {
+  return request('/api/admin/api-tokens', adminRequest(csrfToken, 'POST', input))
 }
 
-export async function revokeScimToken(csrfToken: string, id: string): Promise<void> {
+export async function revokeApiToken(csrfToken: string, id: string): Promise<void> {
   await request(
-    `/api/admin/scim/tokens/${encodeURIComponent(id)}`,
+    `/api/admin/api-tokens/${encodeURIComponent(id)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }

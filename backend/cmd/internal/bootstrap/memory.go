@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"context"
 
+	"github.com/ambi/idmagic/backend/apitoken"
+	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	"github.com/ambi/idmagic/backend/audit"
@@ -123,6 +125,7 @@ func assembleMemory() (*Dependencies, error) {
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository(), ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		Scim:         scim.Module{Repo: scimmemory.NewScimRepository()},
+		ApiTokens:    apitoken.Module{Repo: apitokenmemory.NewRepository()},
 		Jobs:         jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),

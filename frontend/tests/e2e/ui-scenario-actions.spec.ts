@@ -129,6 +129,33 @@ test('admin general settings can be updated from the browser', async () => {
   }
 }, 60_000)
 
+test('admin API access token lifecycle works with selected SCIM scopes', async () => {
+  const view = new Bun.WebView({ width: 1280, height: 2200 })
+  try {
+    await navigateAndLogin(view, '/admin/settings', 'admin-settings')
+    await clickButtonByText(view, 'API access tokens')
+    await waitForText(view, 'Connection info')
+
+    await clickButtonByText(view, 'Issue token')
+    await setInputValue(view, '#token-desc', `SCIM E2E ${Date.now()}`)
+    await view.click('input[value="scim:users:read"]')
+    await view.click('input[value="scim:users:write"]')
+    await clickButtonByText(view, 'Issue token')
+
+    await waitForText(view, 'Issued the API access token.')
+    expect(
+      await view.evaluate(`document.querySelector('input[value^="idmagic_pat_"]')?.value ?? ''`),
+    ).toMatch(/^idmagic_pat_[0-9a-f]{64}$/)
+    await waitForText(view, 'scim:users:read')
+    await waitForText(view, 'scim:users:write')
+
+    await clickButtonByText(view, 'Revoke')
+    await waitForText(view, 'Revoked the token.')
+  } finally {
+    view.close()
+  }
+}, 60_000)
+
 test('admin MCP resource server lifecycle works from the browser', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1800 })
   try {

@@ -2,6 +2,7 @@
 package scim
 
 import (
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	scimhttp "github.com/ambi/idmagic/backend/scim/handlers_http"
@@ -19,9 +20,11 @@ type Module struct {
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	userRepo userports.UserRepository, groupRepo groupports.GroupRepository, emit func(spec.DomainEvent),
+	apiTokenAuthenticator apitokenports.Authenticator,
 ) {
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{
 		Deps: deps, Authenticator: authenticator,
-		Usecases: scimusecases.NewUsecases(m.Repo, userRepo, groupRepo, emit),
+		Usecases:              scimusecases.NewUsecases(m.Repo, userRepo, groupRepo, emit),
+		ApiTokenAuthenticator: apiTokenAuthenticator,
 	})
 }

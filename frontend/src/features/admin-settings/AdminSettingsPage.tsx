@@ -10,11 +10,11 @@ import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSe
 import { BrandingTab } from './BrandingTab'
 import { GeneralTab } from './GeneralTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
-import { ScimTab } from './ScimTab'
+import { ApiTokensTab } from './ApiTokensTab'
 
 const DEFAULT_REALM = 'default'
 
-type TabKey = 'general' | 'password-policy' | 'branding' | 'email' | 'scim'
+type TabKey = 'general' | 'password-policy' | 'branding' | 'email' | 'api-tokens'
 
 type Tab = {
   key: TabKey
@@ -45,9 +45,9 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       icon: IconPalette,
     },
     {
-      key: 'scim',
-      label: t.tabScimLabel,
-      description: t.tabScimDescription,
+      key: 'api-tokens',
+      label: t.tabApiTokensLabel,
+      description: t.tabApiTokensDescription,
       icon: IconUsers,
     },
     {
@@ -143,7 +143,9 @@ export function AdminSettingsPage({
             />
           ) : null}
           {active === 'branding' ? <BrandingTab csrfToken={csrfToken} /> : null}
-          {active === 'scim' ? <ScimTab csrfToken={csrfToken} tenantID={settings.realm} /> : null}
+          {active === 'api-tokens' ? (
+            <ApiTokensTab csrfToken={csrfToken} tenantRealm={settings.realm} />
+          ) : null}
           {active === 'email' ? (
             <Card className="p-6">
               <h2 className="text-base font-semibold text-slate-900">{t.emailTabHeading}</h2>

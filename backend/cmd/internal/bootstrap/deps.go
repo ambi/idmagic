@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
@@ -38,6 +39,7 @@ type Dependencies struct {
 	Saml           saml.Module
 	Scim           scim.Module
 	Application    application.Module
+	ApiTokens      apitoken.Module
 	Jobs           jobs.Module
 	Provisioning   provisioning.Module
 	Notification   notification.Module

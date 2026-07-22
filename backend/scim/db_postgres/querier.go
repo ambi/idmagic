@@ -10,16 +10,12 @@ import (
 
 type Querier interface {
 	DeleteScimGroupRef(ctx context.Context, arg DeleteScimGroupRefParams) error
-	DeleteScimToken(ctx context.Context, arg DeleteScimTokenParams) error
 	DeleteScimUserRef(ctx context.Context, arg DeleteScimUserRefParams) error
 	FindScimGroupRefByGroupID(ctx context.Context, arg FindScimGroupRefByGroupIDParams) (*FindScimGroupRefByGroupIDRow, error)
 	FindScimGroupRefByScimID(ctx context.Context, arg FindScimGroupRefByScimIDParams) (*FindScimGroupRefByScimIDRow, error)
-	FindScimTokenByHash(ctx context.Context, tokenHash string) (*FindScimTokenByHashRow, error)
 	FindScimUserRefByScimID(ctx context.Context, arg FindScimUserRefByScimIDParams) (*FindScimUserRefByScimIDRow, error)
 	FindScimUserRefByUserID(ctx context.Context, arg FindScimUserRefByUserIDParams) (*FindScimUserRefByUserIDRow, error)
-	ListScimTokensByTenant(ctx context.Context, tenantID string) ([]*ListScimTokensByTenantRow, error)
 	SaveScimGroupRef(ctx context.Context, arg SaveScimGroupRefParams) error
-	SaveScimToken(ctx context.Context, arg SaveScimTokenParams) error
 	SaveScimUserRef(ctx context.Context, arg SaveScimUserRefParams) error
 }
 

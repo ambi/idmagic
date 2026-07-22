@@ -2,14 +2,11 @@ package handlers_http_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -44,12 +41,8 @@ func patchOp(op, path string, value any) map[string]any {
 // interfaces.CreateScimUser: userName は必須、id は server-assigned、
 // meta が一貫して返る (RFC7643-CORE-RESOURCES adoption:partial)。
 func TestScimCreateUserResourceContract(t *testing.T) {
-	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	t.Run("userName is required", func(t *testing.T) {
 		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{})
@@ -99,12 +92,8 @@ func TestScimCreateUserResourceContract(t *testing.T) {
 
 // interfaces.UpdateScimUser: PUT は完全置換 (省略した属性は既定値にリセット)。
 func TestScimUpdateUserFullReplace(t *testing.T) {
-	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
 		"userName": "bjensen@example.com",
@@ -149,12 +138,8 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 
 // interfaces.PatchScimUser: RFC7644-PATCH allowlist と mutability/invalidPath/invalidValue。
 func TestScimPatchUserResourceContract(t *testing.T) {
-	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
 		"userName": "carlos@example.com",
 	})
@@ -208,12 +193,8 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 // interfaces.CreateScimGroup / UpdateScimGroup / PatchScimGroup: displayName
 // 必須、id は server-assigned、解決できない member は invalidValue。
 func TestScimGroupResourceContract(t *testing.T) {
-	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	t.Run("displayName is required", func(t *testing.T) {
 		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Groups", map[string]any{})
@@ -340,12 +321,8 @@ func TestScimGroupResourceContract(t *testing.T) {
 
 // interfaces.GetScimSchemas: 空配列ではなく User/Group の実属性を返す。
 func TestScimGetSchemasReturnsRealAttributes(t *testing.T) {
-	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	req := httptest.NewRequest(http.MethodGet, "/scim/v2/Schemas", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+tokenStr)

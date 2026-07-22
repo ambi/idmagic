@@ -872,9 +872,35 @@ export type BrowserFlowResponse = {
   redirect_to?: string
 }
 
-export type ScimToken = {
+export type ApiTokenScope =
+  | 'users:read'
+  | 'users:write'
+  | 'groups:read'
+  | 'groups:write'
+  | 'agents:read'
+  | 'agents:write'
+  | 'sessions:read'
+  | 'sessions:write'
+  | 'consents:read'
+  | 'consents:write'
+  | 'lifecycle-workflows:read'
+  | 'lifecycle-workflows:write'
+  | 'tenants:read'
+  | 'tenants:write'
+  | 'settings:read'
+  | 'settings:write'
+  | 'signing-keys:read'
+  | 'signing-keys:write'
+  | 'audit:read'
+  | 'scim:users:read'
+  | 'scim:users:write'
+  | 'scim:groups:read'
+  | 'scim:groups:write'
+
+export type ApiToken = {
   id: string
   description?: string
+  scopes: ApiTokenScope[]
   created_at: string
   expires_at?: string
 }

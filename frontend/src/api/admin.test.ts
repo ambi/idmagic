@@ -6,6 +6,7 @@ import {
   attachProtocolBinding,
   bindAdminAgentCredential,
   clearAdminUserRequiredAction,
+  createApiToken,
   createAdminApplication,
   createAdminGroup,
   deleteAdminAgent,
@@ -18,11 +19,12 @@ import {
   enableAdminAgent,
   killAdminAgent,
   listAdminUserSessions,
+  listApiTokens,
   removeAdminGroupMember,
   restoreAdminUser,
   revokeAdminUserSession,
   revokeAllAdminUserSessions,
-  revokeScimToken,
+  revokeApiToken,
   rotateTenantSigningKey,
   setAdminUserDisabled,
   setAdminUserRequiredAction,
@@ -226,7 +228,7 @@ describe('admin API client', () => {
     await disableTenantKey('csrf', 'kid/a b')
     await updateAdminSettings('csrf', { display_name: 'New tenant' })
     await updateTenantUserAttributeSchema('csrf', [])
-    await revokeScimToken('csrf', 'token/a b')
+    await revokeApiToken('csrf', 'token/a b')
 
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/admin/keys/kid%2Fa%20b/disable'),
@@ -249,6 +251,48 @@ describe('admin API client', () => {
         name: 'AuthenticationAPIError',
         code: 'forbidden',
         message: 'denied',
+      }),
+    )
+  })
+
+  it('API token 管理契約を scopes 付きで新 endpoint へ送受信する', async () => {
+    const token = {
+      id: 'token/a b',
+      description: 'SCIM',
+      scopes: ['scim:users:read'],
+      created_at: '2026-07-23T00:00:00Z',
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(200, { tokens: [token] }))
+        .mockResolvedValueOnce(response(201, { token: 'idmagic_pat_secret', meta: token }))
+        .mockResolvedValueOnce(response(204)),
+    )
+
+    await expect(listApiTokens()).resolves.toEqual([token])
+    await createApiToken('csrf', {
+      description: 'SCIM',
+      scopes: ['scim:users:read'],
+      expiry_days: 7,
+    })
+    await revokeApiToken('csrf', token.id)
+
+    const calls = vi.mocked(fetch).mock.calls
+    expect(calls.map(([url]) => String(url))).toEqual([
+      expect.stringContaining('/api/admin/api-tokens'),
+      expect.stringContaining('/api/admin/api-tokens'),
+      expect.stringContaining('/api/admin/api-tokens/token%2Fa%20b'),
+    ])
+    expect(calls[1][1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          description: 'SCIM',
+          scopes: ['scim:users:read'],
+          expiry_days: 7,
+        }),
       }),
     )
   })

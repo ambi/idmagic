@@ -87,30 +87,13 @@ func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group
 	return group
 }
 
-func TestScimRepositoryTokensAndRefs(t *testing.T) {
+func TestScimRepositoryRefs(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	user := seedUser(t, db, tenant.ID)
 	group := seedGroup(t, db, tenant.ID)
 	repo := &ScimRepository{Pool: db}
 	ctx := context.Background()
-
-	now := testClock()
-	token := &ports.ScimToken{
-		ID: newUUID(t), TenantID: tenant.ID, TokenHash: "hash-" + newUUID(t)[:8],
-		Description: "provisioning", CreatedAt: now, ExpiresAt: new(now.Add(time.Hour)),
-	}
-	if err := repo.SaveToken(ctx, token); err != nil {
-		t.Fatalf("save token: %v", err)
-	}
-	found, err := repo.FindToken(ctx, token.TokenHash)
-	if err != nil || found == nil || found.ID != token.ID {
-		t.Fatalf("find token: %v %+v", err, found)
-	}
-	tokens, err := repo.ListTokens(ctx, tenant.ID)
-	if err != nil || len(tokens) != 1 {
-		t.Fatalf("list tokens: %v len=%d", err, len(tokens))
-	}
 
 	userRef := &ports.ScimUserRef{TenantID: tenant.ID, ScimID: "scim-user-" + newUUID(t)[:8], UserID: user.ID}
 	if err := repo.SaveUserRef(ctx, userRef); err != nil {
@@ -143,8 +126,5 @@ func TestScimRepositoryTokensAndRefs(t *testing.T) {
 	}
 	if err := repo.DeleteGroupRef(ctx, tenant.ID, groupRef.ScimID); err != nil {
 		t.Fatalf("delete group ref: %v", err)
-	}
-	if err := repo.DeleteToken(ctx, tenant.ID, token.ID); err != nil {
-		t.Fatalf("delete token: %v", err)
 	}
 }

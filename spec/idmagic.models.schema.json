@@ -1546,21 +1546,13 @@
       "properties": {
         "id": {
           "type": "string"
-        },
-        "tenant_id": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id",
-        "tenant_id",
-        "status"
+        "id"
       ],
-      "description": "有効な SCIM Bearer token から解決される provisioning principal。"
+      "description": "API アクセストークンを提示する外部 client principal の最小 stub。"
     },
     "AgentCredentialBindRequest": {
       "type": "object",
@@ -2025,6 +2017,129 @@
         "changedFields"
       ],
       "description": "管理者が Agent の name / description / kind / roles を更新した。"
+    },
+    "ApiToken": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "token_hash": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiTokenScope"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "id",
+        "token_hash",
+        "scopes",
+        "description",
+        "created_at"
+      ],
+      "description": "管理用 API / SCIM API を認証する tenant-scoped アクセストークン。scopes が空、または expires_at を過ぎたトークンは認可されない。平文は発行時に一度だけ返し、token_hash (sha256) のみ永続化する。"
+    },
+    "ApiTokenMetadata": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiTokenScope"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "description",
+        "scopes",
+        "created_at"
+      ],
+      "description": "一覧・発行応答で返すトークンのメタデータ。token_hash と平文を含まない。"
+    },
+    "ApiTokenPrincipal": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiTokenScope"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "scopes"
+      ],
+      "description": "有効な API アクセストークンから解決した tenant と scope の認証コンテキスト。"
+    },
+    "ApiTokenScope": {
+      "type": "string",
+      "enum": [
+        "users:read",
+        "users:write",
+        "groups:read",
+        "groups:write",
+        "agents:read",
+        "agents:write",
+        "sessions:read",
+        "sessions:write",
+        "consents:read",
+        "consents:write",
+        "lifecycle-workflows:read",
+        "lifecycle-workflows:write",
+        "tenants:read",
+        "tenants:write",
+        "settings:read",
+        "settings:write",
+        "signing-keys:read",
+        "signing-keys:write",
+        "audit:read",
+        "scim:users:read",
+        "scim:users:write",
+        "scim:groups:read",
+        "scim:groups:write"
+      ],
+      "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。application とその protocol binding (OIDC / SAML / WS-Fed) および独立 protocol リソース (applications / oauth-clients / saml / wsfed / provisioning) の scope は、そのエンドポイントパス構成が確定した後に追記する。アカウント自己管理 API の account:* scope も別途定義して追記する。公開・プロトコル・認証フロー endpoint は scope 対象外。"
     },
     "AppAccessDeniedByPolicy": {
       "type": "object",
@@ -11261,40 +11376,6 @@
       "properties": {},
       "additionalProperties": false,
       "description": "RFC 7644 §3.12 に従う SCIM protocol error response。"
-    },
-    "ScimToken": {
-      "type": "object",
-      "properties": {
-        "tenant_id": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "token_hash": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "expires_at": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "tenant_id",
-        "id",
-        "token_hash",
-        "description",
-        "created_at"
-      ],
-      "description": "SCIM 2.0 API アクセス用のアクセストークン。Bearer スキームで提示する。有効なアクセストークンが1本もなければ SCIM API は事実上利用できず、これがテナントごとの有効・無効の唯一の判断軸となる。"
     },
     "ScimUserRef": {
       "type": "object",

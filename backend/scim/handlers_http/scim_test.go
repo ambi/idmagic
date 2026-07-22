@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -26,22 +29,108 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
+	userRepo := usermemory.NewUserRepository()
+	groupRepo := groupmemory.NewGroupRepository()
+	scimRepo := scimmemory.NewScimRepository()
+	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
+
+	e := echo.New()
+	deps := support.Deps{Emit: func(spec.DomainEvent) {}}
+	scimhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultTenant), scimhttp.Deps{
+		Deps: deps, Authenticator: &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo},
+		Usecases: scimUsecases, ApiTokenAuthenticator: apiTokens,
+	})
+	return e, apiTokens
+}
+
+// SCL policies ScimDiscovery / ScimReadUsers / ScimWriteUsers /
+// ScimReadGroups / ScimWriteGroups の route mapping を固定する。
+func TestScimRoutesRequireOperationScope(t *testing.T) {
+	e, apiTokens := newScopedScimHarness()
+	ctx := context.Background()
+	type routeCase struct {
+		name   string
+		method string
+		path   string
+		scope  apitokendomain.Scope
+		wrong  apitokendomain.Scope
+	}
+	cases := []routeCase{
+		{name: "service provider config", method: http.MethodGet, path: "/scim/v2/ServiceProviderConfig", scope: apitokendomain.ScopeScimUsersRead, wrong: apitokendomain.ScopeUsersRead},
+		{name: "resource types", method: http.MethodGet, path: "/scim/v2/ResourceTypes", scope: apitokendomain.ScopeScimGroupsWrite, wrong: apitokendomain.ScopeGroupsRead},
+		{name: "schemas", method: http.MethodGet, path: "/scim/v2/Schemas", scope: apitokendomain.ScopeScimGroupsRead, wrong: apitokendomain.ScopeSettingsRead},
+		{name: "list users", method: http.MethodGet, path: "/scim/v2/Users", scope: apitokendomain.ScopeScimUsersRead, wrong: apitokendomain.ScopeScimGroupsRead},
+		{name: "create user", method: http.MethodPost, path: "/scim/v2/Users", scope: apitokendomain.ScopeScimUsersWrite, wrong: apitokendomain.ScopeScimUsersRead},
+		{name: "get user", method: http.MethodGet, path: "/scim/v2/Users/missing", scope: apitokendomain.ScopeScimUsersRead, wrong: apitokendomain.ScopeScimUsersWrite},
+		{name: "replace user", method: http.MethodPut, path: "/scim/v2/Users/missing", scope: apitokendomain.ScopeScimUsersWrite, wrong: apitokendomain.ScopeScimUsersRead},
+		{name: "patch user", method: http.MethodPatch, path: "/scim/v2/Users/missing", scope: apitokendomain.ScopeScimUsersWrite, wrong: apitokendomain.ScopeScimGroupsWrite},
+		{name: "delete user", method: http.MethodDelete, path: "/scim/v2/Users/missing", scope: apitokendomain.ScopeScimUsersWrite, wrong: apitokendomain.ScopeScimGroupsWrite},
+		{name: "list groups", method: http.MethodGet, path: "/scim/v2/Groups", scope: apitokendomain.ScopeScimGroupsRead, wrong: apitokendomain.ScopeScimUsersRead},
+		{name: "create group", method: http.MethodPost, path: "/scim/v2/Groups", scope: apitokendomain.ScopeScimGroupsWrite, wrong: apitokendomain.ScopeScimGroupsRead},
+		{name: "get group", method: http.MethodGet, path: "/scim/v2/Groups/missing", scope: apitokendomain.ScopeScimGroupsRead, wrong: apitokendomain.ScopeScimGroupsWrite},
+		{name: "replace group", method: http.MethodPut, path: "/scim/v2/Groups/missing", scope: apitokendomain.ScopeScimGroupsWrite, wrong: apitokendomain.ScopeScimGroupsRead},
+		{name: "patch group", method: http.MethodPatch, path: "/scim/v2/Groups/missing", scope: apitokendomain.ScopeScimGroupsWrite, wrong: apitokendomain.ScopeScimUsersWrite},
+		{name: "delete group", method: http.MethodDelete, path: "/scim/v2/Groups/missing", scope: apitokendomain.ScopeScimGroupsWrite, wrong: apitokendomain.ScopeScimUsersWrite},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			valid, _, err := apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, tc.name, []string{string(tc.scope)}, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			invalid, _, err := apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, tc.name+" wrong", []string{string(tc.wrong)}, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := func(token string) int {
+				req := httptest.NewRequest(tc.method, tc.path, bytes.NewBufferString(`{}`))
+				req.Header.Set("Authorization", "Bearer "+token)
+				req.Header.Set("Content-Type", "application/scim+json")
+				rec := httptest.NewRecorder()
+				e.ServeHTTP(rec, req)
+				return rec.Code
+			}
+			if status := call(valid); status == http.StatusUnauthorized {
+				t.Fatalf("valid scope %q rejected", tc.scope)
+			}
+			if status := call(invalid); status != http.StatusUnauthorized {
+				t.Fatalf("wrong scope %q status = %d, want 401", tc.wrong, status)
+			}
+		})
+	}
+}
+
 // newScimTestHarness wires the SCIM HTTP handler against in-memory
 // repositories, matching the setup TestScimInboundProvisioning /
 // TestScimGroupSync use, for tests that only need list/filter behavior.
-func newScimTestHarness() (*echo.Echo, *usecases.Usecases) {
+func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Service) {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo}
-	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst}
+	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst, ApiTokenAuthenticator: apiTokens}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
-	return e, usecasesInst
+	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultTenant), scimDeps)
+	return e, usecasesInst, apiTokens
+}
+
+func issueAllScimToken(t *testing.T, apiTokens *apitokenusecases.Service) string {
+	t.Helper()
+	literal, _, err := apiTokens.Issue(context.Background(), tenancydomain.DefaultTenantID, "SCIM integration", []string{
+		string(apitokendomain.ScopeScimUsersRead), string(apitokendomain.ScopeScimUsersWrite),
+		string(apitokendomain.ScopeScimGroupsRead), string(apitokendomain.ScopeScimGroupsWrite),
+	}, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return literal
 }
 
 func doScimGet(t *testing.T, e *echo.Echo, tokenStr, path string) (*httptest.ResponseRecorder, map[string]any) {
@@ -59,12 +148,8 @@ func doScimGet(t *testing.T, e *echo.Echo, tokenStr, path string) (*httptest.Res
 // scenario "SCIM clientはUsersとGroups collectionを検索できる")。
 func TestScimListUsersFilterAndPagination(t *testing.T) {
 	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, usecasesInst, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	usernames := []string{"alice", "bob", "carol", "dave", "erin"}
 	for _, name := range usernames {
@@ -205,12 +290,8 @@ func TestScimListUsersFilterAndPagination(t *testing.T) {
 // interfaces.ListScimGroups の filter 契約と空結果を固定する。
 func TestScimListGroupsFilter(t *testing.T) {
 	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, usecasesInst, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	for _, name := range []string{"Engineering", "Sales"} {
 		if _, err := usecasesInst.CreateGroup(ctx, tenancydomain.DefaultTenantID, map[string]any{"displayName": name}); err != nil {
@@ -246,12 +327,8 @@ func TestScimListGroupsFilter(t *testing.T) {
 // 付き属性名の契約を固定する (interfaces.ListScimUsers、RFC7644-FILTERING、wi-244)。
 func TestScimListUsersDateTimeFilterAndURNPrefix(t *testing.T) {
 	ctx := context.Background()
-	e, usecasesInst := newScimTestHarness()
-
-	tokenStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
-	if err != nil {
-		t.Fatal(err)
-	}
+	e, usecasesInst, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	created, err := usecasesInst.CreateUser(ctx, tenancydomain.DefaultTenantID, map[string]any{
 		"userName": "alice@example.com",
@@ -328,6 +405,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
@@ -335,13 +413,14 @@ func TestScimInboundProvisioning(t *testing.T) {
 		GroupRepo: groupRepo,
 	}
 	scimDeps := scimhttp.Deps{
-		Deps:          sd,
-		Authenticator: authenticator,
-		Usecases:      usecasesInst,
+		Deps:                  sd,
+		Authenticator:         authenticator,
+		Usecases:              usecasesInst,
+		ApiTokenAuthenticator: apiTokens,
 	}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultTenant), scimDeps)
 
 	// 1. 未登録のアクセストークンでは 401 になること
 	{
@@ -355,15 +434,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	}
 
 	// 2. アクセストークン生成
-	var tokenStr string
-	{
-		// トークン生成
-		tokStr, _, err := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Okta Integration", 30)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tokenStr = tokStr
-	}
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	// 3. 有効なトークンでの ServiceProviderConfig アクセス
 	{
@@ -526,6 +597,7 @@ func TestScimGroupSync(t *testing.T) {
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
@@ -533,15 +605,16 @@ func TestScimGroupSync(t *testing.T) {
 		GroupRepo: groupRepo,
 	}
 	scimDeps := scimhttp.Deps{
-		Deps:          sd,
-		Authenticator: authenticator,
-		Usecases:      usecasesInst,
+		Deps:                  sd,
+		Authenticator:         authenticator,
+		Usecases:              usecasesInst,
+		ApiTokenAuthenticator: apiTokens,
 	}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group(""), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultTenant), scimDeps)
 
-	tokenStr, _, _ := usecasesInst.GenerateToken(ctx, tenancydomain.DefaultTenantID, "Integration", 30)
+	tokenStr := issueAllScimToken(t, apiTokens)
 
 	// 1. テストユーザー作成
 	user1Sub := "user_1"

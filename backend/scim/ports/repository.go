@@ -2,17 +2,7 @@ package ports
 
 import (
 	"context"
-	"time"
 )
-
-type ScimToken struct {
-	ID          string
-	TenantID    string
-	TokenHash   string
-	Description string
-	CreatedAt   time.Time
-	ExpiresAt   *time.Time
-}
 
 type ScimUserRef struct {
 	TenantID string
@@ -27,11 +17,6 @@ type ScimGroupRef struct {
 }
 
 type ScimRepository interface {
-	SaveToken(ctx context.Context, token *ScimToken) error
-	FindToken(ctx context.Context, tokenHash string) (*ScimToken, error)
-	ListTokens(ctx context.Context, tenantID string) ([]*ScimToken, error)
-	DeleteToken(ctx context.Context, tenantID, id string) error
-
 	SaveUserRef(ctx context.Context, ref *ScimUserRef) error
 	FindUserRefByScimID(ctx context.Context, tenantID, scimID string) (*ScimUserRef, error)
 	FindUserRefByUserID(ctx context.Context, tenantID, userID string) (*ScimUserRef, error)

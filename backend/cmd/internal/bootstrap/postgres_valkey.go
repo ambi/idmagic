@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ambi/idmagic/backend/apitoken"
+	apitokenpostgres "github.com/ambi/idmagic/backend/apitoken/db_postgres"
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/db_postgres"
 	"github.com/ambi/idmagic/backend/audit"
@@ -208,6 +210,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml:         saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}, ReplayStore: &samlvalkey.AuthnRequestReplayStore{Client: valkeyClient}},
 		Scim:         scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
+		ApiTokens:    apitoken.Module{Repo: &apitokenpostgres.Repository{Pool: resilientDB}},
 		Jobs:         jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},

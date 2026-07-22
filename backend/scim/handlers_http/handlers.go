@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/labstack/echo/v5"
 
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/scim/domain"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -25,20 +25,23 @@ func NewHandler(d Deps) *Handler {
 	}
 }
 
-func (h *Handler) authenticate(c *echo.Context) (string, error) {
+func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.Scope) (string, error) {
 	authHeader := c.Request().Header.Get("Authorization")
 	if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
 		return "", errors.New("missing or invalid authorization header")
 	}
 	tokenStr := authHeader[7:]
 
-	resolvedTenantID, err := h.deps.Usecases.AuthenticateToken(c.Request().Context(), tokenStr)
+	principal, err := h.deps.ApiTokenAuthenticator.Authenticate(c.Request().Context(), tokenStr)
 	if err != nil {
 		return "", err
 	}
+	if !principal.Scopes.HasAny(allowedScopes...) {
+		return "", errors.New("token scope denied")
+	}
 
 	reqTenantID := support.RequestTenantID(c)
-	if reqTenantID != resolvedTenantID {
+	if reqTenantID != principal.TenantID {
 		return "", errors.New("tenant mismatch")
 	}
 
@@ -69,7 +72,7 @@ func (h *Handler) writeMutationError(c *echo.Context, notFoundDetail string, err
 }
 
 func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
-	if _, err := h.authenticate(c); err != nil {
+	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
@@ -107,7 +110,7 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 }
 
 func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
-	if _, err := h.authenticate(c); err != nil {
+	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
@@ -135,7 +138,7 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 }
 
 func (h *Handler) handleGetSchemas(c *echo.Context) error {
-	if _, err := h.authenticate(c); err != nil {
+	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
 
@@ -147,7 +150,7 @@ func (h *Handler) handleGetSchemas(c *echo.Context) error {
 
 // Users
 func (h *Handler) handleCreateUser(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -167,7 +170,7 @@ func (h *Handler) handleCreateUser(c *echo.Context) error {
 }
 
 func (h *Handler) handleGetUser(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -186,7 +189,7 @@ func (h *Handler) handleGetUser(c *echo.Context) error {
 }
 
 func (h *Handler) handleUpdateUser(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -207,7 +210,7 @@ func (h *Handler) handleUpdateUser(c *echo.Context) error {
 }
 
 func (h *Handler) handlePatchUser(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -228,7 +231,7 @@ func (h *Handler) handlePatchUser(c *echo.Context) error {
 }
 
 func (h *Handler) handleDeleteUser(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -242,7 +245,7 @@ func (h *Handler) handleDeleteUser(c *echo.Context) error {
 }
 
 func (h *Handler) handleListUsers(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -319,7 +322,7 @@ func (h *Handler) writeListResponse(c *echo.Context, result usecases.ListResult)
 
 // Groups
 func (h *Handler) handleCreateGroup(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -339,7 +342,7 @@ func (h *Handler) handleCreateGroup(c *echo.Context) error {
 }
 
 func (h *Handler) handleGetGroup(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsRead)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -358,7 +361,7 @@ func (h *Handler) handleGetGroup(c *echo.Context) error {
 }
 
 func (h *Handler) handleListGroups(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsRead)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -377,7 +380,7 @@ func (h *Handler) handleListGroups(c *echo.Context) error {
 }
 
 func (h *Handler) handleUpdateGroup(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -398,7 +401,7 @@ func (h *Handler) handleUpdateGroup(c *echo.Context) error {
 }
 
 func (h *Handler) handlePatchGroup(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -419,7 +422,7 @@ func (h *Handler) handlePatchGroup(c *echo.Context) error {
 }
 
 func (h *Handler) handleDeleteGroup(c *echo.Context) error {
-	tenantID, err := h.authenticate(c)
+	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
 		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 	}
@@ -427,85 +430,6 @@ func (h *Handler) handleDeleteGroup(c *echo.Context) error {
 	id := c.Param("id")
 	if err := h.deps.Usecases.DeleteGroup(c.Request().Context(), tenantID, id); err != nil {
 		return h.writeScimError(c, http.StatusNotFound, err.Error(), "")
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
-// Admin API for SCIM access tokens
-
-type scimTokenResponse struct {
-	ID          string     `json:"id"`
-	Description string     `json:"description"`
-	CreatedAt   time.Time  `json:"created_at"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
-}
-
-type scimTokenCreateRequest struct {
-	Description string `json:"description"`
-	ExpiryDays  int    `json:"expiry_days"`
-}
-
-func (h *Handler) handleListAdminTokens(c *echo.Context) error {
-	if _, err := h.deps.RequireAdmin(c); err != nil {
-		return h.deps.WriteAdminAccessError(c, err)
-	}
-
-	tenantID := support.RequestTenantID(c)
-	tokens, err := h.deps.Usecases.ListTokens(c.Request().Context(), tenantID)
-	if err != nil {
-		return err
-	}
-
-	res := make([]scimTokenResponse, len(tokens))
-	for i, tok := range tokens {
-		res[i] = scimTokenResponse{
-			ID:          tok.ID,
-			Description: tok.Description,
-			CreatedAt:   tok.CreatedAt,
-			ExpiresAt:   tok.ExpiresAt,
-		}
-	}
-
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tokens": res})
-}
-
-func (h *Handler) handleCreateAdminToken(c *echo.Context) error {
-	if _, err := h.deps.RequireAdmin(c); err != nil {
-		return h.deps.WriteAdminAccessError(c, err)
-	}
-
-	tenantID := support.RequestTenantID(c)
-	var body scimTokenCreateRequest
-	if err := support.DecodeJSON(c.Request(), &body); err != nil {
-		return err
-	}
-
-	tokenStr, tok, err := h.deps.Usecases.GenerateToken(c.Request().Context(), tenantID, body.Description, body.ExpiryDays)
-	if err != nil {
-		return err
-	}
-
-	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-		"token": tokenStr,
-		"meta": scimTokenResponse{
-			ID:          tok.ID,
-			Description: tok.Description,
-			CreatedAt:   tok.CreatedAt,
-			ExpiresAt:   tok.ExpiresAt,
-		},
-	})
-}
-
-func (h *Handler) handleRevokeAdminToken(c *echo.Context) error {
-	if _, err := h.deps.RequireAdmin(c); err != nil {
-		return h.deps.WriteAdminAccessError(c, err)
-	}
-
-	tenantID := support.RequestTenantID(c)
-	id := c.Param("id")
-	if err := h.deps.Usecases.RevokeToken(c.Request().Context(), tenantID, id); err != nil {
-		return err
 	}
 
 	return c.NoContent(http.StatusNoContent)
