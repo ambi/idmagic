@@ -69,4 +69,4 @@ depends_on: []   # 完了前提の WI ID。依存がなければ空配列
 
 ## 完了時
 
-`status` を `completed` / `cancelled` にする時点で同じファイルに `completion` を追記し、`work-items/done/` へ移す。`completion` は最低でも `completed_at` / `summary` / `verification` と `affected_guarantees_state` を持つ。証跡は `completion.evidence` に手順・実行環境・実行主体・対象ソース版・結果・保存先・要約値を記録し、大容量ログ・バイナリ・機密は埋め込まず `evidence[].artifacts` に保管先とハッシュだけ残す。
+`status` を `completed` / `cancelled` にする時点で、frontmatter ではなく Markdown 本文末尾に `## Completion` を追記し、`work-items/done/` へ移す。Completion は最低でも `Completed At` / `Summary` / `Verification Results` と `Affected Guarantees State` を持つ。証跡は同節の `Evidence` に手順・実行環境・実行主体・対象ソース版・結果・保存先・要約値を記録し、大容量ログ・バイナリ・機密は埋め込まず、保管先とハッシュだけを記録する。

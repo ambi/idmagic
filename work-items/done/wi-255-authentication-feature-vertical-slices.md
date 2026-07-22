@@ -4,39 +4,6 @@ authors: [tn]
 risk: medium
 created_at: 2026-07-18
 depends_on: [wi-254-backend-feature-vertical-slice-convention]
-completion:
-  completed_at: 2026-07-20
-  summary: "authentication を6 feature垂直スライスへ全層再配置し、残存portの所有権をIdManagement userとshared notificationへ是正してArchitecture依存グラフを同期した。"
-  verification:
-    - "just verify-go"
-    - "just build-go"
-    - "just test-go"
-    - "just yaml-check"
-    - "just check-ids"
-    - "just verify"
-  affected_guarantees_state:
-    - "SCL の authentication 規範振る舞いと bounded context 境界は変更していない。"
-    - "EmailChangeTokenStore は IdManagement user が所有し、memory/PostgreSQL/sqlc を同featureに局所化した。"
-    - "EmailSender は shared notification capability が所有し、Authentication 固有portへのcontext横断依存を解消した。"
-    - "Authentication直下portはfeature横断のAuthEventBucketStoreのみで、未使用LoginContinuationは削除した。"
-    - "ARCHITECTURE.md のmodule ledgerは実importと一致し、依存グラフは循環しない。"
-  evidence:
-    - id: "verify-go"
-      kind: "test"
-      procedure: "Go lint and race-enabled repository tests"
-      result: "passed"
-    - id: "build-and-test-go"
-      kind: "test"
-      procedure: "All Go package build and tests"
-      result: "passed"
-    - id: "architecture-and-ra-validation"
-      kind: "static_analysis"
-      procedure: "SCL, work-item, ID, Architecture cross-check, and traceability validation"
-      result: "passed"
-    - id: "repository-verification"
-      kind: "test"
-      procedure: "Full repository verification including Go, UI, and RA tooling"
-      result: "passed"
 change_kind: refactor
 spec_impact:
   kind: none
@@ -219,7 +186,15 @@ feature 案（ADR-130 の条件付き規約・命名慣習を踏襲）:
   `EmailSender` / `EmailMessage` を shared notification capabilityへ移設した。
   未使用の `LoginContinuation` は削除し、Authentication直下にはfeature横断の
   `AuthEventBucketStore`だけを残した。DIとArchitectureの依存グラフも新しい所有権へ同期した。
+- **Affected Guarantees State**:
+  - SCL の Authentication 規範振る舞いと bounded context 境界は変更していない。
+  - `EmailChangeTokenStore` は IdManagement user が所有し、memory / PostgreSQL / sqlc を同 feature に局所化した。
+  - `EmailSender` は shared notification capability が所有し、Authentication 固有 port への context 横断依存を解消した。
+  - Authentication 直下 port は feature 横断の `AuthEventBucketStore` のみで、Architecture の module ledger と実 import は一致し、依存グラフは循環しない。
 - **Verification Results**: `just verify-go`、`just build-go`、`just test-go`、
   `just yaml-check`、`just check-ids`、`just verify` はすべて passed。
+- **Evidence**:
+  Go lint・race test・全 package build/test、SCL / Work Item / ID / Architecture / traceability validation、
+  Go・UI・RA tooling を含む repository-wide verification が passed。
 - **Out of Scope**: SCL / context_map、RA §3.8 とArchitectureの規約散文、feature分割線の
   再設計は変更していない。

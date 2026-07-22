@@ -4,37 +4,6 @@ authors: [tn]
 risk: high
 created_at: 2026-07-22
 depends_on: []
-completion:
-  completed_at: 2026-07-23
-  summary: "SCIM 専用トークンを scope 付き統一 API アクセストークンへ置換し、発行・一覧・失効、永続化、SCIM route 別認可、管理 UI を SCL-first で実装した。"
-  verification:
-    - "just yaml-check-scl"
-    - "just check-ids"
-    - "just scl-render"
-    - "just verify-go"
-    - "just verify-ui"
-    - "just test-ui-e2e"
-  affected_guarantees_state:
-    - "API アクセストークンの平文は発行時に一度だけ返し、永続化は SHA-256 hash のみに限定する。"
-    - "SCIM の全 15 route は discovery/users/groups の read/write scope に応じて fail closed で認可する。"
-    - "tenant 境界、期限切れ、失効済み、未知・空 scope のトークンを認証しない。"
-  evidence:
-    - id: "backend-layer-tests"
-      kind: "test"
-      procedure: "domain/usecase、memory/PostgreSQL adapter、admin HTTP、SCIM route 別 scope の RED/GREEN テストと Go race verification"
-      result: "passed"
-    - id: "frontend-token-lifecycle"
-      kind: "runtime_observation"
-      procedure: "管理 UI で scope 選択、発行時の一度表示、一覧、失効を実 API 経由で往復"
-      result: "passed; UI action suite 15/15, smoke 3/3, session recovery 1/1, OIDC golden path 2/2"
-    - id: "specification-contracts"
-      kind: "static_analysis"
-      procedure: "SCL 23 files、ID 整合性、derived artifacts の生成を検証"
-      result: "passed"
-    - id: "known-repository-baseline"
-      kind: "static_analysis"
-      procedure: "work item と architecture を含む全体 YAML check"
-      result: "今回の変更は妥当。既存 wi-216 の completion 欠落と AdminUserEditPage.tsx の complexity debt のため repository-wide check は非ゼロ終了"
 ---
 
 # scope 付き統一 API アクセストークン基盤を導入し、SCIM トークンをそこへ統合する
@@ -114,3 +83,27 @@ completion:
 - **認証経路の差し替え**: SCIM 認証のリグレッションが本番相当機能に影響しうる。SCIM の既存 e2e/単体で回帰を担保する。
 - **新 bounded context 追加**: `ARCHITECTURE.md` の同期が必要（core 構造変更）。
 - **fuzz/property test 判断**: 不採用。認証 token の入力文法は固定 prefix + 64 桁 hex で再帰・組み合わせ爆発がなく、domain/usecase の表駆動境界テストと route 別 scope の adapter テストで攻撃面を直接検証する。
+
+## Completion
+
+- **Completed At**: 2026-07-23
+- **Summary**:
+  SCIM 専用トークンを scope 付き統一 API アクセストークンへ置換し、発行・一覧・失効、永続化、
+  SCIM route 別認可、管理 UI を SCL-first で実装した。
+- **Affected Guarantees State**:
+  - API アクセストークンの平文は発行時に一度だけ返し、永続化は SHA-256 hash のみに限定する。
+  - SCIM の全 15 route は discovery/users/groups の read/write scope に応じて fail closed で認可する。
+  - tenant 境界、期限切れ、失効済み、未知・空 scope のトークンを認証しない。
+- **Verification Results**:
+  - `just yaml-check-scl` — passed（SCL 23 files）
+  - `just check-ids` — passed
+  - `just scl-render` — passed
+  - `just verify-go` — passed
+  - `just verify-ui` — passed
+  - `just test-ui-e2e` — passed（UI action 15/15、smoke 3/3、session recovery 1/1、OIDC golden path 2/2）
+- **Evidence**:
+  domain/usecase、memory/PostgreSQL adapter、admin HTTP、SCIM route 別 scope の RED/GREEN test と、
+  管理 UI の scope 選択・一度表示・一覧・失効を実 API 経由で確認した。
+- **Known Repository Baseline**:
+  当時の repository-wide check は、既存 wi-216 の Completion 欠落と
+  `AdminUserEditPage.tsx` の complexity debt により非ゼロ終了だった。

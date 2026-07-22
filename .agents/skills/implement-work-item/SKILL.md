@@ -72,6 +72,6 @@ RA の 7 層（`REGENERATIVE_ARCHITECTURE.md §3`）を内側から。**先に S
 ## 3. 完了処理（手順 5〜6）
 
 1. **ユーザーへの完了報告に開示を含める**（ADR-121）。対象範囲に `adoption: partial` / `excluded` の requirement、または work item の `## Out of Scope` があれば、それらを要約した「対応していないこと」を最終報告に明記する。「全部グリーン」だけで完了を報告しない。
-2. ワークアイテムに `completion` を追記し `status: completed` にする。証跡の粒度は `new-work-item` Skill §1.3 に従う。
+2. ワークアイテムの Markdown 本文末尾に `## Completion` を追記し `status: completed` にする。frontmatter に `completion` は置かない。証跡の粒度は `new-work-item` Skill の「完了時」に従う。
 3. ファイルを `work-items/done/`（または該当コンテキストの `.../work-items/done/`）へ移す。
 4. `commit` Skill でコミット（Conventional Commits・subject / body とも英語）。ユーザから指示があるまで push しない。

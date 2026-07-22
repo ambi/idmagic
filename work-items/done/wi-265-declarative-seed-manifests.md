@@ -5,32 +5,6 @@ risk: high
 created_at: 2026-07-20
 depends_on: [wi-236-environment-aware-idempotent-seeding]
 change_kind: feature
-completion:
-  completed_at: 2026-07-20
-  summary: "bootstrap/development/test/performance の seed desired state を versioned YAML manifest へ移し、strict include loader、env/file secret reference、CLI/startup path 選択、production file-only policyを導入した。"
-  verification:
-    - "just yaml-check"
-    - "just test-go-fuzz ./backend/seeding/adapters/manifest 3s"
-    - "just verify-go"
-    - "just verify"
-    - "4 profile default manifest dry-run"
-  affected_guarantees_state:
-    - "既存 dry-run、idempotent reapply、manual drift conflict、production bootstrap policy を維持する。"
-    - "manifest と diagnostics は秘密値を保持せず、dry-run でも secret reference の解決可能性を検証する。"
-    - "performance synthetic user は password を持たない Disabled user になる。"
-  evidence:
-    - id: "manifest-red-green"
-      kind: "test"
-      procedure: "Domain / UseCase / Adapter tests を先にコンパイル失敗させ、manifest validation、materialization、strict loader、secret resolver 実装後に green を確認"
-      result: "passed"
-    - id: "manifest-fuzz"
-      kind: "test"
-      procedure: "just test-go-fuzz ./backend/seeding/adapters/manifest 3s"
-      result: "passed; 1854 executions, no panic"
-    - id: "repository-verification"
-      kind: "test"
-      procedure: "just verify"
-      result: "passed"
 initial_context:
   scl: { Seeding: [models.SeedRequest, interfaces.SeedData, scenarios.環境別の明示profileが選択される] }
   source: [backend/seeding, backend/cmd/internal/bootstrap, backend/cmd/idmagic-seed]
@@ -116,3 +90,23 @@ YAML/include と secret locator は外部の未信頼入力であり、path trav
 include の再帰構造には fuzz test を採用し、任意 bytes に対して panic せず root 外を読まないことを確認する。
 secret file の固定規則は組み合わせ爆発を伴わないため property test は採用せず、table-driven 境界テストで
 regular file、size、NUL、newline、production provider policy を確認する。
+
+## Completion
+
+- **Completed At**: 2026-07-20
+- **Summary**:
+  bootstrap/development/test/performance の seed desired state を versioned YAML manifest へ移し、
+  strict include loader、env/file secret reference、CLI/startup path 選択、production file-only policy を導入した。
+- **Affected Guarantees State**:
+  - 既存 dry-run、idempotent reapply、manual drift conflict、production bootstrap policy を維持する。
+  - manifest と diagnostics は秘密値を保持せず、dry-run でも secret reference の解決可能性を検証する。
+  - performance synthetic user は password を持たない Disabled user になる。
+- **Verification Results**:
+  - `just yaml-check` — passed
+  - `just test-go-fuzz ./backend/seeding/adapters/manifest 3s` — passed（1854 executions、panic なし）
+  - `just verify-go` — passed
+  - `just verify` — passed
+  - bootstrap / development / test / performance の既定 manifest dry-run — passed
+- **Evidence**:
+  Domain / UseCase / Adapter tests を先にコンパイル失敗させ、manifest validation、materialization、
+  strict loader、secret resolver の実装後に green を確認した。

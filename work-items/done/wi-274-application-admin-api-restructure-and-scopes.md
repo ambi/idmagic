@@ -4,39 +4,6 @@ authors: [tn]
 risk: medium
 created_at: 2026-07-23
 depends_on: [wi-273]
-completion:
-  completed_at: 2026-07-23
-  summary: "Application aggregate と独立 protocol/resource の所有境界に沿う 14 scope を定義し、5 context の認可 policy、Go domain enum、管理 UI、SCL 派生物を同期した。管理 API path は変更不要と判断した。"
-  verification:
-    - "just yaml-check-scl"
-    - "just scl-render"
-    - "just verify-go"
-    - "just verify-ui"
-    - "just test-ui-e2e"
-    - "just traceability-strict"
-    - "just test-tools"
-    - "just typecheck-tools"
-  affected_guarantees_state:
-    - "Application binding は applications:*、独立 resource は resource 別 scope、Provisioning は path にかかわらず provisioning:* に対応する。"
-    - "read scope は参照操作、write scope は変更・action 操作にだけ対応し、tenant 不一致は SCL policy で拒否する。"
-    - "管理 API の runtime PAT scope enforcement は横断認証カーネルへ保留し、既存 session administrator の RequireAdmin 経路は変更しない。"
-  evidence:
-    - id: "scope-domain-red-green"
-      kind: "test"
-      procedure: "TestParseApplicationProtocolScopes を未定義定数で RED 確認後、14 scope の domain enum と許可集合を実装して GREEN を確認"
-      result: "passed with just test-go-package ./backend/apitoken/domain"
-    - id: "scope-ui-red-green"
-      kind: "test"
-      procedure: "ApiTokensTab の application/protocol scope 選択肢 test を applications:read 不在で RED 確認後、型と UI 正準リストを同期して GREEN を確認"
-      result: "passed as part of 424 UI unit tests"
-    - id: "backend-and-ui-verification"
-      kind: "test"
-      procedure: "Go lint/race、UI format/lint/typecheck/unit/build、UI scenario E2E を just recipe で実行"
-      result: "passed; UI E2E 15 action + 3 smoke + 1 recovery + 2 golden path"
-    - id: "known-repository-baseline"
-      kind: "static_analysis"
-      procedure: "just yaml-check と just verify の repository-wide gate を実行"
-      result: "今回の SCL/WI/ID は妥当。既存 wi-216 completion 欠落と AdminUserEditPage.tsx complexity debt のため repository-wide gate は非ゼロ終了"
 ---
 
 # アプリケーション周り管理 API のパス構成を見直し、application/protocol 系の API scope を定義する
@@ -101,3 +68,30 @@ completion:
 - 分割方針の誤りは後から scope 体系の変更を招くため、T001 の判断を ADR で残す。
 - **実 enforcement の保留（中）**: 管理 API の PAT 解決は監査 actor 帰属と CSRF 除外を含む横断認証カーネルを要する。本 WI では SCL policy と発行可能 scope を先行し、handler の `RequireAdmin` は変更しない。
 - **fuzz/property test 判断**: 不採用。追加する入力は固定 enum の scope 値であり、再帰文法や組み合わせ爆発を持たない。domain の表駆動 parse test と UI 選択肢 test で正準リスト同期を検証する。
+
+## Completion
+
+- **Completed At**: 2026-07-23
+- **Summary**:
+  Application aggregate と独立 protocol/resource の所有境界に沿う 14 scope を定義し、
+  5 context の認可 policy、Go domain enum、管理 UI、SCL 派生物を同期した。
+  管理 API path は変更不要と判断した。
+- **Affected Guarantees State**:
+  - Application binding は `applications:*`、独立 resource は resource 別 scope、Provisioning は path にかかわらず `provisioning:*` に対応する。
+  - read scope は参照操作、write scope は変更・action 操作にだけ対応し、tenant 不一致は SCL policy で拒否する。
+  - 管理 API の runtime PAT scope enforcement は横断認証カーネルへ保留し、既存 session administrator の `RequireAdmin` 経路は変更しない。
+- **Verification Results**:
+  - `just yaml-check-scl` — passed
+  - `just scl-render` — passed
+  - `just verify-go` — passed
+  - `just verify-ui` — passed（424 UI unit tests）
+  - `just test-ui-e2e` — passed（UI action 15、smoke 3、recovery 1、golden path 2）
+  - `just traceability-strict` — passed
+  - `just test-tools` — passed
+  - `just typecheck-tools` — passed
+- **Evidence**:
+  `TestParseApplicationProtocolScopes` と `ApiTokensTab` の scope 選択肢 test を RED から GREEN にし、
+  14 scope の domain enum・許可集合・UI 正準リストの同期を確認した。
+- **Known Repository Baseline**:
+  当時の repository-wide gate は、既存 wi-216 の Completion 欠落と
+  `AdminUserEditPage.tsx` の complexity debt により非ゼロ終了だった。

@@ -57,11 +57,11 @@ created_at: 2026-07-10
 - [x] T001 [ADR] quota 分類、既定値、hard/soft、override、移行方針を記録する。
 - [x] T002 [SCL] Tenancy の quota model / interface / permission / invariant / scenario / objective / UX を追加し、各 context の作成系 interface に関連づける。
 - [x] T003 [Render] `just scl-render` で派生物を更新する。
-- [x] T004 [Go] quota policy、usage counter、作成前 enforcement、超過 error / audit event を実装する。
+- [ ] T004 [Go] quota policy、usage counter、作成前 enforcement、超過 error / audit event を実装する。
 - [x] T005 [Persistence] quota / usage schema、migration、backfill / reconciliation を実装する。
 - [x] T006 [UI] system admin / tenant admin の quota usage 表示と更新 UI を追加する。
 - [x] T007 [Ops] metrics、structured log、runbook を追加する。
-- [x] T008 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+- [ ] T008 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
 
 ## Verification
 - `just yaml-check`
@@ -78,3 +78,10 @@ created_at: 2026-07-10
 Quota は可用性を守る一方、誤った既定値や counter 不整合で正当な操作を拒否しやすい。
 特に concurrent create で上限を超える競合、削除・retention・restore による usage 差分、既存 tenant への導入時ロックアウトが主なリスクである。
 Hard quota は transaction 境界で fail-closed にし、soft quota は警告と観測に寄せる。移行時は backfill と十分な初期上限で安全側に倒す。
+
+## Reopen Note
+
+2026-07-23 の完了状態監査で、quota domain/repository、管理 API・UI、metrics、runbook は存在する一方、
+作成系 use case から `CheckQuotaAndIncrement` / `DecrementQuota` を呼ぶ実配線と、その enforcement を
+保証するテストが存在しないことを確認した。T004 と T008 を未完了へ戻し、実際の作成拒否と usage 更新を
+実装・検証するまで `status: pending` のまま `work-items/` で管理する。
