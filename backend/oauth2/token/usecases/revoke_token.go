@@ -16,6 +16,11 @@ type RevokeDeps struct {
 	Introspector        ports.TokenIntrospector
 	AccessTokenDenylist ports.AccessTokenDenylist
 	Emit                func(spec.DomainEvent)
+	ManagedTokenRevoker ManagedTokenRevoker
+}
+
+type ManagedTokenRevoker interface {
+	RevokeByJTI(ctx context.Context, tenantID, jti string, at time.Time) error
 }
 
 func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, now time.Time) error {
@@ -63,6 +68,11 @@ func revokeAccessToken(
 	result, err := deps.Introspector.IntrospectAccessToken(ctx, token)
 	if err != nil || !result.Active || result.JTI == "" || result.ClientID != clientID {
 		return nil //nolint:nilerr // RFC 7009 requires invalid or unknown tokens to be a successful no-op.
+	}
+	if result.Managed && deps.ManagedTokenRevoker != nil {
+		if err := deps.ManagedTokenRevoker.RevokeByJTI(ctx, tenancy.TenantID(ctx), result.JTI, now); err != nil {
+			return err
+		}
 	}
 	if err := deps.AccessTokenDenylist.Add(ctx, result.JTI, time.Unix(result.Exp, 0)); err != nil {
 		return err

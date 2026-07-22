@@ -1657,7 +1657,7 @@ interfaces:
       - output.response.applications.all(a, is_visible_assignment(subject.id, a))
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1674,7 +1674,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1696,7 +1696,7 @@ interfaces:
     requires:
       - input.request.application_ids.all(id, is_visible_assignment(subject.id, id))
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteAccount]
       resource:
         type: User
         id: subject.id
@@ -1729,6 +1729,13 @@ authorization:
       matches:
         - context.authenticated
         - principal.status == "Active"
+    SelfApiClient:
+      type: User
+      matches:
+        - context.authenticated
+        - 'context.authentication_method in ["api_token", "oauth2_access_token"]'
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
   policies:
     TenantAdministrator:
       effect: permit
@@ -1754,7 +1761,31 @@ authorization:
       effect: permit
       principal: AuthenticatedSelf
       when: principal.id == resource.id
+    SelfApiClientReadAccount:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:read" in context.token_scopes && principal.id == resource.id'
+    SelfApiClientWriteAccount:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:write" in context.token_scopes && principal.id == resource.id'
 scenarios:
+  API token発行者はaccount scope内で自身のportal applicationだけを操作できる:
+    actor: SelfApiClient
+    given:
+      - client は対象 tenant の active User に固定された有効な API access token を提示している
+    main_success:
+      - account:read scope で自身に割り当てられた application と保存済み順序を参照できる
+      - account:write scope で自身の application 順序を保存できる
+    extensions:
+      - at: 1
+        condition: account:read だけで順序変更を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant または user_id が操作対象と一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   management API clientはApplication scope内の操作だけを実行できる:
     actor: ManagementApiClient
     given:

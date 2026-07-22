@@ -75,6 +75,12 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 		"exp":       now + accessTokenTTLSeconds,
 		"auth_time": in.AuthTime,
 	}
+	if in.ExpiresAt > 0 {
+		claims["exp"] = in.ExpiresAt
+	}
+	if in.Managed {
+		claims["token_use"] = "managed_api_token"
+	}
 	if in.Act != nil {
 		claims["act"] = in.Act
 	}
@@ -222,6 +228,9 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	res := &oauthports.IntrospectionResult{Active: true, TokenType: "access_token"}
+	if v, ok := payload["token_use"].(string); ok && v == "managed_api_token" {
+		res.Managed = true
+	}
 	if v, ok := payload["jti"].(string); ok {
 		res.JTI = v
 	}

@@ -267,7 +267,7 @@ describe('admin API client', () => {
       vi
         .fn()
         .mockResolvedValueOnce(response(200, { tokens: [token] }))
-        .mockResolvedValueOnce(response(201, { token: 'idmagic_pat_secret', meta: token }))
+        .mockResolvedValueOnce(response(201, { token: 'header.payload.signature', meta: token }))
         .mockResolvedValueOnce(response(204)),
     )
 

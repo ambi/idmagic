@@ -36,6 +36,11 @@ context_map:
         uses:
           - JobRef
         reason: dynamic group rule の全件再評価を durable job として実行する。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: identity 自己管理 API は ApiTokens が所有する account:* scope で発行者本人の操作を認可する。
   Authentication:
     description: エンドユーザ (Subject) の資格情報検証、MFA、ログインセッション、パスワード変更・リセット、step-up、認証イベントを所有する。User / Group / Agent の identity ライフサイクルは IdManagement が所有する。
     path: contexts/authentication.yaml
@@ -55,6 +60,11 @@ context_map:
           - UserRef
           - AgentRef
         reason: 認証は User の状態、required actions、MFA 登録状態、Agent 所有者などの identity 情報を参照する。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: authentication 自己管理 API は ApiTokens が所有する account:* scope で発行者本人の操作を認可する。
   OAuth2:
     description: "OAuth 2.0 / OIDC プロトコルファミリーの全責務を所有する。Client metadata\nとその Dynamic Registration、認可判断 (Authorize / Consent /\nAuthorization Code / PAR / Device Authorization / RP-Initiated Logout)、\nトークン発行とライフサイクル (AccessToken / RefreshToken / ID Token /\nIntrospect / Revoke / UserInfo / proof-of-possession)、Discovery /\nAuthorization Server Metadata / 健全性報告\nを本 bounded context に集約する。\n"
     path: contexts/oauth2.yaml
@@ -143,7 +153,7 @@ context_map:
         via: published_language
         uses:
           - ApiTokenScope
-        reason: Application 管理 API は ApiTokens が所有する applications:* scope で操作を認可する。
+        reason: Application 管理 API は applications:*、自己管理 API は account:* scope で操作を認可する。
   ClaimMapping:
     description: "identity principal の属性を外部 relying party / service provider / client へ出すための\nrelease policy と protocol-neutral な claim projection を所有する。属性解決と出力許可を\n共通化し、OIDC JSON claims、SAML AttributeStatement、WS-Fed claim URI への wire 変換は\n各 protocol context が所有する。\n"
     path: contexts/claim-mapping.yaml

@@ -15,7 +15,7 @@ const response = (status: number, body: unknown = {}) => ({
 describe('ApiTokensTab', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('selects scopes, issues a prefixed token once, lists scopes, and revokes it', async () => {
+  it('selects scopes, issues a JWT once, lists scopes, and revokes it', async () => {
     const meta = {
       id: 'token-1',
       description: 'Okta',
@@ -27,7 +27,7 @@ describe('ApiTokensTab', () => {
       vi
         .fn()
         .mockResolvedValueOnce(response(200, { tokens: [] }))
-        .mockResolvedValueOnce(response(201, { token: `idmagic_pat_${'a'.repeat(64)}`, meta }))
+        .mockResolvedValueOnce(response(201, { token: 'header.payload.signature', meta }))
         .mockResolvedValueOnce(response(200, { tokens: [meta] }))
         .mockResolvedValueOnce(response(204)),
     )
@@ -40,7 +40,7 @@ describe('ApiTokensTab', () => {
     fireEvent.click(screen.getByLabelText('scim:users:write'))
     fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
 
-    expect(await screen.findByDisplayValue(`idmagic_pat_${'a'.repeat(64)}`)).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('header.payload.signature')).toBeInTheDocument()
     expect(await screen.findByText('scim:users:read')).toBeInTheDocument()
     const post = vi.mocked(fetch).mock.calls.find(([, init]) => init?.method === 'POST')
     expect(post?.[1]?.body).toBe(
@@ -53,6 +53,24 @@ describe('ApiTokensTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t.revoke }))
     await waitFor(() => expect(screen.queryByText('scim:users:read')).not.toBeInTheDocument())
+  })
+
+  it('offers account self-service scopes without a client selection', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
+    await screen.findByText(t.noTokensNotice)
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+    for (const scope of [
+      'account:read',
+      'account:write',
+      'account:mfa:write',
+      'account:sessions:write',
+      'account:consents:write',
+      'account:password:write',
+    ]) {
+      expect(screen.getByLabelText(scope)).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('combobox', { name: /client/i })).not.toBeInTheDocument()
   })
 
   it('offers application and protocol management scopes', async () => {

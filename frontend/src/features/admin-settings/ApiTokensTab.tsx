@@ -48,6 +48,12 @@ const apiTokenScopes: ApiTokenScope[] = [
   'scim:users:write',
   'scim:groups:read',
   'scim:groups:write',
+  'account:read',
+  'account:write',
+  'account:mfa:write',
+  'account:sessions:write',
+  'account:consents:write',
+  'account:password:write',
 ]
 
 export function ApiTokensTab({

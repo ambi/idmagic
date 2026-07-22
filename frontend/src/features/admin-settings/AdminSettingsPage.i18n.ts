@@ -11,7 +11,8 @@ export const adminSettingsDictionary = defineDictionary(
     tabBrandingLabel: 'ブランディング',
     tabBrandingDescription: 'ロゴ・配色・サポート/法務リンクなど hosted UI の見た目を設定します。',
     tabApiTokensLabel: 'API アクセストークン',
-    tabApiTokensDescription: '管理 API と SCIM 2.0 の scope 付きアクセストークンを管理します。',
+    tabApiTokensDescription:
+      '管理 API、SCIM 2.0、アカウント API の scope 付きアクセストークンを管理します。',
     tabEmailLabel: 'メール送信',
     tabEmailDescription: '別 WI で扱う予定です。現状は環境変数経由で設定します。',
     tabsAriaLabel: '設定タブ',
@@ -64,7 +65,7 @@ export const adminSettingsDictionary = defineDictionary(
     loadingNotice: '読み込み中…',
     apiTokensHeading: 'API アクセストークン',
     apiTokensDescription:
-      'Okta や Google IAM などからユーザー・グループを自動同期するための設定です。必要な SCIM scope を持つ API アクセストークンを発行すると、外部 IDP から同期できるようになります。',
+      'CLI、スクリプト、外部 IDP から管理 API、SCIM 2.0、発行者本人のアカウント API を呼び出すための scope 付きアクセストークンを発行します。OAuth クライアントの事前登録は不要です。',
     connectionInfoHeading: '接続情報',
     scimBaseUrlLabel: 'SCIM 2.0 Base URL (エンドポイント)',
     urlCopiedNotice: 'URLをクリップボードにコピーしました。',
@@ -101,7 +102,8 @@ export const adminSettingsDictionary = defineDictionary(
     tabBrandingDescription:
       "Configure the hosted UI's appearance, including logo, colors, and support/legal links.",
     tabApiTokensLabel: 'API access tokens',
-    tabApiTokensDescription: 'Manage scoped access tokens for the management API and SCIM 2.0.',
+    tabApiTokensDescription:
+      'Manage scoped access tokens for the management API, SCIM 2.0, and account API.',
     tabEmailLabel: 'Email delivery',
     tabEmailDescription:
       'Planned for a future work item. Currently configured via environment variables.',
@@ -155,7 +157,7 @@ export const adminSettingsDictionary = defineDictionary(
     loadingNotice: 'Loading…',
     apiTokensHeading: 'API access tokens',
     apiTokensDescription:
-      'Settings for automatically syncing users and groups from Okta, Google IAM, and similar external IdPs. Issue an API access token with the required SCIM scopes to enable sync from an external IdP.',
+      'Issue scoped access tokens for CLIs, scripts, and external IdPs to call the management API, SCIM 2.0, or the issuer’s own account API. No OAuth client registration is required.',
     connectionInfoHeading: 'Connection info',
     scimBaseUrlLabel: 'SCIM 2.0 base URL (endpoint)',
     urlCopiedNotice: 'Copied the URL to the clipboard.',

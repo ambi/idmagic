@@ -118,6 +118,7 @@ func Register(e *echo.Echo, d Deps) {
 		GroupRepo:         d.IdManagement.GroupRepo,
 		SessionManager:    d.Authentication.SessionManager,
 		TokenIntrospector: d.OAuth2.TokenIntrospector,
+		DpopReplayStore:   d.OAuth2.DpopReplayStore,
 		AuthnResolver:     d.Authentication.AuthnResolver,
 	}
 
@@ -231,12 +232,17 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	if d.SigningKeys.KeyStore == nil {
 		d.SigningKeys.KeyStore = d.KeyStore
 	}
+	if d.ApiTokens.TokenIssuer == nil {
+		d.ApiTokens.TokenIssuer = d.OAuth2.TokenIssuer
+	}
+	if d.ApiTokens.TokenIntrospector == nil {
+		d.ApiTokens.TokenIntrospector = d.OAuth2.TokenIntrospector
+	}
+	apiTokenService := d.ApiTokens.Service()
 	authenticator := &support.Authenticator{
-		UserRepo:          d.IdManagement.UserRepo,
-		GroupRepo:         d.IdManagement.GroupRepo,
-		SessionManager:    d.Authentication.SessionManager,
-		TokenIntrospector: d.OAuth2.TokenIntrospector,
-		AuthnResolver:     d.Authentication.AuthnResolver,
+		UserRepo: d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
+		SessionManager: d.Authentication.SessionManager, TokenIntrospector: d.OAuth2.TokenIntrospector,
+		ApiTokenAuthenticator: apiTokenService, DpopReplayStore: d.OAuth2.DpopReplayStore, AuthnResolver: d.Authentication.AuthnResolver,
 	}
 
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
@@ -272,6 +278,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TokenIntrospector:          d.OAuth2.TokenIntrospector,
 		IDTokenHintVerifier:        d.OAuth2.IDTokenHintVerifier,
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
+		ManagedTokenRevoker:        apiTokenService,
 		AttrSchemaRepo:             d.Tenancy.AttrSchemaRepo,
 		AuthEventBucketStore:       d.Authentication.AuthEventBucketStore,
 		Authorizer:                 d.OAuth2.Authorizer,
@@ -376,7 +383,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 
-	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, d.ApiTokens.Service())
+	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo)
 }

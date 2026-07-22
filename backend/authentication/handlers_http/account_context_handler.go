@@ -24,6 +24,9 @@ type accountContextResponse struct {
 func handleAccountContext(d Deps, c *echo.Context) error {
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil {
+		if handled, result := support.WriteAccessTokenError(c, err); handled {
+			return result
+		}
 		return err
 	}
 	if authn == nil || authn.AuthenticationPending {

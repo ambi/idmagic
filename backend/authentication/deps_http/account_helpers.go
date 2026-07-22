@@ -76,6 +76,9 @@ func RequireAuthenticatedAuthn(d Deps, c *echo.Context) (*authdomain.Authenticat
 
 // WriteAccountError は self-service account 系ハンドラ共通のエラー → HTTP 応答マッピング。
 func WriteAccountError(c *echo.Context, err error) error {
+	if handled, result := support.WriteAccessTokenError(c, err); handled {
+		return result
+	}
 	if handled, result := WriteAccountMfaError(c, err); handled {
 		return result
 	}

@@ -1,15 +1,13 @@
 package domain
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"slices"
-	"strings"
+	"sort"
 	"time"
 )
 
-const TokenPrefix = "idmagic_pat_"
+const BuiltinClientID = "idmagic-api-token"
 
 var (
 	ErrInvalidToken = errors.New("invalid API token")
@@ -56,6 +54,12 @@ const (
 	ScopeScimUsersWrite                Scope = "scim:users:write"
 	ScopeScimGroupsRead                Scope = "scim:groups:read"
 	ScopeScimGroupsWrite               Scope = "scim:groups:write"
+	ScopeAccountRead                   Scope = "account:read"
+	ScopeAccountWrite                  Scope = "account:write"
+	ScopeAccountMFAWrite               Scope = "account:mfa:write"
+	ScopeAccountSessionsWrite          Scope = "account:sessions:write"
+	ScopeAccountConsentsWrite          Scope = "account:consents:write"
+	ScopeAccountPasswordWrite          Scope = "account:password:write"
 )
 
 var validScopes = map[Scope]struct{}{
@@ -71,6 +75,8 @@ var validScopes = map[Scope]struct{}{
 	ScopeSamlWrite: {}, ScopeWsFedRead: {}, ScopeWsFedWrite: {}, ScopeProvisioningRead: {},
 	ScopeProvisioningWrite: {}, ScopeScimUsersRead: {},
 	ScopeScimUsersWrite: {}, ScopeScimGroupsRead: {}, ScopeScimGroupsWrite: {},
+	ScopeAccountRead: {}, ScopeAccountWrite: {}, ScopeAccountMFAWrite: {},
+	ScopeAccountSessionsWrite: {}, ScopeAccountConsentsWrite: {}, ScopeAccountPasswordWrite: {},
 }
 
 type Scopes []Scope
@@ -108,54 +114,61 @@ func (s Scopes) Strings() []string {
 	return result
 }
 
-type TokenLiteral string
-
-func ParseTokenLiteral(value string) (TokenLiteral, error) {
-	if !strings.HasPrefix(value, TokenPrefix) {
-		return "", ErrInvalidToken
+func AllScopes() []string {
+	result := make([]string, 0, len(validScopes))
+	for scope := range validScopes {
+		result = append(result, string(scope))
 	}
-	raw := strings.TrimPrefix(value, TokenPrefix)
-	if len(raw) != 64 {
-		return "", ErrInvalidToken
-	}
-	decoded, err := hex.DecodeString(raw)
-	if err != nil || len(decoded) != 32 {
-		return "", ErrInvalidToken
-	}
-	return TokenLiteral(value), nil
-}
-
-func (t TokenLiteral) Hash() string {
-	digest := sha256.Sum256([]byte(t))
-	return hex.EncodeToString(digest[:])
+	sort.Strings(result)
+	return result
 }
 
 type ApiToken struct {
 	ID          string
 	TenantID    string
-	TokenHash   string
+	UserID      string
+	JTI         string
+	ClientID    string
 	Scopes      Scopes
+	Audience    string
+	DPoPJKT     string
 	Description string
 	CreatedAt   time.Time
 	ExpiresAt   *time.Time
+	RevokedAt   *time.Time
 }
 
 type Metadata struct {
 	ID          string
+	JTI         string
+	UserID      string
+	ClientID    string
 	Description string
 	Scopes      Scopes
+	Audience    string
+	DPoPJKT     string
 	CreatedAt   time.Time
 	ExpiresAt   *time.Time
+	RevokedAt   *time.Time
 }
 
 func (t *ApiToken) Metadata() Metadata {
 	return Metadata{
-		ID: t.ID, Description: t.Description, Scopes: append(Scopes(nil), t.Scopes...),
-		CreatedAt: t.CreatedAt, ExpiresAt: t.ExpiresAt,
+		ID: t.ID, JTI: t.JTI, UserID: t.UserID, ClientID: t.ClientID,
+		Description: t.Description, Scopes: append(Scopes(nil), t.Scopes...),
+		Audience: t.Audience, DPoPJKT: t.DPoPJKT, CreatedAt: t.CreatedAt,
+		ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
 	}
 }
 
 type Principal struct {
-	TenantID string
-	Scopes   Scopes
+	TenantID  string
+	UserID    string
+	ClientID  string
+	Scopes    Scopes
+	Audience  string
+	TokenID   string
+	IssuedAt  time.Time
+	ExpiresAt *time.Time
+	DPoPJKT   string
 }

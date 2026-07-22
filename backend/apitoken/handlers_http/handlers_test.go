@@ -17,11 +17,24 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func newHandler(t *testing.T) (*echo.Echo, *usecases.Service) {
+type fakeIssuer struct{}
+
+func (fakeIssuer) SignAccessToken(context.Context, oauthports.AccessTokenInput) (string, string, error) {
+	return "header.payload.signature", "jti-test", nil
+}
+
+func (fakeIssuer) SignIDToken(context.Context, oauthports.IDTokenInput) (string, error) {
+	return "", nil
+}
+func (fakeIssuer) AccessTokenTTLSeconds() int { return 600 }
+func (fakeIssuer) IDTokenTTLSeconds() int     { return 3600 }
+
+func newHandler(t *testing.T) *echo.Echo {
 	t.Helper()
 	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
@@ -29,14 +42,14 @@ func newHandler(t *testing.T) (*echo.Echo, *usecases.Service) {
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	service := usecases.New(db_memory.NewRepository())
+	service := usecases.New(db_memory.NewRepository(), usecases.WithTokenIssuer(fakeIssuer{}))
 	deps := support.Deps{Issuer: "http://idp.test"}
 	authenticator := &support.Authenticator{UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{}}
 	e := echo.New()
 	apitokenhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultTenant), apitokenhttp.Deps{
 		Deps: deps, Authenticator: authenticator, Service: service,
 	})
-	return e, service
+	return e
 }
 
 func request(t *testing.T, e *echo.Echo, method, path string, body any, admin bool) *httptest.ResponseRecorder {
@@ -61,7 +74,7 @@ func request(t *testing.T, e *echo.Echo, method, path string, body any, admin bo
 
 // SCL scenario: 管理者はAPIアクセストークンを発行・失効できる。
 func TestAdminApiTokenLifecycle(t *testing.T) {
-	e, service := newHandler(t)
+	e := newHandler(t)
 	if rec := request(t, e, http.MethodGet, "/api/admin/api-tokens", nil, false); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated status = %d body=%s", rec.Code, rec.Body.String())
 	}
@@ -82,7 +95,7 @@ func TestAdminApiTokenLifecycle(t *testing.T) {
 	if err := json.Unmarshal(issued.Body.Bytes(), &issueBody); err != nil {
 		t.Fatal(err)
 	}
-	if len(issueBody.Token) != len("idmagic_pat_")+64 || issueBody.Meta.ID == "" || len(issueBody.Meta.Scopes) != 1 {
+	if issueBody.Token != "header.payload.signature" || issueBody.Meta.ID == "" || len(issueBody.Meta.Scopes) != 1 {
 		t.Fatalf("issue response = %+v", issueBody)
 	}
 
@@ -95,13 +108,10 @@ func TestAdminApiTokenLifecycle(t *testing.T) {
 	if revoked.Code != http.StatusNoContent {
 		t.Fatalf("revoke status=%d body=%s", revoked.Code, revoked.Body.String())
 	}
-	if _, err := service.Authenticate(context.Background(), issueBody.Token); err == nil {
-		t.Fatal("revoked token authenticated")
-	}
 }
 
 func TestIssueApiTokenRejectsInvalidRequest(t *testing.T) {
-	e, _ := newHandler(t)
+	e := newHandler(t)
 	for _, body := range []map[string]any{
 		{"description": "bad expiry", "scopes": []string{"scim:users:read"}, "expiry_days": 0},
 		{"description": "bad scope", "scopes": []string{"scim:unknown"}, "expiry_days": 7},

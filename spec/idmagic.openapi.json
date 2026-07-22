@@ -1287,7 +1287,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -1342,7 +1343,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -1395,7 +1397,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteAccount"
           ],
           "resource": {
             "type": "User",
@@ -1472,7 +1475,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteAccount"
           ],
           "resource": {
             "type": "User",
@@ -1578,7 +1582,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -4200,7 +4205,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -4608,7 +4614,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWritePassword"
           ],
           "resource": {
             "type": "User",
@@ -4669,7 +4676,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -4724,7 +4732,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -4782,7 +4791,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -4843,7 +4853,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -4904,7 +4915,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -4962,7 +4974,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -5023,7 +5036,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -5257,7 +5271,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -5315,7 +5330,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteMfa"
           ],
           "resource": {
             "type": "User",
@@ -5357,7 +5373,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -5532,7 +5549,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -5587,7 +5605,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteSessions"
           ],
           "resource": {
             "type": "User",
@@ -5639,7 +5658,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteSessions"
           ],
           "resource": {
             "type": "User",
@@ -6775,7 +6795,8 @@
           "input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)",
           "input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
           "input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
-          "input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)"
+          "input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
+          "!contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)"
         ],
         "x-scl-ensures": [
           "output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)",
@@ -6784,9 +6805,11 @@
           "input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token)",
           "input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token)",
           "!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)",
-          "client_authentication_failures_are_uniform()"
+          "client_authentication_failures_are_uniform()",
+          "!contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token)",
+          "!contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)"
         ],
-        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform()",
+        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); !contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform(); !contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token); !contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)",
         "security": [
           {
             "SclBearer": []
@@ -6894,7 +6917,7 @@
     "/introspect": {
       "post": {
         "operationId": "Introspect",
-        "summary": "Token Introspection (RFC 7662)",
+        "summary": "通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)",
         "security": [
           {
             "SclBearer": []
@@ -6971,7 +6994,7 @@
     "/revoke": {
       "post": {
         "operationId": "Revoke",
-        "summary": "Token Revocation (RFC 7009)",
+        "summary": "通常 OAuth token と管理発行 JWT access token の Token Revocation (RFC 7009)",
         "security": [
           {
             "SclBearer": []
@@ -7276,13 +7299,13 @@
     "/.well-known/oauth-protected-resource": {
       "get": {
         "operationId": "GetProtectedResourceMetadata",
-        "summary": "Protected Resource Metadata (RFC 9728)。resource クエリパラメータで指定した",
+        "summary": "Protected Resource Metadata (RFC 9728)。resource 未指定時は realm の IdMagic API と",
         "security": [],
         "parameters": [
           {
             "name": "resource",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -8624,7 +8647,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -8679,7 +8703,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteConsents"
           ],
           "resource": {
             "type": "User",
@@ -10955,7 +10980,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -11010,7 +11036,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientReadAccount"
           ],
           "resource": {
             "type": "User",
@@ -11067,7 +11094,8 @@
         ],
         "x-scl-access": {
           "policies": [
-            "AuthenticatedSelf"
+            "AuthenticatedSelf",
+            "SelfApiClientWriteAccount"
           ],
           "resource": {
             "type": "User",
@@ -13716,7 +13744,7 @@
     "/api/admin/api-tokens": {
       "get": {
         "operationId": "ListApiTokens",
-        "summary": "テナントの API アクセストークンを一覧する。token_hash と平文は返さない。",
+        "summary": "テナントの API アクセストークンを一覧する。JWT 本文は返さない。",
         "security": [
           {
             "SclBearer": []
@@ -13782,12 +13810,16 @@
       },
       "post": {
         "operationId": "IssueApiToken",
-        "summary": "テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を 指定する。平文トークン (idmagic_pat_...) を含む応答を一度だけ返す。",
+        "summary": "テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を 指定する。RFC 9068 JWT access token を含む応答を一度だけ返す。",
         "x-scl-requires": [
           "input.tenant_id == context.tenant_id",
           "input.expiry_days > 0"
         ],
-        "description": "Requires: input.tenant_id == context.tenant_id; input.expiry_days > 0",
+        "x-scl-ensures": [
+          "output.meta.user_id == context.actor_user_id",
+          "output.meta.audience == context.issuer"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id; input.expiry_days > 0\n\nEnsures: output.meta.user_id == context.actor_user_id; output.meta.audience == context.issuer",
         "security": [
           {
             "SclBearer": []
@@ -13812,6 +13844,9 @@
                   "tenant_id": {
                     "type": "string"
                   },
+                  "client_id": {
+                    "type": "string"
+                  },
                   "description": {
                     "type": "string"
                   },
@@ -13823,11 +13858,15 @@
                   },
                   "expiry_days": {
                     "type": "integer"
+                  },
+                  "dpop_jkt": {
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
                   "tenant_id",
+                  "client_id",
                   "description",
                   "scopes",
                   "expiry_days"
@@ -17929,17 +17968,31 @@
           "tenant_id": {
             "type": "string"
           },
+          "user_id": {
+            "type": "string",
+            "description": "token を発行した active User。account:* 操作の対象は常にこの User に固定する。"
+          },
           "id": {
             "type": "string"
           },
-          "token_hash": {
+          "jti": {
             "type": "string"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "realm が所有する built-in public client id。管理発行では OAuth client の事前登録を要求しない。"
           },
           "scopes": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ApiTokenScope"
             }
+          },
+          "audience": {
+            "type": "string"
+          },
+          "dpop_jkt": {
+            "type": "string"
           },
           "description": {
             "type": "string"
@@ -17951,18 +18004,25 @@
           "expires_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false,
         "required": [
           "tenant_id",
+          "user_id",
           "id",
-          "token_hash",
+          "jti",
+          "client_id",
           "scopes",
+          "audience",
           "description",
           "created_at"
         ],
-        "description": "管理用 API / SCIM API を認証する tenant-scoped アクセストークン。scopes が空、または expires_at を過ぎたトークンは認可されない。平文は発行時に一度だけ返し、token_hash (sha256) のみ永続化する。"
+        "description": "管理用 API / SCIM API / 発行者本人の account API を認証する tenant-scoped JWT アクセストークンの管理 record。scopes が空、expires_at を過ぎた、または revoked_at が設定された token は認可されない。JWT 本文は発行時に一度だけ返し永続化しない。"
       },
       "ApiTokenMetadata": {
         "type": "object",
@@ -17970,6 +18030,9 @@
           "id": {
             "type": "string"
           },
+          "jti": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -17979,6 +18042,15 @@
               "$ref": "#/components/schemas/ApiTokenScope"
             }
           },
+          "user_id": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string"
+          },
+          "dpop_jkt": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -17986,16 +18058,23 @@
           "expires_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false,
         "required": [
           "id",
+          "jti",
           "description",
           "scopes",
+          "user_id",
+          "audience",
           "created_at"
         ],
-        "description": "一覧・発行応答で返すトークンのメタデータ。token_hash と平文を含まない。"
+        "description": "一覧・発行応答で返すトークンのメタデータ。JWT 本文を含まない。"
       },
       "ApiTokenPrincipal": {
         "type": "object",
@@ -18003,19 +18082,47 @@
           "tenant_id": {
             "type": "string"
           },
+          "user_id": {
+            "type": "string"
+          },
           "scopes": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ApiTokenScope"
             }
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dpop_jkt": {
+            "type": "string"
           }
         },
         "additionalProperties": false,
         "required": [
           "tenant_id",
-          "scopes"
+          "user_id",
+          "scopes",
+          "client_id",
+          "audience",
+          "token_id",
+          "issued_at"
         ],
-        "description": "有効な API アクセストークンから解決した tenant と scope の認証コンテキスト。"
+        "description": "有効な API アクセストークンから解決した tenant、発行者 subject、scope の認証コンテキスト。"
       },
       "ApiTokenScope": {
         "type": "string",
@@ -18056,9 +18163,15 @@
           "scim:users:read",
           "scim:users:write",
           "scim:groups:read",
-          "scim:groups:write"
+          "scim:groups:write",
+          "account:read",
+          "account:write",
+          "account:mfa:write",
+          "account:sessions:write",
+          "account:consents:write",
+          "account:password:write"
         ],
-        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理 API の account:* scope は別途定義して追記する。公開・プロトコル・認証フロー endpoint は scope 対象外。"
+        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。"
       },
       "AppAccessDeniedByPolicy": {
         "type": "object",
@@ -21372,7 +21485,13 @@
               "custom_attribute",
               "offline_access",
               "idmagic.admin",
-              "idmagic.account"
+              "idmagic.account",
+              "account:read",
+              "account:write",
+              "account:mfa:write",
+              "account:sessions:write",
+              "account:consents:write",
+              "account:password:write"
             ]
           },
           "response_types_supported": {
@@ -21418,7 +21537,8 @@
             "default": [
               "ClientSecretBasic",
               "PrivateKeyJwt",
-              "TlsClientAuth"
+              "TlsClientAuth",
+              "None"
             ]
           },
           "id_token_signing_alg_values_supported": {
@@ -25490,6 +25610,12 @@
             "default": [
               "header"
             ]
+          },
+          "dpop_signing_alg_values_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "additionalProperties": false,
@@ -25499,7 +25625,7 @@
           "scopes_supported",
           "bearer_methods_supported"
         ],
-        "description": "RFC 9728 Protected Resource Metadata。McpResourceServer 登録から導出し手書きで独立に保守しない (ADR-011 と同方針)。"
+        "description": "RFC 9728 Protected Resource Metadata。realm の IdMagic API は ApiTokenScope、外部 resource は McpResourceServer 登録から導出する。"
       },
       "ProtectedResourceMetadataServed": {
         "type": "object",
@@ -31062,359 +31188,7 @@
         ],
         "actions": [
           {
-            "name": "ChangePassword",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
             "name": "CompleteStepUpAuthentication",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ConfirmTotpEnrollment",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ExportAccountData",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "FinishWebAuthnRegistration",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "GenerateRecoveryCodes",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "GetAccountContext",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "GetAccountSecurity",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "GetAccountSummary",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "GetMyApplicationOrder",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "GetUserProfile",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ListMyApplications",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ListMyConsents",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ListMySessions",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ListMySignInActivity",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RemoveTotpFactor",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RemoveWebAuthnCredential",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "ReorderMyApplications",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RequestEmailChange",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RevokeMyConsent",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RevokeMyOtherSessions",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RevokeMySession",
-            "memberOf": "policy:AuthenticatedSelf",
-            "policies": [
-              "AuthenticatedSelf"
-            ],
-            "resourceId": "subject.id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "User"
-              ]
-            }
-          },
-          {
-            "name": "RevokeRecoveryCodes",
             "memberOf": "policy:AuthenticatedSelf",
             "policies": [
               "AuthenticatedSelf"
@@ -31460,12 +31234,22 @@
                 "User"
               ]
             }
-          },
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientReadAccount"
+        ],
+        "actions": [
           {
-            "name": "StartTotpEnrollment",
-            "memberOf": "policy:AuthenticatedSelf",
+            "name": "ExportAccountData",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
             "policies": [
-              "AuthenticatedSelf"
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
             ],
             "resourceId": "subject.id",
             "appliesTo": {
@@ -31478,10 +31262,190 @@
             }
           },
           {
-            "name": "StartWebAuthnRegistration",
-            "memberOf": "policy:AuthenticatedSelf",
+            "name": "GetAccountContext",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
             "policies": [
-              "AuthenticatedSelf"
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "GetAccountSecurity",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "GetAccountSummary",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "GetMyApplicationOrder",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "GetUserProfile",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "ListMyApplications",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "ListMyConsents",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "ListMySessions",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "ListMySignInActivity",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientReadAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientWriteAccount",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientWriteAccount"
+        ],
+        "actions": [
+          {
+            "name": "ReorderMyApplications",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RequestEmailChange",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteAccount",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteAccount"
             ],
             "resourceId": "subject.id",
             "appliesTo": {
@@ -31495,9 +31459,250 @@
           },
           {
             "name": "UpdateUserProfile",
-            "memberOf": "policy:AuthenticatedSelf",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteAccount",
             "policies": [
-              "AuthenticatedSelf"
+              "AuthenticatedSelf",
+              "SelfApiClientWriteAccount"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientWriteConsents",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientWriteConsents"
+        ],
+        "actions": [
+          {
+            "name": "RevokeMyConsent",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteConsents",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteConsents"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientWriteMfa"
+        ],
+        "actions": [
+          {
+            "name": "ConfirmTotpEnrollment",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "FinishWebAuthnRegistration",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "GenerateRecoveryCodes",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RemoveTotpFactor",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RemoveWebAuthnCredential",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RevokeRecoveryCodes",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "StartTotpEnrollment",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "StartWebAuthnRegistration",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteMfa",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteMfa"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientWritePassword",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientWritePassword"
+        ],
+        "actions": [
+          {
+            "name": "ChangePassword",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWritePassword",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWritePassword"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientWriteSessions",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientWriteSessions"
+        ],
+        "actions": [
+          {
+            "name": "RevokeMyOtherSessions",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteSessions",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteSessions"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "RevokeMySession",
+            "memberOf": "policy:AuthenticatedSelf+SelfApiClientWriteSessions",
+            "policies": [
+              "AuthenticatedSelf",
+              "SelfApiClientWriteSessions"
             ],
             "resourceId": "subject.id",
             "appliesTo": {

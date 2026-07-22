@@ -1338,7 +1338,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1481,7 +1481,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWritePassword]
       resource:
         type: User
         id: subject.id
@@ -1499,7 +1499,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1516,7 +1516,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1537,7 +1537,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1559,7 +1559,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1577,7 +1577,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1596,7 +1596,7 @@ interfaces:
     emits:
       - WebAuthnCredentialRegistered
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1617,7 +1617,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1693,7 +1693,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1711,7 +1711,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
         type: User
         id: subject.id
@@ -1728,7 +1728,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1782,7 +1782,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1798,7 +1798,7 @@ interfaces:
     emits:
       - SessionEnded
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteSessions]
       resource:
         type: User
         id: subject.id
@@ -1817,7 +1817,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteSessions]
       resource:
         type: User
         id: subject.id
@@ -2018,6 +2018,13 @@ authorization:
       matches:
         - context.authenticated
         - principal.status == "Active"
+    SelfApiClient:
+      type: User
+      matches:
+        - context.authenticated
+        - 'context.authentication_method in ["api_token", "oauth2_access_token"]'
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
     TenantAdministrator:
       type: User
       matches:
@@ -2029,6 +2036,22 @@ authorization:
       effect: permit
       principal: AuthenticatedSelf
       when: principal.id == resource.id
+    SelfApiClientReadAccount:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:read" in context.token_scopes && principal.id == resource.id'
+    SelfApiClientWriteMfa:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:mfa:write" in context.token_scopes && principal.id == resource.id'
+    SelfApiClientWriteSessions:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:sessions:write" in context.token_scopes && principal.id == resource.id'
+    SelfApiClientWritePassword:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:password:write" in context.token_scopes && principal.id == resource.id'
     TenantAdministrator:
       effect: permit
       principal: TenantAdministrator
@@ -2056,6 +2079,28 @@ objectives:
     window: 30d
     budgeting: occurrences
 scenarios:
+  API token発行者はsensitive facet scope内で自身のauthentication情報だけを操作できる:
+    actor: SelfApiClient
+    given:
+      - client は対象 tenant の active User に固定された有効な API access token を提示している
+    main_success:
+      - account:read scope で account context、security、signin activity、session を参照できる
+      - account:mfa:write scope で自身の MFA factor と recovery code を変更できる
+      - account:sessions:write scope で自身の session を失効できる
+      - account:password:write scope と current password で自身の password を変更できる
+    extensions:
+      - at: 1
+        condition: 対応しない account scope で sensitive facet の変更を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant または user_id が操作対象と一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: API token で step-up endpoint を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
   browser bootstrap contextは認証状態とCSRF境界を保持する:
     actor: AuthenticatedSelf
     given:

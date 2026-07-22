@@ -20,6 +20,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -60,6 +61,7 @@ type Deps struct {
 	TokenIntrospector          oauthports.TokenIntrospector
 	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
 	AccessTokenDenylist        oauthports.AccessTokenDenylist
+	ManagedTokenRevoker        tokenusecases.ManagedTokenRevoker
 	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
 	AuthEventBucketStore       authnports.AuthEventBucketStore
 	Authorizer                 oauthports.Authorizer

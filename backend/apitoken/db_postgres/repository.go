@@ -21,45 +21,48 @@ func timestamptzOrNil(value *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *value, Valid: true}
 }
 
-func tokenFromRow(
-	id, tenantID, tokenHash string,
-	scopeValues []string,
-	description pgtype.Text,
-	createdAt time.Time,
-	expiresAt pgtype.Timestamptz,
+func textOrNil(value string) pgtype.Text { return pgtype.Text{String: value, Valid: value != ""} }
+
+func tokenFromRow(id, tenantID, userID, jti, clientID string, scopeValues []string, audience string,
+	dpopJKT, description pgtype.Text, createdAt time.Time, expiresAt, revokedAt pgtype.Timestamptz,
 ) (*domain.ApiToken, error) {
 	scopes, err := domain.ParseScopes(scopeValues)
 	if err != nil {
 		return nil, err
 	}
 	token := &domain.ApiToken{
-		ID: id, TenantID: tenantID, TokenHash: tokenHash, Scopes: scopes,
-		Description: description.String, CreatedAt: createdAt,
+		ID: id, TenantID: tenantID, UserID: userID, JTI: jti, ClientID: clientID,
+		Scopes: scopes, Audience: audience, DPoPJKT: dpopJKT.String, Description: description.String, CreatedAt: createdAt,
 	}
 	if expiresAt.Valid {
 		value := expiresAt.Time
 		token.ExpiresAt = &value
+	}
+	if revokedAt.Valid {
+		value := revokedAt.Time
+		token.RevokedAt = &value
 	}
 	return token, nil
 }
 
 func (r *Repository) Save(ctx context.Context, token *domain.ApiToken) error {
 	return New(r.Pool).SaveApiToken(ctx, SaveApiTokenParams{
-		ID: token.ID, TenantID: token.TenantID, TokenHash: token.TokenHash,
-		Scopes: token.Scopes.Strings(), Description: pgtype.Text{String: token.Description, Valid: token.Description != ""},
-		CreatedAt: token.CreatedAt, ExpiresAt: timestamptzOrNil(token.ExpiresAt),
+		ID: token.ID, TenantID: token.TenantID,
+		UserID: token.UserID, Jti: token.JTI, ClientID: token.ClientID, Scopes: token.Scopes.Strings(),
+		Audience: token.Audience, DpopJkt: textOrNil(token.DPoPJKT), Description: textOrNil(token.Description),
+		CreatedAt: token.CreatedAt, ExpiresAt: timestamptzOrNil(token.ExpiresAt), RevokedAt: timestamptzOrNil(token.RevokedAt),
 	})
 }
 
-func (r *Repository) FindByHash(ctx context.Context, tokenHash string) (*domain.ApiToken, error) {
-	row, err := New(r.Pool).FindApiTokenByHash(ctx, tokenHash)
+func (r *Repository) FindByJTI(ctx context.Context, tenantID, jti string) (*domain.ApiToken, error) {
+	row, err := New(r.Pool).FindApiTokenByJTI(ctx, FindApiTokenByJTIParams{TenantID: tenantID, Jti: jti})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return tokenFromRow(row.ID, row.TenantID, row.TokenHash, row.Scopes, row.Description, row.CreatedAt, row.ExpiresAt)
+	return tokenFromRow(row.ID, row.TenantID, row.UserID, row.Jti, row.ClientID, row.Scopes, row.Audience, row.DpopJkt, row.Description, row.CreatedAt, row.ExpiresAt, row.RevokedAt)
 }
 
 func (r *Repository) List(ctx context.Context, tenantID string) ([]*domain.ApiToken, error) {
@@ -69,7 +72,7 @@ func (r *Repository) List(ctx context.Context, tenantID string) ([]*domain.ApiTo
 	}
 	result := make([]*domain.ApiToken, 0, len(rows))
 	for _, row := range rows {
-		token, err := tokenFromRow(row.ID, row.TenantID, row.TokenHash, row.Scopes, row.Description, row.CreatedAt, row.ExpiresAt)
+		token, err := tokenFromRow(row.ID, row.TenantID, row.UserID, row.Jti, row.ClientID, row.Scopes, row.Audience, row.DpopJkt, row.Description, row.CreatedAt, row.ExpiresAt, row.RevokedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -78,6 +81,10 @@ func (r *Repository) List(ctx context.Context, tenantID string) ([]*domain.ApiTo
 	return result, nil
 }
 
-func (r *Repository) Delete(ctx context.Context, tenantID, id string) error {
-	return New(r.Pool).DeleteApiToken(ctx, DeleteApiTokenParams{TenantID: tenantID, ID: id})
+func (r *Repository) Revoke(ctx context.Context, tenantID, id string, at time.Time) error {
+	return New(r.Pool).RevokeApiToken(ctx, RevokeApiTokenParams{TenantID: tenantID, ID: id, RevokedAt: timestamptzOrNil(&at)})
+}
+
+func (r *Repository) RevokeByJTI(ctx context.Context, tenantID, jti string, at time.Time) error {
+	return New(r.Pool).RevokeApiTokenByJTI(ctx, RevokeApiTokenByJTIParams{TenantID: tenantID, Jti: jti, RevokedAt: timestamptzOrNil(&at)})
 }

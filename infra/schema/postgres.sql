@@ -778,23 +778,30 @@ CREATE TABLE application_categories (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
--- api_tokens (wi-273): unified tenant-scoped API access token for the
--- management API and SCIM (replaces the former SCIM-only scim_tokens).
+-- api_tokens (wi-273, wi-275): lifecycle records for managed RFC 9068 JWT
+-- access tokens. JWT bodies are never stored; jti is the lookup key.
 -- scopes lists the granted <resource>:<action> permissions (ApiTokenScope in
 -- spec/contexts/api-tokens.yaml); the CHECK mirrors that enum as defense in
 -- depth alongside Go-side validation.
 CREATE TABLE api_tokens (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
-    token_hash TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    jti TEXT NOT NULL,
+    client_id TEXT NOT NULL,
     scopes TEXT[] NOT NULL,
+    audience TEXT NOT NULL,
+    dpop_jkt TEXT,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
     CONSTRAINT api_tokens_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
-    CONSTRAINT api_tokens_token_hash_key UNIQUE (token_hash),
+    CONSTRAINT api_tokens_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT api_tokens_jti_key UNIQUE (jti),
     CONSTRAINT api_tokens_scopes_valid CHECK (
         scopes <@ ARRAY[
             'users:read', 'users:write',
@@ -807,13 +814,24 @@ CREATE TABLE api_tokens (
             'settings:read', 'settings:write',
             'signing-keys:read', 'signing-keys:write',
             'audit:read',
+            'applications:read', 'applications:write',
+            'oauth-clients:read', 'oauth-clients:write',
+            'authorization-detail-types:read', 'authorization-detail-types:write',
+            'mcp-resource-servers:read', 'mcp-resource-servers:write',
+            'saml:read', 'saml:write',
+            'wsfed:read', 'wsfed:write',
+            'provisioning:read', 'provisioning:write',
             'scim:users:read', 'scim:users:write',
-            'scim:groups:read', 'scim:groups:write'
+            'scim:groups:read', 'scim:groups:write',
+            'account:read', 'account:write',
+            'account:mfa:write', 'account:sessions:write',
+            'account:consents:write', 'account:password:write'
         ]::TEXT[]
     )
 );
 
 CREATE INDEX api_tokens_tenant_id_created_at_idx ON api_tokens (tenant_id, created_at);
+CREATE INDEX api_tokens_tenant_id_jti_idx ON api_tokens (tenant_id, jti);
 
 CREATE TABLE scim_user_refs (
     tenant_id UUID NOT NULL,

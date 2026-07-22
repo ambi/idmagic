@@ -6,6 +6,10 @@ created_at: 2026-07-23
 
 # ADR-135: SCIM と管理 API のアクセストークンを統一する
 
+> **後続決定:** token の統一モデルと bounded context 所有権は本 ADR を維持する。識別 prefix と
+> hash 保存による wire format の決定だけは、[ADR-137](ADR-137-unify-api-access-token-wire-format.md)
+> により RFC 9068 JWT + `jti` lifecycle record へ置き換えられた。
+
 ## コンテキスト
 
 SCIM 専用 token は tenant と有効期限だけを持ち、SCIM handler 内の認証に閉じていた。管理 API を token で公開する計画では操作単位の scope と複数 bounded context から再利用できる認証境界が必要であり、SCIM 専用モデルを並行維持すると token の生成・hash・失効・管理 UI が重複する。まだリリース前であり、既存 token の互換移行より単一モデルへ収束させる方を優先できる。

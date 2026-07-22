@@ -107,6 +107,24 @@ func TestExchangeTokenBuildsActAndAudience(t *testing.T) {
 	}
 }
 
+func TestExchangeTokenRejectsAccountScopeFromClientSubject(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+		"subj": {Active: true, Sub: "service-client", ClientID: "service-client", Scope: "account:read"},
+	})
+	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+		TenantID:         kernel.DefaultTenantID,
+		ResourceServerID: "realm-api", Resource: "https://api.example", Name: "Realm API", Scopes: []string{"account:read"}, State: domain.McpResourceServerActive,
+	})
+	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}}, time.Now().UTC())
+	if err == nil {
+		t.Fatal("client subject received account scope")
+	}
+	if issuer.calls != 0 {
+		t.Fatal("token was issued")
+	}
+}
+
 func TestExchangeTokenNestsExistingActChain(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{

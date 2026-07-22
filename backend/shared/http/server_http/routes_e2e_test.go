@@ -843,7 +843,7 @@ func TestAccountContextRequiresAuthenticatedSession(t *testing.T) {
 // TestAccountContextRejectsStaleBearerToken は、dev サーバ再起動などでサーバ側の
 // 署名鍵/セッションが失われた後にブラウザが古い access token を提示し続ける状況を模す。
 // resource server はこれを有効な資格情報として扱わず、SPA が保持トークンを破棄して
-// 再認可へ切り替えられるよう 401 authentication_required を返す (行き止まりにしない
+// 再認可へ切り替えられるよう RFC 6750 の 401 invalid_token を返す (行き止まりにしない
 // wi-116 の回復シグナル契約)。
 func TestAccountContextRejectsStaleBearerToken(t *testing.T) {
 	srv := newServer(t)
@@ -866,8 +866,11 @@ func TestAccountContextRejectsStaleBearerToken(t *testing.T) {
 		t.Fatalf("status=%d, want 401; body=%s", resp.StatusCode, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
-	if !bytes.Contains(body, []byte(`"error":"authentication_required"`)) {
+	if !bytes.Contains(body, []byte(`"error":"invalid_token"`)) {
 		t.Fatalf("unexpected body=%s", body)
+	}
+	if got := resp.Header.Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {
+		t.Fatalf("WWW-Authenticate = %q, want invalid_token", got)
 	}
 }
 

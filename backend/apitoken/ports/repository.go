@@ -2,15 +2,17 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/ambi/idmagic/backend/apitoken/domain"
 )
 
 type Repository interface {
 	Save(ctx context.Context, token *domain.ApiToken) error
-	FindByHash(ctx context.Context, tokenHash string) (*domain.ApiToken, error)
+	FindByJTI(ctx context.Context, tenantID, jti string) (*domain.ApiToken, error)
 	List(ctx context.Context, tenantID string) ([]*domain.ApiToken, error)
-	Delete(ctx context.Context, tenantID, id string) error
+	Revoke(ctx context.Context, tenantID, id string, at time.Time) error
+	RevokeByJTI(ctx context.Context, tenantID, jti string, at time.Time) error
 }
 
 type Authenticator interface {

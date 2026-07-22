@@ -14,9 +14,6 @@ import (
 
 func (d Deps) handleProtectedResourceMetadata(c *echo.Context) error {
 	resource := c.QueryParam("resource")
-	if resource == "" {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "resource パラメータが必要です"))
-	}
 	tenantID := support.RequestTenantID(c)
 	meta, err := tokenusecases.BuildProtectedResourceMetadata(
 		c.Request().Context(), d.McpResourceServerRepo, tenantID, resource, support.RequestIssuer(c, d.Issuer),
@@ -25,7 +22,11 @@ func (d Deps) handleProtectedResourceMetadata(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.ProtectedResourceMetadataServed{At: time.Now().UTC(), TenantID: tenantID, Resource: resource})
+		eventResource := resource
+		if eventResource == "" {
+			eventResource = meta.Resource
+		}
+		d.Emit(&domain.ProtectedResourceMetadataServed{At: time.Now().UTC(), TenantID: tenantID, Resource: eventResource})
 	}
 	return c.JSON(http.StatusOK, meta)
 }

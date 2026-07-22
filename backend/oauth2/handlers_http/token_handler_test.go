@@ -243,6 +243,19 @@ func TestTokenAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("Token_ClientCredentials_RejectsAccountScopeWithoutUser", func(t *testing.T) {
+		form := url.Values{"client_id": {"client-conf"}, "client_secret": {"secret-conf"}, "grant_type": {"client_credentials"}, "scope": {"account:read"}}
+		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		fix.e.ServeHTTP(rec, req)
+		var resp map[string]any
+		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+		if rec.Code != http.StatusBadRequest || resp["error"] != "invalid_scope" {
+			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+		}
+	})
+
 	t.Run("Revoke_Succeeds", func(t *testing.T) {
 		form := url.Values{
 			"client_id":     {"client-conf"},
@@ -257,6 +270,17 @@ func TestTokenAPI(t *testing.T) {
 
 		if rec.Code != http.StatusOK {
 			t.Errorf("expected status 200, got %d", rec.Code)
+		}
+	})
+
+	t.Run("Revoke_BuiltinManagedPublicClientUnknownTokenIsNoop", func(t *testing.T) {
+		form := url.Values{"client_id": {"idmagic-api-token"}, "token": {"unknown-token"}, "token_type_hint": {"access_token"}}
+		req := httptest.NewRequest(http.MethodPost, "/revoke", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		fix.e.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
 	})
 }

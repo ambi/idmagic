@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
@@ -37,11 +38,13 @@ type Deps struct {
 
 // Authenticator は認証・認可の共通ロジックに必要な依存を保持する。
 type Authenticator struct {
-	UserRepo          userports.UserRepository
-	GroupRepo         groupports.GroupRepository
-	SessionManager    *sessionusecases.SessionManager
-	TokenIntrospector oauthports.TokenIntrospector
-	AuthnResolver     authdomain.AuthenticationContextResolver
+	UserRepo              userports.UserRepository
+	GroupRepo             groupports.GroupRepository
+	SessionManager        *sessionusecases.SessionManager
+	TokenIntrospector     oauthports.TokenIntrospector
+	ApiTokenAuthenticator apitokenports.Authenticator
+	DpopReplayStore       oauthports.DpopReplayStore
+	AuthnResolver         authdomain.AuthenticationContextResolver
 }
 
 // ApplicationGate はフェデレーション開始時のアプリ割当ゲートに必要な依存を保持する。

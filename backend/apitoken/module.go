@@ -7,15 +7,18 @@ import (
 	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/handlers_http"
 	"github.com/ambi/idmagic/backend/apitoken/ports"
 	"github.com/ambi/idmagic/backend/apitoken/usecases"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 type Module struct {
-	Repo ports.Repository
+	Repo              ports.Repository
+	TokenIssuer       oauthports.TokenIssuer
+	TokenIntrospector oauthports.TokenIntrospector
 }
 
 func (m Module) Service() *usecases.Service {
-	return usecases.New(m.Repo)
+	return usecases.New(m.Repo, usecases.WithTokenIssuer(m.TokenIssuer), usecases.WithTokenIntrospector(m.TokenIntrospector))
 }
 
 func (m Module) Register(group *echo.Group, deps support.Deps, authenticator *support.Authenticator) {

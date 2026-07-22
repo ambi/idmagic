@@ -5,14 +5,16 @@ package usecases
 import (
 	"context"
 
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 type ProtectedResourceMetadata struct {
-	Resource               string   `json:"resource"`
-	AuthorizationServers   []string `json:"authorization_servers"`
-	ScopesSupported        []string `json:"scopes_supported"`
-	BearerMethodsSupported []string `json:"bearer_methods_supported"`
+	Resource                      string   `json:"resource"`
+	AuthorizationServers          []string `json:"authorization_servers"`
+	ScopesSupported               []string `json:"scopes_supported"`
+	BearerMethodsSupported        []string `json:"bearer_methods_supported"`
+	DPoPSigningAlgValuesSupported []string `json:"dpop_signing_alg_values_supported,omitempty"`
 }
 
 // BuildProtectedResourceMetadata は resource に対応する登録済み Active な
@@ -23,6 +25,13 @@ func BuildProtectedResourceMetadata(
 	repo ports.McpResourceServerRepository,
 	tenantID, resource, issuer string,
 ) (*ProtectedResourceMetadata, error) {
+	if resource == "" {
+		return &ProtectedResourceMetadata{
+			Resource: issuer, AuthorizationServers: []string{issuer},
+			ScopesSupported: apitokendomain.AllScopes(), BearerMethodsSupported: []string{"header"},
+			DPoPSigningAlgValuesSupported: []string{"ES256", "RS256", "PS256"},
+		}, nil
+	}
 	if repo == nil {
 		return nil, NewOAuthError("invalid_target", "resource が登録されていません")
 	}

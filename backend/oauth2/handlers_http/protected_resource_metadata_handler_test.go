@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -64,13 +65,23 @@ func TestProtectedResourceMetadata_registeredResource_returnsMetadata(t *testing
 	}
 }
 
-func TestProtectedResourceMetadata_missingResourceParam_rejected(t *testing.T) {
+func TestProtectedResourceMetadata_missingResourceParam_returnsRealmAPI(t *testing.T) {
 	e := newProtectedResourceMetadataHandler()
 	req := httptest.NewRequest(http.MethodGet, "/.well-known/oauth-protected-resource", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for missing resource, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Resource string   `json:"resource"`
+		Scopes   []string `json:"scopes_supported"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Resource != "https://idp.example/realms/default" || !slices.Contains(body.Scopes, "account:read") {
+		t.Fatalf("metadata=%+v", body)
 	}
 }
 

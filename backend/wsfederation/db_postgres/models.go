@@ -34,12 +34,17 @@ type AgentCredentialBinding struct {
 type ApiToken struct {
 	ID          string
 	TenantID    string
-	TokenHash   string
+	UserID      string
+	Jti         string
+	ClientID    string
 	Scopes      []string
+	Audience    string
+	DpopJkt     pgtype.Text
 	Description pgtype.Text
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	ExpiresAt   pgtype.Timestamptz
+	RevokedAt   pgtype.Timestamptz
 }
 
 type Application struct {

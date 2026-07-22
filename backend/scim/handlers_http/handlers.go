@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v5"
 
@@ -37,7 +38,11 @@ func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.
 		return "", err
 	}
 	if !principal.Scopes.HasAny(allowedScopes...) {
-		return "", errors.New("token scope denied")
+		required := make([]string, 0, len(allowedScopes))
+		for _, scope := range allowedScopes {
+			required = append(required, string(scope))
+		}
+		return "", &support.InsufficientScopeError{Required: strings.Join(required, " ")}
 	}
 
 	reqTenantID := support.RequestTenantID(c)
@@ -46,6 +51,16 @@ func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.
 	}
 
 	return reqTenantID, nil
+}
+
+func (h *Handler) writeScimAuthError(c *echo.Context, err error) error {
+	var scopeErr *support.InsufficientScopeError
+	if errors.As(err, &scopeErr) {
+		c.Response().Header().Set("WWW-Authenticate", `Bearer error="insufficient_scope", scope="`+scopeErr.Required+`"`)
+		return h.writeScimError(c, http.StatusForbidden, err.Error(), "")
+	}
+	c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+	return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 }
 
 func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType string) error {
@@ -73,7 +88,7 @@ func (h *Handler) writeMutationError(c *echo.Context, notFoundDetail string, err
 
 func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	config := domain.ServiceProviderConfig{
@@ -111,7 +126,7 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 
 func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	types := []domain.ResourceType{
@@ -139,7 +154,7 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 
 func (h *Handler) handleGetSchemas(c *echo.Context) error {
 	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	schemas := []domain.Schema{domain.UserCoreSchema(), domain.GroupCoreSchema()}
@@ -152,7 +167,7 @@ func (h *Handler) handleGetSchemas(c *echo.Context) error {
 func (h *Handler) handleCreateUser(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	var body map[string]any
@@ -172,7 +187,7 @@ func (h *Handler) handleCreateUser(c *echo.Context) error {
 func (h *Handler) handleGetUser(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -191,7 +206,7 @@ func (h *Handler) handleGetUser(c *echo.Context) error {
 func (h *Handler) handleUpdateUser(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -212,7 +227,7 @@ func (h *Handler) handleUpdateUser(c *echo.Context) error {
 func (h *Handler) handlePatchUser(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -233,7 +248,7 @@ func (h *Handler) handlePatchUser(c *echo.Context) error {
 func (h *Handler) handleDeleteUser(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -247,7 +262,7 @@ func (h *Handler) handleDeleteUser(c *echo.Context) error {
 func (h *Handler) handleListUsers(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	query, err := h.parseListQuery(c)
@@ -324,7 +339,7 @@ func (h *Handler) writeListResponse(c *echo.Context, result usecases.ListResult)
 func (h *Handler) handleCreateGroup(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	var body map[string]any
@@ -344,7 +359,7 @@ func (h *Handler) handleCreateGroup(c *echo.Context) error {
 func (h *Handler) handleGetGroup(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsRead)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -363,7 +378,7 @@ func (h *Handler) handleGetGroup(c *echo.Context) error {
 func (h *Handler) handleListGroups(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsRead)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	query, err := h.parseListQuery(c)
@@ -382,7 +397,7 @@ func (h *Handler) handleListGroups(c *echo.Context) error {
 func (h *Handler) handleUpdateGroup(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -403,7 +418,7 @@ func (h *Handler) handleUpdateGroup(c *echo.Context) error {
 func (h *Handler) handlePatchGroup(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")
@@ -424,7 +439,7 @@ func (h *Handler) handlePatchGroup(c *echo.Context) error {
 func (h *Handler) handleDeleteGroup(c *echo.Context) error {
 	tenantID, err := h.authenticate(c, apitokendomain.ScopeScimGroupsWrite)
 	if err != nil {
-		return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+		return h.writeScimAuthError(c, err)
 	}
 
 	id := c.Param("id")

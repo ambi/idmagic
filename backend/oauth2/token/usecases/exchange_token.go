@@ -170,6 +170,10 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 			return reject(currentActorSub, NewOAuthError("invalid_scope", "resource の許可 scope を超える要求です"))
 		}
 	}
+	if slices.ContainsFunc(grantedScopes, func(scope string) bool { return strings.HasPrefix(scope, "account:") }) &&
+		(subject.Sub == "" || subject.Sub == subject.ClientID) {
+		return reject(currentActorSub, NewOAuthError("invalid_scope", "account scope には user subject が必要です"))
+	}
 
 	// --- authorization_details ダウンスコープ (拡大不可, RFC 9396 / ADR-050) ---
 	// 要求があれば登録 type に対し検証し、subject_token の詳細の部分集合に限る。

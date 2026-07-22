@@ -910,11 +910,23 @@ export type ApiTokenScope =
   | 'scim:users:write'
   | 'scim:groups:read'
   | 'scim:groups:write'
+  | 'account:read'
+  | 'account:write'
+  | 'account:mfa:write'
+  | 'account:sessions:write'
+  | 'account:consents:write'
+  | 'account:password:write'
 
 export type ApiToken = {
   id: string
+  jti: string
+  user_id: string
+  client_id: string
   description?: string
   scopes: ApiTokenScope[]
+  audience: string
+  dpop_jkt?: string
   created_at: string
   expires_at?: string
+  revoked_at?: string
 }

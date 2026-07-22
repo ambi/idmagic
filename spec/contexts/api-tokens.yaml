@@ -2,14 +2,120 @@ system: idmagic
 spec_version: "3.0"
 context: ApiTokens
 
+standards:
+  RFC6750:
+    title: The OAuth 2.0 Authorization Framework Bearer Token Usage
+    version: RFC 6750
+    url: https://www.rfc-editor.org/rfc/rfc6750.html
+    roles: [AuthorizationServer, ResourceServer]
+    scope: API access token の提示方法と resource server error。
+    requirements:
+      - id: RFC6750-API-TOKEN-HEADER
+        section: §2.1
+        strength: MUST
+        adoption: required
+        statement: API access token は Authorization header の Bearer または DPoP scheme だけで受け付ける。
+      - id: RFC6750-API-TOKEN-ERROR
+        section: §3
+        strength: MUST
+        adoption: required
+        statement: 無効 token は invalid_token、scope 不足は insufficient_scope を WWW-Authenticate に含める。
+      - id: RFC6750-API-TOKEN-QUERY
+        section: §2.3
+        strength: MAY
+        adoption: excluded
+        statement: URI query parameter による API access token 提示を受け付ける。
+        reason: URL、ログ、Referer への長寿命 credential 漏洩を避ける。
+  RFC7009:
+    title: OAuth 2.0 Token Revocation
+    version: RFC 7009
+    url: https://www.rfc-editor.org/rfc/rfc7009.html
+    roles: [AuthorizationServer]
+    scope: 管理発行 API access token の即時失効。
+    requirements:
+      - id: RFC7009-API-TOKEN-REVOKE
+        section: §2
+        strength: SHOULD
+        adoption: required
+        statement: /revoke は access_token hint の管理発行 JWT を built-in public client id と共に提示した要求で即時失効する。
+      - id: RFC7009-API-TOKEN-UNKNOWN
+        section: §2.2
+        strength: MUST
+        adoption: required
+        statement: 未知・既失効 API access token の revocation も 200 no-op とし存在を漏らさない。
+  RFC7662:
+    title: OAuth 2.0 Token Introspection
+    version: RFC 7662
+    url: https://www.rfc-editor.org/rfc/rfc7662.html
+    roles: [AuthorizationServer]
+    scope: 管理発行 API access token の active 状態と認可 metadata の照会。
+    requirements:
+      - id: RFC7662-API-TOKEN-INTROSPECT
+        section: §2
+        strength: MUST
+        adoption: required
+        statement: 認証済み Resource Server に active、scope、sub、aud、iat、exp、jti と任意 cnf を返す。
+      - id: RFC7662-API-TOKEN-INACTIVE
+        section: §2.2
+        strength: MUST
+        adoption: required
+        statement: 未知・失効・期限切れ・realm 不一致 token には active=false だけを返す。
+  RFC9068:
+    title: JSON Web Token Profile for OAuth 2.0 Access Tokens
+    version: RFC 9068
+    url: https://www.rfc-editor.org/rfc/rfc9068.html
+    roles: [AuthorizationServer, ResourceServer]
+    scope: 管理発行 API access token を通常 OAuth access token と同じ JWT 形式に統一する。
+    requirements:
+      - id: RFC9068-API-TOKEN-CLAIMS
+        section: §2.2
+        strength: MUST
+        adoption: required
+        statement: 管理発行 token に iss、sub、aud、exp、iat、jti、client_id、scope を含める。
+      - id: RFC9068-API-TOKEN-SIGNATURE
+        section: §2.1
+        strength: MUST
+        adoption: required
+        statement: 管理発行 token を通常 OAuth access token と同じ非対称鍵と at+jwt typ で署名する。
+  RFC9449:
+    title: OAuth 2.0 Demonstrating Proof of Possession
+    version: RFC 9449
+    url: https://www.rfc-editor.org/rfc/rfc9449.html
+    roles: [AuthorizationServer, ResourceServer]
+    scope: 長寿命 API access token の任意 sender constraint。
+    requirements:
+      - id: RFC9449-API-TOKEN-DPOP
+        section: §4-7
+        strength: MAY
+        adoption: optional
+        statement: dpop_jkt に束縛した token は DPoP proof の署名、htm、htu、iat、jti、replay、thumbprint 一致を検証する。
+  RFC9700:
+    title: Best Current Practice for OAuth 2.0 Security
+    version: RFC 9700 / BCP 240
+    url: https://www.rfc-editor.org/rfc/rfc9700.html
+    roles: [AuthorizationServer, ResourceServer]
+    scope: 長寿命 API access token の漏洩・再利用被害の制限。
+    requirements:
+      - id: RFC9700-API-TOKEN-AUDIENCE
+        section: §4.10.2
+        strength: SHOULD
+        adoption: required
+        statement: API access token を発行 realm の IdMagic API audience に固定し、別 realm または resource で拒否する。
+      - id: RFC9700-API-TOKEN-SENDER-CONSTRAINT
+        section: §4.10.1
+        strength: SHOULD
+        adoption: optional
+        statement: 高セキュリティ用途では発行時に DPoP sender constraint を選択できる。
+
 glossary:
   ApiAccessToken:
     definition: >-
-      IdMagic の管理用 API と SCIM API を呼び出すための tenant-scoped アクセストークン。
+      IdMagic の管理用 API、SCIM API、発行者本人の account API を呼び出すための
+      tenant-scoped JWT アクセストークン。
       Authorization ヘッダに Bearer スキームで提示する。テナント管理者が発行・失効を
-      管理する長寿命トークンで、付与された scope の集合が呼び出せる操作を決める。値は
-      idmagic_pat_ プレフィックスを持ち、発行時に一度だけ平文を返す。永続化するのは
-      sha256 ハッシュだけで、平文は保存しない。
+      管理する長寿命トークンで、付与された scope の集合が呼び出せる操作を決める。通常の
+      OAuth access token と同じ RFC 9068 JWT を発行時に一度だけ返し、永続化するのは jti と
+      lifecycle metadata だけで token 本文は保存しない。
     aliases:
       - API アクセストークン
       - PAT
@@ -59,8 +165,9 @@ models:
       参照できる。Application aggregate とその protocol binding は applications:*、独立した
       protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* /
       mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理
-      API の account:* scope は別途定義して追記する。公開・プロトコル・認証フロー endpoint は
-      scope 対象外。
+      account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent /
+      password の sensitive facet を分離する。公開・プロトコル・step-up・email verification
+      endpoint は scope 対象外。
     values:
       - "users:read"
       - "users:write"
@@ -99,54 +206,100 @@ models:
       - "scim:users:write"
       - "scim:groups:read"
       - "scim:groups:write"
+      - "account:read"
+      - "account:write"
+      - "account:mfa:write"
+      - "account:sessions:write"
+      - "account:consents:write"
+      - "account:password:write"
   ApiToken:
     kind: entity
     description: >-
-      管理用 API / SCIM API を認証する tenant-scoped アクセストークン。scopes が空、または
-      expires_at を過ぎたトークンは認可されない。平文は発行時に一度だけ返し、token_hash
-      (sha256) のみ永続化する。
+      管理用 API / SCIM API / 発行者本人の account API を認証する tenant-scoped
+      JWT アクセストークンの管理 record。scopes が空、expires_at を過ぎた、または
+      revoked_at が設定された token は認可されない。JWT 本文は発行時に一度だけ返し永続化しない。
     identity: [tenant_id, id]
     fields:
       tenant_id:
         type: String
+      user_id:
+        type: String
+        description: token を発行した active User。account:* 操作の対象は常にこの User に固定する。
       id:
         type: String
-      token_hash:
+      jti:
         type: String
-        annotations:
-          sensitive: true
+      client_id:
+        type: String
+        description: realm が所有する built-in public client id。管理発行では OAuth client の事前登録を要求しない。
       scopes:
         type: "ApiTokenScope[]"
+      audience:
+        type: String
+      dpop_jkt:
+        type: String
+        optional: true
       description:
         type: String
       created_at:
         type: DateTime
       expires_at:
+        type: DateTime
+        optional: true
+      revoked_at:
         type: DateTime
         optional: true
   ApiTokenMetadata:
     kind: value_object
-    description: 一覧・発行応答で返すトークンのメタデータ。token_hash と平文を含まない。
+    description: 一覧・発行応答で返すトークンのメタデータ。JWT 本文を含まない。
     fields:
       id:
+        type: String
+      jti:
         type: String
       description:
         type: String
       scopes:
         type: "ApiTokenScope[]"
+      user_id:
+        type: String
+      audience:
+        type: String
+      dpop_jkt:
+        type: String
+        optional: true
       created_at:
         type: DateTime
       expires_at:
         type: DateTime
         optional: true
+      revoked_at:
+        type: DateTime
+        optional: true
   ApiTokenPrincipal:
     kind: value_object
-    description: 有効な API アクセストークンから解決した tenant と scope の認証コンテキスト。
+    description: 有効な API アクセストークンから解決した tenant、発行者 subject、scope の認証コンテキスト。
     fields:
       tenant_id:
         type: String
+      user_id:
+        type: String
       scopes:
         type: "ApiTokenScope[]"
+      client_id:
+        type: String
+      audience:
+        type: String
+      token_id:
+        type: String
+      issued_at:
+        type: DateTime
+      expires_at:
+        type: DateTime
+        optional: true
+      dpop_jkt:
+        type: String
+        optional: true
   InvalidRequestError:
     kind: error
     description: API アクセストークン発行・失効の入力が不正である。
@@ -157,9 +310,10 @@ models:
 interfaces:
   AuthenticateApiToken:
     description: >-
-      Bearer token の形式・hash・有効期限を検証し、空でない scope 集合を持つ有効な
-      API アクセストークンを tenant-scoped principal として解決する。失効済み、期限切れ、
-      不正形式、未知 token、scope なしは fail-closed で拒否する。
+      RFC 9068 JWT の署名・issuer・audience・有効期限と jti の管理 record を検証し、空でない
+      scope 集合を持つ有効な API access token を tenant-scoped principal として解決する。
+      subject は発行者本人に固定する。失効済み、期限切れ、不正形式、未知 jti、scope なしは
+      fail-closed で拒否する。
     input:
       token:
         type: String
@@ -174,7 +328,7 @@ interfaces:
       policies: [AuthenticateApiTokens]
       resource: {type: ApiToken, id: input.token}
   ListApiTokens:
-    description: テナントの API アクセストークンを一覧する。token_hash と平文は返さない。
+    description: テナントの API アクセストークンを一覧する。JWT 本文は返さない。
     input:
       tenant_id:
         type: String
@@ -193,9 +347,11 @@ interfaces:
   IssueApiToken:
     description: >-
       テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を
-      指定する。平文トークン (idmagic_pat_...) を含む応答を一度だけ返す。
+      指定する。RFC 9068 JWT access token を含む応答を一度だけ返す。
     input:
       tenant_id:
+        type: String
+      client_id:
         type: String
       description:
         type: String
@@ -203,6 +359,9 @@ interfaces:
         type: "ApiTokenScope[]"
       expiry_days:
         type: Integer
+      dpop_jkt:
+        type: String
+        optional: true
     output:
       token:
         type: String
@@ -214,6 +373,9 @@ interfaces:
     requires:
       - input.tenant_id == context.tenant_id
       - input.expiry_days > 0
+    ensures:
+      - output.meta.user_id == context.actor_user_id
+      - output.meta.audience == context.issuer
     access:
       policies: [ManageApiTokens]
       resource: {type: Tenant, id: context.tenant_id}
@@ -267,11 +429,11 @@ scenarios:
     given:
       - scope 集合と将来の有効期限を持つ API アクセストークンが発行済みである
     main_success:
-      - 呼び出し元が平文 token を AuthenticateApiToken に提示する
-      - token の tenant_id と scope 集合を持つ ApiTokenPrincipal が返る
+      - 呼び出し元が JWT access token を AuthenticateApiToken に提示する
+      - token の tenant_id、user_id、built-in client_id、scope 集合を持つ ApiTokenPrincipal が返る
     extensions:
       - at: 1
-        condition: token が idmagic_pat_ + 64 桁 hex の形式ではない
+        condition: token の JWT 形式、署名、issuer、audience、または exp が不正である
         steps:
           - AccessDeniedError で拒否する
       - at: 1
@@ -284,8 +446,8 @@ scenarios:
       - 管理者として認証済みである
     main_success:
       - 管理者が scope 集合と有効日数を指定して IssueApiToken を呼ぶ
-      - 平文トークン (idmagic_pat_...) を含む応答が一度だけ返る
-      - ListApiTokens で発行済みトークンのメタデータ (token_hash と平文を除く) を確認できる
+      - 発行者を sub、realm built-in public client を client_id とする RFC 9068 JWT が一度だけ返る
+      - ListApiTokens で発行済みトークンの lifecycle metadata (JWT 本文を除く) を確認できる
       - 管理者が RevokeApiToken でトークンを失効する
     extensions:
       - at: 1

@@ -1579,7 +1579,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1596,7 +1596,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -1618,7 +1618,7 @@ interfaces:
     emits:
       - UserUpdated
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteAccount]
       resource:
         type: User
         id: subject.id
@@ -1640,7 +1640,7 @@ interfaces:
     annotations:
       step_up: required
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientWriteAccount]
       resource:
         type: User
         id: subject.id
@@ -1673,7 +1673,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf]
+      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
         type: User
         id: subject.id
@@ -2474,6 +2474,13 @@ authorization:
       matches:
         - context.authenticated
         - principal.status == "Active"
+    SelfApiClient:
+      type: User
+      matches:
+        - context.authenticated
+        - 'context.authentication_method in ["api_token", "oauth2_access_token"]'
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
   policies:
     TenantAdministrator:
       effect: permit
@@ -2483,7 +2490,31 @@ authorization:
       effect: permit
       principal: AuthenticatedSelf
       when: principal.id == resource.id
+    SelfApiClientReadAccount:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:read" in context.token_scopes && principal.id == resource.id'
+    SelfApiClientWriteAccount:
+      effect: permit
+      principal: SelfApiClient
+      when: '"account:write" in context.token_scopes && principal.id == resource.id'
 scenarios:
+  API token発行者はaccount scope内で自身のidentity情報だけを操作できる:
+    actor: SelfApiClient
+    given:
+      - client は対象 tenant の active User に固定された有効な API access token を提示している
+    main_success:
+      - account:read scope で自身の summary、profile、data export を参照できる
+      - account:write scope で自身の profile と primary email change request を変更できる
+    extensions:
+      - at: 1
+        condition: account:read だけで変更操作を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant または user_id が操作対象と一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   email verification画面は未認証でもCSRF境界を確立できる:
     actor: EndUser
     main_success:

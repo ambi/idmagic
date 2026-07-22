@@ -14,6 +14,13 @@ type staticIntrospector struct {
 	result *ports.IntrospectionResult
 }
 
+type recordingManagedRevoker struct{ jti string }
+
+func (r *recordingManagedRevoker) RevokeByJTI(_ context.Context, _, jti string, _ time.Time) error {
+	r.jti = jti
+	return nil
+}
+
 func (s staticIntrospector) IntrospectAccessToken(
 	context.Context,
 	string,
@@ -41,6 +48,21 @@ func TestRevokeAccessTokenAddsOwnedJTIToDenylist(t *testing.T) {
 	}
 	if !revoked {
 		t.Fatal("access token jti was not denylisted")
+	}
+}
+
+func TestRevokeManagedAccessTokenUpdatesLifecycleRecord(t *testing.T) {
+	revoker := &recordingManagedRevoker{}
+	err := RevokeToken(context.Background(), RevokeDeps{
+		RefreshStore:        memory.NewRefreshTokenStore(),
+		Introspector:        staticIntrospector{result: &ports.IntrospectionResult{Active: true, Managed: true, JTI: "managed-jti", ClientID: "idmagic-api-token", Exp: time.Now().Add(time.Hour).Unix()}},
+		AccessTokenDenylist: memory.NewAccessTokenDenylist(), ManagedTokenRevoker: revoker,
+	}, "idmagic-api-token", "jwt", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revoker.jti != "managed-jti" {
+		t.Fatalf("revoked jti = %q", revoker.jti)
 	}
 }
 

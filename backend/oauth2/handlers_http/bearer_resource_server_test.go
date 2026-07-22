@@ -102,17 +102,23 @@ func TestBearerInactiveTokenIsUnauthorized(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("inactive token must be 401: status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {
+		t.Fatalf("WWW-Authenticate = %q, want invalid_token", got)
+	}
 }
 
-func TestBearerWithoutPortalScopeIsUnauthorized(t *testing.T) {
+func TestBearerWithoutPortalScopeIsForbidden(t *testing.T) {
 	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
 	// admin ロールはあるが token に idmagic.admin scope が無い → fail-closed (ADR-061)。
 	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
 		"good": tokenWithScope("user_alice", "openid profile"),
 	}})
 	rec := getWithBearer(e, "good")
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("admin API without idmagic.admin scope must be 401: status=%d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("admin API without idmagic.admin scope must be 403: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer error="insufficient_scope", scope="idmagic.admin"` {
+		t.Fatalf("WWW-Authenticate = %q, want insufficient_scope", got)
 	}
 }
 
@@ -123,7 +129,7 @@ func TestBearerAccountScopeRejectedOnAdminAPI(t *testing.T) {
 		"good": tokenWithScope("user_alice", "openid profile idmagic.account"),
 	}})
 	rec := getWithBearer(e, "good")
-	if rec.Code != http.StatusUnauthorized {
+	if rec.Code != http.StatusForbidden {
 		t.Fatalf("account-scoped token must not authorize admin API: status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }

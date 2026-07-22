@@ -2032,17 +2032,31 @@
         "tenant_id": {
           "type": "string"
         },
+        "user_id": {
+          "type": "string",
+          "description": "token を発行した active User。account:* 操作の対象は常にこの User に固定する。"
+        },
         "id": {
           "type": "string"
         },
-        "token_hash": {
+        "jti": {
           "type": "string"
+        },
+        "client_id": {
+          "type": "string",
+          "description": "realm が所有する built-in public client id。管理発行では OAuth client の事前登録を要求しない。"
         },
         "scopes": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/ApiTokenScope"
           }
+        },
+        "audience": {
+          "type": "string"
+        },
+        "dpop_jkt": {
+          "type": "string"
         },
         "description": {
           "type": "string"
@@ -2054,18 +2068,25 @@
         "expires_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false,
       "required": [
         "tenant_id",
+        "user_id",
         "id",
-        "token_hash",
+        "jti",
+        "client_id",
         "scopes",
+        "audience",
         "description",
         "created_at"
       ],
-      "description": "管理用 API / SCIM API を認証する tenant-scoped アクセストークン。scopes が空、または expires_at を過ぎたトークンは認可されない。平文は発行時に一度だけ返し、token_hash (sha256) のみ永続化する。"
+      "description": "管理用 API / SCIM API / 発行者本人の account API を認証する tenant-scoped JWT アクセストークンの管理 record。scopes が空、expires_at を過ぎた、または revoked_at が設定された token は認可されない。JWT 本文は発行時に一度だけ返し永続化しない。"
     },
     "ApiTokenMetadata": {
       "type": "object",
@@ -2073,6 +2094,9 @@
         "id": {
           "type": "string"
         },
+        "jti": {
+          "type": "string"
+        },
         "description": {
           "type": "string"
         },
@@ -2082,6 +2106,15 @@
             "$ref": "#/$defs/ApiTokenScope"
           }
         },
+        "user_id": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "dpop_jkt": {
+          "type": "string"
+        },
         "created_at": {
           "type": "string",
           "format": "date-time"
@@ -2089,16 +2122,23 @@
         "expires_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false,
       "required": [
         "id",
+        "jti",
         "description",
         "scopes",
+        "user_id",
+        "audience",
         "created_at"
       ],
-      "description": "一覧・発行応答で返すトークンのメタデータ。token_hash と平文を含まない。"
+      "description": "一覧・発行応答で返すトークンのメタデータ。JWT 本文を含まない。"
     },
     "ApiTokenPrincipal": {
       "type": "object",
@@ -2106,19 +2146,47 @@
         "tenant_id": {
           "type": "string"
         },
+        "user_id": {
+          "type": "string"
+        },
         "scopes": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/ApiTokenScope"
           }
+        },
+        "client_id": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dpop_jkt": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
         "tenant_id",
-        "scopes"
+        "user_id",
+        "scopes",
+        "client_id",
+        "audience",
+        "token_id",
+        "issued_at"
       ],
-      "description": "有効な API アクセストークンから解決した tenant と scope の認証コンテキスト。"
+      "description": "有効な API アクセストークンから解決した tenant、発行者 subject、scope の認証コンテキスト。"
     },
     "ApiTokenScope": {
       "type": "string",
@@ -2159,9 +2227,15 @@
         "scim:users:read",
         "scim:users:write",
         "scim:groups:read",
-        "scim:groups:write"
+        "scim:groups:write",
+        "account:read",
+        "account:write",
+        "account:mfa:write",
+        "account:sessions:write",
+        "account:consents:write",
+        "account:password:write"
       ],
-      "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理 API の account:* scope は別途定義して追記する。公開・プロトコル・認証フロー endpoint は scope 対象外。"
+      "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。"
     },
     "AppAccessDeniedByPolicy": {
       "type": "object",
@@ -5475,7 +5549,13 @@
             "custom_attribute",
             "offline_access",
             "idmagic.admin",
-            "idmagic.account"
+            "idmagic.account",
+            "account:read",
+            "account:write",
+            "account:mfa:write",
+            "account:sessions:write",
+            "account:consents:write",
+            "account:password:write"
           ]
         },
         "response_types_supported": {
@@ -5521,7 +5601,8 @@
           "default": [
             "ClientSecretBasic",
             "PrivateKeyJwt",
-            "TlsClientAuth"
+            "TlsClientAuth",
+            "None"
           ]
         },
         "id_token_signing_alg_values_supported": {
@@ -9593,6 +9674,12 @@
           "default": [
             "header"
           ]
+        },
+        "dpop_signing_alg_values_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false,
@@ -9602,7 +9689,7 @@
         "scopes_supported",
         "bearer_methods_supported"
       ],
-      "description": "RFC 9728 Protected Resource Metadata。McpResourceServer 登録から導出し手書きで独立に保守しない (ADR-011 と同方針)。"
+      "description": "RFC 9728 Protected Resource Metadata。realm の IdMagic API は ApiTokenScope、外部 resource は McpResourceServer 登録から導出する。"
     },
     "ProtectedResourceMetadataServed": {
       "type": "object",

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
@@ -106,8 +107,14 @@ func Run() error {
 	sessionManager := sessionusecases.NewSessionManager(deps.Authentication.SessionStore)
 	tokenSigner := tokensJOSE.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := tokensJOSE.NewJWKResolver()
+	managedTokenIntrospector := apitokenusecases.New(
+		deps.ApiTokens.Repo,
+		apitokenusecases.WithTokenIntrospector(tokenSigner),
+	)
+	deps.ApiTokens.TokenIssuer = tokenSigner
+	deps.ApiTokens.TokenIntrospector = tokenSigner
 	deps.OAuth2.TokenIssuer = tokenSigner
-	deps.OAuth2.TokenIntrospector = tokenSigner
+	deps.OAuth2.TokenIntrospector = managedTokenIntrospector
 	deps.OAuth2.IDTokenHintVerifier = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
 	deps.Authentication.PasswordHasher = hasher

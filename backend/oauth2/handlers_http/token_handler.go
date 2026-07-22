@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -64,6 +65,9 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	}
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "宣言外の grant_type です"))
+	}
+	if grantType == "client_credentials" && containsAccountScope(c.Request().PostFormValue("scope")) {
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "account scope には user subject が必要です"))
 	}
 
 	// DPoP 検証 (任意)
@@ -282,19 +286,31 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
 }
 
+func containsAccountScope(value string) bool {
+	return slices.ContainsFunc(strings.Fields(value), func(scope string) bool { return strings.HasPrefix(scope, "account:") })
+}
+
 func (d Deps) handleRevoke(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
 		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
 	}
-	client, err := d.authenticateTokenClient(c)
-	if err != nil {
-		return writeOAuthError(c, err)
+	client := authedClient{}
+	var err error
+	if c.Request().PostFormValue("client_id") == apitokendomain.BuiltinClientID &&
+		c.Request().Header.Get("Authorization") == "" && c.Request().PostFormValue("client_secret") == "" {
+		client.ID = apitokendomain.BuiltinClientID
+	} else {
+		client, err = d.authenticateTokenClient(c)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	if err := tokenusecases.RevokeToken(ctx, tokenusecases.RevokeDeps{
 		RefreshStore: d.RefreshStore, Introspector: d.TokenIntrospector,
 		AccessTokenDenylist: d.AccessTokenDenylist, Emit: d.Emit,
+		ManagedTokenRevoker: d.ManagedTokenRevoker,
 	}, client.ID, c.Request().PostFormValue("token"), time.Now().UTC()); err != nil {
 		return writeOAuthError(c, err)
 	}

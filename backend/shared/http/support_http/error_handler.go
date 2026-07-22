@@ -28,6 +28,9 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 	}
 	fallback := echo.DefaultHTTPErrorHandler(false)
 	return func(c *echo.Context, err error) {
+		if handled, _ := WriteAccessTokenError(c, err); handled {
+			return
+		}
 		var qErr quotaExceeded
 		if errors.As(err, &qErr) {
 			logger.Warn(c.Request().Context(), "tenant resource quota exceeded",

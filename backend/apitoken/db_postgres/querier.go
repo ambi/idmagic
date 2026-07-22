@@ -9,9 +9,10 @@ import (
 )
 
 type Querier interface {
-	DeleteApiToken(ctx context.Context, arg DeleteApiTokenParams) error
-	FindApiTokenByHash(ctx context.Context, tokenHash string) (*FindApiTokenByHashRow, error)
+	FindApiTokenByJTI(ctx context.Context, arg FindApiTokenByJTIParams) (*FindApiTokenByJTIRow, error)
 	ListApiTokensByTenant(ctx context.Context, tenantID string) ([]*ListApiTokensByTenantRow, error)
+	RevokeApiToken(ctx context.Context, arg RevokeApiTokenParams) error
+	RevokeApiTokenByJTI(ctx context.Context, arg RevokeApiTokenByJTIParams) error
 	SaveApiToken(ctx context.Context, arg SaveApiTokenParams) error
 }
 

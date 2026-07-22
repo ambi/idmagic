@@ -19,6 +19,12 @@ const (
 // VerifyBrowserRequest は Origin 一致と double-submit CSRF トークンを検証する。
 // 認証必須のブラウザ向け POST/PATCH 系ハンドラが冒頭で呼ぶ。
 func (d Deps) VerifyBrowserRequest(c *echo.Context) error {
+	authorization := c.Request().Header.Get("Authorization")
+	if strings.HasPrefix(strings.ToLower(authorization), "bearer ") || strings.HasPrefix(strings.ToLower(authorization), "dpop ") {
+		// Authorization header credentials are not ambient browser credentials and are therefore
+		// outside the cookie CSRF threat model. Authentication/scope validation remains mandatory.
+		return nil
+	}
 	origin := c.Request().Header.Get("Origin")
 	issuer, err := url.Parse(d.Issuer)
 	if err != nil || origin == "" || origin != issuer.Scheme+"://"+issuer.Host {

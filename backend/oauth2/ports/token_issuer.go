@@ -31,6 +31,11 @@ type AccessTokenInput struct {
 	// AuthorizationDetails は RFC 9396 の構造化詳細 (ADR-050)。非空のとき
 	// authorization_details claim を付与する。RS の検証点となる。
 	AuthorizationDetails []spec.AuthorizationDetail
+	// ExpiresAt は管理発行 token など、通常の短期 TTL と異なる絶対期限を指定する。
+	// 0 の場合は AccessTokenTTLSeconds を使う。
+	ExpiresAt int64
+	// Managed は Authorization Server が lifecycle record を持つ管理発行 token を表す。
+	Managed bool
 }
 
 type IDTokenInput struct {

@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
 	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -29,12 +32,51 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+type scimTokenCodec struct {
+	results  map[string]*oauthports.IntrospectionResult
+	sequence int
+}
+
+func newScimTokenCodec() *scimTokenCodec {
+	return &scimTokenCodec{results: map[string]*oauthports.IntrospectionResult{}}
+}
+
+func (c *scimTokenCodec) SignAccessToken(_ context.Context, in oauthports.AccessTokenInput) (string, string, error) {
+	c.sequence++
+	token, jti := fmt.Sprintf("jwt-%d", c.sequence), fmt.Sprintf("jti-%d", c.sequence)
+	c.results[token] = &oauthports.IntrospectionResult{
+		Active: true, Managed: in.Managed, JTI: jti, ClientID: in.Client.ClientID,
+		Sub: in.Sub, Scope: strings.Join(in.Scopes, " "), Aud: append([]string(nil), in.Audiences...), Iat: in.AuthTime, Exp: in.ExpiresAt, SenderConstraint: in.SenderConstraint,
+	}
+	return token, jti, nil
+}
+
+func (*scimTokenCodec) SignIDToken(context.Context, oauthports.IDTokenInput) (string, error) {
+	return "", nil
+}
+
+func (*scimTokenCodec) AccessTokenTTLSeconds() int { return 600 }
+func (*scimTokenCodec) IDTokenTTLSeconds() int     { return 3600 }
+
+func (c *scimTokenCodec) IntrospectAccessToken(_ context.Context, token string) (*oauthports.IntrospectionResult, error) {
+	if result := c.results[token]; result != nil {
+		clone := *result
+		return &clone, nil
+	}
+	return &oauthports.IntrospectionResult{Active: false}, nil
+}
+
+func newTestApiTokenService() *apitokenusecases.Service {
+	codec := newScimTokenCodec()
+	return apitokenusecases.New(apitokenmemory.NewRepository(), apitokenusecases.WithTokenIssuer(codec), apitokenusecases.WithTokenIntrospector(codec))
+}
+
 func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
-	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
+	apiTokens := newTestApiTokenService()
 
 	e := echo.New()
 	deps := support.Deps{Emit: func(spec.DomainEvent) {}}
@@ -76,27 +118,31 @@ func TestScimRoutesRequireOperationScope(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			valid, _, err := apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, tc.name, []string{string(tc.scope)}, 1)
+			valid, _, err := apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, "admin-test", tc.name, []string{string(tc.scope)}, 1, "")
 			if err != nil {
 				t.Fatal(err)
 			}
-			invalid, _, err := apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, tc.name+" wrong", []string{string(tc.wrong)}, 1)
+			invalid, _, err := apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, "admin-test", tc.name+" wrong", []string{string(tc.wrong)}, 1, "")
 			if err != nil {
 				t.Fatal(err)
 			}
-			call := func(token string) int {
+			call := func(token string) *httptest.ResponseRecorder {
 				req := httptest.NewRequest(tc.method, tc.path, bytes.NewBufferString(`{}`))
 				req.Header.Set("Authorization", "Bearer "+token)
 				req.Header.Set("Content-Type", "application/scim+json")
 				rec := httptest.NewRecorder()
 				e.ServeHTTP(rec, req)
-				return rec.Code
+				return rec
 			}
-			if status := call(valid); status == http.StatusUnauthorized {
+			if status := call(valid).Code; status == http.StatusUnauthorized || status == http.StatusForbidden {
 				t.Fatalf("valid scope %q rejected", tc.scope)
 			}
-			if status := call(invalid); status != http.StatusUnauthorized {
-				t.Fatalf("wrong scope %q status = %d, want 401", tc.wrong, status)
+			invalidResponse := call(invalid)
+			if invalidResponse.Code != http.StatusForbidden {
+				t.Fatalf("wrong scope %q status = %d, want 403", tc.wrong, invalidResponse.Code)
+			}
+			if got := invalidResponse.Header().Get("WWW-Authenticate"); !strings.Contains(got, `error="insufficient_scope"`) {
+				t.Fatalf("WWW-Authenticate = %q, want insufficient_scope", got)
 			}
 		})
 	}
@@ -110,7 +156,7 @@ func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Ser
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
-	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
+	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo}
@@ -123,10 +169,10 @@ func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Ser
 
 func issueAllScimToken(t *testing.T, apiTokens *apitokenusecases.Service) string {
 	t.Helper()
-	literal, _, err := apiTokens.Issue(context.Background(), tenancydomain.DefaultTenantID, "SCIM integration", []string{
+	literal, _, err := apiTokens.Issue(context.Background(), tenancydomain.DefaultTenantID, "admin-test", "SCIM integration", []string{
 		string(apitokendomain.ScopeScimUsersRead), string(apitokendomain.ScopeScimUsersWrite),
 		string(apitokendomain.ScopeScimGroupsRead), string(apitokendomain.ScopeScimGroupsWrite),
-	}, 30)
+	}, 30, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +451,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
-	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
+	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
@@ -430,6 +476,9 @@ func TestScimInboundProvisioning(t *testing.T) {
 		e.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("expected 401, got %d", rec.Code)
+		}
+		if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {
+			t.Fatalf("WWW-Authenticate = %q, want invalid_token", got)
 		}
 	}
 
@@ -597,7 +646,7 @@ func TestScimGroupSync(t *testing.T) {
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
-	apiTokens := apitokenusecases.New(apitokenmemory.NewRepository())
+	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
