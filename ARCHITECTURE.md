@@ -3455,6 +3455,18 @@ HTTP route の集約点は `backend/shared/http/server_http/routes.go` である
 
 `backend/cmd/idmagic/` の main パッケージは起動処理を担い、起動時 DI は `backend/cmd/internal/bootstrap` が所有する。また、`backend/cmd/idmagic-relay/main.go` は outbox → Kafka リレープロセスを起動するもので、`backend/cmd/idmagic-relay/internal/relay` の `Run()` を呼ぶ。`backend/cmd/idmagic-worker/` は durable job の claim と handler 実行だけを担当し、API から独立して水平スケールする（[ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)）。`backend/cmd/idmagic-batch/` は外部 scheduler から one-shot で起動され、retention sweep または signing-key lifecycle を一度実行して終了する（[ADR-124](decisions/ADR-124-scheduled-batch-execution-boundary.md)）。各 runtime unit は同一 Go module と bounded context 実装を再利用する。
 
+この構成——単一 Go module に全 bounded context 実装を同居させ、複数の runtime unit がその共有実装を
+再利用する薄いエントリポイントである——は現状**モジュラーモノリス**様式である。context 境界は論理
+境界として厳密に保ち（context 間は published language / ports 経由で結合する、ADR-091）、既定では
+複数 context を同一プロセスへ合成する。現在の実行単位分割は、認証・OAuth2 等の同期依存を API プロセス
+内に留めたまま、リソース・遅延特性（lane 別 worker、[ADR-129](decisions/ADR-129-job-execution-lanes.md)）、
+横断バッチの実行境界（[ADR-124](decisions/ADR-124-scheduled-batch-execution-boundary.md)）、可用性を
+保つ非同期配送（outbox relay、[ADR-120](decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）
+という [REGENERATIVE_ARCHITECTURE.md §3.9](REGENERATIVE_ARCHITECTURE.md) のトリガーで正当化された範囲に
+限られる。組織的境界のトリガーはまだ働いておらず、独立したデータ所有・チーム・SLO が成立するまで
+サービス分割しない（[ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)）。
+これは現状の記述であり、将来のスタイルを規定するものではない。
+
 `backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す境界の集約で、memory / postgres_valkey / outbox / otel などの runtime 選択を吸収する。context 固有の repository は各 `Module` に束ね、中央 `Dependencies` と server `Deps` には Module を渡す。新しい port を追加したら、少なくとも次を確認する。
 
 - 対象 context の `ports/`
