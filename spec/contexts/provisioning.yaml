@@ -122,6 +122,17 @@ models:
         optional: true
       status:
         type: UserStatus
+  Agent:
+    kind: entity
+    description: ApiTokens が認証した management API client の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
   Group:
     kind: entity
     description: IdManagement が publish する Group の published language stub。既定属性マッピングの解決にのみ用いる。
@@ -788,7 +799,7 @@ interfaces:
       - output.connection.status == "active"
       - emitted.exists(e, e is ProvisioningConnectionRegistered)
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -809,7 +820,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -879,7 +890,7 @@ interfaces:
       - input.credential == null || emitted.exists(e, e is ProvisioningCredentialRotated)
       - "input.status != \"disabled\" || emitted.exists(e, e is ProvisioningConnectionDisabled)"
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -898,7 +909,7 @@ interfaces:
     emits:
       - ProvisioningConnectionDeleted
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -926,7 +937,7 @@ interfaces:
     read_only: true
     idempotent: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -954,7 +965,7 @@ interfaces:
       - output.delivery.status == "pending"
       - output.delivery.source_id == input.subject_id
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -974,7 +985,7 @@ interfaces:
       - ProvisioningConnectionNotFoundError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -1009,7 +1020,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -1032,7 +1043,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -1060,7 +1071,7 @@ interfaces:
       - output.delivery.status == "pending"
       - output.delivery.job_id == null
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -1087,7 +1098,7 @@ interfaces:
       - "output.connection.health != \"quarantined\""
       - emitted.exists(e, e is ProvisioningConnectionQuarantineCleared)
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
         id: input.application_id
@@ -1104,7 +1115,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: ProvisioningDirectory
         id: context.tenant_id
@@ -1123,11 +1134,25 @@ authorization:
         - context.authenticated
         - principal.status == "Active"
         - '"admin" in principal.roles'
+    ManagementApiClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
   policies:
     TenantAdministrator:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.tenant_id
+    ManagementApiClientReadProvisioning:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"provisioning:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteProvisioning:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"provisioning:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
 objectives:
   ProvisioningDeliveryCaptureLatency:
     description: "User/Assignment の commit から ProvisioningDelivery (pending) 作成までの遅延の\n99% 以上を 5 秒未満に収める。API process の即時 dispatch が失敗しても、periodic dispatcher が\n同じ目標内に未 enqueue delivery を回収することを含む (LifecycleWorkflowTriggerHandoffLatency と\n同じ仕組みを再利用する)。\n"
@@ -1136,6 +1161,22 @@ objectives:
     window: 30d
     budgeting: occurrences
 scenarios:
+  management API clientはProvisioning scope内のconnectionとdeliveryだけを操作できる:
+    actor: ManagementApiClient
+    given:
+      - client は対象 tenant の有効な API access token を提示している
+    main_success:
+      - provisioning:read scope で application connection と tenant connection 一覧を参照できる
+      - provisioning:write scope で connection の変更と delivery action を実行できる
+    extensions:
+      - at: 1
+        condition: provisioning:read だけで connection 変更または delivery action を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant と request tenant が一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   管理者はProvisioningConnectionを登録し接続テストでcapabilitiesを取得できる:
     actor: TenantAdministrator
     given:

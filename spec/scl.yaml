@@ -99,6 +99,11 @@ context_map:
         uses:
           - ApplicationAssignmentRef
         reason: authorize は client が属する Application への割当を fail-closed で確認する。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: OAuth2 の管理 API は ApiTokens が所有する resource 別 scope で操作を認可する。
   Audit:
     description: "authentication、identity-management、oauth2、tenancy、signing-keys、application、\nsaml / wsfederation など複数 bounded context から発火されるセキュリティ監査イベントの\n横断的な read model を所有する。監査イベントの検索・エクスポート管理 API、検索属性\nregistry、PII 変換方針、保持期間を集約する。イベントの発火元は各 context のままであり、\nAudit はそれらを横断して読む窓口を所有する。\n"
     path: contexts/audit.yaml
@@ -134,6 +139,11 @@ context_map:
         uses:
           - ClaimMappingPolicy
         reason: protocol binding の claim release 設定は ClaimMapping の公開 policy を参照する。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: Application 管理 API は ApiTokens が所有する applications:* scope で操作を認可する。
   ClaimMapping:
     description: "identity principal の属性を外部 relying party / service provider / client へ出すための\nrelease policy と protocol-neutral な claim projection を所有する。属性解決と出力許可を\n共通化し、OIDC JSON claims、SAML AttributeStatement、WS-Fed claim URI への wire 変換は\n各 protocol context が所有する。\n"
     path: contexts/claim-mapping.yaml
@@ -202,6 +212,11 @@ context_map:
         uses:
           - SigningKey
         reason: SAML assertion 署名証明書と metadata への証明書広告は SigningKeys の鍵境界に従う。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: WS-Fed 管理 API は ApiTokens が所有する wsfed:* scope で操作を認可する。
   Saml:
     description: "SAML 2.0 IdP の service provider binding、IdP metadata、AuthnRequest / Response、\nAssertionConsumerService / Single Logout を所有する protocol context。Web Browser SSO Profile に\n基づき SP-initiated / IdP-initiated SSO を提供する。WS-Fed / WS-Trust とは claim release と\nXML signing capability だけを共有する。\n"
     path: contexts/saml.yaml
@@ -240,6 +255,11 @@ context_map:
         uses:
           - SigningKey
         reason: SAML assertion / metadata 署名は SigningKeys の鍵境界に従う。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: SAML 管理 API は ApiTokens が所有する saml:* scope で操作を認可する。
   Scim:
     description: "SCIM 2.0 Inbound Provisioning プロトコルファミリーの全責務を所有する。/scim/v2/Users, /scim/v2/Groups などのエンドポイントを提供し、外部の IDP/Identity Provider (Okta, Google IAM, Entra ID) からのユーザー・グループ同期を処理する。"
     path: contexts/scim.yaml
@@ -325,6 +345,11 @@ context_map:
         uses:
           - JobRef
         reason: ProvisioningDelivery の配送は冪等・順序保証・retry 付きの durable job として実行する。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: Provisioning 管理 API は ApiTokens が所有する provisioning:* scope で操作を認可する。
   IdGovernance:
     description: "identity ガバナンスの policy と orchestration を所有する。LifecycleWorkflow (JML 自動化) の\ndefinition・trigger 評価・WorkflowRun 実行・executor action を集約し、将来の IGA 機能\n(認証キャンペーン、アクセスリクエスト/承認、エンタイトルメント/SoD、JIT 特権昇格) の受け皿となる。\nidentity principal の record-of-truth は IdManagement が、Application 割当は Application が\n所有し、IdGovernance は User ライフサイクルイベントを購読し、冪等コマンド surface 経由で\nこれら record context の状態を書き換える。\n"
     path: contexts/identity-governance.yaml

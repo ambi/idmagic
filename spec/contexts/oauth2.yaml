@@ -3208,6 +3208,17 @@ models:
         type: String
       roles:
         type: "String[]"
+  Agent:
+    kind: entity
+    description: ApiTokens が認証した management API client の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
   Tenant:
     kind: entity
     description: Tenancy が publish する tenant の認可判断用 stub。
@@ -3939,7 +3950,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadAuthorizationDetailTypes]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -3960,7 +3971,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadAuthorizationDetailTypes]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -3980,7 +3991,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4005,7 +4016,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4023,7 +4034,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4042,7 +4053,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadOAuthClients]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4063,7 +4074,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadOAuthClients]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4086,7 +4097,7 @@ interfaces:
     emits:
       - AdminOAuth2ClientCreated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteOAuthClients]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4113,7 +4124,7 @@ interfaces:
     emits:
       - AdminOAuth2ClientUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteOAuthClients]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4133,7 +4144,7 @@ interfaces:
     emits:
       - AdminOAuth2ClientDeleted
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteOAuthClients]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4152,7 +4163,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadMcpResourceServers]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4173,7 +4184,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadMcpResourceServers]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4193,7 +4204,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteMcpResourceServers]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4218,7 +4229,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteMcpResourceServers]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4236,7 +4247,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteMcpResourceServers]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -4407,6 +4418,12 @@ authorization:
         - context.authenticated
         - principal.status == "Active"
         - '"admin" in principal.roles'
+    ManagementApiClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
   policies:
     RegisteredClient:
       effect: permit
@@ -4432,6 +4449,30 @@ authorization:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.id
+    ManagementApiClientReadOAuthClients:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"oauth-clients:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteOAuthClients:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"oauth-clients:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientReadAuthorizationDetailTypes:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"authorization-detail-types:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteAuthorizationDetailTypes:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"authorization-detail-types:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientReadMcpResourceServers:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"mcp-resource-servers:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteMcpResourceServers:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"mcp-resource-servers:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
     TokenAuthorizationCode:
       effect: permit
       principal: RegisteredClient
@@ -4616,6 +4657,27 @@ objectives:
     window: 30d
     budgeting: occurrences
 scenarios:
+  management API clientはOAuth resourceごとのscope内だけを操作できる:
+    actor: ManagementApiClient
+    given:
+      - client は対象 tenant の有効な API access token を提示している
+    main_success:
+      - oauth-clients:read scope で OAuth2 client を参照できる
+      - authorization-detail-types:write scope で authorization detail type を変更できる
+      - mcp-resource-servers:read scope で MCP resource server を参照できる
+    extensions:
+      - at: 1
+        condition: oauth-clients:read だけで OAuth2 client の変更を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: 別 resource の scope で操作を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant と request tenant が一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   管理者は自身に可視なrole policyを確認できる:
     actor: TenantAdministrator
     given:

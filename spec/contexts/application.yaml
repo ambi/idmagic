@@ -927,6 +927,17 @@ models:
         type: String
       roles:
         type: "String[]"
+  Agent:
+    kind: entity
+    description: ApiTokens が認証した management API client の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
   ClientType:
     kind: enum
     description: OAuth2 context が publish する client 種別の published language stub。
@@ -1047,7 +1058,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: ApplicationDirectory
         id: context.tenant_id
@@ -1068,7 +1079,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1091,7 +1102,7 @@ interfaces:
     emits:
       - ApplicationCreated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: ApplicationDirectory
         id: context.tenant_id
@@ -1118,7 +1129,7 @@ interfaces:
     emits:
       - ApplicationUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1147,7 +1158,7 @@ interfaces:
       - context.upload.magic_byte_matches_content_type
       - size(input.file) <= 262144
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1170,7 +1181,7 @@ interfaces:
     emits:
       - ApplicationIconUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1210,7 +1221,7 @@ interfaces:
     emits:
       - ApplicationDeleted
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1236,7 +1247,7 @@ interfaces:
     emits:
       - ProtocolBindingAttached
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1260,7 +1271,7 @@ interfaces:
     emits:
       - ProtocolBindingDetached
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1281,7 +1292,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1306,7 +1317,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1328,7 +1339,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1350,7 +1361,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1374,7 +1385,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1400,7 +1411,7 @@ interfaces:
     requires:
       - subject_exists_in_tenant(input.request.subject_type, input.request.subject_id, context.tenant_id)
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1426,7 +1437,7 @@ interfaces:
     emits:
       - ApplicationUnassigned
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1449,7 +1460,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1473,7 +1484,7 @@ interfaces:
     emits:
       - AppSignInPolicyUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1491,7 +1502,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadSettings]
       resource:
         type: TenantDefaultSignInPolicy
         id: context.tenant_id
@@ -1513,7 +1524,7 @@ interfaces:
     emits:
       - TenantDefaultSignInPolicyUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteSettings]
       resource:
         type: TenantDefaultSignInPolicy
         id: context.tenant_id
@@ -1531,7 +1542,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: ApplicationCategoryDirectory
         id: context.tenant_id
@@ -1553,7 +1564,7 @@ interfaces:
     emits:
       - ApplicationCategoryCreated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: ApplicationCategoryDirectory
         id: context.tenant_id
@@ -1580,7 +1591,7 @@ interfaces:
     emits:
       - ApplicationCategoryUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: ApplicationCategory
         id: input.category_id
@@ -1600,7 +1611,7 @@ interfaces:
     emits:
       - ApplicationCategoryDeleted
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: ApplicationCategory
         id: input.category_id
@@ -1626,7 +1637,7 @@ interfaces:
     emits:
       - ApplicationUpdated
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
         id: input.application_id
@@ -1707,6 +1718,12 @@ authorization:
         - context.authenticated
         - principal.status == "Active"
         - '"admin" in principal.roles'
+    ManagementApiClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
     AuthenticatedSelf:
       type: User
       matches:
@@ -1717,11 +1734,44 @@ authorization:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.tenant_id
+    ManagementApiClientReadApplications:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"applications:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteApplications:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"applications:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientReadSettings:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"settings:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteSettings:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"settings:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
     AuthenticatedSelf:
       effect: permit
       principal: AuthenticatedSelf
       when: principal.id == resource.id
 scenarios:
+  management API clientはApplication scope内の操作だけを実行できる:
+    actor: ManagementApiClient
+    given:
+      - client は対象 tenant の有効な API access token を提示している
+    main_success:
+      - applications:read scope で Application と category と assignment を参照できる
+      - applications:write scope で Application と protocol binding を変更できる
+      - settings:read または settings:write scope で tenant default sign-in policy を対応する操作種別に限って扱える
+    extensions:
+      - at: 1
+        condition: applications:read だけで変更操作を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant と request tenant が一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   管理者はApplicationのSAML binding設定を更新できる:
     actor: TenantAdministrator
     given:

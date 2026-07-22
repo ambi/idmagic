@@ -7351,6 +7351,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadAuthorizationDetailTypes",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7404,6 +7405,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteAuthorizationDetailTypes",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7481,6 +7483,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadAuthorizationDetailTypes",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7547,6 +7550,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteAuthorizationDetailTypes",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7636,6 +7640,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteAuthorizationDetailTypes",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7688,6 +7693,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadOAuthClients",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7741,6 +7747,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteOAuthClients",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7821,6 +7828,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadOAuthClients",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7887,6 +7895,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteOAuthClients",
             "TenantAdministrator"
           ],
           "resource": {
@@ -7976,6 +7985,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteOAuthClients",
             "TenantAdministrator"
           ],
           "resource": {
@@ -8028,6 +8038,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadMcpResourceServers",
             "TenantAdministrator"
           ],
           "resource": {
@@ -8081,6 +8092,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteMcpResourceServers",
             "TenantAdministrator"
           ],
           "resource": {
@@ -8158,6 +8170,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadMcpResourceServers",
             "TenantAdministrator"
           ],
           "resource": {
@@ -8224,6 +8237,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteMcpResourceServers",
             "TenantAdministrator"
           ],
           "resource": {
@@ -8313,6 +8327,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteMcpResourceServers",
             "TenantAdministrator"
           ],
           "resource": {
@@ -8998,6 +9013,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9051,6 +9067,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9131,6 +9148,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9197,6 +9215,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9286,6 +9305,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9344,6 +9364,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9433,6 +9454,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9566,6 +9588,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9657,6 +9680,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9717,6 +9741,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9792,6 +9817,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9883,6 +9909,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -9958,6 +9985,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10033,6 +10061,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10103,6 +10132,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10194,6 +10224,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10262,6 +10293,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10328,6 +10360,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10419,6 +10452,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadSettings",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10472,6 +10506,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteSettings",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10549,6 +10584,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10602,6 +10638,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10679,6 +10716,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10768,6 +10806,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -10820,6 +10859,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteApplications",
             "TenantAdministrator"
           ],
           "resource": {
@@ -11748,6 +11788,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteWsFed",
             "TenantAdministrator"
           ],
           "resource": {
@@ -11848,6 +11889,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteWsFed",
             "TenantAdministrator"
           ],
           "resource": {
@@ -11946,6 +11988,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadWsFed",
             "TenantAdministrator"
           ],
           "resource": {
@@ -12002,6 +12045,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteWsFed",
             "TenantAdministrator"
           ],
           "resource": {
@@ -12269,6 +12313,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteSaml",
             "TenantAdministrator"
           ],
           "resource": {
@@ -12367,6 +12412,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadSaml",
             "TenantAdministrator"
           ],
           "resource": {
@@ -12423,6 +12469,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteSaml",
             "TenantAdministrator"
           ],
           "resource": {
@@ -13918,6 +13965,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14015,6 +14063,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14090,6 +14139,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14221,6 +14271,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14273,6 +14324,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14371,6 +14423,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14469,6 +14522,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14556,6 +14610,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14659,6 +14714,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14743,6 +14799,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14853,6 +14910,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientWriteProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -14940,6 +14998,7 @@
         ],
         "x-scl-access": {
           "policies": [
+            "ManagementApiClientReadProvisioning",
             "TenantAdministrator"
           ],
           "resource": {
@@ -17384,13 +17443,21 @@
         "properties": {
           "id": {
             "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
           }
         },
         "additionalProperties": false,
         "required": [
-          "id"
+          "id",
+          "tenant_id",
+          "status"
         ],
-        "description": "API アクセストークンを提示する外部 client principal の最小 stub。"
+        "description": "ApiTokens が認証した management API client の認可判断用 stub。"
       },
       "AgentCredentialBindRequest": {
         "type": "object",
@@ -17972,12 +18039,26 @@
           "signing-keys:read",
           "signing-keys:write",
           "audit:read",
+          "applications:read",
+          "applications:write",
+          "oauth-clients:read",
+          "oauth-clients:write",
+          "authorization-detail-types:read",
+          "authorization-detail-types:write",
+          "mcp-resource-servers:read",
+          "mcp-resource-servers:write",
+          "saml:read",
+          "saml:write",
+          "wsfed:read",
+          "wsfed:write",
+          "provisioning:read",
+          "provisioning:write",
           "scim:users:read",
           "scim:users:write",
           "scim:groups:read",
           "scim:groups:write"
         ],
-        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。application とその protocol binding (OIDC / SAML / WS-Fed) および独立 protocol リソース (applications / oauth-clients / saml / wsfed / provisioning) の scope は、そのエンドポイントパス構成が確定した後に追記する。アカウント自己管理 API の account:* scope も別途定義して追記する。公開・プロトコル・認証フロー endpoint は scope 対象外。"
+        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理 API の account:* scope は別途定義して追記する。公開・プロトコル・認証フロー endpoint は scope 対象外。"
       },
       "AppAccessDeniedByPolicy": {
         "type": "object",
@@ -31487,6 +31568,1212 @@
         ]
       },
       {
+        "name": "policy:ManagementApiClientReadApplications+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadApplications",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetAdminApplication",
+            "memberOf": "policy:ManagementApiClientReadApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "GetAppSignInPolicy",
+            "memberOf": "policy:ManagementApiClientReadApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "ListAdminApplications",
+            "memberOf": "policy:ManagementApiClientReadApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ApplicationDirectory"
+              ]
+            }
+          },
+          {
+            "name": "ListApplicationAssignments",
+            "memberOf": "policy:ManagementApiClientReadApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "ListApplicationCategories",
+            "memberOf": "policy:ManagementApiClientReadApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ApplicationCategoryDirectory"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadAuthorizationDetailTypes+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadAuthorizationDetailTypes",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetAuthorizationDetailType",
+            "memberOf": "policy:ManagementApiClientReadAuthorizationDetailTypes+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadAuthorizationDetailTypes",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListAuthorizationDetailTypes",
+            "memberOf": "policy:ManagementApiClientReadAuthorizationDetailTypes+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadAuthorizationDetailTypes",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadMcpResourceServers+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadMcpResourceServers",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetAdminMcpResourceServer",
+            "memberOf": "policy:ManagementApiClientReadMcpResourceServers+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadMcpResourceServers",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListAdminMcpResourceServers",
+            "memberOf": "policy:ManagementApiClientReadMcpResourceServers+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadMcpResourceServers",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadOAuthClients+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadOAuthClients",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetAdminOAuth2Client",
+            "memberOf": "policy:ManagementApiClientReadOAuthClients+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadOAuthClients",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListAdminOAuth2Clients",
+            "memberOf": "policy:ManagementApiClientReadOAuthClients+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadOAuthClients",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadProvisioning+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadProvisioning",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetProvisioningConnection",
+            "memberOf": "policy:ManagementApiClientReadProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "GetProvisioningDelivery",
+            "memberOf": "policy:ManagementApiClientReadProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "ListProvisioningDeliveries",
+            "memberOf": "policy:ManagementApiClientReadProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "ListTenantProvisioningConnections",
+            "memberOf": "policy:ManagementApiClientReadProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ProvisioningDirectory"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadSaml+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadSaml",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "ListSamlServiceProviders",
+            "memberOf": "policy:ManagementApiClientReadSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadSettings+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadSettings",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetTenantDefaultSignInPolicy",
+            "memberOf": "policy:ManagementApiClientReadSettings+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadSettings",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "TenantDefaultSignInPolicy"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientReadWsFed+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadWsFed",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "ListWsFedRelyingParties",
+            "memberOf": "policy:ManagementApiClientReadWsFed+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadWsFed",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteApplications",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "AssignApplication",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "AttachProtocolBinding",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "CreateAdminApplication",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ApplicationDirectory"
+              ]
+            }
+          },
+          {
+            "name": "CreateApplicationCategory",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ApplicationCategoryDirectory"
+              ]
+            }
+          },
+          {
+            "name": "DeleteAdminApplication",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "DeleteApplicationCategory",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.category_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ApplicationCategory"
+              ]
+            }
+          },
+          {
+            "name": "DeleteApplicationIcon",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "DetachProtocolBinding",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "RotateApplicationClientSecret",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "SetApplicationCategories",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UnassignApplication",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateAdminApplication",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateApplicationCategory",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.category_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "ApplicationCategory"
+              ]
+            }
+          },
+          {
+            "name": "UpdateApplicationOidcConfig",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateApplicationSamlConfig",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateApplicationWsFedConfig",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateAppSignInPolicy",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UploadApplicationIcon",
+            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteApplications",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteAuthorizationDetailTypes+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteAuthorizationDetailTypes",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "CreateAuthorizationDetailType",
+            "memberOf": "policy:ManagementApiClientWriteAuthorizationDetailTypes+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteAuthorizationDetailTypes",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteAuthorizationDetailType",
+            "memberOf": "policy:ManagementApiClientWriteAuthorizationDetailTypes+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteAuthorizationDetailTypes",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "UpdateAuthorizationDetailType",
+            "memberOf": "policy:ManagementApiClientWriteAuthorizationDetailTypes+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteAuthorizationDetailTypes",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteMcpResourceServers+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteMcpResourceServers",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "CreateAdminMcpResourceServer",
+            "memberOf": "policy:ManagementApiClientWriteMcpResourceServers+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteMcpResourceServers",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteAdminMcpResourceServer",
+            "memberOf": "policy:ManagementApiClientWriteMcpResourceServers+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteMcpResourceServers",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "UpdateAdminMcpResourceServer",
+            "memberOf": "policy:ManagementApiClientWriteMcpResourceServers+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteMcpResourceServers",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteOAuthClients+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteOAuthClients",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "CreateAdminOAuth2Client",
+            "memberOf": "policy:ManagementApiClientWriteOAuthClients+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteOAuthClients",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteAdminOAuth2Client",
+            "memberOf": "policy:ManagementApiClientWriteOAuthClients+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteOAuthClients",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "UpdateAdminOAuth2Client",
+            "memberOf": "policy:ManagementApiClientWriteOAuthClients+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteOAuthClients",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteProvisioning",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "DeleteProvisioningConnection",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "ProvisionOnDemand",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "RegisterProvisioningConnection",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "ResumeProvisioningConnection",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "RetryProvisioningDelivery",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "StartFullResync",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "TestProvisioningConnection",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          },
+          {
+            "name": "UpdateProvisioningConnection",
+            "memberOf": "policy:ManagementApiClientWriteProvisioning+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteProvisioning",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.application_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Application"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteSaml",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "DeleteSamlServiceProvider",
+            "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "RegisterSamlServiceProvider",
+            "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteSettings+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteSettings",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "UpdateTenantDefaultSignInPolicy",
+            "memberOf": "policy:ManagementApiClientWriteSettings+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteSettings",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "TenantDefaultSignInPolicy"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteWsFed+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteWsFed",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "ConfigureEntraFederation",
+            "memberOf": "policy:ManagementApiClientWriteWsFed+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWsFed",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteWsFedRelyingParty",
+            "memberOf": "policy:ManagementApiClientWriteWsFed+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWsFed",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "RegisterWsFedRelyingParty",
+            "memberOf": "policy:ManagementApiClientWriteWsFed+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWsFed",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          }
+        ]
+      },
+      {
         "name": "policy:RegisteredClient",
         "policies": [
           "RegisteredClient"
@@ -31949,38 +33236,6 @@
             }
           },
           {
-            "name": "AssignApplication",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "AttachProtocolBinding",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "BindAgentCredential",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32013,70 +33268,6 @@
             }
           },
           {
-            "name": "ConfigureEntraFederation",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "CreateAdminApplication",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ApplicationDirectory"
-              ]
-            }
-          },
-          {
-            "name": "CreateAdminMcpResourceServer",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "CreateAdminOAuth2Client",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "CreateAdminUser",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32089,38 +33280,6 @@
               ],
               "resourceTypes": [
                 "UserDirectory"
-              ]
-            }
-          },
-          {
-            "name": "CreateApplicationCategory",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ApplicationCategoryDirectory"
-              ]
-            }
-          },
-          {
-            "name": "CreateAuthorizationDetailType",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
               ]
             }
           },
@@ -32157,54 +33316,6 @@
             }
           },
           {
-            "name": "DeleteAdminApplication",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "DeleteAdminMcpResourceServer",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "DeleteAdminOAuth2Client",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "DeleteAdminUser",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32233,54 +33344,6 @@
               ],
               "resourceTypes": [
                 "Agent"
-              ]
-            }
-          },
-          {
-            "name": "DeleteApplicationCategory",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.category_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ApplicationCategory"
-              ]
-            }
-          },
-          {
-            "name": "DeleteApplicationIcon",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "DeleteAuthorizationDetailType",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
               ]
             }
           },
@@ -32317,38 +33380,6 @@
             }
           },
           {
-            "name": "DeleteProvisioningConnection",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "DeleteSamlServiceProvider",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "DeleteTenantBrandingAsset",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32361,38 +33392,6 @@
               ],
               "resourceTypes": [
                 "TenantBranding"
-              ]
-            }
-          },
-          {
-            "name": "DeleteWsFedRelyingParty",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "DetachProtocolBinding",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
               ]
             }
           },
@@ -32573,22 +33572,6 @@
             }
           },
           {
-            "name": "GetAdminApplication",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "GetAdminAuditEvent",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32638,38 +33621,6 @@
           },
           {
             "name": "GetAdminKey",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "GetAdminMcpResourceServer",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "GetAdminOAuth2Client",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
               "TenantAdministrator"
@@ -32749,38 +33700,6 @@
             }
           },
           {
-            "name": "GetAppSignInPolicy",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "GetAuthorizationDetailType",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "GetGroup",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32825,54 +33744,6 @@
               ],
               "resourceTypes": [
                 "WorkflowRun"
-              ]
-            }
-          },
-          {
-            "name": "GetProvisioningConnection",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "GetProvisioningDelivery",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "GetTenantDefaultSignInPolicy",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "TenantDefaultSignInPolicy"
               ]
             }
           },
@@ -32941,22 +33812,6 @@
             }
           },
           {
-            "name": "ListAdminApplications",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ApplicationDirectory"
-              ]
-            }
-          },
-          {
             "name": "ListAdminAuditEvents",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -32990,38 +33845,6 @@
           },
           {
             "name": "ListAdminKeys",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "ListAdminMcpResourceServers",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "ListAdminOAuth2Clients",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
               "TenantAdministrator"
@@ -33085,38 +33908,6 @@
             }
           },
           {
-            "name": "ListApplicationAssignments",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "ListApplicationCategories",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ApplicationCategoryDirectory"
-              ]
-            }
-          },
-          {
             "name": "ListAuthenticationEventBuckets",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33129,22 +33920,6 @@
               ],
               "resourceTypes": [
                 "AuthenticationEventLog"
-              ]
-            }
-          },
-          {
-            "name": "ListAuthorizationDetailTypes",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
               ]
             }
           },
@@ -33197,38 +33972,6 @@
             }
           },
           {
-            "name": "ListProvisioningDeliveries",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "ListSamlServiceProviders",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "ListSessions",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33241,22 +33984,6 @@
               ],
               "resourceTypes": [
                 "User"
-              ]
-            }
-          },
-          {
-            "name": "ListTenantProvisioningConnections",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ProvisioningDirectory"
               ]
             }
           },
@@ -33293,22 +34020,6 @@
             }
           },
           {
-            "name": "ListWsFedRelyingParties",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "PreviewDynamicGroupRule",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33325,22 +34036,6 @@
             }
           },
           {
-            "name": "ProvisionOnDemand",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "RegisterAgent",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33353,54 +34048,6 @@
               ],
               "resourceTypes": [
                 "AgentDirectory"
-              ]
-            }
-          },
-          {
-            "name": "RegisterProvisioningConnection",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "RegisterSamlServiceProvider",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "RegisterWsFedRelyingParty",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
               ]
             }
           },
@@ -33437,22 +34084,6 @@
             }
           },
           {
-            "name": "ResumeProvisioningConnection",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "RetryLifecycleWorkflowRun",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33465,22 +34096,6 @@
               ],
               "resourceTypes": [
                 "WorkflowRun"
-              ]
-            }
-          },
-          {
-            "name": "RetryProvisioningDelivery",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
               ]
             }
           },
@@ -33549,22 +34164,6 @@
             }
           },
           {
-            "name": "RotateApplicationClientSecret",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "RotateTenantSigningKey",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33577,22 +34176,6 @@
               ],
               "resourceTypes": [
                 "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "SetApplicationCategories",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
               ]
             }
           },
@@ -33613,54 +34196,6 @@
             }
           },
           {
-            "name": "StartFullResync",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "TestProvisioningConnection",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "UnassignApplication",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "UnbindAgentCredential",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33673,54 +34208,6 @@
               ],
               "resourceTypes": [
                 "Agent"
-              ]
-            }
-          },
-          {
-            "name": "UpdateAdminApplication",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "UpdateAdminMcpResourceServer",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
-            "name": "UpdateAdminOAuth2Client",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
               ]
             }
           },
@@ -33773,102 +34260,6 @@
             }
           },
           {
-            "name": "UpdateApplicationCategory",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.category_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "ApplicationCategory"
-              ]
-            }
-          },
-          {
-            "name": "UpdateApplicationOidcConfig",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "UpdateApplicationSamlConfig",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "UpdateApplicationWsFedConfig",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "UpdateAppSignInPolicy",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "UpdateAuthorizationDetailType",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Tenant"
-              ]
-            }
-          },
-          {
             "name": "UpdateDynamicGroupRule",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33917,22 +34308,6 @@
             }
           },
           {
-            "name": "UpdateProvisioningConnection",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "UpdateTenantBranding",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33949,22 +34324,6 @@
             }
           },
           {
-            "name": "UpdateTenantDefaultSignInPolicy",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "context.tenant_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "TenantDefaultSignInPolicy"
-              ]
-            }
-          },
-          {
             "name": "UpdateTenantUserAttributeSchema",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33977,22 +34336,6 @@
               ],
               "resourceTypes": [
                 "TenantUserAttributeSchema"
-              ]
-            }
-          },
-          {
-            "name": "UploadApplicationIcon",
-            "memberOf": "policy:TenantAdministrator",
-            "policies": [
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
               ]
             }
           },

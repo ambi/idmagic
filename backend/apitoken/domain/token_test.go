@@ -35,3 +35,30 @@ func TestParseScopesAndMembership(t *testing.T) {
 		t.Fatal("unknown scope accepted")
 	}
 }
+
+// SCL models.ApiTokenScope / ADR-136: application/protocol 管理 API の正準 scope。
+func TestParseApplicationProtocolScopes(t *testing.T) {
+	want := []Scope{
+		ScopeApplicationsRead, ScopeApplicationsWrite,
+		ScopeOAuthClientsRead, ScopeOAuthClientsWrite,
+		ScopeAuthorizationDetailTypesRead, ScopeAuthorizationDetailTypesWrite,
+		ScopeMcpResourceServersRead, ScopeMcpResourceServersWrite,
+		ScopeSamlRead, ScopeSamlWrite,
+		ScopeWsFedRead, ScopeWsFedWrite,
+		ScopeProvisioningRead, ScopeProvisioningWrite,
+	}
+	values := make([]string, len(want))
+	for i, scope := range want {
+		values[i] = string(scope)
+	}
+
+	got, err := ParseScopes(values)
+	if err != nil {
+		t.Fatalf("application/protocol scopes rejected: %v", err)
+	}
+	for _, scope := range want {
+		if !got.Has(scope) {
+			t.Errorf("scope missing after parse: %s", scope)
+		}
+	}
+}

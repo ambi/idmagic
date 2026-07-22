@@ -19,29 +19,43 @@ var (
 type Scope string
 
 const (
-	ScopeUsersRead               Scope = "users:read"
-	ScopeUsersWrite              Scope = "users:write"
-	ScopeGroupsRead              Scope = "groups:read"
-	ScopeGroupsWrite             Scope = "groups:write"
-	ScopeAgentsRead              Scope = "agents:read"
-	ScopeAgentsWrite             Scope = "agents:write"
-	ScopeSessionsRead            Scope = "sessions:read"
-	ScopeSessionsWrite           Scope = "sessions:write"
-	ScopeConsentsRead            Scope = "consents:read"
-	ScopeConsentsWrite           Scope = "consents:write"
-	ScopeLifecycleWorkflowsRead  Scope = "lifecycle-workflows:read"
-	ScopeLifecycleWorkflowsWrite Scope = "lifecycle-workflows:write"
-	ScopeTenantsRead             Scope = "tenants:read"
-	ScopeTenantsWrite            Scope = "tenants:write"
-	ScopeSettingsRead            Scope = "settings:read"
-	ScopeSettingsWrite           Scope = "settings:write"
-	ScopeSigningKeysRead         Scope = "signing-keys:read"
-	ScopeSigningKeysWrite        Scope = "signing-keys:write"
-	ScopeAuditRead               Scope = "audit:read"
-	ScopeScimUsersRead           Scope = "scim:users:read"
-	ScopeScimUsersWrite          Scope = "scim:users:write"
-	ScopeScimGroupsRead          Scope = "scim:groups:read"
-	ScopeScimGroupsWrite         Scope = "scim:groups:write"
+	ScopeUsersRead                     Scope = "users:read"
+	ScopeUsersWrite                    Scope = "users:write"
+	ScopeGroupsRead                    Scope = "groups:read"
+	ScopeGroupsWrite                   Scope = "groups:write"
+	ScopeAgentsRead                    Scope = "agents:read"
+	ScopeAgentsWrite                   Scope = "agents:write"
+	ScopeSessionsRead                  Scope = "sessions:read"
+	ScopeSessionsWrite                 Scope = "sessions:write"
+	ScopeConsentsRead                  Scope = "consents:read"
+	ScopeConsentsWrite                 Scope = "consents:write"
+	ScopeLifecycleWorkflowsRead        Scope = "lifecycle-workflows:read"
+	ScopeLifecycleWorkflowsWrite       Scope = "lifecycle-workflows:write"
+	ScopeTenantsRead                   Scope = "tenants:read"
+	ScopeTenantsWrite                  Scope = "tenants:write"
+	ScopeSettingsRead                  Scope = "settings:read"
+	ScopeSettingsWrite                 Scope = "settings:write"
+	ScopeSigningKeysRead               Scope = "signing-keys:read"
+	ScopeSigningKeysWrite              Scope = "signing-keys:write"
+	ScopeAuditRead                     Scope = "audit:read"
+	ScopeApplicationsRead              Scope = "applications:read"
+	ScopeApplicationsWrite             Scope = "applications:write"
+	ScopeOAuthClientsRead              Scope = "oauth-clients:read"
+	ScopeOAuthClientsWrite             Scope = "oauth-clients:write"
+	ScopeAuthorizationDetailTypesRead  Scope = "authorization-detail-types:read"
+	ScopeAuthorizationDetailTypesWrite Scope = "authorization-detail-types:write"
+	ScopeMcpResourceServersRead        Scope = "mcp-resource-servers:read"
+	ScopeMcpResourceServersWrite       Scope = "mcp-resource-servers:write"
+	ScopeSamlRead                      Scope = "saml:read"
+	ScopeSamlWrite                     Scope = "saml:write"
+	ScopeWsFedRead                     Scope = "wsfed:read"
+	ScopeWsFedWrite                    Scope = "wsfed:write"
+	ScopeProvisioningRead              Scope = "provisioning:read"
+	ScopeProvisioningWrite             Scope = "provisioning:write"
+	ScopeScimUsersRead                 Scope = "scim:users:read"
+	ScopeScimUsersWrite                Scope = "scim:users:write"
+	ScopeScimGroupsRead                Scope = "scim:groups:read"
+	ScopeScimGroupsWrite               Scope = "scim:groups:write"
 )
 
 var validScopes = map[Scope]struct{}{
@@ -50,7 +64,12 @@ var validScopes = map[Scope]struct{}{
 	ScopeConsentsRead: {}, ScopeConsentsWrite: {}, ScopeLifecycleWorkflowsRead: {},
 	ScopeLifecycleWorkflowsWrite: {}, ScopeTenantsRead: {}, ScopeTenantsWrite: {},
 	ScopeSettingsRead: {}, ScopeSettingsWrite: {}, ScopeSigningKeysRead: {},
-	ScopeSigningKeysWrite: {}, ScopeAuditRead: {}, ScopeScimUsersRead: {},
+	ScopeSigningKeysWrite: {}, ScopeAuditRead: {}, ScopeApplicationsRead: {},
+	ScopeApplicationsWrite: {}, ScopeOAuthClientsRead: {}, ScopeOAuthClientsWrite: {},
+	ScopeAuthorizationDetailTypesRead: {}, ScopeAuthorizationDetailTypesWrite: {},
+	ScopeMcpResourceServersRead: {}, ScopeMcpResourceServersWrite: {}, ScopeSamlRead: {},
+	ScopeSamlWrite: {}, ScopeWsFedRead: {}, ScopeWsFedWrite: {}, ScopeProvisioningRead: {},
+	ScopeProvisioningWrite: {}, ScopeScimUsersRead: {},
 	ScopeScimUsersWrite: {}, ScopeScimGroupsRead: {}, ScopeScimGroupsWrite: {},
 }
 

@@ -54,4 +54,31 @@ describe('ApiTokensTab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.revoke }))
     await waitFor(() => expect(screen.queryByText('scim:users:read')).not.toBeInTheDocument())
   })
+
+  it('offers application and protocol management scopes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+
+    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
+    await screen.findByText(t.noTokensNotice)
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+
+    for (const scope of [
+      'applications:read',
+      'applications:write',
+      'oauth-clients:read',
+      'oauth-clients:write',
+      'authorization-detail-types:read',
+      'authorization-detail-types:write',
+      'mcp-resource-servers:read',
+      'mcp-resource-servers:write',
+      'saml:read',
+      'saml:write',
+      'wsfed:read',
+      'wsfed:write',
+      'provisioning:read',
+      'provisioning:write',
+    ]) {
+      expect(screen.getByLabelText(scope)).toBeInTheDocument()
+    }
+  })
 })

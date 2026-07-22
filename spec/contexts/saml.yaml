@@ -102,6 +102,17 @@ models:
         type: String
       roles:
         type: "String[]"
+  Agent:
+    kind: entity
+    description: ApiTokens が認証した management API client の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
   Tenant:
     kind: entity
     description: Tenancy が publish するテナント resource の最小 stub。
@@ -449,7 +460,7 @@ interfaces:
       - input.service_provider.acs_urls.size > 0
       - not input.service_provider.want_authn_requests_signed or input.service_provider.authn_request_signing_certificate_pem != null
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -472,7 +483,7 @@ interfaces:
     ensures:
       - service_providers_belong_to_tenant(output.service_providers, context.tenant_id)
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadSaml]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -492,7 +503,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -511,12 +522,42 @@ authorization:
         - context.authenticated
         - principal.status == "Active"
         - '"admin" in principal.roles || "system_admin" in principal.roles'
+    ManagementApiClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
   policies:
     TenantAdministrator:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.id
+    ManagementApiClientReadSaml:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"saml:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteSaml:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"saml:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
 scenarios:
+  management API clientはSAML scope内のservice providerだけを操作できる:
+    actor: ManagementApiClient
+    given:
+      - client は対象 tenant の有効な API access token を提示している
+    main_success:
+      - saml:read scope で service provider を参照できる
+      - saml:write scope で service provider を登録または削除できる
+    extensions:
+      - at: 1
+        condition: saml:read だけで変更操作を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant と request tenant が一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   SAML SP initiated SSO succeeds:
     actor: EndUser
     given:

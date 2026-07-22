@@ -100,6 +100,17 @@ models:
         type: String
       roles:
         type: "String[]"
+  Agent:
+    kind: entity
+    description: ApiTokens が認証した management API client の認可判断用 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
   Tenant:
     kind: entity
     description: Tenancy が publish するテナント resource の最小 stub。
@@ -539,7 +550,7 @@ interfaces:
     requires:
       - source_anchor_is_unique_and_normalizable(input.source_anchor_attribute, context.tenant_id)
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -563,7 +574,7 @@ interfaces:
       - input.relying_party.tenant_id == context.tenant_id
       - input.relying_party.reply_urls.size > 0
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -586,7 +597,7 @@ interfaces:
     ensures:
       - relying_parties_belong_to_tenant(output.relying_parties, context.tenant_id)
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientReadWsFed]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -605,7 +616,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     access:
-      policies: [TenantAdministrator]
+      policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:
         type: Tenant
         id: context.tenant_id
@@ -624,6 +635,12 @@ authorization:
         - context.authenticated
         - principal.status == "Active"
         - '"admin" in principal.roles || "system_admin" in principal.roles'
+    ManagementApiClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - principal.tenant_id == context.tenant_id
     UsernameTokenSubject:
       type: User
       matches:
@@ -634,11 +651,35 @@ authorization:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.id
+    ManagementApiClientReadWsFed:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"wsfed:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteWsFed:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"wsfed:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
     UsernameTokenSubject:
       effect: permit
       principal: UsernameTokenSubject
       when: principal.tenant_id == resource.id
 scenarios:
+  management API clientはWS-Fed scope内のtrustだけを操作できる:
+    actor: ManagementApiClient
+    given:
+      - client は対象 tenant の有効な API access token を提示している
+    main_success:
+      - wsfed:read scope で relying party を参照できる
+      - wsfed:write scope で relying party と Entra federation を変更できる
+    extensions:
+      - at: 1
+        condition: wsfed:read だけで変更操作を要求する
+        steps:
+          - 操作は AccessDeniedError で拒否される
+      - at: 1
+        condition: token の tenant と request tenant が一致しない
+        steps:
+          - 操作は AccessDeniedError で拒否される
   WS-Federation passive sign-in succeeds:
     actor: EndUser
     given:

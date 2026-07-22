@@ -56,11 +56,11 @@ models:
       (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の
       scope で、users/groups × read/write に分ける。SCIM discovery endpoint
       (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば
-      参照できる。application とその protocol binding (OIDC / SAML / WS-Fed) および独立
-      protocol リソース (applications / oauth-clients / saml / wsfed / provisioning) の
-      scope は、そのエンドポイントパス構成が確定した後に追記する。アカウント自己管理
-      API の account:* scope も別途定義して追記する。公開・プロトコル・認証フロー
-      endpoint は scope 対象外。
+      参照できる。Application aggregate とその protocol binding は applications:*、独立した
+      protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* /
+      mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理
+      API の account:* scope は別途定義して追記する。公開・プロトコル・認証フロー endpoint は
+      scope 対象外。
     values:
       - "users:read"
       - "users:write"
@@ -81,6 +81,20 @@ models:
       - "signing-keys:read"
       - "signing-keys:write"
       - "audit:read"
+      - "applications:read"
+      - "applications:write"
+      - "oauth-clients:read"
+      - "oauth-clients:write"
+      - "authorization-detail-types:read"
+      - "authorization-detail-types:write"
+      - "mcp-resource-servers:read"
+      - "mcp-resource-servers:write"
+      - "saml:read"
+      - "saml:write"
+      - "wsfed:read"
+      - "wsfed:write"
+      - "provisioning:read"
+      - "provisioning:write"
       - "scim:users:read"
       - "scim:users:write"
       - "scim:groups:read"
