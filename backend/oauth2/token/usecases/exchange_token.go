@@ -82,7 +82,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 
 	// --- resource (RFC 8707): 必須・1 個のみ・登録済み Active な McpResourceServer に限定 ---
 	if len(nonEmpty(in.Resource)) == 0 {
-		return reject("", NewOAuthError("invalid_request", "resource パラメータが必要です"))
+		return reject("", NewOAuthError("invalid_request", "resource parameter is required"))
 	}
 	mcpResourceServer, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, nil)
 	if err != nil {
@@ -93,16 +93,16 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 	resource := mcpResourceServer.Resource
 	if in.RequestedTokenType != "" && in.RequestedTokenType != tokenTypeAccessTokenURN {
-		return reject("", NewOAuthError("invalid_request", "未対応の requested_token_type です"))
+		return reject("", NewOAuthError("invalid_request", "unsupported requested_token_type"))
 	}
 
 	// --- subject_token (必須) ---
 	if in.SubjectToken == "" {
-		return reject("", NewOAuthError("invalid_request", "subject_token が必要です"))
+		return reject("", NewOAuthError("invalid_request", "subject_token is required"))
 	}
 	if in.SubjectTokenType != "" && in.SubjectTokenType != tokenTypeAccessTokenURN {
 		// SELF-ISSUED access_token のみ対応 (外部トークンは対象外)。
-		return reject("", NewOAuthError("invalid_request", "未対応の subject_token_type です"))
+		return reject("", NewOAuthError("invalid_request", "unsupported subject_token_type"))
 	}
 	subject, err := deps.Introspector.IntrospectAccessToken(ctx, in.SubjectToken)
 	if err != nil {
@@ -116,14 +116,14 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	currentActorSub := in.ClientID
 	if in.ActorToken != "" {
 		if in.ActorTokenType != "" && in.ActorTokenType != tokenTypeAccessTokenURN {
-			return reject("", NewOAuthError("invalid_request", "未対応の actor_token_type です"))
+			return reject("", NewOAuthError("invalid_request", "unsupported actor_token_type"))
 		}
 		actor, err := deps.Introspector.IntrospectAccessToken(ctx, in.ActorToken)
 		if err != nil {
 			return nil, err
 		}
 		if actor == nil || !actor.Active {
-			return reject("", NewOAuthError("invalid_grant", "actor_token は無効または失効しています"))
+			return reject("", NewOAuthError("invalid_grant", "actor_token is invalid or revoked"))
 		}
 		currentActorSub = actor.Sub
 	}
@@ -135,7 +135,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	if subject.MayAct != nil {
 		mayActSub, _ := subject.MayAct["sub"].(string)
 		if mayActSub == "" || mayActSub != currentActorSub {
-			return reject(currentActorSub, NewOAuthError("invalid_grant", "現在のアクターは may_act で許可されていません"))
+			return reject(currentActorSub, NewOAuthError("invalid_grant", "current actor is not allowed by may_act"))
 		}
 	}
 
@@ -167,12 +167,12 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 	for _, s := range grantedScopes {
 		if !slices.Contains(mcpResourceServer.Scopes, s) {
-			return reject(currentActorSub, NewOAuthError("invalid_scope", "resource の許可 scope を超える要求です"))
+			return reject(currentActorSub, NewOAuthError("invalid_scope", "request exceeds allowed scope of the resource"))
 		}
 	}
 	if slices.ContainsFunc(grantedScopes, func(scope string) bool { return strings.HasPrefix(scope, "account:") }) &&
 		(subject.Sub == "" || subject.Sub == subject.ClientID) {
-		return reject(currentActorSub, NewOAuthError("invalid_scope", "account scope には user subject が必要です"))
+		return reject(currentActorSub, NewOAuthError("invalid_scope", "account scope requires user subject"))
 	}
 
 	// --- authorization_details ダウンスコープ (拡大不可, RFC 9396 / ADR-050) ---
@@ -188,7 +188,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 			return nil, err
 		}
 		if err := domain.DetailsSubsetOf(in.AuthorizationDetails, subject.AuthorizationDetails, types); err != nil {
-			return reject(currentActorSub, NewOAuthError("invalid_authorization_details", "subject_token の authorization_details を超える要求です"))
+			return reject(currentActorSub, NewOAuthError("invalid_authorization_details", "request exceeds authorization_details of subject_token"))
 		}
 		grantedDetails = in.AuthorizationDetails
 	}
@@ -199,7 +199,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return nil, err
 	}
 	if client == nil {
-		return reject(currentActorSub, NewOAuthError("invalid_client", "未知の client_id"))
+		return reject(currentActorSub, NewOAuthError("invalid_client", "unknown client_id"))
 	}
 	d, err := evaluateTokenExchangePolicy(ctx, deps.Authorizer, client, currentActorSub, subject.Sub, resource, grantedScopes, depth, now)
 	if err != nil {

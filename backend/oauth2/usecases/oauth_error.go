@@ -3,8 +3,6 @@ package usecases
 import (
 	"errors"
 	"fmt"
-
-	"github.com/ambi/idmagic/backend/shared/kernel"
 )
 
 // OAuthError は redirect 経由で返すべき OAuth2 規定のエラー。
@@ -19,7 +17,7 @@ func (e *OAuthError) Error() string {
 }
 
 func NewOAuthError(code, description string) *OAuthError {
-	return &OAuthError{Code: code, Description: kernel.EnglishErrorText(description)}
+	return &OAuthError{Code: code, Description: description}
 }
 
 // errorCode は err が *OAuthError であればその Code を、そうでなければ "server_error" を返す。

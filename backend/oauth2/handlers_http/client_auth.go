@@ -20,7 +20,7 @@ import (
 
 const clientCertHeader = "X-Client-Certificate"
 
-const invalidClientDescription = "クライアント認証に失敗しました"
+const invalidClientDescription = "client authentication failed"
 
 var dummyClientSecretHash = oauthdomain.HashClientSecret("idmagic-invalid-client")
 
@@ -50,11 +50,11 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 	if hasAssertion {
 		const assertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 		if c.Request().PostFormValue("client_assertion_type") != assertionType {
-			return authedClient{}, usecases.NewOAuthError("invalid_request", "未対応の client_assertion_type です")
+			return authedClient{}, usecases.NewOAuthError("invalid_request", "unsupported client_assertion_type")
 		}
 		a := c.Request().PostFormValue("client_assertion")
 		if a == "" {
-			return authedClient{}, usecases.NewOAuthError("invalid_request", "client_assertion が必要です")
+			return authedClient{}, usecases.NewOAuthError("invalid_request", "client_assertion is required")
 		}
 		clientID := c.Request().PostFormValue("client_id")
 		tenantID := support.RequestTenantID(c)
@@ -110,7 +110,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 	case hasBasic:
 		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(basicAuth, "Basic "))
 		if err != nil {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "Basic 復号失敗")
+			return authedClient{}, usecases.NewOAuthError("invalid_client", "failed to decode Basic auth")
 		}
 		parts := strings.SplitN(string(raw), ":", 2)
 		if len(parts) != 2 {
@@ -122,7 +122,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		}
 		secret, err = url.QueryUnescape(parts[1])
 		if err != nil {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "client_secret の形式不正")
+			return authedClient{}, usecases.NewOAuthError("invalid_client", "invalid client_secret format")
 		}
 		method = oauthdomain.AuthMethodClientSecretBasic
 	case hasSecret:

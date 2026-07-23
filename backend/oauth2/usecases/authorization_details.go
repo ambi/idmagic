@@ -26,10 +26,10 @@ func ParseAuthorizationDetails(raw string) ([]spec.AuthorizationDetail, error) {
 	}
 	var details []spec.AuthorizationDetail
 	if err := json.Unmarshal([]byte(raw), &details); err != nil {
-		return nil, NewOAuthError(errInvalidAuthorizationDetails, "authorization_details の JSON が不正です")
+		return nil, NewOAuthError(errInvalidAuthorizationDetails, "invalid JSON in authorization_details")
 	}
 	if len(details) == 0 {
-		return nil, NewOAuthError(errInvalidAuthorizationDetails, "authorization_details が空です")
+		return nil, NewOAuthError(errInvalidAuthorizationDetails, "authorization_details is empty")
 	}
 	return details, nil
 }
@@ -46,7 +46,7 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 	tenantID := tenancy.TenantID(ctx)
 	for _, d := range details {
 		if d.Type == "" {
-			return NewOAuthError(errInvalidAuthorizationDetails, "authorization_details の type が必要です")
+			return NewOAuthError(errInvalidAuthorizationDetails, "type is required in authorization_details")
 		}
 		t, err := repo.FindByType(ctx, tenantID, d.Type)
 		if err != nil {

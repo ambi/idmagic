@@ -178,7 +178,7 @@ func TestClientAuthenticationFailuresAreUniform(t *testing.T) {
 		if response.Code != http.StatusUnauthorized {
 			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 		}
-		if body := response.Body.String(); body != `{"error":"invalid_client","error_description":"The request could not be completed."}`+"\n" {
+		if body := response.Body.String(); body != `{"error":"invalid_client","error_description":"client authentication failed"}`+"\n" {
 			t.Fatalf("unexpected body: %s", body)
 		}
 	}

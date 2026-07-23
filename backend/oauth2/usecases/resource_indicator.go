@@ -41,7 +41,7 @@ func ResolveResourceIndicator(
 		return nil, nil //nolint:nilnil // resource 未指定は「audience 限定なし」を表す正常系
 	}
 	if len(values) > 1 {
-		return nil, NewOAuthError("invalid_target", "resource は 1 個のみ指定できます (1 token = 1 resource)")
+		return nil, NewOAuthError("invalid_target", "only one resource can be specified (1 token = 1 resource)")
 	}
 	resource := values[0]
 	if repo == nil {
@@ -56,7 +56,7 @@ func ResolveResourceIndicator(
 	}
 	for _, scope := range requestedScopes {
 		if !slices.Contains(mcp.Scopes, scope) {
-			return nil, NewOAuthError("invalid_scope", "resource の許可 scope を超える要求です")
+			return nil, NewOAuthError("invalid_scope", "request exceeds allowed scope of the resource")
 		}
 	}
 	return mcp, nil

@@ -45,14 +45,14 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		return nil, err
 	}
 	if req == nil {
-		return nil, NewOAuthError("invalid_request", "未知の authorization request")
+		return nil, NewOAuthError("invalid_request", "unknown authorization request")
 	}
 	if req.TenantID != tenancy.TenantID(ctx) {
-		return nil, NewOAuthError("invalid_request", "未知の authorization request")
+		return nil, NewOAuthError("invalid_request", "unknown authorization request")
 	}
 	if time.Now().After(req.ExpiresAt) {
 		_ = deps.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowExpired)
-		return nil, NewOAuthError("invalid_request", "authorization request 期限切れ")
+		return nil, NewOAuthError("invalid_request", "authorization request expired")
 	}
 	if req.State != spec.AuthFlowReceived {
 		return nil, NewOAuthError(

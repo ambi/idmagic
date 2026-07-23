@@ -49,10 +49,10 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 		}
 		claims, err := deps.HintVerifier.VerifyIDTokenHint(ctx, in.IDTokenHint)
 		if err != nil {
-			return nil, NewOAuthError("invalid_request", "id_token_hint を検証できません")
+			return nil, NewOAuthError("invalid_request", "failed to verify id_token_hint")
 		}
 		if clientID != "" && clientID != claims.Audience {
-			return nil, NewOAuthError("invalid_request", "id_token_hint が client_id と一致しません")
+			return nil, NewOAuthError("invalid_request", "id_token_hint does not match client_id")
 		}
 		clientID = claims.Audience
 		sid = claims.Sid
@@ -63,7 +63,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 		return target, nil
 	}
 	if clientID == "" {
-		return nil, NewOAuthError("invalid_request", "client_id が必要です")
+		return nil, NewOAuthError("invalid_request", "client_id is required")
 	}
 	client, err := deps.ClientRepo.FindByID(ctx, tenancy.TenantID(ctx), clientID)
 	if err != nil {

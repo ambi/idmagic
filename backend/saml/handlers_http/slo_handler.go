@@ -11,7 +11,6 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/kernel"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -83,7 +82,7 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 		d.emit(&samldomain.SamlLogout{At: now, TenantID: tenantID, EntityID: req.Issuer})
 	}
 	if decision.BadRequest != "" {
-		return c.String(http.StatusBadRequest, kernel.EnglishErrorText(decision.BadRequest))
+		return c.String(http.StatusBadRequest, decision.BadRequest)
 	}
 	sp := decision.SP
 

@@ -9,7 +9,6 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/kernel"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
@@ -28,7 +27,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	rst, err := wstrust.ParseRST(body, now)
 	if err != nil {
 		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, Reason: err.Error()})
-		return c.String(http.StatusBadRequest, kernel.EnglishErrorText(err.Error()))
+		return c.String(http.StatusBadRequest, err.Error())
 	}
 	expectedTo := d.federationEndpoints(c).ActiveURL
 	if rst.To != expectedTo {
@@ -63,7 +62,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	})
 	if decision.RejectReason != "" {
 		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
-		return c.String(decision.RejectStatus, kernel.EnglishErrorText(decision.RejectReason))
+		return c.String(decision.RejectStatus, decision.RejectReason)
 	}
 	result := decision.ClaimResult
 	tokenType := decision.TokenType

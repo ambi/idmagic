@@ -41,7 +41,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 	bearer := strings.HasPrefix(auth, "Bearer ")
 	dpopAuth := strings.HasPrefix(auth, "DPoP ")
 	if !bearer && !dpopAuth {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "Bearer token が必要"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "Bearer token is required"))
 	}
 	var token string
 	if bearer {
@@ -73,11 +73,11 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 				[]byte(cert.ThumbprintS256),
 				[]byte(intro.SenderConstraint.X5TS256),
 			) != 1 {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "mTLS 証明書バインドが一致しません"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "mTLS certificate binding mismatch"))
 			}
 		case spec.SenderConstraintDPoP:
 			if dpopHeader == "" || d.DpopReplayStore == nil {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP proof が必要"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP proof is required"))
 			}
 			r, err := tokensJOSE.VerifyDPoP(
 				c.Request().Context(), dpopHeader,
@@ -87,7 +87,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			if err != nil || r == nil || subtle.ConstantTimeCompare(
 				[]byte(r.JKT), []byte(intro.SenderConstraint.JKT),
 			) != 1 {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP 鍵バインドが一致しません"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP key binding mismatch"))
 			}
 		}
 	}

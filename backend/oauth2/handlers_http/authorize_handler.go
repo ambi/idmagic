@@ -27,7 +27,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if requestURI := q.Get("request_uri"); requestURI != "" {
 		for key := range q {
 			if key != "request_uri" && key != "client_id" {
-				return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "request_uri と authorization parameter を混在できません"))
+				return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "request_uri and authorization parameters cannot be mixed"))
 			}
 		}
 		consumed, err := d.PARStore.Consume(c.Request().Context(), requestURI)
@@ -35,13 +35,13 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			return writeOAuthError(c, err)
 		}
 		if consumed == nil {
-			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request_uri", "request_uri 無効または使用済み"))
+			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request_uri", "request_uri is invalid or already used"))
 		}
 		if consumed.TenantID != support.RequestTenantID(c) {
-			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request_uri", "request_uri 無効または使用済み"))
+			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request_uri", "request_uri is invalid or already used"))
 		}
 		if cid := q.Get("client_id"); cid != "" && cid != consumed.ClientID {
-			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "client_id が PAR と不一致"))
+			return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "client_id does not match PAR"))
 		}
 		q = url.Values{}
 		for k, v := range consumed.Parameters {
@@ -95,7 +95,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			prompt, _ := oauthdomain.ParsePromptTokens(in.Prompt)
 			if authn.AuthenticationPending {
 				if prompt.None {
-					return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "追加factor検証が必要です"))
+					return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "additional factor verification required"))
 				}
 				return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 			}

@@ -51,11 +51,11 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 		return nil, err
 	}
 	if client == nil {
-		return nil, NewOAuthError("invalid_client", "未知の client_id")
+		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
 	if !spec.GrantAllowsClientType(spec.GrantDeviceCode, client.ClientType) ||
 		!containsGrant(client.GrantTypes, spec.GrantDeviceCode) {
-		return nil, NewOAuthError("unauthorized_client", "device_code grant 不可")
+		return nil, NewOAuthError("unauthorized_client", "device_code grant not allowed")
 	}
 
 	deviceCode, err := domain.GenerateDeviceCode()
@@ -73,7 +73,7 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 	allowedScopes := strings.Fields(client.Scope)
 	for _, scope := range scopes {
 		if !slices.Contains(allowedScopes, scope) {
-			return nil, NewOAuthError("invalid_scope", "宣言外のスコープが含まれています")
+			return nil, NewOAuthError("invalid_scope", "contains undeclared scope")
 		}
 	}
 	rec := &domain.DeviceAuthorization{
@@ -123,13 +123,13 @@ func ApproveUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub
 		return err
 	}
 	if rec == nil {
-		return NewOAuthError("invalid_request", "未知の user_code")
+		return NewOAuthError("invalid_request", "unknown user_code")
 	}
 	if rec.TenantID != tenancy.TenantID(ctx) {
-		return NewOAuthError("invalid_request", "未知の user_code")
+		return NewOAuthError("invalid_request", "unknown user_code")
 	}
 	if domain.IsDeviceExpired(rec, now) {
-		return NewOAuthError("expired_token", "user_code 期限切れ")
+		return NewOAuthError("expired_token", "user_code expired")
 	}
 	// 既存状態によらず Issued → UserCodeEntered → Approved に進める (簡略化)。
 	if rec.State == spec.DeviceFlowIssued {
@@ -163,10 +163,10 @@ func DenyUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub st
 		return err
 	}
 	if rec == nil {
-		return NewOAuthError("invalid_request", "未知の user_code")
+		return NewOAuthError("invalid_request", "unknown user_code")
 	}
 	if rec.TenantID != tenancy.TenantID(ctx) {
-		return NewOAuthError("invalid_request", "未知の user_code")
+		return NewOAuthError("invalid_request", "unknown user_code")
 	}
 	if rec.State == spec.DeviceFlowIssued {
 		if next, err := spec.TransitionDeviceCodeFlow(rec.State, spec.DeviceEventEnterUserCode); err == nil {
@@ -230,14 +230,14 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 	if rec == nil {
-		return nil, NewOAuthError("invalid_grant", "未知の device_code")
+		return nil, NewOAuthError("invalid_grant", "unknown device_code")
 	}
 	tenantID := tenancy.TenantID(ctx)
 	if rec.TenantID != tenantID {
-		return nil, NewOAuthError("invalid_grant", "未知の device_code")
+		return nil, NewOAuthError("invalid_grant", "unknown device_code")
 	}
 	if rec.ClientID != in.ClientID {
-		return nil, NewOAuthError("invalid_grant", "device_code がクライアントに紐づきません")
+		return nil, NewOAuthError("invalid_grant", "device_code is not bound to the client")
 	}
 	if domain.IsDeviceExpired(rec, now) {
 		return nil, NewOAuthError("expired_token", "device_code 期限切れ")
@@ -251,28 +251,28 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 			if err := deps.DeviceCodeStore.Update(ctx, rec); err != nil {
 				return nil, err
 			}
-			return nil, NewOAuthError("slow_down", "polling interval が短すぎます")
+			return nil, NewOAuthError("slow_down", "polling interval is too short")
 		}
 		t := now
 		rec.LastPolledAt = &t
 		if err := deps.DeviceCodeStore.Update(ctx, rec); err != nil {
 			return nil, err
 		}
-		return nil, NewOAuthError("authorization_pending", "ユーザー承認待ち")
+		return nil, NewOAuthError("authorization_pending", "authorization pending")
 	case spec.DeviceFlowDenied:
-		return nil, NewOAuthError("access_denied", "ユーザー拒否")
+		return nil, NewOAuthError("access_denied", "user denied")
 	case spec.DeviceFlowExchanged:
-		return nil, NewOAuthError("invalid_grant", "device_code はすでに交換済み")
+		return nil, NewOAuthError("invalid_grant", "device_code has already been exchanged")
 	}
 	if rec.State != spec.DeviceFlowApproved {
-		return nil, NewOAuthError("invalid_grant", "device_code 状態不正: "+string(rec.State))
+		return nil, NewOAuthError("invalid_grant", "invalid device_code state: "+string(rec.State))
 	}
 	exchanged, err := deps.DeviceCodeStore.Exchange(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
 	if exchanged == nil {
-		return nil, NewOAuthError("invalid_grant", "device_code は並行リクエストにより交換済みです")
+		return nil, NewOAuthError("invalid_grant", "device_code has been exchanged by a concurrent request")
 	}
 	rec = exchanged
 
@@ -288,13 +288,13 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 	if user == nil {
-		return nil, NewOAuthError("invalid_grant", "ユーザーは利用できません")
+		return nil, NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if user.TenantID != tenantID {
-		return nil, NewOAuthError("invalid_grant", "未知の device_code")
+		return nil, NewOAuthError("invalid_grant", "unknown device_code")
 	}
 	if !user.IsActive() {
-		return nil, NewOAuthError("invalid_grant", "ユーザーは無効化されています")
+		return nil, NewOAuthError("invalid_grant", "user is disabled")
 	}
 
 	var sc *domain.SenderConstraint

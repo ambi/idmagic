@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/labstack/echo/v5"
 )
@@ -19,7 +18,7 @@ func NoStoreJSON(c *echo.Context, status int, body any) error {
 
 // WriteBrowserError はブラウザ向け API の {error, message} エラー body を返す。
 func WriteBrowserError(c *echo.Context, status int, code, message string) error {
-	return NoStoreJSON(c, status, map[string]string{"error": code, "message": kernel.EnglishErrorText(message)})
+	return NoStoreJSON(c, status, map[string]string{"error": code, "message": message})
 }
 
 // WriteServerError はサーバー内部エラー (5xx) をロギングし、クライアントに JSON エラーレスポンスを返す。

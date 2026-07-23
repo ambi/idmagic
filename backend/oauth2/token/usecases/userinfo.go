@@ -80,7 +80,7 @@ func UserInfo(
 	}
 	if !d.Permit {
 		if slices.Contains(d.Reasons, "token_has_openid_scope") {
-			return nil, NewOAuthError("insufficient_scope", "openid スコープが必要")
+			return nil, NewOAuthError("insufficient_scope", "openid scope is required")
 		}
 		return nil, NewOAuthError("invalid_request", "userinfo 拒否: "+strings.Join(d.Reasons, ", "))
 	}
@@ -92,10 +92,10 @@ func UserInfo(
 		return nil, NewOAuthError("invalid_request", "ユーザーが存在しません")
 	}
 	if u.IsDeleted() {
-		return nil, NewOAuthError("invalid_token", "ユーザーは利用できません")
+		return nil, NewOAuthError("invalid_token", "user is unavailable")
 	}
 	if !u.IsActive() {
-		return nil, NewOAuthError("invalid_token", "ユーザーは無効化されています")
+		return nil, NewOAuthError("invalid_token", "user is disabled")
 	}
 	res := &UserInfoResponse{Sub: u.ID}
 	if slices.Contains(in.Scopes, "profile") {

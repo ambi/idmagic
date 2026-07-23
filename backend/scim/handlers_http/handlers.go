@@ -13,7 +13,6 @@ import (
 	"github.com/ambi/idmagic/backend/scim/domain"
 	"github.com/ambi/idmagic/backend/scim/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/kernel"
 )
 
 type Handler struct {
@@ -65,7 +64,7 @@ func (h *Handler) writeScimAuthError(c *echo.Context, err error) error {
 
 func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType string) error {
 	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), kernel.EnglishErrorText(detail), scimType))
+	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), detail, scimType))
 }
 
 // writeMutationError maps CreateUser/UpdateUser/PatchUser/CreateGroup/

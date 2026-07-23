@@ -13,7 +13,6 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/password/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
@@ -124,7 +123,7 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 				violations[i] = string(violation)
 			}
 			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
-				"error": "password_policy", "message": kernel.EnglishErrorText("パスワードがセキュリティ要件を満たしていません。"),
+				"error": "password_policy", "message": "The password does not meet the security requirements.",
 				"violations": violations,
 			})
 		}

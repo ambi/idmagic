@@ -79,14 +79,14 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	if user == nil {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
-		return nil, NewOAuthError("invalid_grant", "ユーザーは利用できません")
+		return nil, NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if user.TenantID != tenantID {
 		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンが無効")
 	}
 	if !user.IsActive() {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
-		return nil, NewOAuthError("invalid_grant", "ユーザーは無効化されています")
+		return nil, NewOAuthError("invalid_grant", "user is disabled")
 	}
 
 	d, err := evaluateRefreshPolicy(ctx, deps.Authorizer, client, record, in, now)

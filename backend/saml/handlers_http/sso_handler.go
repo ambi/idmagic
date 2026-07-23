@@ -14,7 +14,6 @@ import (
 	samlresponse "github.com/ambi/idmagic/backend/saml/responses_saml"
 	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
@@ -113,9 +112,9 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 	case samlusecases.SignInNeedLogin:
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c, resumeURL))
 	case samlusecases.SignInRejected:
-		return c.String(http.StatusBadRequest, kernel.EnglishErrorText(outcome.Message))
+		return c.String(http.StatusBadRequest, outcome.Message)
 	case samlusecases.SignInForbidden:
-		return c.String(http.StatusForbidden, kernel.EnglishErrorText(outcome.Message))
+		return c.String(http.StatusForbidden, outcome.Message)
 	case samlusecases.SignInProtocolError:
 		return d.issueProtocolError(c, outcome, relayState)
 	default:
@@ -200,7 +199,7 @@ func (d Deps) rejectSSO(c *echo.Context, entityID, reason string, cause error) e
 		msg = reason + ": " + cause.Error()
 	}
 	d.emit(&samldomain.SamlSignInRejected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), EntityID: entityID, Reason: msg})
-	return c.String(http.StatusBadRequest, kernel.EnglishErrorText(reason))
+	return c.String(http.StatusBadRequest, reason)
 }
 
 func (d Deps) emit(event spec.DomainEvent) {

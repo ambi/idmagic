@@ -59,19 +59,19 @@ type AuthorizeDeps struct {
 // public/FAPI required・confidential recommended に階段化予定）。
 func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput) (*AuthorizeRequestOutput, error) {
 	if in.ClientID == "" {
-		return nil, NewOAuthError("invalid_request", "client_id が必要です")
+		return nil, NewOAuthError("invalid_request", "client_id is required")
 	}
 	if in.RedirectURI == "" {
-		return nil, NewOAuthError("invalid_request", "redirect_uri が必要です")
+		return nil, NewOAuthError("invalid_request", "redirect_uri is required")
 	}
 	if in.ResponseType != "code" {
-		return nil, NewOAuthError("unsupported_response_type", "code のみサポート")
+		return nil, NewOAuthError("unsupported_response_type", "only code is supported")
 	}
 	if in.CodeChallenge == "" {
-		return nil, NewOAuthError("invalid_request", "code_challenge が必要です")
+		return nil, NewOAuthError("invalid_request", "code_challenge is required")
 	}
 	if in.CodeChallengeMethod != "S256" {
-		return nil, NewOAuthError("invalid_request", "code_challenge_method は S256 のみ")
+		return nil, NewOAuthError("invalid_request", "code_challenge_method must be S256")
 	}
 
 	tenantID := tenancy.TenantID(ctx)
@@ -80,23 +80,23 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		return nil, err
 	}
 	if client == nil {
-		return nil, NewOAuthError("invalid_client", "未知の client_id")
+		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
 	if !slices.Contains(client.RedirectURIs, in.RedirectURI) {
-		return nil, NewOAuthError("invalid_request", "redirect_uri が登録済み URI ではありません")
+		return nil, NewOAuthError("invalid_request", "redirect_uri is not a registered URI")
 	}
 	if !slices.Contains(client.GrantTypes, spec.GrantAuthorizationCode) {
-		return nil, NewOAuthError("unauthorized_client", "authorization_code grant が宣言されていません")
+		return nil, NewOAuthError("unauthorized_client", "authorization_code grant is not declared")
 	}
 	requestedScopes := strings.Fields(defaultScope(in.Scope))
 	allowedScopes := strings.Fields(client.Scope)
 	for _, scope := range requestedScopes {
 		if !slices.Contains(allowedScopes, scope) {
-			return nil, NewOAuthError("invalid_scope", "宣言外のスコープが含まれています")
+			return nil, NewOAuthError("invalid_scope", "contains undeclared scope")
 		}
 	}
 	if client.RequirePushedAuthorizationRequests && !in.ParUsed {
-		return nil, NewOAuthError("invalid_request", "このクライアントは PAR が必須です")
+		return nil, NewOAuthError("invalid_request", "this client requires PAR")
 	}
 	if in.Prompt != "" {
 		prompt, err := domain.ParsePromptTokens(in.Prompt)

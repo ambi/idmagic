@@ -51,7 +51,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	}
 	grantType := c.Request().PostFormValue("grant_type")
 	if grantType == "" {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "grant_type が必要です"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "grant_type is required"))
 	}
 	if !spec.GrantType(grantType).Valid() {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
@@ -61,13 +61,13 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 	if client == nil {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "未知の client_id"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "unknown client_id"))
 	}
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "宣言外の grant_type です"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type"))
 	}
 	if grantType == "client_credentials" && containsAccountScope(c.Request().PostFormValue("scope")) {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "account scope には user subject が必要です"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "account scope requires user subject"))
 	}
 
 	// DPoP 検証 (任意)
@@ -120,7 +120,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	case "refresh_token":
 		rt := c.Request().PostFormValue("refresh_token")
 		if rt == "" {
-			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "refresh_token が必要"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "refresh_token is required"))
 		}
 		res, err := tokenusecases.RefreshTokens(ctx, tokenusecases.RefreshDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
@@ -140,7 +140,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 
 	case "client_credentials":
 		if client.ClientType != spec.ClientConfidential {
-			return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "public client は不可"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "public client not allowed"))
 		}
 		scope := c.Request().PostFormValue("scope")
 		if scope == "" {
@@ -217,7 +217,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	case "urn:ietf:params:oauth:grant-type:device_code":
 		dc := c.Request().PostFormValue("device_code")
 		if dc == "" {
-			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "device_code が必要"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "device_code is required"))
 		}
 		res, err := deviceusecases.ExchangeDeviceCode(ctx, deviceusecases.ExchangeDeviceCodeDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,

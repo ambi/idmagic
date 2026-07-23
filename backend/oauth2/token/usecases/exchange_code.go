@@ -53,13 +53,13 @@ type ExchangeCodeOutput struct {
 
 func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in ExchangeCodeInput) (*ExchangeCodeOutput, error) {
 	if in.Code == "" {
-		return nil, NewOAuthError("invalid_request", "code が必要です")
+		return nil, NewOAuthError("invalid_request", "code is required")
 	}
 	if in.CodeVerifier == "" {
-		return nil, NewOAuthError("invalid_request", "code_verifier が必要です")
+		return nil, NewOAuthError("invalid_request", "code_verifier is required")
 	}
 	if in.RedirectURI == "" {
-		return nil, NewOAuthError("invalid_request", "redirect_uri が必要です")
+		return nil, NewOAuthError("invalid_request", "redirect_uri is required")
 	}
 
 	rec, err := deps.CodeStore.Find(ctx, in.Code)
@@ -87,14 +87,14 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, NewOAuthError("invalid_grant", "redirect_uri が一致しない")
 	}
 	if !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
-		return nil, NewOAuthError("invalid_grant", "PKCE 検証失敗")
+		return nil, NewOAuthError("invalid_grant", "PKCE verification failed")
 	}
 	// RFC 8707 §2 — /token に resource が再指定された場合、/authorize 時に束縛された
 	// resource と一致しなければならない (ADR-055)。新規 resource の後付け指定は拒否する。
 	if requested := nonEmpty(in.Resource); len(requested) > 0 {
 		if len(requested) > 1 || rec.Resource == nil || requested[0] != *rec.Resource {
 			emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: "invalid_target"})
-			return nil, NewOAuthError("invalid_target", "token リクエストの resource が認可リクエストと一致しません")
+			return nil, NewOAuthError("invalid_target", "token request resource does not match authorization request")
 		}
 	}
 
@@ -103,20 +103,20 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, err
 	}
 	if client == nil {
-		return nil, NewOAuthError("invalid_client", "未知の client_id")
+		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
 	user, err := deps.UserRepo.FindBySub(ctx, rec.UserID)
 	if err != nil {
 		return nil, err
 	}
 	if user == nil {
-		return nil, NewOAuthError("invalid_grant", "ユーザーは利用できません")
+		return nil, NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if user.TenantID != tenantID {
 		return nil, NewOAuthError("invalid_grant", "code が無効です")
 	}
 	if !user.IsActive() {
-		return nil, NewOAuthError("invalid_grant", "ユーザーは無効化されています")
+		return nil, NewOAuthError("invalid_grant", "user is disabled")
 	}
 	redeemed, err := deps.CodeStore.Redeem(ctx, in.Code, now)
 	if err != nil {

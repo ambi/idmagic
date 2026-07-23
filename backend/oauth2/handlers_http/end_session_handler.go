@@ -49,7 +49,7 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 	// user input.
 	u, err := url.Parse(target.RedirectURI)
 	if err != nil {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "post_logout_redirect_uri が不正"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "invalid post_logout_redirect_uri"))
 	}
 	query := u.Query()
 	if state := c.QueryParam("state"); state != "" {

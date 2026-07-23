@@ -43,7 +43,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 		return nil, err
 	}
 	if client == nil {
-		return nil, NewOAuthError("invalid_client", "未知の client_id")
+		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
 	// RFC 9396 — authorization_details があれば push 時点で fail-closed 検証する (ADR-050)。
 	if raw := in.Parameters["authorization_details"]; raw != "" {
