@@ -3,7 +3,7 @@ status: pending  # pending | in_progress | completed | cancelled
 authors: [tn]
 risk: high        # low | medium | high | critical
 created_at: 2026-07-24  # YYYY-MM-DD
-depends_on: []   # 完了前提の WI ID。依存がなければ空配列
+depends_on: []
 ---
 
 # 揮発性の認証/OAuth2 一時状態を全て PostgreSQL に統合し、Valkey を廃止する
