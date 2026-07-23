@@ -9,52 +9,7 @@ import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type { ApiToken, ApiTokenScope } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
-
-const apiTokenScopes: ApiTokenScope[] = [
-  'users:read',
-  'users:write',
-  'groups:read',
-  'groups:write',
-  'agents:read',
-  'agents:write',
-  'sessions:read',
-  'sessions:write',
-  'consents:read',
-  'consents:write',
-  'lifecycle-workflows:read',
-  'lifecycle-workflows:write',
-  'tenants:read',
-  'tenants:write',
-  'settings:read',
-  'settings:write',
-  'signing-keys:read',
-  'signing-keys:write',
-  'audit:read',
-  'applications:read',
-  'applications:write',
-  'oauth-clients:read',
-  'oauth-clients:write',
-  'authorization-detail-types:read',
-  'authorization-detail-types:write',
-  'mcp-resource-servers:read',
-  'mcp-resource-servers:write',
-  'saml:read',
-  'saml:write',
-  'wsfed:read',
-  'wsfed:write',
-  'provisioning:read',
-  'provisioning:write',
-  'scim:users:read',
-  'scim:users:write',
-  'scim:groups:read',
-  'scim:groups:write',
-  'account:read',
-  'account:write',
-  'account:mfa:write',
-  'account:sessions:write',
-  'account:consents:write',
-  'account:password:write',
-]
+import { ApiTokenScopePicker } from './ApiTokenScopePicker'
 
 export function ApiTokensTab({
   csrfToken,
@@ -133,7 +88,9 @@ export function ApiTokensTab({
     return <div className="text-sm text-slate-500">{t.loadingNotice}</div>
   }
 
-  const endpointUrl = `${window.location.origin}/realms/${tenantRealm}/scim/v2`
+  const managementApiBaseUrl = `${window.location.origin}/realms/${tenantRealm}/api/admin`
+  const scimBaseUrl = `${window.location.origin}/realms/${tenantRealm}/scim/v2`
+  const accountApiBaseUrl = `${window.location.origin}/realms/${tenantRealm}/api/account`
 
   return (
     <Card className="p-6">
@@ -150,18 +107,41 @@ export function ApiTokensTab({
           <h3 className="text-sm font-semibold text-slate-900">{t.connectionInfoHeading}</h3>
           <div className="mt-3 grid gap-3">
             <div>
-              <span className="text-xs text-slate-500">{t.scimBaseUrlLabel}</span>
+              <Label htmlFor="management-api-base-url">{t.managementApiBaseUrlLabel}</Label>
               <div className="mt-1 flex items-center gap-2">
                 <input
+                  id="management-api-base-url"
                   readOnly
-                  value={endpointUrl}
+                  value={managementApiBaseUrl}
                   className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText(endpointUrl)
+                    navigator.clipboard.writeText(managementApiBaseUrl)
+                    setNotice(t.urlCopiedNotice)
+                  }}
+                >
+                  {t.copy}
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{t.managementApiHelp}</p>
+            </div>
+            <div>
+              <Label htmlFor="scim-api-base-url">{t.scimBaseUrlLabel}</Label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  id="scim-api-base-url"
+                  readOnly
+                  value={scimBaseUrl}
+                  className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(scimBaseUrl)
                     setNotice(t.urlCopiedNotice)
                   }}
                 >
@@ -169,6 +149,28 @@ export function ApiTokensTab({
                 </Button>
               </div>
               <p className="mt-1 text-xs text-slate-500">{t.scimConnectorHelp}</p>
+            </div>
+            <div>
+              <Label htmlFor="account-api-base-url">{t.accountApiBaseUrlLabel}</Label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  id="account-api-base-url"
+                  readOnly
+                  value={accountApiBaseUrl}
+                  className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(accountApiBaseUrl)
+                    setNotice(t.urlCopiedNotice)
+                  }}
+                >
+                  {t.copy}
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{t.accountApiHelp}</p>
             </div>
           </div>
         </div>
@@ -294,31 +296,11 @@ export function ApiTokensTab({
                   />
                 </div>
               </div>
-              <fieldset className="mt-4 rounded-md border border-slate-200 p-3">
-                <legend className="px-1 text-sm font-semibold text-slate-800">
-                  {t.tokenScopesLabel}
-                </legend>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {apiTokenScopes.map((scope) => (
-                    <label key={scope} className="flex items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        name="api-token-scopes"
-                        value={scope}
-                        checked={selectedScopes.includes(scope)}
-                        onChange={(event) => {
-                          setSelectedScopes((current) =>
-                            event.target.checked
-                              ? [...current, scope]
-                              : current.filter((candidate) => candidate !== scope),
-                          )
-                        }}
-                      />
-                      <code>{scope}</code>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              <ApiTokenScopePicker
+                t={t}
+                selectedScopes={selectedScopes}
+                onChange={setSelectedScopes}
+              />
               <div className="mt-4 flex items-center gap-2">
                 <Button type="submit">{t.issueToken}</Button>
                 <Button

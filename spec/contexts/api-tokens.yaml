@@ -424,6 +424,28 @@ authorization:
       when: principal.tenant_id == resource.id
 
 scenarios:
+  管理者は接続先とscopeの意味を理解してAPIアクセストークンを構成できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者として認証済みである
+    main_success:
+      - 管理者が設定画面の API アクセストークンタブを開く
+      - 画面は内容の文脈を示す主見出しと、区別された発行済みトークン一覧見出しを置き、management API、SCIM 2.0 API、発行者本人の account API の Base URL を用途説明と共に示す
+      - 発行フォームは scope を API surface と resource ごとにまとめ、正準 scope 値と read / write などの権限の意味を示す
+      - 管理者は必要な scope だけを選び、API アクセストークンを発行できる
+    extensions:
+      - at: 3
+        condition: 管理者が特定の API surface の scope を必要としない
+        steps:
+          - その scope group は折りたたしたままにでき、大量の正準 scope 値を常時表示しない
+      - at: 3
+        condition: resource に変更系 scope が存在しない
+        steps:
+          - 発行フォームは存在しない権限を選択肢として表示しない
+      - at: 3
+        condition: resource に参照系 scope がなく変更系 scope だけが存在する
+        steps:
+          - 2 列表示では左の参照列を空け、変更系 scope を常に右の変更列へ配置する
   APIアクセストークンは有効なscope付きtokenだけを認証する:
     actor: ApiTokenBearerClient
     given:

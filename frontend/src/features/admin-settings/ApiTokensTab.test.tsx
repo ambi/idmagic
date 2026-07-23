@@ -70,6 +70,12 @@ describe('ApiTokensTab', () => {
     ]) {
       expect(screen.getByLabelText(scope)).toBeInTheDocument()
     }
+    expect(screen.getByLabelText('account:mfa:write').closest('label')).toHaveClass(
+      'sm:col-start-2',
+    )
+    expect(screen.getByLabelText('account:write').closest('label')).not.toHaveClass(
+      'sm:col-start-2',
+    )
     expect(screen.queryByRole('combobox', { name: /client/i })).not.toBeInTheDocument()
   })
 
@@ -98,5 +104,32 @@ describe('ApiTokensTab', () => {
     ]) {
       expect(screen.getByLabelText(scope)).toBeInTheDocument()
     }
+  })
+
+  it('shows all API base URLs and groups scopes with human-readable guidance', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+
+    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="acme" />)
+    await screen.findByText(t.noTokensNotice)
+
+    expect(screen.getByLabelText(t.managementApiBaseUrlLabel)).toHaveValue(
+      'http://localhost:3000/realms/acme/api/admin',
+    )
+    expect(screen.getByLabelText(t.scimBaseUrlLabel)).toHaveValue(
+      'http://localhost:3000/realms/acme/scim/v2',
+    )
+    expect(screen.getByLabelText(t.accountApiBaseUrlLabel)).toHaveValue(
+      'http://localhost:3000/realms/acme/api/account',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+    expect(screen.getByText(t.managementScopesHeading)).toBeInTheDocument()
+    expect(screen.getByText(t.scimScopesHeading)).toBeInTheDocument()
+    expect(screen.getByText(t.accountScopesHeading)).toBeInTheDocument()
+    expect(screen.getByText(t.managementScopesHeading).closest('details')).not.toHaveAttribute(
+      'open',
+    )
+    expect(screen.getAllByText(t.usersScopeResourceLabel).length).toBeGreaterThan(0)
+    expect(screen.getByText(t.readScopeDescription)).toBeInTheDocument()
   })
 })

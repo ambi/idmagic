@@ -121,4 +121,25 @@ describe('AdminSettingsPage', () => {
     expect(screen.getByRole('heading', { name: t.passwordPolicyHeading })).toBeInTheDocument()
     expect(screen.getAllByText('8 chars').length).toBeGreaterThan(0)
   })
+
+  it('keeps a contextual heading and distinguishes the issued token list', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+    await renderWithRouter(
+      <AdminSettingsPage
+        csrfToken="csrf"
+        actorUsername="admin"
+        actorRoles={['admin']}
+        actorRealm="acme"
+        settings={settings}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.tabApiTokensLabel }))
+
+    await screen.findByText(t.noTokensNotice)
+    expect(screen.getByRole('heading', { level: 2, name: t.tabApiTokensLabel })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 3, name: t.apiTokensListHeading }),
+    ).toBeInTheDocument()
+  })
 })
