@@ -2,9 +2,9 @@ package support_http
 
 // フェデレーション開始経路の割当ゲート (wi-69, invariant AssignmentGatesProtocol)。
 //
-// protocol binding (OIDC client_id / WS-Fed wtrealm) を所有する Application に対し、
+// protocol row の application_id relation を持つ Application に対し、
 // 解決された subject (本人 + 所属グループ) が割当済みかを fail-closed で判定する。
-// catalog に属さない client (binding 未登録) は gating 対象外とし、既存挙動を保つ。
+// catalog に属さない protocol record (application_id=NULL) は gating 対象外とする。
 
 import (
 	"context"
@@ -31,7 +31,7 @@ type ApplicationAccessDecision struct {
 func (g *ApplicationGate) ApplicationAccessAllowed(
 	ctx context.Context,
 	tenantID string,
-	bindingType appdomain.ProtocolBindingType,
+	bindingType appdomain.ApplicationProtocolType,
 	bindingKey, sub string,
 ) (bool, error) {
 	decision, err := g.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, nil, "")
@@ -64,7 +64,7 @@ func (g *ApplicationGate) ClientIP(r *http.Request) string {
 func (g *ApplicationGate) EvaluateApplicationAccess(
 	ctx context.Context,
 	tenantID string,
-	bindingType appdomain.ProtocolBindingType,
+	bindingType appdomain.ApplicationProtocolType,
 	bindingKey, sub string,
 	authn *authdomain.AuthenticationContext,
 	clientIP string,
@@ -72,7 +72,7 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 	if g.ApplicationRepo == nil {
 		return ApplicationAccessDecision{Allowed: true}, nil
 	}
-	app, err := g.ApplicationRepo.FindByBinding(ctx, tenantID, bindingType, bindingKey)
+	app, err := g.ApplicationRepo.FindByProtocol(ctx, tenantID, bindingType, bindingKey)
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}

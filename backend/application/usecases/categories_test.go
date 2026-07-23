@@ -130,7 +130,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)
@@ -171,7 +171,7 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)

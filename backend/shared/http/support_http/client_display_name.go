@@ -35,8 +35,8 @@ func (r *ClientDisplayNameResolver) Resolve(ctx context.Context, tenantID, clien
 		}
 	}
 	if r.ApplicationRepo != nil {
-		if app, err := r.ApplicationRepo.FindByBinding(
-			ctx, tenantID, appdomain.ProtocolBindingOIDC, clientID,
+		if app, err := r.ApplicationRepo.FindByProtocol(
+			ctx, tenantID, appdomain.ApplicationProtocolOIDC, clientID,
 		); err == nil && app != nil {
 			if name := strings.TrimSpace(app.Name); name != "" {
 				return name

@@ -47,6 +47,7 @@ func (f FapiProfile) Valid() bool { return f == FapiNone || f == FapiSecurityPro
 type OAuth2Client struct {
 	TenantID                           string                           `json:"tenant_id"`
 	ClientID                           string                           `json:"client_id"`
+	ApplicationID                      string                           `json:"application_id,omitempty"`
 	ClientSecretHash                   *string                          `json:"client_secret_hash,omitempty"`
 	ClientName                         *string                          `json:"client_name,omitempty"`
 	ClientType                         spec.ClientType                  `json:"client_type"`

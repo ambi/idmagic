@@ -163,11 +163,12 @@ export type AdminOAuth2Client = {
 
 export type ApplicationKind = 'federated' | 'weblink' | 'service'
 export type ApplicationStatus = 'active' | 'disabled'
-export type ProtocolBindingType = 'oidc' | 'saml' | 'wsfed'
+export type ApplicationProtocolType = 'oidc' | 'saml' | 'wsfed'
 
-export type ProtocolBinding = {
-  type: ProtocolBindingType
+export type ApplicationProtocol = {
+  type: ApplicationProtocolType
   client_id?: string
+  entity_id?: string
   wtrealm?: string
 }
 
@@ -179,10 +180,10 @@ export type AdminApplication = {
   icon_url?: string
   icon_object_key?: string
   launch_url?: string
-  bindings: ProtocolBinding[]
+  protocol?: ApplicationProtocol
   category_ids: string[]
   category_names: string[]
-  binding_summaries: string[]
+  protocol_summary?: string
   assigned_subject_count: number
   sign_in_policy_summary: string
   created_at: string

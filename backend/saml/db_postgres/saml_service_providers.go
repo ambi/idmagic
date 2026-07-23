@@ -17,6 +17,7 @@ type SamlServiceProviderRepository struct{ Pool sharedpg.DB }
 func samlServiceProviderFromRow(row *SamlServiceProvider) (*domain.SamlServiceProvider, error) {
 	var sp domain.SamlServiceProvider
 	sp.TenantID, sp.EntityID, sp.DisplayName, sp.SLOURL, sp.Audience = row.TenantID, row.EntityID, row.DisplayName, row.SloUrl, row.Audience
+	sp.ApplicationID = sharedpg.UUIDString(row.ApplicationID)
 	sp.SignAssertion, sp.SignResponse, sp.WantAuthnRequestsSigned = row.SignAssertion, row.SignResponse, row.WantAuthnRequestsSigned
 	sp.AuthnRequestSigningCertificatePEM, sp.CreatedAt, sp.UpdatedAt = row.AuthnRequestSigningCertificatePem, row.CreatedAt, row.UpdatedAt
 	if err := json.Unmarshal(row.AcsUrls, &sp.ACSURLs); err != nil {

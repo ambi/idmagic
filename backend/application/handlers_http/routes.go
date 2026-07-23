@@ -1,6 +1,6 @@
 // Package http は Application bounded context の HTTP アダプタ (wi-69)。
 //
-// 運用者向け Application カタログ (CRUD・protocol binding・割当) と、利用者ポータル向けの
+// 運用者向け Application カタログ (CRUD・単一 protocol・割当) と、利用者ポータル向けの
 // 割当済みアプリ一覧を所有する。共有基盤 support.Deps を受け取り、shared/handlers_http/server から
 // tenant 解決済みグループに登録される。
 package handlers_http
@@ -52,8 +52,6 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/applications/:application_id", d.handleDeleteApplication)
 	g.POST("/api/admin/applications/:application_id/icon", d.handleUploadApplicationIcon)
 	g.DELETE("/api/admin/applications/:application_id/icon", d.handleDeleteApplicationIcon)
-	g.POST("/api/admin/applications/:application_id/bindings", d.handleAttachBinding)
-	g.DELETE("/api/admin/applications/:application_id/bindings/:binding_type", d.handleDetachBinding)
 	g.PATCH("/api/admin/applications/:application_id/oidc", d.handleUpdateOIDCConfig)
 	g.POST("/api/admin/applications/:application_id/oidc/rotate-secret", d.handleRotateOIDCClientSecret)
 	g.PATCH("/api/admin/applications/:application_id/wsfed", d.handleUpdateWsFedConfig)

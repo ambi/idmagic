@@ -7,7 +7,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 	"time"
 
@@ -185,7 +184,10 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 		cleaned = append(cleaned, id)
 	}
 	updated := *app
-	updated.Bindings = slices.Clone(app.Bindings)
+	if app.Protocol != nil {
+		protocol := *app.Protocol
+		updated.Protocol = &protocol
+	}
 	updated.CategoryIDs = cleaned
 	updated.UpdatedAt = adminNow(in.Now)
 	if err := deps.AppRepo.Save(ctx, &updated); err != nil {

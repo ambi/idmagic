@@ -34,7 +34,7 @@ type ApplicationGate interface {
 	EvaluateApplicationAccess(
 		ctx context.Context,
 		tenantID string,
-		bindingType appdomain.ProtocolBindingType,
+		bindingType appdomain.ApplicationProtocolType,
 		bindingKey, sub string,
 		authn *authdomain.AuthenticationContext,
 		clientIP string,
@@ -133,7 +133,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	}
 
 	// 割当ゲート: SP が Application binding に属する場合、未割当 subject には発行しない (fail-closed)。
-	decision, err := s.Gate.EvaluateApplicationAccess(ctx, in.TenantID, appdomain.ProtocolBindingSAML, sp.EntityID, authn.UserID, authn, in.ClientIP)
+	decision, err := s.Gate.EvaluateApplicationAccess(ctx, in.TenantID, appdomain.ApplicationProtocolSAML, sp.EntityID, authn.UserID, authn, in.ClientIP)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
@@ -141,12 +141,12 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		reason := decision.Reason
 		if decision.StepUpRequired {
 			reason = "step-up required by application sign-in policy"
-			s.emit(&appdomain.AppStepUpRequired{At: now, TenantID: in.TenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ProtocolBindingSAML), Subject: authn.UserID})
+			s.emit(&appdomain.AppStepUpRequired{At: now, TenantID: in.TenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolSAML), Subject: authn.UserID})
 		} else if reason == "" {
 			reason = "subject not assigned to application"
 		}
 		if decision.ApplicationID != "" {
-			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: in.TenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ProtocolBindingSAML), Subject: authn.UserID, Reason: reason})
+			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: in.TenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolSAML), Subject: authn.UserID, Reason: reason})
 		}
 		s.emit(&samldomain.SamlSignInRejected{At: now, TenantID: in.TenantID, EntityID: sp.EntityID, Reason: reason})
 		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil

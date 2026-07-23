@@ -10,14 +10,15 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ApplicationRepository は ApplicationCatalog の Application aggregate を PostgreSQL に
-// 永続化する (wi-69)。protocol binding は JSONB に格納し、参照はテナント境界に閉じる。
+// 永続化する。protocol relation は各 protocol table の application_id から解決する (ADR-138)。
 // クエリは sqlc 生成 (wi-172, ADR-090); Pool は DBTX を構造的に満たす。
 type ApplicationRepository struct{ Pool sharedpg.DB }
 
-func applicationFromRow(row *Application) (*domain.Application, error) {
+func applicationFromRow(row *Application) *domain.Application {
 	app := &domain.Application{
 		TenantID:      row.TenantID,
 		ApplicationID: row.ApplicationID,
@@ -31,16 +32,34 @@ func applicationFromRow(row *Application) (*domain.Application, error) {
 		CreatedAt:     row.CreatedAt,
 		UpdatedAt:     row.UpdatedAt,
 	}
-	app.Bindings = []domain.ProtocolBinding{}
-	if len(row.Bindings) > 0 {
-		if err := json.Unmarshal(row.Bindings, &app.Bindings); err != nil {
-			return nil, err
-		}
+	if row.ProtocolType.Valid {
+		app.Protocol = &domain.ApplicationProtocol{Type: domain.ApplicationProtocolType(row.ProtocolType.String)}
 	}
 	if app.CategoryIDs == nil {
 		app.CategoryIDs = []string{}
 	}
-	return app, nil
+	return app
+}
+
+func (r *ApplicationRepository) hydrateProtocol(ctx context.Context, app *domain.Application) error {
+	if app.Protocol == nil {
+		return nil
+	}
+	row, err := New(r.Pool).GetApplicationProtocolKey(ctx, GetApplicationProtocolKeyParams{
+		TenantID: app.TenantID, ApplicationID: app.ApplicationID,
+	})
+	if err != nil {
+		return err
+	}
+	switch app.Protocol.Type {
+	case domain.ApplicationProtocolOIDC:
+		app.Protocol.ClientID = row
+	case domain.ApplicationProtocolSAML:
+		app.Protocol.EntityID = row
+	case domain.ApplicationProtocolWsFed:
+		app.Protocol.Wtrealm = row
+	}
+	return nil
 }
 
 func (r *ApplicationRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.Application, error) {
@@ -50,8 +69,8 @@ func (r *ApplicationRepository) ListByTenant(ctx context.Context, tenantID strin
 	}
 	out := make([]*domain.Application, 0, len(rows))
 	for _, row := range rows {
-		app, err := applicationFromRow(row)
-		if err != nil {
+		app := applicationFromRow(row)
+		if err := r.hydrateProtocol(ctx, app); err != nil {
 			return nil, err
 		}
 		out = append(out, app)
@@ -69,68 +88,122 @@ func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicat
 	if err != nil {
 		return nil, err
 	}
-	return applicationFromRow(row)
+	app := applicationFromRow(row)
+	if err := r.hydrateProtocol(ctx, app); err != nil {
+		return nil, err
+	}
+	return app, nil
 }
 
-func (r *ApplicationRepository) FindByBinding(ctx context.Context, tenantID string, bindingType domain.ProtocolBindingType, key string) (*domain.Application, error) {
+func (r *ApplicationRepository) FindByProtocol(ctx context.Context, tenantID string, protocolType domain.ApplicationProtocolType, key string) (*domain.Application, error) {
 	if key == "" {
 		return nil, nil
 	}
-	apps, err := r.ListByTenant(ctx, tenantID)
+	row, err := New(r.Pool).FindApplicationByProtocol(ctx, FindApplicationByProtocolParams{
+		TenantID:     tenantID,
+		ProtocolType: pgtype.Text{String: string(protocolType), Valid: true},
+		ClientID:     key,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	for _, app := range apps {
-		for _, binding := range app.Bindings {
-			if binding.Type != bindingType {
-				continue
-			}
-			switch bindingType {
-			case domain.ProtocolBindingWsFed:
-				if binding.Wtrealm == key {
-					return app, nil
-				}
-			case domain.ProtocolBindingSAML:
-				if binding.EntityID == key {
-					return app, nil
-				}
-			default:
-				if binding.ClientID == key {
-					return app, nil
-				}
-			}
-		}
+	app := applicationFromRow(row)
+	if err := r.hydrateProtocol(ctx, app); err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return app, nil
 }
 
 func (r *ApplicationRepository) Save(ctx context.Context, app *domain.Application) error {
-	bindings := app.Bindings
-	if bindings == nil {
-		bindings = []domain.ProtocolBinding{}
-	}
-	encoded, err := json.Marshal(bindings)
-	if err != nil {
-		return err
+	return saveApplication(ctx, New(r.Pool), app)
+}
+
+func saveApplication(ctx context.Context, queries *Queries, app *domain.Application) error {
+	var protocolType pgtype.Text
+	if app.Protocol != nil {
+		protocolType = pgtype.Text{String: string(app.Protocol.Type), Valid: true}
 	}
 	categoryIDs := app.CategoryIDs
 	if categoryIDs == nil {
 		categoryIDs = []string{}
 	}
-	return New(r.Pool).UpsertApplication(ctx, UpsertApplicationParams{
+	return queries.UpsertApplication(ctx, UpsertApplicationParams{
 		TenantID:      app.TenantID,
 		ApplicationID: app.ApplicationID,
 		Name:          app.Name,
 		Kind:          string(app.Kind),
 		Status:        string(app.Status),
+		ProtocolType:  protocolType,
 		IconUrl:       app.IconURL,
 		IconObjectKey: app.IconObjectKey,
 		LaunchUrl:     app.LaunchURL,
-		Bindings:      encoded,
 		CategoryIds:   categoryIDs,
 		CreatedAt:     app.CreatedAt,
 		UpdatedAt:     app.UpdatedAt,
 	})
+}
+
+func linkApplicationProtocol(ctx context.Context, queries *Queries, app *domain.Application) error {
+	if app.Protocol == nil {
+		return nil
+	}
+	var applicationID pgtype.UUID
+	if err := applicationID.Scan(app.ApplicationID); err != nil {
+		return err
+	}
+	var err error
+	var key string
+	switch app.Protocol.Type {
+	case domain.ApplicationProtocolOIDC:
+		key = app.Protocol.ClientID
+		err = queries.LinkOAuth2ClientToApplication(ctx, LinkOAuth2ClientToApplicationParams{
+			ApplicationID: applicationID, TenantID: app.TenantID, ClientID: key,
+		})
+	case domain.ApplicationProtocolSAML:
+		key = app.Protocol.EntityID
+		err = queries.LinkSamlServiceProviderToApplication(ctx, LinkSamlServiceProviderToApplicationParams{
+			ApplicationID: applicationID, TenantID: app.TenantID, EntityID: key,
+		})
+	case domain.ApplicationProtocolWsFed:
+		key = app.Protocol.Wtrealm
+		err = queries.LinkWsFedRelyingPartyToApplication(ctx, LinkWsFedRelyingPartyToApplicationParams{
+			ApplicationID: applicationID, TenantID: app.TenantID, Wtrealm: key,
+		})
+	default:
+		return domain.ErrInvalidProtocolType
+	}
+	if err != nil {
+		return err
+	}
+	linkedKey, err := queries.GetApplicationProtocolKey(ctx, GetApplicationProtocolKeyParams{
+		TenantID: app.TenantID, ApplicationID: app.ApplicationID,
+	})
+	if err != nil {
+		return err
+	}
+	if linkedKey != key {
+		return errors.New("application protocol was not linked")
+	}
+	return nil
+}
+
+func (r *ApplicationRepository) Create(ctx context.Context, app *domain.Application) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := New(tx)
+	if err := saveApplication(ctx, queries, app); err != nil {
+		return err
+	}
+	if err := linkApplicationProtocol(ctx, queries, app); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *ApplicationRepository) Delete(ctx context.Context, tenantID, applicationID string) error {

@@ -21,10 +21,11 @@ import (
 // (wi-173, ADR-090); Pool は oauth2pg.DBTX を構造的に満たす。
 type OAuth2ClientRepository struct{ Pool sharedpg.DB }
 
-func clientFromRow(row *oauth2pg.Client) (*domain.OAuth2Client, error) {
+func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
 	c := &domain.OAuth2Client{
 		TenantID:                           row.TenantID,
 		ClientID:                           row.ClientID,
+		ApplicationID:                      sharedpg.UUIDString(row.ApplicationID),
 		ClientType:                         spec.ClientType(row.ClientType),
 		TokenEndpointAuthMethod:            domain.TokenEndpointAuthMethod(row.TokenEndpointAuthMethod),
 		Scope:                              row.Scope,

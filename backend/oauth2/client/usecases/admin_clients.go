@@ -20,7 +20,10 @@ import (
 	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
-var ErrClientNotFound = errors.New("client not found")
+var (
+	ErrClientNotFound             = errors.New("client not found")
+	ErrProtocolOwnedByApplication = errors.New("protocol configuration is owned by an application")
+)
 
 type AdminOAuth2ClientDeps struct {
 	ClientRepo oauthports.OAuth2ClientRepository
@@ -143,6 +146,9 @@ func DeleteAdminOAuth2Client(
 	}
 	if client == nil {
 		return ErrClientNotFound
+	}
+	if client.ApplicationID != "" {
+		return ErrProtocolOwnedByApplication
 	}
 	if err := deps.ClientRepo.Delete(ctx, tenantID, clientID); err != nil {
 		return err

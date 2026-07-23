@@ -18,10 +18,8 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		Name:          "Zebra",
 		Kind:          domain.ApplicationFederated,
 		Status:        domain.ApplicationActive,
-		Bindings: []domain.ProtocolBinding{
-			{Type: domain.ProtocolBindingOIDC, ClientID: "client-1"},
-		},
-		CategoryIDs: []string{"cat-1", "cat-2"},
+		Protocol:      &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "client-1"},
+		CategoryIDs:   []string{"cat-1", "cat-2"},
 	}
 	if err := repo.Save(ctx, app); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -42,10 +40,10 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	}
 
 	// 返り値の変更が内部状態へ漏れないこと (clone 分離)。
-	got.Bindings[0].ClientID = "hijacked"
+	got.Protocol.ClientID = "hijacked"
 	got.CategoryIDs[0] = "hijacked"
 	again, _ := repo.FindByID(ctx, "acme", "app-1")
-	if again.Bindings[0].ClientID != "client-1" || again.CategoryIDs[0] != "cat-1" {
+	if again.Protocol.ClientID != "client-1" || again.CategoryIDs[0] != "cat-1" {
 		t.Fatal("mutation leaked into stored application")
 	}
 
@@ -72,44 +70,40 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	}
 }
 
-func TestApplicationRepositoryFindByBinding(t *testing.T) {
+func TestApplicationRepositoryFindByProtocol(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 
 	app := &domain.Application{
 		TenantID: "acme", ApplicationID: "app-1", Name: "SP",
-		Bindings: []domain.ProtocolBinding{
-			{Type: domain.ProtocolBindingOIDC, ClientID: "cid"},
-			{Type: domain.ProtocolBindingSAML, EntityID: "urn:sp"},
-			{Type: domain.ProtocolBindingWsFed, Wtrealm: "urn:realm"},
-		},
+		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "cid"},
 	}
 	if err := repo.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
 
 	cases := []struct {
-		bindingType domain.ProtocolBindingType
+		bindingType domain.ApplicationProtocolType
 		key         string
 		wantFound   bool
 	}{
-		{domain.ProtocolBindingOIDC, "cid", true},
-		{domain.ProtocolBindingSAML, "urn:sp", true},
-		{domain.ProtocolBindingWsFed, "urn:realm", true},
-		{domain.ProtocolBindingOIDC, "other", false},
-		{domain.ProtocolBindingOIDC, "", false},
+		{domain.ApplicationProtocolOIDC, "cid", true},
+		{domain.ApplicationProtocolSAML, "urn:sp", false},
+		{domain.ApplicationProtocolWsFed, "urn:realm", false},
+		{domain.ApplicationProtocolOIDC, "other", false},
+		{domain.ApplicationProtocolOIDC, "", false},
 	}
 	for _, c := range cases {
-		got, err := repo.FindByBinding(ctx, "acme", c.bindingType, c.key)
+		got, err := repo.FindByProtocol(ctx, "acme", c.bindingType, c.key)
 		if err != nil {
-			t.Fatalf("FindByBinding(%s,%s): %v", c.bindingType, c.key, err)
+			t.Fatalf("FindByProtocol(%s,%s): %v", c.bindingType, c.key, err)
 		}
 		if (got != nil) != c.wantFound {
-			t.Fatalf("FindByBinding(%s,%s) found=%v want=%v", c.bindingType, c.key, got != nil, c.wantFound)
+			t.Fatalf("FindByProtocol(%s,%s) found=%v want=%v", c.bindingType, c.key, got != nil, c.wantFound)
 		}
 	}
 	// 別テナントでは一致しない。
-	if got, _ := repo.FindByBinding(ctx, "other", domain.ProtocolBindingOIDC, "cid"); got != nil {
+	if got, _ := repo.FindByProtocol(ctx, "other", domain.ApplicationProtocolOIDC, "cid"); got != nil {
 		t.Fatal("binding lookup ignored tenant boundary")
 	}
 }

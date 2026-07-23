@@ -53,10 +53,10 @@ type Application struct {
 	Name          string
 	Kind          string
 	Status        string
+	ProtocolType  pgtype.Text
 	IconUrl       string
 	IconObjectKey string
 	LaunchUrl     string
-	Bindings      []byte
 	CategoryIds   []string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -163,29 +163,6 @@ type AuthorizationDetailType struct {
 	State           string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-}
-
-type Client struct {
-	TenantID                           string
-	ClientID                           string
-	ClientSecretHash                   pgtype.Text
-	ClientName                         pgtype.Text
-	ClientType                         string
-	RedirectUris                       []byte
-	GrantTypes                         []byte
-	ResponseTypes                      []byte
-	TokenEndpointAuthMethod            string
-	Scope                              string
-	JwksUri                            pgtype.Text
-	Jwks                               []byte
-	TlsClientAuthSubjectDn             pgtype.Text
-	IDTokenSignedResponseAlg           string
-	RequirePushedAuthorizationRequests bool
-	DpopBoundAccessTokens              bool
-	FapiProfile                        string
-	CreatedAt                          time.Time
-	UpdatedAt                          time.Time
-	FirstParty                         bool
 }
 
 type Consent struct {
@@ -337,6 +314,31 @@ type MfaFactor struct {
 	LastUsedAt pgtype.Timestamptz
 }
 
+type Oauth2Client struct {
+	TenantID                           string
+	ClientID                           string
+	ApplicationID                      pgtype.UUID
+	ApplicationProtocolType            string
+	ClientSecretHash                   pgtype.Text
+	ClientName                         pgtype.Text
+	ClientType                         string
+	RedirectUris                       []byte
+	GrantTypes                         []byte
+	ResponseTypes                      []byte
+	TokenEndpointAuthMethod            string
+	Scope                              string
+	JwksUri                            pgtype.Text
+	Jwks                               []byte
+	TlsClientAuthSubjectDn             pgtype.Text
+	IDTokenSignedResponseAlg           string
+	RequirePushedAuthorizationRequests bool
+	DpopBoundAccessTokens              bool
+	FapiProfile                        string
+	CreatedAt                          time.Time
+	UpdatedAt                          time.Time
+	FirstParty                         bool
+}
+
 type Oauth2ClientSecret struct {
 	CredentialID string
 	ClientID     string
@@ -461,6 +463,8 @@ type RefreshToken struct {
 type SamlServiceProvider struct {
 	TenantID                          string
 	EntityID                          string
+	ApplicationID                     pgtype.UUID
+	ApplicationProtocolType           string
 	DisplayName                       string
 	AcsUrls                           []byte
 	SloUrl                            string
@@ -627,14 +631,16 @@ type WebauthnCredential struct {
 }
 
 type WsfedRelyingParty struct {
-	TenantID     string
-	Wtrealm      string
-	DisplayName  string
-	ReplyUrls    []byte
-	Audience     string
-	TokenType    string
-	ClaimPolicy  []byte
-	EntraProfile []byte
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	TenantID                string
+	Wtrealm                 string
+	ApplicationID           pgtype.UUID
+	ApplicationProtocolType string
+	DisplayName             string
+	ReplyUrls               []byte
+	Audience                string
+	TokenType               string
+	ClaimPolicy             []byte
+	EntraProfile            []byte
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }

@@ -21,9 +21,9 @@ func seedApplication(t *testing.T, db sharedpg.DB, tenantID string) *domain.Appl
 		TenantID:      tenantID,
 		ApplicationID: pgfixtures.NewUUID(t),
 		Name:          pgfixtures.UniqueID("app-name"),
-		Kind:          domain.ApplicationFederated,
+		Kind:          domain.ApplicationWeblink,
 		Status:        domain.ApplicationActive,
-		Bindings:      []domain.ProtocolBinding{},
+		LaunchURL:     "https://example.com",
 		CategoryIDs:   []string{},
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -50,15 +50,13 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		Kind:          domain.ApplicationFederated,
 		Status:        domain.ApplicationActive,
 		LaunchURL:     "https://app.example/launch",
-		Bindings: []domain.ProtocolBinding{
-			{Type: domain.ProtocolBindingOIDC, ClientID: client.ClientID},
-		},
-		CategoryIDs: []string{categoryID},
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		Protocol:      &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: client.ClientID},
+		CategoryIDs:   []string{categoryID},
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
-	if err := repo.Save(ctx, app); err != nil {
-		t.Fatalf("save: %v", err)
+	if err := repo.Create(ctx, app); err != nil {
+		t.Fatalf("create: %v", err)
 	}
 
 	got, err := repo.FindByID(ctx, tenant.ID, app.ApplicationID)
@@ -68,14 +66,14 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	if got.Name != "Portal App" || got.Kind != domain.ApplicationFederated {
 		t.Fatalf("unexpected application: %+v", got)
 	}
-	if len(got.Bindings) != 1 || got.Bindings[0].ClientID != client.ClientID {
-		t.Fatalf("bindings not round-tripped: %+v", got.Bindings)
+	if got.Protocol == nil || got.Protocol.ClientID != client.ClientID {
+		t.Fatalf("protocol not round-tripped: %+v", got.Protocol)
 	}
 	if len(got.CategoryIDs) != 1 || got.CategoryIDs[0] != categoryID {
 		t.Fatalf("category ids not round-tripped: %+v", got.CategoryIDs)
 	}
 
-	byBinding, err := repo.FindByBinding(ctx, tenant.ID, domain.ProtocolBindingOIDC, client.ClientID)
+	byBinding, err := repo.FindByProtocol(ctx, tenant.ID, domain.ApplicationProtocolOIDC, client.ClientID)
 	if err != nil || byBinding == nil || byBinding.ApplicationID != app.ApplicationID {
 		t.Fatalf("find by binding: %v %+v", err, byBinding)
 	}
@@ -99,6 +97,47 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	got, err = repo.FindByID(ctx, tenant.ID, app.ApplicationID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
+	}
+}
+
+func TestApplicationProtocolRelationConstraintsAndCascade(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	first := pgfixtures.SeedClient(t, db, tenant.ID)
+	second := pgfixtures.SeedClient(t, db, tenant.ID)
+	ctx := context.Background()
+	repo := &ApplicationRepository{Pool: db}
+	now := pgfixtures.TestClock()
+	app := &domain.Application{
+		TenantID: tenant.ID, ApplicationID: pgfixtures.NewUUID(t), Name: "OIDC App",
+		Kind: domain.ApplicationFederated, Status: domain.ApplicationActive,
+		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: first.ClientID},
+		CategoryIDs: []string{}, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := repo.Create(ctx, app); err != nil {
+		t.Fatalf("create application with protocol: %v", err)
+	}
+
+	if _, err := db.Exec(ctx, `UPDATE oauth2_clients SET application_id = $1 WHERE client_id = $2`, app.ApplicationID, second.ClientID); err == nil {
+		t.Fatal("expected unique application_id constraint to reject a second OAuth2 client")
+	}
+	if _, err := db.Exec(ctx, `
+		INSERT INTO saml_service_providers
+			(tenant_id, entity_id, application_id, display_name, acs_urls, claim_policy)
+		VALUES ($1, 'urn:test:sp', $2, 'SP', '[]'::jsonb, '{}'::jsonb)
+	`, tenant.ID, app.ApplicationID); err == nil {
+		t.Fatal("expected protocol discriminator foreign key to reject SAML row for OIDC application")
+	}
+
+	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID); err != nil {
+		t.Fatalf("delete application: %v", err)
+	}
+	var count int
+	if err := db.QueryRow(ctx, `SELECT count(*) FROM oauth2_clients WHERE client_id = $1`, first.ClientID).Scan(&count); err != nil {
+		t.Fatalf("count cascaded client: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("Application delete did not cascade OAuth2 client: count=%d", count)
 	}
 }
 

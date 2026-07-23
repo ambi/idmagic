@@ -3,7 +3,6 @@ import * as adminAPI from './admin'
 import {
   addAdminGroupMember,
   assignApplication,
-  attachProtocolBinding,
   bindAdminAgentCredential,
   clearAdminUserRequiredAction,
   createApiToken,
@@ -13,7 +12,6 @@ import {
   deleteAdminApplication,
   deleteAdminGroup,
   deleteAdminUser,
-  detachProtocolBinding,
   disableAdminAgent,
   disableTenantKey,
   enableAdminAgent,
@@ -195,8 +193,6 @@ describe('admin API client', () => {
     await updateApplicationOidcConfig('csrf', id, { scope: 'openid' })
     await updateApplicationWsFedConfig('csrf', id, { audience: 'urn:app' })
     await updateApplicationSamlConfig('csrf', id, { audience: 'urn:app' })
-    await attachProtocolBinding('csrf', id, { type: 'oidc', client_id: 'client' })
-    await detachProtocolBinding('csrf', id, 'oidc')
     await assignApplication('csrf', id, { subject_type: 'user', subject_id: 'user/a b' })
     await unassignApplication('csrf', id, 'user', 'user/a b')
     await deleteAdminApplication('csrf', id)

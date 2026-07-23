@@ -18,7 +18,8 @@ type WsFedRelyingPartyRepository struct{ Pool sharedpg.DB }
 func relyingPartyFromRow(row *WsfedRelyingParty) (*domain.WsFedRelyingParty, error) {
 	rp := &domain.WsFedRelyingParty{
 		TenantID: row.TenantID, Wtrealm: row.Wtrealm, DisplayName: row.DisplayName,
-		Audience: row.Audience, TokenType: domain.WsFedTokenType(row.TokenType),
+		ApplicationID: sharedpg.UUIDString(row.ApplicationID),
+		Audience:      row.Audience, TokenType: domain.WsFedTokenType(row.TokenType),
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if err := json.Unmarshal(row.ReplyUrls, &rp.ReplyURLs); err != nil {

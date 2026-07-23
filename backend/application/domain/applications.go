@@ -5,15 +5,14 @@ import "time"
 // Application の双子定義 (wi-69, ADR-064)。
 //
 // Application は運用者が「接続する業務アプリケーション」として扱う上位 aggregate。
-// OIDC client / SAML SP / WS-Fed RP を protocol binding として束ね、表示名・アイコン・
-// 状態・割当を所有する。protocol binding の wire 挙動は各 protocol context が所有し、
-// ここでは binding を opaque key (client_id / wtrealm) で参照するに留める。
+// OIDC client / SAML SP / WS-Fed RP のいずれか単一 protocol と、表示名・アイコン・
+// 状態・割当を所有する。protocol の wire 挙動は各 protocol context が所有する。
 
 // ApplicationKind は Application が federation を束ねるか、SSO しない外部リンクかを表す。
 type ApplicationKind string
 
 const (
-	// ApplicationFederated は protocol binding を束ねる SSO アプリケーション。
+	// ApplicationFederated は単一 protocol を使う SSO アプリケーション。
 	ApplicationFederated ApplicationKind = "federated"
 	// ApplicationWeblink は binding を持たない外部リンク (SSO 非対応)。
 	ApplicationWeblink ApplicationKind = "weblink"
@@ -46,18 +45,18 @@ func (s ApplicationStatus) Valid() bool {
 	return false
 }
 
-// ProtocolBindingType は Application に接続する binding の種別 (ADR-064)。
-type ProtocolBindingType string
+// ApplicationProtocolType は Application が利用する単一 protocol の種別 (ADR-138)。
+type ApplicationProtocolType string
 
 const (
-	ProtocolBindingOIDC  ProtocolBindingType = "oidc"
-	ProtocolBindingSAML  ProtocolBindingType = "saml"
-	ProtocolBindingWsFed ProtocolBindingType = "wsfed"
+	ApplicationProtocolOIDC  ApplicationProtocolType = "oidc"
+	ApplicationProtocolSAML  ApplicationProtocolType = "saml"
+	ApplicationProtocolWsFed ApplicationProtocolType = "wsfed"
 )
 
-func (t ProtocolBindingType) Valid() bool {
+func (t ApplicationProtocolType) Valid() bool {
 	switch t {
-	case ProtocolBindingOIDC, ProtocolBindingSAML, ProtocolBindingWsFed:
+	case ApplicationProtocolOIDC, ApplicationProtocolSAML, ApplicationProtocolWsFed:
 		return true
 	}
 	return false
@@ -161,29 +160,28 @@ type TenantDefaultSignInPolicy struct {
 	UpdatedAt time.Time    `json:"updated_at"`
 }
 
-// ProtocolBinding は Application に紐づく protocol binding (wi-69, ADR-064)。
-// binding key は protocol ごとに異なる: OIDC は client_id、WS-Fed は wtrealm、SAML は entity_id。
-type ProtocolBinding struct {
-	Type     ProtocolBindingType `json:"type"`
-	ClientID string              `json:"client_id,omitempty"`
-	Wtrealm  string              `json:"wtrealm,omitempty"`
-	EntityID string              `json:"entity_id,omitempty"`
+// ApplicationProtocol は Application に紐づく単一 protocol 設定への参照 (ADR-138)。
+type ApplicationProtocol struct {
+	Type     ApplicationProtocolType `json:"type"`
+	ClientID string                  `json:"client_id,omitempty"`
+	Wtrealm  string                  `json:"wtrealm,omitempty"`
+	EntityID string                  `json:"entity_id,omitempty"`
 }
 
 // Application は運用者向けの上位 aggregate (wi-69)。
 type Application struct {
-	TenantID      string            `json:"tenant_id"`
-	ApplicationID string            `json:"application_id"`
-	Name          string            `json:"name"`
-	Kind          ApplicationKind   `json:"kind"`
-	Status        ApplicationStatus `json:"status"`
-	IconURL       string            `json:"icon_url,omitempty"`
-	IconObjectKey string            `json:"icon_object_key,omitempty"`
-	LaunchURL     string            `json:"launch_url,omitempty"`
-	Bindings      []ProtocolBinding `json:"bindings"`
-	CategoryIDs   []string          `json:"category_ids"`
-	CreatedAt     time.Time         `json:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
+	TenantID      string               `json:"tenant_id"`
+	ApplicationID string               `json:"application_id"`
+	Name          string               `json:"name"`
+	Kind          ApplicationKind      `json:"kind"`
+	Status        ApplicationStatus    `json:"status"`
+	IconURL       string               `json:"icon_url,omitempty"`
+	IconObjectKey string               `json:"icon_object_key,omitempty"`
+	LaunchURL     string               `json:"launch_url,omitempty"`
+	Protocol      *ApplicationProtocol `json:"protocol,omitempty"`
+	CategoryIDs   []string             `json:"category_ids"`
+	CreatedAt     time.Time            `json:"created_at"`
+	UpdatedAt     time.Time            `json:"updated_at"`
 }
 
 // ApplicationIcon は tenant-scoped に保存された Application アイコン画像。
@@ -274,30 +272,6 @@ type ApplicationDeleted struct {
 
 func (e *ApplicationDeleted) EventType() string     { return "ApplicationDeleted" }
 func (e *ApplicationDeleted) OccurredAt() time.Time { return e.At }
-
-// ProtocolBindingAttached は Application に protocol binding を接続した event (wi-69)。
-type ProtocolBindingAttached struct {
-	At            time.Time `json:"-"`
-	TenantID      string    `json:"tenantId"`
-	ActorUserID   string    `json:"actorUserId"`
-	ApplicationID string    `json:"applicationId"`
-	BindingType   string    `json:"bindingType"`
-}
-
-func (e *ProtocolBindingAttached) EventType() string     { return "ProtocolBindingAttached" }
-func (e *ProtocolBindingAttached) OccurredAt() time.Time { return e.At }
-
-// ProtocolBindingDetached は Application から protocol binding を解除した event (wi-69)。
-type ProtocolBindingDetached struct {
-	At            time.Time `json:"-"`
-	TenantID      string    `json:"tenantId"`
-	ActorUserID   string    `json:"actorUserId"`
-	ApplicationID string    `json:"applicationId"`
-	BindingType   string    `json:"bindingType"`
-}
-
-func (e *ProtocolBindingDetached) EventType() string     { return "ProtocolBindingDetached" }
-func (e *ProtocolBindingDetached) OccurredAt() time.Time { return e.At }
 
 // ApplicationAssigned は Application にユーザー / グループを割当てた event (wi-69)。
 type ApplicationAssigned struct {

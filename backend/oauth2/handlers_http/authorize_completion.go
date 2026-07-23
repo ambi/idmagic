@@ -113,7 +113,7 @@ func (d Deps) issueCodeURL(
 	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない (ADR-061)。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
 		decision, err := d.EvaluateApplicationAccess(
-			ctx, tenantID, appdomain.ProtocolBindingOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
+			ctx, tenantID, appdomain.ApplicationProtocolOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
 		)
 		if err != nil {
 			return "", err
@@ -122,7 +122,7 @@ func (d Deps) issueCodeURL(
 			if d.Emit != nil {
 				d.Emit(&appdomain.AppStepUpRequired{
 					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
-					Protocol: string(appdomain.ProtocolBindingOIDC), Subject: authn.UserID,
+					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: authn.UserID,
 				})
 			}
 			if len(d.secondFactorMethods(c, authn.UserID)) > 0 { //nolint:contextcheck // HTTP request context is required for factor lookup.
@@ -146,7 +146,7 @@ func (d Deps) issueCodeURL(
 			if d.Emit != nil && decision.ApplicationID != "" {
 				d.Emit(&appdomain.AppAccessDeniedByPolicy{
 					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
-					Protocol: string(appdomain.ProtocolBindingOIDC), Subject: authn.UserID, Reason: reason,
+					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: authn.UserID, Reason: reason,
 				})
 			}
 			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションにアクセスできません"), nil

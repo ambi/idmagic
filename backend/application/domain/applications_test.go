@@ -24,10 +24,10 @@ func TestApplicationEnumValid(t *testing.T) {
 		{"appstatus disabled", ApplicationDisabled, true},
 		{"appstatus bad", ApplicationStatus("x"), false},
 
-		{"binding oidc", ProtocolBindingOIDC, true},
-		{"binding saml", ProtocolBindingSAML, true},
-		{"binding wsfed", ProtocolBindingWsFed, true},
-		{"binding bad", ProtocolBindingType("x"), false},
+		{"protocol oidc", ApplicationProtocolOIDC, true},
+		{"protocol saml", ApplicationProtocolSAML, true},
+		{"protocol wsfed", ApplicationProtocolWsFed, true},
+		{"protocol bad", ApplicationProtocolType("x"), false},
 
 		{"subject user", AssignmentSubjectUser, true},
 		{"subject group", AssignmentSubjectGroup, true},
@@ -64,8 +64,6 @@ func TestApplicationEventsTypeAndOccurredAt(t *testing.T) {
 		{&ApplicationUpdated{At: at}, "ApplicationUpdated"},
 		{&ApplicationIconUpdated{At: at}, "ApplicationIconUpdated"},
 		{&ApplicationDeleted{At: at}, "ApplicationDeleted"},
-		{&ProtocolBindingAttached{At: at}, "ProtocolBindingAttached"},
-		{&ProtocolBindingDetached{At: at}, "ProtocolBindingDetached"},
 		{&ApplicationAssigned{At: at}, "ApplicationAssigned"},
 		{&ApplicationUnassigned{At: at}, "ApplicationUnassigned"},
 		{&AppSignInPolicyUpdated{At: at}, "AppSignInPolicyUpdated"},

@@ -1,7 +1,6 @@
 package usecases
 
-// 管理者向け Application メタデータ操作 (Create / Update / Delete) と protocol binding
-// の接続 / 解除。SCL Application bounded context の admin interface 群 (wi-69)。
+// 管理者向け Application メタデータ操作 (Create / Update / Delete)。
 
 import (
 	"context"
@@ -62,6 +61,7 @@ type CreateApplicationInput struct {
 	Name        string
 	Kind        domain.ApplicationKind
 	LaunchURL   string
+	Protocol    *domain.ApplicationProtocol
 	Now         time.Time
 }
 
@@ -82,14 +82,14 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 		Kind:          in.Kind,
 		Status:        domain.ApplicationActive,
 		LaunchURL:     strings.TrimSpace(in.LaunchURL),
-		Bindings:      []domain.ProtocolBinding{},
+		Protocol:      cloneProtocol(in.Protocol),
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 	if err := domain.ValidateApplication(app); err != nil {
 		return nil, err
 	}
-	if err := deps.Repo.Save(ctx, app); err != nil {
+	if err := deps.Repo.Create(ctx, app); err != nil {
 		return nil, err
 	}
 	emit(deps.Emit, &domain.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id})
@@ -115,7 +115,7 @@ func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateAppli
 		return nil, ErrApplicationNotFound
 	}
 	updated := *app
-	updated.Bindings = slices.Clone(app.Bindings)
+	updated.Protocol = cloneProtocol(app.Protocol)
 	changed := []string{}
 	if in.Name != nil {
 		if name := strings.TrimSpace(*in.Name); name != app.Name {
@@ -173,6 +173,11 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceApplications, 1); err != nil {
 			return err
 		}
+		if app.Protocol != nil && app.Protocol.Type == domain.ApplicationProtocolOIDC {
+			if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
+				return err
+			}
+		}
 	}
 	emit(deps.Emit, &domain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
 	return nil
@@ -220,7 +225,7 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 		return nil, err
 	}
 	updated := *app
-	updated.Bindings = slices.Clone(app.Bindings)
+	updated.Protocol = cloneProtocol(app.Protocol)
 	updated.CategoryIDs = slices.Clone(app.CategoryIDs)
 	updated.IconObjectKey = objectKey
 	updated.IconURL = strings.TrimSpace(in.IconURL)
@@ -250,7 +255,7 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserI
 		return nil, err
 	}
 	updated := *app
-	updated.Bindings = slices.Clone(app.Bindings)
+	updated.Protocol = cloneProtocol(app.Protocol)
 	updated.CategoryIDs = slices.Clone(app.CategoryIDs)
 	updated.IconObjectKey = ""
 	updated.IconURL = ""
@@ -282,64 +287,10 @@ func DetectApplicationIconContentType(data []byte) (string, error) {
 	return contentType, nil
 }
 
-type AttachBindingInput struct {
-	ActorUserID   string
-	ApplicationID string
-	Binding       domain.ProtocolBinding
-	Now           time.Time
-}
-
-func AttachBinding(ctx context.Context, deps ApplicationDeps, in AttachBindingInput) (*domain.Application, error) {
-	tenantID := tenancy.TenantID(ctx)
-	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
-	if err != nil {
-		return nil, err
+func cloneProtocol(protocol *domain.ApplicationProtocol) *domain.ApplicationProtocol {
+	if protocol == nil {
+		return nil
 	}
-	if app == nil {
-		return nil, ErrApplicationNotFound
-	}
-	if err := domain.ValidateBinding(in.Binding); err != nil {
-		return nil, err
-	}
-	updated := *app
-	updated.Bindings = slices.Clone(app.Bindings)
-	// 同種別 binding は置き換える (1 application に 1 種別 1 binding)。
-	updated.Bindings = slices.DeleteFunc(updated.Bindings, func(b domain.ProtocolBinding) bool {
-		return b.Type == in.Binding.Type
-	})
-	updated.Bindings = append(updated.Bindings, in.Binding)
-	if err := domain.ValidateApplication(&updated); err != nil {
-		return nil, err
-	}
-	updated.UpdatedAt = adminNow(in.Now)
-	if err := deps.Repo.Save(ctx, &updated); err != nil {
-		return nil, err
-	}
-	emit(deps.Emit, &domain.ProtocolBindingAttached{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, BindingType: string(in.Binding.Type),
-	})
-	return &updated, nil
-}
-
-func DetachBinding(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, bindingType domain.ProtocolBindingType, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
-	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
-	if err != nil {
-		return err
-	}
-	if app == nil {
-		return ErrApplicationNotFound
-	}
-	updated := *app
-	updated.Bindings = slices.DeleteFunc(slices.Clone(app.Bindings), func(b domain.ProtocolBinding) bool {
-		return b.Type == bindingType
-	})
-	updated.UpdatedAt = adminNow(now)
-	if err := deps.Repo.Save(ctx, &updated); err != nil {
-		return err
-	}
-	emit(deps.Emit, &domain.ProtocolBindingDetached{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, BindingType: string(bindingType),
-	})
-	return nil
+	cloned := *protocol
+	return &cloned
 }

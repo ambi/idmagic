@@ -8,6 +8,8 @@ package db_postgres
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteApplication = `-- name: DeleteApplication :exec
@@ -24,8 +26,50 @@ func (q *Queries) DeleteApplication(ctx context.Context, arg DeleteApplicationPa
 	return err
 }
 
+const findApplicationByProtocol = `-- name: FindApplicationByProtocol :one
+SELECT a.tenant_id, a.application_id, a.name, a.kind, a.status, a.protocol_type,
+       a.icon_url, a.icon_object_key, a.launch_url, a.category_ids, a.created_at, a.updated_at
+FROM applications a
+LEFT JOIN oauth2_clients c ON c.application_id = a.application_id
+LEFT JOIN saml_service_providers s ON s.application_id = a.application_id
+LEFT JOIN wsfed_relying_parties w ON w.application_id = a.application_id
+WHERE a.tenant_id = $1
+  AND a.protocol_type = $2
+  AND (
+    ($2 = 'oidc' AND c.client_id::text = $3)
+    OR ($2 = 'saml' AND s.entity_id = $3)
+    OR ($2 = 'wsfed' AND w.wtrealm = $3)
+  )
+`
+
+type FindApplicationByProtocolParams struct {
+	TenantID     string
+	ProtocolType pgtype.Text
+	ClientID     string
+}
+
+func (q *Queries) FindApplicationByProtocol(ctx context.Context, arg FindApplicationByProtocolParams) (*Application, error) {
+	row := q.db.QueryRow(ctx, findApplicationByProtocol, arg.TenantID, arg.ProtocolType, arg.ClientID)
+	var i Application
+	err := row.Scan(
+		&i.TenantID,
+		&i.ApplicationID,
+		&i.Name,
+		&i.Kind,
+		&i.Status,
+		&i.ProtocolType,
+		&i.IconUrl,
+		&i.IconObjectKey,
+		&i.LaunchUrl,
+		&i.CategoryIds,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const getApplicationByID = `-- name: GetApplicationByID :one
-SELECT tenant_id, application_id, name, kind, status, icon_url, icon_object_key, launch_url, bindings, category_ids, created_at, updated_at
+SELECT tenant_id, application_id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications
 WHERE tenant_id = $1 AND application_id = $2
 `
@@ -44,10 +88,10 @@ func (q *Queries) GetApplicationByID(ctx context.Context, arg GetApplicationByID
 		&i.Name,
 		&i.Kind,
 		&i.Status,
+		&i.ProtocolType,
 		&i.IconUrl,
 		&i.IconObjectKey,
 		&i.LaunchUrl,
-		&i.Bindings,
 		&i.CategoryIds,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -55,8 +99,80 @@ func (q *Queries) GetApplicationByID(ctx context.Context, arg GetApplicationByID
 	return &i, err
 }
 
+const getApplicationProtocolKey = `-- name: GetApplicationProtocolKey :one
+SELECT COALESCE(c.client_id::text, s.entity_id, w.wtrealm, '')::text AS protocol_key
+FROM applications a
+LEFT JOIN oauth2_clients c ON c.application_id = a.application_id
+LEFT JOIN saml_service_providers s ON s.application_id = a.application_id
+LEFT JOIN wsfed_relying_parties w ON w.application_id = a.application_id
+WHERE a.tenant_id = $1 AND a.application_id = $2
+`
+
+type GetApplicationProtocolKeyParams struct {
+	TenantID      string
+	ApplicationID string
+}
+
+func (q *Queries) GetApplicationProtocolKey(ctx context.Context, arg GetApplicationProtocolKeyParams) (string, error) {
+	row := q.db.QueryRow(ctx, getApplicationProtocolKey, arg.TenantID, arg.ApplicationID)
+	var protocol_key string
+	err := row.Scan(&protocol_key)
+	return protocol_key, err
+}
+
+const linkOAuth2ClientToApplication = `-- name: LinkOAuth2ClientToApplication :exec
+UPDATE oauth2_clients
+SET application_id = $1
+WHERE tenant_id = $2 AND client_id::text = $3 AND application_id IS NULL
+`
+
+type LinkOAuth2ClientToApplicationParams struct {
+	ApplicationID pgtype.UUID
+	TenantID      string
+	ClientID      string
+}
+
+func (q *Queries) LinkOAuth2ClientToApplication(ctx context.Context, arg LinkOAuth2ClientToApplicationParams) error {
+	_, err := q.db.Exec(ctx, linkOAuth2ClientToApplication, arg.ApplicationID, arg.TenantID, arg.ClientID)
+	return err
+}
+
+const linkSamlServiceProviderToApplication = `-- name: LinkSamlServiceProviderToApplication :exec
+UPDATE saml_service_providers
+SET application_id = $1
+WHERE tenant_id = $2 AND entity_id = $3 AND application_id IS NULL
+`
+
+type LinkSamlServiceProviderToApplicationParams struct {
+	ApplicationID pgtype.UUID
+	TenantID      string
+	EntityID      string
+}
+
+func (q *Queries) LinkSamlServiceProviderToApplication(ctx context.Context, arg LinkSamlServiceProviderToApplicationParams) error {
+	_, err := q.db.Exec(ctx, linkSamlServiceProviderToApplication, arg.ApplicationID, arg.TenantID, arg.EntityID)
+	return err
+}
+
+const linkWsFedRelyingPartyToApplication = `-- name: LinkWsFedRelyingPartyToApplication :exec
+UPDATE wsfed_relying_parties
+SET application_id = $1
+WHERE tenant_id = $2 AND wtrealm = $3 AND application_id IS NULL
+`
+
+type LinkWsFedRelyingPartyToApplicationParams struct {
+	ApplicationID pgtype.UUID
+	TenantID      string
+	Wtrealm       string
+}
+
+func (q *Queries) LinkWsFedRelyingPartyToApplication(ctx context.Context, arg LinkWsFedRelyingPartyToApplicationParams) error {
+	_, err := q.db.Exec(ctx, linkWsFedRelyingPartyToApplication, arg.ApplicationID, arg.TenantID, arg.Wtrealm)
+	return err
+}
+
 const listApplicationsByTenant = `-- name: ListApplicationsByTenant :many
-SELECT tenant_id, application_id, name, kind, status, icon_url, icon_object_key, launch_url, bindings, category_ids, created_at, updated_at
+SELECT tenant_id, application_id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications
 WHERE tenant_id = $1
 ORDER BY name
@@ -77,10 +193,10 @@ func (q *Queries) ListApplicationsByTenant(ctx context.Context, tenantID string)
 			&i.Name,
 			&i.Kind,
 			&i.Status,
+			&i.ProtocolType,
 			&i.IconUrl,
 			&i.IconObjectKey,
 			&i.LaunchUrl,
-			&i.Bindings,
 			&i.CategoryIds,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -111,16 +227,16 @@ func (q *Queries) RemoveApplicationCategory(ctx context.Context, arg RemoveAppli
 }
 
 const upsertApplication = `-- name: UpsertApplication :exec
-INSERT INTO applications (tenant_id, application_id, name, kind, status, icon_url, icon_object_key, launch_url, bindings, category_ids, created_at, updated_at)
+INSERT INTO applications (tenant_id, application_id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 ON CONFLICT (application_id) DO UPDATE SET
   name = EXCLUDED.name,
   kind = EXCLUDED.kind,
   status = EXCLUDED.status,
+  protocol_type = EXCLUDED.protocol_type,
   icon_url = EXCLUDED.icon_url,
   icon_object_key = EXCLUDED.icon_object_key,
   launch_url = EXCLUDED.launch_url,
-  bindings = EXCLUDED.bindings,
   category_ids = EXCLUDED.category_ids,
   updated_at = EXCLUDED.updated_at
 `
@@ -131,10 +247,10 @@ type UpsertApplicationParams struct {
 	Name          string
 	Kind          string
 	Status        string
+	ProtocolType  pgtype.Text
 	IconUrl       string
 	IconObjectKey string
 	LaunchUrl     string
-	Bindings      []byte
 	CategoryIds   []string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -147,10 +263,10 @@ func (q *Queries) UpsertApplication(ctx context.Context, arg UpsertApplicationPa
 		arg.Name,
 		arg.Kind,
 		arg.Status,
+		arg.ProtocolType,
 		arg.IconUrl,
 		arg.IconObjectKey,
 		arg.LaunchUrl,
-		arg.Bindings,
 		arg.CategoryIds,
 		arg.CreatedAt,
 		arg.UpdatedAt,

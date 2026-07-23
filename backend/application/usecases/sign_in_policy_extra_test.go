@@ -113,7 +113,7 @@ func TestSignInPolicyNilRepoFallbacks(t *testing.T) {
 	apps := appmemory.NewApplicationRepository()
 	deps := appusecases.SignInPolicyDeps{AppRepo: apps}
 	app, err := appusecases.CreateApplication(ctx, appusecases.ApplicationDeps{Repo: apps, AssignmentRepo: appmemory.NewApplicationAssignmentRepository()},
-		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "X", Kind: domain.ApplicationFederated})
+		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "X", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"}})
 	if err != nil {
 		t.Fatal(err)
 	}

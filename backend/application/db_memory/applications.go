@@ -26,7 +26,10 @@ func NewApplicationRepository() *ApplicationRepository {
 
 func cloneApplication(app *domain.Application) *domain.Application {
 	cloned := *app
-	cloned.Bindings = slices.Clone(app.Bindings)
+	if app.Protocol != nil {
+		protocol := *app.Protocol
+		cloned.Protocol = &protocol
+	}
 	cloned.CategoryIDs = slices.Clone(app.CategoryIDs)
 	return &cloned
 }
@@ -117,20 +120,20 @@ func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicatio
 	return cloneApplication(app), nil
 }
 
-func bindingKey(binding domain.ProtocolBinding) string {
-	switch binding.Type {
-	case domain.ProtocolBindingOIDC:
-		return binding.ClientID
-	case domain.ProtocolBindingWsFed:
-		return binding.Wtrealm
-	case domain.ProtocolBindingSAML:
-		return binding.EntityID
+func protocolKey(protocol domain.ApplicationProtocol) string {
+	switch protocol.Type {
+	case domain.ApplicationProtocolOIDC:
+		return protocol.ClientID
+	case domain.ApplicationProtocolWsFed:
+		return protocol.Wtrealm
+	case domain.ApplicationProtocolSAML:
+		return protocol.EntityID
 	default:
 		return ""
 	}
 }
 
-func (r *ApplicationRepository) FindByBinding(_ context.Context, tenantID string, bindingType domain.ProtocolBindingType, key string) (*domain.Application, error) {
+func (r *ApplicationRepository) FindByProtocol(_ context.Context, tenantID string, protocolType domain.ApplicationProtocolType, key string) (*domain.Application, error) {
 	if key == "" {
 		return nil, nil
 	}
@@ -140,10 +143,8 @@ func (r *ApplicationRepository) FindByBinding(_ context.Context, tenantID string
 		if app.TenantID != tenantID {
 			continue
 		}
-		for _, binding := range app.Bindings {
-			if binding.Type == bindingType && bindingKey(binding) == key {
-				return cloneApplication(app), nil
-			}
+		if app.Protocol != nil && app.Protocol.Type == protocolType && protocolKey(*app.Protocol) == key {
+			return cloneApplication(app), nil
 		}
 	}
 	return nil, nil
@@ -154,6 +155,10 @@ func (r *ApplicationRepository) Save(_ context.Context, app *domain.Application)
 	defer r.mu.Unlock()
 	r.applications[sharedmem.TenantKey(app.TenantID, app.ApplicationID)] = cloneApplication(app)
 	return nil
+}
+
+func (r *ApplicationRepository) Create(ctx context.Context, app *domain.Application) error {
+	return r.Save(ctx, app)
 }
 
 func (r *ApplicationRepository) Delete(_ context.Context, tenantID, applicationID string) error {

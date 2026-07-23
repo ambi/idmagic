@@ -30,7 +30,7 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	appDeps, assignDeps := newDeps()
 
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -83,7 +83,7 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	}
 }
 
-func TestWeblinkRequiresLaunchURLAndRejectsBindings(t *testing.T) {
+func TestWeblinkRequiresLaunchURLAndRejectsProtocol(t *testing.T) {
 	ctx := tenantContext()
 	appDeps, _ := newDeps()
 
@@ -93,42 +93,11 @@ func TestWeblinkRequiresLaunchURLAndRejectsBindings(t *testing.T) {
 		t.Fatal("weblink without launch_url must be rejected")
 	}
 
-	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Wiki", Kind: domain.ApplicationWeblink, LaunchURL: "https://wiki.example",
-	})
-	if err != nil {
-		t.Fatalf("create weblink: %v", err)
-	}
-	if _, err := appusecases.AttachBinding(ctx, appDeps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: "c1"},
+	if _, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "Wiki", Kind: domain.ApplicationWeblink,
+		LaunchURL: "https://wiki.example",
+		Protocol:  &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "c1"},
 	}); err == nil {
-		t.Fatal("weblink must not accept protocol bindings")
-	}
-}
-
-func TestAttachBindingReplacesSameType(t *testing.T) {
-	ctx := tenantContext()
-	appDeps, _ := newDeps()
-	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "CRM", Kind: domain.ApplicationFederated,
-	})
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	for _, clientID := range []string{"c1", "c2"} {
-		if _, err := appusecases.AttachBinding(ctx, appDeps, appusecases.AttachBindingInput{
-			ActorUserID: "admin", ApplicationID: app.ApplicationID,
-			Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: clientID},
-		}); err != nil {
-			t.Fatalf("attach %s: %v", clientID, err)
-		}
-	}
-	got, err := appDeps.Repo.FindByID(ctx, "acme", app.ApplicationID)
-	if err != nil {
-		t.Fatalf("find: %v", err)
-	}
-	if len(got.Bindings) != 1 || got.Bindings[0].ClientID != "c2" {
-		t.Fatalf("same-type binding should be replaced, got %+v", got.Bindings)
+		t.Fatal("weblink must not accept protocol")
 	}
 }

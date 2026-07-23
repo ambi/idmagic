@@ -15,12 +15,17 @@ type Querier interface {
 	DeleteApplicationAssignmentsByApplication(ctx context.Context, arg DeleteApplicationAssignmentsByApplicationParams) error
 	DeleteApplicationCategory(ctx context.Context, arg DeleteApplicationCategoryParams) error
 	DeleteApplicationIconsByApplication(ctx context.Context, arg DeleteApplicationIconsByApplicationParams) error
+	FindApplicationByProtocol(ctx context.Context, arg FindApplicationByProtocolParams) (*Application, error)
 	GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*GetAppSignInPolicyRow, error)
 	GetApplicationByID(ctx context.Context, arg GetApplicationByIDParams) (*Application, error)
 	GetApplicationCategoryByID(ctx context.Context, arg GetApplicationCategoryByIDParams) (*ApplicationCategory, error)
 	GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*GetApplicationIconRow, error)
 	GetApplicationOrdering(ctx context.Context, userID string) (*ApplicationOrdering, error)
+	GetApplicationProtocolKey(ctx context.Context, arg GetApplicationProtocolKeyParams) (string, error)
 	GetTenantDefaultSignInPolicy(ctx context.Context, tenantID string) (*TenantDefaultSignInPolicy, error)
+	LinkOAuth2ClientToApplication(ctx context.Context, arg LinkOAuth2ClientToApplicationParams) error
+	LinkSamlServiceProviderToApplication(ctx context.Context, arg LinkSamlServiceProviderToApplicationParams) error
+	LinkWsFedRelyingPartyToApplication(ctx context.Context, arg LinkWsFedRelyingPartyToApplicationParams) error
 	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
 	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error)
 	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error)

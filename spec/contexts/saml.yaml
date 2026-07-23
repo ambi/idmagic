@@ -126,6 +126,9 @@ models:
   AccessDeniedError:
     kind: error
     description: 認証済み principal が対象テナントの管理権限を持たない。
+  ApplicationOwnedProtocolError:
+    kind: error
+    description: SAML service provider が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
   ClaimMappingPolicy:
     kind: value_object
     description: ClaimMapping context が publish する trust ごとの claim 発行規則の最小 stub。
@@ -149,7 +152,7 @@ models:
       - urn:oasis:names:tc:SAML:2.0:nameid-format:transient
   SamlServiceProvider:
     kind: entity
-    description: "SAML 2.0 Web Browser SSO の service provider (SP) 登録。entityID で識別し、許可する AssertionConsumerService URL の閉集合、audience、NameID format、署名方針、claim 発行 policy を束ねる。未登録 entityID・許可外 ACS URL は拒否する (open redirect 防止, fail-closed)。SP metadata は entityID / ACS / NameID format をまとめて取り込めるが、最終的な信頼境界は本登録が持つ。"
+    description: "SAML 2.0 Web Browser SSO の service provider (SP) 登録。entityID で識別し、許可する AssertionConsumerService URL の閉集合、audience、NameID format、署名方針、claim 発行 policy を束ねる。application_id が NULL の catalog 外 SP も許容し、非 NULL の場合は同一 tenant の saml Application を参照して Application 1件に最大1 SP だけが紐づく。"
     identity:
       - tenant_id
       - entity_id
@@ -163,6 +166,10 @@ models:
         constraints:
           - non_empty
         description: SP の識別子 (SAML entityID)。AuthnRequest の Issuer と完全一致しなければならない。
+      application_id:
+        type: UUID
+        optional: true
+        description: 対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。
       display_name:
         type: String
         optional: true
@@ -494,7 +501,7 @@ interfaces:
         successful_status_codes:
           - "200"
   DeleteSamlServiceProvider:
-    description: entityID に一致する SAML service provider を削除する (冪等)。entityID は URI のため、path ではなくクエリで指定する。
+    description: entityID に一致する catalog 外 SAML service provider を削除する (冪等)。application_id が非 NULL の SP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。
     input:
       entity_id:
         type: String
@@ -502,6 +509,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - ApplicationOwnedProtocolError
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:

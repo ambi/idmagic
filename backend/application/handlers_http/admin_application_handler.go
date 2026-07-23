@@ -18,40 +18,35 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-type protocolBindingResponse struct {
-	Type     domain.ProtocolBindingType `json:"type"`
-	ClientID string                     `json:"client_id,omitempty"`
-	Wtrealm  string                     `json:"wtrealm,omitempty"`
+type applicationProtocolResponse struct {
+	Type     domain.ApplicationProtocolType `json:"type"`
+	ClientID string                         `json:"client_id,omitempty"`
+	EntityID string                         `json:"entity_id,omitempty"`
+	Wtrealm  string                         `json:"wtrealm,omitempty"`
 }
 
 type applicationResponse struct {
-	ApplicationID        string                    `json:"application_id"`
-	Name                 string                    `json:"name"`
-	Kind                 domain.ApplicationKind    `json:"kind"`
-	Status               domain.ApplicationStatus  `json:"status"`
-	IconURL              string                    `json:"icon_url,omitempty"`
-	IconObjectKey        string                    `json:"icon_object_key,omitempty"`
-	LaunchURL            string                    `json:"launch_url,omitempty"`
-	Bindings             []protocolBindingResponse `json:"bindings"`
-	CategoryIDs          []string                  `json:"category_ids"`
-	CategoryNames        []string                  `json:"category_names"`
-	BindingSummaries     []string                  `json:"binding_summaries"`
-	AssignedSubjectCount int                       `json:"assigned_subject_count"`
-	SignInPolicySummary  string                    `json:"sign_in_policy_summary"`
-	CreatedAt            time.Time                 `json:"created_at"`
-	UpdatedAt            time.Time                 `json:"updated_at"`
+	ApplicationID        string                       `json:"application_id"`
+	Name                 string                       `json:"name"`
+	Kind                 domain.ApplicationKind       `json:"kind"`
+	Status               domain.ApplicationStatus     `json:"status"`
+	IconURL              string                       `json:"icon_url,omitempty"`
+	IconObjectKey        string                       `json:"icon_object_key,omitempty"`
+	LaunchURL            string                       `json:"launch_url,omitempty"`
+	Protocol             *applicationProtocolResponse `json:"protocol,omitempty"`
+	CategoryIDs          []string                     `json:"category_ids"`
+	CategoryNames        []string                     `json:"category_names"`
+	ProtocolSummary      string                       `json:"protocol_summary,omitempty"`
+	AssignedSubjectCount int                          `json:"assigned_subject_count"`
+	SignInPolicySummary  string                       `json:"sign_in_policy_summary"`
+	CreatedAt            time.Time                    `json:"created_at"`
+	UpdatedAt            time.Time                    `json:"updated_at"`
 }
 
 type applicationUpdateRequest struct {
 	Name      *string                   `json:"name"`
 	Status    *domain.ApplicationStatus `json:"status"`
 	LaunchURL *string                   `json:"launch_url"`
-}
-
-type protocolBindingRequest struct {
-	Type     domain.ProtocolBindingType `json:"type"`
-	ClientID string                     `json:"client_id"`
-	Wtrealm  string                     `json:"wtrealm"`
 }
 
 type assignmentRequest struct {
@@ -153,41 +148,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 			policySummary = fmt.Sprintf("テナントデフォルト (%dルール)", defaultRuleCount)
 		}
 
-		// binding要約
-		var summaries []string
-		for _, b := range app.Bindings {
-			switch b.Type {
-			case domain.ProtocolBindingOIDC:
-				if b.ClientID != "" {
-					summaries = append(summaries, "OIDC (Client ID: "+b.ClientID+")")
-				} else {
-					summaries = append(summaries, "OIDC")
-				}
-			case domain.ProtocolBindingWsFed:
-				if b.Wtrealm != "" {
-					summaries = append(summaries, "WS-Fed (Realm: "+b.Wtrealm+")")
-				} else {
-					summaries = append(summaries, "WS-Fed")
-				}
-			case domain.ProtocolBindingSAML:
-				if b.EntityID != "" {
-					summaries = append(summaries, "SAML (Entity ID: "+b.EntityID+")")
-				} else {
-					summaries = append(summaries, "SAML")
-				}
-			}
-		}
-		if len(summaries) == 0 && app.Kind == domain.ApplicationWeblink {
-			summaries = append(summaries, "Web Link")
-		}
-		if summaries == nil {
-			summaries = []string{}
-		}
-
-		bindings := make([]protocolBindingResponse, len(app.Bindings))
-		for j, b := range app.Bindings {
-			bindings[j] = protocolBindingResponse{Type: b.Type, ClientID: b.ClientID, Wtrealm: b.Wtrealm}
-		}
+		protocol, protocolSummary := applicationProtocolProjection(app)
 		categoryIDs := app.CategoryIDs
 		if categoryIDs == nil {
 			categoryIDs = []string{}
@@ -201,10 +162,10 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 			IconURL:              app.IconURL,
 			IconObjectKey:        app.IconObjectKey,
 			LaunchURL:            app.LaunchURL,
-			Bindings:             bindings,
+			Protocol:             protocol,
 			CategoryIDs:          categoryIDs,
 			CategoryNames:        categoryNames,
-			BindingSummaries:     summaries,
+			ProtocolSummary:      protocolSummary,
 			AssignedSubjectCount: assignedCount,
 			SignInPolicySummary:  policySummary,
 			CreatedAt:            app.CreatedAt,
@@ -344,50 +305,31 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	app, err := d.requireApp(c)
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
 	if err := appusecases.DeleteApplication(
 		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	c.Response().Header().Set("Cache-Control", "no-store")
-	return c.NoContent(http.StatusNoContent)
-}
-
-func (d Deps) handleAttachBinding(c *echo.Context) error {
-	if err := d.VerifyBrowserRequest(c); err != nil {
-		return err
-	}
-	actor, err := d.RequireAdmin(c)
-	if err != nil {
-		return d.WriteAdminAccessError(c, err)
-	}
-	var req protocolBindingRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
-	}
-	app, err := appusecases.AttachBinding(c.Request().Context(), d.applicationDeps(), appusecases.AttachBindingInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
-		Binding: domain.ProtocolBinding{Type: req.Type, ClientID: req.ClientID, Wtrealm: req.Wtrealm}, Now: time.Now().UTC(),
-	})
-	if err != nil {
-		return d.writeApplicationError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app))
-}
-
-func (d Deps) handleDetachBinding(c *echo.Context) error {
-	if err := d.VerifyBrowserRequest(c); err != nil {
-		return err
-	}
-	actor, err := d.RequireAdmin(c)
-	if err != nil {
-		return d.WriteAdminAccessError(c, err)
-	}
-	if err := appusecases.DetachBinding(
-		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"),
-		domain.ProtocolBindingType(c.Param("binding_type")), time.Now().UTC(),
-	); err != nil {
-		return d.writeApplicationError(c, err)
+	if app.Protocol != nil {
+		tenantID := support.RequestTenantID(c)
+		switch app.Protocol.Type {
+		case domain.ApplicationProtocolOIDC:
+			if err := d.ClientRepo.Delete(c.Request().Context(), tenantID, app.Protocol.ClientID); err != nil {
+				return err
+			}
+		case domain.ApplicationProtocolSAML:
+			if err := d.SamlSPRepo.Delete(c.Request().Context(), tenantID, app.Protocol.EntityID); err != nil {
+				return err
+			}
+		case domain.ApplicationProtocolWsFed:
+			if err := d.WsFedRPRepo.Delete(c.Request().Context(), tenantID, app.Protocol.Wtrealm); err != nil {
+				return err
+			}
+		}
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
@@ -648,40 +590,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 		policySummary = fmt.Sprintf("テナントデフォルト (%dルール)", defaultRuleCount)
 	}
 
-	var summaries []string
-	for _, b := range app.Bindings {
-		switch b.Type {
-		case domain.ProtocolBindingOIDC:
-			if b.ClientID != "" {
-				summaries = append(summaries, "OIDC (Client ID: "+b.ClientID+")")
-			} else {
-				summaries = append(summaries, "OIDC")
-			}
-		case domain.ProtocolBindingWsFed:
-			if b.Wtrealm != "" {
-				summaries = append(summaries, "WS-Fed (Realm: "+b.Wtrealm+")")
-			} else {
-				summaries = append(summaries, "WS-Fed")
-			}
-		case domain.ProtocolBindingSAML:
-			if b.EntityID != "" {
-				summaries = append(summaries, "SAML (Entity ID: "+b.EntityID+")")
-			} else {
-				summaries = append(summaries, "SAML")
-			}
-		}
-	}
-	if len(summaries) == 0 && app.Kind == domain.ApplicationWeblink {
-		summaries = append(summaries, "Web Link")
-	}
-	if summaries == nil {
-		summaries = []string{}
-	}
-
-	bindings := make([]protocolBindingResponse, len(app.Bindings))
-	for i, b := range app.Bindings {
-		bindings[i] = protocolBindingResponse{Type: b.Type, ClientID: b.ClientID, Wtrealm: b.Wtrealm}
-	}
+	protocol, protocolSummary := applicationProtocolProjection(app)
 	categoryIDs := app.CategoryIDs
 	if categoryIDs == nil {
 		categoryIDs = []string{}
@@ -694,14 +603,46 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 		IconURL:              app.IconURL,
 		IconObjectKey:        app.IconObjectKey,
 		LaunchURL:            app.LaunchURL,
-		Bindings:             bindings,
+		Protocol:             protocol,
 		CategoryIDs:          categoryIDs,
 		CategoryNames:        categoryNames,
-		BindingSummaries:     summaries,
+		ProtocolSummary:      protocolSummary,
 		AssignedSubjectCount: assignedCount,
 		SignInPolicySummary:  policySummary,
 		CreatedAt:            app.CreatedAt,
 		UpdatedAt:            app.UpdatedAt,
+	}
+}
+
+func applicationProtocolProjection(app *domain.Application) (*applicationProtocolResponse, string) {
+	if app.Protocol == nil {
+		if app.Kind == domain.ApplicationWeblink {
+			return nil, "Web Link"
+		}
+		return nil, ""
+	}
+	protocol := &applicationProtocolResponse{
+		Type: app.Protocol.Type, ClientID: app.Protocol.ClientID,
+		EntityID: app.Protocol.EntityID, Wtrealm: app.Protocol.Wtrealm,
+	}
+	switch app.Protocol.Type {
+	case domain.ApplicationProtocolOIDC:
+		if app.Protocol.ClientID != "" {
+			return protocol, "OIDC (Client ID: " + app.Protocol.ClientID + ")"
+		}
+		return protocol, "OIDC"
+	case domain.ApplicationProtocolSAML:
+		if app.Protocol.EntityID != "" {
+			return protocol, "SAML (Entity ID: " + app.Protocol.EntityID + ")"
+		}
+		return protocol, "SAML"
+	case domain.ApplicationProtocolWsFed:
+		if app.Protocol.Wtrealm != "" {
+			return protocol, "WS-Fed (Realm: " + app.Protocol.Wtrealm + ")"
+		}
+		return protocol, "WS-Fed"
+	default:
+		return protocol, ""
 	}
 }
 

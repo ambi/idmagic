@@ -37,7 +37,7 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 	if err := apps.Save(ctx, &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "Catalog App",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-		Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: "client-catalog"}},
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "client-catalog"},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)

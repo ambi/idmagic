@@ -23,7 +23,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "Payroll",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-		Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: "c1"}},
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := apps.Save(ctx, app); err != nil {
@@ -32,12 +32,12 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, GroupRepo: groupmemory.NewGroupRepository()}
 
 	// catalog 外の client は gating 対象外。
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "other", "alice"); err != nil || !allowed {
+	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "other", "alice"); err != nil || !allowed {
 		t.Fatalf("client outside catalog must be allowed: allowed=%v err=%v", allowed, err)
 	}
 
 	// catalog 内・未割当は fail-closed で拒否。
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "c1", "alice"); err != nil || allowed {
+	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice"); err != nil || allowed {
 		t.Fatalf("unassigned subject must be denied: allowed=%v err=%v", allowed, err)
 	}
 
@@ -48,7 +48,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "c1", "alice"); err != nil || !allowed {
+	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice"); err != nil || !allowed {
 		t.Fatalf("assigned subject must be allowed: allowed=%v err=%v", allowed, err)
 	}
 
@@ -57,7 +57,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "c1", "alice"); err != nil || allowed {
+	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice"); err != nil || allowed {
 		t.Fatalf("disabled application must be denied: allowed=%v err=%v", allowed, err)
 	}
 }
@@ -70,7 +70,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	now := time.Now().UTC()
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-		Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: "c1"}},
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := apps.Save(ctx, app); err != nil {
@@ -90,7 +90,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	}
 	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
 
-	decision, err := d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "c1", "alice", &authdomain.AuthenticationContext{
+	decision, err := d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice", &authdomain.AuthenticationContext{
 		UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
 	}, "")
 	if err != nil {
@@ -112,7 +112,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	now := time.Now().UTC()
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-		Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: "c1"}},
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := apps.Save(ctx, app); err != nil {
@@ -138,7 +138,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	singleFactor := &authdomain.AuthenticationContext{UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"}}
 
 	// 個別ポリシーが無ければデフォルトの MFA が適用される。
-	decision, err := d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "c1", "alice", singleFactor, "")
+	decision, err := d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice", singleFactor, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	decision, err = d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ProtocolBindingOIDC, "c1", "alice", singleFactor, "")
+	decision, err = d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice", singleFactor, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -132,6 +132,13 @@ func (d Deps) handleDeleteServiceProvider(c *echo.Context) error {
 	if entityID == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "entity_id query parameter is required")
 	}
+	sp, err := d.SamlSPRepo.FindByEntityID(c.Request().Context(), support.RequestTenantID(c), entityID)
+	if err != nil {
+		return err
+	}
+	if sp != nil && sp.ApplicationID != "" {
+		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Application に紐づく service provider は Application を削除してください")
+	}
 	if err := d.SamlSPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), entityID); err != nil {
 		return err
 	}

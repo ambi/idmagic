@@ -9,15 +9,14 @@ spec_version: "3.0"
 context: Application
 glossary:
   Application:
-    definition: 運用者が接続・割当・監査する業務アプリケーション。OIDC client、SAML SP、WS-Fed RP は Application に紐づく protocol binding である。
+    definition: 運用者が接続・割当・監査する業務アプリケーション。federated / service Application は最大1個の protocol 設定を持つ。
     aliases:
       - アプリケーション
       - Application
-  ProtocolBinding:
-    definition: "Application を特定 protocol で接続するための設定。例: OAuth2Client、SAML ServiceProvider、WS-Fed RelyingParty。"
+  ApplicationProtocol:
+    definition: "Application が利用する単一の protocol 設定への型付き参照。OAuth2Client、SamlServiceProvider、WsFedRelyingParty のいずれか1個を指す。"
     aliases:
-      - binding
-      - protocol_binding
+      - application_protocol
 models:
   ApplicationKind:
     kind: enum
@@ -32,9 +31,9 @@ models:
     values:
       - active
       - disabled
-  ProtocolBindingType:
+  ApplicationProtocolType:
     kind: enum
-    description: "Application に接続する protocol binding の種別。"
+    description: "Application が利用する単一 protocol の種別。作成後は変更できない。"
     values:
       - oidc
       - saml
@@ -53,30 +52,35 @@ models:
       - hidden
   ApplicationProvisionType:
     kind: enum
-    description: 一括作成で選ぶアプリ種別。oidc / wsfed は federated Application と対応する OAuth2 client / WS-Fed RP を同時に作成し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。
+    description: 一括作成で選ぶアプリ種別。oidc / saml / wsfed は federated Application と対応する protocol 設定を作成して catalog へ原子的に公開し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。
     values:
       - oidc
+      - saml
       - wsfed
       - weblink
       - service
-  ProtocolBinding:
+  ApplicationProtocol:
     kind: value_object
-    description: "Application に紐づく protocol binding。OIDC client / WS-Fed RP / 将来 SAML SP への 参照を opaque key で保持する。binding の wire 挙動は各 protocol context が所有する。"
+    description: "Application に紐づく単一 protocol 設定への参照。type に対応する key だけを持ち、protocol row の application_id から Application へ通常の外部キーで関連付ける。"
     fields:
       type:
-        type: ProtocolBindingType
-        description: binding 種別。
+        type: ApplicationProtocolType
+        description: protocol 種別。
       client_id:
         type: String
         optional: true
-        description: oidc binding が指す OAuth2 client_id。
+        description: oidc が指す OAuth2 client_id。
+      entity_id:
+        type: String
+        optional: true
+        description: saml が指す SAML entity_id。
       wtrealm:
         type: String
         optional: true
-        description: wsfed binding が指す WS-Fed RP の wtrealm。
+        description: wsfed が指す WS-Fed RP の wtrealm。
   Application:
     kind: entity
-    description: "運用者が「接続する業務アプリケーション」として扱う上位 aggregate。OIDC client / SAML SP / WS-Fed RP を protocol binding として束ね、表示名・アイコン・状態・割当を所有する。weblink kind は binding を持たない外部リンク。tenant_id は既存 Tenant を指し、category_ids と protocol binding の opaque key は use case が同一テナント内の既存参照として検証する。"
+    description: "運用者が「接続する業務アプリケーション」として扱う上位 aggregate。表示名・アイコン・状態・割当と、不変な単一 protocol 種別を所有する。weblink は protocol を持たず、federated は oidc / saml / wsfed のいずれか1個、service は oidc 1個を持つ。protocol row は nullable application_id を持ち、NULL の catalog 外設定も許容する。"
     identity: application_id
     fields:
       tenant_id:
@@ -109,9 +113,10 @@ models:
         type: String
         optional: true
         description: weblink kind の起動先 URL。
-      bindings:
-        type: "ProtocolBinding[]"
-        description: 接続済み protocol binding。weblink は空。
+      protocol:
+        type: ApplicationProtocol
+        optional: true
+        description: 作成時に確定する単一 protocol。weblink は未設定で、作成後の接続・解除・種別変更はできない。
       category_ids:
         type: "UUID[]"
         description: 付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う (ADR-069)。
@@ -272,14 +277,16 @@ models:
       launch_url:
         type: String
         optional: true
-      bindings:
-        type: "ProtocolBinding[]"
+      protocol:
+        type: ApplicationProtocol
+        optional: true
       category_ids:
         type: "UUID[]"
       category_names:
         type: "String[]"
-      binding_summaries:
-        type: "String[]"
+      protocol_summary:
+        type: String
+        optional: true
       assigned_subject_count:
         type: Integer
       sign_in_policy_summary:
@@ -333,7 +340,7 @@ models:
         type: "UUID[]"
   AdminApplicationCreateRequest:
     kind: value_object
-    description: Application 一括作成リクエスト。種別を選び、対応するプロトコル設定もまとめて受け取る。 backend が OAuth2 client / WS-Fed RP を作成し、Application と protocol binding を一括で作る。
+    description: Application 一括作成リクエスト。種別を選び、対応する protocol 設定もまとめて受け取る。backend は protocol row を catalog 外として準備した後、Application insert と protocol row.application_id の設定を同一 transaction で行う。後半が失敗した protocol row は有効な catalog 外設定であり、意味のない Application は残さない。
     fields:
       name:
         type: String
@@ -341,7 +348,7 @@ models:
           - non_empty
       type:
         type: ApplicationProvisionType
-        description: oidc / wsfed / weblink。
+        description: oidc / saml / wsfed / weblink / service。
       launch_url:
         type: String
         optional: true
@@ -386,6 +393,14 @@ models:
         type: String
         optional: true
         description: type=wsfed の NameID ソース属性。
+      entity_id:
+        type: String
+        optional: true
+        description: type=saml のとき必須。生成する SAML SP の entity ID。
+      acs_urls:
+        type: "String[]"
+        optional: true
+        description: type=saml のとき必須。Assertion Consumer Service URL。
   AdminApplicationCreateResponse:
     kind: value_object
     description: 一括作成の結果。type=oidc のときは生成した OAuth2 client の client_id / client_secret を 一度だけ返す (再表示不可)。
@@ -402,7 +417,7 @@ models:
         description: type=oidc のとき一度だけ返るシークレット。
   ApplicationOidcConfig:
     kind: value_object
-    description: Application の OIDC binding が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。
+    description: Application の OIDC protocol が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。
     fields:
       client_id:
         type: String
@@ -446,7 +461,7 @@ models:
         optional: true
   ApplicationWsFedConfig:
     kind: value_object
-    description: Application の WS-Fed binding が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。
+    description: Application の WS-Fed protocol が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。
     fields:
       wtrealm:
         type: String
@@ -462,9 +477,28 @@ models:
         type: String
       rules:
         type: "ClaimMappingRule[]"
+  ApplicationSamlConfig:
+    kind: value_object
+    description: Application の SAML protocol が指す service provider の実設定 (アプリ詳細表示用)。
+    fields:
+      entity_id: { type: String }
+      acs_urls: { type: "String[]" }
+      slo_url: { type: String, optional: true }
+      audience: { type: String, optional: true }
+      name_id_format: { type: String }
+      name_id_source: { type: String }
+      sign_assertion: { type: Boolean }
+      sign_response: { type: Boolean }
+      want_authn_requests_signed: { type: Boolean }
+      authn_request_signing_certificate_pem:
+        type: String
+        optional: true
+        annotations:
+          sensitive: true
+      rules: { type: "ClaimMappingRule[]" }
   AdminApplicationDetailResponse:
     kind: value_object
-    description: アプリ詳細レスポンス。Application 本体に加え、binding から解決した protocol 実設定を含む。
+    description: アプリ詳細レスポンス。Application 本体に加え、protocol relation から解決した実設定を含む。oidc / saml / wsfed のうち Application.protocol.type に対応する最大1個だけが設定される。
     fields:
       application:
         type: AdminApplicationResponse
@@ -474,9 +508,12 @@ models:
       wsfed:
         type: ApplicationWsFedConfig
         optional: true
+      saml:
+        type: ApplicationSamlConfig
+        optional: true
   ApplicationOidcConfigUpdateRequest:
     kind: value_object
-    description: OIDC binding 設定の更新リクエスト。指定フィールドのみ変更する。advanced 項目を含む。 token_endpoint_auth_method など更新契約上の不変項目は含めない。
+    description: OIDC protocol 設定の更新リクエスト。指定フィールドのみ変更する。advanced 項目を含む。 token_endpoint_auth_method など更新契約上の不変項目は含めない。
     fields:
       redirect_uris:
         type: "String[]"
@@ -498,7 +535,7 @@ models:
         optional: true
   RotateApplicationClientSecretRequest:
     kind: value_object
-    description: Application の OIDC binding に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。
+    description: Application の OIDC protocol に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。
     fields:
       grace_days:
         type: Integer
@@ -518,7 +555,7 @@ models:
         type: "ApplicationClientSecretCredentialMetadata[]"
   ApplicationWsFedConfigUpdateRequest:
     kind: value_object
-    description: WS-Federation binding 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。
+    description: WS-Federation protocol 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。
     fields:
       reply_urls:
         type: "String[]"
@@ -540,7 +577,7 @@ models:
         optional: true
   ApplicationSamlConfigUpdateRequest:
     kind: value_object
-    description: SAML binding 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。
+    description: SAML protocol 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。
     fields:
       acs_urls: { type: "String[]", optional: true }
       slo_url: { type: String, optional: true }
@@ -575,18 +612,6 @@ models:
     fields:
       application:
         type: AdminApplicationResponse
-  ProtocolBindingRequest:
-    kind: value_object
-    description: protocol binding の接続リクエスト。
-    fields:
-      type:
-        type: ProtocolBindingType
-      client_id:
-        type: String
-        optional: true
-      wtrealm:
-        type: String
-        optional: true
   ApplicationAssignmentRequest:
     kind: value_object
     description: Application 割当リクエスト。visibility 省略時は visible。
@@ -765,34 +790,6 @@ models:
       actorUserId:
         type: String
       applicationId:
-        type: String
-  ProtocolBindingAttached:
-    kind: event
-    description: Application に protocol binding を接続した。
-    payload:
-      occurredAt:
-        type: DateTime
-      tenantId:
-        type: String
-      actorUserId:
-        type: String
-      applicationId:
-        type: String
-      bindingType:
-        type: String
-  ProtocolBindingDetached:
-    kind: event
-    description: Application から protocol binding を解除した。
-    payload:
-      occurredAt:
-        type: DateTime
-      tenantId:
-        type: String
-      actorUserId:
-        type: String
-      applicationId:
-        type: String
-      bindingType:
         type: String
   ApplicationAssigned:
     kind: event
@@ -1067,7 +1064,7 @@ interfaces:
         method: GET
         path: /api/admin/applications
   GetAdminApplication:
-    description: 管理者が Application を取得する。binding から解決した protocol 実設定も含む。別テナントは未存在として扱う。
+    description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。別テナントは未存在として扱う。
     input:
       application_id:
         type: String
@@ -1088,7 +1085,7 @@ interfaces:
         method: GET
         path: "/api/admin/applications/{application_id}"
   CreateAdminApplication:
-    description: 管理者が Application を一括作成する。種別に応じて OAuth2 client / WS-Fed RP も同時に作成し、 protocol binding を接続する。
+    description: 管理者が Application を一括作成する。種別に応じた protocol row を準備し、Application と application_id relation を同一 transaction で catalog へ公開する。protocol 種別は作成後に変更できない。
     input:
       request:
         type: AdminApplicationCreateRequest
@@ -1211,7 +1208,7 @@ interfaces:
         method: GET
         path: "/application-icons/{application_id}/{object_key}"
   DeleteAdminApplication:
-    description: 管理者が Application を削除する (冪等)。
+    description: 管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。
     input:
       application_id:
         type: String
@@ -1231,58 +1228,8 @@ interfaces:
         path: "/api/admin/applications/{application_id}"
         successful_status_codes:
           - "204"
-  AttachProtocolBinding:
-    description: 管理者が Application に protocol binding を接続する。
-    input:
-      application_id:
-        type: String
-      request:
-        type: ProtocolBindingRequest
-    output:
-      application:
-        type: AdminApplicationResponse
-    errors:
-      - InvalidRequestError
-      - AccessDeniedError
-    emits:
-      - ProtocolBindingAttached
-    access:
-      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
-      resource:
-        type: Application
-        id: input.application_id
-    bindings:
-      - kind: http
-        method: POST
-        path: "/api/admin/applications/{application_id}/bindings"
-        request_form: body
-        successful_status_codes:
-          - "201"
-  DetachProtocolBinding:
-    description: 管理者が Application から protocol binding を解除する (冪等)。
-    input:
-      application_id:
-        type: String
-      binding_type:
-        type: String
-    errors:
-      - InvalidRequestError
-      - AccessDeniedError
-    emits:
-      - ProtocolBindingDetached
-    access:
-      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
-      resource:
-        type: Application
-        id: input.application_id
-    bindings:
-      - kind: http
-        method: DELETE
-        path: "/api/admin/applications/{application_id}/bindings/{binding_type}"
-        successful_status_codes:
-          - "204"
   UpdateApplicationOidcConfig:
-    description: 管理者が Application の OIDC binding が指す OAuth2 client の設定を更新する。
+    description: 管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。
     input:
       application_id:
         type: String
@@ -1304,7 +1251,7 @@ interfaces:
         successful_status_codes:
           - "204"
   RotateApplicationClientSecret:
-    description: 管理者が Application の OIDC binding の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。
+    description: 管理者が Application の OIDC protocol の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。
     input:
       application_id:
         type: String
@@ -1329,7 +1276,7 @@ interfaces:
         successful_status_codes:
           - "200"
   UpdateApplicationWsFedConfig:
-    description: 管理者が Application の WS-Fed binding が指す relying party の設定を更新する。
+    description: 管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。
     input:
       application_id:
         type: String
@@ -1351,7 +1298,7 @@ interfaces:
         successful_status_codes:
           - "204"
   UpdateApplicationSamlConfig:
-    description: 管理者が Application の SAML binding が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。
+    description: 管理者が Application の SAML protocol が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。
     input:
       application_id:
         type: String
@@ -1792,7 +1739,7 @@ scenarios:
       - client は対象 tenant の有効な API access token を提示している
     main_success:
       - applications:read scope で Application と category と assignment を参照できる
-      - applications:write scope で Application と protocol binding を変更できる
+      - applications:write scope で Application の作成・protocol 設定更新・削除ができる
       - settings:read または settings:write scope で tenant default sign-in policy を対応する操作種別に限って扱える
     extensions:
       - at: 1
@@ -1803,10 +1750,10 @@ scenarios:
         condition: token の tenant と request tenant が一致しない
         steps:
           - 操作は AccessDeniedError で拒否される
-  管理者はApplicationのSAML binding設定を更新できる:
+  管理者はApplicationのSAML protocol設定を更新できる:
     actor: TenantAdministrator
     given:
-      - 管理者が SAML binding を持つ Application の編集画面を開いている
+      - 管理者が SAML protocol を持つ Application の編集画面を開いている
     main_success:
       - 管理者が ACS URL、署名方針、claim 規則を更新する
       - SAML service provider 設定だけが同一テナント内で更新される
@@ -1815,18 +1762,17 @@ scenarios:
         condition: AuthnRequest 署名必須だが検証可能な証明書がない
         steps:
           - 更新は InvalidRequestError で拒否される
-  管理者は管理画面でアプリケーションを作成しprotocol_bindingを構成できる:
+  管理者は管理画面でアプリケーションと単一protocolを構成できる:
     actor: TenantAdministrator
     given:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のアプリケーション一覧を開いている"
     main_success:
       - "管理者 \"operator\" が confidential なアプリケーション \"portal\" (type=oidc) を作成する"
       - 作成応答だけが生成された client_secret を一度だけ含む
-      - "管理者 \"operator\" がアプリケーション \"portal\" に OIDC protocol binding を追加する"
       - "管理者 \"operator\" がアプリケーション \"portal\" の OIDC 設定 (redirect_uris / scope) を編集する"
       - "管理者 \"operator\" がアプリケーション \"portal\" をユーザー \"alice\" に割り当てる"
       - "管理者 \"operator\" がアプリケーション \"portal\" を削除する"
-      - "\"ApplicationCreated\"、\"ProtocolBindingAttached\"、\"ApplicationAssigned\"、\"ApplicationDeleted\" が発行される"
+      - "\"ApplicationCreated\"、\"ApplicationAssigned\"、\"ApplicationDeleted\" が発行される"
     extensions:
       - at: 5
         condition: 別テナントまたは存在しない subject へ割り当てる
@@ -1862,7 +1808,7 @@ scenarios:
     actor: TenantAdministrator
     given:
       - 管理者が Application 編集画面を開いている
-      - Application は OIDC / SAML / WS-Fed のいずれかの protocol binding を持つ
+      - Application は OIDC / SAML / WS-Fed のいずれか単一の protocol を持つ
     main_success:
       - 管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する
       - "AppSignInPolicyUpdated が発行される"
@@ -1883,7 +1829,7 @@ scenarios:
     actor: TenantAdministrator
     given:
       - "roles=[\"admin\"] のユーザー \"operator\" がサインインポリシー画面を開いている"
-      - テナントに OIDC binding を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない
+      - テナントに OIDC protocol を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない
     main_success:
       - 管理者が MFA 必須、将来の強制開始日時、enrollment bypass 猶予、管理者承認を要求するテナントデフォルトサインインポリシーを保存する
       - "TenantDefaultSignInPolicyUpdated が発行される"
@@ -1977,20 +1923,12 @@ flows:
             does: 保存済みアイコンを削除する
             interface: DeleteApplicationIcon
             to: AdminApplications
-          - action: attach_binding
-            does: protocol binding を追加接続する
-            interface: AttachProtocolBinding
-            to: AdminApplications
-          - action: detach_binding
-            does: protocol binding を解除する
-            interface: DetachProtocolBinding
-            to: AdminApplications
           - action: update_oidc_config
-            does: OIDC binding が指す OAuth2 client の設定を編集して保存する
+            does: OIDC protocol が指す OAuth2 client の設定を編集して保存する
             interface: UpdateApplicationOidcConfig
             to: AdminApplications
           - action: update_wsfed_config
-            does: WS-Fed binding が指す relying party の設定を編集して保存する
+            does: WS-Fed protocol が指す relying party の設定を編集して保存する
             interface: UpdateApplicationWsFedConfig
             to: AdminApplications
           - action: assign

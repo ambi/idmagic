@@ -131,6 +131,9 @@ models:
   AccessDeniedError:
     kind: error
     description: credential または認可 principal が要求された操作を許可されない。
+  ApplicationOwnedProtocolError:
+    kind: error
+    description: WS-Fed relying party が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
   WsFedTokenType:
     kind: enum
     description: WS-Federation で発行する assertion の SAML バージョン (RSTR の TokenType にもなる)。 SAML 1.1 (urn:oasis:names:tc:SAML:1.0:assertion) は Entra / AD FS の WS-Fed 既定。
@@ -139,7 +142,7 @@ models:
       - urn:oasis:names:tc:SAML:2.0:assertion
   WsFedRelyingParty:
     kind: entity
-    description: "WS-Federation passive の relying party (RP) 登録。wtrealm で識別し、許可する wreply (返信先) の閉集合、audience、claim 発行 policy を束ねる。未登録 wtrealm・許可外 wreply は拒否する (open redirect 防止, fail-closed)。"
+    description: "WS-Federation passive の relying party (RP) 登録。wtrealm で識別し、許可する wreply (返信先) の閉集合、audience、claim 発行 policy を束ねる。application_id が NULL の catalog 外 RP も許容し、非 NULL の場合は同一 tenant の wsfed Application を参照して Application 1件に最大1 RP だけが紐づく。"
     identity:
       - tenant_id
       - wtrealm
@@ -153,6 +156,10 @@ models:
         constraints:
           - non_empty
         description: RP の識別子 (WS-Fed wtrealm / SAML audience)。
+      application_id:
+        type: UUID
+        optional: true
+        description: 対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。
       display_name:
         type: String
         optional: true
@@ -608,13 +615,14 @@ interfaces:
         successful_status_codes:
           - "200"
   DeleteWsFedRelyingParty:
-    description: 管理者が所属テナントの WS-Federation relying party trust を wtrealm で削除する。管理操作は AdminFederationTrustsManage で保護する。
+    description: 管理者が所属テナントの catalog 外 WS-Federation relying party trust を wtrealm で削除する。application_id が非 NULL の RP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。
     input:
       wtrealm:
         type: String
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - ApplicationOwnedProtocolError
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:

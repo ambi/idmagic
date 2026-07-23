@@ -1,10 +1,10 @@
 -- name: GetSamlServiceProvider :one
-SELECT tenant_id, entity_id, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
+SELECT tenant_id, entity_id, application_id, application_protocol_type, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
 want_authn_requests_signed, authn_request_signing_certificate_pem, created_at, updated_at
 FROM saml_service_providers WHERE tenant_id = $1 AND entity_id = $2;
 
 -- name: ListSamlServiceProvidersByTenant :many
-SELECT tenant_id, entity_id, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
+SELECT tenant_id, entity_id, application_id, application_protocol_type, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
 want_authn_requests_signed, authn_request_signing_certificate_pem, created_at, updated_at
 FROM saml_service_providers WHERE tenant_id = $1 ORDER BY entity_id;
 

@@ -13,7 +13,7 @@ import (
 )
 
 const deleteClient = `-- name: DeleteClient :exec
-DELETE FROM clients WHERE tenant_id = $1 AND client_id = $2
+DELETE FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2
 `
 
 type DeleteClientParams struct {
@@ -27,12 +27,12 @@ func (q *Queries) DeleteClient(ctx context.Context, arg DeleteClientParams) erro
 }
 
 const getClientByID = `-- name: GetClientByID :one
-SELECT tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
   created_at, updated_at, first_party
-FROM clients
+FROM oauth2_clients
 WHERE tenant_id = $1 AND client_id = $2
 `
 
@@ -41,12 +41,14 @@ type GetClientByIDParams struct {
 	ClientID string
 }
 
-func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Client, error) {
+func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error) {
 	row := q.db.QueryRow(ctx, getClientByID, arg.TenantID, arg.ClientID)
-	var i Client
+	var i Oauth2Client
 	err := row.Scan(
 		&i.TenantID,
 		&i.ClientID,
+		&i.ApplicationID,
+		&i.ApplicationProtocolType,
 		&i.ClientSecretHash,
 		&i.ClientName,
 		&i.ClientType,
@@ -130,28 +132,30 @@ func (q *Queries) ListClientSecretCredentials(ctx context.Context, clientID stri
 }
 
 const listClientsByTenant = `-- name: ListClientsByTenant :many
-SELECT tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
   created_at, updated_at, first_party
-FROM clients
+FROM oauth2_clients
 WHERE tenant_id = $1
 ORDER BY created_at
 `
 
-func (q *Queries) ListClientsByTenant(ctx context.Context, tenantID string) ([]*Client, error) {
+func (q *Queries) ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error) {
 	rows, err := q.db.Query(ctx, listClientsByTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Client
+	var items []*Oauth2Client
 	for rows.Next() {
-		var i Client
+		var i Oauth2Client
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.ClientID,
+			&i.ApplicationID,
+			&i.ApplicationProtocolType,
 			&i.ClientSecretHash,
 			&i.ClientName,
 			&i.ClientType,
@@ -205,7 +209,7 @@ func (q *Queries) UpdateClientSecretCredential(ctx context.Context, arg UpdateCl
 }
 
 const upsertClient = `-- name: UpsertClient :exec
-INSERT INTO clients (
+INSERT INTO oauth2_clients (
   tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
@@ -213,7 +217,7 @@ INSERT INTO clients (
   created_at, updated_at, first_party
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 ON CONFLICT (client_id) DO UPDATE SET
-  client_secret_hash = COALESCE(EXCLUDED.client_secret_hash, clients.client_secret_hash),
+  client_secret_hash = COALESCE(EXCLUDED.client_secret_hash, oauth2_clients.client_secret_hash),
   client_name = EXCLUDED.client_name,
   client_type = EXCLUDED.client_type,
   redirect_uris = EXCLUDED.redirect_uris,

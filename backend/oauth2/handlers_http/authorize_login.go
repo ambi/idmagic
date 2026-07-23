@@ -141,7 +141,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	}
 	if !client.FirstParty {
 		decision, err := d.EvaluateApplicationAccess(
-			c.Request().Context(), support.RequestTenantID(c), appdomain.ProtocolBindingOIDC, req.ClientID,
+			c.Request().Context(), support.RequestTenantID(c), appdomain.ApplicationProtocolOIDC, req.ClientID,
 			authn.UserID, authn, d.ClientIP(c.Request()),
 		)
 		if err != nil {

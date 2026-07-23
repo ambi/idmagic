@@ -1129,7 +1129,7 @@ models:
       - InvalidTarget
   OAuth2Client:
     kind: entity
-    description: RFC 7591 + FAPI 2.0 拡張のクライアント。
+    description: RFC 7591 + FAPI 2.0 拡張のクライアント。application_id が NULL の catalog 外 client も許容する。非 NULL の場合は同一 tenant の oidc Application を参照し、Application 1件に最大1 client だけが紐づく。
     identity:
       - client_id
     fields:
@@ -1142,6 +1142,10 @@ models:
         constraints:
           - non_empty
           - max_length: 128
+      application_id:
+        type: UUID
+        optional: true
+        description: 対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。
       client_secret_hash:
         type: String
         optional: true
@@ -2785,6 +2789,9 @@ models:
   AccessDeniedError:
     kind: error
     description: ResourceOwner が認可を拒否した、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。
+  ApplicationOwnedProtocolError:
+    kind: error
+    description: OAuth2 client が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
   ExpiredTokenError:
     kind: error
     description: Device Authorization Grant において device_code が有効期限を過ぎた (RFC 8628 §3.5 expired_token)。
@@ -4153,13 +4160,14 @@ interfaces:
         path: "/api/admin/clients/{client_id}"
         request_form: body
   DeleteAdminOAuth2Client:
-    description: 管理者が所属テナントの client を削除する。
+    description: 管理者が所属テナントの catalog 外 client を削除する。application_id が非 NULL の client は ApplicationOwnedProtocolError (HTTP 409) で拒否し、Application 削除へ誘導する。
     input:
       client_id:
         type: String
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - ApplicationOwnedProtocolError
     emits:
       - AdminOAuth2ClientDeleted
     access:

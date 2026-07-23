@@ -104,6 +104,13 @@ func (d Deps) handleDeleteRelyingParty(c *echo.Context) error {
 	if wtrealm == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "wtrealm query parameter is required")
 	}
+	rp, err := d.WsFedRPRepo.FindByWtrealm(c.Request().Context(), support.RequestTenantID(c), wtrealm)
+	if err != nil {
+		return err
+	}
+	if rp != nil && rp.ApplicationID != "" {
+		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Application に紐づく relying party は Application を削除してください")
+	}
 	if err := d.WsFedRPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), wtrealm); err != nil {
 		return err
 	}

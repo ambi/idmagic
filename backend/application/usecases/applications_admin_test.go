@@ -31,7 +31,7 @@ func fullAppDeps() appusecases.ApplicationDeps {
 func seedApp(ctx context.Context, t *testing.T, deps appusecases.ApplicationDeps, name string) *domain.Application {
 	t.Helper()
 	app, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: name, Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: name, Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("seed app: %v", err)
@@ -51,7 +51,7 @@ func TestCreateApplication_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	}
 	seedApp(ctx, t, deps, "app-one")
 	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	var qErr *tenancydomain.QuotaExceededError
 	if !errors.As(err, &qErr) {
@@ -77,7 +77,7 @@ func TestDeleteApplication_decrementsQuotaUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	}); err != nil {
 		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
 	}
@@ -255,29 +255,6 @@ func TestDetectApplicationIconContentType(t *testing.T) {
 	}
 }
 
-func TestDetachBinding(t *testing.T) {
-	ctx := tenantContext()
-	deps := fullAppDeps()
-	app := seedApp(ctx, t, deps, "CRM")
-
-	if _, err := appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: "c1"},
-	}); err != nil {
-		t.Fatalf("attach: %v", err)
-	}
-	if err := appusecases.DetachBinding(ctx, deps, "admin", app.ApplicationID, domain.ProtocolBindingOIDC, time.Time{}); err != nil {
-		t.Fatalf("detach: %v", err)
-	}
-	got, _ := deps.Repo.FindByID(ctx, "acme", app.ApplicationID)
-	if len(got.Bindings) != 0 {
-		t.Fatalf("binding not detached: %+v", got.Bindings)
-	}
-	if err := appusecases.DetachBinding(ctx, deps, "admin", "ghost", domain.ProtocolBindingOIDC, time.Time{}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
-		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
-	}
-}
-
 func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	ctx := tenantContext()
 	deps := fullAppDeps()
@@ -332,57 +309,6 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ApplicationID)
 	if len(list) != 0 {
 		t.Fatalf("unassign left %d assignments", len(list))
-	}
-}
-
-func TestAttachBindingValidationErrors(t *testing.T) {
-	ctx := tenantContext()
-	deps := fullAppDeps()
-	app := seedApp(ctx, t, deps, "CRM")
-
-	// ValidateBinding: client_id required for OIDC
-	_, err := appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: ""},
-	})
-	if err == nil {
-		t.Fatalf("expected validation error for empty clientID")
-	}
-
-	// ValidateBinding: wtrealm required for WS-Fed
-	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingWsFed, Wtrealm: ""},
-	})
-	if err == nil {
-		t.Fatalf("expected validation error for empty wtrealm")
-	}
-
-	// ValidateBinding: entity_id required for SAML
-	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingSAML, EntityID: ""},
-	})
-	if err == nil {
-		t.Fatalf("expected validation error for empty entity_id")
-	}
-
-	// ValidateBinding: invalid type
-	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
-		Binding: domain.ProtocolBinding{Type: "invalid-type"},
-	})
-	if err == nil {
-		t.Fatalf("expected validation error for invalid binding type")
-	}
-
-	// App not found
-	_, err = appusecases.AttachBinding(ctx, deps, appusecases.AttachBindingInput{
-		ActorUserID: "admin", ApplicationID: "ghost",
-		Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: "c1"},
-	})
-	if !errors.Is(err, appusecases.ErrApplicationNotFound) {
-		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
 	}
 }
 
@@ -492,6 +418,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 	// 1. Service App (should be excluded)
 	serviceApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
 		ActorUserID: "admin", Name: "Service App", Kind: domain.ApplicationService,
+		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "service-client"},
 	})
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: serviceApp.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
@@ -499,7 +426,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 
 	// 2. Disabled App (should be excluded)
 	disabledApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Disabled App", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "Disabled App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	disabled := domain.ApplicationDisabled
 	_, _ = appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
@@ -511,7 +438,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 
 	// 3. Normal App with multiple assignments (should be deduped)
 	normalApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Normal App", Kind: domain.ApplicationFederated,
+		ActorUserID: "admin", Name: "Normal App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	// assign to user "alice"
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
@@ -546,6 +473,10 @@ func (e errorAppRepo) FindByID(ctx context.Context, tenantID, id string) (*domai
 }
 
 func (e errorAppRepo) Save(ctx context.Context, app *domain.Application) error {
+	return errors.New("database error")
+}
+
+func (e errorAppRepo) Create(ctx context.Context, app *domain.Application) error {
 	return errors.New("database error")
 }
 
@@ -601,21 +532,7 @@ func TestUsecaseDatabaseErrors(t *testing.T) {
 		t.Fatalf("expected database error, got %v", err)
 	}
 
-	// 4. AttachBinding find error
-	_, err = appusecases.AttachBinding(ctx, appusecases.ApplicationDeps{Repo: errRepo}, appusecases.AttachBindingInput{
-		ApplicationID: "app-1", Binding: domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: "c1"},
-	})
-	if err == nil || err.Error() != "database error" {
-		t.Fatalf("expected database error, got %v", err)
-	}
-
-	// 5. DetachBinding find error
-	err = appusecases.DetachBinding(ctx, appusecases.ApplicationDeps{Repo: errRepo}, "admin", "app-1", domain.ProtocolBindingOIDC, time.Time{})
-	if err == nil || err.Error() != "database error" {
-		t.Fatalf("expected database error, got %v", err)
-	}
-
-	// 6. AssignApplication find error
+	// 4. AssignApplication find error
 	_, err = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, appusecases.AssignApplicationInput{
 		ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
@@ -623,7 +540,7 @@ func TestUsecaseDatabaseErrors(t *testing.T) {
 		t.Fatalf("expected database error, got %v", err)
 	}
 
-	// 7. ListAssignments find error
+	// 5. ListAssignments find error
 	_, err = appusecases.ListAssignments(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, "app-1")
 	if err == nil || err.Error() != "database error" {
 		t.Fatalf("expected database error, got %v", err)

@@ -23,8 +23,6 @@ import type {
   TenantDefaultSignInPolicy,
   TenantDefaultSignInPolicyView,
   SignInRule,
-  ProtocolBinding,
-  ProtocolBindingType,
   AuthorizationDetailType,
   McpResourceServer,
   TenantUserAttributeSchema,
@@ -945,28 +943,6 @@ export async function deleteApplicationIcon(
 export async function deleteAdminApplication(csrfToken: string, id: string): Promise<void> {
   await request(
     `/api/admin/applications/${encodeURIComponent(id)}`,
-    adminRequest(csrfToken, 'DELETE'),
-  )
-}
-
-export async function attachProtocolBinding(
-  csrfToken: string,
-  id: string,
-  binding: ProtocolBinding,
-): Promise<AdminApplication> {
-  return request(
-    `/api/admin/applications/${encodeURIComponent(id)}/bindings`,
-    adminRequest(csrfToken, 'POST', binding),
-  )
-}
-
-export async function detachProtocolBinding(
-  csrfToken: string,
-  id: string,
-  bindingType: ProtocolBindingType,
-): Promise<void> {
-  await request(
-    `/api/admin/applications/${encodeURIComponent(id)}/bindings/${encodeURIComponent(bindingType)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }

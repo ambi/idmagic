@@ -25,7 +25,7 @@ func (q *Queries) DeleteSamlServiceProvider(ctx context.Context, arg DeleteSamlS
 }
 
 const getSamlServiceProvider = `-- name: GetSamlServiceProvider :one
-SELECT tenant_id, entity_id, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
+SELECT tenant_id, entity_id, application_id, application_protocol_type, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
 want_authn_requests_signed, authn_request_signing_certificate_pem, created_at, updated_at
 FROM saml_service_providers WHERE tenant_id = $1 AND entity_id = $2
 `
@@ -41,6 +41,8 @@ func (q *Queries) GetSamlServiceProvider(ctx context.Context, arg GetSamlService
 	err := row.Scan(
 		&i.TenantID,
 		&i.EntityID,
+		&i.ApplicationID,
+		&i.ApplicationProtocolType,
 		&i.DisplayName,
 		&i.AcsUrls,
 		&i.SloUrl,
@@ -57,7 +59,7 @@ func (q *Queries) GetSamlServiceProvider(ctx context.Context, arg GetSamlService
 }
 
 const listSamlServiceProvidersByTenant = `-- name: ListSamlServiceProvidersByTenant :many
-SELECT tenant_id, entity_id, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
+SELECT tenant_id, entity_id, application_id, application_protocol_type, display_name, acs_urls, slo_url, audience, claim_policy, sign_assertion, sign_response,
 want_authn_requests_signed, authn_request_signing_certificate_pem, created_at, updated_at
 FROM saml_service_providers WHERE tenant_id = $1 ORDER BY entity_id
 `
@@ -74,6 +76,8 @@ func (q *Queries) ListSamlServiceProvidersByTenant(ctx context.Context, tenantID
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.EntityID,
+			&i.ApplicationID,
+			&i.ApplicationProtocolType,
 			&i.DisplayName,
 			&i.AcsUrls,
 			&i.SloUrl,

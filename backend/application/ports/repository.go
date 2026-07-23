@@ -13,11 +13,13 @@ type ApplicationRepository interface {
 	ListByTenant(ctx context.Context, tenantID string) ([]*domain.Application, error)
 	// FindByID は application_id に一致する Application を返す。存在しなければ (nil, nil)。
 	FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error)
-	// FindByBinding は指定 protocol binding (種別 + key: oidc は client_id / wsfed は wtrealm)
-	// を持つ Application を返す。割当ゲートの解決に使う。存在しなければ (nil, nil)。
-	FindByBinding(ctx context.Context, tenantID string, bindingType domain.ProtocolBindingType, key string) (*domain.Application, error)
+	// FindByProtocol は protocol table の application_id relation を索引で逆引きする。
+	// catalog 外 protocol record なら nil を返す。
+	FindByProtocol(ctx context.Context, tenantID string, protocolType domain.ApplicationProtocolType, key string) (*domain.Application, error)
 	// Save は Application を upsert する。
 	Save(ctx context.Context, app *domain.Application) error
+	// Create は Application 行と protocol row.application_id を原子的に作成する。
+	Create(ctx context.Context, app *domain.Application) error
 	// Delete は application_id に一致する Application を削除する (冪等)。
 	Delete(ctx context.Context, tenantID, applicationID string) error
 	// RemoveCategory はテナント内の全 Application の category_ids から指定カテゴリを除く

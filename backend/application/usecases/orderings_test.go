@@ -58,7 +58,7 @@ func TestSaveAndGetMyApplicationOrder(t *testing.T) {
 	for _, name := range []string{"Alpha", "Beta", "Gamma"} {
 		app, err := appusecases.CreateApplication(ctx,
 			appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
-			appusecases.CreateApplicationInput{ActorUserID: "admin", Name: name, Kind: domain.ApplicationFederated})
+			appusecases.CreateApplicationInput{ActorUserID: "admin", Name: name, Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"}})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
@@ -118,7 +118,7 @@ func TestSaveMyApplicationOrderUpdatesExisting(t *testing.T) {
 
 	app, _ := appusecases.CreateApplication(ctx,
 		appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
-		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "App", Kind: domain.ApplicationFederated})
+		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"}})
 	_, _ = appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: app.ApplicationID,
 		SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",

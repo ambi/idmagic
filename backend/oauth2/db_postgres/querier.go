@@ -18,7 +18,7 @@ type Querier interface {
 	DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
-	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Client, error)
+	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error)
 	GetConsent(ctx context.Context, arg GetConsentParams) (*Consent, error)
 	GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error)
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
@@ -28,7 +28,7 @@ type Querier interface {
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
-	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Client, error)
+	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error

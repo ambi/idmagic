@@ -241,10 +241,10 @@ export function StatusBadge({ status }: { status: AdminApplication['status'] }) 
 export function kindLabel(app: AdminApplication, t: AdminApplicationsDictionary): string {
   if (app.kind === 'weblink') return t.weblinkTypeLabel
   if (app.kind === 'service') return t.serviceTypeLabel
-  const binding = app.bindings[0]?.type
-  if (binding === 'wsfed') return t.wsfedTypeLabel
-  if (binding === 'saml') return t.samlKindLabel
-  if (binding === 'oidc') return t.oidcKindLabel
+  const protocol = app.protocol?.type
+  if (protocol === 'wsfed') return t.wsfedTypeLabel
+  if (protocol === 'saml') return t.samlKindLabel
+  if (protocol === 'oidc') return t.oidcKindLabel
   return t.federationKindLabel
 }
 

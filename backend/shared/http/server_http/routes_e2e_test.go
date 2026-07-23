@@ -211,7 +211,7 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		if err := applicationRepo.Save(context.Background(), &appdomain.Application{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-demo", Name: "Demo App",
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-			Bindings:  []appdomain.ProtocolBinding{{Type: appdomain.ProtocolBindingOIDC, ClientID: demoClientID}},
+			Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: demoClientID},
 			CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed application: %v", err)

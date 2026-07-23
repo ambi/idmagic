@@ -27,6 +27,19 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	if err := json.Unmarshal(createOIDC.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
+	var createdWire struct {
+		Application map[string]any `json:"application"`
+	}
+	if err := json.Unmarshal(createOIDC.Body.Bytes(), &createdWire); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := createdWire.Application["bindings"]; exists {
+		t.Fatal("legacy bindings field must not be exposed")
+	}
+	protocol, ok := createdWire.Application["protocol"].(map[string]any)
+	if !ok || protocol["type"] != "oidc" {
+		t.Fatalf("single protocol projection missing: %#v", createdWire.Application["protocol"])
+	}
 	appID := created.Application.ApplicationID
 
 	// Create WebLink App
@@ -134,24 +147,16 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 		t.Fatalf("update bad json status=%d body=%s", updateBad.Code, updateBad.Body.String())
 	}
 
-	// Attach Binding
+	// protocol は作成時に不変であり、旧 attach / detach route は存在しない。
 	attach := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/bindings", csrf, cookie, map[string]any{
 		"type": "oidc", "client_id": "client-123",
 	})
-	if attach.Code != http.StatusCreated {
-		t.Fatalf("attach binding status=%d body=%s", attach.Code, attach.Body.String())
+	if attach.Code != http.StatusNotFound {
+		t.Fatalf("attach protocol route status=%d body=%s", attach.Code, attach.Body.String())
 	}
-
-	// Attach Binding (Invalid JSON)
-	attachBad := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/bindings", csrf, cookie, "invalid-json")
-	if attachBad.Code != http.StatusBadRequest {
-		t.Fatalf("attach binding bad json status=%d body=%s", attachBad.Code, attachBad.Body.String())
-	}
-
-	// Detach Binding
 	detach := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+appID+"/bindings/oidc", csrf, cookie, nil)
-	if detach.Code != http.StatusNoContent {
-		t.Fatalf("detach binding status=%d body=%s", detach.Code, detach.Body.String())
+	if detach.Code != http.StatusNotFound {
+		t.Fatalf("detach protocol route status=%d body=%s", detach.Code, detach.Body.String())
 	}
 
 	// Assign

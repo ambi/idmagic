@@ -1,24 +1,24 @@
 -- name: GetClientByID :one
-SELECT tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
   created_at, updated_at, first_party
-FROM clients
+FROM oauth2_clients
 WHERE tenant_id = $1 AND client_id = $2;
 
 -- name: ListClientsByTenant :many
-SELECT tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
   created_at, updated_at, first_party
-FROM clients
+FROM oauth2_clients
 WHERE tenant_id = $1
 ORDER BY created_at;
 
 -- name: UpsertClient :exec
-INSERT INTO clients (
+INSERT INTO oauth2_clients (
   tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
@@ -26,7 +26,7 @@ INSERT INTO clients (
   created_at, updated_at, first_party
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 ON CONFLICT (client_id) DO UPDATE SET
-  client_secret_hash = COALESCE(EXCLUDED.client_secret_hash, clients.client_secret_hash),
+  client_secret_hash = COALESCE(EXCLUDED.client_secret_hash, oauth2_clients.client_secret_hash),
   client_name = EXCLUDED.client_name,
   client_type = EXCLUDED.client_type,
   redirect_uris = EXCLUDED.redirect_uris,
@@ -45,7 +45,7 @@ ON CONFLICT (client_id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 
 -- name: DeleteClient :exec
-DELETE FROM clients WHERE tenant_id = $1 AND client_id = $2;
+DELETE FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2;
 
 -- name: ListClientSecretCredentials :many
 SELECT credential_id, client_id, secret_hash, created_at, expires_at, revoked_at

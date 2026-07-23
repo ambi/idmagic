@@ -184,7 +184,7 @@ func sameMfaFactor(actual, desired *totpdomain.MfaFactor) bool {
 
 // seedDemoApplications は既存の OIDC クライアント / WS-Fed RP を「アプリケーション」として
 // カタログに登録する。管理コンソール・アカウントポータル・demo-client・demo WS-Fed RP を
-// federated Application として binding 接続し、いずれも user_alice に割り当てる。これにより
+// federated Application として単一 protocol relation を作り、いずれも user_alice に割り当てる。これにより
 // ポータルのアプリ一覧に並び、デモのログイン経路 (割当ゲート) も成立する (wi-69)。
 // 管理コンソール / ポータルは first-party のため、割当がなくてもログイン自体は塞がない。
 func SeedDemoApplications(
@@ -198,14 +198,14 @@ func SeedDemoApplications(
 		return nil
 	}
 	for _, configured := range seed.Applications {
-		binding := appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingOIDC, ClientID: configured.BindingValue}
+		protocol := appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: configured.BindingValue}
 		if configured.BindingType == "wsfed" {
-			binding = appdomain.ProtocolBinding{Type: appdomain.ProtocolBindingWsFed, Wtrealm: configured.BindingValue}
+			protocol = appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolWsFed, Wtrealm: configured.BindingValue}
 		}
 		desired := &appdomain.Application{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: configured.ID, Name: configured.Name,
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
-			LaunchURL: configured.LaunchURL, Bindings: []appdomain.ProtocolBinding{binding},
+			LaunchURL: configured.LaunchURL, Protocol: &protocol,
 			CreatedAt: now, UpdatedAt: now,
 		}
 		existing, err := apps.FindByID(ctx, desired.TenantID, desired.ApplicationID)
@@ -213,7 +213,7 @@ func SeedDemoApplications(
 			return err
 		}
 		if existing == nil {
-			if err := apps.Save(ctx, desired); err != nil {
+			if err := apps.Create(ctx, desired); err != nil {
 				return err
 			}
 		} else if !sameApplication(existing, desired) {

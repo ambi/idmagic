@@ -46,6 +46,21 @@ func TestDeleteAdminOAuth2Client_decrementsQuotaUsage(t *testing.T) {
 	}
 }
 
+func TestDeleteAdminOAuth2ClientRejectsApplicationOwnedClient(t *testing.T) {
+	ctx := tenantContext("acme")
+	repo := oauth2memory.NewClientRepository()
+	repo.Seed(&domain.OAuth2Client{
+		TenantID: "acme", ClientID: "client-1", ApplicationID: "app-1",
+		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+	})
+
+	err := DeleteAdminOAuth2Client(ctx, AdminOAuth2ClientDeps{ClientRepo: repo}, "admin", "client-1", time.Now())
+	if !errors.Is(err, ErrProtocolOwnedByApplication) {
+		t.Fatalf("DeleteAdminOAuth2Client() error = %v, want ErrProtocolOwnedByApplication", err)
+	}
+}
+
 func TestAdminOAuth2Client(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	clientRepo := oauth2memory.NewClientRepository()

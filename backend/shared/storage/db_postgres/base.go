@@ -9,11 +9,20 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/resilience"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// UUIDString は nullable PostgreSQL UUID を domain の optional string へ写像する。
+func UUIDString(value pgtype.UUID) string {
+	if !value.Valid {
+		return ""
+	}
+	return uuid.UUID(value.Bytes).String()
+}
 
 // DBConfig は PostgreSQL 接続プールとレジリエンスの設定を集約する。
 type DBConfig struct {

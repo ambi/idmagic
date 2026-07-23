@@ -25,7 +25,7 @@ func (q *Queries) DeleteWsFedRelyingParty(ctx context.Context, arg DeleteWsFedRe
 }
 
 const getWsFedRelyingParty = `-- name: GetWsFedRelyingParty :one
-SELECT tenant_id, wtrealm, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
+SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
 FROM wsfed_relying_parties WHERE tenant_id = $1 AND wtrealm = $2
 `
 
@@ -40,6 +40,8 @@ func (q *Queries) GetWsFedRelyingParty(ctx context.Context, arg GetWsFedRelyingP
 	err := row.Scan(
 		&i.TenantID,
 		&i.Wtrealm,
+		&i.ApplicationID,
+		&i.ApplicationProtocolType,
 		&i.DisplayName,
 		&i.ReplyUrls,
 		&i.Audience,
@@ -53,7 +55,7 @@ func (q *Queries) GetWsFedRelyingParty(ctx context.Context, arg GetWsFedRelyingP
 }
 
 const listWsFedRelyingPartiesByTenant = `-- name: ListWsFedRelyingPartiesByTenant :many
-SELECT tenant_id, wtrealm, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
+SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
 FROM wsfed_relying_parties WHERE tenant_id = $1 ORDER BY wtrealm
 `
 
@@ -69,6 +71,8 @@ func (q *Queries) ListWsFedRelyingPartiesByTenant(ctx context.Context, tenantID 
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.Wtrealm,
+			&i.ApplicationID,
+			&i.ApplicationProtocolType,
 			&i.DisplayName,
 			&i.ReplyUrls,
 			&i.Audience,

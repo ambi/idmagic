@@ -247,14 +247,9 @@ function ApplicationSummaryCard({
           )}
         </ReadOnlyField>
 
-        <ReadOnlyField label={t.bindingFieldLabel}>
-          {app.binding_summaries && app.binding_summaries.length > 0 ? (
-            <div className="flex flex-col gap-1 font-mono text-xs text-slate-700">
-              {app.binding_summaries.map((summary, idx) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: static list
-                <span key={idx}>{summary}</span>
-              ))}
-            </div>
+        <ReadOnlyField label={t.protocolFieldLabel}>
+          {app.protocol_summary ? (
+            <span className="font-mono text-xs text-slate-700">{app.protocol_summary}</span>
           ) : (
             <span className="text-slate-400">{t.notSetLabel}</span>
           )}

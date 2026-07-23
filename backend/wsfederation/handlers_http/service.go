@@ -30,7 +30,7 @@ type gateAdapter struct{ *support.ApplicationGate }
 func (g gateAdapter) EvaluateApplicationAccess(
 	ctx context.Context,
 	tenantID string,
-	bindingType appdomain.ProtocolBindingType,
+	bindingType appdomain.ApplicationProtocolType,
 	bindingKey, sub string,
 	authn *authdomain.AuthenticationContext,
 	clientIP string,

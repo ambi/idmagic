@@ -8000,7 +8000,7 @@
       },
       "delete": {
         "operationId": "DeleteAdminOAuth2Client",
-        "summary": "管理者が所属テナントの client を削除する。",
+        "summary": "管理者が所属テナントの catalog 外 client を削除する。application_id が非 NULL の client は ApplicationOwnedProtocolError (HTTP 409) で拒否し、Application 削除へ誘導する。",
         "security": [
           {
             "SclBearer": []
@@ -8031,7 +8031,7 @@
             "description": "Success"
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, ApplicationOwnedProtocolError",
             "content": {
               "application/json": {
                 "schema": {
@@ -8041,6 +8041,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApplicationOwnedProtocolError"
                     }
                   ]
                 }
@@ -9084,7 +9087,7 @@
       },
       "post": {
         "operationId": "CreateAdminApplication",
-        "summary": "管理者が Application を一括作成する。種別に応じて OAuth2 client / WS-Fed RP も同時に作成し、 protocol binding を接続する。",
+        "summary": "管理者が Application を一括作成する。種別に応じた protocol row を準備し、Application と application_id relation を同一 transaction で catalog へ公開する。protocol 種別は作成後に変更できない。",
         "security": [
           {
             "SclBearer": []
@@ -9165,7 +9168,7 @@
     "/api/admin/applications/{application_id}": {
       "get": {
         "operationId": "GetAdminApplication",
-        "summary": "管理者が Application を取得する。binding から解決した protocol 実設定も含む。別テナントは未存在として扱う。",
+        "summary": "管理者が Application を取得する。protocol relation から解決した実設定も含む。別テナントは未存在として扱う。",
         "security": [
           {
             "SclBearer": []
@@ -9322,7 +9325,7 @@
       },
       "delete": {
         "operationId": "DeleteAdminApplication",
-        "summary": "管理者が Application を削除する (冪等)。",
+        "summary": "管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。",
         "security": [
           {
             "SclBearer": []
@@ -9602,163 +9605,10 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/bindings": {
-      "post": {
-        "operationId": "AttachProtocolBinding",
-        "summary": "管理者が Application に protocol binding を接続する。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ManagementApiClientWriteApplications",
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "Application",
-            "id": "input.application_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "application_id": {
-                    "type": "string"
-                  },
-                  "request": {
-                    "$ref": "#/components/schemas/ProtocolBindingRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "application_id",
-                  "request"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "application_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "application": {
-                      "$ref": "#/components/schemas/AdminApplicationResponse"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "application"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/applications/{application_id}/bindings/{binding_type}": {
-      "delete": {
-        "operationId": "DetachProtocolBinding",
-        "summary": "管理者が Application から protocol binding を解除する (冪等)。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ManagementApiClientWriteApplications",
-            "TenantAdministrator"
-          ],
-          "resource": {
-            "type": "Application",
-            "id": "input.application_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "application_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "binding_type",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Success"
-          },
-          "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    },
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/admin/applications/{application_id}/oidc": {
       "patch": {
         "operationId": "UpdateApplicationOidcConfig",
-        "summary": "管理者が Application の OIDC binding が指す OAuth2 client の設定を更新する。",
+        "summary": "管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。",
         "security": [
           {
             "SclBearer": []
@@ -9834,7 +9684,7 @@
     "/api/admin/applications/{application_id}/oidc/rotate-secret": {
       "post": {
         "operationId": "RotateApplicationClientSecret",
-        "summary": "管理者が Application の OIDC binding の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。",
+        "summary": "管理者が Application の OIDC protocol の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。",
         "security": [
           {
             "SclBearer": []
@@ -9926,7 +9776,7 @@
     "/api/admin/applications/{application_id}/wsfed": {
       "patch": {
         "operationId": "UpdateApplicationWsFedConfig",
-        "summary": "管理者が Application の WS-Fed binding が指す relying party の設定を更新する。",
+        "summary": "管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。",
         "security": [
           {
             "SclBearer": []
@@ -10002,7 +9852,7 @@
     "/api/admin/applications/{application_id}/saml": {
       "patch": {
         "operationId": "UpdateApplicationSamlConfig",
-        "summary": "管理者が Application の SAML binding が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。",
+        "summary": "管理者が Application の SAML protocol が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。",
         "security": [
           {
             "SclBearer": []
@@ -12065,7 +11915,7 @@
       },
       "delete": {
         "operationId": "DeleteWsFedRelyingParty",
-        "summary": "管理者が所属テナントの WS-Federation relying party trust を wtrealm で削除する。管理操作は AdminFederationTrustsManage で保護する。",
+        "summary": "管理者が所属テナントの catalog 外 WS-Federation relying party trust を wtrealm で削除する。application_id が非 NULL の RP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。",
         "security": [
           {
             "SclBearer": []
@@ -12096,7 +11946,7 @@
             "description": "Success"
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, ApplicationOwnedProtocolError",
             "content": {
               "application/json": {
                 "schema": {
@@ -12106,6 +11956,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApplicationOwnedProtocolError"
                     }
                   ]
                 }
@@ -12489,7 +12342,7 @@
       },
       "delete": {
         "operationId": "DeleteSamlServiceProvider",
-        "summary": "entityID に一致する SAML service provider を削除する (冪等)。entityID は URI のため、path ではなくクエリで指定する。",
+        "summary": "entityID に一致する catalog 外 SAML service provider を削除する (冪等)。application_id が非 NULL の SP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。",
         "security": [
           {
             "SclBearer": []
@@ -12521,7 +12374,7 @@
             "description": "Success"
           },
           "default": {
-            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "description": "Errors: InvalidRequestError, AccessDeniedError, ApplicationOwnedProtocolError",
             "content": {
               "application/json": {
                 "schema": {
@@ -12531,6 +12384,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApplicationOwnedProtocolError"
                     }
                   ]
                 }
@@ -16550,7 +16406,7 @@
           },
           "type": {
             "$ref": "#/components/schemas/ApplicationProvisionType",
-            "description": "oidc / wsfed / weblink。"
+            "description": "oidc / saml / wsfed / weblink / service。"
           },
           "launch_url": {
             "type": "string",
@@ -16602,6 +16458,17 @@
           "name_id_source": {
             "type": "string",
             "description": "type=wsfed の NameID ソース属性。"
+          },
+          "entity_id": {
+            "type": "string",
+            "description": "type=saml のとき必須。生成する SAML SP の entity ID。"
+          },
+          "acs_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "type=saml のとき必須。Assertion Consumer Service URL。"
           }
         },
         "additionalProperties": false,
@@ -16609,7 +16476,7 @@
           "name",
           "type"
         ],
-        "description": "Application 一括作成リクエスト。種別を選び、対応するプロトコル設定もまとめて受け取る。 backend が OAuth2 client / WS-Fed RP を作成し、Application と protocol binding を一括で作る。"
+        "description": "Application 一括作成リクエスト。種別を選び、対応する protocol 設定もまとめて受け取る。backend は protocol row を catalog 外として準備した後、Application insert と protocol row.application_id の設定を同一 transaction で行う。後半が失敗した protocol row は有効な catalog 外設定であり、意味のない Application は残さない。"
       },
       "AdminApplicationCreateResponse": {
         "type": "object",
@@ -16643,13 +16510,16 @@
           },
           "wsfed": {
             "$ref": "#/components/schemas/ApplicationWsFedConfig"
+          },
+          "saml": {
+            "$ref": "#/components/schemas/ApplicationSamlConfig"
           }
         },
         "additionalProperties": false,
         "required": [
           "application"
         ],
-        "description": "アプリ詳細レスポンス。Application 本体に加え、binding から解決した protocol 実設定を含む。"
+        "description": "アプリ詳細レスポンス。Application 本体に加え、protocol relation から解決した実設定を含む。oidc / saml / wsfed のうち Application.protocol.type に対応する最大1個だけが設定される。"
       },
       "AdminApplicationListResponse": {
         "type": "object",
@@ -16692,11 +16562,8 @@
           "launch_url": {
             "type": "string"
           },
-          "bindings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProtocolBinding"
-            }
+          "protocol": {
+            "$ref": "#/components/schemas/ApplicationProtocol"
           },
           "category_ids": {
             "type": "array",
@@ -16711,11 +16578,8 @@
               "type": "string"
             }
           },
-          "binding_summaries": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "protocol_summary": {
+            "type": "string"
           },
           "assigned_subject_count": {
             "type": "integer"
@@ -16738,10 +16602,8 @@
           "name",
           "kind",
           "status",
-          "bindings",
           "category_ids",
           "category_names",
-          "binding_summaries",
           "assigned_subject_count",
           "sign_in_policy_summary",
           "created_at",
@@ -18813,7 +18675,7 @@
           "client_secret_rotatable",
           "secret_credentials"
         ],
-        "description": "Application の OIDC binding が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。"
+        "description": "Application の OIDC protocol が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。"
       },
       "ApplicationOidcConfigUpdateRequest": {
         "type": "object",
@@ -18847,7 +18709,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "OIDC binding 設定の更新リクエスト。指定フィールドのみ変更する。advanced 項目を含む。 token_endpoint_auth_method など更新契約上の不変項目は含めない。"
+        "description": "OIDC protocol 設定の更新リクエスト。指定フィールドのみ変更する。advanced 項目を含む。 token_endpoint_auth_method など更新契約上の不変項目は含めない。"
       },
       "ApplicationOrdering": {
         "type": "object",
@@ -18880,15 +18742,113 @@
         ],
         "description": "利用者ポータルでの手動並び順 (ADR-069)。user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は global unique な既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、本人に割当済み visible な Application のみに制限する。\n"
       },
+      "ApplicationOwnedProtocolError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "SAML service provider が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。"
+      },
+      "ApplicationProtocol": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ApplicationProtocolType",
+            "description": "protocol 種別。"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "oidc が指す OAuth2 client_id。"
+          },
+          "entity_id": {
+            "type": "string",
+            "description": "saml が指す SAML entity_id。"
+          },
+          "wtrealm": {
+            "type": "string",
+            "description": "wsfed が指す WS-Fed RP の wtrealm。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "description": "Application に紐づく単一 protocol 設定への参照。type に対応する key だけを持ち、protocol row の application_id から Application へ通常の外部キーで関連付ける。"
+      },
+      "ApplicationProtocolType": {
+        "type": "string",
+        "enum": [
+          "oidc",
+          "saml",
+          "wsfed"
+        ],
+        "description": "Application が利用する単一 protocol の種別。作成後は変更できない。"
+      },
       "ApplicationProvisionType": {
         "type": "string",
         "enum": [
           "oidc",
+          "saml",
           "wsfed",
           "weblink",
           "service"
         ],
-        "description": "一括作成で選ぶアプリ種別。oidc / wsfed は federated Application と対応する OAuth2 client / WS-Fed RP を同時に作成し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。"
+        "description": "一括作成で選ぶアプリ種別。oidc / saml / wsfed は federated Application と対応する protocol 設定を作成して catalog へ原子的に公開し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。"
+      },
+      "ApplicationSamlConfig": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          },
+          "acs_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slo_url": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string"
+          },
+          "name_id_format": {
+            "type": "string"
+          },
+          "name_id_source": {
+            "type": "string"
+          },
+          "sign_assertion": {
+            "type": "boolean"
+          },
+          "sign_response": {
+            "type": "boolean"
+          },
+          "want_authn_requests_signed": {
+            "type": "boolean"
+          },
+          "authn_request_signing_certificate_pem": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClaimMappingRule"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "entity_id",
+          "acs_urls",
+          "name_id_format",
+          "name_id_source",
+          "sign_assertion",
+          "sign_response",
+          "want_authn_requests_signed",
+          "rules"
+        ],
+        "description": "Application の SAML protocol が指す service provider の実設定 (アプリ詳細表示用)。"
       },
       "ApplicationSamlConfigUpdateRequest": {
         "type": "object",
@@ -18931,7 +18891,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "SAML binding 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。"
+        "description": "SAML protocol 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。"
       },
       "ApplicationStatus": {
         "type": "string",
@@ -19049,7 +19009,7 @@
           "name_id_source",
           "rules"
         ],
-        "description": "Application の WS-Fed binding が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。"
+        "description": "Application の WS-Fed protocol が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。"
       },
       "ApplicationWsFedConfigUpdateRequest": {
         "type": "object",
@@ -19080,7 +19040,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "WS-Federation binding 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。"
+        "description": "WS-Federation protocol 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。"
       },
       "Approve": {
         "type": "object",
@@ -25185,6 +25145,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "application_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。"
+          },
           "client_secret_hash": {
             "type": "string"
           },
@@ -25304,7 +25269,7 @@
           "created_at",
           "updated_at"
         ],
-        "description": "RFC 7591 + FAPI 2.0 拡張のクライアント。"
+        "description": "RFC 7591 + FAPI 2.0 拡張のクライアント。application_id が NULL の catalog 外 client も許容する。非 NULL の場合は同一 tenant の oidc Application を参照し、Application 1件に最大1 client だけが紐づく。"
       },
       "OAuthError": {
         "type": "object",
@@ -25650,116 +25615,6 @@
           "resource"
         ],
         "description": "RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。"
-      },
-      "ProtocolBinding": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "$ref": "#/components/schemas/ProtocolBindingType",
-            "description": "binding 種別。"
-          },
-          "client_id": {
-            "type": "string",
-            "description": "oidc binding が指す OAuth2 client_id。"
-          },
-          "wtrealm": {
-            "type": "string",
-            "description": "wsfed binding が指す WS-Fed RP の wtrealm。"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "type"
-        ],
-        "description": "Application に紐づく protocol binding。OIDC client / WS-Fed RP / 将来 SAML SP への 参照を opaque key で保持する。binding の wire 挙動は各 protocol context が所有する。"
-      },
-      "ProtocolBindingAttached": {
-        "type": "object",
-        "properties": {
-          "occurredAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "actorUserId": {
-            "type": "string"
-          },
-          "applicationId": {
-            "type": "string"
-          },
-          "bindingType": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "occurredAt",
-          "tenantId",
-          "actorUserId",
-          "applicationId",
-          "bindingType"
-        ],
-        "description": "Application に protocol binding を接続した。"
-      },
-      "ProtocolBindingDetached": {
-        "type": "object",
-        "properties": {
-          "occurredAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "actorUserId": {
-            "type": "string"
-          },
-          "applicationId": {
-            "type": "string"
-          },
-          "bindingType": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "occurredAt",
-          "tenantId",
-          "actorUserId",
-          "applicationId",
-          "bindingType"
-        ],
-        "description": "Application から protocol binding を解除した。"
-      },
-      "ProtocolBindingRequest": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "$ref": "#/components/schemas/ProtocolBindingType"
-          },
-          "client_id": {
-            "type": "string"
-          },
-          "wtrealm": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "type"
-        ],
-        "description": "protocol binding の接続リクエスト。"
-      },
-      "ProtocolBindingType": {
-        "type": "string",
-        "enum": [
-          "oidc",
-          "saml",
-          "wsfed"
-        ],
-        "description": "Application に接続する protocol binding の種別。"
       },
       "ProvisioningAuthMethod": {
         "type": "string",
@@ -27003,7 +26858,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "Application の OIDC binding に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。"
+        "description": "Application の OIDC protocol に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。"
       },
       "RotateApplicationClientSecretResponse": {
         "type": "object",
@@ -27272,6 +27127,11 @@
             "minLength": 1,
             "description": "SP の識別子 (SAML entityID)。AuthnRequest の Issuer と完全一致しなければならない。"
           },
+          "application_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。"
+          },
           "display_name": {
             "type": "string",
             "description": "管理 UI 表示名。"
@@ -27336,7 +27196,7 @@
           "created_at",
           "updated_at"
         ],
-        "description": "SAML 2.0 Web Browser SSO の service provider (SP) 登録。entityID で識別し、許可する AssertionConsumerService URL の閉集合、audience、NameID format、署名方針、claim 発行 policy を束ねる。未登録 entityID・許可外 ACS URL は拒否する (open redirect 防止, fail-closed)。SP metadata は entityID / ACS / NameID format をまとめて取り込めるが、最終的な信頼境界は本登録が持つ。"
+        "description": "SAML 2.0 Web Browser SSO の service provider (SP) 登録。entityID で識別し、許可する AssertionConsumerService URL の閉集合、audience、NameID format、署名方針、claim 発行 policy を束ねる。application_id が NULL の catalog 外 SP も許容し、非 NULL の場合は同一 tenant の saml Application を参照して Application 1件に最大1 SP だけが紐づく。"
       },
       "SamlSignInIssued": {
         "type": "object",
@@ -30715,6 +30575,11 @@
             "minLength": 1,
             "description": "RP の識別子 (WS-Fed wtrealm / SAML audience)。"
           },
+          "application_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。"
+          },
           "display_name": {
             "type": "string",
             "description": "管理 UI 表示名。"
@@ -30761,7 +30626,7 @@
           "created_at",
           "updated_at"
         ],
-        "description": "WS-Federation passive の relying party (RP) 登録。wtrealm で識別し、許可する wreply (返信先) の閉集合、audience、claim 発行 policy を束ねる。未登録 wtrealm・許可外 wreply は拒否する (open redirect 防止, fail-closed)。"
+        "description": "WS-Federation passive の relying party (RP) 登録。wtrealm で識別し、許可する wreply (返信先) の閉集合、audience、claim 発行 policy を束ねる。application_id が NULL の catalog 外 RP も許容し、非 NULL の場合は同一 tenant の wsfed Application を参照して Application 1件に最大1 RP だけが紐づく。"
       },
       "WsFedSignInIssued": {
         "type": "object",
@@ -32194,24 +32059,6 @@
             }
           },
           {
-            "name": "AttachProtocolBinding",
-            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
-            "policies": [
-              "ManagementApiClientWriteApplications",
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent",
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
             "name": "CreateAdminApplication",
             "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
             "policies": [
@@ -32285,24 +32132,6 @@
           },
           {
             "name": "DeleteApplicationIcon",
-            "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
-            "policies": [
-              "ManagementApiClientWriteApplications",
-              "TenantAdministrator"
-            ],
-            "resourceId": "input.application_id",
-            "appliesTo": {
-              "principalTypes": [
-                "Agent",
-                "User"
-              ],
-              "resourceTypes": [
-                "Application"
-              ]
-            }
-          },
-          {
-            "name": "DetachProtocolBinding",
             "memberOf": "policy:ManagementApiClientWriteApplications+TenantAdministrator",
             "policies": [
               "ManagementApiClientWriteApplications",

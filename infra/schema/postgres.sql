@@ -7,13 +7,13 @@
 --   `user_id` (an owner reference is `owner_user_id`).
 
 -- tenant_id key policy (ADR-082, simplified by ADR-083): users.id and
--- clients.client_id are system-generated globally unique identifiers, so child
+-- oauth2_clients.client_id are system-generated globally unique identifiers, so child
 -- rows reference them by their global key and tenant-scoped composite foreign keys
 -- are no longer used. Keep tenant_id on a table only when it serves search, a
 -- constraint/uniqueness, retention, or audit; do not add it just because tenant is
 -- reachable through a globally unique parent. Cases:
 -- - tenant-owned aggregate / tenant-scoped config: carry tenant_id, often as part
---   of the PK or a unique key (users, groups, clients, applications, agents,
+--   of the PK or a unique key (users, groups, oauth2_clients, applications, agents,
 --   signing_keys, application_categories, saml_service_providers,
 --   wsfed_relying_parties, *_sign_in_policies).
 -- - external tenant-scoped natural key: tenant_id is part of the PK because the
@@ -48,7 +48,7 @@
 -- - TIMESTAMPTZ stores microsecond precision as the source of truth; do not round
 --   in schema. Second-precision rounding happens only at external protocol
 --   boundaries (SCIM/SAML/WS-Fed formatting).
--- - Ids that idmagic generates internally use UUID: users.id, clients.client_id,
+-- - Ids that idmagic generates internally use UUID: users.id, oauth2_clients.client_id,
 --   groups.id, agents.id, audit_events.id, api_tokens.id, and the already-UUID
 --   refresh_tokens/applications/application_categories keys, plus every FK column
 --   that references them (user_id, owner_user_id, group_id, agent_id, client_id,
@@ -162,9 +162,12 @@ CREATE TABLE tenant_branding_assets (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 
-CREATE TABLE clients (
+CREATE TABLE oauth2_clients (
     tenant_id UUID NOT NULL,
     client_id UUID PRIMARY KEY,
+    application_id UUID UNIQUE,
+    application_protocol_type TEXT NOT NULL DEFAULT 'oidc'
+        CHECK (application_protocol_type = 'oidc'),
     client_secret_hash TEXT,
     client_name TEXT,
     client_type TEXT NOT NULL CHECK (client_type IN ('public', 'confidential')),
@@ -183,12 +186,12 @@ CREATE TABLE clients (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     first_party BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT clients_tenant_id_fkey
+    CONSTRAINT oauth2_clients_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
 -- oauth2_client_secrets (wi-25): client_secret credential は client 本体から分離する。
--- 旧 clients.client_secret_hash は rollout 中の dual-read/backfill 用に残す。
+-- 旧 oauth2_clients.client_secret_hash は secret credential 分離 rollout 中の dual-read/backfill 用に残す。
 CREATE TABLE oauth2_client_secrets (
     credential_id UUID PRIMARY KEY,
     client_id UUID NOT NULL,
@@ -197,7 +200,7 @@ CREATE TABLE oauth2_client_secrets (
     expires_at TIMESTAMPTZ,
     revoked_at TIMESTAMPTZ,
     CONSTRAINT oauth2_client_secrets_client_id_fkey
-        FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE,
+        FOREIGN KEY (client_id) REFERENCES oauth2_clients(client_id) ON DELETE CASCADE,
     CONSTRAINT oauth2_client_secrets_expiry_after_creation
         CHECK (expires_at IS NULL OR expires_at > created_at)
 );
@@ -308,7 +311,7 @@ CREATE TABLE consents (
     PRIMARY KEY (user_id, client_id),
     CONSTRAINT consents_client_fkey
         FOREIGN KEY (client_id)
-        REFERENCES clients(client_id) ON DELETE RESTRICT,
+        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
     CONSTRAINT consents_user_fkey
         FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE RESTRICT
@@ -345,7 +348,7 @@ CREATE TABLE refresh_tokens (
         FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,
     CONSTRAINT refresh_tokens_client_fkey
         FOREIGN KEY (client_id)
-        REFERENCES clients(client_id) ON DELETE RESTRICT,
+        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
     CONSTRAINT refresh_tokens_user_fkey
         FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE RESTRICT
@@ -614,7 +617,7 @@ CREATE TABLE agent_credential_bindings (
         FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
     CONSTRAINT agent_credential_bindings_client_fkey
         FOREIGN KEY (client_id)
-        REFERENCES clients(client_id) ON DELETE RESTRICT
+        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT
 );
 
 CREATE INDEX agent_credential_bindings_client_idx
@@ -658,17 +661,24 @@ CREATE TABLE applications (
     tenant_id UUID NOT NULL,
     application_id UUID PRIMARY KEY,
     name TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    status TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('federated', 'weblink', 'service')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
+    protocol_type TEXT,
     icon_url TEXT NOT NULL DEFAULT '',
     icon_object_key TEXT NOT NULL DEFAULT '',
     launch_url TEXT NOT NULL DEFAULT '',
-    bindings JSONB NOT NULL DEFAULT '[]'::jsonb,
     category_ids TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT applications_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT applications_protocol_kind_check CHECK (
+        (kind = 'weblink' AND protocol_type IS NULL)
+        OR (kind = 'service' AND protocol_type = 'oidc')
+        OR (kind = 'federated' AND protocol_type IN ('oidc', 'saml', 'wsfed'))
+    ),
+    CONSTRAINT applications_protocol_identity_unique
+        UNIQUE (application_id, tenant_id, protocol_type)
 );
 
 CREATE TABLE application_icons (
@@ -725,6 +735,9 @@ CREATE INDEX application_assignments_subject_idx
 CREATE TABLE saml_service_providers (
     tenant_id UUID NOT NULL,
     entity_id TEXT NOT NULL,
+    application_id UUID UNIQUE,
+    application_protocol_type TEXT NOT NULL DEFAULT 'saml'
+        CHECK (application_protocol_type = 'saml'),
     display_name TEXT NOT NULL DEFAULT '',
     acs_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
     slo_url TEXT NOT NULL DEFAULT '',
@@ -744,6 +757,9 @@ CREATE TABLE saml_service_providers (
 CREATE TABLE wsfed_relying_parties (
     tenant_id UUID NOT NULL,
     wtrealm TEXT NOT NULL,
+    application_id UUID UNIQUE,
+    application_protocol_type TEXT NOT NULL DEFAULT 'wsfed'
+        CHECK (application_protocol_type = 'wsfed'),
     display_name TEXT NOT NULL DEFAULT '',
     reply_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
     audience TEXT NOT NULL DEFAULT '',
@@ -756,6 +772,28 @@ CREATE TABLE wsfed_relying_parties (
     CONSTRAINT wsfed_relying_parties_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
+
+ALTER TABLE oauth2_clients
+ADD CONSTRAINT oauth2_clients_application_fkey
+    FOREIGN KEY (application_id, tenant_id, application_protocol_type)
+    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE;
+
+ALTER TABLE saml_service_providers
+ADD CONSTRAINT saml_service_providers_application_fkey
+    FOREIGN KEY (application_id, tenant_id, application_protocol_type)
+    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE;
+
+ALTER TABLE wsfed_relying_parties
+ADD CONSTRAINT wsfed_relying_parties_application_fkey
+    FOREIGN KEY (application_id, tenant_id, application_protocol_type)
+    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE;
+
+CREATE INDEX oauth2_clients_application_id_idx
+    ON oauth2_clients (application_id) WHERE application_id IS NOT NULL;
+CREATE INDEX saml_service_providers_application_id_idx
+    ON saml_service_providers (application_id) WHERE application_id IS NOT NULL;
+CREATE INDEX wsfed_relying_parties_application_id_idx
+    ON wsfed_relying_parties (application_id) WHERE application_id IS NOT NULL;
 
 CREATE TABLE application_orderings (
     user_id UUID PRIMARY KEY,

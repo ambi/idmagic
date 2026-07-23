@@ -185,6 +185,9 @@ func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if errors.Is(err, clientusecases.ErrClientNotFound) {
 		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "クライアントが存在しません")
 	}
+	if errors.Is(err, clientusecases.ErrProtocolOwnedByApplication) {
+		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Application に紐づくクライアントは Application を削除してください")
+	}
 	if oauthErr, ok := errors.AsType[*clientusecases.OAuthError](err); ok {
 		return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
 	}

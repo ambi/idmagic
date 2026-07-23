@@ -1,6 +1,6 @@
 // アプリケーションの一括プロビジョニング (wi-69)。Okta / Entra のように、種別を選んで
 // プロトコル設定もまとめて入力すると、backend が OAuth2 client / WS-Fed RP を作成し、
-// Application と protocol binding を一括で作る。OAuth2/WS-Fed の wire 設定は各 protocol
+// Application と単一 protocol relation を一括で作る。OAuth2/WS-Fed の wire 設定は各 protocol
 // context が所有し、本ハンドラは adapter として両者を合成する。
 package handlers_http
 
@@ -167,7 +167,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, err)
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
+			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -191,7 +191,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, err)
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationService,
-			domain.ProtocolBinding{Type: domain.ProtocolBindingOIDC, ClientID: result.Client.ClientID})
+			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -217,7 +217,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return err
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ProtocolBinding{Type: domain.ProtocolBindingWsFed, Wtrealm: req.Wtrealm})
+			domain.ApplicationProtocol{Type: domain.ApplicationProtocolWsFed, Wtrealm: req.Wtrealm})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -250,7 +250,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return err
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ProtocolBinding{Type: domain.ProtocolBindingSAML, EntityID: req.EntityID})
+			domain.ApplicationProtocol{Type: domain.ApplicationProtocolSAML, EntityID: req.EntityID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -261,20 +261,56 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	}
 }
 
-// createCatalogApp は指定 kind の Application を作成し、protocol binding を接続する。
-func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind domain.ApplicationKind, binding domain.ProtocolBinding) (*domain.Application, error) {
+// createCatalogApp は指定 kind の Application と不変な単一 protocol relation を作成する。
+func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind domain.ApplicationKind, protocol domain.ApplicationProtocol) (*domain.Application, error) {
 	app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
-		ActorUserID: actorUserID, Name: req.Name, Kind: kind, LaunchURL: req.LaunchURL, Now: now,
+		ActorUserID: actorUserID, Name: req.Name, Kind: kind, LaunchURL: req.LaunchURL,
+		Protocol: &protocol, Now: now,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return appusecases.AttachBinding(ctx, d.applicationDeps(), appusecases.AttachBindingInput{
-		ActorUserID: actorUserID, ApplicationID: app.ApplicationID, Binding: binding, Now: now,
-	})
+	// 通常 protocol CRUD は ownership を変更しない。Application 作成経路だけが
+	// memory adapter の domain projection に application_id を同期する。
+	switch protocol.Type {
+	case domain.ApplicationProtocolOIDC:
+		client, findErr := d.ClientRepo.FindByID(ctx, app.TenantID, protocol.ClientID)
+		if findErr != nil {
+			return nil, findErr
+		}
+		if client != nil {
+			client.ApplicationID = app.ApplicationID
+			if saveErr := d.ClientRepo.Save(ctx, client); saveErr != nil {
+				return nil, saveErr
+			}
+		}
+	case domain.ApplicationProtocolSAML:
+		sp, findErr := d.SamlSPRepo.FindByEntityID(ctx, app.TenantID, protocol.EntityID)
+		if findErr != nil {
+			return nil, findErr
+		}
+		if sp != nil {
+			sp.ApplicationID = app.ApplicationID
+			if saveErr := d.SamlSPRepo.Save(ctx, sp); saveErr != nil {
+				return nil, saveErr
+			}
+		}
+	case domain.ApplicationProtocolWsFed:
+		rp, findErr := d.WsFedRPRepo.FindByWtrealm(ctx, app.TenantID, protocol.Wtrealm)
+		if findErr != nil {
+			return nil, findErr
+		}
+		if rp != nil {
+			rp.ApplicationID = app.ApplicationID
+			if saveErr := d.WsFedRPRepo.Save(ctx, rp); saveErr != nil {
+				return nil, saveErr
+			}
+		}
+	}
+	return app, nil
 }
 
-// resolveProtocolConfig は Application の binding から OAuth2 client / WS-Fed RP の
+// resolveProtocolConfig は Application の relation から OAuth2 client / WS-Fed RP の
 // 実設定を解決して返す (アプリ詳細表示用)。
 func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*oidcConfig, *wsfedConfig, *samlConfig) {
 	ctx := c.Request().Context()
@@ -282,13 +318,14 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 	var oidc *oidcConfig
 	var wsfed *wsfedConfig
 	var saml *samlConfig
-	for _, binding := range app.Bindings {
-		switch binding.Type {
-		case domain.ProtocolBindingOIDC:
+	if app.Protocol != nil {
+		protocol := app.Protocol
+		switch protocol.Type {
+		case domain.ApplicationProtocolOIDC:
 			if d.ClientRepo == nil {
-				continue
+				break
 			}
-			if client, err := d.ClientRepo.FindByID(ctx, tenantID, binding.ClientID); err == nil && client != nil {
+			if client, err := d.ClientRepo.FindByID(ctx, tenantID, protocol.ClientID); err == nil && client != nil {
 				credentials, _ := d.ClientRepo.ListClientSecretCredentials(ctx, client.ClientID)
 				metadata := make([]clientSecretCredentialMetadata, 0, len(credentials))
 				for _, credential := range credentials {
@@ -304,11 +341,11 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 					SecretCredentials:     metadata,
 				}
 			}
-		case domain.ProtocolBindingWsFed:
+		case domain.ApplicationProtocolWsFed:
 			if d.WsFedRPRepo == nil {
-				continue
+				break
 			}
-			if rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, binding.Wtrealm); err == nil && rp != nil {
+			if rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, protocol.Wtrealm); err == nil && rp != nil {
 				wsfed = &wsfedConfig{
 					Wtrealm: rp.Wtrealm, ReplyURLs: rp.ReplyURLs,
 					Audience: rp.Audience, TokenType: rp.EffectiveTokenType(),
@@ -316,11 +353,11 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 					Rules: nonNilRules(rp.ClaimPolicy.Rules),
 				}
 			}
-		case domain.ProtocolBindingSAML:
+		case domain.ApplicationProtocolSAML:
 			if d.SamlSPRepo == nil {
-				continue
+				break
 			}
-			if sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, binding.EntityID); err == nil && sp != nil {
+			if sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, protocol.EntityID); err == nil && sp != nil {
 				saml = &samlConfig{
 					EntityID: sp.EntityID, ACSURLs: sp.ACSURLs, SLOURL: sp.SLOURL,
 					Audience: sp.Audience, NameIDFormat: sp.ClaimPolicy.NameID.Format,
@@ -352,7 +389,7 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, domain.ProtocolBindingOIDC)
+	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "OIDC バインディングがありません")
 	}
@@ -396,7 +433,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, domain.ProtocolBindingOIDC)
+	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "OIDC バインディングがありません")
 	}
@@ -435,7 +472,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	wtrealm := bindingKeyOf(app, domain.ProtocolBindingWsFed)
+	wtrealm := bindingKeyOf(app, domain.ApplicationProtocolWsFed)
 	if wtrealm == "" || d.WsFedRPRepo == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "WS-Federation バインディングがありません")
 	}
@@ -501,7 +538,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	entityID := bindingKeyOf(app, domain.ProtocolBindingSAML)
+	entityID := bindingKeyOf(app, domain.ApplicationProtocolSAML)
 	if entityID == "" || d.SamlSPRepo == nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML バインディングがありません")
 	}
@@ -568,20 +605,18 @@ func (d Deps) requireApp(c *echo.Context) (*domain.Application, error) {
 	return app, nil
 }
 
-func bindingKeyOf(app *domain.Application, bindingType domain.ProtocolBindingType) string {
-	for _, b := range app.Bindings {
-		if b.Type == bindingType {
-			switch bindingType {
-			case domain.ProtocolBindingWsFed:
-				return b.Wtrealm
-			case domain.ProtocolBindingSAML:
-				return b.EntityID
-			default:
-				return b.ClientID
-			}
-		}
+func bindingKeyOf(app *domain.Application, bindingType domain.ApplicationProtocolType) string {
+	if app.Protocol == nil || app.Protocol.Type != bindingType {
+		return ""
 	}
-	return ""
+	switch bindingType {
+	case domain.ApplicationProtocolWsFed:
+		return app.Protocol.Wtrealm
+	case domain.ApplicationProtocolSAML:
+		return app.Protocol.EntityID
+	default:
+		return app.Protocol.ClientID
+	}
 }
 
 func nonEmpty(value, fallback string) string {
