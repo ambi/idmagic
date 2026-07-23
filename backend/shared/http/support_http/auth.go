@@ -122,7 +122,7 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 				if !allowed {
 					return nil, &InsufficientScopeError{Required: "interactive_session"}
 				}
-				if !slices.Contains(fields, "idmagic.account") && !slices.Contains(fields, required) {
+				if !hasRequiredAccountScope(fields, required, c.Request().URL.Path) {
 					return nil, &InsufficientScopeError{Required: required}
 				}
 			} else if !slices.Contains(fields, want) {
@@ -148,7 +148,8 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 }
 
 // requiredPortalScope は resource path が Bearer に要求する portal scope を返す。
-// admin / account 以外の API (例: /api/auth/account) は scope を要求しない。
+// /api/auth/account は両 portal の共通 bootstrap だが account read 契約として分類し、
+// resolveAuthnContext で idmagic.admin も明示的に許可する。
 func requiredPortalScope(path string) string {
 	switch {
 	case strings.Contains(path, "/api/admin/"):
@@ -179,6 +180,18 @@ func requiredAccountScope(method, path string) (string, bool) {
 	default:
 		return "account:read", true
 	}
+}
+
+func hasRequiredAccountScope(granted []string, required, path string) bool {
+	accepted := []string{"idmagic.account", required}
+	// AccountContext は両 portal が共有する bootstrap endpoint なので、管理 portal の
+	// scope もこの route に限って同等の read scope として扱う。
+	if strings.HasSuffix(path, "/api/auth/account") {
+		accepted = append(accepted, "idmagic.admin")
+	}
+	return slices.ContainsFunc(accepted, func(scope string) bool {
+		return slices.Contains(granted, scope)
+	})
 }
 
 // bearerToken は Authorization: Bearer <token> を抽出する。無ければ空文字を返す。

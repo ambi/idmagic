@@ -1330,7 +1330,11 @@ models:
         description: password | totp
 interfaces:
   GetAccountContext:
-    description: 認証済み browser session の管理 shell bootstrap 情報と CSRF token を取得する。認証途中の session は拒否する。
+    description: "認証済み browser session の portal 共通 bootstrap 情報と CSRF token を取得する。
+      Bearer token では管理 portal の idmagic.admin、account portal の idmagic.account、
+      または自己管理 API client の account:read scope のいずれかを要求する。認証途中の
+      session と、それ以外の scope だけを持つ Bearer token は拒否する。
+      "
     output:
       context:
         type: AccountContextResponse
@@ -1338,7 +1342,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     access:
-      policies: [AuthenticatedSelf, SelfApiClientReadAccount]
+      policies: [AuthenticatedSelf, PortalClientReadAccountContext]
       resource:
         type: User
         id: subject.id
@@ -2040,6 +2044,10 @@ authorization:
       effect: permit
       principal: SelfApiClient
       when: '"account:read" in context.token_scopes && principal.id == resource.id'
+    PortalClientReadAccountContext:
+      effect: permit
+      principal: SelfApiClient
+      when: '("idmagic.admin" in context.token_scopes || "idmagic.account" in context.token_scopes || "account:read" in context.token_scopes) && principal.id == resource.id'
     SelfApiClientWriteMfa:
       effect: permit
       principal: SelfApiClient
@@ -2104,14 +2112,20 @@ scenarios:
   browser bootstrap contextは認証状態とCSRF境界を保持する:
     actor: AuthenticatedSelf
     given:
-      - ユーザー "alice" が認証済み session を持つ
+      - ユーザー "alice" が認証済み session または first-party portal の access token を持つ
     main_success:
-      - ユーザー "alice" が account context を取得する
+      - 管理 portal は idmagic.admin scope で account context を取得できる
+      - account portal は idmagic.account scope で同じ account context を取得できる
+      - 自己管理 API client は account:read scope で同じ account context を取得できる
       - 応答は subject、realm、effective role、CSRF token を含む
       - 未認証のパスワードリセット画面は password reset context から CSRF token を取得できる
     extensions:
       - at: 1
         condition: session が未認証または認証途中である
+        steps:
+          - account context の取得は AccessDeniedError で拒否される
+      - at: 1
+        condition: Bearer token が許可された portal scope または account:read scope を一つも持たない
         steps:
           - account context の取得は AccessDeniedError で拒否される
   ユーザーはWebAuthnでstep-up challengeを開始できる:

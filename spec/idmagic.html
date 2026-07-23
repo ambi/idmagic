@@ -11803,8 +11803,8 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
     <h2>Interfaces <span class="count">35</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Authentication/interface/GetAccountContext">
-    <header><h3>GetAccountContext</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/AuthenticatedSelf">AuthenticatedSelf</a> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/SelfApiClientReadAccount">SelfApiClientReadAccount</a> <code>User:subject.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Authentication/interface/GetAccountContext</code></header>
-    <p class="desc">認証済み browser session の管理 shell bootstrap 情報と CSRF token を取得する。認証途中の session は拒否する。</p>
+    <header><h3>GetAccountContext</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/AuthenticatedSelf">AuthenticatedSelf</a> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/PortalClientReadAccountContext">PortalClientReadAccountContext</a> <code>User:subject.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Authentication/interface/GetAccountContext</code></header>
+    <p class="desc">認証済み browser session の portal 共通 bootstrap 情報と CSRF token を取得する。 Bearer token では管理 portal の idmagic.admin、account portal の idmagic.account、 または自己管理 API client の account:read scope のいずれかを要求する。認証途中の session と、それ以外の scope だけを持つ Bearer token は拒否する。 </p>
 
     <div class="io">
     <div class="label">Output</div>
@@ -12756,7 +12756,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
   </article></div>
   </section>
 <section id="context-authentication-authorization">
-    <h2>Authorization <span class="count">10</span></h2>
+    <h2>Authorization <span class="count">11</span></h2>
     <p class="lead">resource、principal、permit/forbid policy。</p>
     <div class="group"><h3 class="grp-title">Resources</h3><div class="cards"><article class="card" id="scl-Authentication/authorization_resource/AuthenticationEventLog">
         <header><h3>AuthenticationEventLog</h3><span class="badge badge-kind-resource">resource</span><code class="canonical-ref">Authentication/authorization_resource/AuthenticationEventLog</code></header>
@@ -12788,6 +12788,11 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
 
         <dl class="kv"><dt>principal</dt><dd><a class="chip chip-principal-ref" href="#scl-Authentication/authorization_principal/SelfApiClient">SelfApiClient</a></dd></dl>
         <div class="clause"><div class="clause-label muted">when</div><code class="expr">&quot;account:read&quot; in context.token_scopes &amp;&amp; principal.id == resource.id</code></div>
+      </article><article class="card" id="scl-Authentication/authorization_policy/PortalClientReadAccountContext">
+        <header><h3>PortalClientReadAccountContext</h3><span class="badge badge-effect-permit">permit</span><code class="canonical-ref">Authentication/authorization_policy/PortalClientReadAccountContext</code></header>
+
+        <dl class="kv"><dt>principal</dt><dd><a class="chip chip-principal-ref" href="#scl-Authentication/authorization_principal/SelfApiClient">SelfApiClient</a></dd></dl>
+        <div class="clause"><div class="clause-label muted">when</div><code class="expr">(&quot;idmagic.admin&quot; in context.token_scopes || &quot;idmagic.account&quot; in context.token_scopes || &quot;account:read&quot; in context.token_scopes) &amp;&amp; principal.id == resource.id</code></div>
       </article><article class="card" id="scl-Authentication/authorization_policy/SelfApiClientWriteMfa">
         <header><h3>SelfApiClientWriteMfa</h3><span class="badge badge-effect-permit">permit</span><code class="canonical-ref">Authentication/authorization_policy/SelfApiClientWriteMfa</code></header>
 
@@ -12871,10 +12876,13 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       </article><article class="card scenario" id="scl-Authentication/scenario/browser~20bootstrap~20context~E3~81~AF~E8~AA~8D~E8~A8~BC~E7~8A~B6~E6~85~8B~E3~81~A8CSRF~E5~A2~83~E7~95~8C~E3~82~92~E4~BF~9D~E6~8C~81~E3~81~99~E3~82~8B">
         <header><h3>browser bootstrap contextは認証状態とCSRF境界を保持する</h3><span class="chip chip-actor">AuthenticatedSelf</span><code class="canonical-ref">Authentication/scenario/browser bootstrap contextは認証状態とCSRF境界を保持する</code></header>
 
-        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">ユーザー &quot;alice&quot; が認証済み session を持つ</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">ユーザー &quot;alice&quot; が account context を取得する</li><li class="scn-step">応答は subject、realm、effective role、CSRF token を含む</li><li class="scn-step">未認証のパスワードリセット画面は password reset context から CSRF token を取得できる</li></ol></div>
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">ユーザー &quot;alice&quot; が認証済み session または first-party portal の access token を持つ</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理 portal は idmagic.admin scope で account context を取得できる</li><li class="scn-step">account portal は idmagic.account scope で同じ account context を取得できる</li><li class="scn-step">自己管理 API client は account:read scope で同じ account context を取得できる</li><li class="scn-step">応答は subject、realm、effective role、CSRF token を含む</li><li class="scn-step">未認証のパスワードリセット画面は password reset context から CSRF token を取得できる</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">session が未認証または認証途中である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">account context の取得は <a class="chip chip-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> で拒否される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">Bearer token が許可された portal scope または account:read scope を一つも持たない</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">account context の取得は <a class="chip chip-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> で拒否される</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Authentication/scenario/~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E3~81~AFWebAuthn~E3~81~A7step-up~20challenge~E3~82~92~E9~96~8B~E5~A7~8B~E3~81~A7~E3~81~8D~E3~82~8B">

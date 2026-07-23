@@ -4197,7 +4197,7 @@
     "/api/auth/account": {
       "get": {
         "operationId": "GetAccountContext",
-        "summary": "認証済み browser session の管理 shell bootstrap 情報と CSRF token を取得する。認証途中の session は拒否する。",
+        "summary": "認証済み browser session の portal 共通 bootstrap 情報と CSRF token を取得する。 Bearer token では管理 portal の idmagic.admin、account portal の idmagic.account、 または自己管理 API client の account:read scope のいずれかを要求する。認証途中の session と、それ以外の scope だけを持つ Bearer token は拒否する。",
         "security": [
           {
             "SclBearer": []
@@ -4206,7 +4206,7 @@
         "x-scl-access": {
           "policies": [
             "AuthenticatedSelf",
-            "SelfApiClientReadAccount"
+            "PortalClientReadAccountContext"
           ],
           "resource": {
             "type": "User",
@@ -31103,18 +31103,18 @@
         ]
       },
       {
-        "name": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+        "name": "policy:AuthenticatedSelf+PortalClientReadAccountContext",
         "policies": [
           "AuthenticatedSelf",
-          "SelfApiClientReadAccount"
+          "PortalClientReadAccountContext"
         ],
         "actions": [
           {
-            "name": "ExportAccountData",
-            "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+            "name": "GetAccountContext",
+            "memberOf": "policy:AuthenticatedSelf+PortalClientReadAccountContext",
             "policies": [
               "AuthenticatedSelf",
-              "SelfApiClientReadAccount"
+              "PortalClientReadAccountContext"
             ],
             "resourceId": "subject.id",
             "appliesTo": {
@@ -31125,9 +31125,18 @@
                 "User"
               ]
             }
-          },
+          }
+        ]
+      },
+      {
+        "name": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
+        "policies": [
+          "AuthenticatedSelf",
+          "SelfApiClientReadAccount"
+        ],
+        "actions": [
           {
-            "name": "GetAccountContext",
+            "name": "ExportAccountData",
             "memberOf": "policy:AuthenticatedSelf+SelfApiClientReadAccount",
             "policies": [
               "AuthenticatedSelf",

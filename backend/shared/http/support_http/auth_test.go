@@ -51,6 +51,44 @@ func TestRequiredAccountScope(t *testing.T) {
 	}
 }
 
+func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, scope string
+		allowed           bool
+	}{
+		{name: "admin portal", path: "/api/auth/account", scope: "openid profile idmagic.admin", allowed: true},
+		{name: "account portal", path: "/api/auth/account", scope: "openid profile idmagic.account", allowed: true},
+		{name: "account API client", path: "/api/auth/account", scope: "account:read", allowed: true},
+		{name: "unrelated scope", path: "/api/auth/account", scope: "openid profile"},
+		{name: "admin scope remains rejected from account API", path: "/api/account/profile", scope: "idmagic.admin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, tc.path, http.NoBody)
+			req.Header.Set("Authorization", "Bearer jwt")
+			c := e.NewContext(req, httptest.NewRecorder())
+			a := Authenticator{TokenIntrospector: authTestIntrospector{
+				result: &oauthports.IntrospectionResult{Active: true, Sub: "user-1", Scope: tc.scope},
+			}}
+
+			got, err := a.resolveAuthnContext(c)
+			if tc.allowed {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got == nil || got.UserID != "user-1" {
+					t.Fatalf("authn=%+v", got)
+				}
+				return
+			}
+			var scopeErr *InsufficientScopeError
+			if !errors.As(err, &scopeErr) {
+				t.Fatalf("err=%v; want InsufficientScopeError", err)
+			}
+		})
+	}
+}
+
 func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
 	base := &oauthports.IntrospectionResult{Active: true, Managed: true, Sub: "user-1", ClientID: apitokendomain.BuiltinClientID, Scope: "account:read"}
 	for _, tc := range []struct {
