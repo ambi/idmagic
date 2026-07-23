@@ -26,7 +26,7 @@ func WriteServerError(c *echo.Context, err error) error {
 	logger := logging.Default()
 	req := c.Request()
 	logger.Error(req.Context(), "internal server error", "error", err.Error(), "method", req.Method, "path", req.URL.Path)
-	return WriteBrowserError(c, http.StatusInternalServerError, "internal_server_error", "内部サーバーエラー")
+	return WriteBrowserError(c, http.StatusInternalServerError, "internal_server_error", "Internal server error.")
 }
 
 // DecodeJSON はリクエスト body を上限付き (64KiB) かつ未知フィールド拒否で復号する。

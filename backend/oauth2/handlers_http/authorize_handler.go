@@ -105,7 +105,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			if oauthdomain.NeedsReauthentication(policy, time.Unix(authn.AuthTime, 0), time.Now(), false) ||
 				needsStepUp {
 				if prompt.None {
-					return d.redirectAuthorizationError(c, out.Request, "login_required", "既存セッションが認証要件を満たしません")
+					return d.redirectAuthorizationError(c, out.Request, "login_required", "The existing session does not satisfy the authentication requirements.")
 				}
 				if needsStepUp && d.canUseTOTP(c, authn.UserID) {
 					pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
@@ -113,7 +113,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 						return err
 					}
 					if pending == nil {
-						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
+						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "The existing session does not satisfy the authentication requirements."))
 					}
 					d.setSessionCookie(c, pending.SessionID)
 					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
@@ -127,7 +127,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				}
 				if redirected {
 					if prompt.None {
-						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "既存セッションが認証要件を満たしません"))
+						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "The existing session does not satisfy the authentication requirements."))
 					}
 					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
 				}
@@ -145,7 +145,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if out.Request.Prompt != nil {
 		prompt, _ := oauthdomain.ParsePromptTokens(*out.Request.Prompt)
 		if prompt.None {
-			return d.redirectAuthorizationError(c, out.Request, "login_required", "prompt=none では再認証不可")
+			return d.redirectAuthorizationError(c, out.Request, "login_required", "Reauthentication cannot be performed when prompt=none.")
 		}
 	}
 	return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))

@@ -50,15 +50,15 @@ func (d Deps) writeBrandingError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, tenantusecases.ErrInvalidBranding):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_branding",
-			"ブランディング設定が不正です (色は#rrggbb形式、リンクはhttpsのみ有効です)")
+			"The branding settings are invalid: colors must use #rrggbb and links must use HTTPS.")
 	case errors.Is(err, tenantusecases.ErrInvalidBrandingAssetKind):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind は logo または favicon を指定してください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind must be either logo or favicon.")
 	case errors.Is(err, tenantusecases.ErrBrandingAssetRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "画像ファイルを指定してください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify an image file.")
 	case errors.Is(err, tenantusecases.ErrBrandingAssetTooLarge):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "画像は256KiB以下にしてください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The image must not exceed 256 KiB.")
 	case errors.Is(err, tenantusecases.ErrBrandingAssetFormat):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "画像はPNG/JPEG/WebP/GIFのいずれかにしてください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The image must be PNG, JPEG, WebP, or GIF.")
 	default:
 		return err
 	}
@@ -74,7 +74,7 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 	}
 	var input brandingUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	branding, err := tenantusecases.UpdateBranding(c.Request().Context(), d.BrandingRepo, actor.TenantID, tenantusecases.BrandingUpdateInput{
 		ProductName:  input.ProductName,
@@ -106,11 +106,11 @@ func (d Deps) handleUploadBrandingAsset(c *echo.Context) error {
 	}
 	kind := domain.TenantBrandingAssetKind(c.Param("kind"))
 	if !kind.Valid() {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind は logo または favicon を指定してください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind must be either logo or favicon.")
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "画像ファイルを指定してください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify an image file.")
 	}
 	src, err := file.Open()
 	if err != nil {
@@ -152,7 +152,7 @@ func (d Deps) handleDeleteBrandingAsset(c *echo.Context) error {
 	}
 	kind := domain.TenantBrandingAssetKind(c.Param("kind"))
 	if !kind.Valid() {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind は logo または favicon を指定してください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "kind must be either logo or favicon.")
 	}
 	branding, err := tenantusecases.DeleteBrandingAsset(
 		c.Request().Context(), d.BrandingRepo, d.BrandingAssetStore, actor.TenantID, kind, time.Now().UTC(),

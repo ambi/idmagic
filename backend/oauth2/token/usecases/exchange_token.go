@@ -109,7 +109,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return nil, err
 	}
 	if subject == nil || !subject.Active {
-		return reject("", NewOAuthError("invalid_grant", "subject_token は無効または失効しています"))
+		return reject("", NewOAuthError("invalid_grant", "The subject_token is invalid or expired."))
 	}
 
 	// --- actor_token (任意) ---
@@ -128,7 +128,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		currentActorSub = actor.Sub
 	}
 	if currentActorSub == "" {
-		return reject("", NewOAuthError("invalid_request", "現在のアクターを決定できません"))
+		return reject("", NewOAuthError("invalid_request", "The current actor cannot be determined."))
 	}
 
 	// --- may_act 強制 (fail-closed) ---
@@ -147,7 +147,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 	depth := actDepth(act)
 	if depth > MaxDelegationDepth {
-		return reject(currentActorSub, NewOAuthError("invalid_request", "委任の深さが上限を超えています"))
+		return reject(currentActorSub, NewOAuthError("invalid_request", "The delegation depth exceeds the limit."))
 	}
 
 	// --- scope ダウンスコープ (拡大不可) ---
@@ -160,7 +160,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		}
 		for _, s := range requested {
 			if !subset[s] {
-				return reject(currentActorSub, NewOAuthError("invalid_scope", "subject_token のスコープを超える要求です"))
+				return reject(currentActorSub, NewOAuthError("invalid_scope", "The requested scope exceeds the subject_token scope."))
 			}
 		}
 		grantedScopes = requested
@@ -206,7 +206,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return nil, err
 	}
 	if !d.Permit {
-		return reject(currentActorSub, NewOAuthError("invalid_grant", "token exchange 拒否: "+strings.Join(d.Reasons, ", ")))
+		return reject(currentActorSub, NewOAuthError("invalid_grant", "Token exchange was rejected: "+strings.Join(d.Reasons, ", ")))
 	}
 
 	// --- sender constraint (DPoP / mTLS) ---

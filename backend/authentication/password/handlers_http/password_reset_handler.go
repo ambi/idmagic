@@ -66,7 +66,7 @@ func HandleForgotPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input forgotPasswordAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ttl := time.Duration(authusecases.PasswordResetTokenTTLSeconds) * time.Second
 	if err := authusecases.RequestPasswordReset(
@@ -90,10 +90,10 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input resetPasswordAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(input.Token) == "" || input.NewPassword == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "tokenと新しいパスワードが必要です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A token and a new password are required.")
 	}
 	snap := resolvePasswordPolicy(c.Request().Context(), d)
 	_, err := authusecases.ResetPasswordWithToken(
@@ -112,9 +112,9 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	case err == nil:
 		return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
 	case errors.Is(err, authusecases.ErrInvalidResetToken):
-		return support.WriteBrowserError(c, http.StatusGone, "invalid_reset_token", "リセットリンクが無効か期限切れです")
+		return support.WriteBrowserError(c, http.StatusGone, "invalid_reset_token", "The reset link is invalid or expired.")
 	case errors.Is(err, authusecases.ErrPasswordReused):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "password_reuse", "直近に使ったパスワードは再利用できません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "password_reuse", "A recently used password cannot be reused.")
 	default:
 		var policyErr *authusecases.PasswordPolicyError
 		if errors.As(err, &policyErr) {

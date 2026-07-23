@@ -82,14 +82,14 @@ func UserInfo(
 		if slices.Contains(d.Reasons, "token_has_openid_scope") {
 			return nil, NewOAuthError("insufficient_scope", "openid scope is required")
 		}
-		return nil, NewOAuthError("invalid_request", "userinfo 拒否: "+strings.Join(d.Reasons, ", "))
+		return nil, NewOAuthError("invalid_request", "UserInfo was rejected: "+strings.Join(d.Reasons, ", "))
 	}
 	u, err := repo.FindBySubIncludingDeleted(ctx, in.Sub)
 	if err != nil {
 		return nil, err
 	}
 	if u == nil {
-		return nil, NewOAuthError("invalid_request", "ユーザーが存在しません")
+		return nil, NewOAuthError("invalid_request", "The user does not exist.")
 	}
 	if u.IsDeleted() {
 		return nil, NewOAuthError("invalid_token", "user is unavailable")

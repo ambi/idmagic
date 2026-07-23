@@ -34,7 +34,7 @@ func HandleGenerateRecoveryCodes(d httpdeps.Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	if d.RecoveryCodeRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "recovery_unavailable", "リカバリコードは利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "recovery_unavailable", "Recovery codes are unavailable.")
 	}
 	result, err := authusecases.GenerateRecoveryCodes(c.Request().Context(), recoveryCodesDeps(d), sub, time.Now().UTC())
 	if err != nil {
@@ -54,7 +54,7 @@ func HandleRevokeRecoveryCodes(d httpdeps.Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	if d.RecoveryCodeRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "recovery_unavailable", "リカバリコードは利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "recovery_unavailable", "Recovery codes are unavailable.")
 	}
 	if err := authusecases.RevokeRecoveryCodes(c.Request().Context(), recoveryCodesDeps(d), sub, time.Now().UTC()); err != nil {
 		return httpdeps.WriteAccountError(c, err)

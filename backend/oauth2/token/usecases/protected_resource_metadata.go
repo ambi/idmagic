@@ -33,14 +33,14 @@ func BuildProtectedResourceMetadata(
 		}, nil
 	}
 	if repo == nil {
-		return nil, NewOAuthError("invalid_target", "resource が登録されていません")
+		return nil, NewOAuthError("invalid_target", "The resource is not registered.")
 	}
 	m, err := repo.FindByResource(ctx, tenantID, resource)
 	if err != nil {
 		return nil, err
 	}
 	if m == nil || !m.IsActive() {
-		return nil, NewOAuthError("invalid_target", "resource が登録されていない、または無効です")
+		return nil, NewOAuthError("invalid_target", "The resource is not registered or is disabled.")
 	}
 	return &ProtectedResourceMetadata{
 		Resource:               m.Resource,

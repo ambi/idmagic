@@ -59,7 +59,7 @@ func (d Deps) handleUpsertRelyingParty(c *echo.Context) error {
 	}
 	var req relyingPartyRequest
 	if err := c.Bind(&req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSON が不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
 	}
 	if err := req.validate(); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
@@ -109,7 +109,7 @@ func (d Deps) handleDeleteRelyingParty(c *echo.Context) error {
 		return err
 	}
 	if rp != nil && rp.ApplicationID != "" {
-		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Application に紐づく relying party は Application を削除してください")
+		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated relying party.")
 	}
 	if err := d.WsFedRPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), wtrealm); err != nil {
 		return err

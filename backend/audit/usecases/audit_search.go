@@ -48,21 +48,21 @@ func validateCardinality(op ports.AuditFilterOperator, values []string) error {
 	switch op {
 	case ports.OpEq, ports.OpContains:
 		if len(values) != 1 {
-			return fmt.Errorf("operator %s は値を 1 個指定してください", op)
+			return fmt.Errorf("operator %s requires exactly one value", op)
 		}
 	case ports.OpIn:
 		if len(values) == 0 {
-			return errors.New("operator in は値を 1 個以上指定してください")
+			return errors.New("operator in requires at least one value")
 		}
 	case ports.OpTimeRange:
 		if len(values) != 2 {
-			return errors.New("operator time_range は値を 2 個 (after, before) 指定してください")
+			return errors.New("operator time_range requires exactly two values (after and before)")
 		}
 	default:
-		return fmt.Errorf("未知の operator です: %s", op)
+		return fmt.Errorf("unknown operator: %s", op)
 	}
 	if slices.Contains(values, "") {
-		return errors.New("検索値に空文字は指定できません")
+		return errors.New("search values must not be empty")
 	}
 	return nil
 }

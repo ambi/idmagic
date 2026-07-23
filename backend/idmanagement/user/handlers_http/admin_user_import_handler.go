@@ -28,14 +28,14 @@ func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "ジョブ基盤を利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	var in userImportRequest
 	if err := support.DecodeJSON(c.Request(), &in); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_csv", "CSVリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_csv", "The CSV request is invalid.")
 	}
 	if in.Mode != "dry_run" && in.Mode != "apply" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "mode は dry_run または apply です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "mode must be either dry_run or apply.")
 	}
 	_, result := userusecases.ParseUserImportCSV(in.CSV)
 	if len(result.Errors) > 0 && result.TotalRows == 0 {
@@ -62,14 +62,14 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "ジョブ基盤を利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))
 	if err != nil {
 		return err
 	}
 	if job == nil || job.TenantID != tenancy.TenantID(c.Request().Context()) || (job.Kind != domain.KindUserImportPreview && job.Kind != domain.KindUserImportApply) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_import_not_found", "インポートが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "user_import_not_found", "The import does not exist.")
 	}
 	var result any
 	_ = json.Unmarshal(job.Result, &result)

@@ -124,7 +124,7 @@ func HandleUpdateAccountProfile(d Deps, c *echo.Context) error {
 	}
 	var input accountProfileUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	user, defs, err := userusecases.UpdateUserProfile(c.Request().Context(), accountProfileDeps(d),
 		userusecases.UpdateUserProfileInput{
@@ -153,17 +153,17 @@ func requireAuthenticatedSub(d Deps, c *echo.Context) (string, error) {
 func writeAccountError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが必要です")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	case errors.Is(err, mfausecases.ErrStepUpRequired):
-		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "この操作には再認証が必要です")
+		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	case errors.Is(err, idmusecases.ErrUserNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, sessionusecases.ErrSessionNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "session_not_found", "セッションが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	case errors.Is(err, userusecases.ErrAttributeNotEditable):
-		return support.WriteBrowserError(c, http.StatusForbidden, "attribute_not_editable", "この属性は編集できません")
+		return support.WriteBrowserError(c, http.StatusForbidden, "attribute_not_editable", "This attribute cannot be edited.")
 	case errors.Is(err, userusecases.ErrInvalidAttribute):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "属性がスキーマに適合していません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "The attribute does not conform to the schema.")
 	default:
 		return err
 	}

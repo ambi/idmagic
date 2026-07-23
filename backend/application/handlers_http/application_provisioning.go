@@ -126,7 +126,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	}
 	var req createApplicationRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx := c.Request().Context()
 	now := time.Now().UTC()
@@ -144,7 +144,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 
 	case "oidc":
 		if len(req.RedirectURIs) == 0 {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "リダイレクト URI を 1 つ以上指定してください")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify at least one redirect URI.")
 		}
 		registration := clientusecases.RegisterClientInput{
 			ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
@@ -201,7 +201,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 
 	case "wsfed":
 		if strings.TrimSpace(req.Wtrealm) == "" || len(req.ReplyURLs) == 0 {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "wtrealm と reply URL を指定してください")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify wtrealm and a reply URL.")
 		}
 		rp := &feddomain.WsFedRelyingParty{
 			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
@@ -211,7 +211,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			CreatedAt: now,
 		}
 		if d.WsFedRPRepo == nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "WS-Federation は利用できません")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "WS-Federation is unavailable.")
 		}
 		if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 			return err
@@ -225,14 +225,14 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 
 	case "saml":
 		if strings.TrimSpace(req.EntityID) == "" || len(req.ACSURLs) == 0 {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "entity ID と ACS URL を指定してください")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify an entity ID and an ACS URL.")
 		}
 		if d.SamlSPRepo == nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML は利用できません")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 		}
 		if req.WantAuthnRequestsSigned {
 			if _, err := samldomain.ParseCertificatePEM(req.AuthnRequestSigningCertificatePEM); err != nil {
-				return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "AuthnRequest 署名検証用証明書を指定してください")
+				return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify a certificate for AuthnRequest signature verification.")
 			}
 		}
 		sp := &samldomain.SamlServiceProvider{
@@ -257,7 +257,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
 
 	default:
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "種別は oidc / wsfed / saml / weblink のいずれかです")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The type must be oidc, wsfed, saml, or weblink.")
 	}
 }
 
@@ -391,11 +391,11 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	}
 	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "OIDC バインディングがありません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	var req rotateOIDCClientSecretRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	graceDays := 7
 	if req.GraceDays != nil {
@@ -435,11 +435,11 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	}
 	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "OIDC バインディングがありません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	var req updateOIDCRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if _, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: clientID,
@@ -474,16 +474,16 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	}
 	wtrealm := bindingKeyOf(app, domain.ApplicationProtocolWsFed)
 	if wtrealm == "" || d.WsFedRPRepo == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "WS-Federation バインディングがありません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The WS-Federation binding does not exist.")
 	}
 	ctx := c.Request().Context()
 	rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, support.RequestTenantID(c), wtrealm)
 	if err != nil || rp == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "relying party が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The relying party does not exist.")
 	}
 	var req updateWsFedRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if req.ReplyURLs != nil {
 		rp.ReplyURLs = *req.ReplyURLs
@@ -493,7 +493,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	}
 	if req.TokenType != nil {
 		if *req.TokenType != "" && !req.TokenType.Valid() {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "token_type が不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The token_type is invalid.")
 		}
 		rp.TokenType = *req.TokenType
 	}
@@ -540,16 +540,16 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	}
 	entityID := bindingKeyOf(app, domain.ApplicationProtocolSAML)
 	if entityID == "" || d.SamlSPRepo == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML バインディングがありません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The SAML binding does not exist.")
 	}
 	ctx := c.Request().Context()
 	sp, err := d.SamlSPRepo.FindByEntityID(ctx, support.RequestTenantID(c), entityID)
 	if err != nil || sp == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "service provider が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The service provider does not exist.")
 	}
 	var req updateSamlRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if req.ACSURLs != nil {
 		sp.ACSURLs = *req.ACSURLs
@@ -580,7 +580,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	}
 	if sp.WantAuthnRequestsSigned {
 		if _, err := samldomain.ParseCertificatePEM(sp.AuthnRequestSigningCertificatePEM); err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "AuthnRequest 署名検証用証明書を指定してください")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify a certificate for AuthnRequest signature verification.")
 		}
 	}
 	if req.Rules != nil {

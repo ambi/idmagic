@@ -45,7 +45,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 	sid := ""
 	if in.IDTokenHint != "" {
 		if deps.HintVerifier == nil {
-			return nil, NewOAuthError("invalid_request", "id_token_hint はサポートされていません")
+			return nil, NewOAuthError("invalid_request", "id_token_hint is not supported.")
 		}
 		claims, err := deps.HintVerifier.VerifyIDTokenHint(ctx, in.IDTokenHint)
 		if err != nil {
@@ -70,7 +70,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 		return nil, err
 	}
 	if client == nil {
-		return nil, NewOAuthError("invalid_request", "post_logout_redirect_uri が未登録")
+		return nil, NewOAuthError("invalid_request", "The post_logout_redirect_uri is not registered.")
 	}
 	registered := ""
 	for _, uri := range client.RedirectURIs {
@@ -80,7 +80,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 		}
 	}
 	if registered == "" {
-		return nil, NewOAuthError("invalid_request", "post_logout_redirect_uri が未登録")
+		return nil, NewOAuthError("invalid_request", "The post_logout_redirect_uri is not registered.")
 	}
 	target.Client = client
 	target.RedirectURI = registered

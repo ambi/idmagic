@@ -54,7 +54,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "grant_type is required"))
 	}
 	if !spec.GrantType(grantType).Valid() {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "Unsupported grant_type: "+grantType))
 	}
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), clientStub.ID)
 	if err != nil {
@@ -153,7 +153,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		for _, s := range scopes {
 			if !declared[s] {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "宣言外のスコープ"))
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "The requested scope is not declared."))
 			}
 		}
 		// RFC 8707 resource indicator (ADR-055, wi-262) — 指定時は登録済み Active な
@@ -283,7 +283,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		return c.JSON(http.StatusOK, body)
 	}
-	return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "未対応 grant_type: "+grantType))
+	return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "Unsupported grant_type: "+grantType))
 }
 
 func containsAccountScope(value string) bool {

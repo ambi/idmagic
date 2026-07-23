@@ -43,7 +43,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		}
 	}
 	if methods > 1 {
-		return authedClient{}, usecases.NewOAuthError("invalid_request", "複数のクライアント認証方式が混在しています")
+		return authedClient{}, usecases.NewOAuthError("invalid_request", "Multiple client authentication methods are mixed.")
 	}
 
 	// 1. client_assertion (private_key_jwt)
@@ -114,11 +114,11 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		}
 		parts := strings.SplitN(string(raw), ":", 2)
 		if len(parts) != 2 {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "Basic 形式不正")
+			return authedClient{}, usecases.NewOAuthError("invalid_client", "The Basic authentication format is invalid.")
 		}
 		clientID, err = url.QueryUnescape(parts[0])
 		if err != nil {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "client_id の形式不正")
+			return authedClient{}, usecases.NewOAuthError("invalid_client", "The client_id format is invalid.")
 		}
 		secret, err = url.QueryUnescape(parts[1])
 		if err != nil {

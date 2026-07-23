@@ -57,7 +57,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 	if req.State != spec.AuthFlowReceived {
 		return nil, NewOAuthError(
 			"invalid_request",
-			"authorization request は処理済みです。クライアントから認可をやり直してください",
+			"The authorization request has already been processed. Restart authorization from the client.",
 		)
 	}
 

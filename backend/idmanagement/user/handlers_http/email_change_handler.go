@@ -42,7 +42,7 @@ func HandleRequestEmailChange(d Deps, c *echo.Context) error {
 	}
 	var input emailChangeRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	err = userusecases.RequestEmailChange(c.Request().Context(), userusecases.RequestEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore,
@@ -61,10 +61,10 @@ func HandleConfirmEmailChange(d Deps, c *echo.Context) error {
 	}
 	var input emailChangeVerifyRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(input.Token) == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "tokenが必要です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A token is required.")
 	}
 	if _, err := userusecases.ConfirmEmailChange(c.Request().Context(), userusecases.ConfirmEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore, Emit: d.Emit,
@@ -77,13 +77,13 @@ func HandleConfirmEmailChange(d Deps, c *echo.Context) error {
 func writeEmailChangeError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, userusecases.ErrInvalidEmail):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_email", "メールアドレスの形式が正しくありません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_email", "The email address format is invalid.")
 	case errors.Is(err, userusecases.ErrEmailUnchanged):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "email_unchanged", "現在のメールアドレスと同じです")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "email_unchanged", "The email address is unchanged.")
 	case errors.Is(err, userusecases.ErrEmailTaken):
-		return support.WriteBrowserError(c, http.StatusConflict, "email_taken", "このメールアドレスは既に使われています")
+		return support.WriteBrowserError(c, http.StatusConflict, "email_taken", "This email address is already in use.")
 	case errors.Is(err, userusecases.ErrInvalidEmailChangeToken):
-		return support.WriteBrowserError(c, http.StatusGone, "invalid_email_change_token", "確認リンクが無効か期限切れです")
+		return support.WriteBrowserError(c, http.StatusGone, "invalid_email_change_token", "The confirmation link is invalid or expired.")
 	default:
 		return writeAccountError(c, err)
 	}

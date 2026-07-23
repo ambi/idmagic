@@ -399,13 +399,13 @@ func isExpired(expiresAt, now time.Time) bool {
 func Evaluate(req AuthZRequest) AuthZResponse {
 	rules, ok := actionRules[req.Action]
 	if !ok {
-		return AuthZResponse{Permit: false, Reasons: []string{fmt.Sprintf("未定義のアクション: %s", req.Action)}}
+		return AuthZResponse{Permit: false, Reasons: []string{fmt.Sprintf("undefined action: %s", req.Action)}}
 	}
 	var failed []string
 	for _, ruleID := range rules {
 		ev, ok := ruleEvaluators[ruleID]
 		if !ok {
-			failed = append(failed, "未実装のルール: "+ruleID)
+			failed = append(failed, "unimplemented rule: "+ruleID)
 			continue
 		}
 		if !ev(req) {

@@ -67,24 +67,24 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, err
 	}
 	if rec == nil {
-		return nil, NewOAuthError("invalid_grant", "code が無効です")
+		return nil, NewOAuthError("invalid_grant", "The authorization code is invalid.")
 	}
 	tenantID := tenancy.TenantID(ctx)
 	if rec.TenantID != tenantID {
-		return nil, NewOAuthError("invalid_grant", "code が無効です")
+		return nil, NewOAuthError("invalid_grant", "The authorization code is invalid.")
 	}
 	now := time.Now().UTC()
 	if rec.State != spec.AuthCodeRecordIssued || !now.Before(rec.ExpiresAt) {
 		if rec.IssuedFamilyID != nil && deps.RefreshStore != nil {
 			_ = deps.RefreshStore.RevokeFamily(ctx, *rec.IssuedFamilyID)
 		}
-		return nil, NewOAuthError("invalid_grant", "code が使用済みまたは期限切れ")
+		return nil, NewOAuthError("invalid_grant", "The authorization code has been used or has expired.")
 	}
 	if rec.ClientID != in.ClientID {
-		return nil, NewOAuthError("invalid_grant", "code がクライアントに紐づかない")
+		return nil, NewOAuthError("invalid_grant", "The authorization code is not bound to the client.")
 	}
 	if rec.RedirectURI != in.RedirectURI {
-		return nil, NewOAuthError("invalid_grant", "redirect_uri が一致しない")
+		return nil, NewOAuthError("invalid_grant", "The redirect_uri does not match.")
 	}
 	if !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
 		return nil, NewOAuthError("invalid_grant", "PKCE verification failed")
@@ -113,7 +113,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if user.TenantID != tenantID {
-		return nil, NewOAuthError("invalid_grant", "code が無効です")
+		return nil, NewOAuthError("invalid_grant", "The authorization code is invalid.")
 	}
 	if !user.IsActive() {
 		return nil, NewOAuthError("invalid_grant", "user is disabled")
@@ -126,7 +126,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		if rec.IssuedFamilyID != nil && deps.RefreshStore != nil {
 			_ = deps.RefreshStore.RevokeFamily(ctx, *rec.IssuedFamilyID)
 		}
-		return nil, NewOAuthError("invalid_grant", "code は並行リクエストにより使用済みです")
+		return nil, NewOAuthError("invalid_grant", "The authorization code was used by a concurrent request.")
 	}
 	rec = redeemed
 

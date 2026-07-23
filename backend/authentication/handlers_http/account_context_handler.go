@@ -30,7 +30,7 @@ func handleAccountContext(d Deps, c *echo.Context) error {
 		return err
 	}
 	if authn == nil || authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが必要です")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	csrf, err := d.EnsureCSRFCookie(c)
 	if err != nil {

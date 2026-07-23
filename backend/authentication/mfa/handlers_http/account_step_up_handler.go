@@ -47,7 +47,7 @@ func stepUpDeps(d httpdeps.Deps) authusecases.StepUpDeps {
 // challenge は現在の認証済み session id をキーに保存し、complete で method=webauthn として検証する。
 func HandleStepUpWebAuthnChallenge(d httpdeps.Deps, c *echo.Context) error {
 	if d.WebAuthnRP == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "パスキー認証は利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
@@ -92,7 +92,7 @@ func HandleCompleteStepUp(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input stepUpCompleteRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.CompleteStepUp(c.Request().Context(), stepUpDeps(d), authusecases.CompleteStepUpInput{
 		Sub:       authn.UserID,
@@ -112,9 +112,9 @@ func HandleCompleteStepUp(d httpdeps.Deps, c *echo.Context) error {
 func writeStepUpError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, authusecases.ErrStepUpFailed):
-		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_failed", "再認証に失敗しました。入力を確認してください。")
+		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_failed", "Reauthentication failed. Check the input.")
 	case errors.Is(err, authusecases.ErrStepUpUnsupportedMethod):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "この再認証方法は利用できません。")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "This reauthentication method is unavailable.")
 	default:
 		return httpdeps.WriteAccountError(c, err)
 	}

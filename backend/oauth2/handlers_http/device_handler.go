@@ -57,17 +57,17 @@ func (d Deps) handleDeviceAPI(c *echo.Context) error {
 	}
 	var input deviceAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(input.UserCode) == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "デバイスコードが必要です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A device code is required.")
 	}
 	authn, _ := d.AuthnResolver.Resolve(
 		c.Request().Context(),
 		authdomain.HTTPHeadersAdapter{H: c.Request().Header},
 	)
 	if authn == nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "ログインが必要です")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "Authentication is required.")
 	}
 	if input.Action == "deny" {
 		if err := deviceusecases.DenyUserCode(

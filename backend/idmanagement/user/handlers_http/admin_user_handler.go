@@ -103,10 +103,10 @@ func HandleGetAdminUser(d Deps, c *echo.Context) error {
 		return err
 	}
 	if user == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	}
 	if user.TenantID != support.RequestTenantID(c) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	}
 	res := toAdminUserResponse(user)
 	if d.ScimRepo != nil {
@@ -129,7 +129,7 @@ func HandleCreateAdminUser(d Deps, c *echo.Context) error {
 	}
 	var input adminUserCreateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
@@ -158,7 +158,7 @@ func HandleUpdateAdminUser(d Deps, c *echo.Context) error {
 	}
 	var input adminUserUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
@@ -198,7 +198,7 @@ func HandleDeleteAdminUser(d Deps, c *echo.Context) error {
 	var input adminUserDeleteRequest
 	if c.Request().ContentLength > 0 {
 		if err := support.DecodeJSON(c.Request(), &input); err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 		}
 	}
 	// 既定は soft-delete (削除予約)。?purge=true または body force=true で完全削除
@@ -279,23 +279,23 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 func writeAdminUserError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, idmusecases.ErrUserNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "ユーザーが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, userusecases.ErrUsernameConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "username_conflict", "ユーザー名は既に使用されています")
+		return support.WriteBrowserError(c, http.StatusConflict, "username_conflict", "The username is already in use.")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "roleが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "The role is invalid.")
 	case errors.Is(err, userusecases.ErrSelfDeleteForbidden):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "self_delete_forbidden", "管理者は自身を削除できません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "self_delete_forbidden", "Administrators cannot delete themselves.")
 	case errors.Is(err, userusecases.ErrSelfDisableForbidden):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "self_disable_forbidden", "管理者は自身を無効化できません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "self_disable_forbidden", "Administrators cannot disable themselves.")
 	case errors.Is(err, userusecases.ErrUserNotPendingDeletion):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "not_pending_deletion", "削除予約中のユーザーではありません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "not_pending_deletion", "The user is not scheduled for deletion.")
 	case errors.Is(err, userusecases.ErrRestoreGracePeriodExpired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "restore_grace_expired", "復元可能期間を過ぎています")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "restore_grace_expired", "The restoration grace period has expired.")
 	case errors.Is(err, userusecases.ErrInvalidAttribute):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "属性がスキーマに適合していません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "The attribute does not conform to the schema.")
 	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_required_action", "required action が不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_required_action", "The required action is invalid.")
 	default:
 		var policyErr *authusecases.PasswordPolicyError
 		if errors.As(err, &policyErr) {
@@ -351,7 +351,7 @@ func HandleSetUserRequiredAction(d Deps, c *echo.Context) error {
 	}
 	var input adminRequiredActionRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()

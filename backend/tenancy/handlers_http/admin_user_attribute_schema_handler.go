@@ -63,7 +63,7 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 	}
 	var input userAttributeSchemaUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if d.GroupRepo != nil {
 		existing, findErr := d.AttrSchemaRepo.FindByTenant(c.Request().Context(), actor.TenantID)
@@ -89,7 +89,7 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 		for _, rule := range rules {
 			for _, key := range rule.ReferencedAttributes {
 				if changed[key] {
-					return support.WriteBrowserError(c, http.StatusConflict, "attribute_referenced_by_dynamic_group", "動的グループのルールが参照している属性は削除または型変更できません")
+					return support.WriteBrowserError(c, http.StatusConflict, "attribute_referenced_by_dynamic_group", "An attribute referenced by a dynamic group rule cannot be deleted or have its type changed.")
 				}
 			}
 		}
@@ -99,7 +99,7 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 	)
 	if err != nil {
 		if errors.Is(err, tenantusecases.ErrInvalidUserAttributeSchema) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute_schema", "属性定義が不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute_schema", "The attribute definition is invalid.")
 		}
 		return err
 	}

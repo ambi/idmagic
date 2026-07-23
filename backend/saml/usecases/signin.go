@@ -149,7 +149,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: in.TenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolSAML), Subject: authn.UserID, Reason: reason})
 		}
 		s.emit(&samldomain.SamlSignInRejected{At: now, TenantID: in.TenantID, EntityID: sp.EntityID, Reason: reason})
-		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil
+		return SignInOutcome{Kind: SignInForbidden, Message: "The user does not meet the application's sign-in policy requirements."}, nil
 	}
 
 	result, err := claimusecases.IssueClaims(sp.ClaimPolicy, claimusecases.ResolveUserAttributes(*user))

@@ -45,14 +45,14 @@ func ResolveResourceIndicator(
 	}
 	resource := values[0]
 	if repo == nil {
-		return nil, NewOAuthError("invalid_target", "resource が登録されていません")
+		return nil, NewOAuthError("invalid_target", "The resource is not registered.")
 	}
 	mcp, err := repo.FindByResource(ctx, tenantID, resource)
 	if err != nil {
 		return nil, err
 	}
 	if mcp == nil || !mcp.IsActive() {
-		return nil, NewOAuthError("invalid_target", "resource が登録されていない、または無効です")
+		return nil, NewOAuthError("invalid_target", "The resource is not registered or is disabled.")
 	}
 	for _, scope := range requestedScopes {
 		if !slices.Contains(mcp.Scopes, scope) {

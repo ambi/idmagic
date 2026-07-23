@@ -54,7 +54,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 	if !intro.Active {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "トークンが無効"))
+		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "The token is invalid."))
 	}
 	if d.AccessTokenDenylist != nil && intro.JTI != "" {
 		revoked, err := d.AccessTokenDenylist.IsRevoked(c.Request().Context(), intro.JTI)
@@ -62,7 +62,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			return writeOAuthError(c, err)
 		}
 		if revoked {
-			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "トークンが失効済みです"))
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "The token has expired."))
 		}
 	}
 	if intro.SenderConstraint != nil {

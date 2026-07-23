@@ -139,13 +139,13 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 	}
 	var input mfaEnrollmentConfirmRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	req, transactionErr := d.transactionRequest(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to が不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 		}
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
@@ -165,11 +165,11 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 func writeBrowserEnrollmentError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, authusecases.ErrMfaEnrollmentExpired):
-		return support.WriteBrowserError(c, http.StatusForbidden, "mfa_enrollment_expired", "MFA登録期限が切れています。管理者に連絡してください。")
+		return support.WriteBrowserError(c, http.StatusForbidden, "mfa_enrollment_expired", "The MFA enrollment period has expired. Contact an administrator.")
 	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed), errors.Is(err, authusecases.ErrMfaAlreadyEnrolled):
-		return support.WriteBrowserError(c, http.StatusForbidden, "mfa_enrollment_not_allowed", "MFA登録を開始できません。")
+		return support.WriteBrowserError(c, http.StatusForbidden, "mfa_enrollment_not_allowed", "MFA enrollment cannot be started.")
 	case errors.Is(err, authusecases.ErrInvalidTOTPCode), errors.Is(err, authusecases.ErrInvalidTOTPSecret):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_totp", "認証コードを確認してください。")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_totp", "Check the authentication code.")
 	default:
 		return err
 	}

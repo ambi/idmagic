@@ -80,18 +80,18 @@ func (d Deps) handleGetBranding(c *echo.Context) error {
 // endpoint。別テナントまたは削除済み object は未存在として扱う (ADR-096、ADR-073 と同型)。
 func (d Deps) handleGetBrandingAsset(c *echo.Context) error {
 	if d.BrandingAssetStore == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "画像が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The image does not exist.")
 	}
 	kind := domain.TenantBrandingAssetKind(c.Param("kind"))
 	if !kind.Valid() {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "画像が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The image does not exist.")
 	}
 	asset, err := d.BrandingAssetStore.Find(c.Request().Context(), support.RequestTenantID(c), kind, c.Param("object_key"))
 	if err != nil {
 		return err
 	}
 	if asset == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "画像が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The image does not exist.")
 	}
 	c.Response().Header().Set("X-Content-Type-Options", "nosniff")
 	c.Response().Header().Set("Cache-Control", "private, max-age=3600")

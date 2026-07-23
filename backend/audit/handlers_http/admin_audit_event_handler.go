@@ -167,18 +167,18 @@ func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.AuditEventRepo == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "監査イベントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
 	rec, err := d.AuditEventRepo.FindByID(c.Request().Context(), c.Param("id"))
 	if err != nil {
 		return support.WriteServerError(c, err)
 	}
 	if rec == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "監査イベントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
 	if !auditEventVisibleTo(rec, actor) {
 		// 別テナントのイベントは存在を隠す。
-		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "監査イベントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminAuditEventResponse(rec))
 }
@@ -268,7 +268,7 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User) (aud
 	if category := c.QueryParam("category"); category != "" {
 		types, ok := auditEventCategoryTypes[category]
 		if !ok {
-			return auditports.AuditEventQuery{}, false, errors.New("category が不正です")
+			return auditports.AuditEventQuery{}, false, errors.New("category is invalid")
 		}
 		q.Types = types
 	}
@@ -298,21 +298,21 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User) (aud
 	if after := c.QueryParam("after"); after != "" {
 		t, err := time.Parse(time.RFC3339, after)
 		if err != nil {
-			return auditports.AuditEventQuery{}, false, errors.New("after は RFC3339 形式を指定してください")
+			return auditports.AuditEventQuery{}, false, errors.New("after must be in RFC 3339 format")
 		}
 		q.After = t
 	}
 	if before := c.QueryParam("before"); before != "" {
 		t, err := time.Parse(time.RFC3339, before)
 		if err != nil {
-			return auditports.AuditEventQuery{}, false, errors.New("before は RFC3339 形式を指定してください")
+			return auditports.AuditEventQuery{}, false, errors.New("before must be in RFC 3339 format")
 		}
 		q.Before = t
 	}
 	if limitParam := c.QueryParam("limit"); limitParam != "" {
 		limit, err := strconv.Atoi(limitParam)
 		if err != nil || limit < 0 {
-			return auditports.AuditEventQuery{}, false, errors.New("limit は 0 以上の整数を指定してください")
+			return auditports.AuditEventQuery{}, false, errors.New("limit must be a non-negative integer")
 		}
 		q.Limit = limit
 	}
@@ -340,7 +340,7 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpres
 	for _, token := range raw {
 		parts := strings.SplitN(token, ":", 3)
 		if len(parts) != 3 {
-			return nil, errors.New("filter は field:operator:value 形式で指定してください")
+			return nil, errors.New("filter must use the field:operator:value format")
 		}
 		parsed = append(parsed, auditusecases.RawFilter{
 			Field:    parts[0],

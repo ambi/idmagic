@@ -48,7 +48,7 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	}
 	var req configureEntraRequest
 	if err := c.Bind(&req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSON が不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
 	}
 	if err := req.validate(); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())

@@ -128,14 +128,14 @@ func (d Deps) handleReorderMyApplications(c *echo.Context) error {
 	}
 	var req reorderMyApplicationsRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx := c.Request().Context()
 	subjects := d.subjectsForUser(ctx, user)
 	saved, err := appusecases.SaveMyApplicationOrder(ctx, d.assignmentDeps(), user.ID, subjects, req.ApplicationIDs, time.Now().UTC())
 	if err != nil {
 		if errors.Is(err, appusecases.ErrUnassignedInOrder) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "割当されていないアプリは並び順に含められません")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Unassigned applications cannot be included in the ordering.")
 		}
 		return err
 	}
@@ -164,7 +164,7 @@ func (d Deps) resolvePortalUser(c *echo.Context) (*userdomain.User, error) {
 
 func (d Deps) writePortalAuthError(c *echo.Context, err error) error {
 	if errors.Is(err, errPortalUnauthorized) {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが必要です")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	return err
 }

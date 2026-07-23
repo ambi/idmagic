@@ -61,7 +61,7 @@ func (d Deps) handleGetAuthorizationDetailType(c *echo.Context) error {
 		return err
 	}
 	if t == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "type_not_found", "authorization_details type が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "type_not_found", "The authorization_details type does not exist.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAuthorizationDetailTypeResponse(t))
 }
@@ -75,10 +75,10 @@ func (d Deps) handleCreateAuthorizationDetailType(c *echo.Context) error {
 	}
 	var req authorizationDetailTypeRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(req.Type) == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "type が必要です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "type is required.")
 	}
 	tenantID := support.RequestTenantID(c)
 	existing, err := d.AuthzDetailTypeRepo.FindByType(c.Request().Context(), tenantID, req.Type)
@@ -86,7 +86,7 @@ func (d Deps) handleCreateAuthorizationDetailType(c *echo.Context) error {
 		return err
 	}
 	if existing != nil {
-		return support.WriteBrowserError(c, http.StatusConflict, "type_exists", "同名の type が既に存在します")
+		return support.WriteBrowserError(c, http.StatusConflict, "type_exists", "A type with the same name already exists.")
 	}
 	now := time.Now().UTC()
 	state := req.State
@@ -117,11 +117,11 @@ func (d Deps) handleUpdateAuthorizationDetailType(c *echo.Context) error {
 		return err
 	}
 	if existing == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "type_not_found", "authorization_details type が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "type_not_found", "The authorization_details type does not exist.")
 	}
 	var req authorizationDetailTypeRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	existing.Description = req.Description
 	existing.Schema = req.Schema
@@ -158,7 +158,7 @@ func (d Deps) saveValidatedType(c *echo.Context, t *oauthdomain.AuthorizationDet
 	}
 	for _, rule := range t.Schema.Rules {
 		if !rule.Semantics.Valid() {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_type", "未知の field semantics: "+string(rule.Semantics))
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_type", "Unknown field semantics: "+string(rule.Semantics))
 		}
 	}
 	if err := d.AuthzDetailTypeRepo.Save(c.Request().Context(), t); err != nil {

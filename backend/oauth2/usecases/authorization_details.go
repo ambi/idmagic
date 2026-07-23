@@ -41,7 +41,7 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 		return nil
 	}
 	if repo == nil {
-		return NewOAuthError(errInvalidAuthorizationDetails, "authorization_details は受理されていません")
+		return NewOAuthError(errInvalidAuthorizationDetails, "authorization_details is not accepted.")
 	}
 	tenantID := tenancy.TenantID(ctx)
 	for _, d := range details {
@@ -53,7 +53,7 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 			return err
 		}
 		if t == nil {
-			return NewOAuthError(errInvalidAuthorizationDetails, "未登録の authorization_details type: "+d.Type)
+			return NewOAuthError(errInvalidAuthorizationDetails, "Unregistered authorization_details type: "+d.Type)
 		}
 		if err := domain.ValidateAgainstType(d, *t); err != nil {
 			return NewOAuthError(errInvalidAuthorizationDetails, err.Error())

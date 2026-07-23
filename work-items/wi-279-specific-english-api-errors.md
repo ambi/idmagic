@@ -1,5 +1,5 @@
 ---
-status: completed
+status: in_progress
 authors: [tn]
 risk: low
 created_at: 2026-07-24
@@ -14,6 +14,7 @@ depends_on: []
 これを改善するため、呼び出し側から具体的な英語のエラーメッセージを直接渡すように修正し、無意味な動的置換を行う `EnglishErrorText` を削除します。
 
 ## Scope
+- `spec/contexts/system.yaml` の `BackendErrorText`、`BackendErrorResponse`、シナリオ「バックエンドAPIエラーは英語で返る」
 - `backend/shared/kernel/error_text.go` の `EnglishErrorText` および関連テストの削除。
 - `EnglishErrorText` を使用しているエラー構築関数（`NewOAuthError`, `OAuthErrorBody` など）からの同関数呼び出しの削除。
 - 上記のエラー構築関数を呼び出している各ハンドラーやユースケースにおいて、渡されている日本語のメッセージを具体的な英語メッセージへと書き換える作業。
@@ -28,10 +29,12 @@ depends_on: []
 - API 境界での安全網として導入されていた `EnglishErrorText` を取り除き、実装側で直接英語メッセージを指定する形に純化する。
 
 ## Tasks
-- [x] T001 [Backend] 各種エラー生成関数（`NewOAuthError`, `OAuthErrorBody` など）の呼び出し元を特定し、日本語で渡されているエラーメッセージを具体的な英語メッセージに置き換える。
+- [x] T000 [SCL] `BackendErrorResponse` とシナリオ「バックエンドAPIエラーは英語で返る」が要求をすでに表現していることを確認する。
+- [x] T001 [Backend] 各種エラー生成関数（`NewOAuthError`, `OAuthErrorBody`、`WriteBrowserError` など）の呼び出し元を特定し、日本語で渡されているエラーメッセージを具体的な英語メッセージに置き換える。
 - [x] T002 [Backend] `NewOAuthError` や `OAuthErrorBody` などに残っている `EnglishErrorText` の適用を削除する。
 - [x] T003 [Backend] `backend/shared/kernel/error_text.go` とそのテストを削除する。
-- [x] T004 [Verify] エラーメッセージ変更に伴い影響を受けるテストの期待値を更新し、`just verify` を通す。
+- [x] T004 [Adapter] RED: `TestAPIErrorLiteralTextIsEnglish` が日本語 API エラーリテラルを検出して失敗することを `just test-go-package ./backend/shared/http/support_http` で先に確認（SCL `BackendErrorResponse` / シナリオ「バックエンドAPIエラーは英語で返る」）→ 全対象の英語化後に GREEN。
+- [ ] T005 [Verify] エラーメッセージ変更に伴い影響を受けるテストの期待値を更新し、`just verify` を通す。
 
 ## Verification
 - `just yaml-check-work-items`
@@ -41,7 +44,19 @@ depends_on: []
 ## Risk Notes
 既存の API クライアントが `error_description` に設定された汎用英語メッセージ (`The request could not be completed.`) の完全一致に依存している場合は影響を受けます。しかし、クライアントは本来 `error` のコード値に依存するべきであり、記述内容の具体化によるリスクは仕様上許容されます。
 
-## Completion
-- **Completed At**: 2026-07-24
-- **Summary**: 日本語APIエラーメッセージを具体的な英語に翻訳し、汎用的なEnglishErrorTextラッパーを削除。
-- **Verification Results**: just verify-go passed.
+## Progress
+- **Updated At**: 2026-07-24
+- **Implementation**:
+  `WriteBrowserError`、`NewOAuthError`、OAuth 認可 redirect、SCIM error、SAML / WS-Federation の拒否本文へ渡す日本語リテラルを具体的な英語へ置換した。
+  `err.Error()` 経由で外部へ露出していた監査検索、認可トランザクション、動的な認可拒否理由の日本語発生源も英語化した。
+  `TestAPIErrorLiteralTextIsEnglish` を追加し、既知の API / protocol error sink に日本語リテラルが再混入した場合に検出する。
+- **Verification Results**:
+  - `just yaml-check-scl` — passed
+  - `just test-go-package ./backend/shared/http/support_http` — RED を確認後、GREEN
+  - `just test-go` — passed
+  - `just verify-go` — passed
+  - `just verify-ui` — passed
+  - `just test-tools` — passed
+  - `just typecheck-tools` — passed
+  - `just traceability-strict` — passed
+  - `just verify` — blocked by the pre-existing completion schema error in `work-items/done/wi-216-dynamic-group-rule-builder-ui.md`

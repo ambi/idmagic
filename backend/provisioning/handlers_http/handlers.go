@@ -52,7 +52,7 @@ func (d Deps) handleRegisterConnection(c *echo.Context) error {
 	}
 	var req registerConnectionRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	conn, err := usecases.RegisterConnection(c.Request().Context(), d.adminDeps(), usecases.RegisterConnectionInput{
 		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("application_id"),
@@ -73,7 +73,7 @@ func (d Deps) handleGetConnection(c *echo.Context) error {
 		return d.writeError(c, err)
 	}
 	if conn == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "provisioning_not_found", "接続が見つかりません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "provisioning_not_found", "The connection was not found.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, conn)
 }
@@ -103,7 +103,7 @@ func (d Deps) handleUpdateConnection(c *echo.Context) error {
 	}
 	var req updateConnectionRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	in := usecases.UpdateConnectionInput{
 		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("application_id"),
@@ -165,7 +165,7 @@ func (d Deps) handleProvisionOnDemand(c *echo.Context) error {
 	}
 	var req onDemandRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	delivery, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), req.SubjectType, req.SubjectID, time.Now().UTC())
 	if err != nil {

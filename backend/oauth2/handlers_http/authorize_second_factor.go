@@ -91,22 +91,22 @@ func (d Deps) secondFactorMethods(c *echo.Context, sub string) []string {
 // handleWebAuthnChallengeAPI は login の WebAuthn assertion challenge を発行する。
 func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 	if d.WebAuthnRP == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "パスキー認証は利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn == nil || authn.SessionID == "" {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションがありません")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not exist.")
 	}
 	if !authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "追加の認証は不要です")
+		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
 	}
 	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID)
 	if err != nil {
 		if errors.Is(err, webauthnusecases.ErrWebAuthnNoCredential) {
-			return support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_enrolled", "登録済みのパスキーがありません")
+			return support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_enrolled", "No passkey is enrolled.")
 		}
 		return err
 	}
@@ -116,27 +116,27 @@ func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 // handleWebAuthnAPI は login の WebAuthn assertion を検証し、成功すれば認証を完了させる。
 func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 	if d.WebAuthnRP == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "パスキー認証は利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn == nil || authn.SessionID == "" {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションがありません")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not exist.")
 	}
 	if !authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "追加の認証は不要です")
+		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
 	}
 	var input browserWebAuthnRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	req, transactionErr := d.transactionRequest(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to が不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 		}
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
@@ -146,7 +146,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 	); err != nil {
 		d.recordLoginOutcome("failure", "webauthn_invalid", "webauthn")
 		d.emitAuthenticationFailure(c, authn.UserID, "webauthn_invalid")
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_webauthn", "パスキー認証に失敗しました。")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_webauthn", "Passkey authentication failed.")
 	}
 	return d.finishSecondFactor(c, authn.SessionID, req, "webauthn", directAdminLogin, input.ReturnTo)
 }
@@ -154,27 +154,27 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 // handleRecoveryCodeAPI は login の第二要素として backup recovery code を消費する。
 func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 	if d.RecoveryCodeRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "recovery_unavailable", "リカバリコードは利用できません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "recovery_unavailable", "Recovery codes are unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn == nil || authn.SessionID == "" {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションがありません")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not exist.")
 	}
 	if !authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "追加の認証は不要です")
+		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
 	}
 	var input recoveryCodeAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	req, transactionErr := d.transactionRequest(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to が不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 		}
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
@@ -185,7 +185,7 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 		if errors.Is(err, recoveryusecases.ErrRecoveryCodeInvalid) {
 			d.recordLoginOutcome("failure", "recovery_code_invalid", "recovery_code")
 			d.emitAuthenticationFailure(c, authn.UserID, "recovery_code_invalid")
-			return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_recovery_code", "リカバリコードを確認してください。")
+			return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_recovery_code", "Check the recovery code.")
 		}
 		return err
 	}
@@ -202,20 +202,20 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn == nil || authn.SessionID == "" {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "TOTP検証セッションがありません")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The TOTP verification session does not exist.")
 	}
 	if containsString(authn.AMR, "otp") && !authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "TOTPは既に検証済みです")
+		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "TOTP has already been verified.")
 	}
 	var input totpAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	req, transactionErr := d.transactionRequest(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to が不正です")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 		}
 	} else if transactionErr != nil {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
@@ -233,7 +233,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	if !result.OK {
 		d.recordLoginOutcome("failure", result.Reason, "otp")
 		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "TOTPコードを確認してください。")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "Check the TOTP code.")
 	}
 	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo)
 }
@@ -253,7 +253,7 @@ func (d Deps) finishSecondFactor(
 		return err
 	}
 	if completed == nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "セッションが失効しました")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
 	}
 	d.setSessionCookie(c, completed.SessionID)
 	var user *userdomain.User
@@ -289,7 +289,7 @@ func (d Deps) finishSecondFactor(
 	req.Sid = &completed.SessionID
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil || client == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "クライアントが存在しません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
 	}
 	next, err := d.completeAfterAuthn(c, req, client, completed)
 	if err != nil {

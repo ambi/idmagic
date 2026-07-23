@@ -211,7 +211,7 @@ func (d Deps) handleUpdateApplication(c *echo.Context) error {
 	}
 	var req applicationUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	app, err := appusecases.UpdateApplication(c.Request().Context(), d.applicationDeps(), appusecases.UpdateApplicationInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
@@ -233,7 +233,7 @@ func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "アイコン画像ファイルを指定してください")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify an icon image file.")
 	}
 	src, err := file.Open()
 	if err != nil {
@@ -280,7 +280,7 @@ func (d Deps) handleDeleteApplicationIcon(c *echo.Context) error {
 
 func (d Deps) handleGetApplicationIcon(c *echo.Context) error {
 	if d.ApplicationIconStore == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "アイコン画像が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
 	}
 	icon, err := d.ApplicationIconStore.Find(
 		c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"), c.Param("object_key"),
@@ -289,7 +289,7 @@ func (d Deps) handleGetApplicationIcon(c *echo.Context) error {
 		return err
 	}
 	if icon == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "アイコン画像が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
 	}
 	c.Response().Header().Set("Content-Type", icon.ContentType)
 	c.Response().Header().Set("X-Content-Type-Options", "nosniff")
@@ -360,7 +360,7 @@ func (d Deps) handleAssignApplication(c *echo.Context) error {
 	}
 	var req assignmentRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	assignment, err := appusecases.AssignApplication(c.Request().Context(), d.assignmentDeps(), appusecases.AssignApplicationInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
@@ -435,7 +435,7 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	}
 	var req signInPolicyRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), Rules: req.Rules, Now: time.Now().UTC(),
@@ -475,7 +475,7 @@ func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
 	}
 	var req defaultSignInPolicyRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	policy, err := appusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateDefaultSignInPolicyInput{
 		ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC(),
@@ -529,7 +529,7 @@ func (d Deps) signInPolicyDeps() appusecases.SignInPolicyDeps {
 
 func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	if errors.Is(err, appusecases.ErrApplicationNotFound) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "application_not_found", "アプリケーションが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
 	}
 	if errors.Is(err, appusecases.ErrApplicationIconRequired) ||
 		errors.Is(err, appusecases.ErrApplicationIconTooLarge) ||

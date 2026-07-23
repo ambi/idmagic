@@ -47,7 +47,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, err
 	}
 	if client == nil {
-		return nil, NewOAuthError("invalid_client", "クライアント認証に失敗")
+		return nil, NewOAuthError("invalid_client", "Client authentication failed.")
 	}
 	hash := domain.HashRefreshToken(in.RefreshToken)
 	record, err := deps.RefreshStore.FindByHash(ctx, hash)
@@ -55,23 +55,23 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, err
 	}
 	if record == nil {
-		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンが無効")
+		return nil, NewOAuthError("invalid_grant", "The refresh token is invalid.")
 	}
 	if record.TenantID != tenantID {
-		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンが無効")
+		return nil, NewOAuthError("invalid_grant", "The refresh token is invalid.")
 	}
 	if record.ClientID != client.ClientID {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
-		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンの所有者が一致しません")
+		return nil, NewOAuthError("invalid_grant", "The refresh token owner does not match.")
 	}
 	if domain.IsRefreshTokenReplay(record) {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
-		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンはすでに使用されています")
+		return nil, NewOAuthError("invalid_grant", "The refresh token has already been used.")
 	}
 	if domain.IsRefreshTokenAbsoluteExpired(record, now) {
-		return nil, NewOAuthError("invalid_grant", "リフレッシュトークン絶対期限切れ")
+		return nil, NewOAuthError("invalid_grant", "The refresh token has exceeded its absolute lifetime.")
 	}
 	user, err := deps.UserRepo.FindBySub(ctx, record.UserID)
 	if err != nil {
@@ -82,7 +82,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if user.TenantID != tenantID {
-		return nil, NewOAuthError("invalid_grant", "リフレッシュトークンが無効")
+		return nil, NewOAuthError("invalid_grant", "The refresh token is invalid.")
 	}
 	if !user.IsActive() {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
@@ -94,7 +94,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, err
 	}
 	if !d.Permit {
-		return nil, NewOAuthError("invalid_grant", "リフレッシュ拒否: "+strings.Join(d.Reasons, ", "))
+		return nil, NewOAuthError("invalid_grant", "Refresh was rejected: "+strings.Join(d.Reasons, ", "))
 	}
 
 	newTok, err := domain.RotateRefreshToken(record, now)
@@ -107,7 +107,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	if rotated == nil {
 		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
-		return nil, NewOAuthError("invalid_grant", "並行リフレッシュにより失効")
+		return nil, NewOAuthError("invalid_grant", "The refresh token was invalidated by a concurrent refresh.")
 	}
 	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
 

@@ -240,7 +240,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, NewOAuthError("invalid_grant", "device_code is not bound to the client")
 	}
 	if domain.IsDeviceExpired(rec, now) {
-		return nil, NewOAuthError("expired_token", "device_code 期限切れ")
+		return nil, NewOAuthError("expired_token", "The device_code has expired.")
 	}
 	switch rec.State {
 	case spec.DeviceFlowIssued, spec.DeviceFlowUserCodeEntered:

@@ -62,7 +62,7 @@ func (d Deps) handleGetAdminSettings(c *echo.Context) error {
 		return err
 	}
 	if tenant == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "テナントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
 	}
 	if d.QuotaRepo != nil {
 		if q, err := d.QuotaRepo.GetQuota(c.Request().Context(), tenant.ID); err == nil {
@@ -88,7 +88,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 	}
 	var input adminSettingsUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	now := time.Now().UTC()
 	tenant, err := tenantusecases.Update(

@@ -27,18 +27,18 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		return err
 	}
 	if authn == nil || authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが必要です")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	// パスワード変更は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
 	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
-		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "この操作には再認証が必要です")
+		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	}
 	var input changePasswordAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if input.CurrentPassword == "" || input.NewPassword == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "現在と新しいパスワードが必要です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The current and new passwords are required.")
 	}
 
 	ctx := c.Request().Context()
@@ -60,11 +60,11 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		c.Response().Header().Set("Cache-Control", "no-store")
 		return c.NoContent(http.StatusNoContent)
 	case errors.Is(err, authusecases.ErrUserNotFound):
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証済みセッションが無効です")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authenticated session is invalid.")
 	case errors.Is(err, authusecases.ErrCurrentPasswordMismatch):
-		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "現在のパスワードが一致しません")
+		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "The current password does not match.")
 	case errors.Is(err, authusecases.ErrPasswordReused):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "password_reuse", "新しいパスワードは最近使用したものを再利用できません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "password_reuse", "The new password cannot reuse a recently used password.")
 	default:
 		var policyErr *authusecases.PasswordPolicyError
 		if errors.As(err, &policyErr) {

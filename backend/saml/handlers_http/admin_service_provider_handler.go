@@ -71,11 +71,11 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.SamlSPRepo == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML は利用できません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 	}
 	var req serviceProviderRequest
 	if err := c.Bind(&req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSON が不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
 	}
 	if err := req.validate(); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
@@ -137,7 +137,7 @@ func (d Deps) handleDeleteServiceProvider(c *echo.Context) error {
 		return err
 	}
 	if sp != nil && sp.ApplicationID != "" {
-		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Application に紐づく service provider は Application を削除してください")
+		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated service provider.")
 	}
 	if err := d.SamlSPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), entityID); err != nil {
 		return err

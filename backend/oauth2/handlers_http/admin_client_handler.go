@@ -100,7 +100,7 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 	}
 	var req registerClientRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := validateRegisterClientRequest(&req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
@@ -146,7 +146,7 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 	}
 	var req adminClientUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	client, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
@@ -183,10 +183,10 @@ func (d Deps) adminClientDeps() clientusecases.AdminOAuth2ClientDeps {
 
 func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if errors.Is(err, clientusecases.ErrClientNotFound) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "クライアントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
 	}
 	if errors.Is(err, clientusecases.ErrProtocolOwnedByApplication) {
-		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Application に紐づくクライアントは Application を削除してください")
+		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated client.")
 	}
 	if oauthErr, ok := errors.AsType[*clientusecases.OAuthError](err); ok {
 		return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)

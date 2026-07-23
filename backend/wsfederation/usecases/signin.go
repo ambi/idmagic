@@ -146,7 +146,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolWsFed), Subject: authn.UserID, Reason: reason})
 		}
 		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
-		return SignInOutcome{Kind: SignInForbidden, Message: "この利用者はアプリケーションのサインインポリシーを満たしていません"}, nil
+		return SignInOutcome{Kind: SignInForbidden, Message: "The user does not meet the application's sign-in policy requirements."}, nil
 	}
 
 	// wfresh: 認証が古すぎれば再認証のためログインへ誘導する。

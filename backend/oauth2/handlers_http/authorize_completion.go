@@ -61,7 +61,7 @@ func (d Deps) completeAfterAuthn(
 		}
 		if !covered {
 			if prompt.None {
-				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenancy.Issuer(c.Request().Context(), d.Issuer), "consent_required", "既存同意が必要です")}, nil
+				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenancy.Issuer(c.Request().Context(), d.Issuer), "consent_required", "Existing consent is required.")}, nil
 			}
 			ctx, cancel := d.OperationContext(c.Request().Context())
 			defer cancel()
@@ -131,12 +131,12 @@ func (d Deps) issueCodeURL(
 					return "", err
 				}
 				if pending == nil {
-					return authorizationErrorURL(req, iss, "login_required", "既存セッションが認証要件を満たしません"), nil
+					return authorizationErrorURL(req, iss, "login_required", "The existing session does not satisfy the authentication requirements."), nil
 				}
 				d.setSessionCookie(c, pending.SessionID)    //nolint:contextcheck // Cookie path is derived from the Echo request.
 				return support.TenantRoute(c, "/totp"), nil //nolint:contextcheck // Redirect URL is derived from the Echo request.
 			}
-			return authorizationErrorURL(req, iss, "access_denied", "アプリケーションのサインインポリシーを満たせません"), nil
+			return authorizationErrorURL(req, iss, "access_denied", "The application's sign-in policy requirements were not met."), nil
 		}
 		if !decision.Allowed {
 			reason := decision.Reason
@@ -149,7 +149,7 @@ func (d Deps) issueCodeURL(
 					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: authn.UserID, Reason: reason,
 				})
 			}
-			return authorizationErrorURL(req, iss, "access_denied", "この利用者はアプリケーションにアクセスできません"), nil
+			return authorizationErrorURL(req, iss, "access_denied", "The user is not allowed to access this application."), nil
 		}
 	}
 	out, err := authorizationusecases.CompleteLogin(ctx, authorizationusecases.CompleteLoginDeps{

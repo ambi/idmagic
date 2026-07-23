@@ -57,7 +57,7 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 		return err
 	}
 	if tenant == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "テナントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
 	}
 	if d.QuotaRepo != nil {
 		if q, err := d.QuotaRepo.GetQuota(c.Request().Context(), tenant.ID); err == nil {
@@ -93,7 +93,7 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 	}
 	var input tenantCreateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	now := time.Now().UTC()
 	tenant, err := tenantusecases.Create(
@@ -118,7 +118,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	}
 	var input tenantUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
 	if err != nil {
@@ -224,9 +224,9 @@ func (d Deps) requireSystemAdmin(c *echo.Context) (*userdomain.User, error) {
 func (d Deps) writeTenantError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, tenantusecases.ErrTenantNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "テナントが存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
 	case errors.Is(err, tenantusecases.ErrTenantConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "tenant_conflict", "テナントIDは既に使用されています")
+		return support.WriteBrowserError(c, http.StatusConflict, "tenant_conflict", "The tenant ID is already in use.")
 	case errors.Is(err, tenantusecases.ErrInvalidTenantID),
 		errors.Is(err, tenantusecases.ErrDisplayNameEmpty),
 		errors.Is(err, tenantusecases.ErrDefaultTenant):

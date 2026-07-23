@@ -34,7 +34,7 @@ func HandleIssueMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input issueMfaEnrollmentBypassRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if input.ExpiresInSeconds == 0 {
 		input.ExpiresInSeconds = 900
@@ -67,9 +67,9 @@ func HandleRevokeMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {
 func writeMfaEnrollmentAdminError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, authusecases.ErrMfaEnrollmentAlreadyComplete):
-		return support.WriteBrowserError(c, http.StatusConflict, "mfa_already_enrolled", "対象ユーザーは既にMFA登録済みです")
+		return support.WriteBrowserError(c, http.StatusConflict, "mfa_already_enrolled", "The target user is already enrolled in MFA.")
 	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "mfa_enrollment_not_allowed", "MFA登録バイパスを発行できません")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "mfa_enrollment_not_allowed", "An MFA enrollment bypass cannot be issued.")
 	default:
 		return err
 	}

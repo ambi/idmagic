@@ -39,11 +39,11 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn == nil || req.UserID == nil || authn.UserID != *req.UserID {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "認証セッションが一致しません")
+		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
 	}
 	var input consentAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "JSONリクエストが不正です")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()

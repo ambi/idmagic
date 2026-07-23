@@ -28,14 +28,14 @@ func (d Deps) VerifyBrowserRequest(c *echo.Context) error {
 	origin := c.Request().Header.Get("Origin")
 	issuer, err := url.Parse(d.Issuer)
 	if err != nil || origin == "" || origin != issuer.Scheme+"://"+issuer.Host {
-		return WriteBrowserError(c, http.StatusForbidden, "invalid_origin", "Originが一致しません")
+		return WriteBrowserError(c, http.StatusForbidden, "invalid_origin", "The request origin does not match.")
 	}
 	cookie, err := c.Cookie(CSRFCookie)
 	header := c.Request().Header.Get(CSRFHeader)
 	if err != nil || cookie.Value == "" || header == "" ||
 		len(cookie.Value) != len(header) ||
 		subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(header)) != 1 {
-		return WriteBrowserError(c, http.StatusForbidden, "csrf_failed", "CSRF検証に失敗しました")
+		return WriteBrowserError(c, http.StatusForbidden, "csrf_failed", "CSRF validation failed.")
 	}
 	return nil
 }

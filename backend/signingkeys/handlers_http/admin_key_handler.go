@@ -65,14 +65,14 @@ func (d Deps) handleGetAdminKey(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.KeyStore == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "key_not_found", "署名鍵が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "key_not_found", "The signing key does not exist.")
 	}
 	key, err := d.KeyStore.FindByKID(c.Request().Context(), c.Param("kid"))
 	if err != nil {
 		return err
 	}
 	if key == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "key_not_found", "署名鍵が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "key_not_found", "The signing key does not exist.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminKeyResponse(key))
 }
@@ -85,7 +85,7 @@ func (d Deps) handleRotateTenantKey(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.KeyStore == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "key_store_unavailable", "署名鍵ストアが構成されていません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "key_store_unavailable", "The signing key store is not configured.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
@@ -114,19 +114,19 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.KeyStore == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "key_store_unavailable", "署名鍵ストアが構成されていません")
+		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "key_store_unavailable", "The signing key store is not configured.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	key, err := d.KeyStore.Disable(ctx, c.Param("kid"))
 	if err != nil {
 		if errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "active_key_cannot_be_disabled", "現在の署名鍵は無効化できません。先にローテートしてください")
+			return support.WriteBrowserError(c, http.StatusBadRequest, "active_key_cannot_be_disabled", "The active signing key cannot be disabled. Rotate it first.")
 		}
 		return err
 	}
 	if key == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "key_not_found", "署名鍵が存在しません")
+		return support.WriteBrowserError(c, http.StatusNotFound, "key_not_found", "The signing key does not exist.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminKeyResponse(key))
 }
