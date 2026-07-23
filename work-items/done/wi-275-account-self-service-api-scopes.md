@@ -3,7 +3,7 @@ status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-23
-depends_on: [wi-273]
+depends_on: [wi-273-unified-api-token-foundation]
 ---
 
 # アカウント自己管理 API を API アクセストークンの scope で制御できるようにする

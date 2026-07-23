@@ -3,7 +3,7 @@ status: pending
 authors: [tn, antigravity]
 risk: high
 created_at: 2026-07-22
-depends_on: [wi-216]
+depends_on: [wi-216-dynamic-group-rule-builder-ui]
 ---
 
 # 動的グループルールビルダーの作成画面への拡張と、任意CEL式のビジュアル編集（逆パース）対応

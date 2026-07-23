@@ -3,7 +3,7 @@ status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-23
-depends_on: [wi-273]
+depends_on: [wi-273-unified-api-token-foundation]
 ---
 
 # アプリケーション周り管理 API のパス構成を見直し、application/protocol 系の API scope を定義する
