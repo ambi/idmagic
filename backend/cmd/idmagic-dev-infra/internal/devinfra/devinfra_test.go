@@ -44,6 +44,24 @@ func TestApplySchemaRejectsMissingFile(t *testing.T) {
 	}
 }
 
+func TestRepairIncompletePostgresExtractionForcesReextract(t *testing.T) {
+	binariesPath := t.TempDir()
+	pgCtlPath := filepath.Join(binariesPath, "bin", "pg_ctl")
+	if err := os.MkdirAll(filepath.Dir(pgCtlPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pgCtlPath, []byte("partial extraction"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := repairIncompletePostgresExtraction(binariesPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(pgCtlPath); !os.IsNotExist(err) {
+		t.Fatalf("pg_ctl should be removed to force re-extraction, stat error=%v", err)
+	}
+}
+
 func TestEmbeddedInfrastructureSharesJobQueueWithRunner(t *testing.T) {
 	postgresPort := freePort(t)
 	valkeyPort := freePort(t)

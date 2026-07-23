@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/ambi/idmagic/backend/seeding/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -93,6 +94,20 @@ func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 	kept, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
 	if err != nil || kept.Scope != "manual-drift" {
 		t.Fatalf("manual drift was overwritten: %#v, %v", kept, err)
+	}
+}
+
+func TestSameClientIgnoresApplicationCatalogOwnership(t *testing.T) {
+	desired := firstPartyClients([]domain.FirstPartyClientSeed{{
+		ID:    "00000000-0000-4000-8000-000000000022",
+		Name:  "Admin Console",
+		Scope: "openid",
+	}}, []string{"http://localhost:5173/callback"}, time.Now().UTC())[0]
+	actual := *desired
+	actual.ApplicationID = "00000000-0000-4000-8000-000000000032"
+
+	if !sameClient(&actual, desired) {
+		t.Fatal("application catalog ownership must not be treated as OAuth2 client seed drift")
 	}
 }
 

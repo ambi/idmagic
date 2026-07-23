@@ -94,6 +94,7 @@ func ensureClient(ctx context.Context, repo interface {
 
 func sameClient(actual, desired *oauthdomain.OAuth2Client) bool {
 	left, right := *actual, *desired
+	left.ApplicationID, right.ApplicationID = "", ""
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
 	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
 	return reflect.DeepEqual(left, right)

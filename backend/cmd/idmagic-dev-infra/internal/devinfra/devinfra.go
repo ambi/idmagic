@@ -81,13 +81,17 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 	}
 	rt.valkey = valkey
 
+	binariesPath := postgresBinaryDir()
+	if err := repairIncompletePostgresExtraction(binariesPath); err != nil {
+		return fail(err)
+	}
 	postgresConfig := embeddedpostgres.DefaultConfig().
 		Port(cfg.PostgresPort).
 		Database("idmagic").
 		Username("idmagic").
 		Password("idmagic").
 		RuntimePath(filepath.Join(cfg.RuntimeDir, "runtime")).
-		BinariesPath(postgresBinaryDir()).
+		BinariesPath(binariesPath).
 		StartParameters(map[string]string{
 			// The development cluster is recreated logically on every start, so
 			// durability settings only slow the local feedback loop.
@@ -171,6 +175,37 @@ func writeReadyFile(path string, ready Ready) error {
 func postgresBinaryDir() string {
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, ".embedded-postgres-go", "extracted")
+}
+
+// repairIncompletePostgresExtraction makes embedded-postgres retry extraction
+// when a previously interrupted extraction left its pg_ctl sentinel behind.
+func repairIncompletePostgresExtraction(binariesPath string) error {
+	pgCtlPath := filepath.Join(binariesPath, "bin", "pg_ctl")
+	if _, err := os.Stat(pgCtlPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("inspect embedded PostgreSQL pg_ctl: %w", err)
+	}
+
+	requiredPaths := []string{
+		filepath.Join(binariesPath, "bin", "initdb"),
+		filepath.Join(binariesPath, "bin", "postgres"),
+		filepath.Join(binariesPath, "share", "postgresql", "postgres.bki"),
+		filepath.Join(binariesPath, "share", "postgresql", "postgresql.conf.sample"),
+	}
+	for _, requiredPath := range requiredPaths {
+		if _, err := os.Stat(requiredPath); err != nil {
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("inspect embedded PostgreSQL binary set: %w", err)
+			}
+			if err := os.Remove(pgCtlPath); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("invalidate incomplete embedded PostgreSQL extraction: %w", err)
+			}
+			return nil
+		}
+	}
+	return nil
 }
 
 func (r *Runtime) Close() error {
