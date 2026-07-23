@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-23
+updated_at: 2026-07-24
 contexts:
   System:
     spec: spec/contexts/system.yaml
@@ -181,7 +181,10 @@ modules:
       - { module: authentication-usecases, via: published_interface }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   application-adapters:
     path: backend/application/handlers_http
 
@@ -206,6 +209,8 @@ modules:
       - { module: saml-ports, via: binding }
       - { module: shared-adapters, via: binding }
       - { module: shared-spec, via: binding }
+      - { module: tenancy-domain, via: binding }
+      - { module: tenancy-ports, via: binding }
       - { module: wsfederation-domain, via: binding }
       - { module: wsfederation-ports, via: binding }
   audit-ports:
@@ -460,7 +465,10 @@ modules:
       - { module: authentication-session-ports, via: published_interface }
       - { module: authentication-usecases, via: published_interface }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   authentication-session-adapters:
     path: backend/authentication/session/handlers_http
     responsibility: "Login session の HTTP・memory・PostgreSQL・Valkey adapter。"
@@ -680,7 +688,11 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   idmanagement-user-usecases:
     path: backend/idmanagement/user/usecases
     responsibility: "User feature のユースケース。"
@@ -707,6 +719,7 @@ modules:
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   idmanagement-group-usecases:
     path: backend/idmanagement/group/usecases
     responsibility: "Group feature のユースケース（動的グループ規則の評価・reconcile を含む）。"
@@ -727,6 +740,7 @@ modules:
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   idmanagement-agent-usecases:
     path: backend/idmanagement/agent/usecases
     responsibility: "Agent feature のユースケース（OAuth2Client 資格情報束縛を含む）。"
@@ -741,7 +755,10 @@ modules:
       - { module: idmanagement-user-ports, via: published_interface }
       - { module: oauth2-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   idmanagement-user-adapters:
     path: backend/idmanagement/user/handlers_http
     responsibility: "User feature の HTTP・in-memory・PostgreSQL 永続化 adapter（email change token を含む、ADR-130 Phase 2）。ハンドラは Deps のフリー関数として実装され、Deps 型自体は idmanagement-httpdeps (leaf package) が所有する。"
@@ -871,6 +888,7 @@ modules:
       - { module: jobs-usecases, via: published_interface }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
   idgovernance-adapters:
     path: backend/idgovernance/handlers_http
@@ -892,6 +910,7 @@ modules:
       - { module: shared-adapters, via: binding }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: binding }
+      - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
   jobs-domain:
     path: backend/jobs/domain
@@ -919,6 +938,9 @@ modules:
       - { module: jobs-ports, via: published_interface }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   jobs-adapters:
     path: backend/jobs/db_memory
 
@@ -1020,6 +1042,7 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: apitoken-domain, via: binding }
       - { module: shared-security-certificates-mtls, via: technical_shared }
       - { module: shared-security-tokens-jose, via: technical_shared }
       - { module: application-domain, via: binding }
@@ -1066,6 +1089,7 @@ modules:
       - { module: tenancy-domain, via: binding }
       - { module: tenancy-ports, via: binding }
       - { module: tenancy-public, via: binding }
+      - { module: tenancy-usecases, via: binding }
   oauth2-client-domain:
     path: backend/oauth2/client/domain
     responsibility: "OAuth2 client と client secret のドメイン規則。"
@@ -1096,7 +1120,9 @@ modules:
       - { module: shared-spec, via: technical_shared }
       - { module: signingkeys-domain, via: published_interface }
       - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   oauth2-client-adapters:
     path: backend/oauth2/client/db_memory
     responsibility: "Client の memory / PostgreSQL persistence adapter。"
@@ -1129,7 +1155,10 @@ modules:
       - { module: oauth2-consent-ports, via: published_interface }
       - { module: oauth2-usecases, via: published_interface }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-domain, via: published_interface }
+      - { module: tenancy-ports, via: published_interface }
       - { module: tenancy-public, via: published_interface }
+      - { module: tenancy-usecases, via: published_interface }
   oauth2-consent-ports:
     path: backend/oauth2/consent/ports
     responsibility: "Consent repository の feature port。"
@@ -1216,6 +1245,7 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - { module: apitoken-domain, via: published_interface }
       - { module: idmanagement-agent-ports, via: published_interface }
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: idmanagement-user-ports, via: published_interface }
@@ -1405,7 +1435,10 @@ modules:
     depends_on:
       - { module: apitoken-domain, via: published_interface }
       - { module: apitoken-ports, via: published_interface }
+      - { module: oauth2-domain, via: published_interface }
+      - { module: oauth2-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
   apitoken-adapters:
     path: backend/apitoken/handlers_http
     responsibility: "ApiTokens の HTTP adapter (発行・失効・一覧の管理 API)。"
@@ -1437,6 +1470,7 @@ modules:
       - { module: apitoken-ports, via: published_interface }
       - { module: apitoken-usecases, via: published_interface }
       - { module: http-support, via: composition_root }
+      - { module: oauth2-ports, via: composition_root }
   apitoken-db-memory:
     path: backend/apitoken/db_memory
     responsibility: "backend/apitoken/db_memory の Flat Architecture adapter。"
@@ -1524,6 +1558,7 @@ modules:
       - { module: provisioning-ports, via: published_interface }
       - { module: provisioning-scim, via: published_interface }
       - { module: provisioning-usecases, via: published_interface }
+      - { module: tenancy-ports, via: composition_root }
   tenancy-domain:
     path: backend/tenancy/domain
 
@@ -1668,6 +1703,7 @@ modules:
       - { module: idmanagement-user-ports, via: composition_root }
       - { module: oauth2-ports, via: composition_root }
       - { module: saml-ports, via: composition_root }
+      - { module: tenancy-ports, via: composition_root }
       - { module: wsfederation-ports, via: composition_root }
   audit-public:
     path: backend/audit/
@@ -1925,6 +1961,7 @@ modules:
     layer: adapters
     role: technical_shared
     depends_on:
+      - { module: apitoken-ports, via: published_interface }
       - { module: application-domain, via: published_interface }
       - { module: application-ports, via: published_interface }
       - { module: application-usecases, via: published_interface }
@@ -1939,6 +1976,7 @@ modules:
       - { module: oauth2-consent-usecases, via: published_interface }
       - { module: oauth2-usecases, via: published_interface }
       - { module: shared-kernel, via: technical_shared }
+      - { module: shared-security-tokens-jose, via: technical_shared }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
@@ -2023,6 +2061,7 @@ modules:
       - { module: authentication-session-ports, via: composition_root }
       - { module: authentication-session-usecases, via: composition_root }
       - { module: authentication-usecases, via: composition_root }
+      - { module: apitoken-usecases, via: composition_root }
       - { module: bootstrap, via: published_interface }
       - { module: http-server, via: published_interface }
       - { module: http-support, via: technical_shared }

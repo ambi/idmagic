@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { UserAttributeDef } from '../../types'
-import { AdminAttributeField } from './AdminUserEditPage'
+import { AdminAttributeField } from './AdminUserAttributeEditor'
 
 function def(overrides: Partial<UserAttributeDef> = {}): UserAttributeDef {
   return {
