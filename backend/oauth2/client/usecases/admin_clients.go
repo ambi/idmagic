@@ -15,6 +15,9 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var ErrClientNotFound = errors.New("client not found")
@@ -22,6 +25,9 @@ var ErrClientNotFound = errors.New("client not found")
 type AdminOAuth2ClientDeps struct {
 	ClientRepo oauthports.OAuth2ClientRepository
 	Emit       func(spec.DomainEvent)
+	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (wi-160,
+	// ADR-134), bridged into RegisterClient which owns the actual check.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 type CreateAdminOAuth2ClientInput struct {
@@ -35,10 +41,18 @@ func CreateAdminOAuth2Client(
 	deps AdminOAuth2ClientDeps,
 	in CreateAdminOAuth2ClientInput,
 ) (*RegisterClientResult, error) {
+	// Emit is intentionally not bridged into RegisterClientDeps here: RegisterClient's
+	// internal emit fires the dynamic-registration-specific ClientRegistered event,
+	// which CreateAdminOAuth2Client must not duplicate (it emits its own
+	// AdminOAuth2ClientCreated below). The quota check itself still runs (QuotaRepo is
+	// bridged); on rejection we independently emit QuotaExceeded through our own Emit.
 	result, err := RegisterClient(ctx, RegisterClientDeps{
-		ClientRepo: deps.ClientRepo,
+		ClientRepo: deps.ClientRepo, QuotaRepo: deps.QuotaRepo,
 	}, in.Registration, in.Now)
 	if err != nil {
+		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: adminNow(in.Now), TenantID: qErr.TenantID, Resource: qErr.Resource, HardLimit: true})
+		}
 		return nil, err
 	}
 	emit(deps.Emit, &domain.AdminOAuth2ClientCreated{
@@ -132,6 +146,11 @@ func DeleteAdminOAuth2Client(
 	}
 	if err := deps.ClientRepo.Delete(ctx, tenantID, clientID); err != nil {
 		return err
+	}
+	if deps.QuotaRepo != nil {
+		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
+			return err
+		}
 	}
 	emit(deps.Emit, &domain.AdminOAuth2ClientDeleted{
 		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ClientID: clientID,

@@ -16,6 +16,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/mediavalidation"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var ErrApplicationNotFound = errors.New("application not found")
@@ -34,6 +37,24 @@ type ApplicationDeps struct {
 	AssignmentRepo ports.AssignmentRepository
 	PolicyRepo     ports.SignInPolicyRepository
 	Emit           func(spec.DomainEvent)
+	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160,
+	// ADR-134). nil skips enforcement (wiring gaps in tests/tools);
+	// production bootstrap always sets it.
+	QuotaRepo tenantports.QuotaRepository
+}
+
+// checkApplicationQuota enforces the tenant's applications Hard Quota
+// (ADR-134) before a new Application is persisted. A rejection also emits
+// QuotaExceeded so quota pressure is auditable (SCL objective QuotaAudit).
+func checkApplicationQuota(ctx context.Context, deps ApplicationDeps, tenantID string, now time.Time) error {
+	if deps.QuotaRepo == nil {
+		return nil
+	}
+	err := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceApplications, 1)
+	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+		emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
+	}
+	return err
 }
 
 type CreateApplicationInput struct {
@@ -47,6 +68,9 @@ type CreateApplicationInput struct {
 func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput) (*domain.Application, error) {
 	tenantID := tenancy.TenantID(ctx)
 	now := adminNow(in.Now)
+	if err := checkApplicationQuota(ctx, deps, tenantID, now); err != nil {
+		return nil, err
+	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, err
@@ -144,6 +168,11 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 	}
 	if err := deps.Repo.Delete(ctx, tenantID, applicationID); err != nil {
 		return err
+	}
+	if deps.QuotaRepo != nil {
+		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceApplications, 1); err != nil {
+			return err
+		}
 	}
 	emit(deps.Emit, &domain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
 	return nil

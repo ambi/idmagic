@@ -17,6 +17,7 @@ import (
 // non-echo.HTTPError (e.g. a raw DB or dependency error) would otherwise 500
 // the client with nothing in the application log to diagnose it from.
 type quotaExceeded interface {
+	error
 	IsQuotaExceeded() bool
 	GetResource() string
 	GetTenantID() string
@@ -31,8 +32,7 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 		if handled, _ := WriteAccessTokenError(c, err); handled {
 			return
 		}
-		var qErr quotaExceeded
-		if errors.As(err, &qErr) {
+		if qErr, ok := errors.AsType[quotaExceeded](err); ok {
 			logger.Warn(c.Request().Context(), "tenant resource quota exceeded",
 				"tenant_id", qErr.GetTenantID(),
 				"resource", qErr.GetResource(),
@@ -40,7 +40,7 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 			if metrics != nil {
 				metrics.RecordQuotaExceeded(qErr.GetResource())
 			}
-			fallback(c, echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error()))
+			_ = WriteBrowserError(c, http.StatusUnprocessableEntity, "quota_exceeded", err.Error())
 			return
 		}
 

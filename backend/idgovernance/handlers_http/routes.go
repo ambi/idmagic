@@ -13,6 +13,7 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -33,6 +34,10 @@ type Deps struct {
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	EmailSender     sharednotification.EmailSender
+	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
+	// ADR-134) for the LifecycleWorkflowRun job this package dispatches. nil
+	// skips enforcement.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // RegisterRoutes wires the 11 lifecycle workflow admin endpoints.

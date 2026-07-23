@@ -12,6 +12,9 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // RunnerConfig holds the ADR-099 tunables for a worker's poll loop, plus the
@@ -58,6 +61,25 @@ type RunnerDeps struct {
 	// Metrics records lane-scoped observability signals (wi-261 T006). Nil is
 	// valid and records nothing.
 	Metrics JobsMetrics
+	// QuotaRepo frees the tenant's active_jobs Hard Quota slot when a Job
+	// reaches a terminal state (wi-160, ADR-134). The increment side lives in
+	// Enqueue. nil skips enforcement (wiring gaps in tests/tools); production
+	// bootstrap always sets it.
+	QuotaRepo tenantports.QuotaRepository
+}
+
+// decrementActiveJobsQuota frees one active_jobs quota slot for tenantID.
+// nil QuotaRepo is a no-op; a decrement failure is logged, not propagated,
+// since the Job's own terminal state transition has already committed by the
+// time this runs (mirrors this package's existing "log, don't fail an
+// already-committed step" treatment of side-channel errors).
+func decrementActiveJobsQuota(ctx context.Context, quotaRepo tenantports.QuotaRepository, tenantID string) {
+	if quotaRepo == nil {
+		return
+	}
+	if err := tenancyusecases.DecrementQuota(ctx, quotaRepo, tenantID, tenancydomain.ResourceActiveJobs, 1); err != nil {
+		logging.Error(ctx, "quota: failed to decrement active_jobs on job completion", "error", err, "tenant_id", tenantID)
+	}
 }
 
 // Runner is the worker pool (ADR-099): it polls JobRepository for claimable
@@ -184,6 +206,7 @@ func (rn *Runner) complete(ctx context.Context, job *domain.Job, result json.Raw
 		}
 		return
 	}
+	decrementActiveJobsQuota(ctx, rn.deps.QuotaRepo, updated.TenantID)
 	emit(rn.deps.Emit, &domain.JobSucceeded{At: now, JobID: updated.ID, TenantID: updated.TenantID})
 	rn.jobsMetrics().RecordJobOutcome(rn.cfg.Lane, "succeeded")
 }
@@ -211,6 +234,9 @@ func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
 		return
 	}
 
+	if terminal {
+		decrementActiveJobsQuota(ctx, rn.deps.QuotaRepo, updated.TenantID)
+	}
 	emit(rn.deps.Emit, &domain.JobFailed{
 		At: now, JobID: updated.ID, TenantID: updated.TenantID,
 		Attempt: job.Attempts, Terminal: terminal, Error: handlerErr.Error(),

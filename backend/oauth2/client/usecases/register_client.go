@@ -3,6 +3,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 type RegisterClientInput struct {
@@ -40,11 +43,27 @@ type RegisterClientResult struct {
 type RegisterClientDeps struct {
 	ClientRepo ports.OAuth2ClientRepository
 	Emit       func(spec.DomainEvent)
+	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (wi-160,
+	// ADR-134). This single check covers both dynamic client registration
+	// (/register) and admin client creation (CreateAdminOAuth2Client calls
+	// RegisterClient internally). nil skips enforcement (wiring gaps in
+	// tests/tools); production bootstrap always sets it.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterClientInput, now time.Time) (*RegisterClientResult, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
+	}
+	if deps.QuotaRepo != nil {
+		tenantID := tenancy.TenantID(ctx)
+		err := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceOAuth2Clients, 1)
+		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	if in.ClientType == "" {
 		in.ClientType = spec.ClientConfidential

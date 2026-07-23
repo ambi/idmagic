@@ -13,6 +13,7 @@ import (
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -565,6 +566,7 @@ func (d Deps) applicationDeps() appusecases.ApplicationDeps {
 	return appusecases.ApplicationDeps{
 		Repo: d.ApplicationRepo, IconStore: d.ApplicationIconStore,
 		AssignmentRepo: d.ApplicationAssignmentRepo, PolicyRepo: d.ApplicationSignInPolicyRepo, Emit: d.Emit,
+		QuotaRepo: d.QuotaRepo,
 	}
 }
 
@@ -594,6 +596,12 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	}
 	if errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
+	}
+	// QuotaExceededError (wi-160, ADR-134) falls through to support_http.ErrorHandler
+	// instead of being flattened into invalid_request/400 below, so it gets the same
+	// stable quota_exceeded/422 response, logging, and metrics as every other create path.
+	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+		return err
 	}
 	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 }

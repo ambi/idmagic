@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func TestEnqueue_AppliesDefaultsAndEmits(t *testing.T) {
@@ -105,5 +108,65 @@ func TestEnqueue_DedupHitDoesNotEmit(t *testing.T) {
 	}
 	if len(emitted) != 1 {
 		t.Errorf("emitted %d events, want 1 (no JobEnqueued on dedup hit)", len(emitted))
+	}
+}
+
+// TestEnqueue_rejectsWhenHardQuotaExceeded is a wi-160 T004.8 RED test for the
+// SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (spec/contexts/tenancy.yaml), applied to the active_jobs resource.
+func TestEnqueue_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := usecases.EnqueueDeps{Repo: repo, QuotaRepo: quotaRepo}
+	now := time.Now().UTC()
+	if _, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+	}, now); err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+	_, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+	}, now)
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceActiveJobs {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+}
+
+// TestEnqueue_DedupHitReleasesSpeculativeQuotaReservation is a wi-160 T004.8
+// RED test: a dedup hit (created=false) must not permanently consume a quota
+// slot, since Enqueue cannot know whether Repo.Enqueue will dedup until after
+// the speculative CheckQuotaAndIncrement runs.
+func TestEnqueue_DedupHitReleasesSpeculativeQuotaReservation(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := usecases.EnqueueDeps{Repo: repo, QuotaRepo: quotaRepo}
+	now := time.Now().UTC()
+	dedup := "dedup-1"
+	input := ports.EnqueueInput{TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), DedupKey: &dedup}
+
+	if _, err := usecases.Enqueue(context.Background(), deps, input, now); err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+	if _, err := usecases.Enqueue(context.Background(), deps, input, now); err != nil {
+		t.Fatalf("second (dedup hit) Enqueue: %v", err)
+	}
+	usage, err := quotaRepo.GetUsage(context.Background(), "tenant-a")
+	if err != nil {
+		t.Fatalf("GetUsage: %v", err)
+	}
+	if usage.ActiveJobs != 1 {
+		t.Fatalf("expected active_jobs usage to stay at 1 after dedup hit, got %d", usage.ActiveJobs)
 	}
 }

@@ -158,7 +158,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if uri := strings.TrimSpace(req.JwksURI); uri != "" {
 			registration.JwksURI = &uri
 		}
-		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.CreateAdminOAuth2ClientInput{
+		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, clientusecases.CreateAdminOAuth2ClientInput{
 			ActorUserID:  actor.ID,
 			Registration: registration,
 			Now:          now,
@@ -178,7 +178,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	case "service":
 		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
 		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
-		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.CreateAdminOAuth2ClientInput{
+		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, clientusecases.CreateAdminOAuth2ClientInput{
 			ActorUserID: actor.ID,
 			Registration: clientusecases.RegisterClientInput{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,

@@ -22,6 +22,9 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -35,6 +38,10 @@ type AdminGroupDeps struct {
 	GroupRepo groupports.GroupRepository
 	UserRepo  userports.UserRepository
 	Emit      func(spec.DomainEvent) error
+	// QuotaRepo enforces the tenant's Hard Quota on groups (wi-160, ADR-134).
+	// nil skips enforcement (e.g. wiring gaps in tests/tools not yet updated);
+	// production bootstrap always sets it.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // GroupView は一覧・詳細でグループとメンバー数をまとめて返す。
@@ -98,6 +105,9 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	}
 	roles, err := idmusecases.NormalizeRoles(in.Roles)
 	if err != nil {
+		return nil, err
+	}
+	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceGroups, idmusecases.NormalizedNow(in.Now)); err != nil {
 		return nil, err
 	}
 	id, err := groupdomain.NewGroupID()
@@ -221,6 +231,11 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 	}
 	if err := deps.GroupRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
+	}
+	if deps.QuotaRepo != nil {
+		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceGroups, 1); err != nil {
+			return err
+		}
 	}
 	return idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id})
 }

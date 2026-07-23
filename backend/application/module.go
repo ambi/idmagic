@@ -11,6 +11,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
@@ -56,6 +57,7 @@ func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	groupRepo groupports.GroupRepository, userRepo userports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
+	quotaRepo tenantports.QuotaRepository,
 ) {
 	apphttp.RegisterRoutes(g, apphttp.Deps{
 		Deps:                        deps,
@@ -73,5 +75,6 @@ func (m Module) Register(
 		WsFedRPRepo:                 wsFedRPRepo,
 		SamlSPRepo:                  samlSPRepo,
 		ProvisioningNotifier:        m.ProvisioningNotifier,
+		QuotaRepo:                   quotaRepo,
 	})
 }

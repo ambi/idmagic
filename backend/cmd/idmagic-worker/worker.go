@@ -134,7 +134,8 @@ func RunWorker() error {
 				Emit: func(e spec.DomainEvent) {
 					logger.Info(context.Background(), "job event", "type", e.EventType(), "occurred_at", e.OccurredAt())
 				},
-				Metrics: appMetrics,
+				Metrics:   appMetrics,
+				QuotaRepo: deps.Tenancy.QuotaRepo,
 			},
 		))
 	}
@@ -250,7 +251,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo}, 100, time.Now().UTC()); err != nil {
+		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo, QuotaRepo: deps.Tenancy.QuotaRepo}, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {
@@ -269,7 +270,7 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if _, err := provisioningusecases.DispatchPendingDeliveries(ctx, deps.Provisioning.DispatcherDeps(deps.Jobs.Repo), 100); err != nil {
+		if _, err := provisioningusecases.DispatchPendingDeliveries(ctx, deps.Provisioning.DispatcherDeps(deps.Jobs.Repo, deps.Tenancy.QuotaRepo), 100); err != nil {
 			logging.Warn(ctx, "provisioning delivery dispatch failed", "error", err)
 		}
 		select {

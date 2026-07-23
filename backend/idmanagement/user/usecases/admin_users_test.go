@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
@@ -157,6 +158,78 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 	})
 	if !errors.Is(err, userusecases.ErrUsernameConflict) {
 		t.Fatalf("error=%v, want ErrUsernameConflict", err)
+	}
+}
+
+// TestCreateUser_rejectsWhenHardQuotaExceeded is a wi-160 T004.1 RED test for
+// the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (spec/contexts/tenancy.yaml), applied to the users resource.
+func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	ctx := context.Background()
+	repo := usermemory.NewUserRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := userusecases.AdminUserDeps{
+		UserRepo: repo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
+		QuotaRepo:           quotaRepo,
+	}
+	now := time.Now().UTC()
+	if _, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{
+		PreferredUsername: "alice", Password: "initial-password-9182", Now: now,
+	}); err != nil {
+		t.Fatalf("first CreateUser: %v", err)
+	}
+	_, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{
+		PreferredUsername: "bob", Password: "initial-password-9182", Now: now,
+	})
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceUsers {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+	if existing, err := repo.FindByUsername(ctx, tenancydomain.DefaultTenantID, "bob"); err != nil || existing != nil {
+		t.Fatalf("expected rejected create to not persist bob, found=%v err=%v", existing, err)
+	}
+}
+
+// TestDeleteUser_decrementsQuotaUsage is a wi-160 T004.1 RED test: hard
+// deleting a user must free its quota slot so a subsequent create at the same
+// limit succeeds.
+func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
+	ctx := context.Background()
+	repo := usermemory.NewUserRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := userusecases.AdminUserDeps{
+		UserRepo: repo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
+		QuotaRepo:           quotaRepo,
+	}
+	now := time.Now().UTC()
+	user, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{
+		PreferredUsername: "alice", Password: "initial-password-9182", Now: now,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	if err := userusecases.DeleteUser(ctx, deps, userusecases.DeleteUserInput{
+		ActorUserID: "admin", Sub: user.ID, Now: now,
+	}); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	if _, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{
+		PreferredUsername: "bob", Password: "initial-password-9182", Now: now,
+	}); err != nil {
+		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
 	}
 }
 

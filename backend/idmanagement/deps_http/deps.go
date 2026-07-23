@@ -43,6 +43,9 @@ type Deps struct {
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore
 	EmailSender           sharednotification.EmailSender
+	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
+	// (wi-160, ADR-134). nil skips enforcement.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 func (d Deps) ConsentDeps() consentusecases.ConsentDeps {

@@ -166,6 +166,8 @@ func Run() error {
 		e.Use(otelProvider.Middleware)
 	}
 	emit := deps.NewEmitFunc(logger)
+	sessionManager.QuotaRepo = deps.Tenancy.QuotaRepo
+	sessionManager.Emit = emit
 	httpadapter.Register(e, httpadapter.Deps{
 		MetricsHandler: appMetrics.Handler(),
 		Deps: httpsupport.Deps{

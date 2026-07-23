@@ -14,6 +14,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -177,16 +178,22 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 }
 
 func (d Deps) adminClientDeps() clientusecases.AdminOAuth2ClientDeps {
-	return clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}
+	return clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}
 }
 
 func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if errors.Is(err, clientusecases.ErrClientNotFound) {
 		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "クライアントが存在しません")
 	}
-	var oauthErr *clientusecases.OAuthError
-	if errors.As(err, &oauthErr) {
+	if oauthErr, ok := errors.AsType[*clientusecases.OAuthError](err); ok {
 		return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
+	}
+	// QuotaExceededError (wi-160, ADR-134) falls through to support_http.ErrorHandler
+	// instead of being flattened into invalid_client_metadata/400 below, so it gets the
+	// same stable quota_exceeded/422 response, logging, and metrics as every other
+	// create path.
+	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+		return err
 	}
 	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 }

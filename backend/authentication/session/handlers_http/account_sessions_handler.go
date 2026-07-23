@@ -45,7 +45,11 @@ func sessionStore(d httpdeps.Deps) authnports.SessionStore {
 }
 
 func accountSessionDeps(d httpdeps.Deps) authusecases.SessionDeps {
-	return authusecases.SessionDeps{Store: sessionStore(d), Emit: d.Emit}
+	deps := authusecases.SessionDeps{Store: sessionStore(d), Emit: d.Emit}
+	if d.SessionManager != nil {
+		deps.QuotaRepo = d.SessionManager.QuotaRepo
+	}
+	return deps
 }
 
 // revokeOAuthSessionTokens は sid (LoginSession.id) に紐づく RefreshTokenRecord を

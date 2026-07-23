@@ -21,12 +21,16 @@ import (
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type (
 	LifecycleWorkflowDispatcherDeps struct {
 		RunRepo igports.LifecycleWorkflowRunRepository
 		JobRepo jobsports.JobRepository
+		// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
+		// ADR-134). nil skips enforcement.
+		QuotaRepo tenantports.QuotaRepository
 	}
 	lifecycleWorkflowJobParams struct {
 		RunID string `json:"run_id"`
@@ -64,7 +68,7 @@ func DispatchQueuedLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWork
 			return marshalErr
 		}
 		dedup := "lifecycle-workflow-run:" + run.ID
-		job, enqueueErr := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo}, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: LifecycleWorkflowRunJobKind, Params: params, DedupKey: &dedup}, now)
+		job, enqueueErr := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo}, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: LifecycleWorkflowRunJobKind, Params: params, DedupKey: &dedup}, now)
 		if enqueueErr != nil {
 			return enqueueErr
 		}

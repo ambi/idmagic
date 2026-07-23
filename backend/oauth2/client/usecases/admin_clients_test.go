@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -12,6 +13,38 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+// TestDeleteAdminOAuth2Client_decrementsQuotaUsage is a wi-160 T004.5 RED
+// test: deleting a client must free its oauth2_clients quota slot so a
+// subsequent registration at the same limit succeeds.
+func TestDeleteAdminOAuth2Client_decrementsQuotaUsage(t *testing.T) {
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	clientRepo := oauth2memory.NewClientRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{OAuth2Clients: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := AdminOAuth2ClientDeps{ClientRepo: clientRepo, QuotaRepo: quotaRepo}
+	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+	regIn := CreateAdminOAuth2ClientInput{
+		ActorUserID: "admin-1", Now: now,
+		Registration: RegisterClientInput{
+			ClientName: "Client A", RedirectURIs: []string{"https://example.com/cb"},
+			GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
+		},
+	}
+	res, err := CreateAdminOAuth2Client(ctx, deps, regIn)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := DeleteAdminOAuth2Client(ctx, deps, "admin-1", res.Client.ClientID, now); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err := CreateAdminOAuth2Client(ctx, deps, regIn); err != nil {
+		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
+	}
+}
 
 func TestAdminOAuth2Client(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)

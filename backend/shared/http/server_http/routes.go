@@ -129,6 +129,7 @@ func Register(e *echo.Echo, d Deps) {
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
 		UserRepo:       d.IdManagement.UserRepo,
+		QuotaRepo:      d.Tenancy.QuotaRepo,
 	})
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), tenancyhttp.Deps{
 		Deps:           d.Deps,
@@ -136,6 +137,7 @@ func Register(e *echo.Echo, d Deps) {
 		TenantRepo:     d.TenantRepo,
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
 		UserRepo:       d.IdManagement.UserRepo,
+		QuotaRepo:      d.Tenancy.QuotaRepo,
 	})
 
 	e.GET("/health", d.handleHealth)
@@ -287,6 +289,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:     d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
+		QuotaRepo:                  d.Tenancy.QuotaRepo,
 	})
 
 	signinghttp.RegisterRoutes(g, signinghttp.Deps{
@@ -351,6 +354,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		EmailChangeTokenStore: d.IdManagement.EmailChangeTokenStore,
 		EmailSender:           d.Notification.EmailSender,
 		JobRepo:               d.Jobs.Repo,
+		QuotaRepo:             d.Tenancy.QuotaRepo,
 	})
 
 	ighttp.RegisterRoutes(g, ighttp.Deps{
@@ -361,6 +365,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
 		EmailSender: d.Notification.EmailSender,
+		QuotaRepo:   d.Tenancy.QuotaRepo,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
@@ -372,6 +377,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		BrandingAssetStore: d.Tenancy.BrandingAssetStore,
 		UserRepo:           d.IdManagement.UserRepo,
 		GroupRepo:          d.IdManagement.GroupRepo,
+		QuotaRepo:          d.Tenancy.QuotaRepo,
 	})
 
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner,
@@ -379,7 +385,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo)
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 

@@ -73,7 +73,9 @@ func (d Deps) endLocalSession(c *echo.Context, sid string) {
 		sid = d.SessionManager.SessionIDFromCookie(c.Request().Header.Get("Cookie"))
 	}
 	if sid != "" {
-		_ = authusecases.EndSession(ctx, authusecases.SessionDeps{Store: d.SessionManager.Store, Emit: d.Emit}, sid, now)
+		_ = authusecases.EndSession(ctx, authusecases.SessionDeps{
+			Store: d.SessionManager.Store, Emit: d.Emit, QuotaRepo: d.SessionManager.QuotaRepo,
+		}, sid, now)
 		if d.RefreshStore != nil {
 			_ = tokenusecases.RevokeTokensBySid(ctx, tokenusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, now)
 		}

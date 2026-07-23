@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -13,6 +14,45 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+// TestRevokeConsent_decrementsQuotaUsage is a wi-160 T004.7 RED test: revoking
+// a Granted consent must free its quota slot so a subsequent re-consent at
+// the same limit succeeds. Revoking an already-Revoked consent (idempotent
+// re-revoke) must not double-decrement.
+func TestRevokeConsent_decrementsQuotaUsage(t *testing.T) {
+	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	consentRepo := oauth2memory.NewConsentRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Consents: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	if err := quotaRepo.CheckAndIncrement(ctx, tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err != nil {
+		t.Fatalf("seed usage: %v", err)
+	}
+	if err := consentRepo.Save(ctx, tenancydomain.DefaultTenantID, &domain.Consent{
+		UserID: "user-1", ClientID: "client-1", Scopes: []string{"openid"}, State: domain.ConsentGranted,
+	}); err != nil {
+		t.Fatalf("seed consent: %v", err)
+	}
+	deps := ConsentDeps{ConsentRepo: consentRepo, QuotaRepo: quotaRepo}
+	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+
+	if err := RevokeConsent(ctx, deps, "admin-1", "user-1", "client-1", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := quotaRepo.CheckAndIncrement(ctx, tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err != nil {
+		t.Fatalf("expected quota slot freed after revoke, got %v", err)
+	}
+
+	// 冪等な再 Revoke は二重減算しない (usage は 1 のまま = 上限に達している)。
+	if err := RevokeConsent(ctx, deps, "admin-1", "user-1", "client-1", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := quotaRepo.CheckAndIncrement(ctx, tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err == nil {
+		t.Fatal("expected idempotent re-revoke to not free a second quota slot")
+	}
+}
 
 func TestAdminConsents(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)

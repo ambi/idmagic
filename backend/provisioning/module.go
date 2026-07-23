@@ -20,6 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -57,7 +58,10 @@ func (m Module) AssignmentNotifier(assignmentRepo appports.AssignmentRepository)
 }
 
 // jobEnqueuer implements usecases.Enqueuer against the Jobs bounded context.
-type jobEnqueuer struct{ Repo jobsports.JobRepository }
+type jobEnqueuer struct {
+	Repo      jobsports.JobRepository
+	QuotaRepo tenantports.QuotaRepository
+}
 
 func (e jobEnqueuer) EnqueueProvisioningDelivery(ctx context.Context, tenantID, dedupKey, deliveryID string) (string, error) {
 	params, err := json.Marshal(map[string]string{"delivery_id": deliveryID})
@@ -65,7 +69,7 @@ func (e jobEnqueuer) EnqueueProvisioningDelivery(ctx context.Context, tenantID, 
 		return "", err
 	}
 	now := time.Now().UTC()
-	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: e.Repo}, jobsports.EnqueueInput{
+	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: e.Repo, QuotaRepo: e.QuotaRepo}, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: usecases.KindProvisioningDelivery, Params: params, DedupKey: &dedupKey, Now: now,
 	}, now)
 	if err != nil {
@@ -75,8 +79,8 @@ func (e jobEnqueuer) EnqueueProvisioningDelivery(ctx context.Context, tenantID, 
 }
 
 // DispatcherDeps builds DispatchPendingDeliveries's dependencies.
-func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{DeliveryRepo: m.DeliveryRepo, Enqueuer: jobEnqueuer{Repo: jobRepo}}
+func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenantports.QuotaRepository) usecases.DispatcherDeps {
+	return usecases.DispatcherDeps{DeliveryRepo: m.DeliveryRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}}
 }
 
 // JobHandlerDeps builds ProvisioningDeliveryHandler's dependencies.

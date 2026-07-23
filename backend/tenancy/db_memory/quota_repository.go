@@ -40,81 +40,49 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 	}
 
 	var currentUsage int
-	var currentQuota int
 
 	switch resource {
-	case "users":
+	case domain.ResourceUsers:
 		currentUsage = usage.Users
-		currentQuota = 10000
-		if quota.Users != nil {
-			currentQuota = *quota.Users
-		}
-	case "groups":
+	case domain.ResourceGroups:
 		currentUsage = usage.Groups
-		currentQuota = 1000
-		if quota.Groups != nil {
-			currentQuota = *quota.Groups
-		}
-	case "agents":
+	case domain.ResourceAgents:
 		currentUsage = usage.Agents
-		currentQuota = 100
-		if quota.Agents != nil {
-			currentQuota = *quota.Agents
-		}
-	case "applications":
+	case domain.ResourceApplications:
 		currentUsage = usage.Applications
-		currentQuota = 50
-		if quota.Applications != nil {
-			currentQuota = *quota.Applications
-		}
-	case "oauth2_clients":
+	case domain.ResourceOAuth2Clients:
 		currentUsage = usage.OAuth2Clients
-		currentQuota = 100
-		if quota.OAuth2Clients != nil {
-			currentQuota = *quota.OAuth2Clients
-		}
-	case "active_sessions":
+	case domain.ResourceActiveSessions:
 		currentUsage = usage.ActiveSessions
-		currentQuota = 50000
-		if quota.ActiveSessions != nil {
-			currentQuota = *quota.ActiveSessions
-		}
-	case "consents":
+	case domain.ResourceConsents:
 		currentUsage = usage.Consents
-		currentQuota = 10000
-		if quota.Consents != nil {
-			currentQuota = *quota.Consents
-		}
-	case "active_jobs":
+	case domain.ResourceActiveJobs:
 		currentUsage = usage.ActiveJobs
-		currentQuota = 10
-		if quota.ActiveJobs != nil {
-			currentQuota = *quota.ActiveJobs
-		}
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
 	}
+	currentQuota := quota.EffectiveLimit(resource)
 
 	if currentUsage+delta > currentQuota {
 		return &domain.QuotaExceededError{TenantID: tenantID, Resource: resource}
 	}
 
 	switch resource {
-	case "users":
+	case domain.ResourceUsers:
 		usage.Users += delta
-	case "groups":
+	case domain.ResourceGroups:
 		usage.Groups += delta
-	case "agents":
+	case domain.ResourceAgents:
 		usage.Agents += delta
-	case "applications":
+	case domain.ResourceApplications:
 		usage.Applications += delta
-	case "oauth2_clients":
+	case domain.ResourceOAuth2Clients:
 		usage.OAuth2Clients += delta
-	case "active_sessions":
+	case domain.ResourceActiveSessions:
 		usage.ActiveSessions += delta
-	case "consents":
+	case domain.ResourceConsents:
 		usage.Consents += delta
-	case "active_jobs":
+	case domain.ResourceActiveJobs:
 		usage.ActiveJobs += delta
 	}
 
@@ -138,21 +106,21 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	}
 
 	switch resource {
-	case "users":
+	case domain.ResourceUsers:
 		decrementValue(&usage.Users)
-	case "groups":
+	case domain.ResourceGroups:
 		decrementValue(&usage.Groups)
-	case "agents":
+	case domain.ResourceAgents:
 		decrementValue(&usage.Agents)
-	case "applications":
+	case domain.ResourceApplications:
 		decrementValue(&usage.Applications)
-	case "oauth2_clients":
+	case domain.ResourceOAuth2Clients:
 		decrementValue(&usage.OAuth2Clients)
-	case "active_sessions":
+	case domain.ResourceActiveSessions:
 		decrementValue(&usage.ActiveSessions)
-	case "consents":
+	case domain.ResourceConsents:
 		decrementValue(&usage.Consents)
-	case "active_jobs":
+	case domain.ResourceActiveJobs:
 		decrementValue(&usage.ActiveJobs)
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)

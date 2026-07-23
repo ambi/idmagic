@@ -30,6 +30,10 @@ type DynamicGroupDeps struct {
 	SchemaRepo tenantports.TenantUserAttributeSchemaRepository
 	JobRepo    jobsports.JobRepository
 	Emit       func(spec.DomainEvent) error
+	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
+	// ADR-134) for the background reconcile job this package enqueues. nil
+	// skips enforcement.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 type DynamicGroupPreview struct {
@@ -153,7 +157,7 @@ func scheduleDynamicGroupReconcile(ctx context.Context, deps DynamicGroupDeps, r
 		return err
 	}
 	dedupKey := fmt.Sprintf("dynamic-group:%s:v%d", rule.GroupID, rule.Version)
-	_, err = jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo}, jobsports.EnqueueInput{
+	_, err = jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo}, jobsports.EnqueueInput{
 		TenantID: rule.TenantID, Kind: jobsdomain.KindDynamicGroupReconcile, Params: params, DedupKey: &dedupKey,
 	}, now)
 	return err

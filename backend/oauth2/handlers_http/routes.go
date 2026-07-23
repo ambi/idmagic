@@ -67,6 +67,9 @@ type Deps struct {
 	Authorizer                 oauthports.Authorizer
 	TenantSaltStore            auditports.TenantSaltStore
 	SentinelPasswordHash       string
+	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
+	// registration) and consents (wi-160, ADR-134). nil skips enforcement.
+	QuotaRepo tenantports.QuotaRepository
 
 	// WebAuthn / recovery code を第二要素 (login step) として使うための依存 (wi-26)。
 	// WebAuthnRP が nil の場合 WebAuthn login は無効。
@@ -127,5 +130,5 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 }
 
 func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
-	return consentusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
+	return consentusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}
 }

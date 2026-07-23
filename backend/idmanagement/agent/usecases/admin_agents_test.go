@@ -22,6 +22,7 @@ import (
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 )
 
 func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEvent) {
@@ -50,8 +51,20 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 		ClientRepo: clientRepo,
 		UserRepo:   userRepo,
 		Emit:       func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
+		QuotaRepo:  tenancymemory.NewQuotaRepository(),
 	}
 	return deps, events
+}
+
+// newAgentDepsWithQuota is like newAgentDeps but pins the tenant's agents
+// Hard Quota to limit (wi-160, ADR-134).
+func newAgentDepsWithQuota(t *testing.T, tenantID string, limit int) agentusecases.AdminAgentDeps {
+	t.Helper()
+	deps, _ := newAgentDeps(t)
+	if err := deps.QuotaRepo.SetQuota(context.Background(), tenantID, &tenancydomain.TenantQuota{Agents: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	return deps
 }
 
 func agentEventTypes(events []spec.DomainEvent) []string {
@@ -98,6 +111,60 @@ func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
 
 	if !slices.Equal(agentEventTypes(*events), []string{"AgentRegistered"}) {
 		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+// TestRegisterAgent_rejectsWhenHardQuotaExceeded is a wi-160 T004.3 RED test
+// for the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (spec/contexts/tenancy.yaml), applied to the agents resource.
+func TestRegisterAgent_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	}); err != nil {
+		t.Fatalf("first RegisterAgent: %v", err)
+	}
+	_, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "build-bot", Now: now,
+	})
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceAgents {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+	list, err := agentusecases.ListAgents(ctx, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected rejected create to not persist a second agent, got %d agents", len(list))
+	}
+}
+
+// TestDeleteAgent_decrementsQuotaUsage is a wi-160 T004.3 RED test: deleting
+// an agent must free its quota slot so a subsequent register at the same
+// limit succeeds.
+func TestDeleteAgent_decrementsQuotaUsage(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := agentusecases.DeleteAgent(ctx, deps, "operator", agent.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "build-bot", Now: now,
+	}); err != nil {
+		t.Fatalf("expected register to succeed after delete freed quota, got %v", err)
 	}
 }
 

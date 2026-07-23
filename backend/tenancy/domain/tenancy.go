@@ -96,6 +96,91 @@ func (e *QuotaExceededError) Error() string {
 	return "quota exceeded for resource " + e.Resource + " in tenant " + e.TenantID
 }
 
+// IsQuotaExceeded / GetResource / GetTenantID satisfy the quotaExceeded
+// interface support_http.ErrorHandler matches via errors.As, so quota
+// rejections get a dedicated 422 response and metrics.RecordQuotaExceeded
+// instead of falling through as an unhandled 500 (wi-160 T004).
+func (e *QuotaExceededError) IsQuotaExceeded() bool { return true }
+func (e *QuotaExceededError) GetResource() string   { return e.Resource }
+func (e *QuotaExceededError) GetTenantID() string   { return e.TenantID }
+
+// Hard Quota resource identifiers (ADR-134). These are the exact strings
+// QuotaRepository implementations switch on and TenantQuota/TenantUsage JSON
+// tags use; defining them here lets call sites avoid retyping raw strings
+// across the ~8 bounded contexts that enforce quota at creation time.
+const (
+	ResourceUsers          = "users"
+	ResourceGroups         = "groups"
+	ResourceAgents         = "agents"
+	ResourceApplications   = "applications"
+	ResourceOAuth2Clients  = "oauth2_clients"
+	ResourceActiveSessions = "active_sessions"
+	ResourceConsents       = "consents"
+	ResourceActiveJobs     = "active_jobs"
+)
+
+// DefaultTenantQuota is the ADR-134 baseline Hard Quota applied when a tenant
+// has no per-resource override. Unlike TenantQuota's fields, a system default
+// is never "unset", so plain ints are the right shape here (not *int) — it is
+// the single source of truth for these numbers: both the memory and postgres
+// QuotaRepository implementations resolve limits through
+// TenantQuota.EffectiveLimit instead of duplicating the values themselves, so
+// the two backends cannot silently drift apart (wi-160 scope: "memory /
+// postgres の両方で同じ quota enforcement を満たす"). An unrecognized resource
+// resolves to the zero value (0), which EffectiveLimit's caller treats as
+// fail-closed rather than unlimited.
+var DefaultTenantQuota = map[string]int{
+	ResourceUsers:          10000,
+	ResourceGroups:         1000,
+	ResourceAgents:         100,
+	ResourceApplications:   50,
+	ResourceOAuth2Clients:  100,
+	ResourceActiveSessions: 50000,
+	ResourceConsents:       10000,
+	ResourceActiveJobs:     10,
+}
+
+// resourceOverride returns q's explicit limit for resource, or nil when q has
+// not customized it (or q is nil). Unknown resources also return nil. This is
+// the one place *int is warranted: "not customized" is a meaningful third
+// state distinct from any concrete limit.
+func (q *TenantQuota) resourceOverride(resource string) *int {
+	if q == nil {
+		return nil
+	}
+	switch resource {
+	case ResourceUsers:
+		return q.Users
+	case ResourceGroups:
+		return q.Groups
+	case ResourceAgents:
+		return q.Agents
+	case ResourceApplications:
+		return q.Applications
+	case ResourceOAuth2Clients:
+		return q.OAuth2Clients
+	case ResourceActiveSessions:
+		return q.ActiveSessions
+	case ResourceConsents:
+		return q.Consents
+	case ResourceActiveJobs:
+		return q.ActiveJobs
+	default:
+		return nil
+	}
+}
+
+// EffectiveLimit returns the Hard Quota limit for resource: q's override when
+// set, otherwise the ADR-134 system default (DefaultTenantQuota). Unknown
+// resources return 0 (fail-closed: an unrecognized resource is never treated
+// as unlimited).
+func (q *TenantQuota) EffectiveLimit(resource string) int {
+	if override := q.resourceOverride(resource); override != nil {
+		return *override
+	}
+	return DefaultTenantQuota[resource]
+}
+
 var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 
 var tenantSchema = z.Struct(z.Shape{

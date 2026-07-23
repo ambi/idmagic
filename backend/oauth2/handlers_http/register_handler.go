@@ -2,6 +2,7 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -47,9 +49,17 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 		in.ResponseTypes = append(in.ResponseTypes, spec.ResponseType(r))
 	}
 	result, err := clientusecases.RegisterClient(c.Request().Context(), clientusecases.RegisterClientDeps{
-		ClientRepo: d.ClientRepo, Emit: d.Emit,
+		ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo,
 	}, in, time.Now().UTC())
 	if err != nil {
+		// QuotaExceededError bypasses the RFC 7591 error mapping (writeOAuthError
+		// only understands *usecases.OAuthError and would otherwise flatten a
+		// quota rejection into a generic 500) so it gets the same stable
+		// quota_exceeded response, logging, and metrics as every other create
+		// path (support_http.ErrorHandler, wi-160 ADR-134).
+		if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+			return err
+		}
 		return writeOAuthError(c, err)
 	}
 	resp := map[string]any{

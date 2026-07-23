@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
@@ -34,8 +35,20 @@ func newGroupDeps(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.DomainEve
 		GroupRepo: groupmemory.NewGroupRepository(),
 		UserRepo:  userRepo,
 		Emit:      func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
+		QuotaRepo: tenancymemory.NewQuotaRepository(),
 	}
 	return deps, events
+}
+
+// newGroupDepsWithQuota is like newGroupDeps but pins the tenant's groups
+// Hard Quota to limit, for wi-160 enforcement tests (ADR-134).
+func newGroupDepsWithQuota(t *testing.T, tenantID string, limit int) groupusecases.AdminGroupDeps {
+	t.Helper()
+	deps, _ := newGroupDeps(t)
+	if err := deps.QuotaRepo.SetQuota(context.Background(), tenantID, &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	return deps
 }
 
 func eventTypes(events []spec.DomainEvent) []string {
@@ -188,6 +201,60 @@ func TestUpdateGroupValidationErrors(t *testing.T) {
 		ActorUserID: "operator", ID: "ghost", Name: &dupe,
 	}); !errors.Is(err, groupusecases.ErrGroupNotFound) {
 		t.Fatalf("expected ErrGroupNotFound, got %v", err)
+	}
+}
+
+// TestCreateGroup_rejectsWhenHardQuotaExceeded is a wi-160 T004.2 RED test for
+// the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (spec/contexts/tenancy.yaml).
+func TestCreateGroup_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	ctx := context.Background()
+	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	}); err != nil {
+		t.Fatalf("first CreateGroup: %v", err)
+	}
+	_, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "support", Now: now,
+	})
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceGroups {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+	list, err := groupusecases.ListGroups(ctx, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected rejected create to not persist a second group, got %d groups", len(list))
+	}
+}
+
+// TestDeleteGroup_decrementsQuotaUsage is a wi-160 T004.2 RED test: deleting a
+// group must free its quota slot so a subsequent create at the same limit
+// succeeds.
+func TestDeleteGroup_decrementsQuotaUsage(t *testing.T) {
+	ctx := context.Background()
+	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := groupusecases.DeleteGroup(ctx, deps, "operator", group.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "support", Now: now,
+	}); err != nil {
+		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
 	}
 }
 

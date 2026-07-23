@@ -27,7 +27,9 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 	var stmt string
 	// Validate resource and construct the query
 	switch resource {
-	case "users", "groups", "agents", "applications", "oauth2_clients", "active_sessions", "consents", "active_jobs", "audit_events_retained", "export_artifacts_bytes":
+	case domain.ResourceUsers, domain.ResourceGroups, domain.ResourceAgents, domain.ResourceApplications,
+		domain.ResourceOAuth2Clients, domain.ResourceActiveSessions, domain.ResourceConsents, domain.ResourceActiveJobs,
+		"audit_events_retained", "export_artifacts_bytes":
 		// Ensure tenant_usages row exists
 		_, err := r.db.Exec(ctx, `
 			INSERT INTO tenant_usages (tenant_id) VALUES ($1) ON CONFLICT DO NOTHING
@@ -63,7 +65,9 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource string, delta int) error {
 	var stmt string
 	switch resource {
-	case "users", "groups", "agents", "applications", "oauth2_clients", "active_sessions", "consents", "active_jobs", "audit_events_retained", "export_artifacts_bytes":
+	case domain.ResourceUsers, domain.ResourceGroups, domain.ResourceAgents, domain.ResourceApplications,
+		domain.ResourceOAuth2Clients, domain.ResourceActiveSessions, domain.ResourceConsents, domain.ResourceActiveJobs,
+		"audit_events_retained", "export_artifacts_bytes":
 		stmt = fmt.Sprintf(`
 			UPDATE tenant_usages 
 			SET %[1]s = GREATEST(0, %[1]s - $2) 
@@ -76,27 +80,13 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	return err
 }
 
+// getDefaultQuota resolves the ADR-134 baseline limit for resource through
+// domain.DefaultTenantQuota (the single source of truth shared with the
+// memory backend's TenantQuota.EffectiveLimit) so the two persistence
+// implementations cannot drift apart. Soft-quota / undefined resources fall
+// back to 0 (unused by the Hard Quota enforcement paths that call this).
 func getDefaultQuota(resource string) int {
-	switch resource {
-	case "users":
-		return 10000
-	case "groups":
-		return 1000
-	case "agents":
-		return 100
-	case "applications":
-		return 50
-	case "oauth2_clients":
-		return 100
-	case "active_sessions":
-		return 50000
-	case "consents":
-		return 10000
-	case "active_jobs":
-		return 10
-	default:
-		return 0 // fallback for soft quotas or undefined
-	}
+	return domain.DefaultTenantQuota[resource]
 }
 
 // SetQuota explicitly sets the quota for a tenant.

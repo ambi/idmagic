@@ -26,7 +26,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -71,6 +73,10 @@ type AdminUserDeps struct {
 	// ADR-128) へ通知する境界 port。nil のとき outbound provisioning は未配線として
 	// 何もしない。
 	ProvisioningNotifier userports.ProvisioningNotifier
+	// QuotaRepo enforces the tenant's Hard Quota on users (wi-160, ADR-134).
+	// nil skips enforcement (wiring gaps in tests/tools); production bootstrap
+	// always sets it.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // notifyProvisioning is a best-effort call to deps.ProvisioningNotifier: a nil
@@ -128,6 +134,10 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if err != nil {
 		return nil, err
 	}
+	now := idmusecases.NormalizedNow(in.Now)
+	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceUsers, now); err != nil {
+		return nil, err
+	}
 	passwordHash, err := deps.PasswordHasher.Hash(in.Password)
 	if err != nil {
 		return nil, err
@@ -136,7 +146,6 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if err != nil {
 		return nil, err
 	}
-	now := idmusecases.NormalizedNow(in.Now)
 	user := &userdomain.User{
 		ID: id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
 		Name: in.Name, Email: in.Email, EmailVerified: in.EmailVerified, Roles: roles,
@@ -509,6 +518,11 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	}
 	if err := cascadeDeleteForSub(ctx, deps, user.ID); err != nil {
 		return err
+	}
+	if deps.QuotaRepo != nil {
+		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, user.TenantID, tenancydomain.ResourceUsers, 1); err != nil {
+			return err
+		}
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserDeleted{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, Reason: in.Reason,

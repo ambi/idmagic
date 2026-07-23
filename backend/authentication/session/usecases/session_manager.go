@@ -4,6 +4,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"slices"
 	"strings"
@@ -16,6 +17,9 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 const (
@@ -25,6 +29,14 @@ const (
 
 type SessionManager struct {
 	Store ports.SessionStore
+	// QuotaRepo enforces the tenant's Hard Quota on active_sessions (wi-160,
+	// ADR-134). nil skips enforcement (wiring gaps in tests/tools);
+	// production bootstrap always sets it. Settable directly (not a
+	// NewSessionManager param) so existing call sites are unaffected.
+	QuotaRepo tenantports.QuotaRepository
+	// Emit reports QuotaExceeded audit events (SCL objective QuotaAudit) when
+	// QuotaRepo rejects a session create. nil is a valid no-op sink.
+	Emit func(spec.DomainEvent)
 }
 
 func NewSessionManager(s ports.SessionStore) *SessionManager {
@@ -45,13 +57,23 @@ func (m *SessionManager) CreateWithPending(
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
+	tenantID := tenancy.TenantID(ctx)
+	if m.QuotaRepo != nil {
+		err := tenancyusecases.CheckQuotaAndIncrement(ctx, m.QuotaRepo, tenantID, tenancydomain.ResourceActiveSessions, 1)
+		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok && m.Emit != nil {
+			m.Emit(&tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, err
 	}
 	sess := &domain.LoginSession{
 		ID:                    id,
-		TenantID:              tenancy.TenantID(ctx),
+		TenantID:              tenantID,
 		UserID:                sub,
 		AuthTime:              now.Unix(),
 		AMR:                   amr,

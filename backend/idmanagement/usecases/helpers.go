@@ -5,12 +5,17 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // ErrInvalidRole は role が空文字列のみの場合に返る。
@@ -67,4 +72,30 @@ func AdminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error 
 		return nil
 	}
 	return sink(event)
+}
+
+// CheckQuotaAndAudit enforces resource's tenant Hard Quota (ADR-134, wi-160)
+// via quotaRepo.CheckAndIncrement, shared by the user/group/agent usecase
+// packages that all emit through the same error-returning sink signature. A
+// rejection also emits QuotaExceeded through sink (SCL objective QuotaAudit);
+// the emit is best-effort (logged, not propagated) so an audit-sink hiccup
+// never masks the fail-closed rejection itself. nil quotaRepo skips
+// enforcement (wiring gaps in tests/tools not yet updated); production
+// bootstrap always sets it.
+func CheckQuotaAndAudit(
+	ctx context.Context, quotaRepo tenantports.QuotaRepository, sink func(spec.DomainEvent) error,
+	tenantID, resource string, now time.Time,
+) error {
+	if quotaRepo == nil {
+		return nil
+	}
+	err := tenancyusecases.CheckQuotaAndIncrement(ctx, quotaRepo, tenantID, resource, 1)
+	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+		if emitErr := AdminEmit(sink, &tenancydomain.QuotaExceeded{
+			At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true,
+		}); emitErr != nil {
+			logging.Error(ctx, "quota: failed to emit QuotaExceeded audit event", "error", emitErr, "resource", qErr.Resource)
+		}
+	}
+	return err
 }

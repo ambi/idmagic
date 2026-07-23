@@ -13,6 +13,8 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // eventRecorder is a concurrency-safe spec.DomainEvent sink: Runner invokes
@@ -309,6 +311,52 @@ func TestRunner_SuccessPath(t *testing.T) {
 	}
 }
 
+// TestRunner_SuccessPath_decrementsActiveJobsQuota is a wi-160 T004.8 RED
+// test: a Job reaching StatusSucceeded must free its active_jobs quota slot
+// so a subsequent Enqueue at the same limit succeeds.
+func TestRunner_SuccessPath_decrementsActiveJobsQuota(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	handlers := usecases.NewHandlerRegistry()
+	handlers.Register(domain.KindNoopEcho, func(_ context.Context, job *domain.Job) (json.RawMessage, error) {
+		return json.RawMessage(`{}`), nil
+	})
+	runner := usecases.NewRunner(
+		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers, QuotaRepo: quotaRepo},
+	)
+
+	enqueueDeps := usecases.EnqueueDeps{Repo: repo, QuotaRepo: quotaRepo}
+	job, err := usecases.Enqueue(context.Background(), enqueueDeps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), MaxAttempts: domain.DefaultMaxAttempts,
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+	if _, err := usecases.Enqueue(context.Background(), enqueueDeps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), MaxAttempts: domain.DefaultMaxAttempts,
+	}, time.Now().UTC()); err == nil {
+		t.Fatal("expected second Enqueue to be rejected by active_jobs quota")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	waitForStatus(t, repo, job.ID, domain.StatusSucceeded, 2*time.Second)
+	cancel()
+	<-done
+
+	if _, err := usecases.Enqueue(context.Background(), enqueueDeps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), MaxAttempts: domain.DefaultMaxAttempts,
+	}, time.Now().UTC()); err != nil {
+		t.Fatalf("expected Enqueue to succeed after completion freed quota, got %v", err)
+	}
+}
+
 func TestRunner_RetryThenSucceed(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	handlers := usecases.NewHandlerRegistry()
@@ -393,6 +441,51 @@ func TestRunner_DeadLetterAfterMaxAttempts(t *testing.T) {
 	// second exhausts MaxAttempts (JobFailed only, terminal=true).
 	if counts["JobFailed"] != 2 || counts["JobRetried"] != 1 || counts["JobSucceeded"] != 0 {
 		t.Errorf("event counts = %+v, want JobFailed=2 JobRetried=1 JobSucceeded=0", counts)
+	}
+}
+
+// TestRunner_DeadLetter_decrementsActiveJobsQuota is a wi-160 T004.8 RED
+// test: a Job dead-lettered (StatusFailed, terminal) after exhausting
+// MaxAttempts must free its active_jobs quota slot. A non-terminal retry must
+// not free it prematurely.
+func TestRunner_DeadLetter_decrementsActiveJobsQuota(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	limit := 1
+	if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	handlers := usecases.NewHandlerRegistry()
+	handlers.Register(domain.KindNoopEcho, func(_ context.Context, job *domain.Job) (json.RawMessage, error) {
+		return nil, errors.New("permanent failure")
+	})
+	runner := usecases.NewRunner(
+		usecases.RunnerConfig{
+			WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute,
+			BackoffBase: 5 * time.Millisecond, BackoffCap: 5 * time.Millisecond,
+		},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers, QuotaRepo: quotaRepo},
+	)
+
+	enqueueDeps := usecases.EnqueueDeps{Repo: repo, QuotaRepo: quotaRepo}
+	job, err := usecases.Enqueue(context.Background(), enqueueDeps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), MaxAttempts: 2,
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	waitForStatus(t, repo, job.ID, domain.StatusFailed, 2*time.Second)
+	cancel()
+	<-done
+
+	if _, err := usecases.Enqueue(context.Background(), enqueueDeps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), MaxAttempts: domain.DefaultMaxAttempts,
+	}, time.Now().UTC()); err != nil {
+		t.Fatalf("expected Enqueue to succeed after dead-letter freed quota, got %v", err)
 	}
 }
 

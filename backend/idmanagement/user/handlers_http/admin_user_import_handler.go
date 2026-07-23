@@ -50,7 +50,7 @@ func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 		kind = domain.KindUserImportApply
 	}
 	now := time.Now().UTC()
-	job, err := jobusecases.Enqueue(c.Request().Context(), jobusecases.EnqueueDeps{Repo: d.JobRepo, Emit: d.Emit}, jobports.EnqueueInput{TenantID: tenancy.TenantID(c.Request().Context()), Kind: kind, Params: params}, now)
+	job, err := jobusecases.Enqueue(c.Request().Context(), jobusecases.EnqueueDeps{Repo: d.JobRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, jobports.EnqueueInput{TenantID: tenancy.TenantID(c.Request().Context()), Kind: kind, Params: params}, now)
 	if err != nil {
 		return err
 	}

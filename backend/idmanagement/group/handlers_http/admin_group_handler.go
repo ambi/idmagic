@@ -308,11 +308,14 @@ func HandleListUserGroups(d Deps, c *echo.Context) error {
 }
 
 func adminGroupDeps(d Deps) groupusecases.AdminGroupDeps {
-	return groupusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit()}
+	return groupusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo}
 }
 
 func dynamicGroupDeps(d Deps) groupusecases.DynamicGroupDeps {
-	return groupusecases.DynamicGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, JobRepo: d.JobRepo, Emit: d.LegacyEmit()}
+	return groupusecases.DynamicGroupDeps{
+		GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, JobRepo: d.JobRepo, Emit: d.LegacyEmit(),
+		QuotaRepo: d.QuotaRepo,
+	}
 }
 
 func toGroupMemberResponses(ctx context.Context, d Deps, members []*groupdomain.GroupMember) []groupMemberResponse {

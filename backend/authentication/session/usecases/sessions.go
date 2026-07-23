@@ -17,6 +17,9 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // ErrSessionNotFound は対象セッションが存在しないか、本人のものでない場合。
@@ -26,6 +29,22 @@ var ErrSessionNotFound = errors.New("session not found")
 type SessionDeps struct {
 	Store authnports.SessionStore
 	Emit  func(spec.DomainEvent)
+	// QuotaRepo frees the tenant's active_sessions Hard Quota slot when a
+	// session ends (wi-160, ADR-134). The increment side lives in
+	// SessionManager.CreateWithPending, which owns session creation. nil
+	// skips enforcement (wiring gaps in tests/tools); production bootstrap
+	// always sets it.
+	QuotaRepo tenantports.QuotaRepository
+}
+
+// decrementSessionQuota frees one active_sessions quota slot for sess's
+// tenant. Best-effort in the sense that a nil QuotaRepo is a no-op, matching
+// this package's general "quota is opt-in per Deps" convention.
+func decrementSessionQuota(ctx context.Context, quotaRepo tenantports.QuotaRepository, sess *domain.LoginSession) error {
+	if quotaRepo == nil {
+		return nil
+	}
+	return tenancyusecases.DecrementQuota(ctx, quotaRepo, sess.TenantID, tenancydomain.ResourceActiveSessions, 1)
 }
 
 // SessionView は一覧表示用のセッション射影。secret は持たず、識別子と認証情報のみ。
@@ -88,6 +107,9 @@ func RevokeOwnSession(
 		return err
 	}
 	if !alreadyRevoked {
+		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
+			return err
+		}
 		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
 	}
 	return nil
@@ -114,6 +136,9 @@ func RevokeOtherSessions(
 			continue
 		}
 		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, now); err != nil {
+			return nil, err
+		}
+		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 			return nil, err
 		}
 		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
@@ -180,6 +205,9 @@ func AdminRevokeSession(
 		return err
 	}
 	if !alreadyRevoked {
+		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
+			return err
+		}
 		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, now)
 	}
 	return nil
@@ -202,6 +230,9 @@ func AdminRevokeUserSessions(
 	revokedIDs := make([]string, 0, len(sessions))
 	for _, sess := range sessions {
 		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndAdminRevoke, now); err != nil {
+			return nil, err
+		}
+		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 			return nil, err
 		}
 		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, now)
@@ -233,6 +264,9 @@ func EndSession(
 		return nil
 	}
 	if err := deps.Store.Revoke(ctx, sid, spec.SessionEndLogout, now); err != nil {
+		return err
+	}
+	if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 		return err
 	}
 	emitSessionEnded(deps.Emit, sess, sess.UserID, spec.SessionEndLogout, now)

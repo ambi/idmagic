@@ -12,6 +12,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
@@ -37,6 +38,9 @@ type Deps struct {
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
 	// ADR-128). nil means outbound provisioning is not wired.
 	ProvisioningNotifier appports.ProvisioningNotifier
+	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160,
+	// ADR-134). nil skips enforcement.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // RegisterRoutes は Application カタログの admin / account エンドポイントを登録する。

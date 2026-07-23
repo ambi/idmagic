@@ -320,7 +320,7 @@ func (d Deps) handleRetryLifecycleWorkflowRun(c *echo.Context) error {
 	if err != nil {
 		return d.writeLifecycleWorkflowError(c, err)
 	}
-	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(c.Request().Context(), igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: d.LifecycleWorkflowRunRepo, JobRepo: d.JobRepo}, 1, time.Now().UTC()); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(c.Request().Context(), igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: d.LifecycleWorkflowRunRepo, JobRepo: d.JobRepo, QuotaRepo: d.QuotaRepo}, 1, time.Now().UTC()); err != nil {
 		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toWorkflowRunResponse(view))

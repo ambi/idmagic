@@ -26,6 +26,9 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -44,6 +47,10 @@ type AdminAgentDeps struct {
 	ClientRepo oauthports.OAuth2ClientRepository
 	UserRepo   userports.UserRepository
 	Emit       func(spec.DomainEvent) error
+	// QuotaRepo enforces the tenant's Hard Quota on agents (wi-160, ADR-134).
+	// nil skips enforcement (wiring gaps in tests/tools); production
+	// bootstrap always sets it.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // AgentView は一覧・詳細で Agent と束縛済み client id をまとめて返す。
@@ -120,11 +127,14 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err != nil {
 		return nil, err
 	}
+	now := idmusecases.NormalizedNow(in.Now)
+	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceAgents, now); err != nil {
+		return nil, err
+	}
 	id, err := agentdomain.NewAgentID()
 	if err != nil {
 		return nil, err
 	}
-	now := idmusecases.NormalizedNow(in.Now)
 	agent := &agentdomain.Agent{
 		ID: id, TenantID: tenantID, Name: name, Description: idmusecases.NormalizeDescription(in.Description),
 		Kind: normalizeAgentKind(in.Kind), OwnerUserID: owner, Status: idmdomain.AgentStatusActive,
@@ -336,6 +346,11 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 	now = idmusecases.NormalizedNow(now)
 	if err := deps.AgentRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
+	}
+	if deps.QuotaRepo != nil {
+		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceAgents, 1); err != nil {
+			return err
+		}
 	}
 	return idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
 }

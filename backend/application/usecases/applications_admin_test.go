@@ -14,6 +14,8 @@ import (
 	"github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func fullAppDeps() appusecases.ApplicationDeps {
@@ -22,6 +24,7 @@ func fullAppDeps() appusecases.ApplicationDeps {
 		IconStore:      appmemory.NewApplicationIconStore(),
 		AssignmentRepo: appmemory.NewApplicationAssignmentRepository(),
 		PolicyRepo:     appmemory.NewSignInPolicyRepository(),
+		QuotaRepo:      tenancymemory.NewQuotaRepository(),
 	}
 }
 
@@ -34,6 +37,50 @@ func seedApp(ctx context.Context, t *testing.T, deps appusecases.ApplicationDeps
 		t.Fatalf("seed app: %v", err)
 	}
 	return app
+}
+
+// TestCreateApplication_rejectsWhenHardQuotaExceeded is a wi-160 T004.4 RED
+// test for the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (spec/contexts/tenancy.yaml), applied to the applications resource.
+func TestCreateApplication_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+	limit := 1
+	if err := deps.QuotaRepo.SetQuota(ctx, "acme", &tenancydomain.TenantQuota{Applications: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	seedApp(ctx, t, deps, "app-one")
+	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated,
+	})
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceApplications {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+}
+
+// TestDeleteApplication_decrementsQuotaUsage is a wi-160 T004.4 RED test:
+// deleting an application must free its quota slot so a subsequent create at
+// the same limit succeeds.
+func TestDeleteApplication_decrementsQuotaUsage(t *testing.T) {
+	ctx := tenantContext()
+	deps := fullAppDeps()
+	limit := 1
+	if err := deps.QuotaRepo.SetQuota(ctx, "acme", &tenancydomain.TenantQuota{Applications: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	app := seedApp(ctx, t, deps, "app-one")
+	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ApplicationID, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
+		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated,
+	}); err != nil {
+		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
+	}
 }
 
 func TestUpdateApplicationChangesAndNoop(t *testing.T) {

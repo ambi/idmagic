@@ -2,18 +2,27 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // EnqueueDeps are the dependencies for Enqueue.
 type EnqueueDeps struct {
 	Repo ports.JobRepository
 	Emit func(spec.DomainEvent)
+	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
+	// ADR-134). nil skips enforcement (wiring gaps in tests/tools);
+	// production bootstrap always sets it.
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // Enqueue validates input and inserts a new Job (EnqueueJob,
@@ -38,12 +47,31 @@ func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, no
 	}
 	input.Now = now
 
+	// Enqueue runs before the quota check (not after) because whether this
+	// call actually creates a new Job is a JobHandlerIdempotency dedup
+	// decision only the repository can make: a dedup hit must never consume
+	// quota. A genuinely new Job that then fails the check is immediately
+	// Canceled below so it doesn't linger as a counted-but-rejected row
+	// (wi-160, ADR-134).
 	job, created, err := deps.Repo.Enqueue(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	if created {
-		emit(deps.Emit, &domain.JobEnqueued{At: now, JobID: job.ID, TenantID: job.TenantID, Kind: job.Kind})
+	if !created {
+		return job, nil
 	}
+	if deps.QuotaRepo != nil {
+		quotaErr := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, input.TenantID, tenancydomain.ResourceActiveJobs, 1)
+		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](quotaErr); ok {
+			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: input.TenantID, Resource: qErr.Resource, HardLimit: true})
+			if _, cancelErr := deps.Repo.Cancel(ctx, job.ID, now); cancelErr != nil {
+				logging.Error(ctx, "quota: failed to cancel job rejected by active_jobs quota", "error", cancelErr, "job_id", job.ID)
+			}
+		}
+		if quotaErr != nil {
+			return nil, quotaErr
+		}
+	}
+	emit(deps.Emit, &domain.JobEnqueued{At: now, JobID: job.ID, TenantID: job.TenantID, Kind: job.Kind})
 	return job, nil
 }
