@@ -103,7 +103,9 @@ func loadSchema(ctx context.Context, pool *pgxpool.Pool) error {
 // 位置からリポジトリルートの infra/schema/postgres.sql を解決する。
 func schemaPath() string {
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "..", "infra", "schema", "postgres.sql")
+	// backend/shared/storage/testing_postgres/pgtest.go からリポジトリルートまでは 4 階層。
+	// (testing_postgres → storage → shared → backend → <root>)
+	return filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "infra", "schema", "postgres.sql")
 }
 
 func freePort(ctx context.Context) (uint32, error) {
