@@ -398,11 +398,11 @@ scenarios:
       - 開発用ポートが利用可能である
     main_success:
       - 開発者が標準開発コマンドを実行する
-      - embedded PostgreSQL と開発用 Valkey 互換 endpoint が起動し schema が適用される
+      - embedded PostgreSQL が起動し schema が適用される
       - API、worker、UI が起動する
       - API が Job を enqueue する
       - worker が同じ Job を claim して Succeeded にする
-      - API と worker は同じ PostgreSQL queue と Valkey 互換 endpoint を共有する
+      - API と worker は同じ PostgreSQL queue を共有する
     extensions:
       - at: 2
         condition: binary 取得、ポート確保、または schema 適用に失敗する

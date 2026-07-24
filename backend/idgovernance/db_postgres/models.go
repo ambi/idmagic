@@ -281,6 +281,17 @@ type LifecycleWorkflowStep struct {
 	CreatedAt   time.Time
 }
 
+type LoginThrottleCounter struct {
+	TenantID        string
+	Kind            string
+	IdentifierHash  string
+	Failures        int32
+	WindowExpiresAt time.Time
+	LockedUntil     pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type McpResourceServer struct {
 	TenantID         string
 	ResourceServerID string
@@ -312,6 +323,34 @@ type MfaFactor struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	LastUsedAt pgtype.Timestamptz
+}
+
+type Oauth2AccessTokenDenylist struct {
+	TenantID  string
+	Jti       string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+type Oauth2AuthorizationCode struct {
+	Code           string
+	TenantID       string
+	State          string
+	RedeemedAt     pgtype.Timestamptz
+	IssuedFamilyID pgtype.Text
+	ExpiresAt      time.Time
+	Payload        []byte
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type Oauth2AuthorizationRequest struct {
+	ID        string
+	TenantID  string
+	ExpiresAt time.Time
+	Payload   []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Oauth2Client struct {
@@ -346,6 +385,36 @@ type Oauth2ClientSecret struct {
 	CreatedAt    time.Time
 	ExpiresAt    pgtype.Timestamptz
 	RevokedAt    pgtype.Timestamptz
+}
+
+type Oauth2DeviceCode struct {
+	DeviceCodeHash string
+	TenantID       string
+	UserCode       string
+	UserID         pgtype.UUID
+	State          string
+	ExpiresAt      time.Time
+	Payload        []byte
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type Oauth2ParRequest struct {
+	RequestUri string
+	TenantID   string
+	Used       bool
+	ExpiresAt  time.Time
+	Payload    []byte
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type Oauth2ReplayJti struct {
+	TenantID  string
+	Kind      string
+	Jti       string
+	ExpiresAt time.Time
+	CreatedAt time.Time
 }
 
 type Outbox struct {
@@ -458,6 +527,14 @@ type RefreshToken struct {
 	SenderConstraint  []byte
 	Sid               pgtype.UUID
 	Resource          pgtype.Text
+}
+
+type SamlAuthnrequestReplay struct {
+	TenantID  string
+	EntityID  string
+	RequestID string
+	ExpiresAt time.Time
+	CreatedAt time.Time
 }
 
 type SamlServiceProvider struct {
@@ -628,6 +705,15 @@ type WebauthnCredential struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	LastUsedAt     pgtype.Timestamptz
+}
+
+type WebauthnSession struct {
+	TenantID   string
+	SessionKey string
+	Data       []byte
+	ExpiresAt  time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type WsfedRelyingParty struct {

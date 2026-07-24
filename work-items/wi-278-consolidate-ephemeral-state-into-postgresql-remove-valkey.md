@@ -1,5 +1,5 @@
 ---
-status: pending  # pending | in_progress | completed | cancelled
+status: in_progress  # pending | in_progress | completed | cancelled
 authors: [tn]
 risk: high        # low | medium | high | critical
 created_at: 2026-07-24  # YYYY-MM-DD
@@ -62,9 +62,9 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 ## Tasks
 
 **Phase 0：決定とスキーマ基盤**
-- [ ] T001 [ADR] ADR-139 起票（揮発性を全て PostgreSQL に統合し Valkey 廃止。denylist 高RPS戦略は共有ストア選択と独立の設計方針を明記）。ADR-016 supersede、ADR-077 機構部 supersede（fail-closed は維持＝依存を追加でなく削減する旨）、ADR-105/106 改訂。
-- [ ] T002 [SCL] `spec/contexts/system.yaml` / `authentication.yaml` の Valkey 参照・モード名を更新し、`scl-render` で派生再生成。
-- [ ] T003 [DB] `infra/schema/postgres.sql` に 9 テーブル追加（下表、UNLOGGED/LOGGED 別、expires_at index、tenant_id 保持列挙コメント追記）。sqldef 適用確認。
+- [x] T001 [ADR] ADR-139 起票（揮発性を全て PostgreSQL に統合し Valkey 廃止。denylist 高RPS戦略は共有ストア選択と独立の設計方針を明記）。ADR-016 supersede、ADR-077 機構部 supersede（fail-closed は維持＝依存を追加でなく削減する旨）、ADR-105/106 改訂。
+- [x] T002 [SCL] `spec/contexts/system.yaml` / `authentication.yaml` / `jobs.yaml`（dev infra）の Valkey 参照を Postgres 単一依存へ更新。`just check` グリーン。SCL 3.0 移行で `ValkeyResilience`/`SharedEphemeralStateHA` objective は既に除去済みのため SCL 側の HA objective 変更は不要と判明。派生再生成（`scl-render`）は integration/main で実施（work-item branch では派生物を commit しない方針）。
+- [x] T003 [DB] `infra/schema/postgres.sql` に 9 テーブル追加（UNLOGGED/LOGGED 別、expires_at/GC index、tenant_id 保持理由をヘッダに追記）。`just sqlc-generate` で schema parse＋全 db_postgres の models.go 再生成を確認。sqldef 適用は embedded-postgres 契約テストで検証（Phase 1 以降）。
 
 | テーブル | PK | 主要列 | storage |
 |---|---|---|---|
@@ -79,7 +79,7 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 | `saml_authnrequest_replays` | (tenant_id,entity_id,request_id) | expires_at | UNLOGGED |
 
 **Phase 1：context 単位アダプタ実装（単純→複雑、各: sqlc→adapter→DeleteExpiredBatch→contract test）**
-- [ ] T004 [App] SAML `AuthnRequestReplayStore`（SetNX → INSERT ON CONFLICT DO NOTHING）。最初の縦スライスで pipeline 検証。
+- [x] T004 [App] SAML `AuthnRequestReplayStore`。RED: `TestAuthnRequestReplayStore`（重複予約が true を返す／16 並行で 16 勝者／GC=0）を stub で先に fail 確認（constraint `SAML2Core-BearerAssertion`「同一 tenant/SP/request ID は一度だけ」）→ GREEN。SETNX+TTL は `INSERT ... ON CONFLICT DO UPDATE ... WHERE expires_at<=now RETURNING`（live 予約は 0 行=false、期限切れ/未存在は 1 行=true）で写した。DeleteExpiredBatch も実装。`just test-go-package -race` green（原子性を 16 並行で実証）。最初の縦スライスで pipeline（schema→sqlc→adapter→contract test）を検証済み。
 - [ ] T005 [App] oauth2 `ReplayStore`(DPoP/ClientAssertion, `Prefix`→`Kind` 列) と `AccessTokenDenylist`（INSERT / `SELECT EXISTS(... expires_at>now)`）。
 - [ ] T006 [App] `WebAuthnSessionStore`（GetDel → `DELETE ... WHERE expires_at>now RETURNING data`）。
 - [ ] T007 [App] oauth2 `PARStore` / `AuthorizationCodeStore` / `DeviceCodeStore`（単一列 CAS：`UPDATE ... WHERE <state> RETURNING *`、device は user_code UNIQUE＋user_id 列で `DeleteAllForSub`）。
@@ -113,3 +113,4 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 - **性能（write 増幅/vacuum）**：高churn の denylist/replay/throttle は autovacuum 負荷。→ UNLOGGED（可能なもの）＋ fillfactor/HOT update＋per-table autovacuum チューニング。Phase3 で実測してから prod 切替。
 - **破壊的変更（config）**：`PERSISTENCE` モード名変更。→ 移行期 alias で 1 リリース吸収。
 - **移行**：切替時の in-flight フロー（進行中の /authorize・PAR・device・throttle counter）は放棄されるが再開で回復（ADR-126 と同じ割り切り）。データ移行・dual-write は不要。
+- **検証基盤（発見・修正済み）**：T004 着手時、`backend/shared/storage/testing_postgres/pgtest.go` の `schemaPath()` が `..` を 6 個使っており（パッケージはルートから 4 階層）、schema パスが `/Users/tn/infra/...` に誤解決されて **リポジトリ全体の postgres 契約テストが黙って skip**（skip は "ok" 表示で `just verify` はグリーンのまま）していた。直近の sqlc ディレクトリ flatten（wi-267）で階層が浅くなった際の未更新が原因と見られる。本 WI の検証戦略（memory/valkey とのパリティ契約テスト）が機能する前提なので `..` を 4 個へ修正し、リポジトリ全 DB テストが実走・green になることを確認した（wi-278 本体とは別コミット）。**後続 Phase の全 postgres 契約テストはこの修正の上で実走する。**

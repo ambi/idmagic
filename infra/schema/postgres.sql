@@ -25,7 +25,14 @@
 --   password_reset_tokens, email_change_tokens, group_members. Kept:
 --   authentication_sessions (session id is an opaque cookie value resolved on every
 --   request; tenant_id is a fail-closed defense-in-depth predicate on that lookup,
---   plus the per-tenant active-session listing index, ADR-126).
+--   plus the per-tenant active-session listing index, ADR-126). The ephemeral
+--   auth/OAuth2 stores keyed by opaque token/code/challenge (ADR-139:
+--   oauth2_authorization_requests, oauth2_authorization_codes, oauth2_par_requests,
+--   oauth2_device_codes, oauth2_replay_jtis, oauth2_access_token_denylist,
+--   webauthn_sessions, login_throttle_counters, saml_authnrequest_replays) keep
+--   tenant_id for the same reason: every lookup is a high-frequency fail-closed
+--   resolution of an opaque, attacker-influenced key, so the tenant boundary is
+--   enforced in the DB layer (ADR-082 §4 exception).
 -- - append-only / audit / outbox / throttling: decide by emit-time tenant, query
 --   boundary, and retention (audit_events, authentication_event_buckets, outbox).
 
@@ -1093,3 +1100,161 @@ CREATE TABLE provisioning_deliveries (
 
 CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
 CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC);
+
+-- Ephemeral auth/OAuth2 state consolidated from Valkey into PostgreSQL (ADR-139).
+-- All rows carry expires_at; every read path filters `expires_at > now()`, so the TTL
+-- correctness is independent of GC (DeleteExpiredBatch reclaims space best-effort).
+-- High-churn stores that recover by simply restarting the in-flight flow are UNLOGGED
+-- (no WAL, closest to Valkey's volatility). The revocation denylist and login throttle
+-- are LOGGED so a failover cannot silently regress security (missed revocation, or the
+-- fail-closed throttle assumption), replicating to physical standbys (ADR-139 §4/§5).
+-- tenant_id is kept on every table as a fail-closed predicate over an opaque key
+-- (ADR-082 §4 exception, see the tenant_id policy header).
+
+-- AuthorizationRequest: /authorize の中間状態。state を含む全体を payload JSONB に保持し、
+-- 状態遷移は tx 内 SELECT FOR UPDATE で直列化する (ADR-139 §3)。
+CREATE UNLOGGED TABLE oauth2_authorization_requests (
+    id TEXT PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT oauth2_authorization_requests_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_authorization_requests_expires_at_idx
+    ON oauth2_authorization_requests (expires_at);
+
+-- AuthorizationCode: 単発 redeem。state 列を CAS 述語に昇格させ
+-- (UPDATE ... WHERE state='issued' RETURNING)、redeemed_at / issued_family_id も列に持つ。
+CREATE UNLOGGED TABLE oauth2_authorization_codes (
+    code TEXT PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    state TEXT NOT NULL,
+    redeemed_at TIMESTAMPTZ,
+    issued_family_id TEXT,
+    expires_at TIMESTAMPTZ NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT oauth2_authorization_codes_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_authorization_codes_expires_at_idx
+    ON oauth2_authorization_codes (expires_at);
+
+-- PAR (Pushed Authorization Request): request_uri を単発消費する。used を CAS 述語に昇格。
+CREATE UNLOGGED TABLE oauth2_par_requests (
+    request_uri TEXT PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT oauth2_par_requests_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_par_requests_expires_at_idx
+    ON oauth2_par_requests (expires_at);
+
+-- DeviceCode: device_code_hash を PK に、user_code を tenant 内 UNIQUE の別ルックアップ鍵とする。
+-- 承認で user_id が確定し、state を Exchange の CAS 述語に昇格させる。
+CREATE UNLOGGED TABLE oauth2_device_codes (
+    device_code_hash TEXT PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    user_code TEXT NOT NULL,
+    user_id UUID,
+    state TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT oauth2_device_codes_user_code_unique UNIQUE (tenant_id, user_code),
+    CONSTRAINT oauth2_device_codes_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_device_codes_user_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_device_codes_expires_at_idx
+    ON oauth2_device_codes (expires_at);
+CREATE INDEX oauth2_device_codes_user_idx
+    ON oauth2_device_codes (tenant_id, user_id) WHERE user_id IS NOT NULL;
+
+-- JTI replay reservation (DPoP / client assertion)。kind は Valkey adapter の Prefix を列化。
+-- RecordIfNew = INSERT ON CONFLICT DO NOTHING。挿入行数で新規判定する。
+CREATE UNLOGGED TABLE oauth2_replay_jtis (
+    tenant_id UUID NOT NULL,
+    kind TEXT NOT NULL,
+    jti TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, kind, jti),
+    CONSTRAINT oauth2_replay_jtis_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_replay_jtis_expires_at_idx
+    ON oauth2_replay_jtis (expires_at);
+
+-- Access token denylist。失効の取りこぼしが防御後退になるため LOGGED (物理 standby へ複製)。
+-- IsRevoked = SELECT EXISTS(... AND expires_at > now())。
+CREATE TABLE oauth2_access_token_denylist (
+    tenant_id UUID NOT NULL,
+    jti TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, jti),
+    CONSTRAINT oauth2_access_token_denylist_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_access_token_denylist_expires_at_idx
+    ON oauth2_access_token_denylist (expires_at);
+
+-- WebAuthn ceremony session (challenge)。GetDel = DELETE ... WHERE expires_at > now() RETURNING data。
+CREATE UNLOGGED TABLE webauthn_sessions (
+    tenant_id UUID NOT NULL,
+    session_key TEXT NOT NULL,
+    data JSONB NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, session_key),
+    CONSTRAINT webauthn_sessions_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX webauthn_sessions_expires_at_idx
+    ON webauthn_sessions (expires_at);
+
+-- Login throttle counter / lock (ADR-077 の fail-closed 前提を維持)。failover で消えると
+-- 防御後退になるため LOGGED。高 churn な HOT update を促すため fillfactor 80。identifier_hash は
+-- SHA-256 hex で平文 username/IP を残さない。
+CREATE TABLE login_throttle_counters (
+    tenant_id UUID NOT NULL,
+    kind TEXT NOT NULL,
+    identifier_hash TEXT NOT NULL,
+    failures INTEGER NOT NULL DEFAULT 0,
+    window_expires_at TIMESTAMPTZ NOT NULL,
+    locked_until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, kind, identifier_hash),
+    CONSTRAINT login_throttle_counters_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+) WITH (fillfactor = 80);
+CREATE INDEX login_throttle_counters_gc_idx
+    ON login_throttle_counters (window_expires_at);
+
+-- SAML AuthnRequest replay reservation。RecordIfNew = INSERT ON CONFLICT DO NOTHING。
+CREATE UNLOGGED TABLE saml_authnrequest_replays (
+    tenant_id UUID NOT NULL,
+    entity_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, entity_id, request_id),
+    CONSTRAINT saml_authnrequest_replays_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX saml_authnrequest_replays_expires_at_idx
+    ON saml_authnrequest_replays (expires_at);

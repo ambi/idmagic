@@ -182,7 +182,7 @@ scenarios:
       - Prometheus が MetricsExposition をスクレイプし、OAuth2 の availability、latency、error-rate objectives を表示・評価する
     extensions:
       - at: 1
-        condition: PostgreSQL または Valkey へ到達できない
+        condition: PostgreSQL へ到達できない
         steps:
           - ReadinessProbe は unavailable を返し、API は新規トラフィックを受けない
           - LivenessProbe は healthy を維持し、依存障害だけで再起動しない
