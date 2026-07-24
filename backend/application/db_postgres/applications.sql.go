@@ -231,9 +231,7 @@ INSERT INTO applications (tenant_id, application_id, name, kind, status, protoco
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 ON CONFLICT (application_id) DO UPDATE SET
   name = EXCLUDED.name,
-  kind = EXCLUDED.kind,
   status = EXCLUDED.status,
-  protocol_type = EXCLUDED.protocol_type,
   icon_url = EXCLUDED.icon_url,
   icon_object_key = EXCLUDED.icon_object_key,
   launch_url = EXCLUDED.launch_url,
