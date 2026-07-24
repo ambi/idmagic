@@ -24,3 +24,6 @@ frontend/coverage/
 
 # SCL rendered artifacts
 spec/idmagic.full.html
+
+# Local dev state (persistent embedded PostgreSQL cluster for `just dev`)
+/.dev/

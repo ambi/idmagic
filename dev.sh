@@ -5,6 +5,10 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 MODE=${1:-durable}
 RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/idmagic-dev.XXXXXX")
+# Persist the embedded PostgreSQL cluster across runs so `initdb` only pays its
+# cost once. The schema is reset on every start (devinfra DROP SCHEMA + reapply),
+# so the persistent directory only caches the initialized cluster, never state.
+PG_DATA_DIR=${IDMAGIC_DEV_PG_DIR:-$ROOT_DIR/.dev/postgres}
 DEV_API_ADDR=${ADDR:-:8081}
 DEV_ISSUER=${ISSUER:-http://localhost:5173}
 API_PID=
@@ -13,16 +17,19 @@ INFRA_PID=
 UI_PID=
 
 cleanup() {
-  for pid in "$UI_PID" "$API_PID" "$WORKER_PID" "$INFRA_PID"; do
+  # The stack is disposable, so tear it down fast. API/worker/UI hold no durable
+  # state and are killed immediately. The dev-infra process must stop gracefully:
+  # a SIGKILL would orphan the embedded postmaster it spawned and leave the
+  # PostgreSQL port bound for the next run.
+  for pid in "$UI_PID" "$API_PID" "$WORKER_PID"; do
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-      kill "$pid" 2>/dev/null || true
+      kill -9 "$pid" 2>/dev/null || true
     fi
   done
-  for pid in "$UI_PID" "$API_PID" "$WORKER_PID" "$INFRA_PID"; do
-    if [ -n "$pid" ]; then
-      wait "$pid" 2>/dev/null || true
-    fi
-  done
+  if [ -n "$INFRA_PID" ] && kill -0 "$INFRA_PID" 2>/dev/null; then
+    kill "$INFRA_PID" 2>/dev/null || true
+    wait "$INFRA_PID" 2>/dev/null || true
+  fi
   rm -rf "$RUN_DIR"
 }
 trap cleanup EXIT INT TERM
@@ -47,25 +54,34 @@ if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
 fi
 
 echo "Building local development binaries..."
+build_pkgs=(./backend/cmd/idmagic)
+if [ "$MODE" = "durable" ]; then
+  build_pkgs+=(./backend/cmd/idmagic-worker ./backend/cmd/idmagic-dev-infra)
+fi
 (
   cd "$ROOT_DIR"
-  go build -o "$RUN_DIR/idmagic" ./backend/cmd/idmagic
+  go build -o "$RUN_DIR/" "${build_pkgs[@]}"
 )
+
+# Start the UI first: it does not depend on the database, so its dev-server
+# warm-up overlaps with the embedded infrastructure bring-up below.
+echo "Starting UI at http://localhost:5173"
+echo "Demo credentials: alice / demo-password-1234"
+(
+  cd "$ROOT_DIR/frontend"
+  exec bun ./node_modules/vite/bin/vite.js
+) &
+UI_PID=$!
 
 DATABASE_URL=
 VALKEY_URL=
 if [ "$MODE" = "durable" ]; then
-  (
-    cd "$ROOT_DIR"
-    go build -o "$RUN_DIR/idmagic-worker" ./backend/cmd/idmagic-worker
-    go build -o "$RUN_DIR/idmagic-dev-infra" ./backend/cmd/idmagic-dev-infra
-  )
-
   READY_FILE="$RUN_DIR/infra-ready.json"
+  mkdir -p "$(dirname "$PG_DATA_DIR")"
   echo "Starting embedded PostgreSQL and Valkey-compatible development endpoint"
   (
     cd "$ROOT_DIR"
-    exec "$RUN_DIR/idmagic-dev-infra" --ready-file "$READY_FILE"
+    exec "$RUN_DIR/idmagic-dev-infra" --ready-file "$READY_FILE" --data-dir "$PG_DATA_DIR"
   ) &
   INFRA_PID=$!
 
@@ -119,14 +135,6 @@ if [ "$MODE" = "durable" ]; then
   ) &
   WORKER_PID=$!
 fi
-
-echo "Starting UI at http://localhost:5173"
-echo "Demo credentials: alice / demo-password-1234"
-(
-  cd "$ROOT_DIR/frontend"
-  exec bun ./node_modules/vite/bin/vite.js
-) &
-UI_PID=$!
 
 while :; do
   for process in "infra:$INFRA_PID" "api:$API_PID" "worker:$WORKER_PID" "ui:$UI_PID"; do
