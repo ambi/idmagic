@@ -3,11 +3,11 @@
 // (a) SPA dispatcher の画面分岐と (b) cross-origin redirect での code / iss 保持
 // の 2 領域の回帰を機械検知する。外部のブラウザ自動化フレームワークや別ブラウザの取得は不要。
 //
-// README のローカル開発手順と同じ構成で起動する:
-//   ADDR=:8081 ISSUER=http://localhost:5173 go run ./backend/cmd/idmagic
-//   bun run dev   (Vite が /authorize・/api を 8081 にプロキシ)
-// ISSUER を 5173 にするのはブラウザ origin と一致させて CSRF/origin 検査を
-// 通すため (verifyBrowserRequest)。
+// startE2EEnvironment が dev スタックと衝突しない専用ポートで自前起動する:
+//   ADDR=:8082 ISSUER=http://localhost:5174 go run ./backend/cmd/idmagic
+//   VITE_DEV_PORT=5174 VITE_API_TARGET=http://localhost:8082 bun run dev
+// ISSUER を UI origin (5174) に一致させるのはブラウザ origin と揃えて
+// CSRF/origin 検査 (verifyBrowserRequest) を通すため。
 import { afterAll, beforeAll, expect, test } from 'bun:test'
 import {
   authorizePath,
@@ -46,7 +46,7 @@ test('authorize golden path: login -> consent -> callback keeps code and iss', a
 
     await clickButtonByAnyText(view, ['許可して続行', 'Allow and continue'])
 
-    // cross-origin redirect (5173 -> 3000) で code / iss が落ちないこと (RFC 9207)。
+    // cross-origin redirect (5174 -> 3000) で code / iss が落ちないこと (RFC 9207)。
     await waitForUrl(view, /localhost:3000\/callback/)
     const callbackUrl = new URL(view.url)
     expect(callbackUrl.searchParams.get('code')).toBeTruthy()

@@ -9,8 +9,12 @@ const here = dirname(fileURLToPath(import.meta.url))
 const uiDir = resolve(here, '../..')
 const goDir = resolve(here, '../../../backend')
 
-export const uiOrigin = 'http://localhost:5173'
-export const apiHealth = 'http://localhost:8081/health'
+// E2E は `just dev` (UI:5173 / API:8081) と衝突しない専用ポートを使い、常に
+// 自前のサーバを起動する。dev が並走していても互いに影響しない。
+const apiPort = 8082
+const uiPort = 5174
+export const uiOrigin = `http://localhost:${uiPort}`
+export const apiHealth = `http://localhost:${apiPort}/health`
 export const callbackPort = 3000
 
 export const demo = {
@@ -84,39 +88,47 @@ export async function startE2EEnvironment(): Promise<void> {
     }
   }
 
-  if (!(await isUp(apiHealth))) {
-    await startMailSink()
-    goBinary = join(tmpdir(), `idmagic-e2e-${process.pid}`)
-    const build = spawnSync(['go', 'build', '-o', goBinary, './cmd/idmagic'], { cwd: goDir })
-    if (build.exitCode !== 0) {
-      throw new Error(`go build failed: ${build.stderr?.toString() ?? ''}`)
-    }
-    goServer = spawn([goBinary], {
-      cwd: goDir,
-      env: {
-        ...process.env,
-        ADDR: ':8081',
-        ISSUER: uiOrigin,
-        PERSISTENCE: 'memory',
-        EMAIL_SENDER: 'smtp',
-        SMTP_HOST: '127.0.0.1',
-        SMTP_PORT: String(mailSinkPort),
-        SMTP_FROM: 'noreply@idmagic.test',
-        SMTP_TLS: 'none',
-        SMTP_TIMEOUT_SECONDS: '2',
-        SEED_PROFILE: 'test',
-        SEED_ENVIRONMENT: 'test',
-        DEMO_USER_PASSWORD: 'demo-password-1234',
-        DEMO_CLIENT_SECRET: 'demo-client-secret',
-      },
-      stdout: 'ignore',
-      stderr: 'ignore',
-    })
+  await startMailSink()
+  goBinary = join(tmpdir(), `idmagic-e2e-${process.pid}`)
+  const build = spawnSync(['go', 'build', '-o', goBinary, './cmd/idmagic'], { cwd: goDir })
+  if (build.exitCode !== 0) {
+    throw new Error(`go build failed: ${build.stderr?.toString() ?? ''}`)
   }
+  goServer = spawn([goBinary], {
+    cwd: goDir,
+    env: {
+      ...process.env,
+      ADDR: `:${apiPort}`,
+      ISSUER: uiOrigin,
+      PERSISTENCE: 'memory',
+      EMAIL_SENDER: 'smtp',
+      SMTP_HOST: '127.0.0.1',
+      SMTP_PORT: String(mailSinkPort),
+      SMTP_FROM: 'noreply@idmagic.test',
+      SMTP_TLS: 'none',
+      SMTP_TIMEOUT_SECONDS: '2',
+      WEBAUTHN_RP_ID: 'localhost',
+      WEBAUTHN_RP_ORIGINS: uiOrigin,
+      WEBAUTHN_RP_DISPLAY_NAME: 'IdMagic E2E',
+      SEED_PROFILE: 'test',
+      SEED_ENVIRONMENT: 'test',
+      DEMO_USER_PASSWORD: 'demo-password-1234',
+      DEMO_CLIENT_SECRET: 'demo-client-secret',
+    },
+    stdout: 'ignore',
+    stderr: 'ignore',
+  })
 
-  if (!(await isUp(uiOrigin))) {
-    viteServer = spawn(['bun', 'run', 'dev'], { cwd: uiDir, stdout: 'ignore', stderr: 'ignore' })
-  }
+  viteServer = spawn(['bun', 'run', 'dev'], {
+    cwd: uiDir,
+    env: {
+      ...process.env,
+      VITE_DEV_PORT: String(uiPort),
+      VITE_API_TARGET: `http://localhost:${apiPort}`,
+    },
+    stdout: 'ignore',
+    stderr: 'ignore',
+  })
 
   await waitForUp(apiHealth)
   await waitForUp(uiOrigin)

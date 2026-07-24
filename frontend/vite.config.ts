@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
+// The dev server port and API proxy target are overridable so isolated
+// environments (e.g. E2E on 5174/8082) can run alongside `just dev` (5173/8081).
+const devPort = Number(process.env.VITE_DEV_PORT ?? 5173)
+const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:8081'
+
 export default defineConfig({
   plugins: [
     tanstackRouter({
@@ -18,25 +23,25 @@ export default defineConfig({
   ],
   base: '/',
   server: {
-    port: 5173,
+    port: devPort,
     strictPort: true,
     proxy: {
       '^/realms/[^/]+/(api|scim|authorize|token|revoke|introspect|userinfo|register|par|device_authorization|end_session|\\.well-known|jwks|tenant-branding-assets)(/|\\?|$)':
-        'http://localhost:8081',
-      '/api': 'http://localhost:8081',
-      '/authorize': 'http://localhost:8081',
-      '/token': 'http://localhost:8081',
-      '/revoke': 'http://localhost:8081',
-      '/introspect': 'http://localhost:8081',
-      '/userinfo': 'http://localhost:8081',
-      '/register': 'http://localhost:8081',
-      '/par': 'http://localhost:8081',
-      '/device_authorization': 'http://localhost:8081',
-      '/end_session': 'http://localhost:8081',
-      '/.well-known': 'http://localhost:8081',
-      '/jwks': 'http://localhost:8081',
-      '/tenant-branding-assets': 'http://localhost:8081',
-      '/health': 'http://localhost:8081',
+        apiTarget,
+      '/api': apiTarget,
+      '/authorize': apiTarget,
+      '/token': apiTarget,
+      '/revoke': apiTarget,
+      '/introspect': apiTarget,
+      '/userinfo': apiTarget,
+      '/register': apiTarget,
+      '/par': apiTarget,
+      '/device_authorization': apiTarget,
+      '/end_session': apiTarget,
+      '/.well-known': apiTarget,
+      '/jwks': apiTarget,
+      '/tenant-branding-assets': apiTarget,
+      '/health': apiTarget,
     },
   },
   build: {
