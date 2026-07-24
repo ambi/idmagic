@@ -11,12 +11,35 @@ import (
 )
 
 type Querier interface {
+	// 失効マーカーを追加する。同一 jti は同一トークンを指し exp も決定的なので冪等 (DO NOTHING)。
+	AddOauth2AccessTokenDenylist(ctx context.Context, arg AddOauth2AccessTokenDenylistParams) error
 	AppendOutboxEvent(ctx context.Context, arg AppendOutboxEventParams) error
+	// 単発消費の CAS。未使用かつ未期限の行だけを used=true にして 1 行返す。それ以外は 0 行。
+	ConsumePARRequest(ctx context.Context, arg ConsumePARRequestParams) ([]byte, error)
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
 	DeleteConsentsForSub(ctx context.Context, userID string) error
+	DeleteDeviceCodesForUser(ctx context.Context, arg DeleteDeviceCodesForUserParams) error
+	DeleteExpiredAuthorizationCodesBatch(ctx context.Context, arg DeleteExpiredAuthorizationCodesBatchParams) (int64, error)
+	DeleteExpiredAuthorizationRequestsBatch(ctx context.Context, arg DeleteExpiredAuthorizationRequestsBatchParams) (int64, error)
+	DeleteExpiredDeviceCodesBatch(ctx context.Context, arg DeleteExpiredDeviceCodesBatchParams) (int64, error)
+	DeleteExpiredOauth2AccessTokenDenylistBatch(ctx context.Context, arg DeleteExpiredOauth2AccessTokenDenylistBatchParams) (int64, error)
+	DeleteExpiredOauth2ReplayJTIsBatch(ctx context.Context, arg DeleteExpiredOauth2ReplayJTIsBatchParams) (int64, error)
+	DeleteExpiredPARRequestsBatch(ctx context.Context, arg DeleteExpiredPARRequestsBatchParams) (int64, error)
 	DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
+	// 単発 exchange の CAS。state='approved' の行だけを exchanged にして 1 行返す。
+	ExchangeDeviceCode(ctx context.Context, arg ExchangeDeviceCodeParams) (*ExchangeDeviceCodeRow, error)
+	// 期限フィルタなし (parity)。state / redeemed_at / issued_family_id は read で payload に overlay。
+	FindAuthorizationCode(ctx context.Context, arg FindAuthorizationCodeParams) (*FindAuthorizationCodeRow, error)
+	// 期限フィルタなし (parity)。tenant_id は fail-closed 述語。
+	FindAuthorizationRequest(ctx context.Context, arg FindAuthorizationRequestParams) ([]byte, error)
+	// 期限フィルタなし (parity)。state を read で payload に overlay する。
+	FindDeviceCodeByHash(ctx context.Context, arg FindDeviceCodeByHashParams) (*FindDeviceCodeByHashRow, error)
+	FindDeviceCodeByUserCode(ctx context.Context, arg FindDeviceCodeByUserCodeParams) (*FindDeviceCodeByUserCodeRow, error)
+	// 期限フィルタは付けない (memory/valkey パリティ: 期限判定は呼び出し側の domain が行う)。
+	// tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
+	FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error)
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
 	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error)
 	GetConsent(ctx context.Context, arg GetConsentParams) (*Consent, error)
@@ -26,15 +49,32 @@ type Querier interface {
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)
 	InsertClientSecretCredential(ctx context.Context, arg InsertClientSecretCredentialParams) error
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error
+	// 期限切れマーカーは revoked とみなさない (正しさは expires_at > now が担保、GC は空間回収のみ)。
+	IsOauth2AccessTokenRevoked(ctx context.Context, arg IsOauth2AccessTokenRevokedParams) (bool, error)
+	LinkAuthorizationCodeFamily(ctx context.Context, arg LinkAuthorizationCodeFamilyParams) (int64, error)
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
+	// tx 内の read-modify-write を直列化するための行ロック取得 (Valkey WATCH 楽観ロックの写し)。
+	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
+	// 単発 redeem の CAS。state='issued' の行だけを redeemed にして 1 行返す。既 redeemed は 0 行。
+	RedeemAuthorizationCode(ctx context.Context, arg RedeemAuthorizationCodeParams) (*RedeemAuthorizationCodeRow, error)
+	// SETNX + TTL の写像 (ADR-139 §3)。live な予約は ON CONFLICT の DO UPDATE ... WHERE が
+	// false で 0 行 (ErrNoRows)、期限切れの残骸は上書きして 1 行、未存在は INSERT で 1 行。
+	// 行が返れば新規予約成功。kind で dpop / client_assertion を名前空間分けする。
+	ReserveOauth2ReplayJTI(ctx context.Context, arg ReserveOauth2ReplayJTIParams) (string, error)
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
 	RevokeRefreshTokensBySid(ctx context.Context, sid pgtype.UUID) error
+	SaveAuthorizationCode(ctx context.Context, arg SaveAuthorizationCodeParams) error
+	SaveAuthorizationRequest(ctx context.Context, arg SaveAuthorizationRequestParams) error
+	// Save / Update 共通の upsert。device_code_hash を PK、(tenant_id,user_code) を UNIQUE 鍵に持つ。
+	SaveDeviceCode(ctx context.Context, arg SaveDeviceCodeParams) error
+	SavePARRequest(ctx context.Context, arg SavePARRequestParams) error
+	UpdateAuthorizationRequestPayload(ctx context.Context, arg UpdateAuthorizationRequestPayloadParams) error
 	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error
 	UpsertClient(ctx context.Context, arg UpsertClientParams) error

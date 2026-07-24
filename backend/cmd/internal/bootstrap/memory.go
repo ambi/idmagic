@@ -140,6 +140,5 @@ func assembleMemory() (*Dependencies, error) {
 		Provisioning: provisioningModule,
 		Close:        func() {},
 		DbPing:       func(c context.Context) error { return nil },
-		ValkeyPing:   func(c context.Context) error { return nil },
 	}, nil
 }

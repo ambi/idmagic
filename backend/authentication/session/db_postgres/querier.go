@@ -6,6 +6,8 @@ package db_postgres
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -13,19 +15,27 @@ type Querier interface {
 	DeleteAllAuthenticationSessionsForUser(ctx context.Context, arg DeleteAllAuthenticationSessionsForUserParams) error
 	// housekeeping cleanup。primary key を選んで小 batch で削除する (wi-253 Plan §7)。
 	DeleteExpiredAuthenticationSessionsBatch(ctx context.Context, arg DeleteExpiredAuthenticationSessionsBatchParams) (int64, error)
+	// window と lock の双方が過ぎた行だけを回収する (fail-closed 前提を GC で崩さない)。
+	DeleteExpiredThrottleCountersBatch(ctx context.Context, arg DeleteExpiredThrottleCountersBatchParams) (int64, error)
+	DeleteThrottleCounter(ctx context.Context, arg DeleteThrottleCounterParams) error
 	// 認証解決用の fail-closed lookup。tenant_id / revoked_at / expires_at を DB 層で検証し、
 	// 別 tenant または失効・期限切れの行を返さない (ADR-126)。
 	FindActiveAuthenticationSession(ctx context.Context, arg FindActiveAuthenticationSessionParams) (*FindActiveAuthenticationSessionRow, error)
 	// revoked/expired を含む所有者確認用 lookup。self-service revoke の idempotency 判定に使う。
 	FindOwnedAuthenticationSession(ctx context.Context, arg FindOwnedAuthenticationSessionParams) (*FindOwnedAuthenticationSessionRow, error)
+	// TryAcquire 用の read-only lookup。locked_until だけ見て allowed / retry を判定する。
+	GetThrottleLock(ctx context.Context, arg GetThrottleLockParams) (pgtype.Timestamptz, error)
 	// keyset pagination を意識した index (tenant_id, user_id, auth_time DESC, id DESC) を使う。
 	// 初期実装は先頭ページのみを返す (wi-253 Plan §2)。
 	ListActiveAuthenticationSessionsByUser(ctx context.Context, arg ListActiveAuthenticationSessionsByUserParams) ([]*ListActiveAuthenticationSessionsByUserRow, error)
+	// RecordFailure の read-modify-write を直列化する行ロック取得 (Valkey Lua の原子性の写し)。
+	LockThrottleCounter(ctx context.Context, arg LockThrottleCounterParams) (*LockThrottleCounterRow, error)
 	// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。
 	RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) error
 	// LoginSessionTouchInterval 未満の再 touch は更新しない粗粒度な条件更新。
 	TouchAuthenticationSession(ctx context.Context, arg TouchAuthenticationSessionParams) error
 	UpsertAuthenticationSession(ctx context.Context, arg UpsertAuthenticationSessionParams) error
+	UpsertThrottleCounter(ctx context.Context, arg UpsertThrottleCounterParams) error
 }
 
 var _ Querier = (*Queries)(nil)

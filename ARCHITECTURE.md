@@ -2613,6 +2613,7 @@ modules:
     role: binding
     depends_on:
       - { module: authentication-session-domain, via: published_interface }
+      - { module: authentication-session-ports, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
@@ -2652,6 +2653,7 @@ modules:
     depends_on:
       - { module: authentication-webauthn-domain, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
   authentication-webauthn-db-valkey:
     path: backend/authentication/webauthn/db_valkey
     responsibility: "backend/authentication/webauthn/db_valkey の Flat Architecture adapter。"
@@ -2798,6 +2800,7 @@ modules:
       - { module: oauth2-domain, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
+      - { module: tenancy-public, via: published_interface }
   oauth2-db-valkey:
     path: backend/oauth2/db_valkey
     responsibility: "backend/oauth2/db_valkey の Flat Architecture adapter。"

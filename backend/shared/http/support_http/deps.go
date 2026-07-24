@@ -30,7 +30,6 @@ type Deps struct {
 	Emit                      func(spec.DomainEvent)
 	HealthInfo                HealthInfo
 	DbPing                    func(context.Context) error
-	ValkeyPing                func(context.Context) error
 	ShuttingDown              *atomic.Bool
 	StartupComplete           *atomic.Bool
 	TenantRepo                tenantports.TenantRepository

@@ -80,16 +80,16 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 
 **Phase 1：context 単位アダプタ実装（単純→複雑、各: sqlc→adapter→DeleteExpiredBatch→contract test）**
 - [x] T004 [App] SAML `AuthnRequestReplayStore`。RED: `TestAuthnRequestReplayStore`（重複予約が true を返す／16 並行で 16 勝者／GC=0）を stub で先に fail 確認（constraint `SAML2Core-BearerAssertion`「同一 tenant/SP/request ID は一度だけ」）→ GREEN。SETNX+TTL は `INSERT ... ON CONFLICT DO UPDATE ... WHERE expires_at<=now RETURNING`（live 予約は 0 行=false、期限切れ/未存在は 1 行=true）で写した。DeleteExpiredBatch も実装。`just test-go-package -race` green（原子性を 16 並行で実証）。最初の縦スライスで pipeline（schema→sqlc→adapter→contract test）を検証済み。
-- [ ] T005 [App] oauth2 `ReplayStore`(DPoP/ClientAssertion, `Prefix`→`Kind` 列) と `AccessTokenDenylist`（INSERT / `SELECT EXISTS(... expires_at>now)`）。
-- [ ] T006 [App] `WebAuthnSessionStore`（GetDel → `DELETE ... WHERE expires_at>now RETURNING data`）。
-- [ ] T007 [App] oauth2 `PARStore` / `AuthorizationCodeStore` / `DeviceCodeStore`（単一列 CAS：`UPDATE ... WHERE <state> RETURNING *`、device は user_code UNIQUE＋user_id 列で `DeleteAllForSub`）。
-- [ ] T008 [App] oauth2 `AuthorizationRequestStore`（tx＋`SELECT FOR UPDATE`→`spec.TransitionAuthorizationCodeFlow`→UPDATE）。
-- [ ] T009 [App] session `LoginAttemptThrottle`（tx＋`SELECT FOR UPDATE`→window 再計算→閾値で locked_until=now+lockout,failures=0。fail-closed 維持）。
-- [ ] T010 [App] 各 context に `DeleteExpiredBatch` を追加し `EphemeralPurger` usecase 経由で `idmagic-worker` の周期 sweep に配線。
+- [x] T005 [App] oauth2 `ReplayStore`(DPoP/ClientAssertion, `Prefix`→`Kind` 列) と `AccessTokenDenylist`。RED: `TestReplayStore`（重複=true）/`TestAccessTokenDenylist`（post-add not revoked）を stub で fail 確認 → GREEN。ReplayStore は 1 テーブル+kind 列で両 port を構造的に満たす。denylist は `SELECT EXISTS(... expires_at>now)`、Add は `ON CONFLICT DO NOTHING`（冪等・insert-only）。tenant/kind 分離・期限切れ非 revoked・GC を検証。
+- [x] T006 [App] `WebAuthnSessionStore`。RED: `TestWebAuthnSessionStore`（Save 後 Take=nil）を stub で fail 確認 → GREEN。GetDel = `DELETE ... WHERE expires_at>now RETURNING data`。round-trip/一度きり消費/期限切れ nil/tenant 分離/GC を検証。webauthn/db_postgres に TestMain harness を新設。
+- [x] T007 [App] oauth2 `PARStore` / `AuthorizationCodeStore` / `DeviceCodeStore`。RED: `TestPARStore`/`TestAuthorizationCodeStore`/`TestDeviceCodeStore`（Save 後 Find=nil）を stub で fail 確認 → GREEN。full record を payload JSONB に持ち、**昇格列（used/state/redeemed_at/issued_family_id）を可変フィールドの権威とし read で payload に overlay**（単文 CAS の payload 陳腐化を回避、timestamp フォーマット地雷も回避）。Redeem/Consume/Exchange は `UPDATE ... WHERE <state/used> RETURNING`、device は (tenant_id,user_code) UNIQUE と user_id 列で `DeleteAllForSub`。Find は memory 同様に期限フィルタなし（parity）。
+- [x] T008 [App] oauth2 `AuthorizationRequestStore`。RED: `TestAuthorizationRequestStore`（Save 後 Find=nil）を stub で fail 確認 → GREEN。UpdateState/AttachAuthentication は tx + `SELECT ... FOR UPDATE` の read-modify-write（Valkey WATCH の写し）で `spec.TransitionAuthorizationCodeFlow` を直列適用。不正遷移/不明 id は error。
+- [x] T009 [App] session `LoginAttemptThrottle`。RED: `TestLoginAttemptThrottle`（閾値到達で lock されない）を stub で fail 確認 → GREEN。fixed-window の counter と lockout を 1 行（failures/window_expires_at/locked_until）に統合、RecordFailure は tx + `SELECT FOR UPDATE`（Valkey Lua の原子性の写し）、閾値で locked_until=now+lockout・failures=0。SHA-256 識別子・tenant 分離・fail-closed（error 伝播）維持。
+- [x] T010 [App] 全 postgres adapter に `DeleteExpiredBatch` を実装済み。`bootstrap.RunEphemeralSweepOnce`（`ephemeral.go`）が 9 ストア（+ throttle は factory 経由で instance 化）を `ephemeralPurger` 型アサーションで集め一括 GC（memory/valkey は未実装のため自動除外＝`RunRetentionSweepOnce` と同型）。`idmagic-worker` に `ephemeralSweepLoop`（60s ticker、`EPHEMERAL_SWEEP_INTERVAL` 可変）を配線。best-effort、正しさは read の expires_at 述語が担保。
 
 **Phase 2：配線切替**
-- [ ] T011 [App] `postgres_valkey.go`→`postgres.go`（`assemblePostgres`）。Valkey client/config/breaker/ValkeyPing 削除、9 バインドを `*postgres.*` に置換、valkey import 削除。
-- [ ] T012 [App] `deps.go` switch を `case "postgres","postgres_valkey":`（移行期 alias）に。health 系（`health_handler.go`/`support_http/deps.go`/`server.go`/`memory.go`）の ValkeyPing 削除。
+- [x] T011 [App] `postgres_valkey.go`→`postgres.go`（`assemblePostgres`）。Valkey client/config/breaker と VALKEY_URL 要求・valkey import を削除、9 バインドを `*postgres.*`（webauthn/throttle/oauth2 7 種/saml replay）に置換。`build-go` green。
+- [x] T012 [App] `deps.go` switch を `case "postgres","postgres_valkey":`（移行期 alias、error 文言も更新）に。`Dependencies.ValkeyPing` フィールドと health 系（`health_handler.go` を Postgres 単一依存に書換／`support_http/deps.go`／`server.go`／`memory.go`）の ValkeyPing を削除。full `just test-go` / `just lint-go` green。
 
 **Phase 3：観測・切替**
 - [ ] T013 [Verify] staging を `PERSISTENCE=postgres` に切替、dead tuple/autovacuum/p99 latency を実測し UNLOGGED/LOGGED 判断と GC 間隔を確定。

@@ -18,11 +18,9 @@ import (
 	passwordpostgres "github.com/ambi/idmagic/backend/authentication/password/db_postgres"
 	recoverypostgres "github.com/ambi/idmagic/backend/authentication/recovery/db_postgres"
 	sessionpostgres "github.com/ambi/idmagic/backend/authentication/session/db_postgres"
-	sessionvalkey "github.com/ambi/idmagic/backend/authentication/session/db_valkey"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totppostgres "github.com/ambi/idmagic/backend/authentication/totp/db_postgres"
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
-	webauthnvalkey "github.com/ambi/idmagic/backend/authentication/webauthn/db_valkey"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/db_postgres"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -36,20 +34,17 @@ import (
 	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
 	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
-	oauth2valkey "github.com/ambi/idmagic/backend/oauth2/db_valkey"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/token/db_postgres"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/db_postgres"
 	"github.com/ambi/idmagic/backend/saml"
 	samlpostgres "github.com/ambi/idmagic/backend/saml/db_postgres"
-	samlvalkey "github.com/ambi/idmagic/backend/saml/db_valkey"
 	"github.com/ambi/idmagic/backend/scim"
 	scimpostgres "github.com/ambi/idmagic/backend/scim/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	sharedvalkey "github.com/ambi/idmagic/backend/shared/storage/db_valkey"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/db_postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -59,10 +54,12 @@ import (
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/db_postgres"
 )
 
-func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
-	databaseURL, valkeyURL := os.Getenv("DATABASE_URL"), os.Getenv("VALKEY_URL")
-	if databaseURL == "" || valkeyURL == "" {
-		return nil, errors.New("PERSISTENCE=postgres_valkey requires DATABASE_URL and VALKEY_URL")
+// assemblePostgres は PostgreSQL 単一依存の構成を組み立てる (ADR-139)。durable state と、
+// かつて Valkey が持っていた揮発性の認証 / OAuth2 一時状態の双方を PostgreSQL に載せる。
+func assemblePostgres(ctx context.Context) (*Dependencies, error) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		return nil, errors.New("PERSISTENCE=postgres requires DATABASE_URL")
 	}
 
 	// 1. レジリエンス構成のパラメータ構築
@@ -75,26 +72,12 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		QueryTimeout:    EnvDuration("DB_QUERY_TIMEOUT", 5*time.Second),
 	}
 
-	valkeyCfg := sharedvalkey.ValkeyConfig{
-		DialTimeout:  EnvDuration("VALKEY_DIAL_TIMEOUT", 5*time.Second),
-		ReadTimeout:  EnvDuration("VALKEY_READ_TIMEOUT", 2*time.Second),
-		WriteTimeout: EnvDuration("VALKEY_WRITE_TIMEOUT", 2*time.Second),
-		QueryTimeout: EnvDuration("VALKEY_QUERY_TIMEOUT", 2*time.Second),
-	}
-
 	// 2. サーキットブレイカーの構築
 	dbBreaker := resilience.NewCircuitBreaker(resilience.Settings{ //nolint:contextcheck // Global breaker doesn't rely on request context
 		Name:             "postgres",
 		FailureThreshold: envFloat("DB_BREAKER_FAILURE_THRESHOLD", 0.5),
 		Cooldown:         EnvDuration("DB_BREAKER_COOLDOWN", 30*time.Second),
 		MinRequests:      envCircuitBreakerMinRequests("DB_BREAKER_MIN_REQUESTS"),
-	})
-
-	valkeyBreaker := resilience.NewCircuitBreaker(resilience.Settings{ //nolint:contextcheck // Global breaker doesn't rely on request context
-		Name:             "valkey",
-		FailureThreshold: envFloat("VALKEY_BREAKER_FAILURE_THRESHOLD", 0.5),
-		Cooldown:         EnvDuration("VALKEY_BREAKER_COOLDOWN", 15*time.Second),
-		MinRequests:      envCircuitBreakerMinRequests("VALKEY_BREAKER_MIN_REQUESTS"),
 	})
 
 	// 3. 接続オープン
@@ -112,16 +95,9 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		return nil, err
 	}
 
-	valkeyClient, err := sharedvalkey.Open(ctx, valkeyURL, valkeyCfg, valkeyBreaker)
-	if err != nil {
-		pool.Close()
-		return nil, err
-	}
-
 	keyStore, err := signingpostgres.NewKeyStore(ctx, resilientDB)
 	if err != nil {
 		pool.Close()
-		_ = valkeyClient.Close()
 		return nil, err
 	}
 
@@ -133,7 +109,6 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		sink = &oauth2postgres.OutboxEventSink{Pool: resilientDB}
 	default:
 		pool.Close()
-		_ = valkeyClient.Close()
 		return nil, errors.New("EVENT_SINK must be console or outbox")
 	}
 
@@ -180,10 +155,10 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			PasswordResetTokenStore: &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
 			SessionStore:            &sessionpostgres.SessionRepository{Pool: resilientDB},
 			WebAuthnCredentialRepo:  &webauthnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
-			WebAuthnSessionStore:    &webauthnvalkey.WebAuthnSessionStore{Client: valkeyClient},
+			WebAuthnSessionStore:    &webauthnpostgres.WebAuthnSessionStore{Pool: resilientDB},
 			RecoveryCodeRepo:        &recoverypostgres.RecoveryCodeRepository{Pool: resilientDB},
 			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
-				return &sessionvalkey.LoginAttemptThrottle{Client: valkeyClient, Configs: configs}
+				return &sessionpostgres.LoginAttemptThrottle{Pool: resilientDB, Configs: configs}
 			},
 			AuthEventBucketStore: &authnpostgres.AuthEventBucketStore{Pool: resilientDB},
 		},
@@ -192,14 +167,14 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			ConsentRepo:                &oauth2consentpostgres.ConsentRepository{Pool: resilientDB},
 			AuthzDetailTypeRepo:        &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
 			McpResourceServerRepo:      &oauth2postgres.McpResourceServerRepository{Pool: resilientDB},
-			RequestStore:               &oauth2valkey.AuthorizationRequestStore{Client: valkeyClient},
-			CodeStore:                  &oauth2valkey.AuthorizationCodeStore{Client: valkeyClient},
-			PARStore:                   &oauth2valkey.PARStore{Client: valkeyClient},
+			RequestStore:               &oauth2postgres.AuthorizationRequestStore{Pool: resilientDB},
+			CodeStore:                  &oauth2postgres.AuthorizationCodeStore{Pool: resilientDB},
+			PARStore:                   &oauth2postgres.PARStore{Pool: resilientDB},
 			RefreshStore:               &oauth2tokenpostgres.RefreshTokenStore{Pool: resilientDB},
-			DeviceCodeStore:            &oauth2valkey.DeviceCodeStore{Client: valkeyClient},
-			DpopReplayStore:            &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "dpop_replay:"},
-			ClientAssertionReplayStore: &oauth2valkey.ReplayStore{Client: valkeyClient, Prefix: "client_assertion:"},
-			AccessTokenDenylist:        &oauth2valkey.AccessTokenDenylist{Client: valkeyClient},
+			DeviceCodeStore:            &oauth2postgres.DeviceCodeStore{Pool: resilientDB},
+			DpopReplayStore:            &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "dpop"},
+			ClientAssertionReplayStore: &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "client_assertion"},
+			AccessTokenDenylist:        &oauth2postgres.AccessTokenDenylist{Pool: resilientDB},
 			EventSink:                  sink,
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
@@ -208,7 +183,7 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 			TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),
 		},
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
-		Saml:         saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}, ReplayStore: &samlvalkey.AuthnRequestReplayStore{Client: valkeyClient}},
+		Saml:         saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}, ReplayStore: &samlpostgres.AuthnRequestReplayStore{Pool: resilientDB}},
 		Scim:         scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
 		ApiTokens:    apitoken.Module{Repo: &apitokenpostgres.Repository{Pool: resilientDB}},
 		Jobs:         jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
@@ -224,14 +199,10 @@ func assemblePostgresValkey(ctx context.Context) (*Dependencies, error) {
 		},
 		Provisioning: provisioningModule,
 		Close: func() {
-			_ = valkeyClient.Close()
 			pool.Close()
 		},
 		DbPing: func(c context.Context) error {
 			return pool.Ping(c)
-		},
-		ValkeyPing: func(c context.Context) error {
-			return valkeyClient.Ping(c).Err()
 		},
 	}, nil
 }

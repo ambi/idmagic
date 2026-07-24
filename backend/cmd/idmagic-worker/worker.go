@@ -110,6 +110,7 @@ func RunWorker() error {
 	attrSource := &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo}
 	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, provisioning.NewTargetClient)))
 	go provisioningDispatchLoop(ctx, deps)
+	go ephemeralSweepLoop(ctx, deps)
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
 	lanes, err := resolveWorkerLanes()
@@ -238,6 +239,24 @@ func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, a
 				appMetrics.RecordJobQueueDepth(ctx, d.Lane, "queued", int64(d.Queued))
 				appMetrics.RecordJobQueueDepth(ctx, d.Lane, "running", int64(d.Running))
 			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+// ephemeralSweepLoop は揮発性ストア (ADR-139) の期限切れ行を周期的に空間回収する。
+// retention sweep (idmagic-batch, 外部 cron) と違い、ephemeral は短 TTL なので常駐 worker の
+// 高頻度 ticker で回す。正しさは read の expires_at 述語が担保するため best-effort でよい。
+func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies) {
+	ticker := time.NewTicker(bootstrap.EnvDuration("EPHEMERAL_SWEEP_INTERVAL", 60*time.Second))
+	defer ticker.Stop()
+	for {
+		if err := bootstrap.RunEphemeralSweepOnce(ctx, deps, time.Now().UTC()); err != nil {
+			logging.Warn(ctx, "ephemeral sweep failed", "error", err)
 		}
 		select {
 		case <-ctx.Done():

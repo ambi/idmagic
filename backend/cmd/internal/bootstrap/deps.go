@@ -26,7 +26,7 @@ import (
 )
 
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
-// 永続層 (memory/postgres_valkey) や event sink の差分を本構造体で吸収する。
+// 永続層 (memory/postgres) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
 	Tenancy        tenancy.Module
 	IdManagement   idmanagement.Module
@@ -45,7 +45,6 @@ type Dependencies struct {
 	Notification   notification.Module
 	Close          func()
 	DbPing         func(context.Context) error
-	ValkeyPing     func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。
@@ -65,17 +64,18 @@ func LoadRuntimeConfig() RuntimeConfig {
 	}
 }
 
-// assemble は PERSISTENCE 環境変数に応じて memory/postgres_valkey いずれかの構成を組み立てる。
+// assemble は PERSISTENCE 環境変数に応じて memory/postgres いずれかの構成を組み立てる。
+// postgres_valkey は Valkey 廃止 (ADR-139) の移行期に postgres の alias として 1 リリース残す。
 func Assemble(ctx context.Context) (*Dependencies, error) {
 	var deps *Dependencies
 	var err error
 	switch EnvDefault("PERSISTENCE", "memory") {
 	case "memory":
 		deps, err = assembleMemory()
-	case "postgres_valkey":
-		deps, err = assemblePostgresValkey(ctx)
+	case "postgres", "postgres_valkey":
+		deps, err = assemblePostgres(ctx)
 	default:
-		return nil, errors.New("PERSISTENCE must be memory or postgres_valkey")
+		return nil, errors.New("PERSISTENCE must be memory or postgres")
 	}
 	if err != nil {
 		return nil, err

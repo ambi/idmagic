@@ -5,7 +5,6 @@ package server_http
 import (
 	"context"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/labstack/echo/v5"
@@ -71,31 +70,17 @@ func (d Deps) handleReadyz(c *echo.Context) error {
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 1*time.Second)
 	defer cancel()
 
-	var (
-		pgErr error
-		vkErr error
-		wg    sync.WaitGroup
-	)
+	var pgErr error
 
+	// PostgreSQL は唯一の永続化依存 (ADR-139: 揮発性状態も PostgreSQL に統合し Valkey を廃止)。
+	// postgres_valkey は移行期の alias として同じく Postgres を検査する。
 	persistence := d.HealthInfo.Persistence
-	if persistence == "postgres_valkey" {
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			if d.DbPing != nil {
-				pgErr = d.DbPing(ctx)
-			}
-		}()
-		go func() {
-			defer wg.Done()
-			if d.ValkeyPing != nil {
-				vkErr = d.ValkeyPing(ctx)
-			}
-		}()
-		wg.Wait()
+	usesPostgres := persistence == "postgres" || persistence == "postgres_valkey"
+	if usesPostgres && d.DbPing != nil {
+		pgErr = d.DbPing(ctx)
 	}
 
-	isHealthy := pgErr == nil && vkErr == nil
+	isHealthy := pgErr == nil
 	status := "healthy"
 	if !isHealthy {
 		status = "unavailable"
@@ -104,17 +89,11 @@ func (d Deps) handleReadyz(c *echo.Context) error {
 	verbose := c.QueryParam("verbose") != ""
 	if verbose {
 		details := make(map[string]DependencyStatus)
-		if persistence == "postgres_valkey" {
+		if usesPostgres {
 			if pgErr != nil {
 				details["postgres"] = DependencyStatus{Status: "unavailable", Message: pgErr.Error()}
 			} else {
 				details["postgres"] = DependencyStatus{Status: "healthy"}
-			}
-
-			if vkErr != nil {
-				details["valkey"] = DependencyStatus{Status: "unavailable", Message: vkErr.Error()}
-			} else {
-				details["valkey"] = DependencyStatus{Status: "healthy"}
 			}
 		}
 

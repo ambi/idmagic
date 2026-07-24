@@ -181,7 +181,6 @@ func Run() error {
 			Metrics:                   appMetrics,
 			Emit:                      emit,
 			DbPing:                    deps.DbPing,
-			ValkeyPing:                deps.ValkeyPing,
 			ShuttingDown:              shuttingDown,
 			StartupComplete:           startupComplete,
 			TenantRepo:                deps.Tenancy.TenantRepo,
