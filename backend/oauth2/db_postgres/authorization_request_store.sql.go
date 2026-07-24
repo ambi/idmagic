@@ -59,7 +59,7 @@ type LockAuthorizationRequestParams struct {
 	TenantID string
 }
 
-// tx 内の read-modify-write を直列化するための行ロック取得 (Valkey WATCH 楽観ロックの写し)。
+// tx 内の read-modify-write を直列化するための行ロック取得。
 func (q *Queries) LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error) {
 	row := q.db.QueryRow(ctx, lockAuthorizationRequest, arg.ID, arg.TenantID)
 	var payload []byte

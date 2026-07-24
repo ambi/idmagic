@@ -11,8 +11,8 @@ import (
 )
 
 // ReplayStore は DPoP / private_key_jwt assertion の jti リプレイ予約を PostgreSQL に持つ
-// (ADR-139)。Valkey adapter の Prefix は kind 列に写し、1 テーブル oauth2_replay_jtis を
-// dpop / client_assertion で名前空間分けする。同一構造体が DpopReplayStore /
+// (ADR-139)。kind 列で 1 テーブル oauth2_replay_jtis を dpop / client_assertion に
+// 名前空間分けする。同一構造体が DpopReplayStore /
 // ClientAssertionReplayStore 両 port を構造的に満たす。tenant は ctx から解決する。
 // SETNX + TTL を INSERT ... ON CONFLICT DO UPDATE ... WHERE expires_at <= now RETURNING で写す:
 // live な予約は 0 行 (= false)、期限切れ / 未存在は 1 行 (= true)。

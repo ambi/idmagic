@@ -15,7 +15,7 @@ import (
 // PARStore は Pushed Authorization Request を PostgreSQL に短命保持する (ADR-139)。
 // full record を payload JSONB に持ち、used 列を Consume の CAS 述語に昇格して read で
 // payload に overlay する。tenant は ctx から解決し fail-closed 述語に含める。Find は期限
-// フィルタを付けない (memory/valkey パリティ: 期限判定は呼び出し側の domain)。
+// フィルタを付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain)。
 type PARStore struct{ Pool sharedpg.DB }
 
 func parFromPayload(payload []byte) (*domain.PARRecord, error) {

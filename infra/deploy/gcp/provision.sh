@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # IdMagic — GCP 構成の払い出し（最小例 / シンプル雛形）
 #
-# 目的: Cloud SQL(Postgres HA) / Memorystore(Valkey) / Pub/Sub / Secret /
+# 目的: Cloud SQL(Postgres HA) / Pub/Sub / Secret /
 #       Artifact Registry を作成し、3サービス（API=Cloud Run Service,
 #       worker・relay=Cloud Run worker pools）をデプロイする流れを示す。
 #       イベント配信は Pub/Sub（サーバレス）。relay は -tags pubsub ビルド（ADR-120）。
@@ -47,16 +47,7 @@ gcloud sql databases create "$DB_NAME" --instance "$DB_INSTANCE"
 gcloud sql users create "$DB_USER" --instance "$DB_INSTANCE" --password "REPLACE_ME"
 
 # ---------------------------------------------------------------------------
-# 2) Valkey（Memorystore, Standard=HA）
-# ---------------------------------------------------------------------------
-gcloud memorystore instances create idmagic-valkey \
-  --project "$PROJECT" --location "$REGION" \
-  --node-type=shared-core-nano --replica-count=1 || \
-gcloud redis instances create idmagic-valkey \
-  --region "$REGION" --tier=STANDARD_HA --size=5 --redis-version=redis_7_0
-
-# ---------------------------------------------------------------------------
-# 3) Pub/Sub（イベント配信, ADR-120）。outbox.topic 列に対応する topic を作成。
+# 2) Pub/Sub（イベント配信, ADR-120）。outbox.topic 列に対応する topic を作成。
 #    一覧は backend/oauth2/db_postgres/outbox.go の eventTopics マップ。
 #    per-aggregate ordering (partitionKey) を使うため message-ordering を有効化。
 # ---------------------------------------------------------------------------
@@ -86,16 +77,15 @@ gcloud projects add-iam-policy-binding "$PROJECT" \
   --role="roles/pubsub.publisher"
 
 # ---------------------------------------------------------------------------
-# 4) Secret（接続文字列は Secret Manager に格納し、サービスへ注入）
+# 3) Secret（接続文字列は Secret Manager に格納し、サービスへ注入）
 # ---------------------------------------------------------------------------
 printf 'postgres://%s:REPLACE_ME@/%s?host=/cloudsql/%s:%s:%s' \
   "$DB_USER" "$DB_NAME" "$PROJECT" "$REGION" "$DB_INSTANCE" \
   | gcloud secrets create idmagic-database-url --data-file=- || \
   gcloud secrets versions add idmagic-database-url --data-file=-
-printf 'valkey://REPLACE_HOST:6379/0' | gcloud secrets create idmagic-valkey-url --data-file=- || true
 
 # ---------------------------------------------------------------------------
-# 5) スキーマ適用（psqldef / デプロイ工程・起動時禁止 ADR-071 / --enable-drop 禁止）
+# 4) スキーマ適用（psqldef / デプロイ工程・起動時禁止 ADR-071 / --enable-drop 禁止）
 #    CI から DATABASE_URL を PG* にマップして実行するのが基本。ここは手動例。
 #    docker run --rm -v "$PWD/infra/schema:/schema:ro" \
 #      -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD sqldef/psqldef:3.11 \
@@ -103,15 +93,15 @@ printf 'valkey://REPLACE_HOST:6379/0' | gcloud secrets create idmagic-valkey-url
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# 6) デプロイ: API=Service, worker/relay=worker pools（HTTP を持たないため）
+# 5) デプロイ: API=Service, worker/relay=worker pools（HTTP を持たないため）
 # ---------------------------------------------------------------------------
 gcloud run services replace infra/deploy/gcp/cloudrun-idmagic.yaml --region "$REGION"
 
 gcloud beta run worker-pools deploy idmagic-worker \
   --image "$IMAGE" --region "$REGION" --command /app/idmagic-worker \
   --min-instances=1 --max-instances=3 \
-  --set-env-vars=PERSISTENCE=postgres_valkey,EVENT_SINK=outbox,OBSERVABILITY=otel \
-  --set-secrets=DATABASE_URL=idmagic-database-url:latest,VALKEY_URL=idmagic-valkey-url:latest
+  --set-env-vars=PERSISTENCE=postgres,EVENT_SINK=outbox,OBSERVABILITY=otel \
+  --set-secrets=DATABASE_URL=idmagic-database-url:latest
 
 gcloud beta run worker-pools deploy idmagic-relay \
   --image "$IMAGE" --region "$REGION" --command /app/idmagic-relay \

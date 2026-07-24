@@ -6,7 +6,7 @@ ON CONFLICT (request_uri) DO UPDATE
         expires_at = EXCLUDED.expires_at, payload = EXCLUDED.payload, updated_at = now();
 
 -- name: FindPARRequest :one
--- 期限フィルタは付けない (memory/valkey パリティ: 期限判定は呼び出し側の domain が行う)。
+-- 期限フィルタは付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain が行う)。
 -- tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 SELECT payload, used FROM oauth2_par_requests
 WHERE request_uri = @request_uri AND tenant_id = @tenant_id;

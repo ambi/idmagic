@@ -22,7 +22,6 @@ func run() error {
 	var cfg devinfra.Config
 	postgresPort := uint64Flag(devinfra.DefaultPostgresPort)
 	flag.Var(&postgresPort, "postgres-port", "embedded PostgreSQL port")
-	flag.IntVar(&cfg.ValkeyPort, "valkey-port", devinfra.DefaultValkeyPort, "development Valkey-compatible port")
 	flag.StringVar(&cfg.SchemaPath, "schema", "infra/schema/postgres.sql", "PostgreSQL schema path")
 	flag.StringVar(&cfg.ReadyFile, "ready-file", "", "ready marker JSON path")
 	flag.StringVar(&cfg.DataPath, "data-dir", "", "persistent embedded PostgreSQL data directory; schema is reset on each start")
@@ -36,7 +35,7 @@ func run() error {
 		return err
 	}
 	defer runtime.Close()
-	fmt.Printf("development infrastructure ready\nPostgreSQL: %s\nValkey-compatible: %s\n", ready.DatabaseURL, ready.ValkeyURL)
+	fmt.Printf("development infrastructure ready\nPostgreSQL: %s\n", ready.DatabaseURL)
 	<-ctx.Done()
 	return nil
 }

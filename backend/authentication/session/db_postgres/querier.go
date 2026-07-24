@@ -28,7 +28,7 @@ type Querier interface {
 	// keyset pagination を意識した index (tenant_id, user_id, auth_time DESC, id DESC) を使う。
 	// 初期実装は先頭ページのみを返す (wi-253 Plan §2)。
 	ListActiveAuthenticationSessionsByUser(ctx context.Context, arg ListActiveAuthenticationSessionsByUserParams) ([]*ListActiveAuthenticationSessionsByUserRow, error)
-	// RecordFailure の read-modify-write を直列化する行ロック取得 (Valkey Lua の原子性の写し)。
+	// RecordFailure の read-modify-write を直列化する行ロック取得。
 	LockThrottleCounter(ctx context.Context, arg LockThrottleCounterParams) (*LockThrottleCounterRow, error)
 	// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。
 	RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) error

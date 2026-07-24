@@ -14,9 +14,9 @@ type Querier interface {
 	DeleteSamlServiceProvider(ctx context.Context, arg DeleteSamlServiceProviderParams) error
 	GetSamlServiceProvider(ctx context.Context, arg GetSamlServiceProviderParams) (*SamlServiceProvider, error)
 	ListSamlServiceProvidersByTenant(ctx context.Context, tenantID string) ([]*SamlServiceProvider, error)
-	// SETNX + TTL の単発予約を写す (ADR-139 §3)。live な予約が既にあれば ON CONFLICT の
+	// TTL 付き単発予約 (ADR-139 §3)。live な予約が既にあれば ON CONFLICT の
 	// DO UPDATE ... WHERE が false になり 0 行 (ErrNoRows)、期限切れの残骸なら上書きして 1 行、
-	// 未存在なら INSERT で 1 行を返す。行が返れば新規予約成功 (= Valkey SETNX の true と同義)。
+	// 未存在なら INSERT で 1 行を返す。行が返れば新規予約成功 (重複時は 0 行 = 予約失敗)。
 	ReserveSamlAuthnRequestReplay(ctx context.Context, arg ReserveSamlAuthnRequestReplayParams) (string, error)
 	UpsertSamlServiceProvider(ctx context.Context, arg UpsertSamlServiceProviderParams) error
 }

@@ -54,8 +54,8 @@ import (
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/db_postgres"
 )
 
-// assemblePostgres は PostgreSQL 単一依存の構成を組み立てる (ADR-139)。durable state と、
-// かつて Valkey が持っていた揮発性の認証 / OAuth2 一時状態の双方を PostgreSQL に載せる。
+// assemblePostgres は PostgreSQL 単一依存の構成を組み立てる (ADR-139)。durable state と
+// 揮発性の認証 / OAuth2 一時状態の双方を PostgreSQL に載せる。
 func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {

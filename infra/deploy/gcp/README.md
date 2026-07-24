@@ -1,6 +1,6 @@
 # IdMagic デプロイ構成 — GCP 単一クラウド
 
-compute / DB / Redis / イベント配信 を **単一 VPC・単一リージョン**に同居させる構成。レイテンシと egress で有利、CUD（確約利用割引）で大きく圧縮でき、運用は単一ベンダで完結する。前提ワークロードは中規模 SaaS・本番 HA・イベント配信(event-relay) 含む。
+compute / DB / イベント配信 を **単一 VPC・単一リージョン**に同居させる構成。レイテンシと egress で有利、CUD（確約利用割引）で大きく圧縮でき、運用は単一ベンダで完結する。前提ワークロードは中規模 SaaS・本番 HA・イベント配信(event-relay) 含む。
 
 イベント配信は **Pub/Sub**（サーバレス・クラスタフロア無し）を採用する。relay は transport 中立（[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）で、GCP では `RELAY_SINK=pubsub`（`-tags pubsub` ビルド）を選ぶ。イベント層は ~$0–10/月に収まる。
 
@@ -8,8 +8,8 @@ compute / DB / Redis / イベント配信 を **単一 VPC・単一リージョ�
 
 - フロント: React+Vite の**純 SPA**（`frontend/` → `dist/`）。SSR 無し。
 - ゲートウェイ: **Caddy**（`frontend/Caddyfile`）が静的配信＋同一オリジンで API/OIDC パスを backend へプロキシ。CSP は SPA HTML のみに付与(ADR-076)。
-- backend: 常駐 Go **3サービス** — `idmagic`(API `:8080`) / `idmagic-worker` / `idmagic-relay`。CGO 無し distroless（`infra/docker/Dockerfile`）。`PERSISTENCE=postgres_valkey` でステートレス・水平スケール可。
-- データ: **PostgreSQL 17**（本体+blob, 44テーブル, FTS 無し）/ **Valkey/Redis**（セッション・OAuth 一時状態）/ **Pub/Sub**（outbox 中継、[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。
+- backend: 常駐 Go **3サービス** — `idmagic`(API `:8080`) / `idmagic-worker` / `idmagic-relay`。CGO 無し distroless（`infra/docker/Dockerfile`）。`PERSISTENCE=postgres` でステートレス・水平スケール可。
+- データ: **PostgreSQL 17**（本体+blob＋セッション・OAuth 一時状態, [ADR-139](../../../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)）/ **Pub/Sub**（outbox 中継、[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。揮発性状態も PostgreSQL に統合し Valkey は廃止。
 - 署名鍵: **DB-backed 永続鍵(ADR-024)** を推奨（全レプリカ JWKS 一致）。Vault Transit(ADR-075) も可。
 - スキーマ: `psqldef` を**デプロイ工程で適用**（起動時適用は ADR-071 で禁止、`--enable-drop` 禁止）。
 
@@ -24,10 +24,10 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
   │
   └─ /api・/authorize・/token・/.well-known 等 → Cloud Run (idmagic API, minScale=2, HA)
                                                      │
-        ┌────────────────────────────────────────────┼─────────────────────────────┐
-        ▼                        ▼                    ▼                              ▼
-  Cloud SQL for PostgreSQL   Memorystore(Valkey)   Pub/Sub                       Secret Manager
-   (REGIONAL = HA)            (STANDARD_HA)          (サーバレス, topic/event)      / Cloud KMS
+        ┌─────────────────────────────────────┼─────────────────────────────┐
+        ▼                                     ▼                              ▼
+  Cloud SQL for PostgreSQL                 Pub/Sub                       Secret Manager
+   (REGIONAL = HA, 揮発性状態も同居)         (サーバレス, topic/event)      / Cloud KMS
 
 背景処理（HTTP を持たない常駐プロセス）:
   Cloud Run worker pools ─ idmagic-worker（ジョブ+保持スイープ, ADR-099）
@@ -48,8 +48,8 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
 ## デプロイ順（重要）
 
 1. イメージビルド（既存 `infra/docker/Dockerfile`、3バイナリ入り distroless）→ Artifact Registry。relay の Pub/Sub を有効化するため `--build-arg RELAY_TAGS=pubsub` を付ける
-2. データ払い出し: Cloud SQL(REGIONAL) / Memorystore(Valkey) / Pub/Sub topic ＋ relay 用サービスアカウント(`roles/pubsub.publisher`)
-3. Secret 登録（`DATABASE_URL` / `VALKEY_URL` 等）
+2. データ払い出し: Cloud SQL(REGIONAL) / Pub/Sub topic ＋ relay 用サービスアカウント(`roles/pubsub.publisher`)
+3. Secret 登録（`DATABASE_URL` 等）
 4. **スキーマ適用**: `psqldef --apply`（**起動時ではなくこの工程で**。ADR-071 / `--enable-drop` 禁止）
 5. サービス投入: `idmagic`(Service) → `idmagic-worker`/`idmagic-relay`(worker pools, `RELAY_SINK=pubsub`)
 6. 前段: Cloud Load Balancing + Cloud CDN + Cloud Armor、DNS/TLS
@@ -62,9 +62,8 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
 
 | 変数 | 値 | 備考 |
 |---|---|---|
-| `PERSISTENCE` | `postgres_valkey` | ステートレス・水平スケール前提 |
+| `PERSISTENCE` | `postgres` | ステートレス・水平スケール前提 |
 | `DATABASE_URL` | Secret | Cloud SQL（Private IP か Unix ソケット） |
-| `VALKEY_URL` | Secret | Memorystore |
 | `RELAY_SINK` | `pubsub` | relay の配信先（`kafka`\|`pubsub`\|`log`）。GCP は `pubsub` |
 | `PUBSUB_PROJECT` | project-id | relay のみ必要（`RELAY_SINK=pubsub`） |
 | `EVENT_SINK` | `outbox` | アプリ側で outbox 書き込みを有効化 |
@@ -76,7 +75,7 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
 
 - API: `minScale=2`（最低2レプリカ）、`maxScale` は負荷に応じて。ステートレスなので水平スケール可。
 - worker/relay: リース制（ADR-099）のため複数インスタンス可。`min-instances>=1`。
-- DB: `REGIONAL`（同期スタンバイ）。Valkey: `STANDARD_HA`（レプリカ）。
+- DB: `REGIONAL`（同期スタンバイ）。揮発性状態も同一 DB に載る（ADR-139）ため 2 つ目のステートフル基盤は無い。
 - 署名鍵は DB-backed で全レプリカ一致を担保（Vault を使う場合は別途）。
 
 ## コスト目安（中規模 SaaS・HA・リスト価格）
@@ -85,10 +84,9 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
 |---|---|---|
 | Cloud Run | API×2 + worker/relay pools | $180–250 |
 | Cloud SQL PostgreSQL HA | 2–4 vCPU/8–16GB + 100GB SSD | $300–450 |
-| Memorystore for Valkey | Standard/HA ~5GB | $150–200 |
 | Pub/Sub | outbox イベント（低〜中量, サーバレス） | $0–10 |
 | LB + Cloud CDN + GCS(SPA) | | $30–60 |
 | Secret Manager/KMS/ログ/egress | | $30–60 |
-| **合計** | | **~$690–1,030（中心 ~$850）** |
+| **合計** | | **~$540–830（中心 ~$685）** |
 
-Pub/Sub はサーバレスでクラスタの固定費が無く、イベント量（低〜中量）に対して小さいコストに収まる（[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。CUD（1年 20–25% / 3年 40–52%）で **~$650–850** まで低下しうる（compute/DB/Redis の compute 分に適用、storage は対象外）。
+揮発性状態を PostgreSQL に統合し Valkey (Memorystore, 月 $150–200) を廃したことで 2 つ目のステートフル基盤の固定費が消えた（[ADR-139](../../../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)）。Pub/Sub はサーバレスでクラスタの固定費が無く、イベント量（低〜中量）に対して小さいコストに収まる（[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。CUD（1年 20–25% / 3年 40–52%）で **~$520–700** まで低下しうる（compute/DB の compute 分に適用、storage は対象外）。

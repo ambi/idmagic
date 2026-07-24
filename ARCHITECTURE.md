@@ -2139,11 +2139,9 @@ modules:
       - { module: authentication-recovery-db-postgres, via: composition_root }
       - { module: authentication-session-db-memory, via: composition_root }
       - { module: authentication-session-db-postgres, via: composition_root }
-      - { module: authentication-session-db-valkey, via: composition_root }
       - { module: authentication-totp-db-postgres, via: composition_root }
       - { module: authentication-webauthn-db-memory, via: composition_root }
       - { module: authentication-webauthn-db-postgres, via: composition_root }
-      - { module: authentication-webauthn-db-valkey, via: composition_root }
       - { module: idgovernance-db-memory, via: composition_root }
       - { module: idgovernance-db-postgres, via: composition_root }
       - { module: idmanagement-agent-db-memory, via: composition_root }
@@ -2155,12 +2153,10 @@ modules:
       - { module: jobs-db-postgres, via: composition_root }
       - { module: oauth2-db-memory, via: composition_root }
       - { module: oauth2-db-postgres, via: composition_root }
-      - { module: oauth2-db-valkey, via: composition_root }
       - { module: provisioning-db-memory, via: composition_root }
       - { module: provisioning-db-postgres, via: composition_root }
       - { module: saml-db-memory, via: composition_root }
       - { module: saml-db-postgres, via: composition_root }
-      - { module: saml-db-valkey, via: composition_root }
       - { module: scim-db-memory, via: composition_root }
       - { module: scim-db-postgres, via: composition_root }
       - { module: shared-events-sinks-console, via: technical_shared }
@@ -2172,7 +2168,6 @@ modules:
       - { module: shared-policy-breaches-noop, via: technical_shared }
       - { module: shared-security-passwords-argon2id, via: technical_shared }
       - { module: shared-security-salts-memory, via: technical_shared }
-      - { module: shared-storage-db-valkey, via: technical_shared }
       - { module: signingkeys-db-postgres, via: composition_root }
       - { module: signingkeys-keys-memory, via: composition_root }
       - { module: signingkeys-keys-vault, via: composition_root }
@@ -2617,15 +2612,6 @@ modules:
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
-  authentication-session-db-valkey:
-    path: backend/authentication/session/db_valkey
-    responsibility: "backend/authentication/session/db_valkey の Flat Architecture adapter。"
-    context: Authentication
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: authentication-session-ports, via: published_interface }
-      - { module: shared-storage-db-valkey, via: technical_shared }
   authentication-totp-db-postgres:
     path: backend/authentication/totp/db_postgres
     responsibility: "backend/authentication/totp/db_postgres の Flat Architecture adapter。"
@@ -2654,14 +2640,6 @@ modules:
       - { module: authentication-webauthn-domain, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
-  authentication-webauthn-db-valkey:
-    path: backend/authentication/webauthn/db_valkey
-    responsibility: "backend/authentication/webauthn/db_valkey の Flat Architecture adapter。"
-    context: Authentication
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: shared-storage-db-valkey, via: technical_shared }
   idgovernance-db-memory:
     path: backend/idgovernance/db_memory
     responsibility: "backend/idgovernance/db_memory の Flat Architecture adapter。"
@@ -2801,17 +2779,6 @@ modules:
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-public, via: published_interface }
-  oauth2-db-valkey:
-    path: backend/oauth2/db_valkey
-    responsibility: "backend/oauth2/db_valkey の Flat Architecture adapter。"
-    context: OAuth2
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: oauth2-domain, via: published_interface }
-      - { module: shared-spec, via: technical_shared }
-      - { module: shared-storage-db-valkey, via: technical_shared }
-      - { module: tenancy-public, via: published_interface }
   oauth2-token-db-postgres:
     path: backend/oauth2/token/db_postgres
     responsibility: "backend/oauth2/token/db_postgres の Flat Architecture adapter。"
@@ -2871,14 +2838,6 @@ modules:
     depends_on:
       - { module: saml-domain, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
-  saml-db-valkey:
-    path: backend/saml/db_valkey
-    responsibility: "backend/saml/db_valkey の Flat Architecture adapter。"
-    context: Saml
-    layer: adapters
-    role: binding
-    depends_on:
-      - { module: shared-storage-db-valkey, via: technical_shared }
   saml-metadata-saml:
     path: backend/saml/metadata_saml
     responsibility: "backend/saml/metadata_saml の Flat Architecture adapter。"
@@ -3071,15 +3030,6 @@ modules:
     role: technical_shared
     depends_on:
       - { module: tenancy-domain, via: published_interface }
-  shared-storage-db-valkey:
-    path: backend/shared/storage/db_valkey
-    responsibility: "backend/shared/storage/db_valkey の Flat Architecture adapter。"
-    context: System
-    layer: adapters
-    role: technical_shared
-    depends_on:
-      - { module: shared-services, via: technical_shared }
-      - { module: tenancy-public, via: published_interface }
   signingkeys-db-postgres:
     path: backend/signingkeys/db_postgres
     responsibility: "backend/signingkeys/db_postgres の Flat Architecture adapter。"
@@ -3682,7 +3632,7 @@ scheduled batch との境界は
 
 ## Persistence
 
-永続化 port と repository 実装は所有 context 側に置く。context 固有の memory / PostgreSQL / Valkey Adapter は `backend/<context>/{db_memory,db_postgres,db_valkey}` に置き、共有する DB pool、row scanner、transaction helper、Valkey client は `backend/shared/storage/{db_postgres,db_valkey}` に置く（ADR-090、ADR-133）。
+永続化 port と repository 実装は所有 context 側に置く。context 固有の memory / PostgreSQL Adapter は `backend/<context>/{db_memory,db_postgres}` に置き、共有する DB pool、row scanner、transaction helper は `backend/shared/storage/db_postgres` に置く（ADR-090、ADR-133）。揮発性状態も PostgreSQL に統合済みで Valkey adapter は存在しない（ADR-139）。
 
 PostgreSQL の構造を増やすときは、まず `infra/schema/postgres.sql` の現在形 schema を更新する。構造差分は `psqldef` の dry-run で確認し、デプロイ前ジョブで適用する。既存データの backfill、値変換、削除前の退避など、構造差分だけでは表せない変更は、対象 WI の runbook または専用 SQL script として明示する。アプリ起動時の migration runner は持たない。memory adapter はテスト・ローカル demo の基準にもなるため、postgres だけを更新しない。
 

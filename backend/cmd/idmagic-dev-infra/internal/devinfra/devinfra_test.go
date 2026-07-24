@@ -18,9 +18,9 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
-func TestWriteReadyFilePublishesURLs(t *testing.T) {
+func TestWriteReadyFilePublishesDatabaseURL(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ready.json")
-	want := Ready{DatabaseURL: "postgres://example", ValkeyURL: "valkey://example"}
+	want := Ready{DatabaseURL: "postgres://example"}
 	if err := writeReadyFile(path, want); err != nil {
 		t.Fatal(err)
 	}
@@ -64,10 +64,8 @@ func TestRepairIncompletePostgresExtractionForcesReextract(t *testing.T) {
 
 func TestEmbeddedInfrastructureSharesJobQueueWithRunner(t *testing.T) {
 	postgresPort := freePort(t)
-	valkeyPort := freePort(t)
 	runtime, ready, err := Start(t.Context(), Config{
 		PostgresPort: uint32(postgresPort),
-		ValkeyPort:   valkeyPort,
 		SchemaPath:   filepath.Join("..", "..", "infra", "schema", "postgres.sql"),
 		RuntimeDir:   t.TempDir(),
 		Logger:       io.Discard,
@@ -130,7 +128,6 @@ func TestPersistentClusterResetsSchemaOnStart(t *testing.T) {
 
 	first, firstReady, err := Start(t.Context(), Config{
 		PostgresPort: uint32(freePort(t)),
-		ValkeyPort:   freePort(t),
 		SchemaPath:   schemaPath,
 		RuntimeDir:   t.TempDir(),
 		DataPath:     dataPath,
@@ -159,7 +156,6 @@ func TestPersistentClusterResetsSchemaOnStart(t *testing.T) {
 
 	second, secondReady, err := Start(t.Context(), Config{
 		PostgresPort: uint32(freePort(t)),
-		ValkeyPort:   freePort(t),
 		SchemaPath:   schemaPath,
 		RuntimeDir:   t.TempDir(),
 		DataPath:     dataPath,

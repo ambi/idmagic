@@ -53,7 +53,7 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 
 **GC**：各ストアに `DeleteExpiredBatch(ctx, cutoff, limit)`（`session/ports/session_store.go:44` と同一シグネチャ）を追加。常駐 `idmagic-worker` に周期 ticker（60s 目安）で `ephemeralSweep` を配線（`worker.go` の既存 `time.NewTicker` パターン）。usecase は `EphemeralPurger`（`retention.go:150` `SessionPurger` に倣う）新設。best-effort。
 
-**移行**：ephemeral はデータ移行不要（in-flight フローは揮発でよい＝ADR-126 と同じ割り切り）。dual-write 不要。`postgres_valkey` を 1 リリースだけ `postgres` の alias として残し、infra 切替後に alias 削除。
+**移行**：ephemeral はデータ移行不要（in-flight フローは揮発でよい＝ADR-126 と同じ割り切り）。dual-write 不要。`PERSISTENCE` は `postgres` に統一し、旧 `postgres_valkey` は alias を残さず削除（切替は環境変数を `postgres` へ更新するデプロイと同時に実施。未更新環境は起動時に fail-fast）。
 
 **却下した代替案**：(1) Valkey を残す＝運用負荷が痛く、方向は ADR-126 で既定。(2) 別の Redis 系（KeyDB/Dragonfly）＝"2つ目の基盤"が消えず目的に反する。(3) 主 DB を別物に＝durable 層の巨大な再投資で本末転倒。
 
@@ -95,8 +95,8 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 - [ ] T013 [Verify] staging を `PERSISTENCE=postgres` に切替、dead tuple/autovacuum/p99 latency を実測し UNLOGGED/LOGGED 判断と GC 間隔を確定。
 
 **Phase 4：撤去**
-- [ ] T014 [Infra] インフラから Valkey 削除（`docker-compose.dev.yaml` valkey service、`k8s` configmap/networkpolicy、`gcp` provision.sh Memorystore/secret、`cloudrun-idmagic.yaml`、`dev.sh`、`idmagic-dev-infra` の miniredis）。`PERSISTENCE=postgres` に統一。
-- [ ] T015 [App] `backend/**/db_valkey/`・`backend/shared/storage/db_valkey/` 削除、`go.mod` から `redis/go-redis/v9`・`alicebob/miniredis/v2` 削除、`postgres_valkey` alias と `ValkeyPing` 完全撤去。
+- [x] T014 [Infra] インフラから Valkey 削除：`docker-compose.dev.yaml`（valkey service・VALKEY_URL・depends_on）、`k8s`（configmap `PERSISTENCE`・networkpolicy の valkey egress×4）、`gcp` provision.sh（Memorystore create・secret・env）、`cloudrun-idmagic.yaml`（PERSISTENCE・VALKEY_URL secret）、README.md（構成図・コスト表・env）、`dev.sh`（VALKEY_URL）、`idmagic-dev-infra` の miniredis endpoint。全て `PERSISTENCE=postgres` に統一。
+- [x] T015 [App] `backend/**/db_valkey/`（session/webauthn/oauth2/saml）と `backend/shared/storage/db_valkey/` を削除、`go.mod` から `redis/go-redis/v9`・`alicebob/miniredis/v2`（＋推移依存 gopher-lua 等）を `go mod tidy` で除去、`postgres_valkey` alias と `ValkeyPing` を完全撤去。ARCHITECTURE.md から 5 db-valkey モジュールを削除。コメント中の Valkey 参照も整理（memory パリティ表記・機構直記述へ）。`build-go`/`test-go`/`lint-go`/`check` green。
 
 ## Verification
 
@@ -111,6 +111,6 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 - **security（fail-closed）**：throttle と denylist は failover で状態が消えると防御後退。→ この 2 つは LOGGED（物理 standby へ複製）で担保。ADR-077 の fail-closed ポリシーは維持し、機構のみ Postgres へ（Postgres は既に hard dependency で依存を追加でなく削減）。
 - **正しさ（TTL）**：GC 遅延で肥大しても正しさは `expires_at>now()` フィルタが担保。GC は best-effort。
 - **性能（write 増幅/vacuum）**：高churn の denylist/replay/throttle は autovacuum 負荷。→ UNLOGGED（可能なもの）＋ fillfactor/HOT update＋per-table autovacuum チューニング。Phase3 で実測してから prod 切替。
-- **破壊的変更（config）**：`PERSISTENCE` モード名変更。→ 移行期 alias で 1 リリース吸収。
+- **破壊的変更（config）**：`PERSISTENCE` モード名変更（`postgres_valkey`→`postgres`）。alias は残さず削除する方針のため、切替は環境変数更新デプロイと同時に行う。未更新環境は起動時に "PERSISTENCE must be memory or postgres" で fail-fast（silent な誤起動はしない）。
 - **移行**：切替時の in-flight フロー（進行中の /authorize・PAR・device・throttle counter）は放棄されるが再開で回復（ADR-126 と同じ割り切り）。データ移行・dual-write は不要。
 - **検証基盤（発見・修正済み）**：T004 着手時、`backend/shared/storage/testing_postgres/pgtest.go` の `schemaPath()` が `..` を 6 個使っており（パッケージはルートから 4 階層）、schema パスが `/Users/tn/infra/...` に誤解決されて **リポジトリ全体の postgres 契約テストが黙って skip**（skip は "ok" 表示で `just verify` はグリーンのまま）していた。直近の sqlc ディレクトリ flatten（wi-267）で階層が浅くなった際の未更新が原因と見られる。本 WI の検証戦略（memory/valkey とのパリティ契約テスト）が機能する前提なので `..` を 4 個へ修正し、リポジトリ全 DB テストが実走・green になることを確認した（wi-278 本体とは別コミット）。**後続 Phase の全 postgres 契約テストはこの修正の上で実走する。**

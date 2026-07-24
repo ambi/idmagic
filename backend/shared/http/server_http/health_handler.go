@@ -72,10 +72,9 @@ func (d Deps) handleReadyz(c *echo.Context) error {
 
 	var pgErr error
 
-	// PostgreSQL は唯一の永続化依存 (ADR-139: 揮発性状態も PostgreSQL に統合し Valkey を廃止)。
-	// postgres_valkey は移行期の alias として同じく Postgres を検査する。
+	// PostgreSQL は唯一の永続化依存 (ADR-139: 揮発性状態も PostgreSQL に統合済み)。
 	persistence := d.HealthInfo.Persistence
-	usesPostgres := persistence == "postgres" || persistence == "postgres_valkey"
+	usesPostgres := persistence == "postgres"
 	if usesPostgres && d.DbPing != nil {
 		pgErr = d.DbPing(ctx)
 	}

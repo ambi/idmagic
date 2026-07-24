@@ -87,8 +87,9 @@ PostgreSQL で容易に扱える。(B) `AccessTokenDenylist.IsRevoked` だけが
 7. **移行はデータ移行不要・dual-write 不要とする (ADR-126 と同じ割り切り)。** ephemeral は
    切替時の in-flight フロー (進行中の /authorize・PAR・device・throttle counter) が
    放棄されても再開で回復するため、Valkey → Postgres のデータ移行も二重書きもしない。
-   config の `PERSISTENCE=postgres_valkey` は 1 リリースだけ `postgres` の alias として
-   残し、インフラ切替後に alias を削除する。
+   config の `PERSISTENCE` モード名は `postgres` に統一し、旧 `postgres_valkey` は alias を
+   残さず削除する。切替は各環境の環境変数を `postgres` へ更新するデプロイと同時に行う
+   (未更新の環境は起動時に "PERSISTENCE must be memory or postgres" で fail-fast する)。
 
 8. **tenant scoping は opaque token key の高頻度 fail-closed lookup として `tenant_id` を
    保持する。** これら ephemeral は全て不透明トークン / コード / チャレンジをキーにした
@@ -140,8 +141,8 @@ PostgreSQL で容易に扱える。(B) `AccessTokenDenylist.IsRevoked` だけが
   postgres アダプタを新設し、契約テストで memory / valkey とパリティを取る。
 - **bootstrap**: `backend/cmd/internal/bootstrap/postgres_valkey.go` を `postgres.go`
   (`assemblePostgres`) へ改称し、Valkey client / config / breaker / ValkeyPing を除去、
-  9 バインドを `*postgres.*` へ置換する。`deps.go` は移行期 alias
-  `case "postgres","postgres_valkey":` とし、health 系から ValkeyPing を除く。
+  9 バインドを `*postgres.*` へ置換する。`deps.go` は `case "postgres":` のみとし
+  (旧 `postgres_valkey` は alias を残さず削除)、health 系から ValkeyPing を除く。
 - **worker**: `EphemeralPurger` usecase を新設し `idmagic-worker` の周期 sweep へ配線する。
 - **infra (Phase 4)**: `docker-compose.dev.yaml` の valkey service、k8s configmap /
   networkpolicy、gcp Memorystore / secret、`cloudrun-idmagic.yaml`、`dev.sh`、

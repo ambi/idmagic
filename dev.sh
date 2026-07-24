@@ -74,11 +74,10 @@ echo "Demo credentials: alice / demo-password-1234"
 UI_PID=$!
 
 DATABASE_URL=
-VALKEY_URL=
 if [ "$MODE" = "durable" ]; then
   READY_FILE="$RUN_DIR/infra-ready.json"
   mkdir -p "$(dirname "$PG_DATA_DIR")"
-  echo "Starting embedded PostgreSQL and Valkey-compatible development endpoint"
+  echo "Starting embedded PostgreSQL development endpoint"
   (
     cd "$ROOT_DIR"
     exec "$RUN_DIR/idmagic-dev-infra" --ready-file "$READY_FILE" --data-dir "$PG_DATA_DIR"
@@ -101,7 +100,6 @@ if [ "$MODE" = "durable" ]; then
   done
 
   DATABASE_URL="postgres://idmagic:idmagic@127.0.0.1:55432/idmagic?sslmode=disable"
-  VALKEY_URL="valkey://127.0.0.1:56379/0"
 else
   echo "Starting lightweight memory mode: durable jobs and CSV import are unavailable"
 fi
@@ -118,7 +116,7 @@ echo "Starting idmagic API at $DEV_API_ADDR"
   export DEMO_CLIENT_SECRET DEMO_USER_PASSWORD
   export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" EVENT_SINK=console SEED_ENVIRONMENT=development SEED_PROFILE=development
   if [ "$MODE" = "durable" ]; then
-    export PERSISTENCE=postgres_valkey DATABASE_URL VALKEY_URL
+    export PERSISTENCE=postgres DATABASE_URL
   else
     export PERSISTENCE=memory
   fi
@@ -130,7 +128,7 @@ if [ "$MODE" = "durable" ]; then
   echo "Starting idmagic worker"
   (
     cd "$ROOT_DIR"
-    export PERSISTENCE=postgres_valkey DATABASE_URL VALKEY_URL EVENT_SINK=console
+    export PERSISTENCE=postgres DATABASE_URL EVENT_SINK=console
     exec "$RUN_DIR/idmagic-worker"
   ) &
   WORKER_PID=$!

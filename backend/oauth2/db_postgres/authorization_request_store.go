@@ -17,8 +17,8 @@ import (
 
 // AuthorizationRequestStore は /authorize の中間状態を PostgreSQL に保持する (ADR-139)。
 // state を含む full record を payload JSONB に持ち、状態遷移 (UpdateState /
-// AttachAuthentication) は tx + SELECT FOR UPDATE の read-modify-write で直列化する
-// (Valkey の WATCH 楽観ロックの写し)。tenant は ctx から解決し fail-closed 述語に含める。
+// AttachAuthentication) は tx + SELECT FOR UPDATE の read-modify-write で直列化する。
+// tenant は ctx から解決し fail-closed 述語に含める。
 type AuthorizationRequestStore struct{ Pool sharedpg.DB }
 
 func (s *AuthorizationRequestStore) Save(ctx context.Context, req *domain.AuthorizationRequest) error {
@@ -122,7 +122,7 @@ func (s *AuthorizationRequestStore) DeleteExpiredBatch(ctx context.Context, cuto
 	return int(deleted), err
 }
 
-// eventForTargetState は目標状態へ遷移させる event を返す (Valkey adapter と同一写像)。
+// eventForTargetState は目標状態へ遷移させる event を返す。
 func eventForTargetState(to spec.AuthorizationCodeFlowState) spec.AuthorizationCodeFlowEvent {
 	switch to {
 	case spec.AuthFlowAuthenticationPending:

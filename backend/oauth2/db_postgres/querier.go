@@ -37,7 +37,7 @@ type Querier interface {
 	// 期限フィルタなし (parity)。state を read で payload に overlay する。
 	FindDeviceCodeByHash(ctx context.Context, arg FindDeviceCodeByHashParams) (*FindDeviceCodeByHashRow, error)
 	FindDeviceCodeByUserCode(ctx context.Context, arg FindDeviceCodeByUserCodeParams) (*FindDeviceCodeByUserCodeRow, error)
-	// 期限フィルタは付けない (memory/valkey パリティ: 期限判定は呼び出し側の domain が行う)。
+	// 期限フィルタは付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain が行う)。
 	// tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 	FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error)
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
@@ -57,7 +57,7 @@ type Querier interface {
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
-	// tx 内の read-modify-write を直列化するための行ロック取得 (Valkey WATCH 楽観ロックの写し)。
+	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
 	// 単発 redeem の CAS。state='issued' の行だけを redeemed にして 1 行返す。既 redeemed は 0 行。

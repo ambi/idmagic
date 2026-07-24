@@ -12,7 +12,7 @@ import (
 
 // TestLoginAttemptThrottle は共有 login throttle (ADR-077 / ADR-139) を検証する。
 // fixed-window でしきい値到達時にロックし、lockout 経過で解放、成功でクリア、tenant 分離、
-// window リセットを memory / valkey パリティで確認する。fail-closed は到達不能時の error 伝播で担保。
+// window リセットを memory adapter とのパリティで確認する。fail-closed は到達不能時の error 伝播で担保。
 func TestLoginAttemptThrottle(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

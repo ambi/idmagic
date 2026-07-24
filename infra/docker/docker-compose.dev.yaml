@@ -22,16 +22,6 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
 
-  valkey:
-    image: valkey/valkey:8-alpine
-    command: ["valkey-server", "--appendonly", "yes"]
-    healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
-      interval: 2s
-      timeout: 2s
-      retries: 20
-    ports: ["6379:6379"]
-
   kafka:
     image: redpandadata/redpanda:v24.3.18
     command:
@@ -76,9 +66,8 @@ services:
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_RP_ORIGINS: http://localhost:8080
       WEBAUTHN_RP_DISPLAY_NAME: IdMagic Local
-      PERSISTENCE: postgres_valkey
+      PERSISTENCE: postgres
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
-      VALKEY_URL: valkey://valkey:6379/0
       EVENT_SINK: outbox
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -87,7 +76,6 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       schema: { condition: service_completed_successfully }
-      valkey: { condition: service_healthy }
       otel-collector: { condition: service_started }
 
   frontend:
@@ -119,9 +107,8 @@ services:
     # per lane (infra/k8s/base/worker.yaml) so latency_sensitive gets a
     # reserved execution slot independent of the bulk backlog.
     environment:
-      PERSISTENCE: postgres_valkey
+      PERSISTENCE: postgres
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
-      VALKEY_URL: valkey://valkey:6379/0
       EVENT_SINK: outbox
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -130,5 +117,4 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       schema: { condition: service_completed_successfully }
-      valkey: { condition: service_healthy }
       otel-collector: { condition: service_started }

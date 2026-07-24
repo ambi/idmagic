@@ -66,7 +66,7 @@ type FindPARRequestRow struct {
 	Used    bool
 }
 
-// 期限フィルタは付けない (memory/valkey パリティ: 期限判定は呼び出し側の domain が行う)。
+// 期限フィルタは付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain が行う)。
 // tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 func (q *Queries) FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error) {
 	row := q.db.QueryRow(ctx, findPARRequest, arg.RequestUri, arg.TenantID)

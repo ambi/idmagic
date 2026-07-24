@@ -9,7 +9,7 @@ import (
 )
 
 // Module は audit context が所有する repository の束。bootstrap は永続化 backend
-// (memory / postgres_valkey) に応じてこれらを組み立て、Module へ渡すだけでよい。
+// (memory / postgres) に応じてこれらを組み立て、Module へ渡すだけでよい。
 type Module struct {
 	AuditEventRepo  auditports.AuditEventRepository
 	TenantSaltStore auditports.TenantSaltStore

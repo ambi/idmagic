@@ -11,7 +11,7 @@ SELECT payload FROM oauth2_authorization_requests
 WHERE id = @id AND tenant_id = @tenant_id;
 
 -- name: LockAuthorizationRequest :one
--- tx 内の read-modify-write を直列化するための行ロック取得 (Valkey WATCH 楽観ロックの写し)。
+-- tx 内の read-modify-write を直列化するための行ロック取得。
 SELECT payload FROM oauth2_authorization_requests
 WHERE id = @id AND tenant_id = @tenant_id
 FOR UPDATE;

@@ -14,7 +14,7 @@ import (
 )
 
 // TestWebAuthnSessionStore は WebAuthn challenge の短命保持 (ADR-087 / ADR-139) を検証する。
-// Valkey GetDel のパリティ: round-trip、一度きり消費、期限切れは nil、tenant 分離、GC。
+// memory adapter とのパリティ: round-trip、一度きり消費、期限切れは nil、tenant 分離、GC。
 func TestWebAuthnSessionStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

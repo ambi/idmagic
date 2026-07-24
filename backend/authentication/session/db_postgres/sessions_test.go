@@ -246,8 +246,8 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 // TestSessionResolutionSurvivesProcessRestart: scenario `ユーザーは自分の有効なセッションを
 // 一覧して失効できる` extension「process 再起動を挟んでセッション一覧を取得する」(wi-253)。
 // SessionRepository / SessionManager は Pool 以外の状態を持たないため、"process 再起動" を
-// 「同じ DB に対して新しいインスタンスを作る」ことでシミュレートする。旧 Valkey 実装ではプロセス
-// 終了で session が失われたが、PostgreSQL を正本にした後は生き残ることを確認する。
+// 「同じ DB に対して新しいインスタンスを作る」ことでシミュレートする。プロセスメモリに
+// session を持つ実装では再起動で失われるが、PostgreSQL を正本にした後は生き残ることを確認する。
 func TestSessionResolutionSurvivesProcessRestart(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

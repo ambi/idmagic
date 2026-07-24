@@ -65,14 +65,14 @@ func LoadRuntimeConfig() RuntimeConfig {
 }
 
 // assemble は PERSISTENCE 環境変数に応じて memory/postgres いずれかの構成を組み立てる。
-// postgres_valkey は Valkey 廃止 (ADR-139) の移行期に postgres の alias として 1 リリース残す。
+// 揮発性状態も PostgreSQL に統合済みで、選択肢は memory / postgres の 2 つ (ADR-139)。
 func Assemble(ctx context.Context) (*Dependencies, error) {
 	var deps *Dependencies
 	var err error
 	switch EnvDefault("PERSISTENCE", "memory") {
 	case "memory":
 		deps, err = assembleMemory()
-	case "postgres", "postgres_valkey":
+	case "postgres":
 		deps, err = assemblePostgres(ctx)
 	default:
 		return nil, errors.New("PERSISTENCE must be memory or postgres")

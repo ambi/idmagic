@@ -1,7 +1,8 @@
 // Package devinfra provides the Docker-free shared infrastructure used by
-// `just dev`: an embedded PostgreSQL server and a Redis-compatible miniredis
-// endpoint. It is development-only; production continues to use PostgreSQL
-// and Valkey managed outside the application process.
+// `just dev`: an embedded PostgreSQL server. It is development-only; production
+// continues to use PostgreSQL managed outside the application process. All
+// ephemeral state now lives in PostgreSQL as well (ADR-139), so no separate
+// cache/KV endpoint is started.
 package devinfra
 
 import (
@@ -10,24 +11,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const (
-	DefaultPostgresPort uint32 = 55432
-	DefaultValkeyPort   int    = 56379
-)
+const DefaultPostgresPort uint32 = 55432
 
 type Config struct {
 	PostgresPort uint32
-	ValkeyPort   int
 	SchemaPath   string
 	ReadyFile    string
 	RuntimeDir   string
@@ -37,13 +32,11 @@ type Config struct {
 
 type Ready struct {
 	DatabaseURL string `json:"database_url"`
-	ValkeyURL   string `json:"valkey_url"`
 }
 
 type Runtime struct {
 	postgres *embeddedpostgres.EmbeddedPostgres
 	pool     *pgxpool.Pool
-	valkey   *miniredis.Miniredis
 	ready    string
 	runtime  string
 }
@@ -51,9 +44,6 @@ type Runtime struct {
 func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 	if cfg.PostgresPort == 0 {
 		cfg.PostgresPort = DefaultPostgresPort
-	}
-	if cfg.ValkeyPort == 0 {
-		cfg.ValkeyPort = DefaultValkeyPort
 	}
 	if cfg.SchemaPath == "" {
 		cfg.SchemaPath = filepath.Join("infra", "schema", "postgres.sql")
@@ -74,12 +64,6 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		_ = rt.Close()
 		return nil, Ready{}, err
 	}
-
-	valkey := miniredis.NewMiniRedis()
-	if err := valkey.StartAddr(net.JoinHostPort("127.0.0.1", fmt.Sprint(cfg.ValkeyPort))); err != nil {
-		return fail(fmt.Errorf("start development Valkey endpoint: %w", err))
-	}
-	rt.valkey = valkey
 
 	binariesPath := postgresBinaryDir()
 	if err := repairIncompletePostgresExtraction(binariesPath); err != nil {
@@ -115,7 +99,6 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 
 	ready := Ready{
 		DatabaseURL: fmt.Sprintf("postgres://idmagic:idmagic@127.0.0.1:%d/idmagic?sslmode=disable", cfg.PostgresPort),
-		ValkeyURL:   fmt.Sprintf("valkey://127.0.0.1:%d/0", cfg.ValkeyPort),
 	}
 	pool, err := pgxpool.New(ctx, ready.DatabaseURL)
 	if err != nil {
@@ -218,9 +201,6 @@ func (r *Runtime) Close() error {
 	}
 	if r.pool != nil {
 		r.pool.Close()
-	}
-	if r.valkey != nil {
-		r.valkey.Close()
 	}
 	var closeErr error
 	if r.postgres != nil {

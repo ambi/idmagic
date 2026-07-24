@@ -89,7 +89,7 @@ type LockThrottleCounterRow struct {
 	LockedUntil     pgtype.Timestamptz
 }
 
-// RecordFailure の read-modify-write を直列化する行ロック取得 (Valkey Lua の原子性の写し)。
+// RecordFailure の read-modify-write を直列化する行ロック取得。
 func (q *Queries) LockThrottleCounter(ctx context.Context, arg LockThrottleCounterParams) (*LockThrottleCounterRow, error) {
 	row := q.db.QueryRow(ctx, lockThrottleCounter, arg.TenantID, arg.Kind, arg.IdentifierHash)
 	var i LockThrottleCounterRow

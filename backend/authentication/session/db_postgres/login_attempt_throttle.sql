@@ -4,7 +4,7 @@ SELECT locked_until FROM login_throttle_counters
 WHERE tenant_id = @tenant_id AND kind = @kind AND identifier_hash = @identifier_hash;
 
 -- name: LockThrottleCounter :one
--- RecordFailure の read-modify-write を直列化する行ロック取得 (Valkey Lua の原子性の写し)。
+-- RecordFailure の read-modify-write を直列化する行ロック取得。
 SELECT failures, window_expires_at, locked_until FROM login_throttle_counters
 WHERE tenant_id = @tenant_id AND kind = @kind AND identifier_hash = @identifier_hash
 FOR UPDATE;

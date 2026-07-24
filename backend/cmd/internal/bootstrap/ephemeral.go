@@ -13,7 +13,7 @@ import (
 )
 
 // ephemeralPurger は期限切れ行の一括削除境界。DeleteExpiredBatch を実装するのは postgres
-// adapter だけで、memory / valkey adapter は実装しないため sweep から自動的に除外される
+// adapter だけで、memory adapter は実装しないため sweep から自動的に除外される
 // (RunRetentionSweepOnce の Purger 型アサーションと同じパターン)。
 type ephemeralPurger interface {
 	DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error)

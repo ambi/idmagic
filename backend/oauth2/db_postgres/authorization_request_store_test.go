@@ -14,7 +14,7 @@ import (
 
 // TestAuthorizationRequestStore は /authorize 中間状態の tx 直列化された状態遷移 (ADR-139) を
 // 検証する。Save/Find、UpdateState の TransitionAuthorizationCodeFlow、AttachAuthentication、
-// 不正遷移エラー、tenant 分離、GC を memory/valkey パリティで確認する。
+// 不正遷移エラー、tenant 分離、GC を memory adapter とのパリティで確認する。
 func TestAuthorizationRequestStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)

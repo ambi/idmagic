@@ -11,7 +11,7 @@ import (
 )
 
 // TestReplayStore は DPoP / client-assertion jti リプレイ予約 (ADR-139) を検証する。
-// Valkey SETNX + TTL のパリティ: once-only、tenant / kind 名前空間分離、期限切れ後の再予約。
+// once-only、tenant / kind 名前空間分離、期限切れ後の再予約を memory adapter とのパリティで確認する。
 func TestReplayStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)

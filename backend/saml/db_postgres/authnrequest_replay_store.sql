@@ -1,7 +1,7 @@
 -- name: ReserveSamlAuthnRequestReplay :one
--- SETNX + TTL の単発予約を写す (ADR-139 §3)。live な予約が既にあれば ON CONFLICT の
+-- TTL 付き単発予約 (ADR-139 §3)。live な予約が既にあれば ON CONFLICT の
 -- DO UPDATE ... WHERE が false になり 0 行 (ErrNoRows)、期限切れの残骸なら上書きして 1 行、
--- 未存在なら INSERT で 1 行を返す。行が返れば新規予約成功 (= Valkey SETNX の true と同義)。
+-- 未存在なら INSERT で 1 行を返す。行が返れば新規予約成功 (重複時は 0 行 = 予約失敗)。
 INSERT INTO saml_authnrequest_replays (tenant_id, entity_id, request_id, expires_at)
 VALUES (@tenant_id, @entity_id, @request_id, @new_expires_at)
 ON CONFLICT (tenant_id, entity_id, request_id) DO UPDATE

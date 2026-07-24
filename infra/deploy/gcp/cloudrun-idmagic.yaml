@@ -36,7 +36,7 @@ spec:
             - name: ISSUER
               value: "https://id.example.com" # 本番ホスト名。discovery の issuer と一致必須
             - name: PERSISTENCE
-              value: "postgres_valkey"
+              value: "postgres"
             - name: EVENT_SINK
               value: "outbox"
             - name: KEY_PROVIDER
@@ -60,11 +60,6 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: idmagic-database-url
-                  key: latest
-            - name: VALKEY_URL
-              valueFrom:
-                secretKeyRef:
-                  name: idmagic-valkey-url
                   key: latest
           resources:
             limits:

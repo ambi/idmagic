@@ -16,10 +16,10 @@ import (
 )
 
 // LoginAttemptThrottle は login throttle の counter / lock を PostgreSQL の共有行で数える。
-// ADR-077 の共有ストア化・fail-closed・SHA-256 識別子・tenant scoping を維持しつつ、機構だけを
-// Valkey から Postgres へ移す (ADR-139: Postgres は既に hard dependency で依存を増やさない)。
+// ADR-077 の共有ストア化・fail-closed・SHA-256 識別子・tenant scoping を維持しつつ、機構を
+// PostgreSQL に置く (ADR-139: Postgres は既に hard dependency で依存を増やさない)。
 // fixed-window の counter と lockout を 1 行 (failures / window_expires_at / locked_until) に統合し、
-// RecordFailure は tx + SELECT FOR UPDATE の read-modify-write で原子化する (Valkey Lua の写し)。
+// RecordFailure は tx + SELECT FOR UPDATE の read-modify-write で 1 往復に原子化する。
 // 到達不能時はエラーを返し、呼び出し側で fail-closed に倒れる。
 type LoginAttemptThrottle struct {
 	Pool    sharedpg.DB
@@ -100,7 +100,7 @@ func (t *LoginAttemptThrottle) RecordFailure(ctx context.Context, kind sessionpo
 
 	result := sessionports.LoginThrottleResult{Allowed: true}
 	if failures >= config.MaxFailures {
-		// しきい値到達: lockout を張り counter をリセットする (Valkey の DEL counter + SET lock)。
+		// しきい値到達: lockout を張り counter をリセットする。
 		lockedUntil = pgtype.Timestamptz{Time: now.Add(time.Duration(config.LockoutSeconds) * time.Second), Valid: true}
 		failures = 0
 		windowExp = now.Add(time.Duration(config.WindowSeconds) * time.Second)
