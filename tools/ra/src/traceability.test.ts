@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildSclWorkspaceIndex } from '../../yaml-check/src/scl-element-reference.ts'
+import { buildSclWorkspaceIndex } from '../../check/src/scl-element-reference.ts'
 import {
   buildTraceabilityReport,
   type TraceabilityEvidence,

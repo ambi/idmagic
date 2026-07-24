@@ -4,7 +4,7 @@ import {
   buildSclWorkspaceIndex,
   type SclReferenceError,
   type SclWorkspaceIndex,
-} from '../../yaml-check/src/scl-element-reference.ts'
+} from '../../check/src/scl-element-reference.ts'
 import { rootPath, type WorkspaceConfig } from './workspace.ts'
 
 export async function loadWorkspaceSclIndex(

@@ -18,7 +18,7 @@ The `justfile` is the single command map for this repo. Run every basic command 
 - Verify: `just verify` (whole app), `just verify-ui` (format-check / lint / typecheck / build), `just verify-go`.
 - Build / test: `just build-go`, `just build-ui`, `just test-go`, `just test-ui-e2e`.
 - Dev / demo: `just dev` (API + UI stack), `just dev-api`, `just dev-ui`, `just demo`.
-- SCL / Work Item YAML: `just yaml-check`, `just yaml-check-work-items`, `just check-ids`, `just scl-render`.
+- SCL / workspace records: `just check`, `just check-work-items`, `just check-ids`, `just scl-render`.
 - Run `just --list` to discover the recipe before reaching for a raw tool. If a common command has no recipe yet, add one to the `justfile` instead of running it ad hoc.
 
 ## Repository Layout

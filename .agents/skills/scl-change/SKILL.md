@@ -32,7 +32,7 @@ description: SCL-first workflow for feature work. Use before implementing any fe
 
 3. **scl.yaml に wi/ADR/commit 番号を書かない。** scl.yaml は全層の最内で、純粋な仕様文に保つ。
 
-4. **検証**: `just yaml-check-scl`
+4. **検証**: `just check-scl`
 
 5. **派生物の扱いをブランチの役割で決める。** `scl-render` Skill 参照。
    - 単独開発、integration branch、main 直前では `just scl-render` で HTML / JSON Schema /

@@ -11,7 +11,7 @@ const arch: ArchitectureDoc = {
     ra: { path: 'tools/ra', responsibility: 'cli', realizes: ['interfaces.DiscoverWorkspace'] },
   },
   overview: 'the map',
-  structure: 'the tree and `ra` -> `yaml-check`',
+  structure: 'the tree and `ra` -> `check`',
   stack: '- TypeScript / Bun',
   structural_decisions: 'see repo-ADR-001',
 }

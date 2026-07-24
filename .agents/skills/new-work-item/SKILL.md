@@ -20,7 +20,7 @@ description: Create a new Regenerative Architecture work item under work-items/ 
 3. 機能変更なら **触れる SCL セクションを `## Scope` に列挙する**。判定は SCL-first の網羅表に従う（`scl-change` Skill / `SPECIFICATION_CORE_LANGUAGE.md §3` 冒頭）。
 4. 中規模以上なら `## Plan` と `## Tasks` を追加する。複数 scenario、RA 3 層以上、DB migration / 認可 / 外部契約 / 破壊的変更、1 セッションで終わる確信がない作業、複数サブシステム検証は中規模以上として扱う。
 5. 下記スケルトンを埋める。
-6. **検証**: `just yaml-check-work-items` と `just check-ids` を通す。
+6. **検証**: `just check-work-items` と `just check-ids` を通す。
 
 ## スケルトン
 

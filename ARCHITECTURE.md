@@ -56,8 +56,8 @@ contexts:
   ra:
     spec: tools/ra/spec/scl.yaml
     summary: "RA workspace orchestration。"
-  yaml-check:
-    spec: tools/yaml-check/spec/scl.yaml
+  check:
+    spec: tools/check/spec/scl.yaml
     summary: "SCL と Architecture schema/semantic validation。"
   scl-to-html:
     spec: tools/scl-to-html/spec/scl.yaml
@@ -2419,14 +2419,14 @@ modules:
     context: System
     layer: specification_core
     role: published_interface
-  yaml-check-tool:
-    path: tools/yaml-check
+  check-tool:
+    path: tools/check
     responsibility: "SCL、Work Item、Architecture の schema と semantic 検査。"
-    context: yaml-check
+    context: check
     layer: adapters
     role: technical_shared
     realizes:
-      - { context: yaml-check, kind: interface, element: CheckYaml }
+      - { context: check, kind: interface, element: CheckYaml }
   scl-to-html-tool:
     path: tools/scl-to-html
 
@@ -2435,7 +2435,7 @@ modules:
     layer: adapters
     role: technical_shared
     depends_on:
-      - { module: yaml-check-tool, via: technical_shared }
+      - { module: check-tool, via: technical_shared }
   scl-to-jsonschema-tool:
     path: tools/scl-to-jsonschema
 
@@ -2468,7 +2468,7 @@ modules:
       - { module: scl-to-html-tool, via: composition_root }
       - { module: scl-to-jsonschema-tool, via: composition_root }
       - { module: scl-to-openapi-tool, via: composition_root }
-      - { module: yaml-check-tool, via: composition_root }
+      - { module: check-tool, via: composition_root }
   verification:
     path: verification
     responsibility: "SCL realization、check、revision 付き evidence の外部 binding。"
@@ -3716,7 +3716,7 @@ UI の画面実装は `frontend/src/features/`、route は `frontend/src/routes/
 just verify-go
 ```
 
-UI 変更では `frontend/README.md` と `frontend/tests/e2e/README.md` の検証手順を読む。SCL や work item を変更した場合は、ルートの `tools/yaml-check` 系の検証も対象に含める。
+UI 変更では `frontend/README.md` と `frontend/tests/e2e/README.md` の検証手順を読む。SCL や work item を変更した場合は、ルートの `tools/check` 系の検証も対象に含める。
 
 ## Documentation Policy
 

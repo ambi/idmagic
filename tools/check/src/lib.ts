@@ -1,5 +1,5 @@
 /**
- * yaml-check library — pure helpers used by the CLI (`main.ts`).
+ * check library — pure helpers used by the CLI (`main.ts`).
  *
  * Everything in this module is side-effect-free except for the Ajv compile
  * step (which runs once at import time). Tests target this file directly.

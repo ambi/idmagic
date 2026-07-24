@@ -21,7 +21,7 @@ commit タイミングを直列化地点へ寄せる。
 ## まず検証
 
 ```sh
-just yaml-check-scl
+just check-scl
 ```
 
 ## 一括再生成（推奨）

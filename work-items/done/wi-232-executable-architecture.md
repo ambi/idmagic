@@ -8,10 +8,10 @@ change_kind: feature
 initial_context:
   scl:
     ra: [interfaces.CheckArchitecture, models.ArchitectureReport]
-    yaml-check: [interfaces.CheckYaml]
+    check: [interfaces.CheckYaml]
   decisions: [ADR-116]
-  source: [tools/yaml-check/src, tools/ra/src, ARCHITECTURE.md]
-  tests: [tools/yaml-check/src, tools/ra/src]
+  source: [tools/check/src, tools/ra/src, ARCHITECTURE.md]
+  tests: [tools/check/src, tools/ra/src]
   stop_before_reading: [backend/domain, frontend/src/features]
 affected_spec:
   - { context: ra, kind: model, element: WorkspaceConfig }
@@ -19,10 +19,10 @@ affected_spec:
   - { context: ra, kind: interface, element: CheckArchitecture }
   - { context: ra, kind: scenario, element: ExecutableArchitectureAcceptsDeclaredWorkspace }
   - { context: ra, kind: scenario, element: ExecutableArchitectureRejectsDrift }
-  - { context: yaml-check, kind: model, element: SchemaName }
-  - { context: yaml-check, kind: model, element: FindingKind }
-  - { context: yaml-check, kind: interface, element: CheckYaml }
-  - { context: yaml-check, kind: scenario, element: 実行可能な Architecture map を検査する }
+  - { context: check, kind: model, element: SchemaName }
+  - { context: check, kind: model, element: FindingKind }
+  - { context: check, kind: interface, element: CheckYaml }
+  - { context: check, kind: scenario, element: 実行可能な Architecture map を検査する }
 ---
 
 # Architecture を context・RA layer・依存・SCL realization の実行可能な地図にする

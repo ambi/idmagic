@@ -4,7 +4,7 @@ import {
   resolveSclElementReference,
   type SclElementReference,
   type SclWorkspaceIndex,
-} from '../../yaml-check/src/scl-element-reference.ts'
+} from '../../check/src/scl-element-reference.ts'
 
 export type EvidenceKind =
   | 'test'

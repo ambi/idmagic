@@ -1,6 +1,6 @@
-# yaml-check — Specification Core Language (SCL) Document
+# check — Specification Core Language (SCL) Document
 
-system: yaml-check
+system: check
 spec_version: "3.0"
 
 glossary:
@@ -96,7 +96,7 @@ interfaces:
     read_only: true
     bindings:
       - kind: cli
-        command: yaml-check
+        command: check
         flags:
           - { name: schema, short: s, required: false }
         args:
@@ -115,7 +115,7 @@ interfaces:
     read_only: true
     bindings:
       - kind: cli
-        command: yaml-check
+        command: check
         flags:
           - { name: list-schemas, required: true }
         exit_codes: { success: 0 }

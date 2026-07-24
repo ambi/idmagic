@@ -3,7 +3,7 @@
  * CONCEPTION), and work items with optional completion records.
  *
  * SCL types follow SPECIFICATION_CORE_LANGUAGE.md §2–§3. Change types
- * mirror the JSON Schemas under tools/yaml-check/schemas/.
+ * mirror the JSON Schemas under tools/check/schemas/.
  */
 
 // ─── SCL ───────────────────────────────────────────────────────────

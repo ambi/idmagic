@@ -45,7 +45,7 @@ models:
       architecture_docs: { type: List<String> }
   WorkspaceCommand:
     kind: enum
-    values: [init, verify, yaml-check, render]
+    values: [init, verify, check, render]
   NoWorkspaceTargets:
     kind: error
     fields:

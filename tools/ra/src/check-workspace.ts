@@ -2,14 +2,14 @@
 import { existsSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
-import { parseArchitectureDoc, verifyArchitecture } from '../../yaml-check/src/arch-check.ts'
+import { parseArchitectureDoc, verifyArchitecture } from '../../check/src/arch-check.ts'
 import { loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
-} from '../../yaml-check/src/work-item-dependencies.ts'
-import { buildSclWorkspaceIndex } from '../../yaml-check/src/scl-element-reference.ts'
-import { resolveSclElementReference } from '../../yaml-check/src/scl-element-reference.ts'
+} from '../../check/src/work-item-dependencies.ts'
+import { buildSclWorkspaceIndex } from '../../check/src/scl-element-reference.ts'
+import { resolveSclElementReference } from '../../check/src/scl-element-reference.ts'
 import { loadWorkspaceSclIndex } from './workspace-scl-index.ts'
 import {
   collectArchitectureWorkspace,
@@ -20,7 +20,7 @@ const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
   process.stdout.write(
     [
-      'Usage: yaml-check-workspace [--work-items] [--scl] [--ids] [--architecture] [--traceability]',
+      'Usage: check-workspace [--work-items] [--scl] [--ids] [--architecture] [--traceability]',
       '',
       'Without flags, runs all discovered checks.',
       '',
@@ -31,7 +31,7 @@ if (args.has('--help') || args.has('-h')) {
 const validArgs = new Set(['--work-items', '--scl', '--ids', '--architecture', '--traceability'])
 for (const arg of args) {
   if (!validArgs.has(arg)) {
-    console.error(`yaml-check-workspace: unknown option ${arg}`)
+    console.error(`check-workspace: unknown option ${arg}`)
     process.exit(2)
   }
 }
@@ -73,7 +73,7 @@ for (const app of config.apps) {
   workItemPatterns.push(rootPath(`${app.workItems}/*.md`), rootPath(`${app.workItems}/done/*.md`))
 }
 if (runWorkItems && workItemPatterns.length > 0) {
-  await runTool(['yaml-check/src/main.ts', '--schema=work-item', ...workItemPatterns])
+  await runTool(['check/src/main.ts', '--schema=work-item', ...workItemPatterns])
   const records: WorkItemDependencyRecord[] = []
   for (const root of workItemRoots) {
     for (const dir of [root, join(root, 'done')]) {
@@ -152,7 +152,7 @@ for (const app of config.apps) {
 }
 for (const spec of config.toolSpecs ?? []) sclPatterns.push(rootPath(spec))
 if (runScl && sclPatterns.length > 0) {
-  await runTool(['yaml-check/src/main.ts', '--schema=scl', ...sclPatterns])
+  await runTool(['check/src/main.ts', '--schema=scl', ...sclPatterns])
 
   let referenceIndexFailed = false
   for (const app of config.apps) {
@@ -188,20 +188,20 @@ if (runScl && sclPatterns.length > 0) {
 
 if (runTraceability && config.verificationManifest) {
   await runTool([
-    'yaml-check/src/main.ts',
+    'check/src/main.ts',
     '--schema=verification-manifest',
     rootPath(config.verificationManifest),
   ])
   if (config.verificationEvidence) {
     await runTool([
-      'yaml-check/src/main.ts',
+      'check/src/main.ts',
       '--schema=verification-evidence',
       rootPath(config.verificationEvidence),
     ])
   }
 }
 
-const checkIdsArgs: string[] = ['yaml-check/src/check-ids.ts']
+const checkIdsArgs: string[] = ['check/src/check-ids.ts']
 if (config.repositoryWorkItems)
   checkIdsArgs.push('--work-items', rootPath(config.repositoryWorkItems))
 for (const app of config.apps) {
@@ -245,7 +245,7 @@ async function collectExpectedArchitectureContexts(): Promise<Map<string, string
 const architectureDocs = config.architectureDocs ?? []
 if (runArchitecture && architectureDocs.length > 0) {
   await runTool([
-    'yaml-check/src/main.ts',
+    'check/src/main.ts',
     '--schema=architecture',
     ...architectureDocs.map((doc) => rootPath(doc)),
   ])

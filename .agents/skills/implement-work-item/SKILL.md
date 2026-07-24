@@ -22,14 +22,14 @@ description: Implement a chosen Regenerative Architecture work item end to end �
 
 RA の 7 層（`REGENERATIVE_ARCHITECTURE.md §3`）を内側から。**先に SCL、後で実装**。
 
-1. **Spec Core (SCL)** — `scl-change` Skill に従い `scl.yaml` を先に更新。触れた節をワークアイテムの `scope` に列挙。`just yaml-check` で検証する。並列 worktree の work-item branch では派生物を commit せず、必要な場合だけ確認用に `just scl-render` を実行する。生成物の同期 commit は integration branch / merge queue / main 直前で行う。
+1. **Spec Core (SCL)** — `scl-change` Skill に従い `scl.yaml` を先に更新。触れた節をワークアイテムの `scope` に列挙。`just check` で検証する。並列 worktree の work-item branch では派生物を commit せず、必要な場合だけ確認用に `just scl-render` を実行する。生成物の同期 commit は integration branch / merge queue / main 直前で行う。
 2. **Decision Record & Architecture** — 次のいずれかに該当したら `new-adr` Skill で ADR を残す（ADR-121。「非自明だと思ったら」という裁量任せにしない具体基準）:
    - SCL の `standards.requirements[].adoption` を `partial` または `excluded` にした。
    - work item の Motivation / Scope / タイトルが示唆する範囲より狭い範囲だけを実装した（例:「〜conformance」「RFC 準拠」を謳いながら仕様の一部だけを実装する）。
 
    `adoption: partial` にする場合は、実装した範囲と実装しなかった範囲を `reason` に具体的に書く（自由記述の interface description に埋もれさせない）。
 
-   コア構造（コンテキスト・モジュール・スタック・ディレクトリ規約）に触れたら、`new-architecture` Skill に従い該当 `ARCHITECTURE.md` を現状へ同期する（書式は `ARCHITECTURE_FORMAT.md`）。同期は努力目標ではなく検証ゲートであり、`just yaml-check` の Architecture 整合検査（modules パス実在・realizes の SCL 要素解決・contexts 整合）を通すこと。
+   コア構造（コンテキスト・モジュール・スタック・ディレクトリ規約）に触れたら、`new-architecture` Skill に従い該当 `ARCHITECTURE.md` を現状へ同期する（書式は `ARCHITECTURE_FORMAT.md`）。同期は努力目標ではなく検証ゲートであり、`just check` の Architecture 整合検査（modules パス実在・realizes の SCL 要素解決・contexts 整合）を通すこと。
 3. **Domain** — ドメインモデルや状態定義。SCL から機械的に導出されて特定の言語に変換した層。**test-first 必須層**。
 4. **Use Cases** — ユースケース実装。**test-first 必須層**。
 5. **Adapters** — HTTP / 永続化などの境界実装。**test-first 必須層**。
@@ -64,7 +64,7 @@ RA の 7 層（`REGENERATIVE_ARCHITECTURE.md §3`）を内側から。**先に S
 
 コマンドは `just`（`justfile` = 人間 / AI 共通のコマンドマップ）を使う。
 
-- SCL / YAML: `just yaml-check`
+- SCL / YAML: `just check`
 - Go: app repo / app recipe の lint + race テスト
 - UI: app repo / app recipe の format / lint / typecheck / build
 - 一括: `just verify`

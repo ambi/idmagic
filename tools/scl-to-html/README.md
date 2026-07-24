@@ -36,9 +36,9 @@ URL hashes route via `#tab=<name>&sec=<section-id>`. If JavaScript is disabled, 
 
 ## Relationship with JSON Schema
 
-- SCL Schema: [`tools/yaml-check/schemas/scl.schema.json`](../yaml-check/schemas/scl.schema.json)
-- Work-Item Schema: located under `yaml-check/schemas/`
-- Run `bun --cwd ../yaml-check yaml-check:all` to validate all three formats concurrently.
+- SCL Schema: [`tools/check/schemas/scl.schema.json`](../check/schemas/scl.schema.json)
+- Work-Item Schema: located under `check/schemas/`
+- Run `bun --cwd ../check check:all` to validate all three formats concurrently.
 
 Properties not restricted by the schema are ignored and passed through by this tool, ensuring that adding custom/unknown fields to SCL will not break rendering.
 
@@ -67,7 +67,7 @@ src/
   render-changes.ts    # Render work items to HTML
   page.ts              # Document wrapper containing layout shell, CSS, and JS
 spec/scl.yaml          # Specifications for this tool itself
-schemas/               # None (SCL schemas are stored in ../yaml-check/schemas/)
+schemas/               # None (SCL schemas are stored in ../check/schemas/)
 ```
 
 ## Why it was rewritten

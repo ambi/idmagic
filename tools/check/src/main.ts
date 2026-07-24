@@ -2,9 +2,9 @@
 /**
  * YAML check for the repository.
  *
- *   yaml-check <file>...                          # parse + lint only
- *   yaml-check --schema=<name> <file>...          # parse + lint + schema
- *   yaml-check --list-schemas                     # list available schema names
+ *   check <file>...                          # parse + lint only
+ *   check --schema=<name> <file>...          # parse + lint + schema
+ *   check --list-schemas                     # list available schema names
  *
  * Three layers:
  *   1. Parse via Bun's built-in YAML loader (dynamic import) — same engine
@@ -33,7 +33,7 @@ import { verifySclSemantics } from './scl-semantics.ts'
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
 
 // Relative paths resolve against the shell cwd first, then fall back to the
-// repo root. This way `bun --cwd tools yaml-check work-items/foo.yaml` works
+// repo root. This way `bun --cwd tools check work-items/foo.yaml` works
 // whether invoked from the repo root or from tools/.
 function resolvePath(p: string): string {
   if (isAbsolute(p)) return p
@@ -45,8 +45,8 @@ function resolvePath(p: string): string {
 function printUsage(): void {
   process.stdout.write(
     [
-      'Usage: yaml-check [--schema=<name>] <file-or-glob>...',
-      '       yaml-check --list-schemas',
+      'Usage: check [--schema=<name>] <file-or-glob>...',
+      '       check --list-schemas',
       '',
       'Without --schema, only YAML parse + raw-text lint runs.',
       'With --schema, the named JSON Schema is applied to every input file.',
@@ -261,7 +261,7 @@ function formatFindings(path: string, findings: Finding[]): string {
 
 const argsResult = parseArgs(process.argv.slice(2))
 if (argsResult.kind === 'error') {
-  console.error(`yaml-check: ${argsResult.message}`)
+  console.error(`check: ${argsResult.message}`)
   process.exit(argsResult.code)
 }
 const opts = argsResult.opts
@@ -278,13 +278,13 @@ if (opts.listSchemas) {
 
 if (opts.schema !== null && !(opts.schema in SCHEMAS)) {
   console.error(
-    `yaml-check: unknown schema '${opts.schema}'. Available: ${Object.keys(SCHEMAS).join(', ')}`,
+    `check: unknown schema '${opts.schema}'. Available: ${Object.keys(SCHEMAS).join(', ')}`,
   )
   process.exit(2)
 }
 
 if (opts.files.length === 0) {
-  console.error('yaml-check: no input files given')
+  console.error('check: no input files given')
   printUsage()
   process.exit(2)
 }
@@ -292,7 +292,7 @@ if (opts.files.length === 0) {
 const targets = await expandTargets(opts.files)
 
 if (targets.length === 0) {
-  console.error('yaml-check: no files matched')
+  console.error('check: no files matched')
   process.exit(1)
 }
 

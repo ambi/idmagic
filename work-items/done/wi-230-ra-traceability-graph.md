@@ -8,14 +8,14 @@ change_kind: feature
 initial_context:
   scl:
     ra: [interfaces.CheckTraceability, models.TraceabilityReport]
-    yaml-check: [interfaces.CheckYaml]
+    check: [interfaces.CheckYaml]
   decisions: [ADR-103, ADR-114]
-  source: [tools/ra/src, tools/yaml-check/src, backend/shared/spec]
-  tests: [tools/ra/src, tools/yaml-check/src]
+  source: [tools/ra/src, tools/check/src, backend/shared/spec]
+  tests: [tools/ra/src, tools/check/src]
   stop_before_reading: [frontend, infra]
 affected_spec:
   - { context: ra, kind: interface, element: CheckTraceability }
-  - { context: yaml-check, kind: interface, element: CheckYaml }
+  - { context: check, kind: interface, element: CheckYaml }
 ---
 
 # SCL 規範要素・Architecture・実装・検証証跡を直接結ぶ追跡グラフを構築する

@@ -34,7 +34,7 @@ description: Create or synchronize an ARCHITECTURE.md — the second-layer curre
    根拠 ADR へリンクし、履歴は再説せず ADR を指す。`## Stack` / `## Cross-cutting Concerns` /
    `## Diagrams` は任意。
 4. `updated_at` を更新する。
-5. **検証**: `just yaml-check`。スキーマ（Frontmatter）と横断整合検査（modules パス実在・realizes
+5. **検証**: `just check`。スキーマ（Frontmatter）と横断整合検査（modules パス実在・realizes
    の SCL 要素解決・contexts 整合）の両方を通す。落ちたら地図が現実と乖離しているので直す。
 
 ## スケルトン

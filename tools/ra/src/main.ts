@@ -13,8 +13,8 @@ function usage(): string {
     '',
     'Commands:',
     '  init                                    Create the standard RA layout',
-    '  yaml-check [--work-items] [--scl] [--ids]  Validate discovered RA records',
-    '  verify                                  Alias for yaml-check',
+    '  check [--work-items] [--scl] [--ids]  Validate discovered RA records',
+    '  verify                                  Alias for check',
     '  render [--tools-only]                   Regenerate discovered SCL artifacts',
     '  traceability [--strict] [--json] [--revision=REV]  Check workspace traceability',
     '',
@@ -51,8 +51,8 @@ if (command === undefined || command === '--help' || command === '-h') {
   process.exit(0)
 }
 
-if (command === 'yaml-check') {
-  await runScript(['ra/src/yaml-check-workspace.ts', ...rest])
+if (command === 'check') {
+  await runScript(['ra/src/check-workspace.ts', ...rest])
 }
 
 if (command === 'init') {
@@ -61,7 +61,7 @@ if (command === 'init') {
 }
 
 if (command === 'verify') {
-  await runScript(['ra/src/yaml-check-workspace.ts'])
+  await runScript(['ra/src/check-workspace.ts'])
 }
 
 if (command === 'render') {

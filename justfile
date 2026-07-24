@@ -5,7 +5,6 @@
 set shell := ["zsh", "-cu"]
 
 ra_cmd := env("RA_CMD", "bun run tools/ra/src/main.ts")
-go_cache := env("GOCACHE", "/tmp/idmagic-go-cache")
 golangci_cache := env("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
 git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
 build_date := `date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown"`
@@ -31,8 +30,52 @@ setup-ra:
 install-ui:
     cd frontend && bun install --frozen-lockfile
 
-# Run the standard app verification suite.
-verify: yaml-check traceability-strict test-tools typecheck-tools verify-go verify-ui
+# Run the standard app verification suite. Every leaf check runs in parallel and
+# is timed individually; a duration-sorted table prints at the end so the current
+# bottleneck (and whether the grouping still makes sense) is always visible.
+verify:
+    #!/usr/bin/env zsh
+    set -u
+    zmodload zsh/datetime
+    checks=(check traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui)
+    tmp=$(mktemp -d)
+    t0=$EPOCHREALTIME
+    for c in $checks; do
+        ( s=$EPOCHREALTIME
+          just $c >"$tmp/$c.log" 2>&1
+          r=$?
+          printf '%s %d %.1f\n' "$c" "$r" "$(( EPOCHREALTIME - s ))" >"$tmp/$c.meta"
+        ) &
+    done
+    wait
+    total=$(( EPOCHREALTIME - t0 ))
+    rc=0
+    for c in $checks; do
+        read -r _ cstatus _ <"$tmp/$c.meta"
+        if [ "$cstatus" -ne 0 ]; then
+            rc=1
+            print -r -- "===== FAILED: $c ====="
+            cat "$tmp/$c.log"
+        fi
+    done
+    print -r -- ""
+    print -r -- "── verify timings (all checks run in parallel) ──"
+    for c in $checks; do
+        read -r cname cstatus cdur <"$tmp/$c.meta"
+        [ "$cstatus" -eq 0 ] && mark="ok  " || mark="FAIL"
+        printf '%s\t%s\t%s\n' "$cdur" "$mark" "$cname"
+    done | sort -rn | while IFS=$'\t' read -r d mark n; do
+        printf '  %6.1fs  %s  %s\n' "$d" "$mark" "$n"
+    done
+    printf '  %6.1fs  ── total wall clock (sum if serial: run `just verify-serial`)\n' "$total"
+    rm -rf "$tmp"
+    exit $rc
+
+# Run the full verification suite serially (clean ordered output; slower, no timings).
+verify-serial: check traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui
+
+# Validate specs and traceability, then test and type-check embedded tooling.
+verify-spec: check traceability-strict test-tools typecheck-tools
 
 # Report workspace traceability findings without failing on unbaselined debt.
 traceability-report:
@@ -63,7 +106,7 @@ verify-go: lint-go test-go-race
 
 # Run Go lint.
 lint-go:
-    GOCACHE=/tmp/idmagic-go-cache GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint run ./...
+    GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint run ./...
 
 # Clear only the repository-local temporary linter cache when it retains paths
 # from a removed worktree and makes a fresh lint run unreliable.
@@ -72,55 +115,56 @@ clean-lint-cache:
 
 # Format Go backend code.
 format-go:
-     GOCACHE=/tmp/idmagic-go-cache GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint fmt ./...
+     GOLANGCI_LINT_CACHE={{golangci_cache}} golangci-lint fmt ./...
 
 # Run Go tests.
 test-go:
-    GOCACHE={{go_cache}} go test ./...
+    go test ./...
 
 # Run Go tests for one package during a layer-local red/green cycle.
 test-go-package package:
-    GOCACHE={{go_cache}} go test {{package}}
+    go test {{package}}
 
 # Plan or apply an explicit environment seed. Example: just seed development development dry_run
 seed environment profile mode="dry_run" manifest="" count="0":
-    GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile {{profile}} --mode {{mode}} --manifest "{{manifest}}" --count {{count}}
+    go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile {{profile}} --mode {{mode}} --manifest "{{manifest}}" --count {{count}}
 
 # Opt-in throughput measurement. The count must remain within the seed safety policy.
 seed-throughput environment="development" count="10000" batch_size="250":
-    GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile performance --mode apply --count {{count}} --batch-size {{batch_size}}
+    go run ./backend/cmd/idmagic-seed --environment {{environment}} --profile performance --mode apply --count {{count}} --batch-size {{batch_size}}
 
 # Run one externally scheduled, one-shot operational batch locally.
 batch task *args:
-    GOCACHE={{go_cache}} go run ./backend/cmd/idmagic-batch {{task}} {{args}}
+    go run ./backend/cmd/idmagic-batch {{task}} {{args}}
 
 # Synchronize Go module requirements and checksums.
 go-mod-tidy:
-    GOCACHE={{go_cache}} go mod tidy
+    go mod tidy
 
 # Run race-enabled Go tests.
 test-go-race:
-    GOCACHE={{go_cache}} go test -race ./...
+    go test -race ./...
 
 # Run Go tests with coverage.
 test-go-cover:
-    GOCACHE={{go_cache}} go test -coverprofile=coverage.out -covermode=atomic ./...
+    go test -coverprofile=coverage.out -covermode=atomic ./...
     go tool cover -func=coverage.out
 
 # Run Go fuzz targets for a package.
 test-go-fuzz package fuzztime="30s":
-    GOCACHE={{go_cache}} go test -run=Fuzz -fuzz=Fuzz -fuzztime={{fuzztime}} {{package}}
+    go test -run=Fuzz -fuzz=Fuzz -fuzztime={{fuzztime}} {{package}}
 
 # Build all Go packages.
 build-go:
-    GOCACHE={{go_cache}} go build -ldflags '{{ldflags}}' ./...
+    go build -ldflags '{{ldflags}}' ./...
 
 # Regenerate sqlc-generated postgres query code from sqlc.yaml (ADR-090).
 sqlc-generate:
     sqlc generate
 
-# Verify UI with format check, lint, typecheck, and build.
-verify-ui: format-check-ui lint-ui typecheck-ui test-ui-unit build-ui
+# Verify UI with format check, lint, unit tests, and build. build-ui runs tsc, so
+# a separate typecheck-ui step would only duplicate the type check.
+verify-ui: format-check-ui lint-ui test-ui-unit build-ui
 
 # Run UI format check.
 format-check-ui:
@@ -154,28 +198,28 @@ build-ui:
 test-ui-e2e:
     cd frontend && bun run test:e2e
 
-# Validate SCL and Work Item YAML.
-yaml-check: yaml-check-scl yaml-check-work-items check-ids yaml-check-architecture yaml-check-traceability
+# Validate all workspace records: SCL, work items, change-record ids, architecture, traceability.
+check: check-scl check-work-items check-ids check-architecture check-traceability
 
 # Validate SCL YAML files.
-yaml-check-scl:
-    {{ra_cmd}} yaml-check --scl
+check-scl:
+    {{ra_cmd}} check --scl
 
-# Validate Work Item YAML files.
-yaml-check-work-items:
-    {{ra_cmd}} yaml-check --work-items
+# Validate work-item records (Markdown with YAML frontmatter).
+check-work-items:
+    {{ra_cmd}} check --work-items
 
 # Detect duplicate / mismatched change-record ids.
 check-ids:
-    {{ra_cmd}} yaml-check --ids
+    {{ra_cmd}} check --ids
 
 # Validate ARCHITECTURE.md against the workspace it describes.
-yaml-check-architecture:
-    {{ra_cmd}} yaml-check --architecture
+check-architecture:
+    {{ra_cmd}} check --architecture
 
 # Validate traceability manifest and execution evidence YAML.
-yaml-check-traceability:
-    {{ra_cmd}} yaml-check --traceability
+check-traceability:
+    {{ra_cmd}} check --traceability
 
 # Regenerate SCL-derived artifacts.
 scl-render:

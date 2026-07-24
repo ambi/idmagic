@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { readFile as readFileAsync } from 'node:fs/promises'
-import { parseArchitectureDoc } from '../../yaml-check/src/arch-check.ts'
+import { parseArchitectureDoc } from '../../check/src/arch-check.ts'
 import {
   buildTraceabilityReport,
   type TraceabilityEvidence,

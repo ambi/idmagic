@@ -6,8 +6,8 @@ UI navigation の単一上流ソースであり、コード、schema、API 文�
 SCL から派生する。
 
 本書は SCL 3.0 の規範仕様である。`MUST` / `MUST NOT` / `SHOULD` は機械検証または review の
-合否基準を表す。本書の各 field 表は `tools/yaml-check/schemas/scl-v3.schema.json`(shape)と
-`tools/yaml-check/src/scl-semantics.ts` / `tools/yaml-check/src/context-map.ts`(意味検証)が
+合否基準を表す。本書の各 field 表は `tools/check/schemas/scl-v3.schema.json`(shape)と
+`tools/check/src/scl-semantics.ts` / `tools/check/src/context-map.ts`(意味検証)が
 実際に強制する制約と一対一で対応する。本書はそれらが検証しない制約を追加しない。
 
 ## 1 目的
@@ -115,7 +115,7 @@ requirement の field:
 `adoption: partial` は、requirement の一部だけを実装し残りは対応しないことを表す
 (`excluded`(丸ごと不採用)とも `required`(丸ごと採用)とも異なる)。`excluded` と同様に
 `reason` を MUST とし、どの部分を実装し、どの部分を実装していないかを具体的に書く。
-自由記述の `interfaces.*.description` に埋もれさせず、`yaml-check` で検証可能な
+自由記述の `interfaces.*.description` に埋もれさせず、`check` で検証可能な
 構造化事実として残す目的は
 [ADR-121](decisions/ADR-121-scope-narrowing-disclosure-obligation.md) に記録する。
 
@@ -157,7 +157,7 @@ context_map:
 | `reason` | MAY | 文字列。 |
 
 `depends_on` の各キーは既知の context 名に解決しなければならず、依存 graph は循環しては
-ならない (`tools/yaml-check/src/context-map.ts` が DFS で検証する)。`via: shared_kernel` かつ
+ならない (`tools/check/src/context-map.ts` が DFS で検証する)。`via: shared_kernel` かつ
 `uses` が 3 件を超える関係は warning として報告される (`published_language` または
 `anticorruption_layer` への narrowing を推奨する信号であり、文書を invalid にはしない)。
 
@@ -618,7 +618,7 @@ resource id は非空の CEL 文字列で表す。構造化 expression object �
 | `objectives.*.indicator` | `request`, `response`, `event`, `measurement` |
 
 validator は少なくとも root binding の範囲を検証し、利用不能な root を拒否する
-(`tools/yaml-check/src/scl-semantics.ts` の `validateExpressions`)。完全な型検査を提供する
+(`tools/check/src/scl-semantics.ts` の `validateExpressions`)。完全な型検査を提供する
 validator は field / model 型も検証しなければならない。
 
 ### 5.1 root binding の実体

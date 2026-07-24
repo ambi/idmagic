@@ -122,7 +122,7 @@ Architecture は現状の射影なので、現実と乖離していないこと�
 6. **複雑度 ratchet**: budget 超過、debt ceiling 増加、未登録・不完全・期限切れ debt を拒否する。
 7. **必須フィールド**: Frontmatter が Architecture schema に適合する。
 
-これらは `ra yaml-check`（`ra verify` 経由）で機械検証する。いずれかに反する `ARCHITECTURE.md` は
+これらは `ra check`（`ra verify` 経由）で機械検証する。いずれかに反する `ARCHITECTURE.md` は
 検証を落とし、コア構造に触れた変更の完了ゲートを塞ぐ。
 
 ## 5 スケルトン

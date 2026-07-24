@@ -93,7 +93,7 @@ git merge --no-ff work-item/wi-43-example
 統合後は SCL 派生物を同期する。
 
 ```sh
-just yaml-check
+just check
 just scl-render
 just verify
 ```

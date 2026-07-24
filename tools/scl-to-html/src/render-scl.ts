@@ -42,7 +42,7 @@ import {
   sclElementAnchor,
   type SclElementReference,
   type SclNamedElementKind,
-} from '../../yaml-check/src/scl-element-reference.ts'
+} from '../../check/src/scl-element-reference.ts'
 
 // ─── cross-section references ──────────────────────────────────────
 

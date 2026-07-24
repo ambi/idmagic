@@ -15,12 +15,12 @@
     "scl-to-html:self": "bun run scl-to-html/src/main.ts --scl scl-to-html/spec/scl.yaml --title scl-to-html --out scl-to-html/spec/scl-to-html.html",
     "scl-to-jsonschema": "bun run scl-to-jsonschema/src/main.ts",
     "scl-to-openapi": "bun run scl-to-openapi/src/main.ts",
-    "yaml-check": "bun run yaml-check/src/main.ts",
-    "yaml-check:workspace": "bun run ra/src/yaml-check-workspace.ts",
-    "yaml-check:all": "bun run yaml-check:workspace",
-    "yaml-check:workspace-work-items": "bun run yaml-check:workspace --work-items --ids",
-    "yaml-check:workspace-scl": "bun run yaml-check:workspace --scl",
-    "check-ids:workspace": "bun run yaml-check:workspace --ids"
+    "check": "bun run check/src/main.ts",
+    "check:workspace": "bun run ra/src/check-workspace.ts",
+    "check:all": "bun run check:workspace",
+    "check:workspace-work-items": "bun run check:workspace --work-items --ids",
+    "check:workspace-scl": "bun run check:workspace --scl",
+    "check-ids:workspace": "bun run check:workspace --ids"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

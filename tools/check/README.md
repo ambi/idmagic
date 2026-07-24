@@ -1,4 +1,4 @@
-# yaml-check
+# check
 
 A three-tier YAML validation CLI for the repository:
 
@@ -11,10 +11,10 @@ For specifications, refer to [`spec/scl.yaml`](spec/scl.yaml).
 ## Usage
 
 ```bash
-bun yaml-check <file-or-glob>...                          # Parse + Lint
-bun yaml-check --schema=<name> <file-or-glob>...          # Parse + Lint + Schema validation
-bun yaml-check --list-schemas                             # Print available schemas line-by-line
-bun yaml-check --help
+bun check <file-or-glob>...                          # Parse + Lint
+bun check --schema=<name> <file-or-glob>...          # Parse + Lint + Schema validation
+bun check --list-schemas                             # Print available schemas line-by-line
+bun check --help
 ```
 
 ### Packaged Schemas
@@ -31,9 +31,9 @@ If an unknown schema name is supplied, the tool terminates with exit code 2 with
 Defined in `tools/package.json`:
 
 ```bash
-bun run yaml-check:workspace-work-items # Validates discovered work item files and ids
-bun run yaml-check:workspace-scl        # Validates discovered SCL files
-bun run yaml-check:all                  # Validates all discovered scopes
+bun run check:workspace-work-items # Validates discovered work item files and ids
+bun run check:workspace-scl        # Validates discovered SCL files
+bun run check:all                  # Validates all discovered scopes
 ```
 
 ## Exit Codes
@@ -58,7 +58,7 @@ Schema validation errors use heuristics to map Ajv JSON Pointers (e.g. `/scope/u
 bun test                  # Run unit tests (Bun test runner)
 bun run lint              # Lint code (Biome)
 bun run typecheck         # Type check (tsc --noEmit)
-bun run yaml-check:all    # Validate all repository files against schemas
+bun run check:all    # Validate all repository files against schemas
 ```
 
 Core logic resides in [`src/lib.ts`](src/lib.ts), CLI side effects are limited to [`src/main.ts`](src/main.ts). Tests are implemented in `src/lib.test.ts`. JSON Schemas are stored in the [`schemas/`](schemas/) directory.
