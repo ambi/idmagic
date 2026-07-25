@@ -360,6 +360,33 @@ context_map:
         uses:
           - ApiTokenScope
         reason: Provisioning 管理 API は ApiTokens が所有する provisioning:* scope で操作を認可する。
+  Sourcing:
+    description: "上流の外部権威から idmagic へ identity を取り込む責務を所有する (inbound)。真実源は\n外部 source 側で、idmagic 内部の principal はその mirror。source binding・外部不変 ID との\ncorrelation・取り込み実行と cursor・上流権威に従う削除/無効化規則を集約し、source ごとに\nfeature slice を並べる (scim = SCIM server、directory = 閉域 Directory Connector、将来の feed =\nscheduled file feed)。分類軸は方向でも runtime 形状でもなく権威と source binding の有無であり、\n管理者 CSV import (IdManagement)、login-time federation (Authentication)、downstream target の\n台帳照合 (Application/Provisioning 側) は本 context の対象ではない (ADR-141)。\n"
+    path: contexts/sourcing.yaml
+    publishes:
+      []
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: IdentitySource・SourceCorrelation・IngestionRun はテナント境界内に閉じる。
+      IdManagement:
+        via: published_language
+        uses:
+          - UserRef
+          - GroupRef
+        reason: 取り込みは IdManagement の published な冪等 command surface 経由で principal を作成・更新・無効化する。逆向きの依存 (IdManagement が Sourcing を知る) は作らない。
+      Jobs:
+        via: published_language
+        uses:
+          - JobRef
+        reason: IngestionRun は再開可能な durable job として実行する。
+      ApiTokens:
+        via: published_language
+        uses:
+          - ApiTokenScope
+        reason: source が叩く取り込み endpoint と Sourcing 管理 API は ApiTokens が発行する token の scope で認可する。
   IdGovernance:
     description: "identity ガバナンスの policy と orchestration を所有する。LifecycleWorkflow (JML 自動化) の\ndefinition・trigger 評価・WorkflowRun 実行・executor action を集約し、将来の IGA 機能\n(認証キャンペーン、アクセスリクエスト/承認、エンタイトルメント/SoD、JIT 特権昇格) の受け皿となる。\nidentity principal の record-of-truth は IdManagement が、Application 割当は Application が\n所有し、IdGovernance は User ライフサイクルイベントを購読し、冪等コマンド surface 経由で\nこれら record context の状態を書き換える。\n"
     path: contexts/identity-governance.yaml

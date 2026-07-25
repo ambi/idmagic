@@ -1,0 +1,93 @@
+# idmagic Sourcing — SCL
+# wi-258 / ADR-141: 上流の外部権威から idmagic へ identity を取り込む責務を単一 context に束ねる。
+#   - 分類軸は方向 (inbound/outbound) でも runtime 形状 (server/upload/pull) でもなく、
+#     「外部システムが identity 集団に対して権威を持ち、その関係が durable な source binding として
+#     存在するか」(ADR-141 決定 1)。
+#   - source ごとに feature slice を並べる (scim = 現 Scim context、directory = wi-95、
+#     将来の feed = scheduled file feed)。Go 配置は backend/sourcing/<source>/ (ADR-141 決定 2・4)。
+#   - source 非依存コアは今作らない。2 つ目の source (wi-95) 着地時に実際の重複だけを
+#     on-demand で root へ引き上げる (ADR-141 決定 3)。
+#   - 本ファイルは taxonomy 確定時点の scaffold であり、models / interfaces / states / scenarios の
+#     実体は wi-259 (SCIM server の移設) と wi-95 (directory source) が入れる。
+
+system: idmagic
+spec_version: "3.0"
+context: Sourcing
+glossary:
+  IdentitySource:
+    definition: >-
+      ある identity 集団に対して idmagic の外側で権威を持つ外部システムと、その関係を表す
+      tenant-scoped な binding。どの source か、credential / enrollment、有効・無効、属性 mapping、
+      削除・無効化を上流権威にどこまで従わせるかを束ねる。source binding を持たない取り込み経路は
+      本 context の対象ではない (ADR-141 決定 1)。
+    aliases:
+      - source
+      - identity source
+      - 取り込み元
+    not_to_confuse_with:
+      - term: ProvisioningConnection
+        reason: >-
+          IdentitySource は idmagic が mirror 側になる上流権威への binding。ProvisioningConnection は
+          idmagic が真実源で下流 target を mirror にする outbound の接続 (Provisioning context)。
+          権威の向きが逆で、動詞と invariant も反転する。
+      - term: ExternalIdentityProvider
+        reason: >-
+          login-time federation / broker の upstream IdP (wi-30、Authentication 所有) は認証してきた
+          1 人を JIT で扱い、集団の inventory も drift も持たない。IdentitySource は集団に対する
+          権威関係を持続的に保持する。
+  SourceCorrelation:
+    definition: >-
+      外部 source 側の不変 ID と idmagic 内部の principal (User / Group) を結ぶ link。取り込みを冪等に
+      し、rename や属性変更で同一性を失わないための同一性の錨。
+    aliases:
+      - correlation link
+      - external identity link
+      - 相関
+    not_to_confuse_with:
+      - term: RemoteResourceLink
+        reason: >-
+          SourceCorrelation は上流権威側の ID との相関、RemoteResourceLink は下流 target 上の
+          resource との相関 (Provisioning context)。同じ「相関」語で束ねない。
+  Ingestion:
+    definition: >-
+      IdentitySource が権威を持つ状態を idmagic 内部の principal へ反映する行為。作成・更新・
+      無効化・削除は IdManagement の published な冪等 command surface を経由して適用し、
+      record-of-truth 側に source 固有の関心を持ち込まない (ADR-141 決定 7)。
+    aliases:
+      - ingest
+      - 取り込み
+    not_to_confuse_with:
+      - term: UserImport
+        reason: >-
+          管理者の CSV upload (IdManagement 所有、ADR-140 の CSV export と対称) は権威が idmagic 自身に
+          あり source binding を持たないため Ingestion ではない。scheduled file feed になった時点で
+          初めて本 context の source slice になる (ADR-141 決定 5)。
+      - term: Seeding
+        reason: >-
+          Seeding は環境構築のための内部起点の投入で、外部権威も correlation も持たない。
+  IngestionRun:
+    definition: >-
+      1 回の取り込み実行の観測単位。対象 source、開始・終了、適用件数と失敗、再開位置を持つ。
+      実行は Jobs の durable job に委譲し、失敗しても再開できる粒度で観測できるようにする。
+    aliases:
+      - ingestion run
+      - 取り込み実行
+  SourceCursor:
+    definition: >-
+      前回の取り込みがどこまで進んだかを表す source 別の位置情報。差分取り込みと再同期の境界を決め、
+      full resync は cursor を破棄して全件を読み直す操作として定義する。
+    aliases:
+      - sync cursor
+      - カーソル
+  SourceDrift:
+    definition: >-
+      上流 source の権威状態と idmagic 内部の状態の乖離。取り込み失敗、source 側の直接変更、
+      correlation の欠落などで生じ、検出と是正の規則は source ごとの権威規則に従う。
+    aliases:
+      - drift
+      - 乖離
+    not_to_confuse_with:
+      - term: ReconciliationMatch
+        reason: >-
+          wi-156 の orphan 照合は idmagic が書いた downstream target 台帳との突き合わせ
+          (Application / Provisioning 側)。SourceDrift は上流権威との乖離であり、向きが逆。

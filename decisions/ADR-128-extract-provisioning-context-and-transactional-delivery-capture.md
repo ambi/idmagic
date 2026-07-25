@@ -2,6 +2,7 @@
 status: suggested
 authors: [tn]
 created_at: 2026-07-19
+superseded_by: [ADR-141]
 ---
 
 # ADR-128: outbound provisioning (wi-45) を protocol 拡張可能な独立 `Provisioning` context として切り出し、protocol 非依存の配送コアを共有する
@@ -33,6 +34,10 @@ outbound は近い将来 SCIM 以外の protocol (MS Graph / EntraID、Google Di
 
 命名について、`Inbound` / `Outbound` という対称 context にして `Scim` を `inbound/scim` へ移す
 案も検討したが、本 WI では採らない:
+
+なお、この節が置いた仮の 3 分類 (受動 server / upload / 能動 pull) と「CSV import は適所でない」という
+申し送りは [[ADR-141-inbound-identity-sourcing-taxonomy]] が上書きした (分類軸は権威と source binding、
+管理者 CSV import は IdManagement に残す)。以下の決定 1〜5 は有効のまま。
 
 - inbound 側の**正しい** taxonomy はまだ設計されていない。inbound には少なくとも (a) 外部が
   我々の API を叩く受動 server 型 (現 `Scim`)、(b) 管理者がファイルを上げる upload 型

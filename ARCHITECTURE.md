@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-24
+updated_at: 2026-07-25
 contexts:
   System:
     spec: spec/contexts/system.yaml
@@ -44,6 +44,9 @@ contexts:
   Provisioning:
     spec: spec/contexts/provisioning.yaml
     summary: "SCIM 2.0 outbound provisioning (下流 SaaS への user/group push lifecycle management)。"
+  Sourcing:
+    spec: spec/contexts/sourcing.yaml
+    summary: "上流の外部権威からの identity 取り込み (source binding・correlation・ingestion)。実体は wi-259 / wi-95 で入る。"
   ApiTokens:
     spec: spec/contexts/api-tokens.yaml
     summary: "管理用 API と SCIM API を認証する tenant-scoped API アクセストークンの発行・失効・scope。"
@@ -3404,6 +3407,7 @@ complexity:
 - 環境別 seed の policy と execution orchestration は record context から分離し、各 context の公開 command surface を介して適用する ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md))。
 - Outbound provisioning (SCIM client) は inbound の `Scim` (server) とは独立の `Provisioning` context とし、protocol 非依存コア + protocol 別 feature slice で構成する。配送は既存 outbox を観測せず、呼び出し元の Postgres トランザクション内で `ProvisioningDelivery` を書く same-Tx capture で確定する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。
 - Core を feature 直下へ置き、Adapter を `<役割>_<技術詳細>` でフラット配置する規約は [ADR-133](decisions/ADR-133-flat-wikipedia-architecture.md) に従う。
+- 上流の外部権威からの identity 取り込みは、方向や runtime 形状でなく「権威と durable な source binding の有無」で束ね、単一 `Sourcing` context + source 別 feature slice (`backend/sourcing/<source>/`) を目標構造とする。source 非依存コアは 2 つ目の source が着地するまで作らず (thin root)、管理者 CSV import・login-time federation・downstream target の台帳照合は対象外として他 context に帰属させる ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md))。
 
 ## 読む順序
 
@@ -3446,8 +3450,9 @@ SCL context と Go package の主な対応は次の通り。
 | `Application` | `backend/application` | Application catalog、protocol binding、assignment、portal ordering/category。 |
 | `Audit` | `backend/audit` | authentication / identity-management / oauth2 / tenancy / signing-keys / application / saml / wsfederation を横断する監査イベントの read model。検索属性 registry、PII 変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | `backend/claimmapping` | protocol-neutral な claim release policy、identity 属性 projection、fail-closed validation。 |
-| `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。 |
+| `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。`Sourcing` の `scim` source slice へ移設予定 (`wi-259`)。 |
 | `Provisioning` | `backend/provisioning` | SCIM 2.0 outbound provisioning。下流 SaaS への user/group push lifecycle management。真実源は idmagic の User/Group、下流は mirror。protocol 非依存コア、`client_scim`、`source_idmanagement` などの Flat Adapter で構成する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。 |
+| `Sourcing` | (未配置。`backend/sourcing/<source>/`) | 上流の外部権威からの identity 取り込み。source binding、外部不変 ID との correlation、ingestion run と cursor、上流権威に従う削除/無効化を所有する。現状の実装は `backend/scim` のみで、`wi-259` が `backend/sourcing/scim` へ移設し、`wi-95` が `directory` slice を追加する。source 非依存コアは 2 つ目の source 着地時に on-demand で抽出する ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md))。 |
 | `ApiTokens` | `backend/apitoken` | 管理用 API と SCIM API を認証する tenant-scoped API アクセストークン (`idmagic_pat_` 接頭辞) の発行・失効・一覧と scope 語彙。Scim はこのトークンで認証する ([ADR-135](decisions/ADR-135-unify-scim-and-management-api-tokens.md))。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用非同期ジョブ基盤。durable job queue (PostgreSQL SKIP LOCKED リース)、worker runtime、handler registry を所有する。業務ロジックは呼び出し元 context の usecase に残る。管理 UI/API は `wi-157`。 |
 | `Seeding` | `backend/seeding` | 環境別 profile、dry-run、redacted plan、適用 policy を所有する。業務データとその永続化は各 record context に残す。 |

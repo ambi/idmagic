@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-19
@@ -64,16 +64,52 @@ outbound を先に整理した今、inbound の**目標 context 構造を確定*
   検討し、共有可否を判断する (今は on-demand 抽出の方針を継承)。
 
 ## Tasks
-- [ ] T001 [Decision/ADR] taxonomy と target context 構造を確定し ADR に記録する (`new-adr`)。
-- [ ] T002 [SCL] 確定 context を context_map に scaffold し `just yaml-check` を通す。
-- [ ] T003 [Architecture] `ARCHITECTURE.md` を target 構造へ同期する (`new-architecture`)。
-- [ ] T004 [Verify] `just yaml-check` / `just check-ids` を緑にする。
+- [x] T001 [Decision/ADR] taxonomy と target context 構造を確定し ADR に記録する (`new-adr`) →
+      [[ADR-141-inbound-identity-sourcing-taxonomy]]。ADR-128 の申し送り部分を partial supersede
+      (双方向リンク + ADR-128 本文に一文注記)。
+- [x] T002 [SCL] 確定 context を context_map に scaffold し `just check-scl` を通す →
+      `spec/scl.yaml` に `Sourcing` エントリ、`spec/contexts/sourcing.yaml` に taxonomy の glossary。
+- [x] T003 [Architecture] `ARCHITECTURE.md` を target 構造へ同期する (`new-architecture`) →
+      contexts 台帳・Context Map・Structural Decisions。module 台帳は実体が入る wi-259 で追加。
+- [x] T004 [Verify] `just check` (scl / work-items / ids / architecture / traceability) を緑にする。
 
 ## Verification
-- `just yaml-check` / `just check-ids` — context_map・ADR ref・Architecture 整合。
+- `just check` (= `check-scl` / `check-work-items` / `check-ids` / `check-architecture` /
+  `check-traceability`) — context_map・ADR ref・Architecture 整合。WI 起草時の `just yaml-check` は
+  現行 justfile に存在しないレシピ名だったため読み替えた。
 - ADR レビュー: 3 shape の帰属先と、将来 feature (wi-95 / wi-30) の受け皿が明記されていること。
 
 ## Risk Notes
 純設計 WI で振る舞いは変えないが、ここで決める境界が後続の物理再配置 (259 / 260) と将来 feature
 (wi-95 / wi-30) を規定するため、決定の質が下流コストを左右する。過大なら runtime shape 単位に
 分割する。
+
+## Completion
+
+- **Completed At**: 2026-07-25
+- **Summary**: inbound の分類軸を「方向 / runtime 形状」から「上流の外部権威 + durable な source
+  binding の有無」へ引き直し、条件を満たすものだけを単一 bounded context `Sourcing` (source 別 feature
+  slice、thin root) に束ねる目標構造を [[ADR-141-inbound-identity-sourcing-taxonomy]] に確定した。
+  Plan の候補では (A)+(C) の統一 context 案を採用し、命名は `Provisioning` と対称の capability 名
+  `Sourcing` とした。調査の結果、当初 inbound 3 shape とされていたもののうち 2 つは別族と判定し帰属を
+  明記した: 管理者 CSV import は IdManagement に残す (権威は idmagic 自身、source binding 無し、
+  ADR-140 の CSV export と対称・wi-284 が対を拡張)、login-time federation は Authentication
+  (wi-30 Plan / ADR-064)、downstream target の台帳照合は Application / Provisioning 側 (wi-156)。
+  ADR-128 §コンテキスト (2)(b) / §影響 の「CSV import は適所でない」という申し送りはこれに伴い覆し、
+  partial supersede として双方向リンクと一文注記を張った。SCL は context_map に `Sourcing` を
+  scaffold し、`spec/contexts/sourcing.yaml` に taxonomy の語彙 (IdentitySource / SourceCorrelation /
+  Ingestion / IngestionRun / SourceCursor / SourceDrift) と混同封じを置いた。models / interfaces の
+  実体は wi-259 / wi-95 が入れる。
+- **Verification Results**:
+  - `just check` - passed (scl / work-items / ids / architecture / traceability)
+  - `just scl-render` - passed (`spec/idmagic.html` のみ更新。models / interfaces 未追加のため
+    JSON Schema / OpenAPI は不変)
+- **Human Decisions**: 境界構造 (統一 context + source slice)、命名 (`Sourcing`)、管理者 CSV import の
+  帰属 (IdManagement に残す) の 3 点はユーザーが選択した。
+- **Affected Guarantees State**: 振る舞い・契約・データは不変 (設計のみ)。Go 実装は未配置で、
+  `Scim` context と `backend/scim/` は本 WI では変更していない。
+- **Residual Risk**: ADR-141 は `status: suggested`。決定 5 により
+  [[wi-260-relocate-csv-user-import-to-inbound]] は前提が消滅して不要になるが、ADR 受理待ちのため
+  本 WI では wi-260 のレコードを変更していない。受理時に wi-260 の廃止 (または「将来の scheduled
+  file feed に限定」への書き換え) と、wi-259 の対象を `backend/sourcing/scim` slice 移設へ確定する
+  更新が必要。
