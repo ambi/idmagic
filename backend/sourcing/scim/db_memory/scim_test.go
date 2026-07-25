@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/scim/ports"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 func TestScimRepositoryUserRefs(t *testing.T) {

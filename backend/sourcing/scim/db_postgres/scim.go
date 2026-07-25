@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/scim/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	"github.com/jackc/pgx/v5"
 )
 

@@ -4,8 +4,8 @@ import (
 	"github.com/labstack/echo/v5"
 
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
-	"github.com/ambi/idmagic/backend/scim/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
 )
 
 type Deps struct {

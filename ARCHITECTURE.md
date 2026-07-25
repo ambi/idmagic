@@ -38,15 +38,12 @@ contexts:
   Saml:
     spec: spec/contexts/saml.yaml
     summary: "SAML 2.0 IdP。"
-  Scim:
-    spec: spec/contexts/scim.yaml
-    summary: "SCIM 2.0 inbound provisioning。"
   Provisioning:
     spec: spec/contexts/provisioning.yaml
     summary: "SCIM 2.0 outbound provisioning (下流 SaaS への user/group push lifecycle management)。"
   Sourcing:
     spec: spec/contexts/sourcing.yaml
-    summary: "上流の外部権威からの identity 取り込み (source binding・correlation・ingestion)。実体は wi-259 / wi-95 で入る。"
+    summary: "上流の外部権威からの identity 取り込み (source binding・correlation・ingestion)。現在の source slice は scim (SCIM 2.0 server) のみ。"
   ApiTokens:
     spec: spec/contexts/api-tokens.yaml
     summary: "管理用 API と SCIM API を認証する tenant-scoped API アクセストークンの発行・失効・scope。"
@@ -843,7 +840,7 @@ modules:
       - { module: oauth2-ports, via: binding }
       - { module: oauth2-consent-usecases, via: binding }
       - { module: oauth2-usecases, via: binding }
-      - { module: scim-ports, via: binding }
+      - { module: sourcing-scim-ports, via: binding }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: binding }
       - { module: tenancy-ports, via: binding }
@@ -1383,25 +1380,25 @@ modules:
       - { module: shared-spec, via: binding }
       - { module: wsfederation-adapters, via: binding }
       - { module: wsfederation-domain, via: binding }
-  scim-domain:
-    path: backend/scim/domain
-    responsibility: "Scim のドメインモデルと純粋な規則。"
-    context: Scim
+  sourcing-scim-domain:
+    path: backend/sourcing/scim/domain
+    responsibility: "Sourcing / scim source slice のドメインモデルと純粋な規則 (SCIM filter・mutation・discovery)。"
+    context: Sourcing
     layer: domain
     role: published_interface
-  scim-ports:
-    path: backend/scim/ports
-    responsibility: "Scim の公開 port と外界への抽象。"
-    context: Scim
+  sourcing-scim-ports:
+    path: backend/sourcing/scim/ports
+    responsibility: "scim source slice の公開 port と外界への抽象。"
+    context: Sourcing
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: scim-domain, via: published_interface }
-  scim-usecases:
-    path: backend/scim/usecases
+      - { module: sourcing-scim-domain, via: published_interface }
+  sourcing-scim-usecases:
+    path: backend/sourcing/scim/usecases
 
-    responsibility: "Scim のユースケース。"
-    context: Scim
+    responsibility: "scim source slice のユースケース。"
+    context: Sourcing
     layer: use_cases
     role: published_interface
     depends_on:
@@ -1410,23 +1407,23 @@ modules:
       - { module: idmanagement-group-ports, via: published_interface }
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: idmanagement-user-ports, via: published_interface }
-      - { module: scim-domain, via: published_interface }
-      - { module: scim-ports, via: published_interface }
+      - { module: sourcing-scim-domain, via: published_interface }
+      - { module: sourcing-scim-ports, via: published_interface }
       - { module: shared-spec, via: technical_shared }
-  scim-adapters:
-    path: backend/scim/handlers_http
+  sourcing-scim-adapters:
+    path: backend/sourcing/scim/handlers_http
 
-    responsibility: "Scim の HTTP・永続化 adapter。"
-    context: Scim
+    responsibility: "scim source slice の HTTP adapter。"
+    context: Sourcing
     layer: adapters
     role: binding
     depends_on:
       - { module: apitoken-domain, via: published_interface }
       - { module: apitoken-ports, via: published_interface }
       - { module: http-support, via: binding }
-      - { module: scim-domain, via: published_interface }
-      - { module: scim-ports, via: published_interface }
-      - { module: scim-usecases, via: published_interface }
+      - { module: sourcing-scim-domain, via: published_interface }
+      - { module: sourcing-scim-ports, via: published_interface }
+      - { module: sourcing-scim-usecases, via: published_interface }
       - { module: shared-adapters, via: binding }
       - { module: shared-kernel, via: binding }
   apitoken-domain:
@@ -1862,19 +1859,19 @@ modules:
       - { module: saml-ports, via: published_interface }
       - { module: saml-usecases, via: published_interface }
       - { module: wsfederation-adapters, via: composition_root }
-  scim-public:
-    path: backend/scim/
-    responsibility: "Scim root package の公開 facade。"
-    context: Scim
+  sourcing-public:
+    path: backend/sourcing/
+    responsibility: "Sourcing root package の公開 facade。"
+    context: Sourcing
     layer: use_cases
     role: published_interface
     depends_on:
-      - { module: scim-domain, via: published_interface }
-  scim-composition:
-    path: backend/scim/module.go
+      - { module: sourcing-scim-domain, via: published_interface }
+  sourcing-composition:
+    path: backend/sourcing/module.go
 
-    responsibility: "Scim の adapter と port を束ねる composition module。"
-    context: Scim
+    responsibility: "Sourcing の source slice adapter と port を束ねる composition module (現在は scim のみ)。"
+    context: Sourcing
     layer: infrastructure
     role: composition_root
     depends_on:
@@ -1882,10 +1879,10 @@ modules:
       - { module: http-support, via: composition_root }
       - { module: idmanagement-group-ports, via: composition_root }
       - { module: idmanagement-user-ports, via: composition_root }
-      - { module: scim-adapters, via: published_interface }
-      - { module: scim-domain, via: published_interface }
-      - { module: scim-ports, via: published_interface }
-      - { module: scim-usecases, via: published_interface }
+      - { module: sourcing-scim-adapters, via: published_interface }
+      - { module: sourcing-scim-domain, via: published_interface }
+      - { module: sourcing-scim-ports, via: published_interface }
+      - { module: sourcing-scim-usecases, via: published_interface }
       - { module: shared-spec, via: composition_root }
   tenancy-public:
     path: backend/tenancy/
@@ -2037,7 +2034,7 @@ modules:
       - { module: oauth2-public, via: composition_root }
       - { module: provisioning-composition, via: composition_root }
       - { module: saml-public, via: composition_root }
-      - { module: scim-public, via: composition_root }
+      - { module: sourcing-public, via: composition_root }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-services, via: technical_shared }
       - { module: signingkeys-adapters, via: composition_root }
@@ -2175,8 +2172,8 @@ modules:
       - { module: provisioning-db-postgres, via: composition_root }
       - { module: saml-db-memory, via: composition_root }
       - { module: saml-db-postgres, via: composition_root }
-      - { module: scim-db-memory, via: composition_root }
-      - { module: scim-db-postgres, via: composition_root }
+      - { module: sourcing-scim-db-memory, via: composition_root }
+      - { module: sourcing-scim-db-postgres, via: composition_root }
       - { module: shared-events-sinks-console, via: technical_shared }
       - { module: shared-notification-email-console, via: technical_shared }
       - { module: shared-notification-email-smtp, via: technical_shared }
@@ -2250,8 +2247,8 @@ modules:
       - { module: saml-domain, via: composition_root }
       - { module: saml-ports, via: composition_root }
       - { module: saml-public, via: composition_root }
-      - { module: scim-adapters, via: composition_root }
-      - { module: scim-public, via: composition_root }
+      - { module: sourcing-scim-adapters, via: composition_root }
+      - { module: sourcing-public, via: composition_root }
       - { module: seeding-manifest-adapter, via: composition_root }
       - { module: seeding-domain, via: composition_root }
       - { module: seeding-usecases, via: composition_root }
@@ -2873,22 +2870,22 @@ modules:
     depends_on:
       - { module: http-support, via: technical_shared }
       - { module: wsfederation-tokens-saml, via: binding }
-  scim-db-memory:
-    path: backend/scim/db_memory
-    responsibility: "backend/scim/db_memory の Flat Architecture adapter。"
-    context: Scim
+  sourcing-scim-db-memory:
+    path: backend/sourcing/scim/db_memory
+    responsibility: "backend/sourcing/scim/db_memory の Flat Architecture adapter。"
+    context: Sourcing
     layer: adapters
     role: binding
     depends_on:
-      - { module: scim-ports, via: published_interface }
-  scim-db-postgres:
-    path: backend/scim/db_postgres
-    responsibility: "backend/scim/db_postgres の Flat Architecture adapter。"
-    context: Scim
+      - { module: sourcing-scim-ports, via: published_interface }
+  sourcing-scim-db-postgres:
+    path: backend/sourcing/scim/db_postgres
+    responsibility: "backend/sourcing/scim/db_postgres の Flat Architecture adapter。"
+    context: Sourcing
     layer: adapters
     role: binding
     depends_on:
-      - { module: scim-ports, via: published_interface }
+      - { module: sourcing-scim-ports, via: published_interface }
       - { module: shared-adapters, via: technical_shared }
   shared-events-publishers-kafka:
     path: backend/shared/events/publishers_kafka
@@ -3405,9 +3402,9 @@ complexity:
 - context、RA layer、module dependency、runtime、実 import、complexity ceiling を検査可能な地図として保つ方針は [ADR-116](decisions/ADR-116-executable-architecture-map.md) に従う。
 - LifecycleWorkflow を IdManagement の record-of-truth から IdGovernance の policy/orchestration へ分離する境界は [ADR-117](decisions/ADR-117-extract-identity-governance-context.md) に従う。
 - 環境別 seed の policy と execution orchestration は record context から分離し、各 context の公開 command surface を介して適用する ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md))。
-- Outbound provisioning (SCIM client) は inbound の `Scim` (server) とは独立の `Provisioning` context とし、protocol 非依存コア + protocol 別 feature slice で構成する。配送は既存 outbox を観測せず、呼び出し元の Postgres トランザクション内で `ProvisioningDelivery` を書く same-Tx capture で確定する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。
+- Outbound provisioning (SCIM client) は inbound の SCIM server (現 `Sourcing` の `scim` slice) とは独立の `Provisioning` context とし、protocol 非依存コア + protocol 別 feature slice で構成する。配送は既存 outbox を観測せず、呼び出し元の Postgres トランザクション内で `ProvisioningDelivery` を書く same-Tx capture で確定する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。
 - Core を feature 直下へ置き、Adapter を `<役割>_<技術詳細>` でフラット配置する規約は [ADR-133](decisions/ADR-133-flat-wikipedia-architecture.md) に従う。
-- 上流の外部権威からの identity 取り込みは、方向や runtime 形状でなく「権威と durable な source binding の有無」で束ね、単一 `Sourcing` context + source 別 feature slice (`backend/sourcing/<source>/`) を目標構造とする。source 非依存コアは 2 つ目の source が着地するまで作らず (thin root)、管理者 CSV import・login-time federation・downstream target の台帳照合は対象外として他 context に帰属させる ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md))。
+- 上流の外部権威からの identity 取り込みは、方向や runtime 形状でなく「権威と durable な source binding の有無」で束ね、単一 `Sourcing` context + source 別 feature slice (`backend/sourcing/<source>/`) に置く。source 非依存コアは 2 つ目の source が着地するまで作らず (thin root)、管理者 CSV import・login-time federation・downstream target の台帳照合は対象外として他 context に帰属させる ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md))。
 
 ## 読む順序
 
@@ -3450,10 +3447,9 @@ SCL context と Go package の主な対応は次の通り。
 | `Application` | `backend/application` | Application catalog、protocol binding、assignment、portal ordering/category。 |
 | `Audit` | `backend/audit` | authentication / identity-management / oauth2 / tenancy / signing-keys / application / saml / wsfederation を横断する監査イベントの read model。検索属性 registry、PII 変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | `backend/claimmapping` | protocol-neutral な claim release policy、identity 属性 projection、fail-closed validation。 |
-| `Scim` | `backend/scim` | SCIM 2.0 Inbound Provisioning サーバー、外部プロバイダからのユーザー・グループ同期、Bearer Token 認証、soft-delete 統合。`Sourcing` の `scim` source slice へ移設予定 (`wi-259`)。 |
 | `Provisioning` | `backend/provisioning` | SCIM 2.0 outbound provisioning。下流 SaaS への user/group push lifecycle management。真実源は idmagic の User/Group、下流は mirror。protocol 非依存コア、`client_scim`、`source_idmanagement` などの Flat Adapter で構成する ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md))。 |
-| `Sourcing` | (未配置。`backend/sourcing/<source>/`) | 上流の外部権威からの identity 取り込み。source binding、外部不変 ID との correlation、ingestion run と cursor、上流権威に従う削除/無効化を所有する。現状の実装は `backend/scim` のみで、`wi-259` が `backend/sourcing/scim` へ移設し、`wi-95` が `directory` slice を追加する。source 非依存コアは 2 つ目の source 着地時に on-demand で抽出する ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md))。 |
-| `ApiTokens` | `backend/apitoken` | 管理用 API と SCIM API を認証する tenant-scoped API アクセストークン (`idmagic_pat_` 接頭辞) の発行・失効・一覧と scope 語彙。Scim はこのトークンで認証する ([ADR-135](decisions/ADR-135-unify-scim-and-management-api-tokens.md))。 |
+| `Sourcing` | `backend/sourcing` | 上流の外部権威からの identity 取り込み (inbound)。source binding、外部不変 ID との correlation、上流権威に従う削除/無効化を所有する。source ごとの feature slice で構成し、現在は `sourcing/scim` (SCIM 2.0 server、外部 IdP からの user/group 同期、API token 認証、soft-delete 統合) のみ。`module.go` は context ルートに 1 つ。source 非依存コアは 2 つ目の source (`wi-95` の `directory`) 着地時に on-demand で抽出する ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md))。 |
+| `ApiTokens` | `backend/apitoken` | 管理用 API と SCIM API を認証する tenant-scoped API アクセストークン (`idmagic_pat_` 接頭辞) の発行・失効・一覧と scope 語彙。Sourcing の scim slice はこのトークンで認証する ([ADR-135](decisions/ADR-135-unify-scim-and-management-api-tokens.md))。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用非同期ジョブ基盤。durable job queue (PostgreSQL SKIP LOCKED リース)、worker runtime、handler registry を所有する。業務ロジックは呼び出し元 context の usecase に残る。管理 UI/API は `wi-157`。 |
 | `Seeding` | `backend/seeding` | 環境別 profile、dry-run、redacted plan、適用 policy を所有する。業務データとその永続化は各 record context に残す。 |
 | `SigningKeys` | `backend/signingkeys` | tenant-scoped 鍵 metadata、rotation、repository port、管理/JWKS HTTP、memory/PostgreSQL/Vault adapter。JWT/XML wire signer は protocol/technical adapter に残す。 |

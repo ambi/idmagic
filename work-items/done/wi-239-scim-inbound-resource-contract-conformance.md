@@ -7,7 +7,7 @@ depends_on: []
 change_kind: bugfix
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7643.RFC7643-CORE-RESOURCES
       - standards.RFC7644.RFC7644-RESOURCE-OPERATIONS
       - standards.RFC7644.RFC7644-PATCH
@@ -30,17 +30,17 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-RESOURCE-OPERATIONS }
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-ERROR-RESPONSE }
-  - { context: Scim, kind: interface, element: GetScimSchemas }
-  - { context: Scim, kind: interface, element: CreateScimUser }
-  - { context: Scim, kind: interface, element: UpdateScimUser }
-  - { context: Scim, kind: interface, element: PatchScimUser }
-  - { context: Scim, kind: interface, element: CreateScimGroup }
-  - { context: Scim, kind: interface, element: UpdateScimGroup }
-  - { context: Scim, kind: interface, element: PatchScimGroup }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-RESOURCE-OPERATIONS }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-ERROR-RESPONSE }
+  - { context: Sourcing, kind: interface, element: GetScimSchemas }
+  - { context: Sourcing, kind: interface, element: CreateScimUser }
+  - { context: Sourcing, kind: interface, element: UpdateScimUser }
+  - { context: Sourcing, kind: interface, element: PatchScimUser }
+  - { context: Sourcing, kind: interface, element: CreateScimGroup }
+  - { context: Sourcing, kind: interface, element: UpdateScimGroup }
+  - { context: Sourcing, kind: interface, element: PatchScimGroup }
 ---
 
 # inbound SCIM resource と mutation の公開契約を RFC 7643/7644 に整合させる

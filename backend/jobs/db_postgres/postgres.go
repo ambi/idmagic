@@ -24,7 +24,7 @@ import (
 
 // JobRepository persists Jobs to PostgreSQL. Pool is DBTX-compatible
 // (ADR-090); a fresh Queries is created per call, matching the
-// convention in backend/scim/db_postgres.
+// convention in backend/sourcing/scim/db_postgres.
 type JobRepository struct{ Pool sharedpg.DB }
 
 var _ ports.JobRepository = (*JobRepository)(nil)

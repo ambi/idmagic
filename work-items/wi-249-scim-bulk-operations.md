@@ -7,7 +7,7 @@ depends_on: []
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7644.RFC7644-RESOURCE-OPERATIONS
       - standards.RFC7644.RFC7644-ERROR-RESPONSE
       - interfaces.CreateScimUser
@@ -17,16 +17,16 @@ initial_context:
       - interfaces.CreateScimGroup
       - interfaces.GetScimServiceProviderConfig
   source:
-    - backend/scim/handlers_http/handlers.go
-    - backend/scim/usecases
+    - backend/sourcing/scim/handlers_http/handlers.go
+    - backend/sourcing/scim/usecases
   tests:
-    - backend/scim/handlers_http/resource_contract_test.go
+    - backend/sourcing/scim/handlers_http/resource_contract_test.go
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-RESOURCE-OPERATIONS }
-  - { context: Scim, kind: interface, element: GetScimServiceProviderConfig }
-  - { context: Scim, kind: interface, element: CreateScimUser }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-RESOURCE-OPERATIONS }
+  - { context: Sourcing, kind: interface, element: GetScimServiceProviderConfig }
+  - { context: Sourcing, kind: interface, element: CreateScimUser }
 ---
 
 # SCIM Bulk operations (/Bulk) に対応する

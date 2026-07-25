@@ -33,12 +33,12 @@ import (
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
-	"github.com/ambi/idmagic/backend/scim"
-	scimmemory "github.com/ambi/idmagic/backend/scim/db_memory"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/sourcing"
+	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -124,7 +124,7 @@ func assembleMemory() (*Dependencies, error) {
 		},
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository(), ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
-		Scim:         scim.Module{Repo: scimmemory.NewScimRepository()},
+		Sourcing:     sourcing.Module{ScimRepo: scimmemory.NewScimRepository()},
 		ApiTokens:    apitoken.Module{Repo: apitokenmemory.NewRepository()},
 		Jobs:         jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{

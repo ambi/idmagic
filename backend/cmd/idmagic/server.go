@@ -202,7 +202,7 @@ func Run() error {
 		JWKResolver:      jwkResolver,
 		WsFederation:     deps.WsFederation,
 		Saml:             deps.Saml,
-		Scim:             deps.Scim,
+		Sourcing:         deps.Sourcing,
 		FederationSigner: federationSigner,
 		Application:      deps.Application,
 		ApiTokens:        deps.ApiTokens,

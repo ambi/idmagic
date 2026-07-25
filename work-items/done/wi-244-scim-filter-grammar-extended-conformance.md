@@ -7,7 +7,7 @@ depends_on: []
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7644.RFC7644-ERROR-RESPONSE
       - interfaces.ListScimUsers
       - interfaces.ListScimGroups
@@ -22,10 +22,10 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-ERROR-RESPONSE }
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-FILTERING }
-  - { context: Scim, kind: interface, element: ListScimUsers }
-  - { context: Scim, kind: interface, element: ListScimGroups }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-ERROR-RESPONSE }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-FILTERING }
+  - { context: Sourcing, kind: interface, element: ListScimUsers }
+  - { context: Sourcing, kind: interface, element: ListScimGroups }
 ---
 
 # SCIM inbound filter grammar の対応範囲を広げ、adoption の隙間を縮める

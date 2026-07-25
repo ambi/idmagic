@@ -7,7 +7,7 @@ depends_on: []
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7643.RFC7643-CORE-RESOURCES
       - standards.RFC7644.RFC7644-PATCH
       - interfaces.CreateScimUser
@@ -17,21 +17,21 @@ initial_context:
       - interfaces.UpdateScimGroup
       - interfaces.PatchScimGroup
   source:
-    - backend/scim/domain/mutation.go
-    - backend/scim/domain/discovery.go
-    - backend/scim/usecases/users.go
-    - backend/scim/usecases/groups.go
+    - backend/sourcing/scim/domain/mutation.go
+    - backend/sourcing/scim/domain/discovery.go
+    - backend/sourcing/scim/usecases/users.go
+    - backend/sourcing/scim/usecases/groups.go
     - backend/idmanagement/domain
   tests:
-    - backend/scim/domain/mutation_test.go
-    - backend/scim/handlers_http/resource_contract_test.go
+    - backend/sourcing/scim/domain/mutation_test.go
+    - backend/sourcing/scim/handlers_http/resource_contract_test.go
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
-  - { context: Scim, kind: interface, element: CreateScimUser }
-  - { context: Scim, kind: interface, element: CreateScimGroup }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
+  - { context: Sourcing, kind: interface, element: CreateScimUser }
+  - { context: Sourcing, kind: interface, element: CreateScimGroup }
 ---
 
 # SCIM core 属性を multi-valued emails・phoneNumbers・addresses・nested group member まで広げる

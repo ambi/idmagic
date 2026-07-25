@@ -7,7 +7,7 @@ depends_on: []
 change_kind: bugfix
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7644.RFC7644-ERROR-RESPONSE
       - interfaces.ListScimUsers
       - interfaces.ListScimGroups
@@ -24,10 +24,10 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-ERROR-RESPONSE }
-  - { context: Scim, kind: interface, element: ListScimUsers }
-  - { context: Scim, kind: interface, element: ListScimGroups }
-  - { context: Scim, kind: scenario, element: SCIM clientはUsersとGroups collectionを検索できる }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-ERROR-RESPONSE }
+  - { context: Sourcing, kind: interface, element: ListScimUsers }
+  - { context: Sourcing, kind: interface, element: ListScimGroups }
+  - { context: Sourcing, kind: scenario, element: SCIM clientはUsersとGroups collectionを検索できる }
 ---
 
 # inbound SCIM collection 検索を filter と offset pagination の契約どおりに実装する

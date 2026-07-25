@@ -6,9 +6,9 @@ import (
 
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
-	scimmemory "github.com/ambi/idmagic/backend/scim/db_memory"
-	"github.com/ambi/idmagic/backend/scim/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
+	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 

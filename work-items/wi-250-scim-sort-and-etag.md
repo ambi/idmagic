@@ -7,23 +7,23 @@ depends_on: []
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - interfaces.ListScimUsers
       - interfaces.ListScimGroups
       - interfaces.UpdateScimUser
       - interfaces.PatchScimUser
       - interfaces.GetScimServiceProviderConfig
   source:
-    - backend/scim/usecases/list.go
-    - backend/scim/handlers_http/handlers.go
+    - backend/sourcing/scim/usecases/list.go
+    - backend/sourcing/scim/handlers_http/handlers.go
   tests:
-    - backend/scim/handlers_http/scim_test.go
+    - backend/sourcing/scim/handlers_http/scim_test.go
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: interface, element: ListScimUsers }
-  - { context: Scim, kind: interface, element: UpdateScimUser }
-  - { context: Scim, kind: interface, element: GetScimServiceProviderConfig }
+  - { context: Sourcing, kind: interface, element: ListScimUsers }
+  - { context: Sourcing, kind: interface, element: UpdateScimUser }
+  - { context: Sourcing, kind: interface, element: GetScimServiceProviderConfig }
 ---
 
 # SCIM sortBy/sortOrder と ETag (楽観的並行性制御) に対応する

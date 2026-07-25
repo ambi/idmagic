@@ -1566,7 +1566,7 @@
         "tenant_id",
         "status"
       ],
-      "description": "ApiTokens が認証した management API client の認可判断用 stub。"
+      "description": "有効な SCIM Bearer token から解決される provisioning principal。"
     },
     "AgentCredentialBindRequest": {
       "type": "object",

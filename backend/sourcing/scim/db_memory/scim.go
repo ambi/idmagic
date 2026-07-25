@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/scim/ports"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 type ScimRepository struct {

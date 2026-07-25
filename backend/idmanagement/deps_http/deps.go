@@ -14,10 +14,10 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	scimports "github.com/ambi/idmagic/backend/scim/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 

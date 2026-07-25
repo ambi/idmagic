@@ -24,12 +24,12 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/labstack/echo/v5"
 
-	scimmemory "github.com/ambi/idmagic/backend/scim/db_memory"
-	scimhttp "github.com/ambi/idmagic/backend/scim/handlers_http"
-	"github.com/ambi/idmagic/backend/scim/ports"
-	"github.com/ambi/idmagic/backend/scim/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
+	scimhttp "github.com/ambi/idmagic/backend/sourcing/scim/handlers_http"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
 )
 
 type scimTokenCodec struct {

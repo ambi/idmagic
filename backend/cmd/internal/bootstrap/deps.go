@@ -16,9 +16,9 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
-	"github.com/ambi/idmagic/backend/scim"
 	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
+	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
@@ -37,7 +37,7 @@ type Dependencies struct {
 	Audit          audit.Module
 	WsFederation   wsfederation.Module
 	Saml           saml.Module
-	Scim           scim.Module
+	Sourcing       sourcing.Module
 	Application    application.Module
 	ApiTokens      apitoken.Module
 	Jobs           jobs.Module

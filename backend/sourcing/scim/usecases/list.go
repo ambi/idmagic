@@ -1,6 +1,6 @@
 package usecases
 
-import "github.com/ambi/idmagic/backend/scim/domain"
+import "github.com/ambi/idmagic/backend/sourcing/scim/domain"
 
 // paginate applies RFC 7644 §3.4.2.4 startIndex/count semantics to an
 // already-filtered result set. Shared by ListUsers and ListGroups.

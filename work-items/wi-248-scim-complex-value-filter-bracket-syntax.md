@@ -7,24 +7,24 @@ depends_on: [wi-246-scim-multivalued-core-attributes-and-nested-group-members]
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7644.RFC7644-PATCH
       - interfaces.ListScimUsers
       - interfaces.ListScimGroups
       - interfaces.PatchScimUser
       - interfaces.PatchScimGroup
   source:
-    - backend/scim/domain/filter.go
-    - backend/scim/domain/mutation.go
+    - backend/sourcing/scim/domain/filter.go
+    - backend/sourcing/scim/domain/mutation.go
   tests:
-    - backend/scim/domain/filter_test.go
-    - backend/scim/domain/mutation_test.go
+    - backend/sourcing/scim/domain/filter_test.go
+    - backend/sourcing/scim/domain/mutation_test.go
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
-  - { context: Scim, kind: interface, element: ListScimUsers }
-  - { context: Scim, kind: interface, element: PatchScimUser }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
+  - { context: Sourcing, kind: interface, element: ListScimUsers }
+  - { context: Sourcing, kind: interface, element: PatchScimUser }
 ---
 
 # SCIM 複合 value フィルタ (bracket 構文) を LIST filter と PATCH path の両方に対応する
@@ -45,7 +45,7 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 
 ## Scope
 
-- `backend/scim/domain` に bracket 構文の `valFilter` パーサーを追加し、
+- `backend/sourcing/scim/domain` に bracket 構文の `valFilter` パーサーを追加し、
   `emails[type eq "work"].value` のような path を、既存の attribute allowlist と
   組み合わせて解決する。
 - `ListScimUsers`/`ListScimGroups` の `filter` と、`PatchScimUser`/`PatchScimGroup`
@@ -60,7 +60,7 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 
 ## Plan
 
-- 既存の `backend/scim/domain/filter.go` の AST・allowlist 機構を拡張する形にし、
+- 既存の `backend/sourcing/scim/domain/filter.go` の AST・allowlist 機構を拡張する形にし、
   新しい parser を作らない。LIST filter と PATCH path の両方から同じ評価ロジックを
   呼べるよう、attribute allowlist の型を multi-valued 複合属性のサブ条件を表現
   できるように広げる。
@@ -88,7 +88,7 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 
 ## Risk Notes
 
-`backend/scim/domain/filter.go` は既に外部 untrusted input を parse する
+`backend/sourcing/scim/domain/filter.go` は既に外部 untrusted input を parse する
 security-sensitive なコードであり、bracket 構文はネスト・組み合わせ爆発を招きやすい
 文法拡張である。既存の資源上限機構を必ず適用し、fuzz test 採用を検討する
 (ADR-121: 文法が複雑・高リスクな parser は要検討・要記録)。

@@ -7,7 +7,7 @@ depends_on: []
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7643.RFC7643-CORE-RESOURCES
       - interfaces.CreateScimUser
       - interfaces.UpdateScimUser
@@ -15,18 +15,18 @@ initial_context:
       - interfaces.GetScimSchemas
       - interfaces.GetScimResourceTypes
   source:
-    - backend/scim/domain/mutation.go
-    - backend/scim/domain/discovery.go
-    - backend/scim/handlers_http/handlers.go
+    - backend/sourcing/scim/domain/mutation.go
+    - backend/sourcing/scim/domain/discovery.go
+    - backend/sourcing/scim/handlers_http/handlers.go
   tests:
-    - backend/scim/domain/discovery_test.go
-    - backend/scim/handlers_http/resource_contract_test.go
+    - backend/sourcing/scim/domain/discovery_test.go
+    - backend/sourcing/scim/handlers_http/resource_contract_test.go
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
-  - { context: Scim, kind: interface, element: GetScimSchemas }
-  - { context: Scim, kind: interface, element: CreateScimUser }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
+  - { context: Sourcing, kind: interface, element: GetScimSchemas }
+  - { context: Sourcing, kind: interface, element: CreateScimUser }
 ---
 
 # SCIM enterprise extension schema (urn:...:extension:enterprise:2.0:User) に対応する

@@ -206,11 +206,11 @@ sql:
             nullable: false
   - engine: "postgresql"
     schema: "infra/schema/postgres.sql"
-    queries: "backend/scim/db_postgres"
+    queries: "backend/sourcing/scim/db_postgres"
     gen:
       go:
         package: "db_postgres"
-        out: "backend/scim/db_postgres"
+        out: "backend/sourcing/scim/db_postgres"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_json_tags: false

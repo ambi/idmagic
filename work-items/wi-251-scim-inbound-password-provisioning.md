@@ -7,22 +7,22 @@ depends_on: []
 change_kind: feature
 initial_context:
   scl:
-    Scim:
+    Sourcing:
       - standards.RFC7643.RFC7643-CORE-RESOURCES
       - interfaces.CreateScimUser
       - interfaces.UpdateScimUser
       - interfaces.PatchScimUser
   source:
-    - backend/scim/domain/mutation.go
-    - backend/scim/usecases/users.go
+    - backend/sourcing/scim/domain/mutation.go
+    - backend/sourcing/scim/usecases/users.go
   tests:
-    - backend/scim/domain/mutation_test.go
+    - backend/sourcing/scim/domain/mutation_test.go
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Scim, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
-  - { context: Scim, kind: interface, element: CreateScimUser }
-  - { context: Scim, kind: interface, element: UpdateScimUser }
+  - { context: Sourcing, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
+  - { context: Sourcing, kind: interface, element: CreateScimUser }
+  - { context: Sourcing, kind: interface, element: UpdateScimUser }
 ---
 
 # SCIM inbound password provisioning への対応可否を判断し、対応する場合は実装する

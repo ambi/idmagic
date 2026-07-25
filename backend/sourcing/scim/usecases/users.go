@@ -10,8 +10,8 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/scim/domain"
-	"github.com/ambi/idmagic/backend/scim/ports"
+	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {

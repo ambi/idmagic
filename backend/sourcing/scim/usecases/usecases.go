@@ -5,8 +5,8 @@ import (
 
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 var ErrNotFound = errors.New("SCIM resource not found")

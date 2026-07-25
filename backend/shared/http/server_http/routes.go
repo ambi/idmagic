@@ -30,13 +30,13 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
-	"github.com/ambi/idmagic/backend/scim"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
+	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
@@ -94,7 +94,7 @@ type Deps struct {
 	JWKResolver      *tokens_jose.JWKResolver
 	WsFederation     wsfederation.Module
 	Saml             saml.Module
-	Scim             scim.Module
+	Sourcing         sourcing.Module
 	FederationSigner *samltoken.Signer
 	Application      application.Module
 	ApiTokens        apitoken.Module
@@ -343,7 +343,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserMutationCommitter: d.IdManagement.UserMutationCommitter,
 		ProvisioningNotifier:  d.IdManagement.ProvisioningNotifier,
 		ClientRepo:            d.OAuth2.ClientRepo,
-		ScimRepo:              d.Scim.Repo,
+		ScimRepo:              d.Sourcing.ScimRepo,
 		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,
 		ConsentRepo:           d.OAuth2.ConsentRepo,
 		RefreshStore:          d.OAuth2.RefreshStore,
@@ -389,7 +389,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 
-	d.Scim.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
+	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo)
 }

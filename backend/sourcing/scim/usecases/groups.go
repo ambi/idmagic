@@ -9,8 +9,8 @@ import (
 	"time"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	"github.com/ambi/idmagic/backend/scim/domain"
-	"github.com/ambi/idmagic/backend/scim/ports"
+	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 // CreateGroup validates the full request (displayName uniqueness, member

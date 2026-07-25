@@ -3,7 +3,7 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
 )
 
 // UserCoreSchema advertises exactly the RFC7643-CORE-RESOURCES

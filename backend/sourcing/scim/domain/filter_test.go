@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
 )
 
 // ParseFilter は許可属性への単純な eq 比較を評価できる。

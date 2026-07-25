@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
 )
 
 // startIndex/count 省略時の既定値。 (interfaces.ListScimUsers / ListScimGroups)

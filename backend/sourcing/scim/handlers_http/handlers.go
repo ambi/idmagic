@@ -10,9 +10,9 @@ import (
 	"github.com/labstack/echo/v5"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	"github.com/ambi/idmagic/backend/scim/domain"
-	"github.com/ambi/idmagic/backend/scim/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
 )
 
 type Handler struct {

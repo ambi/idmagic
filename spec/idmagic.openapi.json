@@ -13528,1207 +13528,6 @@
         }
       }
     },
-    "/scim/v2/ServiceProviderConfig": {
-      "get": {
-        "operationId": "GetScimServiceProviderConfig",
-        "summary": "SCIM 2.0 /ServiceProviderConfig を取得する。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimDiscovery"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "config": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "config"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scim/v2/ResourceTypes": {
-      "get": {
-        "operationId": "GetScimResourceTypes",
-        "summary": "SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimDiscovery"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "types": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
-                      }
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "types"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scim/v2/Schemas": {
-      "get": {
-        "operationId": "GetScimSchemas",
-        "summary": "SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimDiscovery"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "schemas": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
-                      }
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "schemas"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scim/v2/Users": {
-      "post": {
-        "operationId": "CreateScimUser",
-        "summary": "SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteUsers"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "object"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "body"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "operationId": "ListScimUsers",
-        "summary": "SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimReadUsers"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "filter",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。"
-            }
-          },
-          {
-            "name": "startIndex",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する\n(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。\n"
-            }
-          },
-          {
-            "name": "count",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "ページの希望件数。省略時は ServiceProviderConfig が広告する上限\n(filter.maxResults = 100) を既定値とする。0 は「resource を返さず\ntotalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として\n解釈できない値は invalidValue の ScimProtocolError。上限を超える値は\n上限に clamp する。\n"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scim/v2/Users/{id}": {
-      "get": {
-        "operationId": "GetScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する GET 要求。`id`、`meta.resourceType`、",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimReadUsers"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "operationId": "PatchScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteUsers"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "object"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "id",
-                  "body"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "UpdateScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteUsers"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "object"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "id",
-                  "body"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "DeleteScimUser",
-        "summary": "SCIM 2.0 /Users/{id} に対する DELETE 要求。内部 User を soft-delete する。",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteUsers"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scim/v2/Groups": {
-      "post": {
-        "operationId": "CreateScimGroup",
-        "summary": "SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteGroups"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "object"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "body"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "operationId": "ListScimGroups",
-        "summary": "SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimReadGroups"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "filter",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。"
-            }
-          },
-          {
-            "name": "startIndex",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する\n(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。\n"
-            }
-          },
-          {
-            "name": "count",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "ページの希望件数。省略時は ServiceProviderConfig が広告する上限\n(filter.maxResults = 100) を既定値とする。0 は「resource を返さず\ntotalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として\n解釈できない値は invalidValue の ScimProtocolError。上限を超える値は\n上限に clamp する。\n"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scim/v2/Groups/{id}": {
-      "get": {
-        "operationId": "GetScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する GET 要求。`id`、`meta.resourceType`、",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimReadGroups"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "operationId": "PatchScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteGroups"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "object"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "id",
-                  "body"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "UpdateScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteGroups"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "object"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "tenant_id",
-                  "id",
-                  "body"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "response": {
-                      "type": "object"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "response"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "DeleteScimGroup",
-        "summary": "SCIM 2.0 /Groups/{id} に対する DELETE 要求。",
-        "x-scl-requires": [
-          "input.tenant_id == context.tenant_id"
-        ],
-        "description": "Requires: input.tenant_id == context.tenant_id",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "ScimWriteGroups"
-          ],
-          "resource": {
-            "type": "Tenant",
-            "id": "context.tenant_id"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "default": {
-            "description": "Errors: ScimProtocolError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScimProtocolError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/admin/api-tokens": {
       "get": {
         "operationId": "ListApiTokens",
@@ -16064,6 +14863,1207 @@
                   "oneOf": [
                     {
                       "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/ServiceProviderConfig": {
+      "get": {
+        "operationId": "GetScimServiceProviderConfig",
+        "summary": "SCIM 2.0 /ServiceProviderConfig を取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimDiscovery"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "config": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "config"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/ResourceTypes": {
+      "get": {
+        "operationId": "GetScimResourceTypes",
+        "summary": "SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimDiscovery"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "types"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Schemas": {
+      "get": {
+        "operationId": "GetScimSchemas",
+        "summary": "SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimDiscovery"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "schemas"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Users": {
+      "post": {
+        "operationId": "CreateScimUser",
+        "summary": "SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteUsers"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListScimUsers",
+        "summary": "SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimReadUsers"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。"
+            }
+          },
+          {
+            "name": "startIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する\n(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。\n"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "ページの希望件数。省略時は ServiceProviderConfig が広告する上限\n(filter.maxResults = 100) を既定値とする。0 は「resource を返さず\ntotalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として\n解釈できない値は invalidValue の ScimProtocolError。上限を超える値は\n上限に clamp する。\n"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Users/{id}": {
+      "get": {
+        "operationId": "GetScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する GET 要求。`id`、`meta.resourceType`、",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimReadUsers"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "PatchScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteUsers"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteUsers"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteScimUser",
+        "summary": "SCIM 2.0 /Users/{id} に対する DELETE 要求。内部 User を soft-delete する。",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteUsers"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Groups": {
+      "post": {
+        "operationId": "CreateScimGroup",
+        "summary": "SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteGroups"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListScimGroups",
+        "summary": "SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimReadGroups"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "RFC 7644 §3.4.2.2 grammar のうち上記 allowlist に閉じた filter 式。"
+            }
+          },
+          {
+            "name": "startIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "RFC 7644 §3.4.2.4 の 1-origin index。省略時は 1。1 未満の値は 1 に正規化する\n(RFC の規定通り)。整数として解釈できない値は invalidValue の ScimProtocolError。\n"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "ページの希望件数。省略時は ServiceProviderConfig が広告する上限\n(filter.maxResults = 100) を既定値とする。0 は「resource を返さず\ntotalResults だけ返す」を意味する (RFC 7644 §3.4.2.4)。負値や整数として\n解釈できない値は invalidValue の ScimProtocolError。上限を超える値は\n上限に clamp する。\n"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scim/v2/Groups/{id}": {
+      "get": {
+        "operationId": "GetScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する GET 要求。`id`、`meta.resourceType`、",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimReadGroups"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "PatchScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteGroups"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteGroups"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "id",
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteScimGroup",
+        "summary": "SCIM 2.0 /Groups/{id} に対する DELETE 要求。",
+        "x-scl-requires": [
+          "input.tenant_id == context.tenant_id"
+        ],
+        "description": "Requires: input.tenant_id == context.tenant_id",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ScimWriteGroups"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: ScimProtocolError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScimProtocolError"
                     }
                   ]
                 }
@@ -18490,7 +18490,7 @@
           "tenant_id",
           "status"
         ],
-        "description": "ApiTokens が認証した management API client の認可判断用 stub。"
+        "description": "有効な SCIM Bearer token から解決される provisioning principal。"
       },
       "AgentCredentialBindRequest": {
         "type": "object",

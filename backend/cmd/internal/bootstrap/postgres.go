@@ -40,13 +40,13 @@ import (
 	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/db_postgres"
 	"github.com/ambi/idmagic/backend/saml"
 	samlpostgres "github.com/ambi/idmagic/backend/saml/db_postgres"
-	"github.com/ambi/idmagic/backend/scim"
-	scimpostgres "github.com/ambi/idmagic/backend/scim/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/db_postgres"
+	"github.com/ambi/idmagic/backend/sourcing"
+	scimpostgres "github.com/ambi/idmagic/backend/sourcing/scim/db_postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
@@ -184,7 +184,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 		},
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml:         saml.Module{SPRepo: &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB}, ReplayStore: &samlpostgres.AuthnRequestReplayStore{Pool: resilientDB}},
-		Scim:         scim.Module{Repo: &scimpostgres.ScimRepository{Pool: resilientDB}},
+		Sourcing:     sourcing.Module{ScimRepo: &scimpostgres.ScimRepository{Pool: resilientDB}},
 		ApiTokens:    apitoken.Module{Repo: &apitokenpostgres.Repository{Pool: resilientDB}},
 		Jobs:         jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
 		Application: application.Module{

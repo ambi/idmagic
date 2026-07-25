@@ -1,7 +1,7 @@
 // Package scim is the SCIM protocol feature slice for outbound provisioning
 // (ADR-128 decision 2): it depends on backend/provisioning/domain (the
 // protocol-agnostic core) and owns the SCIM wire client. It does not import
-// backend/scim (the inbound server); the two share no code (ADR-128 decision 3).
+// backend/sourcing/scim (the inbound server slice); the two share no code (ADR-128 decision 3).
 package client_scim
 
 import (
@@ -82,7 +82,7 @@ func isEmptyValue(v any) bool {
 //     array whose object has the filter attribute, the target field, and
 //     primary=true. This covers wi-45's default mapping table; it does not
 //     implement the full SCIM filter grammar (that lives in the inbound
-//     backend/scim/domain/filter.go, a different concern: parsing an incoming
+//     backend/sourcing/scim/domain/filter.go, a different concern: parsing an incoming
 //     query filter, not constructing an outbound multi-valued attribute).
 func setPath(doc map[string]any, path string, value any) error {
 	if m := multiValuedFilterPath.FindStringSubmatch(path); m != nil {

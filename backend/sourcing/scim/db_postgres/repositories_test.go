@@ -11,10 +11,10 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/scim/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 )
 
