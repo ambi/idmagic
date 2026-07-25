@@ -155,6 +155,8 @@ CSV は表計算ソフトで開かれる前提があるため、CSV formula inje
 
 ## Completion
 
-All tasks have been successfully implemented and verified. The `admin-resource-csv-export` functionality now supports per-type export targeting Users, Groups, and GroupMemberships. It properly handles massive exports by defaulting to background async jobs while strictly obeying RBAC restrictions and enforcing PII omission rules.
-
-The code was successfully verified using `just verify` including tests for frontend components and rendering logic. We managed to limit complexity within architectural limits by refactoring `PendingDeletionNotice` into `AdminUsersShared.tsx`.
+- **Completed At**: 2026-07-25
+- **Summary**: User / Group / GroupMembership を対象とした per-type の CSV エクスポートを実装した。生成は常に非同期 job 経路に統一し、admin RBAC・列 allowlist・PII 除外・formula injection エスケープを仕様通り固定した。ファイル本体は Job result に保持し、TTL 経過後は download を拒否する。
+- **Verification Results**:
+  - `just verify` - passed (frontend component / rendering テストを含む)
+- **Affected Guarantees State**: sensitive 値は allowlist に含めず出力しない。列 allowlist 外の要求は `invalid_columns` で拒否する。complexity ceiling は `PendingDeletionNotice` を `AdminUsersShared.tsx` へ切り出して範囲内に収めた。
