@@ -3,6 +3,7 @@
 ## Rules
 
 - Status updates, explanations, questions, summaries, and final responses of AI coding agents must be Japanese.
+- The main `README.md` file must be written in English only.
 - Develop according to Regenerative Architecture.
   - Keep feature and behavior changes SCL-first: update `spec/scl.yaml` before implementation.
   - Treat RA/SCL meta-documents ([REGENERATIVE_ARCHITECTURE.md](file:///Users/tn/src/idmagic/REGENERATIVE_ARCHITECTURE.md), [SPECIFICATION_CORE_LANGUAGE.md](file:///Users/tn/src/idmagic/SPECIFICATION_CORE_LANGUAGE.md)) as section-addressable references, not required reading.
