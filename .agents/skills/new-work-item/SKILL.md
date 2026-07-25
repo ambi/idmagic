@@ -30,7 +30,7 @@ status: pending  # pending | in_progress | completed | cancelled
 authors: [name]
 risk: low        # low | medium | high | critical
 created_at: 2026-01-01  # YYYY-MM-DD
-depends_on: []   # 完了前提の WI ID。依存がなければ空配列
+depends_on: []   # 完了前提の WI ID（完全 slug。例 [wi-49-agent-identity-first-class-principal]）。短縮形 wi-49 不可。無ければ []
 ---
 
 # 一文で表す意味変更
@@ -67,6 +67,9 @@ depends_on: []   # 完了前提の WI ID。依存がなければ空配列
   - `just verify` - passed
 ```
 
+`## Completion` の `- **Completed At**:` / `- **Summary**:` は**上記の太字ラベルのまま構造化フィールドとして
+機械抽出される**（`### 実施内容` 等の独自見出しにすると必須フィールドを抽出できず検証に落ちる）。
+
 ## 完了時
 
-`status` を `completed` / `cancelled` にする時点で、frontmatter ではなく Markdown 本文末尾に `## Completion` を追記し、`work-items/done/` へ移す。Completion は最低でも `Completed At` / `Summary` / `Verification Results` と `Affected Guarantees State` を持つ。証跡は同節の `Evidence` に手順・実行環境・実行主体・対象ソース版・結果・保存先・要約値を記録し、大容量ログ・バイナリ・機密は埋め込まず、保管先とハッシュだけを記録する。
+`status` を `completed` / `cancelled` にする時点で、frontmatter ではなく Markdown 本文末尾に `## Completion` を追記し、`work-items/done/` へ移す。**スキーマ上の必須は `- **Completed At**:` と `- **Summary**:` の 2 つだけ**（この太字ラベルのまま書く。独自見出しにすると抽出できず検証に落ちる）。`- **Verification Results**:` は原則書き、保証状態が変わる場合は `### Affected Guarantees State`、詳細証跡は `### Evidence` を任意で足す。Evidence には手順・実行環境・実行主体・対象ソース版・結果・保存先・要約値を記録し、大容量ログ・バイナリ・機密は埋め込まず、保管先とハッシュだけを記録する。

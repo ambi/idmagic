@@ -15,7 +15,7 @@ status: pending  # pending | in_progress | completed | cancelled
 authors: [name]
 risk: low        # low | medium | high | critical
 created_at: 2026-01-01  # YYYY-MM-DD
-depends_on: []   # この WI の完了前に完了が必要な WI ID
+depends_on: []   # 完了前提の WI ID（完全 slug。例 [wi-49-agent-identity-first-class-principal]）。無ければ []
 change_kind: feature  # feature | bugfix | operations | refactor | docs | tooling | maintenance
 initial_context:
   scl: { System: [interfaces.StartTask] }
@@ -60,8 +60,15 @@ affected_spec:
   - `just verify` - passed
 ```
 
-`depends_on` はこの work-item の**完了前提**だけを列挙する。参照先は同じ
-work-items 名前空間（`done/` を含む）にある WI ID とし、自己参照・循環参照は許可しない。
+**`## Completion` の `- **Completed At**:` と `- **Summary**:` は自由記述の見出しではなく、
+上記の太字ラベルのまま構造化フィールドとして機械抽出される**（`completed_at` と `summary` が必須）。
+`### 実施内容` のような独自見出しを本体にすると必須フィールドが抽出できず検証に落ちる。
+保証状態が変わる場合は `### Affected Guarantees State`、証跡は `### Evidence` を任意で足せるが、
+必須は `Completed At` と `Summary` のみ。
+
+`depends_on` はこの work-item の**完了前提**だけを列挙する。**ID は連番だけの短縮形（`wi-49`）ではなく、
+参照先ファイル名の stem と一致する完全 slug（`wi-49-agent-identity-first-class-principal`）で書く。**
+参照先は同じ work-items 名前空間（`done/` を含む）にある WI ID とし、自己参照・循環参照は許可しない。
 本文中の関連リンク、範囲外への委譲、後続候補は `depends_on` に入れず、従来どおり本文で記す。
 未着手・進行中の WI では `depends_on` を必ず明記し、依存がなければ `[]` とする。
 
