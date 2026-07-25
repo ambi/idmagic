@@ -3,13 +3,7 @@ name: IdMagic CI
 on:
   push:
     branches: [main]
-    paths:
-      - '**'
-      - .github/workflows/idmagic-ci.yaml
   pull_request:
-    paths:
-      - '**'
-      - .github/workflows/idmagic-ci.yaml
 
 permissions:
   contents: read
@@ -27,36 +21,18 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
-      - name: Go lint
-        uses: golangci/golangci-lint-action@v9.2.1
-        with:
-          version: v2.12.2
-          args: ./...
-      - name: Go tests and SCL coherence
-        run: go test -race ./...
-      - name: Install UI dependencies
-        working-directory: frontend
-        run: bun install --frozen-lockfile
-      - name: UI format check
-        working-directory: frontend
-        run: bun run format:check
-      - name: UI lint
-        working-directory: frontend
-        run: bun run lint
-      - name: UI type check
-        working-directory: frontend
-        run: bun run typecheck
-      - name: UI unit tests
-        working-directory: frontend
-        run: bun run test:unit:coverage
+      - uses: extractions/setup-just@v2
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - name: Install dependencies
+        run: just setup
+      - name: Verify all (Parallel)
+        run: just verify
       - name: Upload UI coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
           path: frontend/coverage/
-      - name: UI build
-        working-directory: frontend
-        run: bun run build
 
   sast:
     name: CodeQL
