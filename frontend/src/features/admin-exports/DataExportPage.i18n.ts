@@ -4,10 +4,12 @@ export const dataExportDictionary = defineDictionary(
   {
     pageTitleUsers: 'ユーザーの CSV エクスポート',
     pageTitleGroups: 'グループの CSV エクスポート',
+    pageTitleGroupMembers: 'グループメンバーの CSV エクスポート',
     pageDescription:
       '列を選んで CSV エクスポートを開始します。生成は非同期で行われ、完了後にダウンロードできます。',
     backToUsers: 'ユーザー一覧へ戻る',
     backToGroups: 'グループ一覧へ戻る',
+    backToGroupDetails: 'グループ詳細へ戻る',
     selectColumnsHeading: '出力する列',
     piiBadge: '個人情報',
     piiNotice: '個人情報 (PII) を含む列の出力は監査に記録されます。',
@@ -51,14 +53,19 @@ export const dataExportDictionary = defineDictionary(
     colGroupName: 'グループ名',
     colDescription: '説明',
     colMembershipType: '所属管理方式',
+    colGroupId: 'グループID',
+    colUserId: 'ユーザーID',
+    colSource: '追加元',
   },
   {
     pageTitleUsers: 'Export users to CSV',
     pageTitleGroups: 'Export groups to CSV',
+    pageTitleGroupMembers: 'Export group members to CSV',
     pageDescription:
       'Select columns and start a CSV export. Generation runs asynchronously; download once it completes.',
     backToUsers: 'Back to users',
     backToGroups: 'Back to groups',
+    backToGroupDetails: 'Back to group details',
     selectColumnsHeading: 'Columns to export',
     piiBadge: 'PII',
     piiNotice: 'Exporting columns that contain personal data (PII) is recorded in the audit log.',
@@ -102,5 +109,8 @@ export const dataExportDictionary = defineDictionary(
     colGroupName: 'Group name',
     colDescription: 'Description',
     colMembershipType: 'Membership type',
+    colGroupId: 'Group ID',
+    colUserId: 'User ID',
+    colSource: 'Source',
   },
 )

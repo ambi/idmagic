@@ -10,7 +10,7 @@ export type ExportColumn = {
 
 // EXPORT_TARGETS は per-type エンドポイントに対応する UI 対象。members は per-group の
 // ため list ページには出さず、将来グループ詳細から使う。
-export type ExportTarget = 'users' | 'groups'
+export type ExportTarget = 'users' | 'groups' | 'group_members'
 
 // backend の allowlist と一致した、種別ごとの選択可能な列。sensitive 値 (password_hash 等)
 // は backend にも UI にも存在しない。
@@ -37,5 +37,13 @@ export const EXPORT_COLUMNS: Record<ExportTarget, ExportColumn[]> = {
     { key: 'roles', labelKey: 'colRoles' },
     { key: 'created_at', labelKey: 'colCreatedAt' },
     { key: 'updated_at', labelKey: 'colUpdatedAt' },
+  ],
+  group_members: [
+    { key: 'group_id', labelKey: 'colGroupId' },
+    { key: 'group_name', labelKey: 'colGroupName' },
+    { key: 'user_id', labelKey: 'colUserId' },
+    { key: 'preferred_username', labelKey: 'colUsername' },
+    { key: 'source', labelKey: 'colSource' },
+    { key: 'created_at', labelKey: 'colCreatedAt' },
   ],
 }

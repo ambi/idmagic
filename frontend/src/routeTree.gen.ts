@@ -74,6 +74,7 @@ import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/group
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
+import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
 
 const TotpRoute = TotpRouteImport.update({
   id: '/totp',
@@ -407,6 +408,12 @@ const AdminApplicationsApplicationIdEditRoute =
     path: '/edit',
     getParentRoute: () => AdminApplicationsApplicationIdRoute,
   } as any)
+const AdminGroupsGroupIdMembersExportsRoute =
+  AdminGroupsGroupIdMembersExportsRouteImport.update({
+    id: '/members/exports',
+    path: '/members/exports',
+    getParentRoute: () => AdminGroupsGroupIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -474,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
+  '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -534,6 +542,7 @@ export interface FileRoutesByTo {
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
+  '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -602,6 +611,7 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
+  '/admin/groups_/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -671,6 +681,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
     | '/admin/users/$id/'
+    | '/admin/groups/$groupId/members/exports'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -731,6 +742,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
     | '/admin/users/$id'
+    | '/admin/groups/$groupId/members/exports'
   id:
     | '__root__'
     | '/'
@@ -798,6 +810,7 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
     | '/admin/users_/$id/'
+    | '/admin/groups_/$groupId/members/exports'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1273,6 +1286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminApplicationsApplicationIdEditRouteImport
       parentRoute: typeof AdminApplicationsApplicationIdRoute
     }
+    '/admin/groups_/$groupId/members/exports': {
+      id: '/admin/groups_/$groupId/members/exports'
+      path: '/members/exports'
+      fullPath: '/admin/groups/$groupId/members/exports'
+      preLoaderRoute: typeof AdminGroupsGroupIdMembersExportsRouteImport
+      parentRoute: typeof AdminGroupsGroupIdRoute
+    }
   }
 }
 
@@ -1334,11 +1354,13 @@ const AdminApplicationsApplicationIdRouteWithChildren =
 interface AdminGroupsGroupIdRouteChildren {
   AdminGroupsGroupIdEditRoute: typeof AdminGroupsGroupIdEditRoute
   AdminGroupsGroupIdIndexRoute: typeof AdminGroupsGroupIdIndexRoute
+  AdminGroupsGroupIdMembersExportsRoute: typeof AdminGroupsGroupIdMembersExportsRoute
 }
 
 const AdminGroupsGroupIdRouteChildren: AdminGroupsGroupIdRouteChildren = {
   AdminGroupsGroupIdEditRoute: AdminGroupsGroupIdEditRoute,
   AdminGroupsGroupIdIndexRoute: AdminGroupsGroupIdIndexRoute,
+  AdminGroupsGroupIdMembersExportsRoute: AdminGroupsGroupIdMembersExportsRoute,
 }
 
 const AdminGroupsGroupIdRouteWithChildren =

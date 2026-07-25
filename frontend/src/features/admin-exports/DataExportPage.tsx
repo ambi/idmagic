@@ -57,15 +57,17 @@ export function DataExportPage({
   actorUsername,
   target,
   api,
+  backPath,
 }: {
   csrfToken: string
   actorUsername?: string
   target: ExportTarget
   api: ExportCollection
+  backPath?: string
 }) {
   const t = useDictionary(dataExportDictionary)
   const columns = EXPORT_COLUMNS[target]
-  const listPath = tenantURL(target === 'users' ? '/admin/users' : '/admin/groups')
+  const listPath = backPath || tenantURL(target === 'users' ? '/admin/users' : '/admin/groups')
   const [selected, setSelected] = useState<Set<string>>(() => new Set(columns.map((c) => c.key)))
   const [exports, setExports] = useState<DataExportJob[]>([])
   const [busy, setBusy] = useState(false)
@@ -137,21 +139,37 @@ export function DataExportPage({
 
   return (
     <AdminShell
-      active={target}
+      active={target === 'group_members' ? 'groups' : target}
       actorUsername={actorUsername}
-      title={target === 'users' ? t.pageTitleUsers : t.pageTitleGroups}
+      title={
+        target === 'users'
+          ? t.pageTitleUsers
+          : target === 'groups'
+            ? t.pageTitleGroups
+            : t.pageTitleGroupMembers
+      }
       description={t.pageDescription}
     >
       <div className="flex items-center gap-3">
         <a
           href={listPath}
           className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-          aria-label={target === 'users' ? t.backToUsers : t.backToGroups}
+          aria-label={
+            target === 'users'
+              ? t.backToUsers
+              : target === 'groups'
+                ? t.backToGroups
+                : t.backToGroupDetails
+          }
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          {target === 'users' ? t.pageTitleUsers : t.pageTitleGroups}
+          {target === 'users'
+            ? t.pageTitleUsers
+            : target === 'groups'
+              ? t.pageTitleGroups
+              : t.pageTitleGroupMembers}
         </h1>
       </div>
 

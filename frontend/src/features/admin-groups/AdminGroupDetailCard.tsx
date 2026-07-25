@@ -4,6 +4,7 @@ import {
   IconUserMinus,
   IconUserPlus,
   IconUsersGroup,
+  IconFileExport,
 } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import {
@@ -226,9 +227,17 @@ export function GroupDetailCard({
       ) : null}
 
       <section className="border-t border-slate-100 p-5">
-        <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-          {t.membersHeading.replace('{count}', String(members.length))}
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
+            {t.membersHeading.replace('{count}', String(members.length))}
+          </h3>
+          <Button asChild variant="outline" className="h-8 px-2 text-xs">
+            <a href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/members/exports`)}>
+              <IconFileExport size={14} className="mr-1" aria-hidden="true" />
+              {t.exportMembers}
+            </a>
+          </Button>
+        </div>
         <ul className="mt-3 grid gap-2">
           {members.map((member) => (
             <li
