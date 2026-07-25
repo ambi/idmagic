@@ -50,8 +50,11 @@ type LifecycleWorkflowExecutorDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     sharednotification.EmailSender
-	Emit            func(spec.DomainEvent) error
+	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
+	// action's TemplateKey is a label rendered into the body, not the body itself
+	// (ADR-142).
+	Notifier sharednotification.Notifier
+	Emit     func(spec.DomainEvent) error
 }
 
 // DispatchQueuedLifecycleWorkflowRuns is safe to invoke after every mutation and
@@ -175,7 +178,7 @@ type LifecycleActionEvalDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     sharednotification.EmailSender
+	Notifier        sharednotification.Notifier
 }
 
 // EvaluateLifecycleAction resolves one action's current-state dependencies
@@ -220,7 +223,7 @@ func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, 
 			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ApplicationID })
 		}
 	case igdomain.WorkflowActionSendEmail:
-		state.EmailSendable = deps.EmailSender != nil && user.Email != nil && user.EmailVerified
+		state.EmailSendable = deps.Notifier != nil && user.Email != nil && user.EmailVerified
 	}
 	outcome, reason := igdomain.EvaluateWorkflowAction(action, user, state)
 	return outcome, reason, nil
@@ -231,7 +234,7 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 	if err != nil || user == nil || user.TenantID != run.TenantID {
 		return igdomain.WorkflowStepFailed, "target_not_found"
 	}
-	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, EmailSender: deps.EmailSender}
+	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, Notifier: deps.Notifier}
 	outcome, reason, err := EvaluateLifecycleAction(ctx, evalDeps, run.TenantID, user, action)
 	if err != nil {
 		return igdomain.WorkflowStepFailed, "action_failed"
@@ -288,7 +291,16 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		updated.Lifecycle.StatusChangedAt, updated.UpdatedAt = &now, now
 		return changed(true, deps.UserRepo.Save(ctx, &updated))
 	case igdomain.WorkflowActionSendEmail:
-		if deps.EmailSender.SendEmail(ctx, sharednotification.EmailMessage{To: *user.Email, Subject: action.TemplateKey, Text: action.TemplateKey}) {
+		if deps.Notifier.Notify(ctx, sharednotification.Notification{
+			TenantID:        run.TenantID,
+			To:              *user.Email,
+			Key:             sharednotification.TemplateKeyLifecycleWorkflowNotification,
+			RecipientLocale: user.LocaleAttribute(),
+			Vars: map[string]string{
+				"user_display_name": user.DisplayName(),
+				"notification_key":  action.TemplateKey,
+			},
+		}) {
 			return igdomain.WorkflowStepChanged, ""
 		}
 		return igdomain.WorkflowStepFailed, "notification_failed"

@@ -33,7 +33,7 @@ type Deps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     sharednotification.EmailSender
+	Notifier        sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
 	// ADR-134) for the LifecycleWorkflowRun job this package dispatches. nil
 	// skips enforcement.

@@ -42,11 +42,15 @@ type Tenant struct {
 	DisplayName            string                  `json:"display_name"`
 	Status                 TenantStatus            `json:"status"`
 	PasswordPolicyOverride *PasswordPolicyOverride `json:"password_policy_override,omitempty"`
-	Quota                  *TenantQuota            `json:"quota,omitempty"`
-	Usage                  *TenantUsage            `json:"usage,omitempty"`
-	CreatedAt              time.Time               `json:"created_at"`
-	UpdatedAt              time.Time               `json:"updated_at"`
-	DisabledAt             *time.Time              `json:"disabled_at,omitempty"`
+	// DefaultLocale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。nil / 空文字列は
+	// 「システム既定 locale を使う」を意味する。値の妥当性 (同梱翻訳を持つ locale か)
+	// は shared/notification のカタログが正本なので、ここでは形だけを検証する。
+	DefaultLocale *string      `json:"default_locale,omitempty"`
+	Quota         *TenantQuota `json:"quota,omitempty"`
+	Usage         *TenantUsage `json:"usage,omitempty"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+	DisabledAt    *time.Time   `json:"disabled_at,omitempty"`
 }
 
 func (t Tenant) Validate() error {
@@ -183,6 +187,9 @@ func (q *TenantQuota) EffectiveLimit(resource string) int {
 
 var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 
+// localeTagPattern は DefaultLocale の形 (2 文字の言語タグ)。
+var localeTagPattern = regexp.MustCompile(`^[a-z]{2}$`)
+
 var tenantSchema = z.Struct(z.Shape{
 	"ID": z.String().Min(1).Required(),
 	"Realm": z.String().Min(1).Max(63).TestFunc(
@@ -196,6 +203,10 @@ var tenantSchema = z.Struct(z.Shape{
 		func(value *TenantStatus, _ z.Ctx) bool { return value.Valid() },
 		z.Message("tenant status is not in enum"),
 	).Required(),
+	"DefaultLocale": z.Ptr(z.String().TestFunc(
+		func(value *string, _ z.Ctx) bool { return value != nil && localeTagPattern.MatchString(*value) },
+		z.Message("tenant default locale must be a two-letter language tag"),
+	)),
 	"CreatedAt": z.Time().Required(),
 	"UpdatedAt": z.Time().Required(),
 })

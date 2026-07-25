@@ -45,6 +45,7 @@ type Deps struct {
 	TenantRepo                tenantports.TenantRepository
 	PasswordResetTokenStore   passwordports.PasswordResetTokenStore
 	EmailSender               sharednotification.EmailSender
+	Notifier                  sharednotification.Notifier
 	BreachedPasswordChecker   passwordports.BreachedPasswordChecker
 
 	// WebAuthn / Passkey と backup recovery code の self-service 管理 (wi-26)。

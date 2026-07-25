@@ -9,14 +9,18 @@ import (
 )
 
 type Querier interface {
+	DeleteNotificationTemplate(ctx context.Context, arg DeleteNotificationTemplateParams) (int64, error)
 	DeleteTenantBrandingAssetsByKind(ctx context.Context, arg DeleteTenantBrandingAssetsByKindParams) error
 	FindAllTenants(ctx context.Context) ([]*Tenant, error)
+	FindNotificationTemplate(ctx context.Context, arg FindNotificationTemplateParams) (*NotificationTemplate, error)
 	FindTenantBrandingByTenant(ctx context.Context, tenantID string) (*TenantBranding, error)
 	FindTenantByID(ctx context.Context, id string) (*Tenant, error)
 	FindTenantByRealm(ctx context.Context, realm string) (*Tenant, error)
 	GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*TenantBrandingAsset, error)
 	GetTenantQuota(ctx context.Context, tenantID string) (*TenantQuota, error)
 	GetTenantUsage(ctx context.Context, tenantID string) (*TenantUsage, error)
+	ListNotificationTemplatesByTenant(ctx context.Context, tenantID string) ([]*NotificationTemplate, error)
+	SaveNotificationTemplate(ctx context.Context, arg SaveNotificationTemplateParams) error
 	SaveTenant(ctx context.Context, arg SaveTenantParams) error
 	SaveTenantBranding(ctx context.Context, arg SaveTenantBrandingParams) error
 	UpsertTenantBrandingAsset(ctx context.Context, arg UpsertTenantBrandingAssetParams) error

@@ -47,10 +47,44 @@ glossary:
     definition: IdP プロセス自身。起動時に default テナントを自動作成する。
   OAuth2Client:
     definition: OIDC / OAuth2 プロトコルエンドポイントを呼び出す外部クライアントアプリケーション。
+  EndUser:
+    definition: テナントに所属する人間の利用者。通知メールの受信者であり、その locale 属性が通知の言語解決の第 1 段になる。IdManagement が所有する User の published language stub。
+    aliases:
+      - end user
+      - 利用者
   HardQuota:
     definition: 超過するとリソース作成が同期的にエラーとなる厳格な上限。
   SoftQuota:
     definition: 超過しても作成は成功するが、警告が通知される遅延評価の上限。
+  NotificationTemplate:
+    definition: "利用者へ送る通知メール 1 通の文面定義。template_key と locale の組で一意に定まり、件名 / プレーンテキスト本文 / HTML 本文 / 差出人表示名を持つ。組込み既定 (システムが同梱する ja / en の文面) とテナント上書きの 2 段で解決する。"
+    aliases:
+      - 通知テンプレート
+      - notification template
+      - email template
+    not_to_confuse_with:
+      - term: TenantBranding
+        reason: TenantBranding は hosted UI の見た目、NotificationTemplate は送信するメールの文面。両者は独立に設定する。
+  NotificationTemplateKey:
+    definition: 通知の用途を表す固定識別子。カタログに存在する key だけが送信・上書きの対象になり、テナントは key 自体を追加できない。
+    aliases:
+      - template key
+      - テンプレートキー
+  NotificationPlaceholder:
+    definition: "テンプレート本文に `{{name}}` の形で書ける差し込み変数。template_key ごとに許可集合が決まっており、許可外の変数を含む上書きは保存時に拒否される。"
+    aliases:
+      - placeholder
+      - 差し込み変数
+  NotificationLocaleResolution:
+    definition: "通知 1 通に使う locale を決める手順。受信者 User の locale 属性 → テナントの default_locale → システム既定 locale の順に、カタログが対応する最初の locale を採用する。"
+    aliases:
+      - locale 解決順序
+      - locale resolution
+  BuiltinNotificationTemplate:
+    definition: システムが同梱する組込み既定テンプレート。テナント上書きが無い、または上書きが削除された場合に使われる。テナントは編集できず「既定に戻す」ことでこの文面へ復帰する。
+    aliases:
+      - 組込み既定テンプレート
+      - builtin template
 models:
   User:
     kind: entity
@@ -201,6 +235,12 @@ models:
         type: PasswordPolicyOverride
         optional: true
         description: Authentication context が所有する PasswordPolicy 標準値をこのテナントだけ上書きする値。指定された値のみ上書きされ、それ以外は global default を継承。
+      default_locale:
+        type: String
+        optional: true
+        constraints:
+          - pattern: "^[a-z]{2}$"
+        description: "テナントの既定 locale。受信者 User に locale 属性が無いときの通知の言語として使う (NotificationLocaleResolution の第 2 段)。未設定・空文字列はシステム既定 locale を意味する。サポート外の値は保存時に拒否する。"
       created_at:
         type: DateTime
       updated_at:
@@ -317,6 +357,13 @@ models:
         optional: true
       password_policy_defaults:
         type: PasswordPolicyDefaults
+      default_locale:
+        type: String
+        optional: true
+        description: テナントの既定 locale。未設定ならシステム既定 locale を使う。
+      supported_locales:
+        type: "String[]"
+        description: カタログが同梱翻訳を持つ locale の一覧。管理 UI が既定 locale と通知テンプレートの選択肢を組み立てるために返す。
       quota:
         type: TenantQuota
       usage:
@@ -500,6 +547,222 @@ models:
         type: String
       changedFields:
         type: "String[]"
+  NotificationTemplateKey:
+    kind: enum
+    description: "通知の用途を表す固定識別子。カタログはこの全 key に対し ja / en の組込み既定テンプレートを持つ。テナントは key を追加できない。AccountSecurityAlert は現在どの経路からも送信されず、カタログと編集面だけが先に存在する。"
+    values:
+      - PasswordReset
+      - EmailVerification
+      - EmailChangeConfirmation
+      - AccountSecurityAlert
+      - LifecycleWorkflowNotification
+  NotificationTemplate:
+    kind: entity
+    description: "テナントによる通知テンプレート上書き 1 件。(tenant_id, template_key, locale) で一意。行が存在しない組み合わせは組込み既定 (BuiltinNotificationTemplate) を使う。上書きできるのは件名 / プレーンテキスト本文 / HTML 本文 / 差出人表示名だけで、任意 HTML 文書や CSS の全面差し替えは受け付けない。本文が使える差し込み変数は template_key ごとの許可集合に限られる。"
+    identity: tenant_id
+    fields:
+      tenant_id:
+        type: String
+        description: 所属テナント ID。
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+        constraints:
+          - non_empty
+          - pattern: "^[a-z]{2}$"
+        description: この上書きが適用される locale。カタログが同梱翻訳を持つ locale のみ受け付ける。
+      subject:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 200
+        description: メール件名。改行を含められない単一行のテキストとして扱う。
+      body_text:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 8000
+        description: プレーンテキスト本文。HTML として解釈しない。
+      body_html:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 20000
+        description: "HTML 本文。`<body>` 内に入る fragment であり、doctype / `<head>` / 文字エンコーディング / 本文コンテナのスタイルはシステムが供給する外枠が持つ。差し込み値は必ずエスケープして展開する。テキスト本文と必ず対で保存し、片方だけの上書きは作れない。"
+      from_display_name:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 80
+        description: 差出人の表示名。空文字列は未設定を意味し、システム既定の差出人表示になる。メールアドレス自体はサーバ設定であり上書きできない。
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+  NotificationTemplateSummary:
+    kind: value_object
+    description: テンプレート一覧の 1 行。key × locale の組ごとに、上書き済みかどうかと現在有効な件名を返す。
+    fields:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+      customized:
+        type: Boolean
+        description: true ならテナント上書きが存在する。false なら組込み既定。
+      subject:
+        type: String
+        description: 現在有効な件名 (上書きがあれば上書き、無ければ組込み既定)。
+      updated_at:
+        type: DateTime
+        optional: true
+        description: 上書きが存在する場合の最終更新時刻。組込み既定のみなら省略する。
+  NotificationTemplateListResponse:
+    kind: value_object
+    description: テンプレート一覧。カタログの全 key × 全サポート locale を、上書きの有無にかかわらず返す。
+    fields:
+      templates:
+        type: "NotificationTemplateSummary[]"
+      supported_locales:
+        type: "String[]"
+  NotificationTemplateDetail:
+    kind: value_object
+    description: "テンプレート 1 件の編集用表現。現在有効な文面と、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。管理 UI は既定との差分提示と「既定に戻す」を追加の問い合わせなしに描ける。"
+    fields:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+      customized:
+        type: Boolean
+      subject:
+        type: String
+      body_text:
+        type: String
+      body_html:
+        type: String
+      from_display_name:
+        type: String
+        optional: true
+      default_subject:
+        type: String
+        description: 組込み既定の件名。
+      default_body_text:
+        type: String
+      default_body_html:
+        type: String
+      placeholders:
+        type: "String[]"
+        description: この template_key で使える差し込み変数名の許可集合。
+      updated_at:
+        type: DateTime
+        optional: true
+  NotificationTemplateUpdateRequest:
+    kind: value_object
+    description: "テンプレート上書きの保存リクエスト。4 フィールドをまとめて置換する部分更新ではない全置換で、件名 / テキスト本文 / HTML 本文はいずれも必須。許可集合外の差し込み変数を含む場合は保存せず拒否する。"
+    fields:
+      subject:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 200
+      body_text:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 8000
+      body_html:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 20000
+      from_display_name:
+        type: String
+        optional: true
+        constraints:
+          - max_length: 80
+  NotificationTemplatePreviewRequest:
+    kind: value_object
+    description: 保存前の文面をサンプル値で描画するリクエスト。省略したフィールドは現在有効な文面を使う。
+    fields:
+      subject:
+        type: String
+        optional: true
+      body_text:
+        type: String
+        optional: true
+      body_html:
+        type: String
+        optional: true
+      from_display_name:
+        type: String
+        optional: true
+  NotificationTemplatePreviewResponse:
+    kind: value_object
+    description: サンプル値を展開した描画結果。実際のメール送信は起こらない。
+    fields:
+      subject:
+        type: String
+      body_text:
+        type: String
+      body_html:
+        type: String
+      from_display_name:
+        type: String
+        optional: true
+  NotificationTemplateTestSendResponse:
+    kind: value_object
+    description: テスト送信の結果。宛先は操作した管理者本人の検証済みメールアドレスに固定され、リクエストでは指定できない。
+    fields:
+      delivered:
+        type: Boolean
+      to:
+        type: String
+        annotations:
+          pii: true
+        description: 実際に送信した宛先 (操作者本人のアドレス)。UI が「どこへ送ったか」を明示するために返す。
+  NotificationTemplateUpdated:
+    kind: event
+    description: テナント内 admin が通知テンプレートの上書きを保存した。文面そのものは記録せず、対象の key と locale のみを記録する。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      templateKey:
+        type: String
+      locale:
+        type: String
+  NotificationTemplateReset:
+    kind: event
+    description: テナント内 admin が通知テンプレートの上書きを削除し組込み既定へ戻した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      templateKey:
+        type: String
+      locale:
+        type: String
+  EmailSent:
+    kind: event
+    description: "EmailSender port 経由でメールを送信した。Authentication context が定義する監査イベントの published language stub。テスト送信もこの経路で観測される。"
+    payload:
+      occurredAt:
+        type: DateTime
+      toHash:
+        type: String
+        description: 宛先 email の SHA-256 hex
+      purpose:
+        type: String
+      delivered:
+        type: Boolean
   TenantCreateRequest:
     kind: value_object
     description: "管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。"
@@ -533,6 +796,10 @@ models:
         type: PasswordPolicyOverride
         optional: true
         description: 省略時は既存値を維持。null を渡したい場合は明示する。
+      default_locale:
+        type: String
+        optional: true
+        description: テナント既定 locale。省略時は既存値を維持し、空文字列でシステム既定へ戻す。サポート外の locale は拒否する。
   TenantSummaryResponse:
     kind: value_object
     description: テナント表現。管理 UI の一覧と詳細で同じ表現を返す。
@@ -551,6 +818,9 @@ models:
         type: TenantStatus
       password_policy_override:
         type: PasswordPolicyOverride
+        optional: true
+      default_locale:
+        type: String
         optional: true
       quota:
         type: TenantQuota
@@ -837,7 +1107,7 @@ interfaces:
         path: "/api/admin/tenants/{tenant_id}/quota"
         request_form: body
   GetAdminSettings:
-    description: "テナント内 admin が自身のテナントの設定 (表示名 / パスワードポリシー上書き) を取得する。\n対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) を\n含め、UI が「上書きしないときに実際に適用される値」を具体数字で示せるようにする。\n"
+    description: "テナント内 admin が自身のテナントの設定 (表示名 / 既定 locale / パスワードポリシー上書き) を取得する。\n対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) と、\nカタログが同梱翻訳を持つ locale 一覧 (supported_locales) を含め、UI が「上書きしないときに\n実際に適用される値」と既定 locale の選択肢を具体的に示せるようにする。\n"
     output:
       settings:
         type: AdminSettingsResponse
@@ -854,7 +1124,7 @@ interfaces:
         method: GET
         path: /api/admin/settings
   UpdateAdminSettings:
-    description: "テナント内 admin が自身のテナントの設定を更新する。display_name と\npassword_policy_override のいずれかまたは両方を任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。\n"
+    description: "テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、\npassword_policy_override のいずれかを任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、\n空文字列でシステム既定へ戻す。\n"
     input:
       request:
         type: TenantUpdateRequest
@@ -1003,6 +1273,159 @@ interfaces:
       - kind: http
         method: DELETE
         path: "/api/admin/tenant/branding/assets/{kind}"
+  ListNotificationTemplates:
+    description: "テナント内 admin が通知テンプレートの一覧を取得する。カタログの全 template_key × 全サポート locale を、上書きの有無 (customized) と現在有効な件名つきで返す。対象テナントは context.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。\n"
+    output:
+      response:
+        type: NotificationTemplateListResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: NotificationTemplate
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/tenant/notification_templates
+  GetNotificationTemplate:
+    description: "テナント内 admin がテンプレート 1 件を編集用に取得する。現在有効な文面、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。カタログに無い template_key / locale は InvalidRequestError で拒否する。\n"
+    input:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+    output:
+      template:
+        type: NotificationTemplateDetail
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: NotificationTemplate
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}"
+  UpdateNotificationTemplate:
+    description: "テナント内 admin がテンプレート上書きを保存する。件名 / テキスト本文 / HTML 本文を必須の組として全置換し、テキストだけ・HTML だけの上書きは作れない。本文と件名に含まれる差し込み変数が template_key の許可集合に収まらない場合は、実行時に空文字列へ潰れる前に保存時点で拒否する (fail-closed)。差出人メールアドレスはサーバ設定であり上書きできず、表示名だけを上書きできる。\n"
+    input:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+      request:
+        type: NotificationTemplateUpdateRequest
+    output:
+      template:
+        type: NotificationTemplateDetail
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - NotificationTemplateUpdated
+    requires:
+      - placeholdersWithin(input.request.subject, allowedPlaceholders(input.template_key))
+      - placeholdersWithin(input.request.body_text, allowedPlaceholders(input.template_key))
+      - placeholdersWithin(input.request.body_html, allowedPlaceholders(input.template_key))
+    ensures:
+      - output.template.customized
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: NotificationTemplate
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}"
+        request_form: body
+  ResetNotificationTemplate:
+    description: "テナント内 admin がテンプレート上書きを削除し組込み既定へ戻す。上書きが無いテンプレートに対しても成功する冪等操作。版管理は持たないため、戻り先は直前の上書きではなく常に組込み既定である。\n"
+    input:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+    output:
+      template:
+        type: NotificationTemplateDetail
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - NotificationTemplateReset
+    ensures:
+      - "!output.template.customized"
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: NotificationTemplate
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}"
+  PreviewNotificationTemplate:
+    description: "テナント内 admin が保存前の文面をサンプル値で描画する。省略したフィールドは現在有効な文面を使う。HTML 側の差し込み値は必ずエスケープして展開し、リンク URL はサンプルの発行元 URL から組み立てる。メールは送信せず、上書きも保存しない。\n"
+    input:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+      request:
+        type: NotificationTemplatePreviewRequest
+    output:
+      preview:
+        type: NotificationTemplatePreviewResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: NotificationTemplate
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}/preview"
+        request_form: body
+  SendTestNotification:
+    description: "テナント内 admin が現在有効な文面のテストメールを受け取る。宛先は操作した管理者本人の検証済みメールアドレスに固定し、リクエストでは指定できない。任意宛先を許すと管理者権限がメール送信の踏み台になるため、この固定は仕様である。操作者に検証済みアドレスが無い場合は InvalidRequestError で拒否する。\n"
+    input:
+      template_key:
+        type: NotificationTemplateKey
+      locale:
+        type: String
+    output:
+      result:
+        type: NotificationTemplateTestSendResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - EmailSent
+    ensures:
+      - output.result.to == context.actor.email
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: NotificationTemplate
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}/test"
+        successful_status_codes:
+          - "200"
   GetTenantBrandingAsset:
     description: "保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。アップロード後に返す URL は、\n解決済み realm prefix を含むこの interface へ同一 origin で到達可能であり、管理画面プレビューと\nhosted UI はその URL を画像として取得・描画できる。Content-Type は検証済み形式に固定し、\nX-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。\n"
     input:
@@ -1152,6 +1575,94 @@ scenarios:
     main_success:
       - "\"operator\" が ListTenants を呼び出す"
       - AccessDeniedError で拒否される
+  日本語ロケールのユーザーには日本語のパスワードリセットメールが届く:
+    actor: EndUser
+    given:
+      - "利用者 \"hanako\" は locale 属性が \"ja\"、検証済みメールアドレスを持つ"
+      - テナントは通知テンプレートを一度も上書きしていない
+    main_success:
+      - "\"hanako\" が RequestPasswordReset を実行する"
+      - "件名と本文が組込み既定の ja テンプレートで描画されたメールが届く"
+      - メールはプレーンテキストと HTML の両方を含む
+      - 本文のリセットリンクはリクエストの発行元 URL から組み立てられており、開くとパスワード再設定画面に到達する
+    extensions:
+      - at: 1
+        condition: "\"hanako\" の locale 属性が未設定で、テナントの default_locale が \"ja\" である"
+        steps:
+          - "テナント既定の \"ja\" が採用され、日本語のメールが届く"
+      - at: 1
+        condition: "\"hanako\" の locale 属性が未設定で、テナントの default_locale も未設定である"
+        steps:
+          - システム既定 locale が採用され、その locale のメールが届く
+      - at: 1
+        condition: "\"hanako\" の locale 属性がカタログに同梱翻訳の無い locale である"
+        steps:
+          - 未対応 locale は飛ばして次の段が採用され、空の本文は送られない
+  テナントの通知テンプレート上書きは組込み既定より優先される:
+    actor: TenantAdministrator
+    given:
+      - "admin ロールを持つ \"operator\" が認証済みである"
+    main_success:
+      - "\"operator\" が ListNotificationTemplates を呼び出す"
+      - "全 template_key × 全サポート locale が customized=false で一覧される"
+      - "\"operator\" が PasswordReset / ja の件名と本文を上書きして UpdateNotificationTemplate を実行する"
+      - NotificationTemplateUpdated が発行され、当該テンプレートは customized=true になる
+      - "以後 ja の利用者に届くパスワードリセットメールは上書きした件名と本文で送られる"
+      - "\"operator\" が ResetNotificationTemplate を実行する"
+      - NotificationTemplateReset が発行され、当該テンプレートは組込み既定に戻る
+    extensions:
+      - at: 5
+        condition: 上書きしていない en の利用者にメールが送られる
+        steps:
+          - en は組込み既定のまま描画され、ja の上書きは影響しない
+      - at: 7
+        condition: 上書きが存在しないテンプレートに ResetNotificationTemplate を実行する
+        steps:
+          - 冪等に成功し、組込み既定のままとなる
+  許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される:
+    actor: TenantAdministrator
+    given:
+      - "admin ロールを持つ \"operator\" が認証済みである"
+    main_success:
+      - "\"operator\" が PasswordReset の本文に許可集合外の変数 `{{password}}` を書いて保存を試みる"
+      - InvalidRequestError で拒否され、上書きは保存されない
+      - 以後も利用者には組込み既定のリセットメールが届き、リンクが欠けたメールは配られない
+    extensions:
+      - at: 1
+        condition: "\"operator\" が HTML 本文を空にしてテキスト本文だけを保存しようとする"
+        steps:
+          - InvalidRequestError で拒否され、片方だけの上書きは作られない
+      - at: 1
+        condition: "\"operator\" がカタログに無い locale を指定して保存を試みる"
+        steps:
+          - InvalidRequestError で拒否される
+      - at: 1
+        condition: "\"operator\" が差出人メールアドレスの上書きを試みる"
+        steps:
+          - アドレスを上書きする入力は受け付けず、上書きできるのは表示名だけである
+  プレビューは実送信せずテスト送信は操作者本人にしか届かない:
+    actor: TenantAdministrator
+    given:
+      - "admin ロールを持つ \"operator\" が検証済みメールアドレスを持ち認証済みである"
+    main_success:
+      - "\"operator\" が保存前の文面で PreviewNotificationTemplate を呼び出す"
+      - サンプル値を展開した件名・テキスト本文・HTML 本文が返る
+      - メールは送信されず、上書きも保存されない
+      - "\"operator\" が SendTestNotification を呼び出す"
+      - "宛先は \"operator\" 自身のアドレスに固定され、EmailSent が発行される"
+    extensions:
+      - at: 2
+        condition: 文面に利用者名などの差し込み値が含まれる
+        steps:
+          - HTML 側の差し込み値はエスケープされて描画され、タグとして解釈されない
+      - at: 4
+        condition: リクエストで別の宛先を指定しようとする
+        steps:
+          - 宛先の指定手段は提供されず、常に操作者本人へ送られる
+      - at: 4
+        condition: 操作者が検証済みメールアドレスを持たない
+        steps:
+          - InvalidRequestError で拒否され、メールは送信されない
   管理者はパスワードポリシー設定を参照・更新できる:
     actor: TenantAdministrator
     given:
@@ -1200,16 +1711,52 @@ flows:
     entry: TenantSettings
     views:
       TenantSettings:
-        sees: テナント設定画面(表示名・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示)
+        sees: テナント設定画面(表示名・既定 locale・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示、通知メールタブへの入口)
         does:
           - action: update_settings
-            does: 表示名またはパスワードポリシー上書きを変更して保存する
+            does: 表示名、既定 locale、またはパスワードポリシー上書きを変更して保存する
             interface: UpdateAdminSettings
             to: TenantSettings
           - action: update_branding
             does: 製品名・色・フッターリンク・フッターテキストを変更して保存する
             interface: UpdateTenantBranding
             to: TenantSettings
+          - action: open_notification_templates
+            does: 通知メールタブを開く
+            interface: ListNotificationTemplates
+            to: NotificationTemplates
+      NotificationTemplates:
+        sees: 通知メールテンプレート一覧(template_key × locale の行、上書き済みかどうか、現在有効な件名、テスト送信の宛先が操作者本人に固定される旨の注記)
+        does:
+          - action: edit
+            does: 一覧から 1 件を選び、件名・テキスト本文・HTML 本文・差出人表示名の編集フォームと使用できる差し込み変数の一覧を開く
+            interface: GetNotificationTemplate
+            to: NotificationTemplateEditor
+          - action: back
+            does: テナント設定画面に戻る
+            to: TenantSettings
+      NotificationTemplateEditor:
+        sees: 通知メールテンプレート編集画面(件名・テキスト本文・HTML 本文・差出人表示名のフォーム、使用できる差し込み変数の一覧、組込み既定との比較、プレビュー結果、テスト送信ボタンと固定宛先の説明)
+        does:
+          - action: preview
+            does: 編集中の文面をサンプル値で描画して確認する
+            interface: PreviewNotificationTemplate
+            to: NotificationTemplateEditor
+          - action: save
+            does: 件名・テキスト本文・HTML 本文・差出人表示名を保存する
+            interface: UpdateNotificationTemplate
+            to: NotificationTemplateEditor
+          - action: reset
+            does: 上書きを削除して組込み既定に戻す
+            interface: ResetNotificationTemplate
+            to: NotificationTemplateEditor
+          - action: send_test
+            does: 現在有効な文面のテストメールを自分宛に送信する
+            interface: SendTestNotification
+            to: NotificationTemplateEditor
+          - action: back
+            does: 一覧に戻る
+            to: NotificationTemplates
 objectives:
   QuotaEnforcement:
     description: リソース作成時の Quota チェックは DB アクセスを伴うが、作成 API の全体 latency 予算内に収まること。

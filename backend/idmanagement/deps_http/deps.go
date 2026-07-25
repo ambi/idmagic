@@ -43,6 +43,7 @@ type Deps struct {
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore
 	EmailSender           sharednotification.EmailSender
+	Notifier              sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
 	// (wi-160, ADR-134). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository

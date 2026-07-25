@@ -715,8 +715,70 @@ export type AdminSettings = {
     max_length: number
     history_depth: number
   }
+  // 通知メールの locale 解決の第 2 段 (ADR-142)。未設定ならシステム既定を使う。
+  default_locale?: string
+  // カタログが同梱翻訳を持つ locale。既定 locale とテンプレート編集の選択肢になる。
+  supported_locales: string[]
   quota?: TenantQuota
   usage?: TenantUsage
+}
+
+// NotificationTemplateKey は通知の用途を表す固定識別子。テナントは key を追加できない
+// (ADR-142 決定 2)。
+export type NotificationTemplateKey =
+  | 'password_reset'
+  | 'email_verification'
+  | 'email_change_confirmation'
+  | 'account_security_alert'
+  | 'lifecycle_workflow_notification'
+
+export type NotificationTemplateSummary = {
+  template_key: NotificationTemplateKey
+  locale: string
+  customized: boolean
+  subject: string
+  updated_at?: string
+}
+
+export type NotificationTemplateList = {
+  templates: NotificationTemplateSummary[]
+  supported_locales: string[]
+}
+
+export type NotificationTemplateDetail = {
+  template_key: NotificationTemplateKey
+  locale: string
+  customized: boolean
+  subject: string
+  body_text: string
+  body_html: string
+  from_display_name?: string
+  default_subject: string
+  default_body_text: string
+  default_body_html: string
+  // この template_key で使える差し込み変数の許可集合。許可外を含む保存は 400 になる。
+  placeholders: string[]
+  updated_at?: string
+}
+
+export type NotificationTemplateInput = {
+  subject: string
+  body_text: string
+  body_html: string
+  from_display_name?: string
+}
+
+export type NotificationTemplatePreview = {
+  subject: string
+  body_text: string
+  body_html: string
+  from_display_name?: string
+}
+
+// テスト送信の宛先は操作者本人に固定されるため、リクエストに宛先は無い (ADR-142 決定 8)。
+export type NotificationTemplateTestResult = {
+  delivered: boolean
+  to: string
 }
 
 export type Branding = {

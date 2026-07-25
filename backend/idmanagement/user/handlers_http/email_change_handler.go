@@ -46,7 +46,7 @@ func HandleRequestEmailChange(d Deps, c *echo.Context) error {
 	}
 	err = userusecases.RequestEmailChange(c.Request().Context(), userusecases.RequestEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore,
-		EmailSender: d.EmailSender, Emit: d.Emit, Issuer: support.RequestIssuer(c, d.Issuer),
+		Notifier: d.Notifier, Emit: d.Emit, Issuer: support.RequestIssuer(c, d.Issuer),
 	}, userusecases.RequestEmailChangeInput{Sub: sub, NewEmail: input.NewEmail, Now: time.Now().UTC()})
 	if err != nil {
 		return writeEmailChangeError(c, err)

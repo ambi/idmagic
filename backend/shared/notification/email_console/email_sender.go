@@ -13,9 +13,13 @@ import (
 type ConsoleEmailSender struct{}
 
 func (ConsoleEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
+	// HTML 本文は同じ内容を装飾した alternative part なので、行数を膨らませないよう
+	// 有無だけを出す。dev で確認したいリンクはテキスト側に必ず入っている。
 	logging.Info(ctx, "email delivered (console sender)",
 		"to", logging.MaskEmail(message.To),
+		"from_display_name", message.FromDisplayName,
 		"subject", message.Subject,
-		"body", message.Text)
+		"body", message.Text,
+		"html_present", message.HTML != "")
 	return true
 }

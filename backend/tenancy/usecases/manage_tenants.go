@@ -8,6 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
+	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -19,6 +20,9 @@ var (
 	ErrDefaultTenant        = errors.New("default tenant cannot be disabled")
 	ErrDisplayNameEmpty     = errors.New("display name is required")
 	ErrPolicyOverrideWeaker = errors.New("password policy override is weaker than the global default")
+	// ErrUnsupportedDefaultLocale はカタログが同梱翻訳を持たない locale の指定。
+	// 通知が空の本文で届くより先に、保存時点で拒否する。
+	ErrUnsupportedDefaultLocale = errors.New("tenant default locale has no bundled translation")
 )
 
 // UpdateInput はテナント設定の部分更新を表す。nil のフィールドは現状維持。
@@ -26,6 +30,9 @@ var (
 type UpdateInput struct {
 	DisplayName            *string
 	PasswordPolicyOverride *domain.PasswordPolicyOverride
+	// DefaultLocale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。nil は現状維持、
+	// 空文字列はシステム既定へ戻す、それ以外は同梱翻訳を持つ locale のみ受け付ける。
+	DefaultLocale *string
 }
 
 // PolicyFloor は password_policy_override が下回ってはならない global 値。
@@ -114,6 +121,17 @@ func Update(
 				return nil, err
 			}
 			updated.PasswordPolicyOverride = normalized
+		}
+	}
+	if input.DefaultLocale != nil {
+		requested := strings.TrimSpace(*input.DefaultLocale)
+		switch {
+		case requested == "":
+			updated.DefaultLocale = nil
+		case template.LocaleSupported(requested):
+			updated.DefaultLocale = &requested
+		default:
+			return nil, ErrUnsupportedDefaultLocale
 		}
 	}
 	t := normalizeNow(now)

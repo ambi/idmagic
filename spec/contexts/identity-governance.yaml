@@ -207,7 +207,7 @@ models:
       template_key:
         type: String
         optional: true
-        description: kind=send_email のとき必須。固定 template key (custom template editor は対象外)。
+        description: "kind=send_email のとき必須。workflow 作成者が付ける通知の識別ラベル。送信文面は Tenancy の通知テンプレートカタログの LifecycleWorkflowNotification から解決し、この値は本文の差し込み変数として渡す。workflow ごとに別テンプレートを割り当てる機構は本 context の対象外。"
   LifecycleWorkflowRevision:
     kind: entity
     description: "LifecycleWorkflow の不変な definition 断面。意味の変わる update ごとに revision を 1 増やし、\n過去 revision は immutable に残す。enable された revision だけが新規 WorkflowRun を生成する。\n"

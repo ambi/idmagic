@@ -56,13 +56,14 @@ func (r *TenantRepository) FindAll(ctx context.Context) ([]*domain.Tenant, error
 
 func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) error {
 	return New(r.Pool).SaveTenant(ctx, SaveTenantParams{
-		ID:          tenant.ID,
-		Realm:       tenant.Realm,
-		DisplayName: tenant.DisplayName,
-		Status:      string(tenant.Status),
-		CreatedAt:   tenant.CreatedAt,
-		UpdatedAt:   tenant.UpdatedAt,
-		DisabledAt:  timestamptzOrNil(tenant.DisabledAt),
+		ID:            tenant.ID,
+		Realm:         tenant.Realm,
+		DisplayName:   tenant.DisplayName,
+		Status:        string(tenant.Status),
+		DefaultLocale: textPtrOrNil(tenant.DefaultLocale),
+		CreatedAt:     tenant.CreatedAt,
+		UpdatedAt:     tenant.UpdatedAt,
+		DisabledAt:    timestamptzOrNil(tenant.DisabledAt),
 	})
 }
 
@@ -79,7 +80,20 @@ func tenantFromRow(row *Tenant) (*domain.Tenant, error) {
 		disabledAt := row.DisabledAt.Time
 		tenant.DisabledAt = &disabledAt
 	}
+	if row.DefaultLocale.Valid && row.DefaultLocale.String != "" {
+		defaultLocale := row.DefaultLocale.String
+		tenant.DefaultLocale = &defaultLocale
+	}
 	return tenant, tenant.Validate()
+}
+
+// textPtrOrNil maps an unset or blank optional string to SQL NULL, so "cleared"
+// and "never set" are the same row state.
+func textPtrOrNil(value *string) pgtype.Text {
+	if value == nil {
+		return pgtype.Text{}
+	}
+	return textOrNil(*value)
 }
 
 func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {

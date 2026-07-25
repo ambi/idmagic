@@ -274,7 +274,7 @@ func (d Deps) handleDryRunLifecycleWorkflow(c *echo.Context) error {
 	}
 	result, err := igusecases.DryRunLifecycleWorkflow(c.Request().Context(), igusecases.DryRunLifecycleWorkflowDeps{
 		Repo: d.LifecycleWorkflowRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
-		ApplicationRepo: d.ApplicationRepo, AssignmentRepo: d.AssignmentRepo, EmailSender: d.EmailSender,
+		ApplicationRepo: d.ApplicationRepo, AssignmentRepo: d.AssignmentRepo, Notifier: d.Notifier,
 	}, c.Param("workflow_id"), request.TargetUserID, time.Now().UTC())
 	if err != nil {
 		return d.writeLifecycleWorkflowError(c, err)

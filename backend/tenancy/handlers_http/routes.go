@@ -8,6 +8,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -17,13 +18,16 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	TenantRepo         tenantports.TenantRepository
-	AttrSchemaRepo     tenantports.TenantUserAttributeSchemaRepository
-	BrandingRepo       tenantports.TenantBrandingRepository
-	BrandingAssetStore tenantports.TenantBrandingAssetStore
-	UserRepo           userports.UserRepository
-	GroupRepo          groupports.GroupRepository
-	QuotaRepo          tenantports.QuotaRepository
+	TenantRepo               tenantports.TenantRepository
+	AttrSchemaRepo           tenantports.TenantUserAttributeSchemaRepository
+	BrandingRepo             tenantports.TenantBrandingRepository
+	BrandingAssetStore       tenantports.TenantBrandingAssetStore
+	NotificationTemplateRepo tenantports.NotificationTemplateRepository
+	// Notifier はテンプレート編集画面からのテスト送信に使う (wi-288, ADR-142)。
+	Notifier  notificationports.Notifier
+	UserRepo  userports.UserRepository
+	GroupRepo groupports.GroupRepository
+	QuotaRepo tenantports.QuotaRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・
@@ -40,6 +44,12 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)
 	g.DELETE("/api/admin/tenant/branding/assets/:kind", d.handleDeleteBrandingAsset)
 	g.GET("/tenant-branding-assets/:kind/:object_key", d.handleGetBrandingAsset)
+	g.GET("/api/admin/tenant/notification_templates", d.handleListNotificationTemplates)
+	g.GET("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleGetNotificationTemplate)
+	g.PUT("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleUpdateNotificationTemplate)
+	g.DELETE("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleResetNotificationTemplate)
+	g.POST("/api/admin/tenant/notification_templates/:template_key/:locale/preview", d.handlePreviewNotificationTemplate)
+	g.POST("/api/admin/tenant/notification_templates/:template_key/:locale/test", d.handleSendTestNotification)
 }
 
 // RegisterControlPlaneRoutes はテナント CRUD (system_admin 専用 of テナント横断操作)

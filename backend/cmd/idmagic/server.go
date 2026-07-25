@@ -80,10 +80,6 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("create sentinel password hash: %w", err)
 	}
-	emailSender, err := bootstrap.ResolveEmailSender(os.Getenv)
-	if err != nil {
-		return fmt.Errorf("resolve email sender: %w", err)
-	}
 	breachedChecker, err := bootstrap.ResolveBreachedPasswordChecker(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("resolve breached password checker: %w", err)
@@ -118,7 +114,6 @@ func Run() error {
 	deps.OAuth2.IDTokenHintVerifier = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
 	deps.Authentication.PasswordHasher = hasher
-	deps.Notification.EmailSender = emailSender
 	deps.Authentication.BreachedPasswordChecker = breachedChecker
 	deps.Authentication.LoginAttemptThrottle = loginThrottle
 	deps.Authentication.SentinelPasswordHash = sentinelPasswordHash

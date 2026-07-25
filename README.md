@@ -124,6 +124,7 @@ Local defaults use in-memory persistence and console email output. Production ad
 | `OBSERVABILITY` | `noop`, `otel` | OpenTelemetry tracing/metrics |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | endpoint URL | OTLP/HTTP collector endpoint |
 | `EMAIL_SENDER` | `console`, `smtp` | password reset and notification delivery |
+| `DEFAULT_LOCALE` | `ja`, `en` | last resort language for notification emails; defaults to `en`. An unsupported value fails startup |
 | `KEY_PROVIDER` | `local`, `vault` | signing key provider |
 | `VAULT_ADDR`, `VAULT_TOKEN` | Vault configuration | Vault Transit configuration |
 | `BREACHED_PASSWORD_CHECKER` | `noop`, `hibp` | breached password checker |
@@ -151,6 +152,30 @@ Production splits `idmagic-worker` into one Deployment per lane using the `JOB_W
 ### WebAuthn Configuration Notes
 
 WebAuthn binds passkeys to the browser origin and relying-party ID. Non-local deployments must use HTTPS and set `WEBAUTHN_RP_ID` to the registrable domain that users visit. `WEBAUTHN_RP_ORIGINS` must include every public origin used by the UI.
+
+### Notification Email Templates
+
+Notification emails come from a template catalog rather than being composed in code. Each message resolves in two steps: the bundled default wording for the chosen language, overridden by a per-tenant customization when one exists. Every message is sent as `multipart/alternative` with both a plain-text and an HTML part.
+
+Template keys:
+
+| Key | Sent when | Placeholders (in addition to `product_name`, `tenant_display_name`, `user_display_name`) |
+| --- | --- | --- |
+| `password_reset` | a user requests a password reset | `reset_url`, `expires_in_minutes` |
+| `email_verification` | an address needs verification | `verification_url`, `expires_in_minutes` |
+| `email_change_confirmation` | a user requests an email address change | `confirmation_url`, `expires_in_minutes`, `new_email` |
+| `account_security_alert` | not emitted yet; the catalog entry exists so the wording can be prepared | `event_description`, `occurred_at` |
+| `lifecycle_workflow_notification` | a lifecycle workflow runs a `send_email` action | `notification_key` |
+
+Placeholders are written as `{{name}}`. Each key declares an allowed set, and the admin API returns that set alongside the template. A customization referencing anything outside the set is **rejected when saved**, not silently blanked at send time, so a template can never ship a message with a missing recovery link. Values substituted into the HTML body are escaped by the renderer; links are assembled by the server, never by the template.
+
+Language resolution runs in three steps and picks the first language with a bundled translation: the recipient's `locale` user attribute, then the tenant's default language (Settings → General), then `DEFAULT_LOCALE` (default `en`). Bundled translations ship for `ja` and `en`.
+
+A tenant may customize the subject, the plain-text body, the HTML body, and the sender display name. The subject and both bodies are saved as one set, so a half-overridden template cannot exist. The sender email address, the surrounding HTML document, and its base styling stay server-owned. Deleting a customization ("Reset to default") returns to the bundled wording; there is no version history.
+
+Test messages sent from the template editor always go to the acting administrator's own verified email address. The recipient cannot be chosen, which keeps tenant administrator rights from becoming a relay for sending mail to arbitrary addresses.
+
+Upgrade note: before this catalog existed, the three emails that already shipped (password reset, email change confirmation, and lifecycle workflow notifications) were hardcoded English plain text, and lifecycle notifications used the raw template key as both subject and body. Their subjects and bodies have changed.
 
 ### Local Email Testing (SMTP)
 

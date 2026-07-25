@@ -26,6 +26,11 @@ import type {
   AuthorizationDetailType,
   McpResourceServer,
   TenantUserAttributeSchema,
+  NotificationTemplateDetail,
+  NotificationTemplateInput,
+  NotificationTemplateList,
+  NotificationTemplatePreview,
+  NotificationTemplateTestResult,
   UserAttributeDef,
   EntraFederationProfile,
   DataExportJob,
@@ -534,6 +539,8 @@ export async function listTenantKeyHealth(): Promise<TenantKeyHealth[]> {
 export type UpdateAdminSettingsInput = {
   display_name?: string
   password_policy_override?: AdminSettings['password_policy_override']
+  // 空文字列でシステム既定へ戻す (省略は現状維持)。
+  default_locale?: string
 }
 
 export async function getAdminSettings(): Promise<AdminSettings> {
@@ -546,6 +553,67 @@ export async function updateAdminSettings(
 ): Promise<AdminSettings> {
   return request('/api/admin/settings', adminRequest(csrfToken, 'PATCH', input))
 }
+// 通知テンプレート (wi-288, ADR-142)。文面は組込み既定カタログとテナント上書きの
+// 2 段で解決され、DELETE (reset) は上書きを消して組込み既定へ戻す。
+function notificationTemplatePath(templateKey: string, locale: string): string {
+  return `/api/admin/tenant/notification_templates/${encodeURIComponent(templateKey)}/${encodeURIComponent(locale)}`
+}
+
+export async function listNotificationTemplates(): Promise<NotificationTemplateList> {
+  return request<NotificationTemplateList>('/api/admin/tenant/notification_templates')
+}
+
+export async function getNotificationTemplate(
+  templateKey: string,
+  locale: string,
+): Promise<NotificationTemplateDetail> {
+  return request<NotificationTemplateDetail>(notificationTemplatePath(templateKey, locale))
+}
+
+export async function updateNotificationTemplate(
+  csrfToken: string,
+  templateKey: string,
+  locale: string,
+  input: NotificationTemplateInput,
+): Promise<NotificationTemplateDetail> {
+  return request(
+    notificationTemplatePath(templateKey, locale),
+    adminRequest(csrfToken, 'PUT', input),
+  )
+}
+
+export async function resetNotificationTemplate(
+  csrfToken: string,
+  templateKey: string,
+  locale: string,
+): Promise<NotificationTemplateDetail> {
+  return request(notificationTemplatePath(templateKey, locale), adminRequest(csrfToken, 'DELETE'))
+}
+
+export async function previewNotificationTemplate(
+  csrfToken: string,
+  templateKey: string,
+  locale: string,
+  input: Partial<NotificationTemplateInput>,
+): Promise<NotificationTemplatePreview> {
+  return request(
+    `${notificationTemplatePath(templateKey, locale)}/preview`,
+    adminRequest(csrfToken, 'POST', input),
+  )
+}
+
+// 宛先は指定できない。サーバが操作者本人の検証済みアドレスに固定する (ADR-142 決定 8)。
+export async function sendTestNotification(
+  csrfToken: string,
+  templateKey: string,
+  locale: string,
+): Promise<NotificationTemplateTestResult> {
+  return request(
+    `${notificationTemplatePath(templateKey, locale)}/test`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
 export async function getTenantUserAttributeSchema(): Promise<TenantUserAttributeSchema> {
   return request<TenantUserAttributeSchema>('/api/admin/tenant/user_attribute_schema')
 }

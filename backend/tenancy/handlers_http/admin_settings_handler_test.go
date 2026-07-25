@@ -136,7 +136,7 @@ func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 		settingsActor("admin", "acme", []string{"admin"}),
 		activeTenant("acme", "Acme"),
 	)
-	resp := patchSettings(t, e, "/realms/acme/api/admin/settings", map[string]any{
+	resp := patchSettings(t, e, map[string]any{
 		"display_name": "Acme Inc.",
 		"password_policy_override": map[string]int{
 			"min_length": 16, "history_depth": 10,
@@ -175,7 +175,7 @@ func TestAdminSettingsPatchRejectsWeakerPolicy(t *testing.T) {
 		settingsActor("admin", "acme", []string{"admin"}),
 		activeTenant("acme", "Acme"),
 	)
-	resp := patchSettings(t, e, "/realms/acme/api/admin/settings", map[string]any{
+	resp := patchSettings(t, e, map[string]any{
 		"password_policy_override": map[string]int{"min_length": 4},
 	})
 	if resp.Code != http.StatusBadRequest {
@@ -195,7 +195,7 @@ func TestAdminSettingsPatchStaysWithinActorTenant(t *testing.T) {
 		activeTenant("acme", "Acme"),
 		activeTenant("other", "Other"),
 	)
-	resp := patchSettings(t, e, "/realms/acme/api/admin/settings", map[string]any{
+	resp := patchSettings(t, e, map[string]any{
 		"display_name": "Modified",
 	})
 	if resp.Code != http.StatusOK {
@@ -230,8 +230,11 @@ func TestAdminSettingsPatchRequiresCSRF(t *testing.T) {
 	}
 }
 
-func patchSettings(t *testing.T, e *echo.Echo, path string, body any) *httptest.ResponseRecorder {
+// patchSettings は /api/admin/settings への PATCH。この endpoint は解決済みテナントに
+// 固定されるため、path は呼び出し側で選ぶ余地が無い。
+func patchSettings(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecorder {
 	t.Helper()
+	const path = "/realms/acme/api/admin/settings"
 	// CSRF token / cookie を tenant local の password_reset_context 経由で発行する。
 	tenant := tenantPrefix(path)
 	csrf, cookie := passwordResetContextCSRF(t, e, tenant+"/api/auth/password_reset_context")
@@ -247,6 +250,52 @@ func patchSettings(t *testing.T, e *echo.Echo, path string, body any) *httptest.
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec
+}
+
+// テナント既定 locale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。UI が選択肢を
+// 組み立てられるよう、同梱翻訳を持つ locale 一覧も同じレスポンスで返す。
+func TestAdminSettingsExposeDefaultLocale(t *testing.T) {
+	e, repo, _ := newSettingsServer(
+		t,
+		settingsActor("admin", "acme", []string{"admin"}),
+		activeTenant("acme", "Acme"),
+	)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/settings", http.NoBody))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var initial tenancyhttp.AdminSettingsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &initial); err != nil {
+		t.Fatal(err)
+	}
+	if initial.DefaultLocale != "" {
+		t.Errorf("default_locale=%q, want empty (system default)", initial.DefaultLocale)
+	}
+	if len(initial.SupportedLocales) < 2 {
+		t.Errorf("supported_locales=%v, want at least ja and en", initial.SupportedLocales)
+	}
+
+	if resp := patchSettings(t, e, map[string]any{
+		"default_locale": "ja",
+	}); resp.Code != http.StatusOK {
+		t.Fatalf("patch status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	tenant, err := repo.FindByID(context.Background(), "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tenant.DefaultLocale == nil || *tenant.DefaultLocale != "ja" {
+		t.Fatalf("stored default_locale=%v, want ja", tenant.DefaultLocale)
+	}
+
+	// 同梱翻訳を持たない locale は拒否する。通知が空の本文で届くより先に落とす。
+	if resp := patchSettings(t, e, map[string]any{
+		"default_locale": "fr",
+	}); resp.Code != http.StatusBadRequest {
+		t.Fatalf("unsupported locale status=%d body=%s", resp.Code, resp.Body.String())
+	}
 }
 
 func tenantPrefix(path string) string {

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -86,6 +87,12 @@ func Assemble(ctx context.Context) (*Dependencies, error) {
 		return nil, err
 	}
 	deps.Authentication.WebAuthnRP = rp
+	// 通知はカタログ解決を含めてここで組み立て、API プロセスと worker プロセスが
+	// 同じ経路 (テナント上書き・locale 解決を含む) で送るようにする (wi-288, ADR-142)。
+	//nolint:contextcheck // 起動時の配線のみ。実際の I/O は送信ごとに呼び出し元の context で走る。
+	if err := AssembleNotification(deps, os.Getenv); err != nil {
+		return nil, err
+	}
 	return deps, nil
 }
 

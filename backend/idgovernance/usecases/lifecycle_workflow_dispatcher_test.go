@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
+	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -281,5 +284,62 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
 	if err != nil || storedSteps[0].Outcome != igdomain.WorkflowStepNoop {
 		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
+	}
+}
+
+// scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
+// の前提となるカタログ接続。send_email action は template_key を件名と本文に直挿しせず、
+// カタログの LifecycleWorkflowNotification から解決する (ADR-142)。
+func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	users := usermemory.NewUserRepository()
+	email := "alice@example.test"
+	locale := "ja"
+	user := &userdomain.User{
+		ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash",
+		Email: &email, EmailVerified: true, Roles: []string{"member"},
+		Lifecycle:  userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]userdomain.AttributeValue{"locale": {Type: idmdomain.AttributeTypeString, String: &locale}},
+		CreatedAt:  now, UpdatedAt: now,
+	}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSendEmail, TemplateKey: "welcome"}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: igdomain.WorkflowStepPending}}
+	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
+		t.Fatalf("SaveRun = %v, %v", created, err)
+	}
+	sender := &email_memory.NoopEmailSender{}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+		RunRepo: runs, UserRepo: users,
+		Notifier: &template.Notifier{Sender: sender, SystemDefaultLocale: "en"},
+	})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params}); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(sender.Sent) != 1 {
+		t.Fatalf("sent emails=%d, want 1", len(sender.Sent))
+	}
+	sent := sender.Sent[0]
+	if sent.Subject == "welcome" || sent.Text == "welcome" {
+		t.Fatalf("the template key leaked into the message: subject=%q text=%q", sent.Subject, sent.Text)
+	}
+	if sent.Text == "" || sent.HTML == "" {
+		t.Errorf("both parts are required, got text=%q html=%q", sent.Text, sent.HTML)
+	}
+	if !strings.Contains(sent.Text, "welcome") {
+		t.Errorf("the template key should appear as a rendered variable: %q", sent.Text)
+	}
+	if !strings.Contains(sent.Text, "alice") {
+		t.Errorf("text body has no recipient display name: %q", sent.Text)
 	}
 }

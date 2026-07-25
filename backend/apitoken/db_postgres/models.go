@@ -325,6 +325,18 @@ type MfaFactor struct {
 	LastUsedAt pgtype.Timestamptz
 }
 
+type NotificationTemplate struct {
+	TenantID        string
+	TemplateKey     string
+	Locale          string
+	Subject         string
+	BodyText        string
+	BodyHtml        string
+	FromDisplayName pgtype.Text
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type Oauth2AccessTokenDenylist struct {
 	TenantID  string
 	Jti       string
@@ -588,13 +600,14 @@ type SigningKey struct {
 }
 
 type Tenant struct {
-	ID          string
-	Realm       string
-	DisplayName string
-	Status      string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DisabledAt  pgtype.Timestamptz
+	ID            string
+	Realm         string
+	DisplayName   string
+	Status        string
+	DefaultLocale pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DisabledAt    pgtype.Timestamptz
 }
 
 type TenantBranding struct {

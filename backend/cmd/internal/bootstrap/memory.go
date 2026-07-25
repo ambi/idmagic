@@ -68,11 +68,12 @@ func assembleMemory() (*Dependencies, error) {
 	}
 	return &Dependencies{
 		Tenancy: tenancy.Module{
-			TenantRepo:         tenancymemory.NewTenantRepository(),
-			AttrSchemaRepo:     usermemory.NewTenantUserAttributeSchemaRepository(),
-			BrandingRepo:       tenancymemory.NewTenantBrandingRepository(),
-			BrandingAssetStore: tenancymemory.NewTenantBrandingAssetStore(),
-			QuotaRepo:          tenancymemory.NewQuotaRepository(),
+			TenantRepo:            tenancymemory.NewTenantRepository(),
+			AttrSchemaRepo:        usermemory.NewTenantUserAttributeSchemaRepository(),
+			BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
+			BrandingAssetStore:    tenancymemory.NewTenantBrandingAssetStore(),
+			NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),
+			QuotaRepo:             tenancymemory.NewQuotaRepository(),
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,

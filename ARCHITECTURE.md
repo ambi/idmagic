@@ -1592,6 +1592,7 @@ modules:
     role: published_interface
     depends_on:
       - { module: idmanagement-user-domain, via: published_interface }
+      - { module: shared-services, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
   tenancy-usecases:
     path: backend/tenancy/usecases
@@ -1603,6 +1604,7 @@ modules:
     depends_on:
       - { module: idmanagement-user-domain, via: published_interface }
       - { module: shared-services, via: technical_shared }
+      - { module: shared-notification-template, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
@@ -1622,6 +1624,8 @@ modules:
       - { module: idmanagement-user-domain, via: binding }
       - { module: idmanagement-user-ports, via: binding }
       - { module: shared-adapters, via: binding }
+      - { module: shared-services, via: technical_shared }
+      - { module: shared-notification-template, via: technical_shared }
       - { module: shared-spec, via: binding }
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
@@ -2037,6 +2041,7 @@ modules:
       - { module: sourcing-public, via: composition_root }
       - { module: shared-adapters, via: technical_shared }
       - { module: shared-services, via: technical_shared }
+      - { module: shared-notification-template, via: technical_shared }
       - { module: signingkeys-adapters, via: composition_root }
       - { module: signingkeys-public, via: composition_root }
       - { module: signingkeys-ports, via: composition_root }
@@ -2177,6 +2182,7 @@ modules:
       - { module: shared-events-sinks-console, via: technical_shared }
       - { module: shared-notification-email-console, via: technical_shared }
       - { module: shared-notification-email-smtp, via: technical_shared }
+      - { module: shared-notification-template, via: technical_shared }
       - { module: shared-policy-authorization-http, via: technical_shared }
       - { module: shared-policy-authorization-local, via: technical_shared }
       - { module: shared-policy-breaches-hibp, via: technical_shared }
@@ -2954,6 +2960,14 @@ modules:
     role: technical_shared
     depends_on:
       - { module: shared-services, via: technical_shared }
+  shared-notification-template:
+    path: backend/shared/notification/template
+    responsibility: "通知メールの組込み既定カタログ、差し込み変数のレンダラ、locale 解決、Notifier。"
+    context: System
+    layer: use_cases
+    role: technical_shared
+    depends_on:
+      - { module: shared-services, via: technical_shared }
   shared-observability-metrics-prometheus:
     path: backend/shared/observability/metrics_prometheus
     responsibility: "backend/shared/observability/metrics_prometheus の Flat Architecture adapter。"
@@ -3094,6 +3108,7 @@ modules:
     role: binding
     depends_on:
       - { module: tenancy-ports, via: binding }
+      - { module: shared-services, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
   tenancy-db-postgres:
     path: backend/tenancy/db_postgres
@@ -3104,6 +3119,7 @@ modules:
     depends_on:
       - { module: tenancy-ports, via: binding }
       - { module: shared-adapters, via: technical_shared }
+      - { module: shared-services, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
   wsfederation-db-memory:
     path: backend/wsfederation/db_memory

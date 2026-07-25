@@ -956,10 +956,10 @@ outcome class、lane などの有限集合だけを label とする。applicatio
       <div class="eyebrow">Bounded Context · contexts/tenancy.yaml</div>
       <h1>Tenancy</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">11</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">35</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">17</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">9</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">47</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">23</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">13</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-tenancy-glossary">
-    <h2>Glossary <span class="count">11</span></h2>
+    <h2>Glossary <span class="count">17</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="context-tenancy-glossary-tenant">
       <div class="vocab-name"><code class="name">Tenant</code></div>
@@ -1045,6 +1045,15 @@ outcome class、lane などの有限集合だけを label とする。applicatio
 
       </div>
     </article>
+<article class="vocab-entry" id="context-tenancy-glossary-enduser">
+      <div class="vocab-name"><code class="name">EndUser</code></div>
+      <div class="vocab-body">
+        <p class="def">テナントに所属する人間の利用者。通知メールの受信者であり、その locale 属性が通知の言語解決の第 1 段になる。IdManagement が所有する User の published language stub。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">end user</span> <span class="chip chip-alias">利用者</span></div>
+
+
+      </div>
+    </article>
 <article class="vocab-entry" id="context-tenancy-glossary-hardquota">
       <div class="vocab-name"><code class="name">HardQuota</code></div>
       <div class="vocab-body">
@@ -1062,13 +1071,61 @@ outcome class、lane などの有限集合だけを label とする。applicatio
 
 
       </div>
+    </article>
+<article class="vocab-entry" id="context-tenancy-glossary-notificationtemplate">
+      <div class="vocab-name"><code class="name">NotificationTemplate</code></div>
+      <div class="vocab-body">
+        <p class="def">利用者へ送る通知メール 1 通の文面定義。template_key と locale の組で一意に定まり、件名 / プレーンテキスト本文 / HTML 本文 / 差出人表示名を持つ。組込み既定 (システムが同梱する ja / en の文面) とテナント上書きの 2 段で解決する。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">通知テンプレート</span> <span class="chip chip-alias">notification template</span> <span class="chip chip-alias">email template</span></div>
+
+        <div class="ntcw">
+        <div class="ntcw-label">do not confuse with</div>
+        <ul><li><strong>TenantBranding</strong> — <span class="muted">TenantBranding は hosted UI の見た目、NotificationTemplate は送信するメールの文面。両者は独立に設定する。</span></li></ul>
+      </div>
+      </div>
+    </article>
+<article class="vocab-entry" id="context-tenancy-glossary-notificationtemplatekey">
+      <div class="vocab-name"><code class="name">NotificationTemplateKey</code></div>
+      <div class="vocab-body">
+        <p class="def">通知の用途を表す固定識別子。カタログに存在する key だけが送信・上書きの対象になり、テナントは key 自体を追加できない。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">template key</span> <span class="chip chip-alias">テンプレートキー</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-tenancy-glossary-notificationplaceholder">
+      <div class="vocab-name"><code class="name">NotificationPlaceholder</code></div>
+      <div class="vocab-body">
+        <p class="def">テンプレート本文に `{{name}}` の形で書ける差し込み変数。template_key ごとに許可集合が決まっており、許可外の変数を含む上書きは保存時に拒否される。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">placeholder</span> <span class="chip chip-alias">差し込み変数</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-tenancy-glossary-notificationlocaleresolution">
+      <div class="vocab-name"><code class="name">NotificationLocaleResolution</code></div>
+      <div class="vocab-body">
+        <p class="def">通知 1 通に使う locale を決める手順。受信者 User の locale 属性 → テナントの default_locale → システム既定 locale の順に、カタログが対応する最初の locale を採用する。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">locale 解決順序</span> <span class="chip chip-alias">locale resolution</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-tenancy-glossary-builtinnotificationtemplate">
+      <div class="vocab-name"><code class="name">BuiltinNotificationTemplate</code></div>
+      <div class="vocab-body">
+        <p class="def">システムが同梱する組込み既定テンプレート。テナント上書きが無い、または上書きが削除された場合に使われる。テナントは編集できず「既定に戻す」ことでこの文面へ復帰する。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">組込み既定テンプレート</span> <span class="chip chip-alias">builtin template</span></div>
+
+
+      </div>
     </article></div>
   </section>
 <section id="context-tenancy-models">
-    <h2>Models <span class="count">35</span></h2>
+    <h2>Models <span class="count">47</span></h2>
 
     <div class="group">
-      <h3 class="grp-title">entity <span class="count">4</span></h3>
+      <h3 class="grp-title">entity <span class="count">5</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/User">
     <header><h3>User</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Tenancy/model/User</code></header>
     <p class="desc">IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。</p>
@@ -1139,6 +1196,12 @@ outcome class、lane などの有限集合だけを label とする。applicatio
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td>Authentication context が所有する PasswordPolicy 標準値をこのテナントだけ上書きする値。指定された値のみ上書きされ、それ以外は global default を継承。</td>
+  </tr><tr>
+    <td><code class="name">default_locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="chip chip-constraint">pattern: ^[a-z]{2}$</span></td>
+    <td>テナントの既定 locale。受信者 User に locale 属性が無いときの通知の言語として使う (NotificationLocaleResolution の第 2 段)。未設定・空文字列はシステム既定 locale を意味する。サポート外の値は保存時に拒否する。</td>
   </tr><tr>
     <td><code class="name">created_at</code></td>
     <td><code class="type">DateTime</code></td>
@@ -1287,10 +1350,74 @@ TenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tena
   </tr></tbody>
   </table>
 
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplate">
+    <header><h3>NotificationTemplate</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Tenancy/model/NotificationTemplate</code></header>
+    <p class="desc">テナントによる通知テンプレート上書き 1 件。(tenant_id, template_key, locale) で一意。行が存在しない組み合わせは組込み既定 (BuiltinNotificationTemplate) を使う。上書きできるのは件名 / プレーンテキスト本文 / HTML 本文 / 差出人表示名だけで、任意 HTML 文書や CSS の全面差し替えは受け付けない。本文が使える差し込み変数は template_key ごとの許可集合に限られる。</p>
+    <dl class="kv"><dt>identity</dt><dd><code>tenant_id</code></dd></dl>
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">tenant_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>所属テナント ID。</td>
+  </tr><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">pattern: ^[a-z]{2}$</span></td>
+    <td>この上書きが適用される locale。カタログが同梱翻訳を持つ locale のみ受け付ける。</td>
+  </tr><tr>
+    <td><code class="name">subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 200</span></td>
+    <td>メール件名。改行を含められない単一行のテキストとして扱う。</td>
+  </tr><tr>
+    <td><code class="name">body_text</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 8000</span></td>
+    <td>プレーンテキスト本文。HTML として解釈しない。</td>
+  </tr><tr>
+    <td><code class="name">body_html</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 20000</span></td>
+    <td>HTML 本文。`&lt;body&gt;` 内に入る fragment であり、doctype / `&lt;head&gt;` / 文字エンコーディング / 本文コンテナのスタイルはシステムが供給する外枠が持つ。差し込み値は必ずエスケープして展開する。テキスト本文と必ず対で保存し、片方だけの上書きは作れない。</td>
+  </tr><tr>
+    <td><code class="name">from_display_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="chip chip-constraint">max length: 80</span></td>
+    <td>差出人の表示名。空文字列は未設定を意味し、システム既定の差出人表示になる。メールアドレス自体はサーバ設定であり上書きできない。</td>
+  </tr><tr>
+    <td><code class="name">created_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">updated_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">17</span></h3>
+      <h3 class="grp-title">value object <span class="count">24</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/TenantQuota">
     <header><h3>TenantQuota</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/TenantQuota</code></header>
     <p class="desc">テナント単位のリソース上限値 (Hard / Soft)。システム管理者がテナントごとに上書きできる。</p>
@@ -1674,6 +1801,18 @@ UI 表示と weaker policy gating に使う Authentication context の PasswordP
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
+    <td><code class="name">default_locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>テナントの既定 locale。未設定ならシステム既定 locale を使う。</td>
+  </tr><tr>
+    <td><code class="name">supported_locales</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>カタログが同梱翻訳を持つ locale の一覧。管理 UI が既定 locale と通知テンプレートの選択肢を組み立てるために返す。</td>
+  </tr><tr>
     <td><code class="name">quota</code></td>
     <td><code class="type">TenantQuota</code></td>
     <td><span class="badge badge-required">required</span></td>
@@ -1898,6 +2037,274 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </table>
 
   </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateSummary">
+    <header><h3>NotificationTemplateSummary</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplateSummary</code></header>
+    <p class="desc">テンプレート一覧の 1 行。key × locale の組ごとに、上書き済みかどうかと現在有効な件名を返す。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">customized</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>true ならテナント上書きが存在する。false なら組込み既定。</td>
+  </tr><tr>
+    <td><code class="name">subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>現在有効な件名 (上書きがあれば上書き、無ければ組込み既定)。</td>
+  </tr><tr>
+    <td><code class="name">updated_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>上書きが存在する場合の最終更新時刻。組込み既定のみなら省略する。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateListResponse">
+    <header><h3>NotificationTemplateListResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplateListResponse</code></header>
+    <p class="desc">テンプレート一覧。カタログの全 key × 全サポート locale を、上書きの有無にかかわらず返す。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">templates</code></td>
+    <td><code class="type">NotificationTemplateSummary[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">supported_locales</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateDetail">
+    <header><h3>NotificationTemplateDetail</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplateDetail</code></header>
+    <p class="desc">テンプレート 1 件の編集用表現。現在有効な文面と、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。管理 UI は既定との差分提示と「既定に戻す」を追加の問い合わせなしに描ける。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">customized</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_text</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_html</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">from_display_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">default_subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>組込み既定の件名。</td>
+  </tr><tr>
+    <td><code class="name">default_body_text</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">default_body_html</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">placeholders</code></td>
+    <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>この template_key で使える差し込み変数名の許可集合。</td>
+  </tr><tr>
+    <td><code class="name">updated_at</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateUpdateRequest">
+    <header><h3>NotificationTemplateUpdateRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplateUpdateRequest</code></header>
+    <p class="desc">テンプレート上書きの保存リクエスト。4 フィールドをまとめて置換する部分更新ではない全置換で、件名 / テキスト本文 / HTML 本文はいずれも必須。許可集合外の差し込み変数を含む場合は保存せず拒否する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 200</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_text</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 8000</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_html</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 20000</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">from_display_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="chip chip-constraint">max length: 80</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplatePreviewRequest">
+    <header><h3>NotificationTemplatePreviewRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplatePreviewRequest</code></header>
+    <p class="desc">保存前の文面をサンプル値で描画するリクエスト。省略したフィールドは現在有効な文面を使う。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_text</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_html</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">from_display_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplatePreviewResponse">
+    <header><h3>NotificationTemplatePreviewResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplatePreviewResponse</code></header>
+    <p class="desc">サンプル値を展開した描画結果。実際のメール送信は起こらない。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">subject</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_text</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">body_html</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">from_display_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateTestSendResponse">
+    <header><h3>NotificationTemplateTestSendResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/NotificationTemplateTestSendResponse</code></header>
+    <p class="desc">テスト送信の結果。宛先は操作した管理者本人の検証済みメールアドレスに固定され、リクエストでは指定できない。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">delivered</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">to</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">pii</span></td>
+    <td>実際に送信した宛先 (操作者本人のアドレス)。UI が「どこへ送ったか」を明示するために返す。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
 <article class="card" id="scl-Tenancy/model/TenantCreateRequest">
     <header><h3>TenantCreateRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/TenantCreateRequest</code></header>
     <p class="desc">管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。</p>
@@ -1938,6 +2345,12 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td>省略時は既存値を維持。null を渡したい場合は明示する。</td>
+  </tr><tr>
+    <td><code class="name">default_locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>テナント既定 locale。省略時は既存値を維持し、空文字列でシステム既定へ戻す。サポート外の locale は拒否する。</td>
   </tr></tbody>
   </table>
 
@@ -1975,6 +2388,12 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </tr><tr>
     <td><code class="name">password_policy_override</code></td>
     <td><code class="type">PasswordPolicyOverride</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">default_locale</code></td>
+    <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -2030,7 +2449,7 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">4</span></h3>
+      <h3 class="grp-title">enum <span class="count">5</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/TenantStatus">
     <header><h3>TenantStatus</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Tenancy/model/TenantStatus</code></header>
     <p class="desc">テナント状態。Active は通常稼働、Disabled はテナント全体のプロトコル受付を停止 (`/authorize` `/token` 等が一律 invalid_request)。</p>
@@ -2058,10 +2477,17 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
 
     <div class="enum-vals"><span class="chip chip-enum">Logo</span> <span class="chip chip-enum">Favicon</span></div>
 
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateKey">
+    <header><h3>NotificationTemplateKey</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Tenancy/model/NotificationTemplateKey</code></header>
+    <p class="desc">通知の用途を表す固定識別子。カタログはこの全 key に対し ja / en の組込み既定テンプレートを持つ。テナントは key を追加できない。AccountSecurityAlert は現在どの経路からも送信されず、カタログと編集面だけが先に存在する。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">PasswordReset</span> <span class="chip chip-enum">EmailVerification</span> <span class="chip chip-enum">EmailChangeConfirmation</span> <span class="chip chip-enum">AccountSecurityAlert</span> <span class="chip chip-enum">LifecycleWorkflowNotification</span></div>
+
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">7</span></h3>
+      <h3 class="grp-title">event <span class="count">10</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/TenantBrandingUpdated">
     <header><h3>TenantBrandingUpdated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Tenancy/model/TenantBrandingUpdated</code></header>
     <p class="desc">テナント内 admin が branding (テキスト / 色 / リンク / 画像アセット) を更新した。</p>
@@ -2089,6 +2515,120 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </tr><tr>
     <td><code class="name">changedFields</code></td>
     <td><code class="type">String[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateUpdated">
+    <header><h3>NotificationTemplateUpdated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Tenancy/model/NotificationTemplateUpdated</code></header>
+    <p class="desc">テナント内 admin が通知テンプレートの上書きを保存した。文面そのものは記録せず、対象の key と locale のみを記録する。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">templateKey</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/NotificationTemplateReset">
+    <header><h3>NotificationTemplateReset</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Tenancy/model/NotificationTemplateReset</code></header>
+    <p class="desc">テナント内 admin が通知テンプレートの上書きを削除し組込み既定へ戻した。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">templateKey</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/EmailSent">
+    <header><h3>EmailSent</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Tenancy/model/EmailSent</code></header>
+    <p class="desc">EmailSender port 経由でメールを送信した。Authentication context が定義する監査イベントの published language stub。テスト送信もこの経路で観測される。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">toHash</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>宛先 email の SHA-256 hex</td>
+  </tr><tr>
+    <td><code class="name">purpose</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">delivered</code></td>
+    <td><code class="type">Boolean</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -2333,7 +2873,7 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     </div>
   </section>
 <section id="context-tenancy-interfaces">
-    <h2>Interfaces <span class="count">17</span></h2>
+    <h2>Interfaces <span class="count">23</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Tenancy/interface/ResolveTenant">
     <header><h3>ResolveTenant</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">Tenancy/interface/ResolveTenant</code></header>
@@ -2592,11 +3132,12 @@ bare path と control-plane path (/realms/default 配下、cookie session 整合
   </article>
 <article class="card" id="scl-Tenancy/interface/GetAdminSettings">
     <header><h3>GetAdminSettings</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Tenancy/interface/GetAdminSettings</code></header>
-    <p class="desc">テナント内 admin が自身のテナントの設定 (表示名 / パスワードポリシー上書き) を取得する。
+    <p class="desc">テナント内 admin が自身のテナントの設定 (表示名 / 既定 locale / パスワードポリシー上書き) を取得する。
 対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。
 `/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。
-レスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) を
-含め、UI が「上書きしないときに実際に適用される値」を具体数字で示せるようにする。
+レスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) と、
+カタログが同梱翻訳を持つ locale 一覧 (supported_locales) を含め、UI が「上書きしないときに
+実際に適用される値」と既定 locale の選択肢を具体的に示せるようにする。
 </p>
 
     <div class="io">
@@ -2619,12 +3160,13 @@ bare path と control-plane path (/realms/default 配下、cookie session 整合
   </article>
 <article class="card" id="scl-Tenancy/interface/UpdateAdminSettings">
     <header><h3>UpdateAdminSettings</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><code class="canonical-ref">Tenancy/interface/UpdateAdminSettings</code></header>
-    <p class="desc">テナント内 admin が自身のテナントの設定を更新する。display_name と
-password_policy_override のいずれかまたは両方を任意フィールドとして受け取り、
+    <p class="desc">テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、
+password_policy_override のいずれかを任意フィールドとして受け取り、
 context.tenant_id に固定した上で UpdateTenant のロジックを実行する。
 password_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合
 (min_length 下回り / max_length 上回り / history_depth 下回り) は use case
-側で拒否する。
+側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、
+空文字列でシステム既定へ戻す。
 </p>
 
     <div class="io">
@@ -2863,6 +3405,246 @@ password_policy_override が Authentication context の PasswordPolicy の標準
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/tenant/branding/assets/{kind}</code></div></div>
   </div></div></div>
   </article>
+<article class="card" id="scl-Tenancy/interface/ListNotificationTemplates">
+    <header><h3>ListNotificationTemplates</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>NotificationTemplate:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Tenancy/interface/ListNotificationTemplates</code></header>
+    <p class="desc">テナント内 admin が通知テンプレートの一覧を取得する。カタログの全 template_key × 全サポート locale を、上書きの有無 (customized) と現在有効な件名つきで返す。対象テナントは context.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。
+</p>
+
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">NotificationTemplateListResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/tenant/notification_templates</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/GetNotificationTemplate">
+    <header><h3>GetNotificationTemplate</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>NotificationTemplate:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Tenancy/interface/GetNotificationTemplate</code></header>
+    <p class="desc">テナント内 admin がテンプレート 1 件を編集用に取得する。現在有効な文面、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。カタログに無い template_key / locale は InvalidRequestError で拒否する。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template</code></td>
+    <td><code class="type">NotificationTemplateDetail</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/tenant/notification_templates/{template_key}/{locale}</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/UpdateNotificationTemplate">
+    <header><h3>UpdateNotificationTemplate</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>NotificationTemplate:context.tenant_id</code><code class="canonical-ref">Tenancy/interface/UpdateNotificationTemplate</code></header>
+    <p class="desc">テナント内 admin がテンプレート上書きを保存する。件名 / テキスト本文 / HTML 本文を必須の組として全置換し、テキストだけ・HTML だけの上書きは作れない。本文と件名に含まれる差し込み変数が template_key の許可集合に収まらない場合は、実行時に空文字列へ潰れる前に保存時点で拒否する (fail-closed)。差出人メールアドレスはサーバ設定であり上書きできず、表示名だけを上書きできる。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">NotificationTemplateUpdateRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template</code></td>
+    <td><code class="type">NotificationTemplateDetail</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Tenancy/model/NotificationTemplateUpdated">NotificationTemplateUpdated</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">placeholdersWithin(input.request.subject, allowedPlaceholders(input.template_key))</code></li><li><code class="expr">placeholdersWithin(input.request.body_text, allowedPlaceholders(input.template_key))</code></li><li><code class="expr">placeholdersWithin(input.request.body_html, allowedPlaceholders(input.template_key))</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.template.customized</code></li></ul></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/tenant/notification_templates/{template_key}/{locale}</code> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/ResetNotificationTemplate">
+    <header><h3>ResetNotificationTemplate</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>NotificationTemplate:context.tenant_id</code><code class="canonical-ref">Tenancy/interface/ResetNotificationTemplate</code></header>
+    <p class="desc">テナント内 admin がテンプレート上書きを削除し組込み既定へ戻す。上書きが無いテンプレートに対しても成功する冪等操作。版管理は持たないため、戻り先は直前の上書きではなく常に組込み既定である。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template</code></td>
+    <td><code class="type">NotificationTemplateDetail</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Tenancy/model/NotificationTemplateReset">NotificationTemplateReset</a></div></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">!output.template.customized</code></li></ul></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/tenant/notification_templates/{template_key}/{locale}</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/PreviewNotificationTemplate">
+    <header><h3>PreviewNotificationTemplate</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>NotificationTemplate:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Tenancy/interface/PreviewNotificationTemplate</code></header>
+    <p class="desc">テナント内 admin が保存前の文面をサンプル値で描画する。省略したフィールドは現在有効な文面を使う。HTML 側の差し込み値は必ずエスケープして展開し、リンク URL はサンプルの発行元 URL から組み立てる。メールは送信せず、上書きも保存しない。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">NotificationTemplatePreviewRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">preview</code></td>
+    <td><code class="type">NotificationTemplatePreviewResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/tenant/notification_templates/{template_key}/{locale}/preview</code> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/SendTestNotification">
+    <header><h3>SendTestNotification</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>NotificationTemplate:context.tenant_id</code><code class="canonical-ref">Tenancy/interface/SendTestNotification</code></header>
+    <p class="desc">テナント内 admin が現在有効な文面のテストメールを受け取る。宛先は操作した管理者本人の検証済みメールアドレスに固定し、リクエストでは指定できない。任意宛先を許すと管理者権限がメール送信の踏み台になるため、この固定は仕様である。操作者に検証済みアドレスが無い場合は InvalidRequestError で拒否する。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">template_key</code></td>
+    <td><code class="type">NotificationTemplateKey</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">locale</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">result</code></td>
+    <td><code class="type">NotificationTemplateTestSendResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Tenancy/model/EmailSent">EmailSent</a></div></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.result.to == context.actor.email</code></li></ul></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/tenant/notification_templates/{template_key}/{locale}/test</code> <span class="chip chip-hint">response: 200</span></div></div>
+  </div></div></div>
+  </article>
 <article class="card" id="scl-Tenancy/interface/GetTenantBrandingAsset">
     <header><h3>GetTenantBrandingAsset</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Tenancy/interface/GetTenantBrandingAsset</code></header>
     <p class="desc">保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。アップロード後に返す URL は、
@@ -3051,7 +3833,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       </article></div>
   </section>
 <section id="context-tenancy-scenarios">
-    <h2>Scenarios <span class="count">9</span></h2>
+    <h2>Scenarios <span class="count">13</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-Tenancy/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E5~9B~BA~E6~9C~89~E3~81~AE~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E5~B1~9E~E6~80~A7~E3~82~B9~E3~82~AD~E3~83~BC~E3~83~9E~E3~82~92~E5~AE~9A~E7~BE~A9~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はテナント固有のユーザー属性スキーマを定義できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/管理者はテナント固有のユーザー属性スキーマを定義できる</code></header>
@@ -3128,6 +3910,63 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; は admin ロールのみを持ち system_admin ロールを持たない</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; が <a class="chip chip-ref" href="#scl-Tenancy/interface/ListTenants">ListTenants</a> を呼び出す</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a> で拒否される</li></ol></div>
 
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E6~97~A5~E6~9C~AC~E8~AA~9E~E3~83~AD~E3~82~B1~E3~83~BC~E3~83~AB~E3~81~AE~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E3~81~AB~E3~81~AF~E6~97~A5~E6~9C~AC~E8~AA~9E~E3~81~AE~E3~83~91~E3~82~B9~E3~83~AF~E3~83~BC~E3~83~89~E3~83~AA~E3~82~BB~E3~83~83~E3~83~88~E3~83~A1~E3~83~BC~E3~83~AB~E3~81~8C~E5~B1~8A~E3~81~8F">
+        <header><h3>日本語ロケールのユーザーには日本語のパスワードリセットメールが届く</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Tenancy/scenario/日本語ロケールのユーザーには日本語のパスワードリセットメールが届く</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">利用者 &quot;hanako&quot; は locale 属性が &quot;ja&quot;、検証済みメールアドレスを持つ</li><li class="scn-step">テナントは通知テンプレートを一度も上書きしていない</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;hanako&quot; が RequestPasswordReset を実行する</li><li class="scn-step">件名と本文が組込み既定の ja テンプレートで描画されたメールが届く</li><li class="scn-step">メールはプレーンテキストと HTML の両方を含む</li><li class="scn-step">本文のリセットリンクはリクエストの発行元 URL から組み立てられており、開くとパスワード再設定画面に到達する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">&quot;hanako&quot; の locale 属性が未設定で、テナントの default_locale が &quot;ja&quot; である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">テナント既定の &quot;ja&quot; が採用され、日本語のメールが届く</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">&quot;hanako&quot; の locale 属性が未設定で、テナントの default_locale も未設定である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">システム既定 locale が採用され、その locale のメールが届く</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">&quot;hanako&quot; の locale 属性がカタログに同梱翻訳の無い locale である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">未対応 locale は飛ばして次の段が採用され、空の本文は送られない</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AE~E9~80~9A~E7~9F~A5~E3~83~86~E3~83~B3~E3~83~97~E3~83~AC~E3~83~BC~E3~83~88~E4~B8~8A~E6~9B~B8~E3~81~8D~E3~81~AF~E7~B5~84~E8~BE~BC~E3~81~BF~E6~97~A2~E5~AE~9A~E3~82~88~E3~82~8A~E5~84~AA~E5~85~88~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>テナントの通知テンプレート上書きは組込み既定より優先される</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/テナントの通知テンプレート上書きは組込み既定より優先される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin ロールを持つ &quot;operator&quot; が認証済みである</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; が <a class="chip chip-ref" href="#scl-Tenancy/interface/ListNotificationTemplates">ListNotificationTemplates</a> を呼び出す</li><li class="scn-step">全 template_key × 全サポート locale が customized=false で一覧される</li><li class="scn-step">&quot;operator&quot; が PasswordReset / ja の件名と本文を上書きして <a class="chip chip-ref" href="#scl-Tenancy/interface/UpdateNotificationTemplate">UpdateNotificationTemplate</a> を実行する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/NotificationTemplateUpdated">NotificationTemplateUpdated</a> が発行され、当該テンプレートは customized=true になる</li><li class="scn-step">以後 ja の利用者に届くパスワードリセットメールは上書きした件名と本文で送られる</li><li class="scn-step">&quot;operator&quot; が <a class="chip chip-ref" href="#scl-Tenancy/interface/ResetNotificationTemplate">ResetNotificationTemplate</a> を実行する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/NotificationTemplateReset">NotificationTemplateReset</a> が発行され、当該テンプレートは組込み既定に戻る</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 5</span><code class="name">上書きしていない en の利用者にメールが送られる</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">en は組込み既定のまま描画され、ja の上書きは影響しない</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 7</span><code class="name">上書きが存在しないテンプレートに ResetNotificationTemplate を実行する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">冪等に成功し、組込み既定のままとなる</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E8~A8~B1~E5~8F~AF~E3~81~95~E3~82~8C~E3~81~A6~E3~81~84~E3~81~AA~E3~81~84~E5~B7~AE~E3~81~97~E8~BE~BC~E3~81~BF~E5~A4~89~E6~95~B0~E3~82~92~E5~90~AB~E3~82~80~E3~83~86~E3~83~B3~E3~83~97~E3~83~AC~E3~83~BC~E3~83~88~E4~B8~8A~E6~9B~B8~E3~81~8D~E3~81~AF~E4~BF~9D~E5~AD~98~E6~99~82~E3~81~AB~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin ロールを持つ &quot;operator&quot; が認証済みである</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; が PasswordReset の本文に許可集合外の変数 `{{password}}` を書いて保存を試みる</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否され、上書きは保存されない</li><li class="scn-step">以後も利用者には組込み既定のリセットメールが届き、リンクが欠けたメールは配られない</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">&quot;operator&quot; が HTML 本文を空にしてテキスト本文だけを保存しようとする</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否され、片方だけの上書きは作られない</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">&quot;operator&quot; がカタログに無い locale を指定して保存を試みる</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">&quot;operator&quot; が差出人メールアドレスの上書きを試みる</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">アドレスを上書きする入力は受け付けず、上書きできるのは表示名だけである</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E3~83~97~E3~83~AC~E3~83~93~E3~83~A5~E3~83~BC~E3~81~AF~E5~AE~9F~E9~80~81~E4~BF~A1~E3~81~9B~E3~81~9A~E3~83~86~E3~82~B9~E3~83~88~E9~80~81~E4~BF~A1~E3~81~AF~E6~93~8D~E4~BD~9C~E8~80~85~E6~9C~AC~E4~BA~BA~E3~81~AB~E3~81~97~E3~81~8B~E5~B1~8A~E3~81~8B~E3~81~AA~E3~81~84">
+        <header><h3>プレビューは実送信せずテスト送信は操作者本人にしか届かない</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/プレビューは実送信せずテスト送信は操作者本人にしか届かない</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin ロールを持つ &quot;operator&quot; が検証済みメールアドレスを持ち認証済みである</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; が保存前の文面で <a class="chip chip-ref" href="#scl-Tenancy/interface/PreviewNotificationTemplate">PreviewNotificationTemplate</a> を呼び出す</li><li class="scn-step">サンプル値を展開した件名・テキスト本文・HTML 本文が返る</li><li class="scn-step">メールは送信されず、上書きも保存されない</li><li class="scn-step">&quot;operator&quot; が <a class="chip chip-ref" href="#scl-Tenancy/interface/SendTestNotification">SendTestNotification</a> を呼び出す</li><li class="scn-step">宛先は &quot;operator&quot; 自身のアドレスに固定され、<a class="chip chip-ref" href="#scl-Tenancy/model/EmailSent">EmailSent</a> が発行される</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 2</span><code class="name">文面に利用者名などの差し込み値が含まれる</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">HTML 側の差し込み値はエスケープされて描画され、タグとして解釈されない</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 4</span><code class="name">リクエストで別の宛先を指定しようとする</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">宛先の指定手段は提供されず、常に操作者本人へ送られる</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 4</span><code class="name">操作者が検証済みメールアドレスを持たない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否され、メールは送信されない</li></ol></div>
+          </article></div>
       </article><article class="card scenario" id="scl-Tenancy/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~91~E3~82~B9~E3~83~AF~E3~83~BC~E3~83~89~E3~83~9D~E3~83~AA~E3~82~B7~E3~83~BC~E8~A8~AD~E5~AE~9A~E3~82~92~E5~8F~82~E7~85~A7~E3~83~BB~E6~9B~B4~E6~96~B0~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はパスワードポリシー設定を参照・更新できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/管理者はパスワードポリシー設定を参照・更新できる</code></header>
 
@@ -3225,7 +4064,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="TenantSettingsManagement navigation">
+      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="TenantSettingsManagement navigation">
         <defs>
           <marker id="arrow-flow-tenantsettingsmanagement" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
@@ -3237,10 +4076,40 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       </g></a><a href="#scl-Tenancy/interface/UpdateTenantBranding"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
         <text x="128.0" y="59.0">update_branding</text>
+      </g></a><a href="#scl-Tenancy/interface/ListNotificationTemplates"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-2">
+        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="256.0" y="59.0">open_notification_templates</text>
+      </g></a><a href="#scl-Tenancy/interface/GetNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-3">
+        <line x1="301.5" y1="77.8" x2="210.5" y2="178.2" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="256.0" y="122.0">edit</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-4">
+        <line x1="292.0" y1="65.0" x2="220.0" y2="65.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="256.0" y="59.0">back</text>
+      </g></a><a href="#scl-Tenancy/interface/PreviewNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-5">
+        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="128.0" y="185.0">preview</text>
+      </g></a><a href="#scl-Tenancy/interface/UpdateNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-6">
+        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="128.0" y="185.0">save</text>
+      </g></a><a href="#scl-Tenancy/interface/ResetNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-7">
+        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="128.0" y="185.0">reset</text>
+      </g></a><a href="#scl-Tenancy/interface/SendTestNotification"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-8">
+        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="128.0" y="185.0">send_test</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-9">
+        <line x1="210.5" y1="178.2" x2="301.5" y2="77.8" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="256.0" y="122.0">back</text>
       </g></a>
         <a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-initial" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-tenantsettings">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">TenantSettings</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-notificationtemplates">
+        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
+        <text x="384" y="70">NotificationTemplates</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-notificationtemplateeditor">
+        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
+        <text x="128" y="196">NotificationTemplateEditor</text>
       </g></a>
       </svg>
     </div>
@@ -3267,9 +4136,19 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
 
         <div class="flow-view">
             <h4>TenantSettings<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">テナント設定画面(表示名・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示)</p>
+            <p class="desc">テナント設定画面(表示名・既定 locale・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示、通知メールタブへの入口)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>表示名またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateAdminSettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a></td></tr></tbody></table>
+                   <tbody><tr><td>表示名、既定 locale、またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateAdminSettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a></td></tr><tr><td>通知メールタブを開く <code>open_notification_templates</code></td><td>NotificationTemplates</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/ListNotificationTemplates">ListNotificationTemplates</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>NotificationTemplates</h4>
+            <p class="desc">通知メールテンプレート一覧(template_key × locale の行、上書き済みかどうか、現在有効な件名、テスト送信の宛先が操作者本人に固定される旨の注記)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>一覧から 1 件を選び、件名・テキスト本文・HTML 本文・差出人表示名の編集フォームと使用できる差し込み変数の一覧を開く <code>edit</code></td><td>NotificationTemplateEditor</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/GetNotificationTemplate">GetNotificationTemplate</a></td></tr><tr><td>テナント設定画面に戻る <code>back</code></td><td>TenantSettings</td><td></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>NotificationTemplateEditor</h4>
+            <p class="desc">通知メールテンプレート編集画面(件名・テキスト本文・HTML 本文・差出人表示名のフォーム、使用できる差し込み変数の一覧、組込み既定との比較、プレビュー結果、テスト送信ボタンと固定宛先の説明)</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>編集中の文面をサンプル値で描画して確認する <code>preview</code></td><td>NotificationTemplateEditor</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/PreviewNotificationTemplate">PreviewNotificationTemplate</a></td></tr><tr><td>件名・テキスト本文・HTML 本文・差出人表示名を保存する <code>save</code></td><td>NotificationTemplateEditor</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateNotificationTemplate">UpdateNotificationTemplate</a></td></tr><tr><td>上書きを削除して組込み既定に戻す <code>reset</code></td><td>NotificationTemplateEditor</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/ResetNotificationTemplate">ResetNotificationTemplate</a></td></tr><tr><td>現在有効な文面のテストメールを自分宛に送信する <code>send_test</code></td><td>NotificationTemplateEditor</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/SendTestNotification">SendTestNotification</a></td></tr><tr><td>一覧に戻る <code>back</code></td><td>NotificationTemplates</td><td></td></tr></tbody></table>
           </div>
       </article></div>
   </section>
@@ -7181,6 +8060,11 @@ admin 専用で本経路では扱わない。
     <p class="desc">認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ
 ワンタイムリンクを送るだけで User.email は変えない。subject.id に固定し、tenant 内で
 既に使われているアドレスは拒否する。
+確認メールの文面は Tenancy の通知テンプレートカタログ
+(template_key=EmailChangeConfirmation) から解決し、locale は受信者 User の locale 属性 →
+テナントの default_locale → システム既定 locale の順に決める。テナント上書きがあれば
+組込み既定より優先する。プレーンテキストと HTML の両方を必ず生成し、確認リンクは
+リクエストの発行元 URL から組み立てる。
 </p>
 
     <dl class="kv"><dt>annotations</dt><dd><span class="chip chip-annotation">step up: required</span></dd></dl>
@@ -13901,8 +14785,12 @@ step_up_at を刻む。以降 recency 窓 (5 分) 内は step_up: required の
     <header><h3>RequestPasswordReset</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">Authentication/interface/RequestPasswordReset</code></header>
     <p class="desc">未認証ユーザーがパスワードリセットリンクの送信を要求する。
 anti-enumeration のため、email の存在有無に関わらず常に 204 を返し、
-verified email を持つ user が見つかった場合のみ token を発行して
-EmailSender 経由で送信する。
+verified email を持つ user が見つかった場合のみ token を発行して送信する。
+文面は Tenancy の通知テンプレートカタログ (template_key=PasswordReset) から
+解決する。locale は受信者 User の locale 属性 → テナントの default_locale →
+システム既定 locale の順に決め、テナント上書きがあれば組込み既定より優先する。
+プレーンテキストと HTML の両方を必ず生成し、リセットリンクは
+リクエストの発行元 URL から組み立てる (テンプレート側に URL 結合をさせない)。
 </p>
 
     <div class="io">
@@ -38603,7 +39491,7 @@ create/update と enable の双方で参照先の存在を検証する。
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>kind=send_email のとき必須。固定 template key (custom template editor は対象外)。</td>
+    <td>kind=send_email のとき必須。workflow 作成者が付ける通知の識別ラベル。送信文面は Tenancy の通知テンプレートカタログの LifecycleWorkflowNotification から解決し、この値は本文の差し込み変数として渡す。workflow ごとに別テンプレートを割り当てる機構は本 context の対象外。</td>
   </tr></tbody>
   </table>
 

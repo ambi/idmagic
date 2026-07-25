@@ -21,11 +21,26 @@ export function GeneralTab({
   onSaved: (next: AdminSettings) => void
 }) {
   const [displayName, setDisplayName] = useState(settings.display_name)
+  // 空文字列は「システムの既定に従う」。API 側も空文字列で未設定へ戻す (ADR-142 決定 7)。
+  const [defaultLocale, setDefaultLocale] = useState(settings.default_locale ?? '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminSettingsDictionary)
+
+  const localeOptions = [
+    { value: '', label: t.defaultLocaleSystemOption },
+    ...(settings.supported_locales ?? []).map((locale) => ({
+      value: locale,
+      label:
+        locale === 'ja'
+          ? t.defaultLocaleJaOption
+          : locale === 'en'
+            ? t.defaultLocaleEnOption
+            : locale,
+    })),
+  ]
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -39,15 +54,21 @@ export function GeneralTab({
         setError(validationError)
         return
       }
-      if (trimmed === settings.display_name) {
+      const displayNameChanged = trimmed !== settings.display_name
+      const localeChanged = defaultLocale !== (settings.default_locale ?? '')
+      if (!displayNameChanged && !localeChanged) {
         setNotice(t.noChangesNotice)
         return
       }
-      const next = await updateAdminSettings(csrfToken, { display_name: trimmed })
+      const next = await updateAdminSettings(csrfToken, {
+        ...(displayNameChanged ? { display_name: trimmed } : {}),
+        ...(localeChanged ? { default_locale: defaultLocale } : {}),
+      })
       onSaved(next)
       setDisplayName(next.display_name)
+      setDefaultLocale(next.default_locale ?? '')
       setEditing(false)
-      setNotice(t.displayNameUpdatedNotice)
+      setNotice(displayNameChanged ? t.displayNameUpdatedNotice : t.settingsUpdatedNotice)
     } catch (cause) {
       setError(
         cause instanceof AuthenticationAPIError ? cause.message : t.settingsUpdateFailedError,
@@ -79,6 +100,13 @@ export function GeneralTab({
           <dl className="grid gap-3 sm:grid-cols-2">
             <ReadSetting label={t.tenantIdLabel} value={settings.tenant_id} mono />
             <ReadSetting label={t.displayNameLabel} value={settings.display_name} />
+            <ReadSetting
+              label={t.defaultLocaleLabel}
+              value={
+                localeOptions.find((option) => option.value === (settings.default_locale ?? ''))
+                  ?.label ?? t.defaultLocaleSystemOption
+              }
+            />
           </dl>
         ) : (
           <form onSubmit={handleSave} className="grid gap-4">
@@ -103,6 +131,22 @@ export function GeneralTab({
               />
               <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
             </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="default-locale">{t.defaultLocaleLabel}</Label>
+              <select
+                id="default-locale"
+                value={defaultLocale}
+                onChange={(event) => setDefaultLocale(event.target.value)}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              >
+                {localeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">{t.defaultLocaleHelp}</p>
+            </div>
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={saving}>
                 {saving ? t.saving : t.save}
@@ -113,6 +157,7 @@ export function GeneralTab({
                 disabled={saving}
                 onClick={() => {
                   setDisplayName(settings.display_name)
+                  setDefaultLocale(settings.default_locale ?? '')
                   setEditing(false)
                 }}
               >

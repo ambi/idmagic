@@ -6,8 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,12 +23,14 @@ import (
 const PasswordResetTokenTTLSeconds = 1800
 
 type RequestPasswordResetDeps struct {
-	UserRepo    userports.UserRepository
-	TokenStore  passwordports.PasswordResetTokenStore
-	EmailSender sharednotification.EmailSender
-	Emit        func(spec.DomainEvent)
-	Issuer      string
-	TokenTTL    time.Duration
+	UserRepo   userports.UserRepository
+	TokenStore passwordports.PasswordResetTokenStore
+	// Notifier は文面 (件名 / テキスト / HTML) と locale を通知テンプレートカタログから
+	// 解決する。use case は文面を組み立てない (ADR-142)。
+	Notifier sharednotification.Notifier
+	Emit     func(spec.DomainEvent)
+	Issuer   string
+	TokenTTL time.Duration
 }
 
 type RequestPasswordResetInput struct {
@@ -75,17 +77,22 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 		return err
 	}
 
+	// The link is assembled here, not inside the template, so a tenant editing the
+	// template can never take over URL construction (ADR-142 §5).
 	resetURL := strings.TrimRight(deps.Issuer, "/") + "/reset_password?token=" + url.QueryEscape(rawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	// Send to the verified address stored on the account, not the raw request
 	// input, so untrusted request data never reaches the email content (CWE-640).
-	delivered := deps.EmailSender.SendEmail(ctx, sharednotification.EmailMessage{
-		To:      *user.Email,
-		Subject: "Password reset",
-		Text: fmt.Sprintf(
-			"A password reset was requested for your account.\n\nOpen the link below within %d minutes to set a new password:\n%s\n\nIf you did not request this, you can safely ignore this email.",
-			minutes, resetURL,
-		),
+	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
+		TenantID:        tenancy.TenantID(ctx),
+		To:              *user.Email,
+		Key:             sharednotification.TemplateKeyPasswordReset,
+		RecipientLocale: user.LocaleAttribute(),
+		Vars: map[string]string{
+			"user_display_name":  user.DisplayName(),
+			"reset_url":          resetURL,
+			"expires_in_minutes": strconv.Itoa(minutes),
+		},
 	})
 	if deps.Emit != nil {
 		deps.Emit(&spec.EmailSent{

@@ -142,6 +142,13 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
+      # TenantNotificationSource adapts Tenancy repositories to the shared
+      # notification port, whose "no tenant override for this template" answer is
+      # nil result + nil error, same as the Find* repository contracts above.
+      - path: backend/tenancy/usecases/manage_notification_templates\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
       # HIBP Range API requires a SHA-1 fingerprint for k-anonymity lookup.
       # This is not password storage/verification; stored password hashes use Argon2id.
       - path: backend/shared/policy/breaches_hibp/hibp_breached_password_checker\.go

@@ -14,6 +14,7 @@ import (
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
+	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -30,7 +31,7 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	})
 	var events []spec.DomainEvent
 	if err := userusecases.RequestEmailChange(ctx, userusecases.RequestEmailChangeDeps{
-		UserRepo: userRepo, TokenStore: tokenStore, EmailSender: sender,
+		UserRepo: userRepo, TokenStore: tokenStore, Notifier: newTestNotifier(sender),
 		Emit:   func(e spec.DomainEvent) { events = append(events, e) },
 		Issuer: "http://idp.test",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: " NEW@Example.COM ", Now: now}); err != nil {
@@ -66,7 +67,7 @@ func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 		},
 	})
 	if err := userusecases.RequestEmailChange(ctx, userusecases.RequestEmailChangeDeps{
-		UserRepo: userRepo, TokenStore: tokenStore, EmailSender: sender, Issuer: "http://idp.test",
+		UserRepo: userRepo, TokenStore: tokenStore, Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: "new@example.com", Now: now}); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,7 @@ func TestRequestEmailChangeRejectsAddressTakenByAnotherUser(t *testing.T) {
 	})
 	err := userusecases.RequestEmailChange(ctx, userusecases.RequestEmailChangeDeps{
 		UserRepo: userRepo, TokenStore: usermemory.NewEmailChangeTokenStore(),
-		EmailSender: &email_memory.NoopEmailSender{}, Issuer: "http://idp.test",
+		Notifier: newTestNotifier(&email_memory.NoopEmailSender{}), Issuer: "http://idp.test",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: taken, Now: now})
 	if !errors.Is(err, userusecases.ErrEmailTaken) {
 		t.Fatalf("error=%v, want ErrEmailTaken", err)
@@ -140,4 +141,50 @@ func tokenFromMessage(t *testing.T, message string) string {
 		t.Fatal(err)
 	}
 	return parsed.Query().Get("token")
+}
+
+func newTestNotifier(sender *email_memory.NoopEmailSender) *template.Notifier {
+	return &template.Notifier{Sender: sender, SystemDefaultLocale: "en"}
+}
+
+// scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
+// と同じ locale 解決を、メールアドレス変更の確認メールでも通す (ADR-142)。確認先の
+// 新アドレスは本文に出す必要があるため、new_email が差し込まれることも固定する。
+func TestRequestEmailChangeLocalizesToTheRecipientLocale(t *testing.T) {
+	ctx := context.Background()
+	userRepo := usermemory.NewUserRepository()
+	sender := &email_memory.NoopEmailSender{}
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	current := "old@example.com"
+	locale := "ja"
+	userRepo.Seed(&userdomain.User{
+		ID: "user-hanako", PreferredUsername: "hanako", PasswordHash: "unused",
+		Email: &current, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
+		Attributes: map[string]userdomain.AttributeValue{
+			"locale": {Type: idmdomain.AttributeTypeString, String: &locale},
+		},
+	})
+
+	if err := userusecases.RequestEmailChange(ctx, userusecases.RequestEmailChangeDeps{
+		UserRepo: userRepo, TokenStore: usermemory.NewEmailChangeTokenStore(),
+		Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
+	}, userusecases.RequestEmailChangeInput{Sub: "user-hanako", NewEmail: "new@example.com", Now: now}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sender.Sent) != 1 {
+		t.Fatalf("sent emails=%d, want 1", len(sender.Sent))
+	}
+	sent := sender.Sent[0]
+	if !strings.Contains(sent.Subject, "メールアドレス") {
+		t.Errorf("subject = %q, want the ja template", sent.Subject)
+	}
+	if sent.Text == "" || sent.HTML == "" {
+		t.Errorf("both parts are required, got text=%q html=%q", sent.Text, sent.HTML)
+	}
+	if !strings.Contains(sent.Text, "new@example.com") {
+		t.Errorf("text body does not name the new address: %q", sent.Text)
+	}
+	if !strings.Contains(sent.Text, "http://idp.test/account/email/verify?token=") {
+		t.Errorf("text body has no confirmation link: %q", sent.Text)
+	}
 }

@@ -2,13 +2,13 @@ import { IconMail, IconPalette, IconShieldLock, IconTag, IconUsers } from '@tabl
 import { useState } from 'react'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
-import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { BrandingTab } from './BrandingTab'
 import { GeneralTab } from './GeneralTab'
+import { NotificationTemplatesTab } from './NotificationTemplatesTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
 import { ApiTokensTab } from './ApiTokensTab'
 
@@ -55,7 +55,6 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       label: t.tabEmailLabel,
       description: t.tabEmailDescription,
       icon: IconMail,
-      disabled: true,
     },
   ]
 }
@@ -146,12 +145,7 @@ export function AdminSettingsPage({
           {active === 'api-tokens' ? (
             <ApiTokensTab csrfToken={csrfToken} tenantRealm={settings.realm} />
           ) : null}
-          {active === 'email' ? (
-            <Card className="p-6">
-              <h2 className="text-base font-semibold text-slate-900">{t.emailTabHeading}</h2>
-              <p className="mt-2 text-sm text-slate-600">{t.emailTabDescription}</p>
-            </Card>
-          ) : null}
+          {active === 'email' ? <NotificationTemplatesTab csrfToken={csrfToken} /> : null}
         </div>
       </div>
     </AdminShell>

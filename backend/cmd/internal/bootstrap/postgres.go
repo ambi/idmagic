@@ -128,11 +128,12 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 
 	return &Dependencies{
 		Tenancy: tenancy.Module{
-			TenantRepo:         tenantRepo,
-			AttrSchemaRepo:     &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
-			BrandingRepo:       &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
-			BrandingAssetStore: &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
-			QuotaRepo:          tenancypostgres.NewQuotaRepository(resilientDB),
+			TenantRepo:            tenantRepo,
+			AttrSchemaRepo:        &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+			BrandingRepo:          &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
+			BrandingAssetStore:    &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
+			NotificationTemplates: &tenancypostgres.NotificationTemplateRepository{Pool: resilientDB},
+			QuotaRepo:             tenancypostgres.NewQuotaRepository(resilientDB),
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,

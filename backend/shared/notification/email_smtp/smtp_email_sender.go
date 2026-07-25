@@ -156,7 +156,7 @@ func buildRFC5322Message(from string, message sharednotification.EmailMessage, n
 	if err != nil {
 		return "", err
 	}
-	fromHeader, err := formatAddressHeader(from)
+	fromHeader, err := formatFromHeader(from, message.FromDisplayName)
 	if err != nil {
 		return "", fmt.Errorf("smtp from header: %w", err)
 	}
@@ -223,11 +223,21 @@ func writePart(b *strings.Builder, boundary, contentType, body string) {
 // (the requested new email in the email-change flow). Do not "simplify" this
 // back to returning parsed.Address.
 func formatAddressHeader(address string) (string, error) {
+	return formatFromHeader(address, "")
+}
+
+// formatFromHeader is formatAddressHeader plus a caller-supplied display name. A
+// tenant may override only the display part of the From mailbox (ADR-142 §6), so
+// the address still comes from server configuration and is re-parsed here.
+// (*mail.Address).String quotes and MIME-encodes the name, and CR/LF is collapsed
+// first, so a display name can neither terminate the header nor introduce a
+// second mailbox.
+func formatFromHeader(address, displayName string) (string, error) {
 	parsed, err := mail.ParseAddress(strings.TrimSpace(address))
 	if err != nil {
 		return "", err
 	}
-	return (&mail.Address{Address: parsed.Address}).String(), nil
+	return (&mail.Address{Name: sanitizeHeaderValue(displayName), Address: parsed.Address}).String(), nil
 }
 
 // sanitizeHeaderValue collapses CR/LF in a free-text header value so a caller

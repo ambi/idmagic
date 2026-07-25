@@ -1978,7 +1978,7 @@ interfaces:
         successful_status_codes:
           - "204"
   RequestPasswordReset:
-    description: "未認証ユーザーがパスワードリセットリンクの送信を要求する。\nanti-enumeration のため、email の存在有無に関わらず常に 204 を返し、\nverified email を持つ user が見つかった場合のみ token を発行して\nEmailSender 経由で送信する。\n"
+    description: "未認証ユーザーがパスワードリセットリンクの送信を要求する。\nanti-enumeration のため、email の存在有無に関わらず常に 204 を返し、\nverified email を持つ user が見つかった場合のみ token を発行して送信する。\n文面は Tenancy の通知テンプレートカタログ (template_key=PasswordReset) から\n解決する。locale は受信者 User の locale 属性 → テナントの default_locale →\nシステム既定 locale の順に決め、テナント上書きがあれば組込み既定より優先する。\nプレーンテキストと HTML の両方を必ず生成し、リセットリンクは\nリクエストの発行元 URL から組み立てる (テンプレート側に URL 結合をさせない)。\n"
     input:
       request:
         type: BrowserForgotPasswordRequest

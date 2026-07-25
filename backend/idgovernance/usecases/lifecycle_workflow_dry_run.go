@@ -21,7 +21,7 @@ type DryRunLifecycleWorkflowDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	EmailSender     sharednotification.EmailSender
+	Notifier        sharednotification.Notifier
 }
 
 type LifecycleWorkflowDryRunStepResult struct {
@@ -77,7 +77,7 @@ func DryRunLifecycleWorkflow(ctx context.Context, deps DryRunLifecycleWorkflowDe
 		return nil, ErrLifecycleWorkflowTargetUserNotFound
 	}
 	triggerMatches := igdomain.EvaluateWorkflowFilters(revision.Trigger.Filters, user)
-	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, EmailSender: deps.EmailSender}
+	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, Notifier: deps.Notifier}
 	steps := make([]LifecycleWorkflowDryRunStepResult, 0, len(revision.Actions))
 	for _, action := range revision.Actions {
 		if !triggerMatches {

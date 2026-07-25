@@ -170,3 +170,83 @@ func TestUpdateClearsOverrideWhenAllFieldsZero(t *testing.T) {
 		t.Fatalf("override should be cleared: %#v", updated.PasswordPolicyOverride)
 	}
 }
+
+// テナント既定 locale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。カタログが
+// 同梱翻訳を持たない locale は保存時に拒否し、空文字列でシステム既定へ戻す。
+func TestUpdateDefaultLocale(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
+	newRepo := func(t *testing.T) *memory.TenantRepository {
+		t.Helper()
+		repo := memory.NewTenantRepository()
+		if err := repo.Save(ctx, &domain.Tenant{
+			ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.",
+			Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return repo
+	}
+	locale := func(value string) *string { return &value }
+
+	t.Run("sets a supported locale", func(t *testing.T) {
+		repo := newRepo(t)
+		updated, err := Update(ctx, repo, "tenant-a",
+			UpdateInput{DefaultLocale: locale("ja")}, PolicyFloor{}, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if updated.DefaultLocale == nil || *updated.DefaultLocale != "ja" {
+			t.Fatalf("DefaultLocale = %v, want ja", updated.DefaultLocale)
+		}
+	})
+
+	t.Run("clears back to the system default", func(t *testing.T) {
+		repo := newRepo(t)
+		if _, err := Update(ctx, repo, "tenant-a",
+			UpdateInput{DefaultLocale: locale("ja")}, PolicyFloor{}, now); err != nil {
+			t.Fatal(err)
+		}
+		updated, err := Update(ctx, repo, "tenant-a",
+			UpdateInput{DefaultLocale: locale("")}, PolicyFloor{}, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if updated.DefaultLocale != nil {
+			t.Fatalf("DefaultLocale = %v, want nil", updated.DefaultLocale)
+		}
+	})
+
+	t.Run("rejects a locale with no bundled translation", func(t *testing.T) {
+		repo := newRepo(t)
+		_, err := Update(ctx, repo, "tenant-a",
+			UpdateInput{DefaultLocale: locale("fr")}, PolicyFloor{}, now)
+		if !errors.Is(err, ErrUnsupportedDefaultLocale) {
+			t.Fatalf("error = %v, want ErrUnsupportedDefaultLocale", err)
+		}
+		stored, err := repo.FindByID(ctx, "tenant-a")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if stored.DefaultLocale != nil {
+			t.Fatalf("a rejected locale was saved: %v", stored.DefaultLocale)
+		}
+	})
+
+	t.Run("omitting the field keeps the current value", func(t *testing.T) {
+		repo := newRepo(t)
+		if _, err := Update(ctx, repo, "tenant-a",
+			UpdateInput{DefaultLocale: locale("ja")}, PolicyFloor{}, now); err != nil {
+			t.Fatal(err)
+		}
+		name := "Acme Corporation"
+		updated, err := Update(ctx, repo, "tenant-a",
+			UpdateInput{DisplayName: &name}, PolicyFloor{}, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if updated.DefaultLocale == nil || *updated.DefaultLocale != "ja" {
+			t.Fatalf("DefaultLocale = %v, want the untouched ja", updated.DefaultLocale)
+		}
+	})
+}

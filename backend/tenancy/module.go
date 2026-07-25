@@ -13,5 +13,7 @@ type Module struct {
 	AttrSchemaRepo     ports.TenantUserAttributeSchemaRepository
 	BrandingRepo       ports.TenantBrandingRepository
 	BrandingAssetStore ports.TenantBrandingAssetStore
-	QuotaRepo          ports.QuotaRepository
+	// NotificationTemplates はテナントによる通知テンプレート上書き (wi-288, ADR-142)。
+	NotificationTemplates ports.NotificationTemplateRepository
+	QuotaRepo             ports.QuotaRepository
 }

@@ -7,9 +7,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/mail"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,12 +38,14 @@ func sha256Hex(value string) string {
 // 新アドレスへワンタイムリンクを送り、確定は ConfirmEmailChange で行う。実際の
 // User.Email 更新は確定時まで起きない (新アドレスの所有確認を経るまで反映しない)。
 type RequestEmailChangeDeps struct {
-	UserRepo    userports.UserRepository
-	TokenStore  userports.EmailChangeTokenStore
-	EmailSender sharednotification.EmailSender
-	Emit        func(spec.DomainEvent)
-	Issuer      string
-	TokenTTL    time.Duration
+	UserRepo   userports.UserRepository
+	TokenStore userports.EmailChangeTokenStore
+	// Notifier は文面 (件名 / テキスト / HTML) と locale を通知テンプレートカタログから
+	// 解決する。use case は文面を組み立てない (ADR-142)。
+	Notifier sharednotification.Notifier
+	Emit     func(spec.DomainEvent)
+	Issuer   string
+	TokenTTL time.Duration
 }
 
 type RequestEmailChangeInput struct {
@@ -98,15 +100,21 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 		return err
 	}
 
+	// リンクはここで組み立てる。テナントがテンプレートを編集しても URL の構築を
+	// 奪えないようにする (ADR-142 決定 5)。
 	verifyURL := strings.TrimRight(deps.Issuer, "/") + "/account/email/verify?token=" + url.QueryEscape(rawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
-	delivered := deps.EmailSender.SendEmail(ctx, sharednotification.EmailMessage{
-		To:      newEmail,
-		Subject: "Confirm your new email address",
-		Text: fmt.Sprintf(
-			"A request was made to set this address as the email for your account.\n\nOpen the link below within %d minutes to confirm:\n%s\n\nIf you did not request this, you can ignore this email.",
-			minutes, verifyURL,
-		),
+	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
+		TenantID:        user.TenantID,
+		To:              newEmail,
+		Key:             sharednotification.TemplateKeyEmailChangeConfirmation,
+		RecipientLocale: user.LocaleAttribute(),
+		Vars: map[string]string{
+			"user_display_name":  user.DisplayName(),
+			"confirmation_url":   verifyURL,
+			"expires_in_minutes": strconv.Itoa(minutes),
+			"new_email":          newEmail,
+		},
 	})
 	if deps.Emit != nil {
 		deps.Emit(&idmdomain.EmailChangeRequested{

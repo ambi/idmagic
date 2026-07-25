@@ -185,6 +185,48 @@ func TestBuildRFC5322MessageSanitizesUntrustedContent(t *testing.T) {
 	}
 }
 
+// テナントが上書きできるのは差出人の表示名だけで、アドレスはサーバ設定のまま
+// (ADR-142 決定 6)。表示名は mail.Address 経由で quoting / MIME encoding される。
+func TestBuildRFC5322MessageAppliesFromDisplayName(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+		To: "bob@example.com", Subject: "x", Text: "y", HTML: "<p>y</p>",
+		FromDisplayName: "Acme サポート",
+	}, now)
+	if err != nil {
+		t.Fatalf("buildRFC5322Message: %v", err)
+	}
+	if !strings.Contains(body, "<noreply@idmagic.test>") {
+		t.Errorf("From address must stay server configuration:\n%s", body)
+	}
+	if !strings.Contains(body, "From: =?utf-8?") {
+		t.Errorf("expected the display name to be MIME-encoded:\n%s", body)
+	}
+	if strings.Contains(body, "Acme サポート") {
+		t.Errorf("raw display name reached SMTP DATA:\n%s", body)
+	}
+}
+
+// 表示名に改行や別アドレスを混ぜてヘッダを分断・差出人を差し替えできないこと。
+func TestBuildRFC5322MessageSanitizesFromDisplayName(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+		To: "bob@example.com", Subject: "x", Text: "y",
+		FromDisplayName: "Acme\r\nBcc: attacker@example.test",
+	}, now)
+	if err != nil {
+		t.Fatalf("buildRFC5322Message: %v", err)
+	}
+	if strings.Contains(body, "\r\nBcc: attacker@example.test") {
+		t.Fatalf("display name created an injected header:\n%s", body)
+	}
+	if !strings.Contains(body, "<noreply@idmagic.test>") {
+		t.Fatalf("From address must stay server configuration:\n%s", body)
+	}
+}
+
 func TestBuildRFC5322MessageRejectsInvalidAddressHeader(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)

@@ -78,10 +78,14 @@ CREATE TABLE tenants (
     realm TEXT NOT NULL,
     display_name TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
+    -- default_locale (wi-288, ADR-142 §7): the tenant tier of notification locale
+    -- resolution (recipient -> tenant -> system). NULL means "use the system default".
+    default_locale TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
     CONSTRAINT tenants_realm_unique UNIQUE (realm),
+    CONSTRAINT tenants_default_locale_format CHECK (default_locale IS NULL OR default_locale ~ '^[a-z]{2}$'),
     CONSTRAINT tenants_realm_format CHECK (
         realm <> 'admin' AND realm ~ '^[a-z0-9][a-z0-9-]{0,62}$'
     )
@@ -148,6 +152,38 @@ CREATE TABLE tenant_brandings (
     CONSTRAINT tenant_brandings_footer_link_2_label_length CHECK (footer_link_2_label IS NULL OR char_length(footer_link_2_label) <= 80),
     CONSTRAINT tenant_brandings_footer_link_1_url_format CHECK (footer_link_1_url IS NULL OR footer_link_1_url ~ '^https://'),
     CONSTRAINT tenant_brandings_footer_link_2_url_format CHECK (footer_link_2_url IS NULL OR footer_link_2_url ~ '^https://')
+);
+
+-- notification_templates (wi-288, ADR-142): tenant overrides of the notification
+-- email catalog, keyed by (tenant_id, template_key, locale). Absence of a row means
+-- the builtin default for that key / locale is used, and deleting the row is exactly
+-- how "reset to default" works (no version history, ADR-142 §1). Individual columns
+-- rather than JSONB so per-column length limits are CHECK constraints (ADR-084,
+-- same reasoning as tenant_brandings). Subject / text body / HTML body are NOT NULL
+-- together so a half-overridden template cannot exist (ADR-142 §4); from_display_name
+-- is nullable because the system default sender display name is a valid choice.
+CREATE TABLE notification_templates (
+    tenant_id UUID NOT NULL,
+    template_key TEXT NOT NULL CHECK (template_key IN (
+        'password_reset', 'email_verification', 'email_change_confirmation',
+        'account_security_alert', 'lifecycle_workflow_notification'
+    )),
+    locale TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_text TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    from_display_name TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, template_key, locale),
+    CONSTRAINT notification_templates_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT notification_templates_locale_format CHECK (locale ~ '^[a-z]{2}$'),
+    CONSTRAINT notification_templates_subject_length CHECK (char_length(subject) BETWEEN 1 AND 200),
+    CONSTRAINT notification_templates_body_text_length CHECK (char_length(body_text) BETWEEN 1 AND 8000),
+    CONSTRAINT notification_templates_body_html_length CHECK (char_length(body_html) BETWEEN 1 AND 20000),
+    CONSTRAINT notification_templates_from_display_name_length
+        CHECK (from_display_name IS NULL OR char_length(from_display_name) <= 80)
 );
 
 -- tenant_branding_assets (wi-89, ADR-096): validated logo / favicon blobs for

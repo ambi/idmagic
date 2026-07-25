@@ -73,7 +73,7 @@ func HandleForgotPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		c.Request().Context(),
 		authusecases.RequestPasswordResetDeps{
 			UserRepo: d.UserRepo, TokenStore: d.PasswordResetTokenStore,
-			EmailSender: d.EmailSender, Emit: d.Emit,
+			Notifier: d.Notifier, Emit: d.Emit,
 			Issuer: support.RequestIssuer(c, d.Issuer), TokenTTL: ttl,
 		},
 		authusecases.RequestPasswordResetInput{Email: input.Email, Now: time.Now().UTC()},

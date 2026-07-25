@@ -1369,6 +1369,17 @@
         "password_policy_defaults": {
           "$ref": "#/$defs/PasswordPolicyDefaults"
         },
+        "default_locale": {
+          "type": "string",
+          "description": "テナントの既定 locale。未設定ならシステム既定 locale を使う。"
+        },
+        "supported_locales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "カタログが同梱翻訳を持つ locale の一覧。管理 UI が既定 locale と通知テンプレートの選択肢を組み立てるために返す。"
+        },
         "quota": {
           "$ref": "#/$defs/TenantQuota"
         },
@@ -1382,6 +1393,7 @@
         "realm",
         "display_name",
         "password_policy_defaults",
+        "supported_locales",
         "quota",
         "usage"
       ],
@@ -9724,6 +9736,346 @@
       ],
       "description": "発行 assertion の NameID (subject 識別子) の format と供給元。"
     },
+    "NotificationTemplate": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "description": "所属テナント ID。"
+        },
+        "template_key": {
+          "$ref": "#/$defs/NotificationTemplateKey"
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z]{2}$",
+          "description": "この上書きが適用される locale。カタログが同梱翻訳を持つ locale のみ受け付ける。"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "メール件名。改行を含められない単一行のテキストとして扱う。"
+        },
+        "body_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "description": "プレーンテキスト本文。HTML として解釈しない。"
+        },
+        "body_html": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000,
+          "description": "HTML 本文。`<body>` 内に入る fragment であり、doctype / `<head>` / 文字エンコーディング / 本文コンテナのスタイルはシステムが供給する外枠が持つ。差し込み値は必ずエスケープして展開する。テキスト本文と必ず対で保存し、片方だけの上書きは作れない。"
+        },
+        "from_display_name": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "差出人の表示名。空文字列は未設定を意味し、システム既定の差出人表示になる。メールアドレス自体はサーバ設定であり上書きできない。"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "template_key",
+        "locale",
+        "subject",
+        "body_text",
+        "body_html",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "テナントによる通知テンプレート上書き 1 件。(tenant_id, template_key, locale) で一意。行が存在しない組み合わせは組込み既定 (BuiltinNotificationTemplate) を使う。上書きできるのは件名 / プレーンテキスト本文 / HTML 本文 / 差出人表示名だけで、任意 HTML 文書や CSS の全面差し替えは受け付けない。本文が使える差し込み変数は template_key ごとの許可集合に限られる。"
+    },
+    "NotificationTemplateDetail": {
+      "type": "object",
+      "properties": {
+        "template_key": {
+          "$ref": "#/$defs/NotificationTemplateKey"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "customized": {
+          "type": "boolean"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "body_text": {
+          "type": "string"
+        },
+        "body_html": {
+          "type": "string"
+        },
+        "from_display_name": {
+          "type": "string"
+        },
+        "default_subject": {
+          "type": "string",
+          "description": "組込み既定の件名。"
+        },
+        "default_body_text": {
+          "type": "string"
+        },
+        "default_body_html": {
+          "type": "string"
+        },
+        "placeholders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "この template_key で使える差し込み変数名の許可集合。"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "template_key",
+        "locale",
+        "customized",
+        "subject",
+        "body_text",
+        "body_html",
+        "default_subject",
+        "default_body_text",
+        "default_body_html",
+        "placeholders"
+      ],
+      "description": "テンプレート 1 件の編集用表現。現在有効な文面と、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。管理 UI は既定との差分提示と「既定に戻す」を追加の問い合わせなしに描ける。"
+    },
+    "NotificationTemplateKey": {
+      "type": "string",
+      "enum": [
+        "PasswordReset",
+        "EmailVerification",
+        "EmailChangeConfirmation",
+        "AccountSecurityAlert",
+        "LifecycleWorkflowNotification"
+      ],
+      "description": "通知の用途を表す固定識別子。カタログはこの全 key に対し ja / en の組込み既定テンプレートを持つ。テナントは key を追加できない。AccountSecurityAlert は現在どの経路からも送信されず、カタログと編集面だけが先に存在する。"
+    },
+    "NotificationTemplateListResponse": {
+      "type": "object",
+      "properties": {
+        "templates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NotificationTemplateSummary"
+          }
+        },
+        "supported_locales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "templates",
+        "supported_locales"
+      ],
+      "description": "テンプレート一覧。カタログの全 key × 全サポート locale を、上書きの有無にかかわらず返す。"
+    },
+    "NotificationTemplatePreviewRequest": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "body_text": {
+          "type": "string"
+        },
+        "body_html": {
+          "type": "string"
+        },
+        "from_display_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "保存前の文面をサンプル値で描画するリクエスト。省略したフィールドは現在有効な文面を使う。"
+    },
+    "NotificationTemplatePreviewResponse": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "body_text": {
+          "type": "string"
+        },
+        "body_html": {
+          "type": "string"
+        },
+        "from_display_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "subject",
+        "body_text",
+        "body_html"
+      ],
+      "description": "サンプル値を展開した描画結果。実際のメール送信は起こらない。"
+    },
+    "NotificationTemplateReset": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "templateKey": {
+          "type": "string"
+        },
+        "locale": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "templateKey",
+        "locale"
+      ],
+      "description": "テナント内 admin が通知テンプレートの上書きを削除し組込み既定へ戻した。"
+    },
+    "NotificationTemplateSummary": {
+      "type": "object",
+      "properties": {
+        "template_key": {
+          "$ref": "#/$defs/NotificationTemplateKey"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "customized": {
+          "type": "boolean",
+          "description": "true ならテナント上書きが存在する。false なら組込み既定。"
+        },
+        "subject": {
+          "type": "string",
+          "description": "現在有効な件名 (上書きがあれば上書き、無ければ組込み既定)。"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "上書きが存在する場合の最終更新時刻。組込み既定のみなら省略する。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "template_key",
+        "locale",
+        "customized",
+        "subject"
+      ],
+      "description": "テンプレート一覧の 1 行。key × locale の組ごとに、上書き済みかどうかと現在有効な件名を返す。"
+    },
+    "NotificationTemplateTestSendResponse": {
+      "type": "object",
+      "properties": {
+        "delivered": {
+          "type": "boolean"
+        },
+        "to": {
+          "type": "string",
+          "description": "実際に送信した宛先 (操作者本人のアドレス)。UI が「どこへ送ったか」を明示するために返す。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "delivered",
+        "to"
+      ],
+      "description": "テスト送信の結果。宛先は操作した管理者本人の検証済みメールアドレスに固定され、リクエストでは指定できない。"
+    },
+    "NotificationTemplateUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "body_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "body_html": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "from_display_name": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "subject",
+        "body_text",
+        "body_html"
+      ],
+      "description": "テンプレート上書きの保存リクエスト。4 フィールドをまとめて置換する部分更新ではない全置換で、件名 / テキスト本文 / HTML 本文はいずれも必須。許可集合外の差し込み変数を含む場合は保存せず拒否する。"
+    },
+    "NotificationTemplateUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "templateKey": {
+          "type": "string"
+        },
+        "locale": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "templateKey",
+        "locale"
+      ],
+      "description": "テナント内 admin が通知テンプレートの上書きを保存した。文面そのものは記録せず、対象の key と locale のみを記録する。"
+    },
     "OAuth2Client": {
       "type": "object",
       "properties": {
@@ -13328,6 +13680,9 @@
         "password_policy_override": {
           "$ref": "#/$defs/PasswordPolicyOverride"
         },
+        "default_locale": {
+          "type": "string"
+        },
         "quota": {
           "$ref": "#/$defs/TenantQuota"
         },
@@ -13370,6 +13725,10 @@
         "password_policy_override": {
           "$ref": "#/$defs/PasswordPolicyOverride",
           "description": "省略時は既存値を維持。null を渡したい場合は明示する。"
+        },
+        "default_locale": {
+          "type": "string",
+          "description": "テナント既定 locale。省略時は既存値を維持し、空文字列でシステム既定へ戻す。サポート外の locale は拒否する。"
         }
       },
       "additionalProperties": false,
@@ -14780,7 +15139,7 @@
         },
         "template_key": {
           "type": "string",
-          "description": "kind=send_email のとき必須。固定 template key (custom template editor は対象外)。"
+          "description": "kind=send_email のとき必須。workflow 作成者が付ける通知の識別ラベル。送信文面は Tenancy の通知テンプレートカタログの LifecycleWorkflowNotification から解決し、この値は本文の差し込み変数として渡す。workflow ごとに別テンプレートを割り当てる機構は本 context の対象外。"
         }
       },
       "additionalProperties": false,

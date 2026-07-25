@@ -9,6 +9,7 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/notification/template"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -37,8 +38,13 @@ type AdminSettingsResponse struct {
 	DisplayName            string                         `json:"display_name"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	PasswordPolicyDefaults passwordPolicyDefaults         `json:"password_policy_defaults"`
-	Quota                  *domain.TenantQuota            `json:"quota,omitempty"`
-	Usage                  *domain.TenantUsage            `json:"usage,omitempty"`
+	// DefaultLocale は通知の locale 解決の第 2 段。空文字列はシステム既定を使う意味。
+	// SupportedLocales はカタログが同梱翻訳を持つ locale で、UI の選択肢になる
+	// (wi-288, ADR-142 決定 7)。
+	DefaultLocale    string              `json:"default_locale,omitempty"`
+	SupportedLocales []string            `json:"supported_locales"`
+	Quota            *domain.TenantQuota `json:"quota,omitempty"`
+	Usage            *domain.TenantUsage `json:"usage,omitempty"`
 }
 
 type passwordPolicyDefaults struct {
@@ -50,6 +56,8 @@ type passwordPolicyDefaults struct {
 type adminSettingsUpdateRequest struct {
 	DisplayName            *string                        `json:"display_name,omitempty"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	// DefaultLocale は省略で現状維持、空文字列でシステム既定へ戻す。
+	DefaultLocale *string `json:"default_locale,omitempty"`
 }
 
 func (d Deps) handleGetAdminSettings(c *echo.Context) error {
@@ -96,6 +104,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 		tenantusecases.UpdateInput{
 			DisplayName:            input.DisplayName,
 			PasswordPolicyOverride: input.PasswordPolicyOverride,
+			DefaultLocale:          input.DefaultLocale,
 		},
 		d.tenantPolicyFloor(),
 		now,
@@ -114,7 +123,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 
 func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 	floor := d.tenantPolicyFloor()
-	return AdminSettingsResponse{
+	response := AdminSettingsResponse{
 		TenantID:               t.ID,
 		Realm:                  t.Realm,
 		DisplayName:            t.DisplayName,
@@ -124,9 +133,14 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			MaxLength:    floor.MaxLength,
 			HistoryDepth: floor.HistoryDepth,
 		},
-		Quota: t.Quota,
-		Usage: t.Usage,
+		SupportedLocales: template.SupportedLocales(),
+		Quota:            t.Quota,
+		Usage:            t.Usage,
 	}
+	if t.DefaultLocale != nil {
+		response.DefaultLocale = *t.DefaultLocale
+	}
+	return response
 }
 
 func adminSettingsChangedFields(input adminSettingsUpdateRequest) []string {
@@ -136,6 +150,9 @@ func adminSettingsChangedFields(input adminSettingsUpdateRequest) []string {
 	}
 	if input.PasswordPolicyOverride != nil {
 		fields = append(fields, "password_policy_override")
+	}
+	if input.DefaultLocale != nil {
+		fields = append(fields, "default_locale")
 	}
 	return fields
 }

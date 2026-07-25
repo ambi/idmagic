@@ -1813,7 +1813,7 @@ interfaces:
         path: /api/account/profile
         request_form: body
   RequestEmailChange:
-    description: "認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。subject.id に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n"
+    description: "認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。subject.id に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n確認メールの文面は Tenancy の通知テンプレートカタログ\n(template_key=EmailChangeConfirmation) から解決し、locale は受信者 User の locale 属性 →\nテナントの default_locale → システム既定 locale の順に決める。テナント上書きがあれば\n組込み既定より優先する。プレーンテキストと HTML の両方を必ず生成し、確認リンクは\nリクエストの発行元 URL から組み立てる。\n"
     input:
       request:
         type: AccountEmailChangeRequest

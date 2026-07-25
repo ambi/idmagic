@@ -32,6 +32,7 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
@@ -227,6 +228,12 @@ func mergeLegacyNotificationDeps(module sharednotification.Module, d Deps) share
 	if module.EmailSender == nil {
 		module.EmailSender = d.EmailSender
 	}
+	// 旧来の互換入力 (EmailSender だけを渡すテスト) からも通知テンプレートカタログを
+	// 通した送信になるよう、Notifier を既定構成で組み立てる。テナント上書きは
+	// Tenancy 由来なので、この経路では組込み既定だけを使う (ADR-142)。
+	if module.Notifier == nil && module.EmailSender != nil {
+		module.Notifier = &template.Notifier{Sender: module.EmailSender}
+	}
 	return module
 }
 
@@ -327,6 +334,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantRepo:                d.TenantRepo,
 		PasswordResetTokenStore:   d.Authentication.PasswordResetTokenStore,
 		EmailSender:               d.Notification.EmailSender,
+		Notifier:                  d.Notification.Notifier,
 		BreachedPasswordChecker:   d.Authentication.BreachedPasswordChecker,
 		WebAuthnRP:                d.Authentication.WebAuthnRP,
 		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
@@ -353,6 +361,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
 		EmailChangeTokenStore: d.IdManagement.EmailChangeTokenStore,
 		EmailSender:           d.Notification.EmailSender,
+		Notifier:              d.Notification.Notifier,
 		JobRepo:               d.Jobs.Repo,
 		QuotaRepo:             d.Tenancy.QuotaRepo,
 	})
@@ -364,8 +373,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		JobRepo:                  d.Jobs.Repo,
 		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
-		EmailSender: d.Notification.EmailSender,
-		QuotaRepo:   d.Tenancy.QuotaRepo,
+		Notifier:  d.Notification.Notifier,
+		QuotaRepo: d.Tenancy.QuotaRepo,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
@@ -375,9 +384,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AttrSchemaRepo:     d.Tenancy.AttrSchemaRepo,
 		BrandingRepo:       d.Tenancy.BrandingRepo,
 		BrandingAssetStore: d.Tenancy.BrandingAssetStore,
-		UserRepo:           d.IdManagement.UserRepo,
-		GroupRepo:          d.IdManagement.GroupRepo,
-		QuotaRepo:          d.Tenancy.QuotaRepo,
+
+		NotificationTemplateRepo: d.Tenancy.NotificationTemplates,
+		Notifier:                 d.Notification.Notifier,
+		UserRepo:                 d.IdManagement.UserRepo,
+		GroupRepo:                d.IdManagement.GroupRepo,
+		QuotaRepo:                d.Tenancy.QuotaRepo,
 	})
 
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner,

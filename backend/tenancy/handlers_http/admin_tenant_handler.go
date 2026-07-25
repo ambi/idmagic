@@ -231,6 +231,9 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 		errors.Is(err, tenantusecases.ErrDisplayNameEmpty),
 		errors.Is(err, tenantusecases.ErrDefaultTenant):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	case errors.Is(err, tenantusecases.ErrUnsupportedDefaultLocale):
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request",
+			"The default locale has no bundled translation for notification emails.")
 	case errors.Is(err, tenantusecases.ErrPolicyOverrideWeaker):
 		floor := d.tenantPolicyFloor()
 		message := fmt.Sprintf(

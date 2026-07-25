@@ -1,0 +1,95 @@
+# 組込み既定テンプレート (ja)。テナントは編集できず、上書きの削除で常にここへ戻る
+# (ADR-142 決定 1)。body_html は <body> 内に入る fragment で、文書外枠はレンダラが供給する。
+password_reset:
+  subject: "{{product_name}} のパスワード再設定"
+  body_text: |
+    {{user_display_name}} さん
+
+    {{product_name}} のパスワード再設定が要求されました。
+    次のリンクを {{expires_in_minutes}} 分以内に開き、新しいパスワードを設定してください。
+
+    {{reset_url}}
+
+    心当たりがない場合は、このメールを破棄してください。パスワードは変わりません。
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p>{{product_name}} のパスワード再設定が要求されました。次のリンクを {{expires_in_minutes}} 分以内に開き、新しいパスワードを設定してください。</p>
+    <p><a href="{{reset_url}}" style="color:#1d4fd8;">パスワードを再設定する</a></p>
+    <p style="color:#475569;font-size:13px;">心当たりがない場合は、このメールを破棄してください。パスワードは変わりません。</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+email_verification:
+  subject: "{{product_name}} のメールアドレスの確認"
+  body_text: |
+    {{user_display_name}} さん
+
+    {{product_name}} でこのメールアドレスが登録されました。
+    次のリンクを {{expires_in_minutes}} 分以内に開き、アドレスの確認を完了してください。
+
+    {{verification_url}}
+
+    心当たりがない場合は、このメールを破棄してください。
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p>{{product_name}} でこのメールアドレスが登録されました。次のリンクを {{expires_in_minutes}} 分以内に開き、アドレスの確認を完了してください。</p>
+    <p><a href="{{verification_url}}" style="color:#1d4fd8;">メールアドレスを確認する</a></p>
+    <p style="color:#475569;font-size:13px;">心当たりがない場合は、このメールを破棄してください。</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+email_change_confirmation:
+  subject: "{{product_name}} の新しいメールアドレスの確認"
+  body_text: |
+    {{user_display_name}} さん
+
+    {{product_name}} のアカウントのメールアドレスを {{new_email}} に変更する要求を受け付けました。
+    次のリンクを {{expires_in_minutes}} 分以内に開くと、変更が確定します。
+
+    {{confirmation_url}}
+
+    心当たりがない場合は、このメールを破棄してください。メールアドレスは変わりません。
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p>{{product_name}} のアカウントのメールアドレスを <strong>{{new_email}}</strong> に変更する要求を受け付けました。次のリンクを {{expires_in_minutes}} 分以内に開くと、変更が確定します。</p>
+    <p><a href="{{confirmation_url}}" style="color:#1d4fd8;">メールアドレスの変更を確定する</a></p>
+    <p style="color:#475569;font-size:13px;">心当たりがない場合は、このメールを破棄してください。メールアドレスは変わりません。</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+account_security_alert:
+  subject: "{{product_name}} アカウントのセキュリティ通知"
+  body_text: |
+    {{user_display_name}} さん
+
+    {{product_name}} のアカウントで次の操作が記録されました。
+
+    内容: {{event_description}}
+    日時: {{occurred_at}}
+
+    心当たりがない場合は、パスワードを変更し、管理者に連絡してください。
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p>{{product_name}} のアカウントで次の操作が記録されました。</p>
+    <p>内容: {{event_description}}<br>日時: {{occurred_at}}</p>
+    <p style="color:#475569;font-size:13px;">心当たりがない場合は、パスワードを変更し、管理者に連絡してください。</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+lifecycle_workflow_notification:
+  subject: "{{product_name}} からのお知らせ"
+  body_text: |
+    {{user_display_name}} さん
+
+    {{tenant_display_name}} の管理者が設定した通知「{{notification_key}}」をお送りします。
+    詳しい内容は管理者にお問い合わせください。
+
+    {{product_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p>{{tenant_display_name}} の管理者が設定した通知「{{notification_key}}」をお送りします。詳しい内容は管理者にお問い合わせください。</p>
+    <p style="color:#475569;font-size:13px;">{{product_name}}</p>

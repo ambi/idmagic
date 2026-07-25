@@ -1,0 +1,96 @@
+# Builtin default templates (en). Tenants cannot edit these; resetting an override
+# always returns here (ADR-142 §1). body_html is a fragment placed inside <body>;
+# the document shell is supplied by the renderer.
+password_reset:
+  subject: "Reset your {{product_name}} password"
+  body_text: |
+    Hello {{user_display_name}},
+
+    A password reset was requested for your {{product_name}} account.
+    Open the link below within {{expires_in_minutes}} minutes to set a new password.
+
+    {{reset_url}}
+
+    If you did not request this, you can discard this email. Your password stays unchanged.
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>Hello {{user_display_name}},</p>
+    <p>A password reset was requested for your {{product_name}} account. Open the link below within {{expires_in_minutes}} minutes to set a new password.</p>
+    <p><a href="{{reset_url}}" style="color:#1d4fd8;">Reset your password</a></p>
+    <p style="color:#475569;font-size:13px;">If you did not request this, you can discard this email. Your password stays unchanged.</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+email_verification:
+  subject: "Verify your {{product_name}} email address"
+  body_text: |
+    Hello {{user_display_name}},
+
+    This address was registered with {{product_name}}.
+    Open the link below within {{expires_in_minutes}} minutes to finish verifying it.
+
+    {{verification_url}}
+
+    If you did not request this, you can discard this email.
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>Hello {{user_display_name}},</p>
+    <p>This address was registered with {{product_name}}. Open the link below within {{expires_in_minutes}} minutes to finish verifying it.</p>
+    <p><a href="{{verification_url}}" style="color:#1d4fd8;">Verify your email address</a></p>
+    <p style="color:#475569;font-size:13px;">If you did not request this, you can discard this email.</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+email_change_confirmation:
+  subject: "Confirm your new {{product_name}} email address"
+  body_text: |
+    Hello {{user_display_name}},
+
+    A request was made to change the email address on your {{product_name}} account to {{new_email}}.
+    Open the link below within {{expires_in_minutes}} minutes to confirm the change.
+
+    {{confirmation_url}}
+
+    If you did not request this, you can discard this email. Your email address stays unchanged.
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>Hello {{user_display_name}},</p>
+    <p>A request was made to change the email address on your {{product_name}} account to <strong>{{new_email}}</strong>. Open the link below within {{expires_in_minutes}} minutes to confirm the change.</p>
+    <p><a href="{{confirmation_url}}" style="color:#1d4fd8;">Confirm the new email address</a></p>
+    <p style="color:#475569;font-size:13px;">If you did not request this, you can discard this email. Your email address stays unchanged.</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+account_security_alert:
+  subject: "Security notice for your {{product_name}} account"
+  body_text: |
+    Hello {{user_display_name}},
+
+    The following activity was recorded on your {{product_name}} account.
+
+    Activity: {{event_description}}
+    When: {{occurred_at}}
+
+    If this was not you, change your password and contact your administrator.
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>Hello {{user_display_name}},</p>
+    <p>The following activity was recorded on your {{product_name}} account.</p>
+    <p>Activity: {{event_description}}<br>When: {{occurred_at}}</p>
+    <p style="color:#475569;font-size:13px;">If this was not you, change your password and contact your administrator.</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
+lifecycle_workflow_notification:
+  subject: "A message from {{product_name}}"
+  body_text: |
+    Hello {{user_display_name}},
+
+    This is the "{{notification_key}}" notification configured by an administrator of {{tenant_display_name}}.
+    Contact your administrator for details.
+
+    {{product_name}}
+  body_html: |
+    <p>Hello {{user_display_name}},</p>
+    <p>This is the "{{notification_key}}" notification configured by an administrator of {{tenant_display_name}}. Contact your administrator for details.</p>
+    <p style="color:#475569;font-size:13px;">{{product_name}}</p>

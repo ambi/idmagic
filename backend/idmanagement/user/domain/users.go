@@ -8,6 +8,7 @@ package domain
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -82,6 +83,35 @@ func (u User) IsSoftDeleted() bool {
 // IsActive は認証を許可してよい状態 (status == Active) かを返す。
 // Disabled / Locked / Staged / Suspended / Deleted はすべて非アクティブ。
 func (u User) IsActive() bool { return u.Lifecycle.EffectiveStatus() == idmdomain.UserStatusActive }
+
+// LocaleAttribute は OIDC 組み込み属性 locale の値を返す。通知の locale 解決の第 1 段
+// (NotificationLocaleResolution)。属性が無い / 型が String でない / 値が無い場合は
+// 「未設定」として空文字列を返し、解決を次の段へ落とす。
+func (u User) LocaleAttribute() string {
+	value, ok := u.Attributes["locale"]
+	if !ok || value.Type != idmdomain.AttributeTypeString || value.String == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value.String)
+}
+
+// DisplayName は通知の宛名などに使う「人が読める名前」。name → given_name family_name →
+// preferred_username の順に落とし、必ず非空を返す (宛名が消えたメールを送らない)。
+func (u User) DisplayName() string {
+	if u.Name != nil && strings.TrimSpace(*u.Name) != "" {
+		return strings.TrimSpace(*u.Name)
+	}
+	var parts []string
+	for _, part := range []*string{u.GivenName, u.FamilyName} {
+		if part != nil && strings.TrimSpace(*part) != "" {
+			parts = append(parts, strings.TrimSpace(*part))
+		}
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, " ")
+	}
+	return u.PreferredUsername
+}
 
 // UserLifecycle は User の運用ライフサイクル属性。status は状態機械 UserLifecycle
 // (states セクション) と一致する唯一の真実。status_changed_at が現在の状態に
